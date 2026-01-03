@@ -75,44 +75,44 @@ struct SettingsView: View {
 
                 Divider()
 
-                // Credits Section
-                VStack(alignment: .leading, spacing: 16) {
+                // Credits Section - Compact horizontal layout
+                VStack(alignment: .leading, spacing: 12) {
                     Label("About", systemImage: "info.circle")
                         .font(.headline)
 
-                    VStack(alignment: .center, spacing: 12) {
+                    HStack(spacing: 16) {
                         Image(systemName: "wrench.adjustable.fill")
-                            .font(.system(size: 48))
+                            .font(.system(size: 32))
                             .foregroundStyle(.blue)
+                            .frame(width: 48, height: 48)
 
-                        Text("PowerToys for macOS")
-                            .font(.title2)
-                            .fontWeight(.semibold)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text("PowerToys")
+                                    .font(.headline)
+                                Text("v1.0")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
 
-                        Text("Version 1.0")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Divider()
-                            .frame(width: 200)
-
-                        VStack(spacing: 4) {
-                            Text("Created by")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-
-                            Text("Suraj Mandal")
-                                .font(.headline)
-
-                            Link("surajmandalcell@gmail.com", destination: URL(string: "mailto:surajmandalcell@gmail.com")!)
-                                .font(.subheadline)
-                                .foregroundStyle(.blue)
+                            HStack(spacing: 4) {
+                                Text("by")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                Text("Suraj Mandal")
+                                    .font(.caption)
+                                Text("·")
+                                    .foregroundStyle(.tertiary)
+                                Link("surajmandalcell@gmail.com", destination: URL(string: "mailto:surajmandalcell@gmail.com")!)
+                                    .font(.caption)
+                            }
                         }
+
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(24)
+                    .padding(12)
                     .background(Color(nsColor: .controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
 
                 Spacer()

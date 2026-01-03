@@ -59,13 +59,14 @@ struct powertoysApp: App {
             }
         }
 
-        // CC History Tool Window
+        // CC History Tool Window - only opens via openWindow(id:)
         WindowGroup(id: "cc-history") {
             CCHistoryWindowView()
         }
         .defaultSize(width: 1200, height: 800)
         .windowStyle(.automatic)
         .windowToolbarStyle(.unified(showsTitle: true))
+        .handlesExternalEvents(matching: [])
 
         MenuBarExtra {
             Button("Open PowerToys") {

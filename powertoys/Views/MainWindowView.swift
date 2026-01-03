@@ -11,10 +11,13 @@ struct MainWindowView: View {
     @State private var selectedTool: String? = "all-tools"
     @Environment(\.openWindow) private var openWindow
 
+    private let sidebarWidth: CGFloat = 240
+
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             ToolSidebarView(selectedTool: $selectedTool)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
+                .navigationSplitViewColumnWidth(sidebarWidth)
+                .toolbar(removing: .sidebarToggle)
         } detail: {
             if selectedTool == "all-tools" {
                 AllToolsGridView(selectedTool: $selectedTool)
@@ -30,6 +33,7 @@ struct MainWindowView: View {
                 )
             }
         }
+        .navigationSplitViewStyle(.prominentDetail)
         .navigationTitle("PowerToys")
     }
 }
