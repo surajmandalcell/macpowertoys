@@ -121,3 +121,6 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Screenshots and images in root directory
+/*.png
