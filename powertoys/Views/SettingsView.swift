@@ -2,8 +2,6 @@
 //  SettingsView.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import SwiftUI
 
@@ -29,12 +27,10 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
-                // Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Settings")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-
                     Text("Customize your PowerToys experience")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -42,7 +38,6 @@ struct SettingsView: View {
 
                 Divider()
 
-                // Appearance Section
                 VStack(alignment: .leading, spacing: 16) {
                     Label("Appearance", systemImage: "paintbrush")
                         .font(.headline)
@@ -75,7 +70,6 @@ struct SettingsView: View {
 
                 Divider()
 
-                // Credits Section - Compact horizontal layout
                 VStack(alignment: .leading, spacing: 12) {
                     Label("About", systemImage: "info.circle")
                         .font(.headline)
@@ -107,7 +101,6 @@ struct SettingsView: View {
                                     .font(.caption)
                             }
                         }
-
                         Spacer()
                     }
                     .padding(12)
@@ -127,12 +120,9 @@ struct SettingsView: View {
 
     private func applyTheme(_ theme: AppTheme) {
         switch theme {
-        case .automatic:
-            NSApp.appearance = nil
-        case .light:
-            NSApp.appearance = NSAppearance(named: .aqua)
-        case .dark:
-            NSApp.appearance = NSAppearance(named: .darkAqua)
+        case .automatic: NSApp.appearance = nil
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
         }
     }
 }
