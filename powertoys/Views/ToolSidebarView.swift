@@ -50,16 +50,31 @@ struct ToolSidebarView: View {
 
             Divider()
 
-            Button {
-                NSApplication.shared.terminate(nil)
-            } label: {
-                Label("Exit", systemImage: "power")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
+            VStack(spacing: 0) {
+                Button {
+                    selectedTool = "settings"
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+
+                Divider()
+
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Label("Exit", systemImage: "power")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
             .background(Color(nsColor: .controlBackgroundColor))
         }
     }
