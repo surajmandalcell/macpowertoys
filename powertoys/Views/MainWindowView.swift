@@ -18,6 +18,8 @@ struct MainWindowView: View {
         } detail: {
             if selectedTool == "all-tools" {
                 AllToolsGridView(selectedTool: $selectedTool)
+            } else if selectedTool == "settings" {
+                SettingsView()
             } else if let toolId = selectedTool {
                 ToolSettingsView(toolId: toolId, openWindow: openWindow)
             } else {
