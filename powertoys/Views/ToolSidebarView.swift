@@ -9,30 +9,30 @@ import SwiftUI
 
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
-    
+
     var body: some View {
         List(selection: $selectedTool) {
-            Section("All Tools") {
-                ForEach(ToolRegistry.allTools, id: \.id) { tool in
-                    Label {
-                        Text(tool.name)
-                    } icon: {
-                        Image(systemName: tool.icon)
-                            .foregroundStyle(.blue)
-                    }
-                    .tag(tool.id)
-                }
+            // All Tools item (shows grid)
+            Label {
+                Text("All Tools")
+            } icon: {
+                Image(systemName: "square.grid.2x2")
+                    .foregroundStyle(.blue)
             }
-            
-            Section("Categories") {
-                ForEach(ToolCategory.allCases.filter { $0 != .all }) { category in
-                    Label {
-                        Text(category.rawValue)
-                    } icon: {
-                        Image(systemName: category.icon)
-                            .foregroundStyle(.secondary)
+            .tag("all-tools")
+
+            // Only show categories that have tools
+            ForEach(categoriesWithTools, id: \.id) { category in
+                Section(category.rawValue) {
+                    ForEach(ToolRegistry.tools(for: category), id: \.id) { tool in
+                        Label {
+                            Text(tool.name)
+                        } icon: {
+                            Image(systemName: tool.icon)
+                                .foregroundStyle(.blue)
+                        }
+                        .tag(tool.id)
                     }
-                    .tag("category-\(category.id)")
                 }
             }
         }
@@ -40,11 +40,17 @@ struct ToolSidebarView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToCategory)) { notification in
             if let category = notification.object as? ToolCategory {
                 if category == .all {
-                    selectedTool = ToolRegistry.allTools.first?.id
+                    selectedTool = "all-tools"
                 } else {
-                    selectedTool = "category-\(category.id)"
+                    selectedTool = ToolRegistry.tools(for: category).first?.id
                 }
             }
+        }
+    }
+
+    private var categoriesWithTools: [ToolCategory] {
+        ToolCategory.allCases.filter { category in
+            category != .all && !ToolRegistry.tools(for: category).isEmpty
         }
     }
 }
