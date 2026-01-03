@@ -9,17 +9,16 @@ import Foundation
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Keep app running in menu bar when window is closed
         return false
     }
-    
-    func applicationDidBecomeActive(_ notification: Notification) {
-        // The app became active
-    }
-    
-    func applicationWillTerminate(_ notification: Notification) {
-        // Clean up resources
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        return false
     }
 }

@@ -2,8 +2,6 @@
 //  MainWindowView.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import SwiftUI
 
@@ -19,32 +17,15 @@ struct MainWindowView: View {
                 .navigationSplitViewColumnWidth(sidebarWidth)
                 .toolbar(removing: .sidebarToggle)
         } detail: {
-            if selectedTool == "all-tools" {
-                AllToolsGridView(selectedTool: $selectedTool)
-            } else if selectedTool == "settings" {
-                SettingsView()
-            } else if let toolId = selectedTool {
-                ToolSettingsView(toolId: toolId, openWindow: openWindow)
-            } else {
-                ContentUnavailableView(
-                    "Select a Tool",
-                    systemImage: "wrench.adjustable",
-                    description: Text("Choose a tool from the sidebar to get started.")
-                )
+            switch selectedTool {
+            case "all-tools": AllToolsGridView(selectedTool: $selectedTool)
+            case "settings": SettingsView()
+            case let toolId?: ToolSettingsView(toolId: toolId, openWindow: openWindow)
+            default: ContentUnavailableView("Select a Tool", systemImage: "wrench.adjustable", description: Text("Choose a tool from the sidebar."))
             }
         }
         .navigationSplitViewStyle(.prominentDetail)
         .navigationTitle("PowerToys")
-    }
-}
-
-struct EmptyToolView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "No Tool Selected",
-            systemImage: "square.grid.2x2",
-            description: Text("Select a tool from the sidebar.")
-        )
     }
 }
 

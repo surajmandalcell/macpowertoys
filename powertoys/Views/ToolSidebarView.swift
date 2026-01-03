@@ -2,8 +2,6 @@
 //  ToolSidebarView.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import SwiftUI
 
@@ -11,64 +9,40 @@ struct ToolSidebarView: View {
     @Binding var selectedTool: String?
 
     var body: some View {
-        List(selection: $selectedTool) {
-            // All Tools item (shows grid)
-            Label {
-                Text("All Tools")
-            } icon: {
-                Image(systemName: "square.grid.2x2")
-                    .foregroundStyle(.blue)
-            }
-            .tag("all-tools")
+        VStack(spacing: 0) {
+            List(selection: $selectedTool) {
+                SidebarItem(icon: "square.grid.2x2", title: "All Tools", color: .blue)
+                    .tag("all-tools")
 
-            // Only show categories that have tools
-            ForEach(categoriesWithTools, id: \.id) { category in
-                Section(category.rawValue) {
-                    ForEach(ToolRegistry.tools(for: category), id: \.id) { tool in
-                        Label {
-                            Text(tool.name)
-                        } icon: {
-                            Image(systemName: tool.icon)
-                                .foregroundStyle(.blue)
+                ForEach(categoriesWithTools, id: \.id) { category in
+                    Section(category.rawValue) {
+                        ForEach(ToolRegistry.tools(for: category), id: \.id) { tool in
+                            SidebarItem(icon: tool.icon, title: tool.name, color: .purple)
+                                .tag(tool.id)
                         }
-                        .tag(tool.id)
                     }
                 }
             }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
 
-            // Spacer to push bottom items down
-            Section {
-                EmptyView()
-            }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            Spacer()
 
-            // Bottom section with Settings and Exit
-            Section {
-                Label {
-                    Text("Settings")
-                } icon: {
-                    Image(systemName: "gearshape")
-                        .foregroundStyle(.secondary)
-                }
-                .tag("settings")
+            VStack(alignment: .leading, spacing: 0) {
 
-                // Exit button styled as list item
-                Button {
-                    NSApplication.shared.terminate(nil)
-                } label: {
-                    Label {
-                        Text("Exit")
-                    } icon: {
-                        Image(systemName: "power")
-                            .foregroundStyle(.secondary)
+                VStack(spacing: 2) {
+                    SidebarButton(icon: "gearshape", title: "Settings", isSelected: selectedTool == "settings") {
+                        selectedTool = "settings"
+                    }
+
+                    SidebarButton(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
+                        NSApplication.shared.terminate(nil)
                     }
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
             }
         }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
         .background(.ultraThinMaterial)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToCategory)) { notification in
             if let category = notification.object as? ToolCategory {
@@ -82,13 +56,51 @@ struct ToolSidebarView: View {
     }
 
     private var categoriesWithTools: [ToolCategory] {
-        ToolCategory.allCases.filter { category in
-            category != .all && !ToolRegistry.tools(for: category).isEmpty
+        ToolCategory.allCases.filter { $0 != .all && !ToolRegistry.tools(for: $0).isEmpty }
+    }
+}
+
+struct SidebarItem: View {
+    let icon: String
+    let title: String
+    let color: Color
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: icon)
+                .foregroundStyle(color)
         }
     }
 }
 
+struct SidebarButton: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                Text(title)
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 #Preview {
-    ToolSidebarView(selectedTool: .constant(CCHistoryTool.shared.id))
-        .frame(width: 250, height: 400)
+    ToolSidebarView(selectedTool: .constant("all-tools"))
+        .frame(width: 240, height: 500)
 }
