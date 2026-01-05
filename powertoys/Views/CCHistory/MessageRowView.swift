@@ -9,14 +9,12 @@ import SwiftUI
 
 struct MessageRowView: View {
     let message: CCMessage
-    let isSelected: Bool
     let searchText: String
     let showToolCalls: Bool
     let showToolOutputs: Bool
     let showThinking: Bool
     var onToolSelect: ((ToolUseBlock) -> Void)?
 
-    @Environment(SelectionManager.self) private var selectionManager
     @State private var isHovering: Bool = false
 
     private var rolePrefix: String {
@@ -83,9 +81,6 @@ struct MessageRowView: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
-        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
-        .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
     }
 }
 
@@ -331,13 +326,12 @@ struct ToolUseView: View {
                 thinking: nil,
                 sessionId: "session1"
             ),
-            isSelected: false,
             searchText: "",
             showToolCalls: true,
             showToolOutputs: true,
             showThinking: true
         )
-        
+
         MessageRowView(
             message: CCMessage(
                 id: "2",
@@ -356,7 +350,6 @@ struct ToolUseView: View {
                 thinking: "I need to explain authentication...",
                 sessionId: "session1"
             ),
-            isSelected: true,
             searchText: "authentication",
             showToolCalls: true,
             showToolOutputs: true,
@@ -364,5 +357,4 @@ struct ToolUseView: View {
         )
     }
     .padding()
-    .environment(SelectionManager())
 }
