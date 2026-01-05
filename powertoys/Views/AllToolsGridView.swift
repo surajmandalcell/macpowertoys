@@ -15,7 +15,8 @@ struct AllToolsGridView: View {
                     ToolCard(tool: tool) { selectedTool = tool.id }
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
     }
 }

@@ -25,7 +25,7 @@ struct MainWindowView: View {
             }
         }
         .navigationSplitViewStyle(.prominentDetail)
-        .navigationTitle("PowerToys")
+        .navigationTitle("")
         .frame(width: 780, height: 560)
     }
 }
