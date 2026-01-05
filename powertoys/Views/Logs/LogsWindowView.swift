@@ -87,7 +87,7 @@ struct LogsWindowView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .padding(.top, 28)
+            .padding(.top, 52)
 
             Divider()
 

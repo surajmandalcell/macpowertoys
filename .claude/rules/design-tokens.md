@@ -10,8 +10,8 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Search field inner: `.padding(8)`
 
 ### Content Area
-- Top padding: `.padding(.top, 28)` - aligns with sidebar search bottom
-- NEVER use `.padding(.top, 52)` for content areas
+- Top padding: `.padding(.top, 52)` - aligns with sidebar search bar top
+- Content and search bar start at the same vertical position
 
 ## Colors
 

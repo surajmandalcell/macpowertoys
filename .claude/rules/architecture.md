@@ -43,7 +43,7 @@ HStack(spacing: 6) {
 ```
 
 ### Content Area Alignment:
-- Content starts at `.padding(.top, 28)` to align with sidebar search bottom
+- Content starts at `.padding(.top, 52)` to align with sidebar search bar top
 - Use `Color(nsColor: .windowBackgroundColor)` for content background
 
 ## Forms & Settings
