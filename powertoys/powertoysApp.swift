@@ -15,7 +15,7 @@ struct powertoysApp: App {
 
     init() {
         do {
-            let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self])
+            let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             modelContainer = try ModelContainer(for: schema, configurations: [config])
         } catch {

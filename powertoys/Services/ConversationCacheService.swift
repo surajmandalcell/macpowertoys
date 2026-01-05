@@ -18,6 +18,71 @@ final class ConversationCacheService {
         self.modelContext = context
     }
 
+    // MARK: - Session Metadata Cache
+
+    func getAllCachedMetadata() -> [CachedSessionMetadata] {
+        guard let context = modelContext else { return [] }
+
+        let descriptor = FetchDescriptor<CachedSessionMetadata>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func getCachedMetadata(sessionId: String) -> CachedSessionMetadata? {
+        guard let context = modelContext else { return nil }
+
+        let descriptor = FetchDescriptor<CachedSessionMetadata>(
+            predicate: #Predicate { $0.sessionId == sessionId }
+        )
+
+        return try? context.fetch(descriptor).first
+    }
+
+    func cacheMetadata(
+        sessionId: String,
+        projectPath: String,
+        filePath: URL,
+        fileModDate: Date,
+        firstUserMessage: String?,
+        messageCount: Int,
+        timestamp: Date?
+    ) {
+        guard let context = modelContext else { return }
+
+        if let existing = getCachedMetadata(sessionId: sessionId) {
+            existing.projectPath = projectPath
+            existing.filePath = filePath.path
+            existing.fileModificationDate = fileModDate
+            existing.firstUserMessage = firstUserMessage
+            existing.messageCount = messageCount
+            existing.timestamp = timestamp
+        } else {
+            let metadata = CachedSessionMetadata(
+                sessionId: sessionId,
+                projectPath: projectPath,
+                filePath: filePath.path,
+                fileModificationDate: fileModDate,
+                firstUserMessage: firstUserMessage,
+                messageCount: messageCount,
+                timestamp: timestamp
+            )
+            context.insert(metadata)
+        }
+
+        try? context.save()
+    }
+
+    func isMetadataValid(sessionId: String, currentModDate: Date) -> Bool {
+        guard let cached = getCachedMetadata(sessionId: sessionId) else {
+            return false
+        }
+        return abs(cached.fileModificationDate.timeIntervalSince(currentModDate)) < 1.0
+    }
+
+    // MARK: - Message Cache
+
     func getCachedMessages(sessionId: String, filePath: URL) -> [CCMessage]? {
         guard let context = modelContext else { return nil }
 
@@ -29,8 +94,8 @@ final class ConversationCacheService {
             return nil
         }
 
-        guard isValidCache(cached, filePath: filePath) else {
-            invalidate(sessionId)
+        guard isValidMessageCache(cached, filePath: filePath) else {
+            invalidateMessages(sessionId)
             return nil
         }
 
@@ -49,7 +114,7 @@ final class ConversationCacheService {
     ) {
         guard let context = modelContext else { return }
 
-        invalidate(sessionId)
+        invalidateMessages(sessionId)
 
         let modDate = getFileModificationDate(filePath) ?? Date()
         let firstUserMessage = messages.first { $0.type == .user }?.content
@@ -90,6 +155,24 @@ final class ConversationCacheService {
     }
 
     func invalidate(_ sessionId: String) {
+        invalidateMetadata(sessionId)
+        invalidateMessages(sessionId)
+    }
+
+    func invalidateMetadata(_ sessionId: String) {
+        guard let context = modelContext else { return }
+
+        let descriptor = FetchDescriptor<CachedSessionMetadata>(
+            predicate: #Predicate { $0.sessionId == sessionId }
+        )
+
+        if let cached = try? context.fetch(descriptor).first {
+            context.delete(cached)
+            try? context.save()
+        }
+    }
+
+    func invalidateMessages(_ sessionId: String) {
         guard let context = modelContext else { return }
 
         let descriptor = FetchDescriptor<CachedConversation>(
@@ -103,21 +186,14 @@ final class ConversationCacheService {
     }
 
     func getCachedSessionMetadata() -> [(sessionId: String, projectPath: String, firstUserMessage: String?, messageCount: Int, timestamp: Date)] {
-        guard let context = modelContext else { return [] }
-
-        let descriptor = FetchDescriptor<CachedConversation>(
-            sortBy: [SortDescriptor(\.lastAccessDate, order: .reverse)]
-        )
-
-        guard let conversations = try? context.fetch(descriptor) else { return [] }
-
-        return conversations.map { conv in
+        let allMetadata = getAllCachedMetadata()
+        return allMetadata.map { meta in
             (
-                sessionId: conv.sessionId,
-                projectPath: conv.projectPath,
-                firstUserMessage: conv.firstUserMessage,
-                messageCount: conv.messageCount,
-                timestamp: conv.fileModificationDate
+                sessionId: meta.sessionId,
+                projectPath: meta.projectPath,
+                firstUserMessage: meta.firstUserMessage,
+                messageCount: meta.messageCount,
+                timestamp: meta.timestamp ?? meta.fileModificationDate
             )
         }
     }
@@ -127,23 +203,24 @@ final class ConversationCacheService {
 
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
 
-        let descriptor = FetchDescriptor<CachedConversation>(
+        let convDescriptor = FetchDescriptor<CachedConversation>(
             predicate: #Predicate { $0.lastAccessDate < cutoff }
         )
 
-        if let stale = try? context.fetch(descriptor) {
+        if let stale = try? context.fetch(convDescriptor) {
             for conversation in stale {
                 context.delete(conversation)
             }
-            try? context.save()
 
             if !stale.isEmpty {
-                LogManager.shared.info("Pruned \(stale.count) stale cached conversations", source: "Cache")
+                LogManager.shared.info("Pruned \(stale.count) stale message caches", source: "Cache")
             }
         }
+
+        try? context.save()
     }
 
-    private func isValidCache(_ cached: CachedConversation, filePath: URL) -> Bool {
+    private func isValidMessageCache(_ cached: CachedConversation, filePath: URL) -> Bool {
         guard let fileModDate = getFileModificationDate(filePath) else {
             return false
         }

@@ -212,7 +212,7 @@ struct FilterToolbarView: View {
                         .foregroundStyle(.secondary)
                 }
                 .menuStyle(.borderlessButton)
-                .frame(width: 20)
+                .menuIndicator(.hidden)
             }
         }
         .padding(.horizontal, 16)
