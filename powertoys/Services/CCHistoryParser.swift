@@ -96,7 +96,7 @@ class CCHistoryParser {
     }
     
     /// Parse session metadata (first user message, timestamp) quickly without loading all messages
-    static func parseSessionMetadata(at url: URL) -> (firstUserMessage: String?, timestamp: Date?, messageCount: Int) {
+    nonisolated static func parseSessionMetadata(at url: URL) -> (firstUserMessage: String?, timestamp: Date?, messageCount: Int) {
         guard let data = try? String(contentsOf: url, encoding: .utf8) else {
             return (nil, nil, 0)
         }

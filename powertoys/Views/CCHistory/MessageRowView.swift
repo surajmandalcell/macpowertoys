@@ -94,23 +94,27 @@ struct MessageRowView: View {
 struct MessageContentView: View {
     let content: String
     let searchText: String
-    
+
     var body: some View {
         if content.contains("```") {
-            // Has code blocks
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(parseContent().enumerated()), id: \.offset) { _, block in
                     if block.isCode {
                         CodeBlockView(code: block.content, language: block.language)
                     } else {
                         Text(highlightSearch(block.content))
+                            .font(.system(size: 13))
                             .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             Text(highlightSearch(content))
+                .font(.system(size: 13))
                 .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     

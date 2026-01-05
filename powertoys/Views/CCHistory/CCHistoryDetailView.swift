@@ -34,12 +34,22 @@ struct CCHistoryDetailView: View {
 
                     Divider()
 
-                    if filteredMessages.isEmpty {
-                        ContentUnavailableView(
-                            "No Messages",
-                            systemImage: "bubble.left.and.bubble.right",
-                            description: Text("No messages match the current filters.")
-                        )
+                    if projectManager.isLoadingMessages {
+                        Spacer()
+                        ProgressView()
+                            .controlSize(.small)
+                        Spacer()
+                    } else if filteredMessages.isEmpty {
+                        Spacer()
+                        VStack(spacing: 8) {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.tertiary)
+                            Text("No Messages")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
                     } else {
                         MessageListView(
                             messages: filteredMessages,
@@ -53,13 +63,19 @@ struct CCHistoryDetailView: View {
                         )
                     }
                 } else {
-                    ContentUnavailableView(
-                        "Select a Conversation",
-                        systemImage: "text.bubble",
-                        description: Text("Choose a conversation from the sidebar to view messages.")
-                    )
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "text.bubble")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.tertiary)
+                        Text("Select a Conversation")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if selectedTool != nil {
                 SlideOverPanel(

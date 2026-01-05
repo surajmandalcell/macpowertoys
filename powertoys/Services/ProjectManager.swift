@@ -125,25 +125,25 @@ final class ProjectManager {
                 )
                 sessions.append(session)
             } else {
-                let firstMessage = await Task.detached(priority: .utility) {
-                    Self.extractFirstUserMessage(from: fileInfo.url)
+                let parsedMetadata = await Task.detached(priority: .utility) {
+                    CCHistoryParser.parseSessionMetadata(at: fileInfo.url)
                 }.value
 
                 let metadata = SessionMetadata(
                     sessionId: sessionId,
                     projectPath: projectPath,
-                    firstUserMessage: firstMessage,
+                    firstUserMessage: parsedMetadata.firstUserMessage,
                     fileModificationDate: fileInfo.modDate,
-                    messageCount: nil
+                    messageCount: parsedMetadata.messageCount
                 )
                 await SessionMetadataCache.shared.set(metadata)
 
                 let session = CCSession(
                     id: sessionId,
                     filePath: fileInfo.url,
-                    firstUserMessage: firstMessage,
-                    timestamp: fileInfo.modDate,
-                    messageCount: 0
+                    firstUserMessage: parsedMetadata.firstUserMessage,
+                    timestamp: parsedMetadata.timestamp ?? fileInfo.modDate,
+                    messageCount: parsedMetadata.messageCount
                 )
                 sessions.append(session)
             }
@@ -231,6 +231,16 @@ final class ProjectManager {
 
         currentMessages = messages
         isLoadingMessages = false
+
+        // Update session message count in project
+        if session.messageCount != messages.count {
+            for projectIndex in projects.indices {
+                if let sessionIndex = projects[projectIndex].sessions.firstIndex(where: { $0.id == session.id }) {
+                    projects[projectIndex].sessions[sessionIndex].messageCount = messages.count
+                }
+            }
+            selectedSession?.messageCount = messages.count
+        }
 
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         LogManager.shared.debug("Loaded \(messages.count) messages in \(String(format: "%.2f", elapsed))s", source: "ProjectManager")

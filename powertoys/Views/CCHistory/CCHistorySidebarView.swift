@@ -46,16 +46,10 @@ struct CCHistorySidebarView: View {
             if projectManager.isLoading {
                 VStack {
                     Spacer()
-                    VStack(spacing: 4) {
-                        ProgressView(value: projectManager.loadingProgress)
-                            .progressViewStyle(.linear)
-                        Text("Loading projects...")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
+                    ProgressView(value: projectManager.loadingProgress)
+                        .progressViewStyle(.linear)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 8)
                 }
             }
         }
