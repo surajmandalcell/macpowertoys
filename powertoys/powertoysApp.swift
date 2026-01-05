@@ -14,9 +14,9 @@ struct powertoysApp: App {
         WindowGroup(id: "main") {
             MainWindowView()
         }
-        .defaultSize(width: 1000, height: 700)
-        .windowStyle(.automatic)
-        .windowToolbarStyle(.unified(showsTitle: true))
+        .defaultSize(width: 780, height: 560)
+        .windowResizability(.contentSize)
+        .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(replacing: .newItem) { }
             CommandMenu("Navigation") {
