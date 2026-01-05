@@ -14,6 +14,7 @@ struct powertoysApp: App {
         WindowGroup(id: "main") {
             MainWindowView()
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 700)
         .windowResizability(.contentSize)
         .commands {
