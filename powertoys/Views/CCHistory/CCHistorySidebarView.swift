@@ -344,6 +344,29 @@ private struct SessionRow: View {
                     systemImage: bookmarkManager.isBookmarked(session) ? "bookmark.slash" : "bookmark"
                 )
             }
+
+            Divider()
+
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(session.id, forType: .string)
+            } label: {
+                Label("Copy Session ID", systemImage: "doc.on.doc")
+            }
+
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(session.filePath.path, forType: .string)
+            } label: {
+                Label("Copy Log Path", systemImage: "folder")
+            }
+
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString("\(session.id)\n\(session.filePath.path)", forType: .string)
+            } label: {
+                Label("Copy ID & Path", systemImage: "doc.on.doc.fill")
+            }
         }
     }
 }
