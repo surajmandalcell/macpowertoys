@@ -8,6 +8,7 @@ import SwiftUI
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
     @State private var searchText = ""
+    @Environment(\.openWindow) private var openWindow
 
         var body: some View {
             ZStack(alignment: .topLeading) {
@@ -58,8 +59,9 @@ struct ToolSidebarView: View {
                             selectedTool = "settings"
                         }
 
-                        SidebarRow(icon: "doc.text.magnifyingglass", title: "Logs", isSelected: selectedTool == "logs") {
-                            selectedTool = "logs"
+                        SidebarExternalRow(icon: "doc.text.magnifyingglass", title: "Logs") {
+                            openWindow(id: "logs")
+                            NSApplication.shared.activate(ignoringOtherApps: true)
                         }
 
                         SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
@@ -151,6 +153,44 @@ struct SidebarRow: View {
             return Color.primary.opacity(0.08)
         }
         return Color.clear
+    }
+}
+
+struct SidebarExternalRow: View {
+    let icon: String
+    let title: String
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(width: 20, height: 20)
+
+                Text(title)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right.square")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovering ? Color.primary.opacity(0.08) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
     }
 }
 

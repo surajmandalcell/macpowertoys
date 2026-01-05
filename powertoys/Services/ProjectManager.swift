@@ -36,23 +36,42 @@ final class ProjectManager {
         loadingProgress = 0
 
         let directory = claudeDirectory
-        let loadedProjects = await Task.detached(priority: .userInitiated) {
-            await Self.loadProjectsFromDisk(directory: directory)
-        }.value
 
-        guard !Task.isCancelled else { return }
+        let stream = AsyncStream<(CCProject, Double)> { continuation in
+            Task.detached(priority: .userInitiated) {
+                await Self.loadProjectsWithProgress(directory: directory) { project, progress in
+                    continuation.yield((project, progress))
+                }
+                continuation.finish()
+            }
+        }
+
+        var loadedProjects: [CCProject] = []
+
+        for await (project, progress) in stream {
+            guard !Task.isCancelled else { return }
+            loadedProjects.append(project)
+            loadingProgress = progress
+        }
+
+        loadedProjects.sort { p1, p2 in
+            let t1 = p1.sessions.first?.timestamp ?? .distantPast
+            let t2 = p2.sessions.first?.timestamp ?? .distantPast
+            return t1 > t2
+        }
 
         projects = loadedProjects
         isLoading = false
         loadingProgress = 1.0
     }
 
-    private static func loadProjectsFromDisk(directory: URL) async -> [CCProject] {
+    private static func loadProjectsWithProgress(
+        directory: URL,
+        onProject: @Sendable (CCProject, Double) -> Void
+    ) async {
         let fileManager = FileManager.default
 
-        guard fileManager.fileExists(atPath: directory.path) else {
-            return []
-        }
+        guard fileManager.fileExists(atPath: directory.path) else { return }
 
         do {
             let projectFolders = try fileManager.contentsOfDirectory(
@@ -64,25 +83,18 @@ final class ProjectManager {
                 return fileManager.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
             }
 
-            var loadedProjects: [CCProject] = []
+            let total = Double(projectFolders.count)
 
-            for folder in projectFolders {
+            for (index, folder) in projectFolders.enumerated() {
                 let sessions = loadSessionsSync(in: folder)
                 if !sessions.isEmpty {
                     let project = CCProject(folderName: folder.lastPathComponent, sessions: sessions)
-                    loadedProjects.append(project)
+                    let progress = Double(index + 1) / max(total, 1)
+                    onProject(project, progress)
                 }
             }
-
-            loadedProjects.sort { p1, p2 in
-                let t1 = p1.sessions.first?.timestamp ?? .distantPast
-                let t2 = p2.sessions.first?.timestamp ?? .distantPast
-                return t1 > t2
-            }
-
-            return loadedProjects
         } catch {
-            return []
+            // Silently fail
         }
     }
 
@@ -123,10 +135,26 @@ final class ProjectManager {
     }
     
     // MARK: - Session Loading
-    
+
+    private var messageLoadTask: Task<Void, Never>?
+
     func loadMessages(for session: CCSession) async {
+        messageLoadTask?.cancel()
         selectedSession = session
-        currentMessages = CCHistoryParser.parseJSONLFile(at: session.filePath)
+        currentMessages = []
+
+        let filePath = session.filePath
+        messageLoadTask = Task {
+            let messages = await Task.detached(priority: .userInitiated) {
+                CCHistoryParser.parseJSONLFile(at: filePath)
+            }.value
+
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self.currentMessages = messages
+            }
+        }
+        await messageLoadTask?.value
     }
     
     // MARK: - File Watching
@@ -168,20 +196,29 @@ final class ProjectManager {
     }
     
     // MARK: - Search
-    
+
     func searchGlobally(query: String) async -> [SearchResult] {
         guard !query.isEmpty else { return [] }
-        
+
+        let currentProjects = projects
+        let results = await Task.detached(priority: .userInitiated) {
+            Self.performSearch(query: query, in: currentProjects)
+        }.value
+
+        return results
+    }
+
+    private nonisolated static func performSearch(query: String, in projects: [CCProject]) -> [SearchResult] {
         let lowercasedQuery = query.lowercased()
         var results: [SearchResult] = []
-        
+
         for project in projects {
             for session in project.sessions {
                 let messages = CCHistoryParser.parseJSONLFile(at: session.filePath)
                 let matchingMessages = messages.filter { message in
                     message.content.lowercased().contains(lowercasedQuery)
                 }
-                
+
                 if !matchingMessages.isEmpty {
                     let preview = matchingMessages.first?.content.prefix(100) ?? ""
                     let result = SearchResult(
@@ -195,7 +232,7 @@ final class ProjectManager {
                 }
             }
         }
-        
+
         return results
     }
 }

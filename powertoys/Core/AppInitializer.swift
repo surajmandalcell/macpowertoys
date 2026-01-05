@@ -5,6 +5,7 @@
 
 import Foundation
 import SwiftData
+import AppKit
 
 @Observable
 @MainActor
@@ -39,6 +40,8 @@ final class AppInitializer {
 
         _ = SettingsManager.shared
 
+        applyStoredTheme()
+
         LogManager.shared.info("App initialization complete", source: "AppInitializer")
 
         state = .ready
@@ -46,5 +49,18 @@ final class AppInitializer {
 
     func shutdown() async {
         LogManager.shared.info("App shutting down...", source: "AppInitializer")
+    }
+
+    private func applyStoredTheme() {
+        let storedTheme = UserDefaults.standard.string(forKey: "appTheme") ?? "Automatic"
+        switch storedTheme {
+        case "Light":
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case "Dark":
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        default:
+            NSApp.appearance = nil
+        }
+        LogManager.shared.debug("Applied theme: \(storedTheme)", source: "AppInitializer")
     }
 }

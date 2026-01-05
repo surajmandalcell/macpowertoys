@@ -16,14 +16,7 @@ struct CCHistorySidebarView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                if projectManager.isLoading {
-                    ProgressView(value: projectManager.loadingProgress)
-                        .progressViewStyle(.linear)
-                        .frame(height: 2)
-                        .padding(.top, 38)
-                } else {
-                    Spacer().frame(height: 40)
-                }
+                Spacer().frame(height: 40)
 
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass")
@@ -61,6 +54,18 @@ struct CCHistorySidebarView: View {
                         }
                     }
                     .padding(.horizontal, 12)
+                }
+
+                if projectManager.isLoading {
+                    VStack(spacing: 4) {
+                        ProgressView(value: projectManager.loadingProgress)
+                            .progressViewStyle(.linear)
+                        Text("Loading projects...")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                 }
             }
 
