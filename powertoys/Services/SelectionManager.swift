@@ -2,17 +2,14 @@
 //  SelectionManager.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import Foundation
 import AppKit
-import Combine
 
+@Observable
 @MainActor
-class SelectionManager: ObservableObject {
-    @Published var selectedMessageIds: Set<String> = []
-    
+final class SelectionManager {
+    var selectedMessageIds: Set<String> = []
     var copyFormat: CopyFormat = .plainText
     
     // MARK: - Selection

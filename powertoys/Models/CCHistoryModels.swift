@@ -17,10 +17,9 @@ struct CCProject: Identifiable, Hashable {
     
     init(folderName: String, sessions: [CCSession] = []) {
         self.id = folderName
-        // Decode folder name: replace leading dash and internal dashes with /
         self.path = folderName.replacingOccurrences(of: "-", with: "/")
-        // Get last component for display
-        self.displayName = path.components(separatedBy: "/").last ?? folderName
+        let components = path.components(separatedBy: "/").filter { !$0.isEmpty }
+        self.displayName = components.suffix(2).joined(separator: "/")
         self.sessions = sessions
     }
     

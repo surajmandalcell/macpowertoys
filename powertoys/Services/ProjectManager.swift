@@ -2,24 +2,22 @@
 //  ProjectManager.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import Foundation
-import Combine
 
+@Observable
 @MainActor
-class ProjectManager: ObservableObject {
-    @Published var projects: [CCProject] = []
-    @Published var isLoading: Bool = false
-    @Published var selectedSession: CCSession?
-    @Published var currentMessages: [CCMessage] = []
-    
-    private var fileMonitor: DispatchSourceFileSystemObject?
-    private var monitoredDirectory: Int32 = -1
+final class ProjectManager {
+    var projects: [CCProject] = []
+    var isLoading: Bool = false
+    var loadingProgress: Double = 0
+    var selectedSession: CCSession?
+    var currentMessages: [CCMessage] = []
+
+    private var fileWatcher: FileWatcher?
     private let claudeDirectory: URL
     private var refreshTask: Task<Void, Never>?
-    
+
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         claudeDirectory = home.appendingPathComponent(".claude/projects")
@@ -29,48 +27,50 @@ class ProjectManager: ObservableObject {
     
     func loadProjects() async {
         isLoading = true
-        defer { isLoading = false }
-        
+        loadingProgress = 0
+        defer {
+            isLoading = false
+            loadingProgress = 1.0
+        }
+
         let fileManager = FileManager.default
-        
+
         guard fileManager.fileExists(atPath: claudeDirectory.path) else {
             projects = []
             return
         }
-        
+
         do {
             let projectFolders = try fileManager.contentsOfDirectory(
                 at: claudeDirectory,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
-            )
-            
-            var loadedProjects: [CCProject] = []
-            
-            for folder in projectFolders {
+            ).filter { url in
                 var isDir: ObjCBool = false
-                guard fileManager.fileExists(atPath: folder.path, isDirectory: &isDir),
-                      isDir.boolValue else {
-                    continue
-                }
-                
+                return fileManager.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
+            }
+
+            let totalFolders = Double(projectFolders.count)
+            var loadedProjects: [CCProject] = []
+
+            for (index, folder) in projectFolders.enumerated() {
                 let sessions = await loadSessions(in: folder)
                 if !sessions.isEmpty {
                     let project = CCProject(folderName: folder.lastPathComponent, sessions: sessions)
                     loadedProjects.append(project)
                 }
+                loadingProgress = Double(index + 1) / max(totalFolders, 1)
             }
-            
-            // Sort projects by most recent session
+
             loadedProjects.sort { p1, p2 in
                 let t1 = p1.sessions.first?.timestamp ?? .distantPast
                 let t2 = p2.sessions.first?.timestamp ?? .distantPast
                 return t1 > t2
             }
-            
+
             projects = loadedProjects
         } catch {
-            print("Error loading projects: \(error)")
+            LogManager.shared.error("Error loading projects: \(error)", source: "ProjectManager")
             projects = []
         }
     }
@@ -108,7 +108,7 @@ class ProjectManager: ObservableObject {
             
             return sessions
         } catch {
-            print("Error loading sessions from \(projectFolder): \(error)")
+            LogManager.shared.warning("Error loading sessions from \(projectFolder.lastPathComponent): \(error)", source: "ProjectManager")
             return []
         }
     }
@@ -121,48 +121,39 @@ class ProjectManager: ObservableObject {
     }
     
     // MARK: - File Watching
-    
+
     func startWatching() {
         stopWatching()
-        
-        monitoredDirectory = open(claudeDirectory.path, O_EVTONLY)
-        guard monitoredDirectory >= 0 else { return }
-        
-        fileMonitor = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: monitoredDirectory,
-            eventMask: [.write, .rename, .delete],
-            queue: .main
-        )
-        
-        fileMonitor?.setEventHandler { [weak self] in
-            self?.handleFileChange()
+
+        fileWatcher = FileWatcher(path: claudeDirectory.path, latency: 0.5) { [weak self] changedPaths in
+            guard let self else { return }
+            self.handleFileChange(changedPaths: changedPaths)
         }
-        
-        fileMonitor?.setCancelHandler { [weak self] in
-            if let fd = self?.monitoredDirectory, fd >= 0 {
-                close(fd)
-            }
-        }
-        
-        fileMonitor?.resume()
+        fileWatcher?.start()
     }
-    
+
     func stopWatching() {
-        fileMonitor?.cancel()
-        fileMonitor = nil
+        fileWatcher?.stop()
+        fileWatcher = nil
     }
-    
-    private func handleFileChange() {
-        // Debounce refresh
+
+    private func handleFileChange(changedPaths: [String]) {
         refreshTask?.cancel()
         refreshTask = Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
-            await loadProjects()
-            
-            // Reload current session if still selected
-            if let session = selectedSession {
-                await loadMessages(for: session)
+
+            let jsonlPaths = changedPaths.filter { $0.hasSuffix(".jsonl") }
+
+            if jsonlPaths.isEmpty {
+                await loadProjects()
+            } else {
+                await loadProjects()
+
+                if let session = selectedSession,
+                   jsonlPaths.contains(session.filePath.path) {
+                    await loadMessages(for: session)
+                }
             }
         }
     }

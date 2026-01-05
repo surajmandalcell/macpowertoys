@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct CCHistoryDetailView: View {
-    @EnvironmentObject var projectManager: ProjectManager
-    @EnvironmentObject var selectionManager: SelectionManager
-    @EnvironmentObject var bookmarkManager: BookmarkManager
-    
+    @Environment(ProjectManager.self) private var projectManager
+    @Environment(SelectionManager.self) private var selectionManager
+    @Environment(BookmarkManager.self) private var bookmarkManager
+
     @State private var filterOptions = FilterOptions()
     @State private var searchText: String = ""
     @State private var isSearching: Bool = false
@@ -200,9 +200,9 @@ struct MessageListView: View {
     let messages: [CCMessage]
     let searchText: String
     let filterOptions: FilterOptions
-    
-    @EnvironmentObject var selectionManager: SelectionManager
-    
+
+    @Environment(SelectionManager.self) private var selectionManager
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -247,8 +247,8 @@ struct MessageListView: View {
 
 #Preview {
     CCHistoryDetailView()
-        .environmentObject(ProjectManager())
-        .environmentObject(SelectionManager())
-        .environmentObject(BookmarkManager())
+        .environment(ProjectManager())
+        .environment(SelectionManager())
+        .environment(BookmarkManager())
         .frame(width: 600, height: 500)
 }

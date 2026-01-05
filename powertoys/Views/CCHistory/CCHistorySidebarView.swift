@@ -8,23 +8,29 @@
 import SwiftUI
 
 struct CCHistorySidebarView: View {
-    @EnvironmentObject var projectManager: ProjectManager
-    @EnvironmentObject var bookmarkManager: BookmarkManager
-    
+    @Environment(ProjectManager.self) private var projectManager
+    @Environment(BookmarkManager.self) private var bookmarkManager
+
     @State private var searchText: String = ""
     @State private var expandedProjects: Set<String> = []
     @AppStorage("cchistory.expandedProjects") private var storedExpandedProjects: String = ""
-    
+
     var body: some View {
+        @Bindable var projectManager = projectManager
+
         VStack(spacing: 0) {
-            // Global Search
+            if projectManager.isLoading {
+                ProgressView(value: projectManager.loadingProgress)
+                    .progressViewStyle(.linear)
+                    .frame(height: 2)
+            }
+
             SearchField(text: $searchText, placeholder: "Search all conversations...")
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-            
+
             Divider()
-            
-            // Main List
+
             List(selection: $projectManager.selectedSession) {
                 // Bookmarks Section
                 if !bookmarkManager.bookmarks.isEmpty {
@@ -182,19 +188,25 @@ struct SearchField: View {
 // MARK: - Bookmarks Chips
 
 struct BookmarksChipsView: View {
-    @EnvironmentObject var bookmarkManager: BookmarkManager
-    @EnvironmentObject var projectManager: ProjectManager
-    
+    @Environment(BookmarkManager.self) private var bookmarkManager
+    @Environment(ProjectManager.self) private var projectManager
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(bookmarkManager.bookmarks) { session in
                     Button {
+                        bookmarkManager.clearUpdateMark(session.id)
                         Task {
                             await projectManager.loadMessages(for: session)
                         }
                     } label: {
                         HStack(spacing: 4) {
+                            if bookmarkManager.hasUpdate(session.id) {
+                                Circle()
+                                    .fill(.blue)
+                                    .frame(width: 6, height: 6)
+                            }
                             Image(systemName: "bookmark.fill")
                                 .font(.caption2)
                             Text(session.displayTitle)
@@ -219,10 +231,10 @@ struct BookmarksChipsView: View {
 struct SessionRowView: View {
     let session: CCSession
     let projectName: String
-    
-    @EnvironmentObject var bookmarkManager: BookmarkManager
-    @EnvironmentObject var projectManager: ProjectManager
-    
+
+    @Environment(BookmarkManager.self) private var bookmarkManager
+    @Environment(ProjectManager.self) private var projectManager
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
@@ -268,7 +280,7 @@ struct SessionRowView: View {
 
 #Preview {
     CCHistorySidebarView()
-        .environmentObject(ProjectManager())
-        .environmentObject(BookmarkManager())
+        .environment(ProjectManager())
+        .environment(BookmarkManager())
         .frame(width: 280, height: 600)
 }

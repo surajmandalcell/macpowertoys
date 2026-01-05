@@ -19,4 +19,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return false
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            powertoysApp.handleIncomingURL(url)
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        Task { @MainActor in
+            await AppInitializer.shared.shutdown()
+            await BackgroundServiceManager.shared.stopAll()
+        }
+    }
 }

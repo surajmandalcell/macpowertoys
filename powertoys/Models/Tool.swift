@@ -15,6 +15,7 @@ protocol Tool: Identifiable {
     var description: String { get }
     var icon: String { get }
     var category: ToolCategory { get }
+    var capabilities: ToolCapabilities { get }
     var isEnabled: Bool { get set }
 }
 
@@ -45,25 +46,45 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 struct CCHistoryTool: Tool {
     let id = "cc-history"
     let name = "CC History"
-    let description = "Parse and view Conventional Commits history."
+    let description = "View Claude Code conversation history."
     let icon = "text.bubble"
     let category = ToolCategory.dev
+    let capabilities: ToolCapabilities = [.hasWindow]
     var isEnabled: Bool = true
-    
+
     static let shared = CCHistoryTool()
+}
+
+// MARK: - Logs Tool
+
+struct LogsTool: Tool {
+    let id = "logs"
+    let name = "Logs"
+    let description = "View application logs and diagnostics."
+    let icon = "doc.text.magnifyingglass"
+    let category = ToolCategory.system
+    let capabilities: ToolCapabilities = [.hasWindow]
+    var isEnabled: Bool = true
+
+    static let shared = LogsTool()
 }
 
 // MARK: - Available Tools
 
 struct ToolRegistry {
     static let allTools: [any Tool] = [
-        CCHistoryTool.shared
+        CCHistoryTool.shared,
+        LogsTool.shared
     ]
-    
+
     static func tools(for category: ToolCategory) -> [any Tool] {
         if category == .all {
             return allTools
         }
         return allTools.filter { $0.category == category }
+    }
+
+    static func tool(for id: String) -> (any Tool)? {
+        allTools.first { $0.id == id }
     }
 }
