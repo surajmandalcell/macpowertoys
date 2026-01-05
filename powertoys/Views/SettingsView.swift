@@ -16,9 +16,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
     @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
-    @State private var cacheSessionCount: Int = 0
-    @State private var cacheFileSize: Int64 = 0
-    @State private var showingClearConfirm = false
 
     var body: some View {
         Form {
@@ -44,32 +41,6 @@ struct SettingsView: View {
                 }
             } header: {
                 Text("Logs")
-            }
-
-            Section {
-                LabeledContent("Cached Sessions", value: "\(cacheSessionCount)")
-                LabeledContent("Cache Size", value: formatBytes(cacheFileSize))
-
-                Button(role: .destructive) {
-                    showingClearConfirm = true
-                } label: {
-                    Label("Clear CC History Cache", systemImage: "trash")
-                }
-                .confirmationDialog("Clear Cache?", isPresented: $showingClearConfirm) {
-                    Button("Clear Cache", role: .destructive) {
-                        Task {
-                            await SessionMetadataCache.shared.clearAndDeleteFile()
-                            await updateCacheStats()
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("This will force CC History to re-read all conversation files on next load.")
-                }
-            } header: {
-                Text("CC History")
-            } footer: {
-                Text("Clear the cache if conversations aren't showing correctly.")
             }
 
             Section {
@@ -103,7 +74,6 @@ struct SettingsView: View {
         .padding(.top, -20)
         .onAppear {
             applyTheme(AppTheme(rawValue: selectedTheme) ?? .automatic)
-            Task { await updateCacheStats() }
         }
     }
 
@@ -113,17 +83,6 @@ struct SettingsView: View {
         case .light: NSApp.appearance = NSAppearance(named: .aqua)
         case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
         }
-    }
-
-    private func updateCacheStats() async {
-        cacheSessionCount = await SessionMetadataCache.shared.cacheSize()
-        cacheFileSize = await SessionMetadataCache.shared.cacheFileSize()
-    }
-
-    private func formatBytes(_ bytes: Int64) -> String {
-        if bytes < 1024 { return "\(bytes) B" }
-        if bytes < 1024 * 1024 { return String(format: "%.1f KB", Double(bytes) / 1024) }
-        return String(format: "%.1f MB", Double(bytes) / (1024 * 1024))
     }
 }
 
