@@ -38,6 +38,8 @@ struct MainWindowView: View {
             AllToolsGridView(selectedTool: $selectedTool)
         case "settings":
             SettingsView()
+        case "logs":
+            LogsPlaceholderView(openWindow: openWindow)
         case let toolId?:
             ToolSettingsView(toolId: toolId, openWindow: openWindow)
         default:
@@ -60,9 +62,37 @@ struct WindowAccessor: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
+struct LogsPlaceholderView: View {
+    let openWindow: OpenWindowAction
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+
+            Text("Application Logs")
+                .font(.title2)
+                .fontWeight(.medium)
+
+            Text("View logs from all tools and app components.")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                openWindow(id: "logs")
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            } label: {
+                Text("Open Logs Window")
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 #Preview {
     MainWindowView()
-        .environmentObject(ProjectManager())
-        .environmentObject(BookmarkManager())
-        .environmentObject(SelectionManager())
 }

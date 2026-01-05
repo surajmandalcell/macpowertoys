@@ -4,16 +4,35 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct powertoysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 
+    let modelContainer: ModelContainer
+
+    init() {
+        do {
+            let schema = Schema([LogEntry.self])
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            modelContainer = try ModelContainer(for: schema, configurations: [config])
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
+    }
+
     var body: some Scene {
         WindowGroup(id: "main") {
             MainWindowView()
+                .task {
+                    await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
+                    DeepLinkHandler.shared.setOpenWindowAction(openWindow)
+                    DeepLinkHandler.shared.handleCLIArguments()
+                }
         }
+        .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 700)
         .windowResizability(.contentSize)
@@ -33,10 +52,18 @@ struct powertoysApp: App {
         WindowGroup(id: "cc-history") {
             CCHistoryWindowView()
         }
+        .modelContainer(modelContainer)
         .defaultSize(width: 1200, height: 800)
-        .windowStyle(.automatic)
-        .windowToolbarStyle(.unified(showsTitle: true))
-        .handlesExternalEvents(matching: [])
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["cc-history"]))
+
+        WindowGroup(id: "logs") {
+            LogsWindowView()
+        }
+        .modelContainer(modelContainer)
+        .defaultSize(width: 900, height: 600)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["logs"]))
 
         MenuBarExtra {
             Button("Open PowerToys") {
@@ -50,6 +77,12 @@ struct powertoysApp: App {
         } label: {
             Image(systemName: "wrench.adjustable.fill")
         }
+    }
+}
+
+extension powertoysApp {
+    static func handleIncomingURL(_ url: URL) {
+        DeepLinkHandler.shared.handle(url: url)
     }
 }
 

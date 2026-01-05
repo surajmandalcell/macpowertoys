@@ -2,19 +2,18 @@
 //  BookmarkManager.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import Foundation
-import Combine
 
+@Observable
 @MainActor
-class BookmarkManager: ObservableObject {
-    @Published var bookmarks: [CCSession] = []
-    
+final class BookmarkManager {
+    var bookmarks: [CCSession] = []
+    var bookmarksWithUpdates: Set<String> = []
+
     private let maxBookmarks = 5
     private let userDefaultsKey = "cchistory.bookmarks"
-    
+
     init() {
         loadBookmarks()
     }
@@ -49,6 +48,20 @@ class BookmarkManager: ObservableObject {
         } else {
             addBookmark(session)
         }
+    }
+
+    func markAsUpdated(_ sessionId: String) {
+        if bookmarks.contains(where: { $0.id == sessionId }) {
+            bookmarksWithUpdates.insert(sessionId)
+        }
+    }
+
+    func clearUpdateMark(_ sessionId: String) {
+        bookmarksWithUpdates.remove(sessionId)
+    }
+
+    func hasUpdate(_ sessionId: String) -> Bool {
+        bookmarksWithUpdates.contains(sessionId)
     }
     
     // MARK: - Persistence

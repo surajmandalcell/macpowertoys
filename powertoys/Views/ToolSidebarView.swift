@@ -57,7 +57,11 @@ struct ToolSidebarView: View {
                         SidebarRow(icon: "gearshape", title: "Settings", isSelected: selectedTool == "settings") {
                             selectedTool = "settings"
                         }
-    
+
+                        SidebarRow(icon: "doc.text.magnifyingglass", title: "Logs", isSelected: selectedTool == "logs") {
+                            selectedTool = "logs"
+                        }
+
                         SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
                             NSApplication.shared.terminate(nil)
                         }
@@ -147,23 +151,6 @@ struct SidebarRow: View {
             return Color.primary.opacity(0.08)
         }
         return Color.clear
-    }
-}
-
-struct VisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .sidebar
-        view.blendingMode = .behindWindow
-        view.state = .active
-        view.wantsLayer = true
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = .sidebar
-        nsView.blendingMode = .behindWindow
-        nsView.state = .active
     }
 }
 

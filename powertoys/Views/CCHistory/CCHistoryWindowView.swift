@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct CCHistoryWindowView: View {
-    @StateObject private var projectManager = ProjectManager()
-    @StateObject private var bookmarkManager = BookmarkManager()
-    @StateObject private var selectionManager = SelectionManager()
+    @State private var projectManager = ProjectManager()
+    @State private var bookmarkManager = BookmarkManager()
+    @State private var selectionManager = SelectionManager()
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -21,9 +21,9 @@ struct CCHistoryWindowView: View {
         } detail: {
             CCHistoryDetailView()
         }
-        .environmentObject(projectManager)
-        .environmentObject(bookmarkManager)
-        .environmentObject(selectionManager)
+        .environment(projectManager)
+        .environment(bookmarkManager)
+        .environment(selectionManager)
         .onAppear {
             Task {
                 await projectManager.loadProjects()

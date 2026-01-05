@@ -14,8 +14,8 @@ struct MessageRowView: View {
     let showToolCalls: Bool
     let showToolOutputs: Bool
     let showThinking: Bool
-    
-    @EnvironmentObject var selectionManager: SelectionManager
+
+    @Environment(SelectionManager.self) private var selectionManager
     @State private var isHovering: Bool = false
     
     var body: some View {
@@ -371,5 +371,5 @@ struct ToolUseView: View {
         )
     }
     .padding()
-    .environmentObject(SelectionManager())
+    .environment(SelectionManager())
 }
