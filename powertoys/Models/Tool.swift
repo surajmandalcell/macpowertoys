@@ -12,6 +12,7 @@ import Foundation
 protocol Tool: Identifiable {
     var id: String { get }
     var name: String { get }
+    var description: String { get }
     var icon: String { get }
     var category: ToolCategory { get }
     var isEnabled: Bool { get set }
@@ -21,7 +22,7 @@ protocol Tool: Identifiable {
 
 enum ToolCategory: String, CaseIterable, Identifiable {
     case all = "All Tools"
-    case dev = "Dev"
+    case dev = "Developer"
     case text = "Text"
     case files = "Files"
     case system = "System"
@@ -44,6 +45,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 struct CCHistoryTool: Tool {
     let id = "cc-history"
     let name = "CC History"
+    let description = "Parse and view Conventional Commits history."
     let icon = "text.bubble"
     let category = ToolCategory.dev
     var isEnabled: Bool = true
