@@ -2,109 +2,56 @@
 //  AllToolsGridView.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import SwiftUI
 
 struct AllToolsGridView: View {
     @Binding var selectedTool: String?
 
-    let columns = [
-        GridItem(.adaptive(minimum: 200, maximum: 250), spacing: 16)
-    ]
-
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 12)], spacing: 12) {
                 ForEach(ToolRegistry.allTools, id: \.id) { tool in
-                    ToolCard(tool: tool, selectedTool: $selectedTool)
+                    ToolCard(tool: tool) { selectedTool = tool.id }
                 }
             }
-            .padding(24)
+            .padding(20)
         }
-        .navigationTitle("All Tools")
     }
 }
 
-// MARK: - Tool Card
-
 struct ToolCard: View {
     let tool: any Tool
-    @Binding var selectedTool: String?
+    let action: () -> Void
+
+    @State private var isHovering = false
 
     var body: some View {
-        Button {
-            selectedTool = tool.id
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: tool.icon)
-                        .font(.title)
-                        .foregroundStyle(.blue)
-                        .frame(width: 48, height: 48)
-                        .background(Color.blue.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: tool.icon)
+                    .font(.system(size: 28))
+                    .foregroundStyle(.primary)
 
-                    Spacer()
+                Text(tool.name)
+                    .font(.callout)
+                    .fontWeight(.medium)
 
-                    // Category badge
-                    Text(tool.category.rawValue)
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.secondary.opacity(0.15))
-                        .clipShape(Capsule())
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(tool.name)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-
-                    Text(toolDescription(for: tool.id))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                HStack {
-                    Image(systemName: tool.isEnabled ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(tool.isEnabled ? .green : .secondary)
-                        .font(.caption)
-
-                    Text(tool.isEnabled ? "Enabled" : "Disabled")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-                }
+                Text(tool.category.rawValue)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            .padding(16)
-            .frame(height: 180)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 100)
+            .background(isHovering ? Color.primary.opacity(0.06) : Color.primary.opacity(0.03))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
-    }
-
-    private func toolDescription(for toolId: String) -> String {
-        switch toolId {
-        case "cc-history":
-            return "Browse and search through your Claude Code conversation history"
-        default:
-            return "Tool description"
-        }
+        .onHover { isHovering = $0 }
     }
 }
 
 #Preview {
     AllToolsGridView(selectedTool: .constant(nil))
-        .frame(width: 600, height: 400)
+        .frame(width: 500, height: 300)
 }
