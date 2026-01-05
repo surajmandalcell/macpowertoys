@@ -324,6 +324,169 @@ final class CCHistoryTests: XCTestCase {
         XCTAssertNil(tool.output)
     }
 
+    // MARK: - Additional Filter Permutations
+
+    func testFilterUserOnlyWithEmptyOff() {
+        let options = FilterOptions(showUser: true, showAssistant: false, showSystem: false, showEmptyMessages: false)
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .user, content: "Hello")))
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .user, content: "")))
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .assistant, content: "Hi")))
+    }
+
+    func testFilterAssistantOnlyWithEmptyOn() {
+        let options = FilterOptions(showUser: false, showAssistant: true, showSystem: false, showEmptyMessages: true)
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .user, content: "Hello")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .assistant, content: "")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .assistant, content: "Hi")))
+    }
+
+    func testFilterSystemOnlyWithEmptyOff() {
+        let options = FilterOptions(showUser: false, showAssistant: false, showSystem: true, showEmptyMessages: false)
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .user, content: "Hello")))
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .assistant, content: "Hi")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .system, content: "Init")))
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .system, content: "")))
+    }
+
+    func testFilterUserAndAssistantOnly() {
+        let options = FilterOptions(showUser: true, showAssistant: true, showSystem: false, showEmptyMessages: false)
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .user, content: "Hello")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .assistant, content: "Hi")))
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .system, content: "System")))
+    }
+
+    func testFilterUserAndSystemOnly() {
+        let options = FilterOptions(showUser: true, showAssistant: false, showSystem: true, showEmptyMessages: false)
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .user, content: "Hello")))
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .assistant, content: "Hi")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .system, content: "System")))
+    }
+
+    func testFilterAssistantAndSystemOnly() {
+        let options = FilterOptions(showUser: false, showAssistant: true, showSystem: true, showEmptyMessages: false)
+        XCTAssertFalse(options.shouldShow(message: makeMessage(type: .user, content: "Hello")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .assistant, content: "Hi")))
+        XCTAssertTrue(options.shouldShow(message: makeMessage(type: .system, content: "System")))
+    }
+
+    func testMessageContentWithNewlines() {
+        let options = FilterOptions(showUser: true, showEmptyMessages: false)
+        let newlineOnlyMessage = makeMessage(type: .user, content: "\n\n\n")
+        let contentWithNewlines = makeMessage(type: .user, content: "Line1\nLine2\nLine3")
+
+        XCTAssertFalse(options.shouldShow(message: newlineOnlyMessage))
+        XCTAssertTrue(options.shouldShow(message: contentWithNewlines))
+    }
+
+    func testMessageContentWithMixedWhitespace() {
+        let options = FilterOptions(showUser: true, showEmptyMessages: false)
+        let mixedWhitespace = makeMessage(type: .user, content: " \t\n\r ")
+        let contentWithLeadingWhitespace = makeMessage(type: .user, content: "   Hello")
+        let contentWithTrailingWhitespace = makeMessage(type: .user, content: "Hello   ")
+
+        XCTAssertFalse(options.shouldShow(message: mixedWhitespace))
+        XCTAssertTrue(options.shouldShow(message: contentWithLeadingWhitespace))
+        XCTAssertTrue(options.shouldShow(message: contentWithTrailingWhitespace))
+    }
+
+    func testFilterWithVeryLongContent() {
+        let options = FilterOptions(showUser: true, showEmptyMessages: false)
+        let veryLongContent = String(repeating: "a", count: 100000)
+        let message = makeMessage(type: .user, content: veryLongContent)
+        XCTAssertTrue(options.shouldShow(message: message))
+    }
+
+    func testMessageTypeAllCases() {
+        XCTAssertEqual(MessageType.allCases.count, 3)
+        XCTAssertTrue(MessageType.allCases.contains(.user))
+        XCTAssertTrue(MessageType.allCases.contains(.assistant))
+        XCTAssertTrue(MessageType.allCases.contains(.system))
+    }
+
+    func testMessageTypeDisplayName() {
+        XCTAssertEqual(MessageType.user.displayName, "User")
+        XCTAssertEqual(MessageType.assistant.displayName, "Claude")
+        XCTAssertEqual(MessageType.system.displayName, "System")
+    }
+
+    func testCCProjectPathDecoding() {
+        let project = CCProject(folderName: "-Users-john-dev-myproject", sessions: [])
+        XCTAssertEqual(project.path, "/Users/john/dev/myproject")
+    }
+
+    func testCCProjectWithSinglePathComponent() {
+        let project = CCProject(folderName: "-root", sessions: [])
+        XCTAssertEqual(project.displayName, "root")
+        XCTAssertEqual(project.path, "/root")
+    }
+
+    func testCCProjectWithManyPathComponents() {
+        let project = CCProject(folderName: "-Users-john-dev-projects-app-src", sessions: [])
+        XCTAssertEqual(project.displayName, "app/src")
+    }
+
+    func testCCSessionWithEmptyFirstMessage() {
+        let session = CCSession(
+            id: "test",
+            filePath: URL(fileURLWithPath: "/test.jsonl"),
+            firstUserMessage: "",
+            timestamp: Date(),
+            messageCount: 5
+        )
+        XCTAssertEqual(session.displayTitle, "")
+    }
+
+    func testCCSessionTimestampNil() {
+        let session = CCSession(
+            id: "test",
+            filePath: URL(fileURLWithPath: "/test.jsonl"),
+            firstUserMessage: "Hello",
+            timestamp: nil,
+            messageCount: 5
+        )
+        XCTAssertNil(session.timestamp)
+        XCTAssertEqual(session.displayDate, "")
+    }
+
+    func testCCSessionEquality() {
+        let session1 = CCSession(id: "same-id", filePath: URL(fileURLWithPath: "/a.jsonl"), firstUserMessage: "A", timestamp: Date(), messageCount: 1)
+        let session2 = CCSession(id: "same-id", filePath: URL(fileURLWithPath: "/b.jsonl"), firstUserMessage: "B", timestamp: Date(), messageCount: 2)
+        let session3 = CCSession(id: "different-id", filePath: URL(fileURLWithPath: "/a.jsonl"), firstUserMessage: "A", timestamp: Date(), messageCount: 1)
+
+        XCTAssertEqual(session1, session2)
+        XCTAssertNotEqual(session1, session3)
+    }
+
+    func testCCProjectEquality() {
+        let project1 = CCProject(folderName: "same-folder", sessions: [])
+        let project2 = CCProject(folderName: "same-folder", sessions: [
+            CCSession(id: "s1", filePath: URL(fileURLWithPath: "/s1.jsonl"), messageCount: 1)
+        ])
+        let project3 = CCProject(folderName: "different-folder", sessions: [])
+
+        XCTAssertEqual(project1, project2)
+        XCTAssertNotEqual(project1, project3)
+    }
+
+    func testCCMessageEquality() {
+        let msg1 = makeMessage(type: .user, content: "Hello")
+        let msg2 = CCMessage(id: msg1.id, type: .assistant, content: "Different", timestamp: Date(), parentUuid: nil, toolUse: [], thinking: nil, sessionId: "other")
+        let msg3 = makeMessage(type: .user, content: "Hello")
+
+        XCTAssertEqual(msg1, msg2)
+        XCTAssertNotEqual(msg1, msg3)
+    }
+
+    func testMultipleToolUseBlocks() {
+        let tools = [
+            ToolUseBlock(id: "1", name: "read", input: "{}", output: "data"),
+            ToolUseBlock(id: "2", name: "write", input: "{}", output: "ok"),
+            ToolUseBlock(id: "3", name: "execute", input: "{}", output: nil)
+        ]
+        let message = makeMessage(type: .assistant, content: "Using tools", toolUse: tools)
+        XCTAssertEqual(message.toolUse.count, 3)
+    }
+
     // MARK: - Helper Methods
 
     private func makeMessage(

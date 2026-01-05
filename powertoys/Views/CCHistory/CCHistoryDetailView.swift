@@ -20,7 +20,6 @@ struct CCHistoryDetailView: View {
     @AppStorage("cchistory.filter.showEmpty") private var showEmpty = false
 
     @State private var searchText: String = ""
-    @State private var selectedTool: ToolUseBlock?
     @State private var showThinkingPanel: Bool = false
 
     private var filterOptions: FilterOptions {
@@ -68,12 +67,7 @@ struct CCHistoryDetailView: View {
                             MessageListView(
                                 messages: filteredMessages,
                                 searchText: searchText,
-                                filterOptions: filterOptions,
-                                onToolSelect: { tool in
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        selectedTool = tool
-                                    }
-                                }
+                                filterOptions: filterOptions
                             )
                         }
                     } else {
@@ -83,18 +77,6 @@ struct CCHistoryDetailView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-
-            if let tool = selectedTool {
-                CenteredModal(
-                    isPresented: Binding(
-                        get: { selectedTool != nil },
-                        set: { if !$0 { selectedTool = nil } }
-                    ),
-                    title: tool.name
-                ) {
-                    ToolDetailsPanelContent(tool: tool)
-                }
             }
 
             if showThinkingPanel {
@@ -262,32 +244,146 @@ struct FilterToggle: View {
     }
 }
 
-// MARK: - Message List
+// MARK: - Message List (Terminal Style)
 
 struct MessageListView: View {
     let messages: [CCMessage]
     let searchText: String
     let filterOptions: FilterOptions
-    var onToolSelect: ((ToolUseBlock) -> Void)?
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    private var formattedContent: AttributedString {
+        var result = AttributedString()
+        let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let boldMonoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+
+        for message in messages {
+            // Thinking (if enabled)
+            if filterOptions.showThinking, let thinking = message.thinking, !thinking.isEmpty {
+                var thinkingPrefix = AttributedString("[thinking] ")
+                thinkingPrefix.foregroundColor = .purple
+                thinkingPrefix.font = boldMonoFont
+                result.append(thinkingPrefix)
+
+                var thinkingText = AttributedString(thinking + "\n")
+                thinkingText.foregroundColor = NSColor.secondaryLabelColor
+                thinkingText.font = monoFont
+                result.append(thinkingText)
+            }
+
+            // Role prefix with color
+            let (prefix, color) = roleInfo(for: message.type)
+            var roleAttr = AttributedString(prefix + " ")
+            roleAttr.foregroundColor = color
+            roleAttr.font = boldMonoFont
+            result.append(roleAttr)
+
+            // Timestamp
+            var timeAttr = AttributedString(Self.timeFormatter.string(from: message.timestamp) + " ")
+            timeAttr.foregroundColor = NSColor.tertiaryLabelColor
+            timeAttr.font = monoFont
+            result.append(timeAttr)
+
+            // Content (strip code block markers, flatten to plain text)
+            let plainContent = stripCodeBlockMarkers(message.content)
+            var contentAttr = highlightSearch(plainContent, searchText: searchText)
+            contentAttr.font = monoFont
+            result.append(contentAttr)
+            result.append(AttributedString("\n"))
+
+            // Tool calls (if enabled)
+            if filterOptions.showToolCalls {
+                for tool in message.toolUse {
+                    var toolPrefix = AttributedString("[tool] ")
+                    toolPrefix.foregroundColor = .orange
+                    toolPrefix.font = boldMonoFont
+                    result.append(toolPrefix)
+
+                    var toolName = AttributedString(tool.name + "\n")
+                    toolName.foregroundColor = NSColor.secondaryLabelColor
+                    toolName.font = monoFont
+                    result.append(toolName)
+
+                    var toolInput = AttributedString("  " + tool.input + "\n")
+                    toolInput.foregroundColor = NSColor.tertiaryLabelColor
+                    toolInput.font = monoFont
+                    result.append(toolInput)
+
+                    // Tool output (if enabled)
+                    if filterOptions.showToolOutputs, let output = tool.output {
+                        var outputPrefix = AttributedString("[output] ")
+                        outputPrefix.foregroundColor = .green
+                        outputPrefix.font = boldMonoFont
+                        result.append(outputPrefix)
+
+                        let truncatedOutput = output.count > 500 ? String(output.prefix(500)) + "..." : output
+                        var outputText = AttributedString(truncatedOutput + "\n")
+                        outputText.foregroundColor = NSColor.tertiaryLabelColor
+                        outputText.font = monoFont
+                        result.append(outputText)
+                    }
+                }
+            }
+
+            result.append(AttributedString("\n"))
+        }
+
+        return result
+    }
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 2) {
-                ForEach(messages, id: \.id) { message in
-                    MessageRowView(
-                        message: message,
-                        searchText: searchText,
-                        showToolCalls: filterOptions.showToolCalls,
-                        showToolOutputs: filterOptions.showToolOutputs,
-                        showThinking: filterOptions.showThinking,
-                        onToolSelect: onToolSelect
-                    )
-                    .id(message.id)
-                }
-            }
-            .padding(.vertical, 8)
-            .textSelection(.enabled)
+            Text(formattedContent)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
         }
+    }
+
+    private func roleInfo(for type: MessageType) -> (String, NSColor) {
+        switch type {
+        case .user: return ("[user]", NSColor.systemBlue)
+        case .assistant: return ("[claude]", NSColor.secondaryLabelColor)
+        case .system: return ("[system]", NSColor.systemOrange)
+        }
+    }
+
+    private func stripCodeBlockMarkers(_ text: String) -> String {
+        var result = text
+        let pattern = "```\\w*\\n?"
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            result = regex.stringByReplacingMatches(
+                in: result,
+                range: NSRange(result.startIndex..., in: result),
+                withTemplate: ""
+            )
+        }
+        return result.replacingOccurrences(of: "```", with: "")
+    }
+
+    private func highlightSearch(_ text: String, searchText: String) -> AttributedString {
+        var attributedString = AttributedString(text)
+        guard !searchText.isEmpty else { return attributedString }
+
+        let lowercasedText = text.lowercased()
+        let lowercasedSearch = searchText.lowercased()
+
+        var searchStart = lowercasedText.startIndex
+        while let range = lowercasedText.range(of: lowercasedSearch, range: searchStart..<lowercasedText.endIndex) {
+            if let attrLower = AttributedString.Index(range.lowerBound, within: attributedString),
+               let attrUpper = AttributedString.Index(range.upperBound, within: attributedString) {
+                attributedString[attrLower..<attrUpper].backgroundColor = .systemYellow.withAlphaComponent(0.3)
+            }
+            searchStart = range.upperBound
+        }
+
+        return attributedString
     }
 }
 
@@ -337,35 +433,45 @@ struct ToolDetailsPanelContent: View {
 struct ThinkingPanelContent: View {
     let messages: [CCMessage]
 
-    private var thinkingMessages: [CCMessage] {
-        messages.filter { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }.reversed()
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    private var formattedThinking: AttributedString {
+        var result = AttributedString()
+        let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let boldMonoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+
+        let thinkingMessages = messages.filter { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }.reversed()
+
+        for message in thinkingMessages {
+            var timeAttr = AttributedString(Self.timeFormatter.string(from: message.timestamp) + " ")
+            timeAttr.foregroundColor = NSColor.tertiaryLabelColor
+            timeAttr.font = monoFont
+            result.append(timeAttr)
+
+            var prefix = AttributedString("[thinking] ")
+            prefix.foregroundColor = .purple
+            prefix.font = boldMonoFont
+            result.append(prefix)
+
+            var content = AttributedString((message.thinking ?? "") + "\n\n")
+            content.foregroundColor = NSColor.secondaryLabelColor
+            content.font = monoFont
+            result.append(content)
+        }
+
+        return result
     }
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                ForEach(thinkingMessages) { message in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: message.type.icon)
-                                .font(.caption)
-                            Text(message.timestamp, style: .time)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Text(message.thinking ?? "")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.purple.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-            }
-            .padding(16)
+            Text(formattedThinking)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
         }
     }
 }
