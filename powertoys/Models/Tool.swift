@@ -73,8 +73,7 @@ struct LogsTool: Tool {
 
 struct ToolRegistry {
     static let allTools: [any Tool] = [
-        CCHistoryTool.shared,
-        LogsTool.shared
+        CCHistoryTool.shared
     ]
 
     static func tools(for category: ToolCategory) -> [any Tool] {

@@ -17,32 +17,46 @@ final class ProjectManager {
     private var fileWatcher: FileWatcher?
     private let claudeDirectory: URL
     private var refreshTask: Task<Void, Never>?
+    private var loadTask: Task<Void, Never>?
 
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         claudeDirectory = home.appendingPathComponent(".claude/projects")
     }
-    
-    // MARK: - Project Loading
-    
+
+    func loadProjectsInBackground() {
+        loadTask?.cancel()
+        loadTask = Task {
+            await loadProjects()
+        }
+    }
+
     func loadProjects() async {
         isLoading = true
         loadingProgress = 0
-        defer {
-            isLoading = false
-            loadingProgress = 1.0
-        }
 
+        let directory = claudeDirectory
+        let loadedProjects = await Task.detached(priority: .userInitiated) {
+            await Self.loadProjectsFromDisk(directory: directory)
+        }.value
+
+        guard !Task.isCancelled else { return }
+
+        projects = loadedProjects
+        isLoading = false
+        loadingProgress = 1.0
+    }
+
+    private static func loadProjectsFromDisk(directory: URL) async -> [CCProject] {
         let fileManager = FileManager.default
 
-        guard fileManager.fileExists(atPath: claudeDirectory.path) else {
-            projects = []
-            return
+        guard fileManager.fileExists(atPath: directory.path) else {
+            return []
         }
 
         do {
             let projectFolders = try fileManager.contentsOfDirectory(
-                at: claudeDirectory,
+                at: directory,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             ).filter { url in
@@ -50,16 +64,14 @@ final class ProjectManager {
                 return fileManager.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
             }
 
-            let totalFolders = Double(projectFolders.count)
             var loadedProjects: [CCProject] = []
 
-            for (index, folder) in projectFolders.enumerated() {
-                let sessions = await loadSessions(in: folder)
+            for folder in projectFolders {
+                let sessions = loadSessionsSync(in: folder)
                 if !sessions.isEmpty {
                     let project = CCProject(folderName: folder.lastPathComponent, sessions: sessions)
                     loadedProjects.append(project)
                 }
-                loadingProgress = Double(index + 1) / max(totalFolders, 1)
             }
 
             loadedProjects.sort { p1, p2 in
@@ -68,29 +80,28 @@ final class ProjectManager {
                 return t1 > t2
             }
 
-            projects = loadedProjects
+            return loadedProjects
         } catch {
-            LogManager.shared.error("Error loading projects: \(error)", source: "ProjectManager")
-            projects = []
+            return []
         }
     }
-    
-    private func loadSessions(in projectFolder: URL) async -> [CCSession] {
+
+    private static func loadSessionsSync(in projectFolder: URL) -> [CCSession] {
         let fileManager = FileManager.default
-        
+
         do {
             let files = try fileManager.contentsOfDirectory(
                 at: projectFolder,
                 includingPropertiesForKeys: [.contentModificationDateKey],
                 options: [.skipsHiddenFiles]
             )
-            
+
             var sessions: [CCSession] = []
-            
+
             for file in files where file.pathExtension == "jsonl" {
                 let sessionId = file.deletingPathExtension().lastPathComponent
                 let metadata = CCHistoryParser.parseSessionMetadata(at: file)
-                
+
                 let session = CCSession(
                     id: sessionId,
                     filePath: file,
@@ -100,15 +111,13 @@ final class ProjectManager {
                 )
                 sessions.append(session)
             }
-            
-            // Sort by date (recent first)
+
             sessions.sort { s1, s2 in
                 (s1.timestamp ?? .distantPast) > (s2.timestamp ?? .distantPast)
             }
-            
+
             return sessions
         } catch {
-            LogManager.shared.warning("Error loading sessions from \(projectFolder.lastPathComponent): \(error)", source: "ProjectManager")
             return []
         }
     }
