@@ -104,7 +104,7 @@ struct SidebarHeader: View {
 
     var body: some View {
         Text(title.uppercased())
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: 10, weight: .medium))
             .foregroundStyle(.secondary)
             .padding(.leading, 8)
             .padding(.top, 16)
@@ -138,7 +138,7 @@ struct SidebarRow: View {
             .padding(.vertical, 7)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(backgroundColor)
             )
         }
@@ -150,7 +150,7 @@ struct SidebarRow: View {
         if isSelected {
             return Color.accentColor
         } else if isHovering {
-            return Color.primary.opacity(0.08)
+            return Color.primary.opacity(0.06)
         }
         return Color.clear
     }
@@ -185,8 +185,8 @@ struct SidebarExternalRow: View {
             .padding(.vertical, 7)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isHovering ? Color.primary.opacity(0.08) : Color.clear)
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovering ? Color.primary.opacity(0.06) : Color.clear)
             )
         }
         .buttonStyle(.plain)

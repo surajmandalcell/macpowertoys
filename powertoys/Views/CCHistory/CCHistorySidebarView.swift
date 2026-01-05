@@ -11,13 +11,12 @@ struct CCHistorySidebarView: View {
 
     @State private var searchText: String = ""
     @State private var expandedProjects: Set<String> = []
+    @State private var isSearching = false
     @AppStorage("cchistory.expandedProjects") private var storedExpandedProjects: String = ""
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                Spacer().frame(height: 40)
-
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
@@ -25,7 +24,11 @@ struct CCHistorySidebarView: View {
                     TextField("Search conversations...", text: $searchText)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
-                    if !searchText.isEmpty {
+                    if isSearching {
+                        ProgressView()
+                            .scaleEffect(0.5)
+                            .frame(width: 16, height: 16)
+                    } else if !searchText.isEmpty {
                         Button { searchText = "" } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.secondary)
@@ -37,7 +40,20 @@ struct CCHistorySidebarView: View {
                 .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .padding(.horizontal, 12)
+                .padding(.top, 52)
                 .padding(.bottom, 12)
+
+                if projectManager.isLoading {
+                    VStack(spacing: 4) {
+                        ProgressView(value: projectManager.loadingProgress)
+                            .progressViewStyle(.linear)
+                        Text("Loading projects...")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                }
 
                 if !bookmarkManager.bookmarks.isEmpty {
                     BookmarksSection()
@@ -55,18 +71,6 @@ struct CCHistorySidebarView: View {
                     }
                     .padding(.horizontal, 12)
                 }
-
-                if projectManager.isLoading {
-                    VStack(spacing: 4) {
-                        ProgressView(value: projectManager.loadingProgress)
-                            .progressViewStyle(.linear)
-                        Text("Loading projects...")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                }
             }
 
             Text("CC History")
@@ -81,10 +85,13 @@ struct CCHistorySidebarView: View {
         .task(id: searchText) {
             guard !searchText.isEmpty else {
                 searchResults = []
+                isSearching = false
                 return
             }
+            isSearching = true
             try? await Task.sleep(nanoseconds: 300_000_000)
             searchResults = await projectManager.searchGlobally(query: searchText)
+            isSearching = false
         }
     }
 
@@ -191,7 +198,7 @@ private struct BookmarksSection: View {
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.accentColor.opacity(0.12))
+                            .background(Color.accentColor.opacity(0.1))
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -241,7 +248,7 @@ private struct ProjectRow: View {
             .padding(.vertical, 6)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(isHovered ? Color.primary.opacity(0.06) : Color.clear)
             )
         }
@@ -321,7 +328,7 @@ private struct SessionRow: View {
             .padding(.vertical, 6)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
             )
         }

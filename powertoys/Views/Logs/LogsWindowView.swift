@@ -221,8 +221,8 @@ private struct SidebarActionRow: View {
             .padding(.vertical, 7)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isHovered ? Color.primary.opacity(0.08) : Color.clear)
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? Color.primary.opacity(0.06) : Color.clear)
             )
         }
         .buttonStyle(.plain)
@@ -266,7 +266,10 @@ private struct LogLevelFilterRow: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(isHovered ? Color.primary.opacity(0.05) : Color.clear)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
