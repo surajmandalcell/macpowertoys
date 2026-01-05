@@ -18,11 +18,6 @@ struct MainWindowView: View {
                 contentView
                     .padding(.top, 52)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                Text("PowerToys")
-                    .font(.system(size: 13, weight: .semibold))
-                    .padding(.leading, 20)
-                    .padding(.top, 14)
             }
             .background(Color(nsColor: .windowBackgroundColor))
         }

@@ -1,103 +1,197 @@
-# PowerToys macOS - Specification
+# PowerToys macOS - Specification v2
 
 ## Overview
 
-A macOS utility application that lives in the menu bar, providing quick access to various productivity tools through a sidebar-based interface. First tool: **CC History** (Claude Code conversation viewer).
+A macOS menu bar utility application with pluggable tools/applets. Each tool can:
+- Display settings in the main window
+- Open a dedicated tool window (double-click)
+- Run background services (if needed)
+- Register global hotkeys (if needed)
+
+**First tool**: CC History (Claude Code conversation viewer)
 
 ---
 
-## Core Decisions (Confirmed)
+## Architecture Principles
+
+### Tool Capabilities System
+
+Tools declare what they need via capabilities:
+
+| Capability | Description |
+|------------|-------------|
+| `hasWindow` | Can open a separate window with tool UI |
+| `needsBackgroundService` | Runs continuously in background when enabled |
+| `needsGlobalHotkeys` | Registers system-wide hotkeys |
+| `needsAccessibility` | Requires accessibility permissions |
+
+### Tool Protocol
+
+```swift
+protocol Tool {
+    var id: String { get }
+    var name: String { get }
+    var icon: String { get }
+    var category: ToolCategory { get }
+    var capabilities: ToolCapabilities { get }
+    var isEnabled: Bool { get set }
+
+    func settingsView() -> AnyView
+    func createBackgroundService() -> BackgroundService?
+}
+```
+
+### Background Services
+
+- Swift actors for thread-safe, lightweight concurrency
+- Start automatically on app launch if tool is enabled
+- Managed by `BackgroundServiceManager`
+- Clean start/stop lifecycle
+
+### Settings Persistence
+
+All settings use UserDefaults with namespacing:
+- App-level: `app.theme`, `app.enabledTools`
+- Tool-level: `tool.{toolId}.{key}`
+
+**Critical**: Settings applied on app launch via `AppInitializer`:
+1. Load `SettingsManager`
+2. Apply theme immediately
+3. Start background services for enabled tools
+4. Register global hotkeys
+
+---
+
+## Core Decisions
 
 | Decision | Choice |
 |----------|--------|
-| Menu bar icon | `wrench.adjustable.fill` SF Symbol |
-| Window instances | Single instance only |
+| Menu bar icon | `wrench.adjustable.fill` |
+| Window instances | Single main window |
 | State preservation | Per-session (reset on relaunch) |
-| Keyboard navigation | Arrow keys + Cmd+1-5 shortcuts |
+| Sidebar single-click | Navigate to settings page |
+| Sidebar double-click | Open tool window (if hasWindow) |
 | Window on close | Hide (stays in menu bar) |
-| Dock presence | Show in dock |
-| Delete conversations | Read-only, no delete |
+| Theme persistence | Applied on app launch |
+| Background services | Start with app (if enabled) |
 
 ---
 
 ## App Flow
 
-1. **Menu bar icon** -> Left-click opens window, right-click shows Open/Quit menu
-2. **Main window** shows "All Tools" by default (or last selected tab in session)
-3. **Left sidebar**: "All Tools" at top, then tools grouped by type
-4. **Clicking a tool** shows settings panel on right:
-   - Enable/Disable toggle at top
-   - Tool configuration settings
-   - "Open tool externally" option
-5. **Opening a tool externally** -> Standard macOS window with tool interface
+1. **App Launch**:
+   - `AppInitializer` runs immediately
+   - Applies saved theme
+   - Starts background services for enabled tools
+   - Registers global hotkeys
+
+2. **Menu bar icon**:
+   - Left-click: Open main window
+   - Right-click: Context menu (Open/Quit)
+
+3. **Main Window**:
+   - Left sidebar: Categories + tools
+   - Right content: Settings or tool grid
+   - "All Tools" shown by default
+
+4. **Sidebar Interaction**:
+   - Single-click tool: Show settings page
+   - Double-click tool: Open tool window (if hasWindow)
+   - Click category: Filter tools
+
+5. **Settings Page** (per tool):
+   - Enable/Disable toggle
+   - Tool-specific configuration
+   - "Open" button to launch tool window
 
 ---
 
-## First Tool: CC History (Claude Code History Viewer)
+## Folder Structure
+
+```
+powertoys/
+├── Core/
+│   ├── Tool.swift                    # Tool protocol + ToolCapabilities
+│   ├── ToolCategory.swift
+│   ├── ToolRegistry.swift
+│   ├── BackgroundService.swift       # Protocol
+│   ├── BackgroundServiceManager.swift
+│   ├── SettingsManager.swift         # App-level settings
+│   ├── AppInitializer.swift          # Startup sequence
+│   ├── HotkeyManager.swift           # Global hotkeys (stub)
+│   └── AccessibilityManager.swift    # Permissions (stub)
+│
+├── Tools/
+│   └── CCHistory/
+│       ├── CCHistoryTool.swift
+│       ├── Models/
+│       ├── Services/
+│       └── Views/
+│
+├── Views/
+│   ├── MainWindowView.swift
+│   ├── ToolSidebarView.swift
+│   ├── AllToolsGridView.swift
+│   ├── SettingsView.swift
+│   ├── ToolSettingsView.swift
+│   └── Components/
+│       └── DoubleClickRow.swift
+│
+├── AppDelegate.swift
+└── powertoysApp.swift
+```
+
+---
+
+## First Tool: CC History
+
+### Capabilities
+- `hasWindow` - Yes
+- `needsBackgroundService` - No
+- `needsGlobalHotkeys` - No
+- `needsAccessibility` - No
 
 ### Data Source
 ```
-~/.claude/
-├── projects/                     # Project-specific conversations
-│   └── -Path-To-Project/        # Folder per project (path encoded with dashes)
-│       └── {session-id}.jsonl   # JSONL conversation files
-├── history.jsonl                # Global history reference
-└── ...
+~/.claude/projects/
+└── -Path-To-Project/
+    └── {session-id}.jsonl
 ```
 
-### JSONL Message Types
-- `type: "user"` - User messages
-- `type: "assistant"` - Claude responses (contains tool_use in content)
-- `type: "system"` - System messages
-- Key fields: `sessionId`, `uuid`, `timestamp`, `cwd`, `message.content`
-
-### CC History Layout
+### Layout
 ```
-┌────────────────────────────────────────────────────────────┐
-│ [Search...                    ]                            │
-├──────────────┬─────────────────────────────────────────────┤
-│              │ [Filter: User | Claude | Tools] [Search]    │
-│ PROJECT 1    ├─────────────────────────────────────────────┤
-│  └ Session A │                                             │
-│  └ Session B │  User: How do I...                          │
-│              │  ─────────────────────────────────────────  │
-│ PROJECT 2    │  Claude: Here's how to...                   │
-│  └ Session C │                                             │
-│              │  [Copy] [Select]                            │
-│              │                                             │
-└──────────────┴─────────────────────────────────────────────┘
-     │                              │
-  Sidebar                    Conversation View
-  (by project,               (virtual scrolling)
-   sorted by date)
+┌──────────────┬─────────────────────────────────┐
+│ [Search]     │ [User|Claude|Tools|Think] [Search]│
+├──────────────┼─────────────────────────────────┤
+│ * Bookmarks  │                                 │
+│──────────────│  User: How do I...              │
+│ PROJECT 1    │  ────────────────────────────── │
+│  └ Session A │  Claude: Here's how...          │
+│  └ Session B │                                 │
+│ PROJECT 2    │  [Copy] [Select]                │
+│  └ Session C │                                 │
+└──────────────┴─────────────────────────────────┘
 ```
 
 ### Features
 
-**Sidebar:**
-- **Bookmarks**: Up to 5 pinned conversations as horizontal chips at top
-- **Global search**: Search bar at top (across all conversations)
-- **Project tree**: Projects grouped by path, all collapsed by default
-- **Persist expand state**: Remember which projects user expanded across relaunches
-- Sessions within each project, sorted by date (recent first)
-- Session shows: timestamp + first user message preview
+**Sidebar**:
+- Bookmarks: 5 pinned conversations (horizontal chips)
+- Global search: Search all conversations
+- Project tree: Collapsed by default, persisted expand state
+- Sessions sorted by date (recent first)
 
-**Conversation View:**
-- **Toolbar toggles** (top right): User | Claude | Tools | Tool outputs | Thinking
-- **Default view**: User + Claude responses only
-- **Within-conversation search**: Expandable search icon in toolbar
-- **Virtual scrolling**: For performance (preserve click+drag multi-select)
-- **Multi-select**: Click, Shift+click, click+drag to select messages
-- **Copy buttons**: Per-message and for selection
-- **Code blocks**: Subtle syntax highlighting when detected
-- **Live auto-update**: Watch files, auto-append new messages (debounced)
+**Conversation View**:
+- Filter toggles: User | Claude | Tools | Outputs | Thinking
+- Default: User + Claude only
+- Within-conversation search
+- Virtual scrolling
+- Multi-select (click, shift+click, drag)
+- Copy/export (Markdown, JSON, Plain text)
 
-**Export:**
-- Export selected/all to: Markdown, JSON, Plain text
-
-**Settings:**
-- Copy format: Plain text (default) or Markdown
-- Global hotkeys: Configurable per tool (requires accessibility permission)
+**Settings**:
+- Auto-refresh toggle
+- Copy format preference
 
 ---
 
@@ -113,16 +207,43 @@ A macOS utility application that lives in the menu bar, providing quick access t
 
 ---
 
+## Implementation Phases
+
+### Phase 1: Core Infrastructure
+1. Create `Core/` folder
+2. Implement `ToolCapabilities` (OptionSet)
+3. Update `Tool` protocol with capabilities
+4. Create `SettingsManager` with theme persistence
+5. Create `AppInitializer` called from `AppDelegate`
+6. **Fix theme bug**: Apply saved theme on app launch
+
+### Phase 2: Background Services
+1. Create `BackgroundService` protocol (actor-based)
+2. Create `BackgroundServiceManager`
+3. Wire into `AppInitializer`
+4. Add stubs for `HotkeyManager`, `AccessibilityManager`
+
+### Phase 3: Double-Click UI
+1. Create `DoubleClickRow` component
+2. Update `ToolSidebarView` to detect double-click
+3. Open tool window on double-click (if hasWindow)
+
+### Phase 4: Tool Migration
+1. Move CCHistory to `Tools/CCHistory/`
+2. Update to new `Tool` protocol with capabilities
+3. Test settings persistence across restarts
+
+### Phase 5: Cleanup
+1. Update `CLAUDE.md` references if needed
+
+---
+
 ## Technical Stack
 
 - **Framework**: SwiftUI (macOS 13+)
 - **Menu bar**: `MenuBarExtra`
-- **Layout**: `NavigationSplitView`
+- **Layout**: Custom `HStack` (NOT NavigationSplitView)
 - **Icons**: SF Symbols only
-- **Data**: Read JSONL files from `~/.claude/`
-
----
-
-## Q&A Reference
-
-See `spec/spec1.md` for detailed interview responses.
+- **Persistence**: UserDefaults
+- **Background**: Swift Actors
+- **Concurrency**: async/await

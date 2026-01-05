@@ -9,65 +9,70 @@ struct ToolSidebarView: View {
     @Binding var selectedTool: String?
     @State private var searchText = ""
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search", text: $searchText)
-                    .textFieldStyle(.plain)
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
+        var body: some View {
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: 0) {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
                             .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(8)
-            .background(Color.primary.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .padding(.horizontal, 12)
-            .padding(.top, 52)
-            .padding(.bottom, 12)
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 4) {
-                    SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: selectedTool == "all-tools") {
-                        selectedTool = "all-tools"
-                    }
-
-                    ForEach(filteredCategories, id: \.id) { category in
-                        SidebarHeader(title: category.rawValue)
-
-                        ForEach(filteredTools(for: category), id: \.id) { tool in
-                            SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id) {
-                                selectedTool = tool.id
+                        TextField("Search", text: $searchText)
+                            .textFieldStyle(.plain)
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(8)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .padding(.horizontal, 12)
+                    .padding(.top, 52)
+                    .padding(.bottom, 12)
+    
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: selectedTool == "all-tools") {
+                                selectedTool = "all-tools"
+                            }
+    
+                            ForEach(filteredCategories, id: \.id) { category in
+                                SidebarHeader(title: category.rawValue)
+    
+                                ForEach(filteredTools(for: category), id: \.id) { tool in
+                                    SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id) {
+                                        selectedTool = tool.id
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                    }
+    
+                    Spacer(minLength: 0)
+    
+                    VStack(spacing: 4) {
+                        SidebarRow(icon: "gearshape", title: "Settings", isSelected: selectedTool == "settings") {
+                            selectedTool = "settings"
+                        }
+    
+                        SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
+                            NSApplication.shared.terminate(nil)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
                 }
-                .padding(.horizontal, 12)
-            }
-
-            Spacer(minLength: 0)
-
-            VStack(spacing: 4) {
-                SidebarRow(icon: "gearshape", title: "Settings", isSelected: selectedTool == "settings") {
-                    selectedTool = "settings"
-                }
-
-                SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
-                    NSApplication.shared.terminate(nil)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+    
+                            Text("PowerToys")
+                                .font(.system(size: 13, weight: .medium))
+                                .padding(.leading, 84)
+                                .padding(.top, 8)
+                        }            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(VisualEffectBackground())
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(VisualEffectBackground())
-    }
-
     private var categoriesWithTools: [ToolCategory] {
         ToolCategory.allCases.filter { $0 != .all && !ToolRegistry.tools(for: $0).isEmpty }
     }
