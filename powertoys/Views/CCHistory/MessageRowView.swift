@@ -14,6 +14,7 @@ struct MessageRowView: View {
     let showToolCalls: Bool
     let showToolOutputs: Bool
     let showThinking: Bool
+    var onToolSelect: ((ToolUseBlock) -> Void)?
 
     @Environment(SelectionManager.self) private var selectionManager
     @State private var isHovering: Bool = false
@@ -74,11 +75,10 @@ struct MessageRowView: View {
             // Content
             MessageContentView(content: message.content, searchText: searchText)
             
-            // Tool calls
             if showToolCalls && !message.toolUse.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(message.toolUse) { tool in
-                        ToolUseView(tool: tool, showOutput: showToolOutputs)
+                        ToolUseView(tool: tool, showOutput: showToolOutputs, onSelect: onToolSelect)
                     }
                 }
             }
@@ -241,9 +241,8 @@ struct CodeBlockView: View {
             
             Divider()
             
-            // Code
             ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
+                Text(SyntaxHighlighter.highlight(code, language: language))
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
                     .padding(12)
@@ -266,9 +265,10 @@ struct CodeBlockView: View {
 struct ToolUseView: View {
     let tool: ToolUseBlock
     let showOutput: Bool
-    
+    var onSelect: ((ToolUseBlock) -> Void)?
+
     @State private var isExpanded: Bool = false
-    
+
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             VStack(alignment: .leading, spacing: 8) {
@@ -314,9 +314,22 @@ struct ToolUseView: View {
                 Image(systemName: "wrench.fill")
                     .foregroundStyle(.orange)
                     .font(.caption)
-                
+
                 Text(tool.name)
                     .font(.caption.weight(.medium))
+
+                Spacer()
+
+                if onSelect != nil {
+                    Button {
+                        onSelect?(tool)
+                    } label: {
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(8)
