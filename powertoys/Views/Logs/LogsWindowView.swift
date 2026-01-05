@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct LogsWindowView: View {
     @State private var selectedLevels: Set<LogLevel> = Set(LogLevel.allCases)
@@ -111,16 +112,84 @@ struct LogsWindowView: View {
 
             Divider()
 
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(filteredLogs.reversed()) { entry in
-                        LogEntryRow(entry: entry)
-                    }
-                }
-                .textSelection(.enabled)
-            }
+            LogTextView(logs: filteredLogs.reversed())
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+// MARK: - NSTextView Wrapper for Drag Selection
+
+private struct LogTextView: NSViewRepresentable {
+    let logs: [LogEntryData]
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 12, height: 8)
+        textView.isRichText = true
+        textView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        textView.textStorage?.setAttributedString(buildAttributedString())
+    }
+
+    private func buildAttributedString() -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let monoFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        let boldFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .medium)
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm:ss"
+
+        for (index, entry) in logs.enumerated() {
+            if index > 0 {
+                result.append(NSAttributedString(string: "\n"))
+            }
+
+            let timeStr = timeFormatter.string(from: entry.timestamp)
+            let levelStr = entry.level.name.prefix(1).uppercased()
+            let line = "[\(timeStr)] [\(levelStr)] \(entry.source): \(entry.message)"
+
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: monoFont,
+                .foregroundColor: colorForLevel(entry.level)
+            ]
+
+            result.append(NSAttributedString(string: line, attributes: attrs))
+        }
+
+        if result.length == 0 {
+            let emptyAttrs: [NSAttributedString.Key: Any] = [
+                .font: monoFont,
+                .foregroundColor: NSColor.tertiaryLabelColor
+            ]
+            result.append(NSAttributedString(string: "No logs to display", attributes: emptyAttrs))
+        }
+
+        return result
+    }
+
+    private func colorForLevel(_ level: LogLevel) -> NSColor {
+        switch level {
+        case .error: return .systemRed
+        case .warning: return .systemOrange
+        case .info: return .labelColor
+        case .debug: return .secondaryLabelColor
+        }
     }
 }
 
@@ -200,71 +269,6 @@ private struct LogLevelFilterRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-    }
-}
-
-// MARK: - Log Entry Row
-
-private struct LogEntryRow: View {
-    let entry: LogEntryData
-
-    @State private var isHovered = false
-
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss.SSS"
-        return formatter
-    }()
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: entry.level.icon)
-                .foregroundStyle(.tertiary)
-                .font(.system(size: 11))
-                .frame(width: 16)
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(entry.source)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-
-                    Text(Self.timeFormatter.string(from: entry.timestamp))
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-
-                    levelBadge
-                }
-
-                Text(entry.message)
-                    .font(.system(size: 12))
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(isHovered ? Color.primary.opacity(0.03) : Color.clear)
-        .onHover { isHovered = $0 }
-    }
-
-    private var levelBadge: some View {
-        Text(entry.level.name.uppercased())
-            .font(.system(size: 9, weight: .medium))
-            .foregroundStyle(levelColor)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(levelColor.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-    }
-
-    private var levelColor: Color {
-        switch entry.level {
-        case .error: return .red
-        case .warning: return .orange
-        case .info: return .blue
-        case .debug: return .purple
-        }
     }
 }
 

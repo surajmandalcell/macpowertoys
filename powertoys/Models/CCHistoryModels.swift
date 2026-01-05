@@ -142,16 +142,22 @@ struct FilterOptions {
     var showToolCalls: Bool = false
     var showToolOutputs: Bool = false
     var showThinking: Bool = false
-    
+    var showEmptyMessages: Bool = false
+
     func shouldShow(message: CCMessage) -> Bool {
-        switch message.type {
-        case .user:
-            return showUser
-        case .assistant:
-            return showAssistant
-        case .system:
-            return showSystem
+        let typeMatch = switch message.type {
+        case .user: showUser
+        case .assistant: showAssistant
+        case .system: showSystem
         }
+
+        guard typeMatch else { return false }
+
+        if !showEmptyMessages && message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return false
+        }
+
+        return true
     }
 }
 

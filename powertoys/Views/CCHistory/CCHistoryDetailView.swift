@@ -135,6 +135,11 @@ struct FilterToolbarView: View {
                 FilterToggle(label: "Tools", isOn: $filterOptions.showToolCalls)
                 FilterToggle(label: "Outputs", isOn: $filterOptions.showToolOutputs)
                 FilterToggle(label: "Thinking", isOn: $filterOptions.showThinking)
+
+                Divider()
+                    .frame(height: 20)
+
+                FilterToggle(label: "Empty", isOn: $filterOptions.showEmptyMessages)
             }
 
             Spacer()
