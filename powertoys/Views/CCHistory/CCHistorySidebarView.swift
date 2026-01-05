@@ -17,31 +17,10 @@ struct CCHistorySidebarView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                        .font(.system(size: 12))
-                    TextField("Search conversations...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13))
-                    if isSearching {
-                        ProgressView()
-                            .scaleEffect(0.5)
-                            .frame(width: 16, height: 16)
-                    } else if !searchText.isEmpty {
-                        Button { searchText = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(8)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .padding(.horizontal, 12)
-                .padding(.top, 52)
-                .padding(.bottom, 12)
+                SearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 52)
+                    .padding(.bottom, 12)
 
                 if projectManager.isLoading {
                     VStack(spacing: 4) {
@@ -73,10 +52,7 @@ struct CCHistorySidebarView: View {
                 }
             }
 
-            Text("CC History")
-                .font(.system(size: 13, weight: .medium))
-                .padding(.leading, 84)
-                .padding(.top, 8)
+            SidebarTitle(text: "CC History")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectBackground())
