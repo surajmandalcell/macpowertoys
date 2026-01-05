@@ -8,20 +8,15 @@ import SwiftUI
 struct LogsWindowView: View {
     @State private var selectedLevels: Set<LogLevel> = Set(LogLevel.allCases)
     @State private var searchText = ""
-    @State private var selectedLog: LogEntryData?
 
     private var filteredLogs: [LogEntryData] {
-        let logs = LogManager.shared.logs
-
-        return logs.filter { entry in
+        LogManager.shared.logs.filter { entry in
             guard selectedLevels.contains(entry.level) else { return false }
-
             if !searchText.isEmpty {
                 let searchLower = searchText.lowercased()
                 return entry.message.lowercased().contains(searchLower) ||
                        entry.source.lowercased().contains(searchLower)
             }
-
             return true
         }
     }
@@ -31,64 +26,72 @@ struct LogsWindowView: View {
             sidebar
             content
         }
-        .frame(minWidth: 800, minHeight: 500)
+        .ignoresSafeArea()
+        .background(WindowAccessor())
     }
 
     private var sidebar: some View {
-        VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Logs")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 52)
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12))
+                    TextField("Search logs...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13))
+                    if !searchText.isEmpty {
+                        Button { searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(8)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(.horizontal, 12)
+                .padding(.top, 52)
+                .padding(.bottom, 12)
 
-                LogSearchField(text: $searchText, placeholder: "Search logs...")
-            }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("FILTER BY LEVEL")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 12)
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("FILTER BY LEVEL")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 12)
-
-                ForEach(LogLevel.allCases, id: \.self) { level in
-                    LogLevelFilterRow(
-                        level: level,
-                        isSelected: selectedLevels.contains(level),
-                        count: LogManager.shared.logs.filter { $0.level == level }.count
-                    ) {
-                        if selectedLevels.contains(level) {
-                            selectedLevels.remove(level)
-                        } else {
-                            selectedLevels.insert(level)
+                    ForEach(LogLevel.allCases, id: \.self) { level in
+                        LogLevelFilterRow(
+                            level: level,
+                            isSelected: selectedLevels.contains(level),
+                            count: LogManager.shared.logs.filter { $0.level == level }.count
+                        ) {
+                            if selectedLevels.contains(level) {
+                                selectedLevels.remove(level)
+                            } else {
+                                selectedLevels.insert(level)
+                            }
                         }
                     }
                 }
-            }
-            .padding(.bottom, 12)
+                .padding(.bottom, 12)
 
-            Divider()
+                Spacer()
 
-            Spacer()
-
-            VStack(spacing: 8) {
-                Button {
-                    LogManager.shared.clearMemoryLogs()
-                } label: {
-                    Label("Clear Logs", systemImage: "trash")
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(spacing: 4) {
+                    SidebarActionRow(icon: "trash", title: "Clear Logs") {
+                        LogManager.shared.clearMemoryLogs()
+                    }
                 }
-                .buttonStyle(.plain)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .contentShape(Rectangle())
+                .padding(.bottom, 12)
             }
-            .padding(.bottom, 12)
+
+            Text("Logs")
+                .font(.system(size: 13, weight: .medium))
+                .padding(.leading, 84)
+                .padding(.top, 8)
         }
         .frame(width: 220)
         .background(VisualEffectBackground())
@@ -100,35 +103,59 @@ struct LogsWindowView: View {
                 Text("\(filteredLogs.count) logs")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
                 Spacer()
-
-                Button {
-                    LogManager.shared.info("Test log entry", source: "User")
-                } label: {
-                    Image(systemName: "plus.circle")
-                }
-                .buttonStyle(.plain)
-                .help("Add test log")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(nsColor: .windowBackgroundColor))
+            .padding(.top, 28)
 
             Divider()
 
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredLogs.reversed()) { entry in
-                        LogEntryRow(entry: entry, isSelected: selectedLog?.id == entry.id)
-                            .onTapGesture {
-                                selectedLog = entry
-                            }
+                        LogEntryRow(entry: entry)
                     }
                 }
+                .textSelection(.enabled)
             }
-            .background(Color(nsColor: .textBackgroundColor))
         }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+// MARK: - Sidebar Action Row
+
+private struct SidebarActionRow: View {
+    let icon: String
+    let title: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20, height: 20)
+
+                Text(title)
+                    .font(.system(size: 13))
+
+                Spacer()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? Color.primary.opacity(0.08) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 
@@ -146,11 +173,11 @@ private struct LogLevelFilterRow: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? levelColor : .secondary)
+                    .foregroundStyle(isSelected ? .secondary : .tertiary)
                     .font(.system(size: 14))
 
                 Image(systemName: level.icon)
-                    .foregroundStyle(levelColor)
+                    .foregroundStyle(.secondary)
                     .font(.system(size: 12))
 
                 Text(level.name)
@@ -160,7 +187,7 @@ private struct LogLevelFilterRow: View {
 
                 Text("\(count)")
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Color.primary.opacity(0.05))
@@ -174,22 +201,12 @@ private struct LogLevelFilterRow: View {
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
     }
-
-    private var levelColor: Color {
-        switch level {
-        case .error: return .red
-        case .warning: return .orange
-        case .info: return .blue
-        case .debug: return .purple
-        }
-    }
 }
 
 // MARK: - Log Entry Row
 
 private struct LogEntryRow: View {
     let entry: LogEntryData
-    let isSelected: Bool
 
     @State private var isHovered = false
 
@@ -202,7 +219,7 @@ private struct LogEntryRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: entry.level.icon)
-                .foregroundStyle(levelColor)
+                .foregroundStyle(.tertiary)
                 .font(.system(size: 11))
                 .frame(width: 16)
 
@@ -215,19 +232,30 @@ private struct LogEntryRow: View {
                     Text(Self.timeFormatter.string(from: entry.timestamp))
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(.tertiary)
+
+                    levelBadge
                 }
 
                 Text(entry.message)
                     .font(.system(size: 12))
-                    .textSelection(.enabled)
             }
 
             Spacer()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.1) : (isHovered ? Color.primary.opacity(0.03) : Color.clear))
+        .background(isHovered ? Color.primary.opacity(0.03) : Color.clear)
         .onHover { isHovered = $0 }
+    }
+
+    private var levelBadge: some View {
+        Text(entry.level.name.uppercased())
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(levelColor)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(levelColor.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 3))
     }
 
     private var levelColor: Color {
@@ -237,40 +265,6 @@ private struct LogEntryRow: View {
         case .info: return .blue
         case .debug: return .purple
         }
-    }
-}
-
-// MARK: - Log Search Field
-
-private struct LogSearchField: View {
-    @Binding var text: String
-    let placeholder: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .font(.system(size: 12))
-
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-
-            if !text.isEmpty {
-                Button {
-                    text = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 

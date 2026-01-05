@@ -84,44 +84,6 @@ struct CCHistoryDetailView: View {
                 }
             }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                if projectManager.selectedSession != nil {
-                    Menu {
-                        Button {
-                            ExportManager.export(messages: filteredMessages, format: .markdown)
-                        } label: {
-                            Label("Export as Markdown", systemImage: "doc.text")
-                        }
-                        
-                        Button {
-                            ExportManager.export(messages: filteredMessages, format: .json)
-                        } label: {
-                            Label("Export as JSON", systemImage: "curlybraces")
-                        }
-                        
-                        Button {
-                            ExportManager.export(messages: filteredMessages, format: .plainText)
-                        } label: {
-                            Label("Export as Plain Text", systemImage: "doc.plaintext")
-                        }
-                    } label: {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                    
-                    if let session = projectManager.selectedSession {
-                        Button {
-                            bookmarkManager.toggleBookmark(session)
-                        } label: {
-                            Label(
-                                bookmarkManager.isBookmarked(session) ? "Remove Bookmark" : "Add Bookmark",
-                                systemImage: bookmarkManager.isBookmarked(session) ? "bookmark.fill" : "bookmark"
-                            )
-                        }
-                    }
-                }
-            }
-        }
         .onChange(of: projectManager.selectedSession) { _, session in
             if let session = session {
                 Task {
@@ -156,6 +118,9 @@ struct FilterToolbarView: View {
     @Binding var isSearching: Bool
     @Binding var showThinkingPanel: Bool
     let hasThinking: Bool
+
+    @Environment(ProjectManager.self) private var projectManager
+    @Environment(BookmarkManager.self) private var bookmarkManager
 
     var body: some View {
         HStack(spacing: 12) {
@@ -216,9 +181,38 @@ struct FilterToolbarView: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            if let session = projectManager.selectedSession {
+                Button {
+                    bookmarkManager.toggleBookmark(session)
+                } label: {
+                    Image(systemName: bookmarkManager.isBookmarked(session) ? "bookmark.fill" : "bookmark")
+                        .foregroundStyle(bookmarkManager.isBookmarked(session) ? .orange : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(bookmarkManager.isBookmarked(session) ? "Remove Bookmark" : "Add Bookmark")
+
+                Menu {
+                    Button { ExportManager.export(messages: projectManager.currentMessages, format: .markdown) } label: {
+                        Label("Export as Markdown", systemImage: "doc.text")
+                    }
+                    Button { ExportManager.export(messages: projectManager.currentMessages, format: .json) } label: {
+                        Label("Export as JSON", systemImage: "curlybraces")
+                    }
+                    Button { ExportManager.export(messages: projectManager.currentMessages, format: .plainText) } label: {
+                        Label("Export as Plain Text", systemImage: "doc.plaintext")
+                    }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 20)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .padding(.top, 28)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }

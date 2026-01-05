@@ -13,11 +13,38 @@
 - DO NOT manually configure NSWindow properties (titlebarAppearsTransparent, etc.) - SwiftUI overrides them
 - Sidebar extends seamlessly to top with traffic lights floating over it
 
-## Sidebar
+## Sidebar (CONSISTENT ACROSS ALL WINDOWS)
 - Use custom `HStack` layout, NOT NavigationSplitView or NavigationView (they add unwanted chrome)
-- Custom `NSVisualEffectView` background with `.sidebar` material
+- Custom `NSVisualEffectView` background with `.sidebar` material via `VisualEffectBackground()`
 - Custom hover/selection states with `.contentShape(Rectangle())` for full-width hit targets
 - Search bar with custom styling, not native `searchable` modifier
+
+### Sidebar Title Pattern (EXACT for all windows):
+```swift
+Text("Title")
+    .font(.system(size: 13, weight: .medium))
+    .padding(.leading, 84)  // aligns with traffic lights
+    .padding(.top, 8)
+```
+
+### Search Field Pattern (EXACT):
+```swift
+HStack(spacing: 6) {
+    Image(systemName: "magnifyingglass").foregroundStyle(.secondary).font(.system(size: 12))
+    TextField("Search...", text: $searchText).textFieldStyle(.plain).font(.system(size: 13))
+    // clear button
+}
+.padding(8)
+.background(Color.primary.opacity(0.06))
+.clipShape(RoundedRectangle(cornerRadius: 6))
+.padding(.horizontal, 12)
+.padding(.top, 52)  // space for title + traffic lights
+.padding(.bottom, 12)
+```
+
+### Content Area Alignment:
+- Content starts at `.padding(.top, 28)` to align with sidebar search bottom
+- Use `Color(nsColor: .windowBackgroundColor)` for content background
 
 ## Forms & Settings
 - Use `.formStyle(.grouped)` with `.scrollContentBackground(.hidden)`
