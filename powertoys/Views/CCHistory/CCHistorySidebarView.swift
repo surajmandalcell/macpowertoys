@@ -202,10 +202,6 @@ private struct ProjectRow: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 12)
 
-                Image(systemName: "folder.fill")
-                    .foregroundStyle(.blue)
-                    .font(.system(size: 13))
-
                 Text(project.displayName)
                     .font(.system(size: 13))
                     .lineLimit(1)

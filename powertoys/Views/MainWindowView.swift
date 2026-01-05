@@ -16,7 +16,7 @@ struct MainWindowView: View {
 
             ZStack(alignment: .topLeading) {
                 contentView
-                    .padding(.top, 28)
+                    .padding(.top, 52)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(Color(nsColor: .windowBackgroundColor))
