@@ -76,7 +76,7 @@ HStack(spacing: 6) {
 ## AppDelegate Pattern
 ```swift
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var restoredWindows = Set<NSWindow>()
+    private var restoredWindows = Set<ObjectIdentifier>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NotificationCenter.default.addObserver(
@@ -86,9 +86,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func windowDidBecomeKey(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow,
-              !restoredWindows.contains(window) else { return }
-        restoredWindows.insert(window)
+        guard let window = notification.object as? NSWindow else { return }
+        let windowId = ObjectIdentifier(window)
+        guard !restoredWindows.contains(windowId) else { return }
+        restoredWindows.insert(windowId)
         WindowStateManager.shared.restoreState(for: window)
     }
 }

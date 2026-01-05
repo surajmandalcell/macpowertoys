@@ -12,15 +12,16 @@ final class WindowStateManager {
     static let shared = WindowStateManager()
 
     private let userDefaultsPrefix = "windowState"
-    private nonisolated(unsafe) var observers: [NSObjectProtocol] = []
+    private var observers: [NSObjectProtocol] = []
 
     private init() {
         setupObservers()
     }
 
     deinit {
-        let observersCopy = observers
-        observersCopy.forEach { NotificationCenter.default.removeObserver($0) }
+        MainActor.assumeIsolated {
+            observers.forEach { NotificationCenter.default.removeObserver($0) }
+        }
     }
 
     private func setupObservers() {
@@ -29,8 +30,10 @@ final class WindowStateManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let window = notification.object as? NSWindow else { return }
-            self?.saveState(for: window)
+            guard let self, let window = notification.object as? NSWindow else { return }
+            Task { @MainActor [self] in
+                self.saveState(for: window)
+            }
         }
 
         let resizeObserver = NotificationCenter.default.addObserver(
@@ -38,8 +41,10 @@ final class WindowStateManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let window = notification.object as? NSWindow else { return }
-            self?.saveState(for: window)
+            guard let self, let window = notification.object as? NSWindow else { return }
+            Task { @MainActor [self] in
+                self.saveState(for: window)
+            }
         }
 
         observers = [moveObserver, resizeObserver]
