@@ -271,10 +271,6 @@ private struct SessionRow: View {
             Task { await projectManager.loadMessages(for: session) }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: "doc.text")
-                    .foregroundStyle(isSelected ? .white : .secondary)
-                    .font(.system(size: 11))
-
                 VStack(alignment: .leading, spacing: 2) {
                     Text(session.displayTitle)
                         .font(.system(size: 12))

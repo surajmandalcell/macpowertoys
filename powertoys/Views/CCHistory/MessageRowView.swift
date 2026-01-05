@@ -18,88 +18,74 @@ struct MessageRowView: View {
 
     @Environment(SelectionManager.self) private var selectionManager
     @State private var isHovering: Bool = false
-    
+
+    private var rolePrefix: String {
+        switch message.type {
+        case .user: return "[user]"
+        case .assistant: return "[claude]"
+        case .system: return "[system]"
+        }
+    }
+
+    private var roleColor: Color {
+        switch message.type {
+        case .user: return .blue
+        case .assistant: return .secondary
+        case .system: return .orange
+        }
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                // Role badge
-                HStack(spacing: 4) {
-                    Image(systemName: message.type.icon)
-                        .font(.caption)
-                    Text(message.type.displayName)
-                        .font(.caption.weight(.semibold))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(roleColor.opacity(0.15))
-                .foregroundStyle(roleColor)
-                .clipShape(Capsule())
-                
-                Text(message.timestamp, style: .time)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                
-                Spacer()
-                
-                // Copy button (shown on hover)
-                if isHovering {
-                    Button {
-                        selectionManager.copyMessage(message)
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                }
-            }
-            
-            // Thinking (collapsible)
+        VStack(alignment: .leading, spacing: 4) {
+            // Thinking (inline, subtle)
             if showThinking, let thinking = message.thinking, !thinking.isEmpty {
-                DisclosureGroup {
-                    Text(thinking)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.purple.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                } label: {
-                    Label("Thinking", systemImage: "brain.head.profile")
-                        .font(.caption)
-                        .foregroundStyle(.purple)
-                }
+                Text(thinking)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.purple.opacity(0.7))
+                    .textSelection(.enabled)
+                    .padding(.leading, 16)
             }
-            
+
+            // Main content line
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(rolePrefix)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(roleColor)
+
+                Text(" ")
+
+                Text(Self.timeFormatter.string(from: message.timestamp))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+
+                Text(" ")
+            }
+
             // Content
             MessageContentView(content: message.content, searchText: searchText)
-            
+                .padding(.leading, 16)
+
+            // Tool calls (compact)
             if showToolCalls && !message.toolUse.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(message.toolUse) { tool in
                         ToolUseView(tool: tool, showOutput: showToolOutputs, onSelect: onToolSelect)
                     }
                 }
+                .padding(.leading, 16)
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor))
-                .stroke(isSelected ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
-        )
-        .onHover { hovering in
-            isHovering = hovering
-        }
-    }
-    
-    private var roleColor: Color {
-        switch message.type {
-        case .user: return .blue
-        case .assistant: return .green
-        case .system: return .orange
-        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
     }
 }
 
@@ -144,7 +130,7 @@ struct MessageContentView: View {
                     upper: AttributedString.Index(range.upperBound, within: attributedString)!
                 )
             )
-            attributedString[attrRange].backgroundColor = .yellow.opacity(0.3)
+            attributedString[attrRange].backgroundColor = Color.accentColor.opacity(0.2)
             searchStart = range.upperBound
         }
         
@@ -273,71 +259,51 @@ struct ToolUseView: View {
     @State private var isExpanded: Bool = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Input
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Input")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        Text(tool.input)
-                            .font(.system(.caption, design: .monospaced))
-                            .textSelection(.enabled)
-                    }
-                    .padding(8)
-                    .background(Color(nsColor: .textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
-                
-                // Output (if available and enabled)
-                if showOutput, let output = tool.output {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Output")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        
-                        ScrollView {
-                            Text(output)
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .frame(maxHeight: 200)
-                        .padding(8)
-                        .background(Color(nsColor: .textBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                    }
-                }
-            }
-            .padding(.top, 8)
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "wrench.fill")
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Text("[tool]")
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(.orange)
-                    .font(.caption)
 
                 Text(tool.name)
-                    .font(.caption.weight(.medium))
-
-                Spacer()
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
 
                 if onSelect != nil {
                     Button {
                         onSelect?(tool)
                     } label: {
                         Image(systemName: "arrow.up.right.square")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
                 }
             }
+
+            if isExpanded {
+                Text(tool.input)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
+                    .padding(.leading, 16)
+
+                if showOutput, let output = tool.output {
+                    Text(output)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .textSelection(.enabled)
+                        .lineLimit(10)
+                        .padding(.leading, 16)
+                }
+            }
         }
-        .padding(8)
-        .background(Color.orange.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isExpanded.toggle()
+            }
+        }
     }
 }
 
