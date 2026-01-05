@@ -59,6 +59,7 @@ struct ToolSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .padding(.top, -20)
     }
 }
 

@@ -59,6 +59,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .padding(.top, -20)
         .onAppear { applyTheme(AppTheme(rawValue: selectedTheme) ?? .automatic) }
     }
 
