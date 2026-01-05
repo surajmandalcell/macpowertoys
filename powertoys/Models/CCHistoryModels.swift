@@ -153,8 +153,14 @@ struct FilterOptions {
 
         guard typeMatch else { return false }
 
-        if !showEmptyMessages && message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return false
+        if !showEmptyMessages {
+            let hasContent = !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let hasToolUse = !message.toolUse.isEmpty
+            let hasThinking = !(message.thinking?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+
+            if !hasContent && !hasToolUse && !hasThinking {
+                return false
+            }
         }
 
         return true

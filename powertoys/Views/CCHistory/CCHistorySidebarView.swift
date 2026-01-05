@@ -39,20 +39,21 @@ struct CCHistorySidebarView: View {
                         }
                     }
                     .padding(.horizontal, 12)
-                    .padding(.bottom, projectManager.isLoading ? 44 : 0)
+                    .padding(.bottom, 20)
                 }
             }
 
             SidebarTitle(text: "CC History")
 
-            if projectManager.isLoading {
-                VStack {
-                    Spacer()
-                    ProgressView(value: projectManager.loadingProgress)
-                        .progressViewStyle(.linear)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 8)
+            VStack {
+                Spacer()
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.15))
+                        .frame(width: geo.size.width * projectManager.loadingProgress, height: 2)
+                        .animation(.easeInOut(duration: 0.2), value: projectManager.loadingProgress)
                 }
+                .frame(height: 2)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

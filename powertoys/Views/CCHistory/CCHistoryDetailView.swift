@@ -96,6 +96,7 @@ struct CCHistoryDetailView: View {
                             showThinkingPanel = false
                         }
                     }
+                    .transition(.opacity)
 
                 VStack(spacing: 0) {
                     HStack {
@@ -119,11 +120,11 @@ struct CCHistoryDetailView: View {
 
                     ThinkingPanelContent(messages: filteredMessages)
                 }
-                .frame(width: 600, height: 500)
+                .frame(width: 700, height: 550)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
-                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                .transition(.opacity)
             }
         }
         .onChange(of: projectManager.selectedSession) { _, session in
