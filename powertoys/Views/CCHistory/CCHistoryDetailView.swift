@@ -12,18 +12,43 @@ struct CCHistoryDetailView: View {
     @Environment(SelectionManager.self) private var selectionManager
     @Environment(BookmarkManager.self) private var bookmarkManager
 
-    @State private var filterOptions = FilterOptions()
+    @AppStorage("cchistory.filter.showUser") private var showUser = true
+    @AppStorage("cchistory.filter.showAssistant") private var showAssistant = true
+    @AppStorage("cchistory.filter.showSystem") private var showSystem = false
+    @AppStorage("cchistory.filter.showToolCalls") private var showToolCalls = false
+    @AppStorage("cchistory.filter.showToolOutputs") private var showToolOutputs = false
+    @AppStorage("cchistory.filter.showThinking") private var showThinking = false
+    @AppStorage("cchistory.filter.showEmpty") private var showEmpty = false
+
     @State private var searchText: String = ""
     @State private var selectedTool: ToolUseBlock?
     @State private var showThinkingPanel: Bool = false
 
+    private var filterOptions: FilterOptions {
+        FilterOptions(
+            showUser: showUser,
+            showAssistant: showAssistant,
+            showSystem: showSystem,
+            showToolCalls: showToolCalls,
+            showToolOutputs: showToolOutputs,
+            showThinking: showThinking,
+            showEmptyMessages: showEmpty
+        )
+    }
+
     var body: some View {
-        ZStack(alignment: .trailing) {
+        ZStack {
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
                     if projectManager.selectedSession != nil {
                         FilterToolbarView(
-                            filterOptions: $filterOptions,
+                            showUser: $showUser,
+                            showAssistant: $showAssistant,
+                            showSystem: $showSystem,
+                            showToolCalls: $showToolCalls,
+                            showToolOutputs: $showToolOutputs,
+                            showThinking: $showThinking,
+                            showEmpty: $showEmpty,
                             searchText: $searchText,
                             showThinkingPanel: $showThinkingPanel,
                             hasThinking: hasThinkingContent
@@ -73,19 +98,45 @@ struct CCHistoryDetailView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
 
-                if selectedTool != nil {
-                    SlideOverPanel(
-                        isPresented: Binding(
-                            get: { selectedTool != nil },
-                            set: { if !$0 { selectedTool = nil } }
-                        ),
-                        title: selectedTool?.name ?? "Tool Details",
-                        persistenceKey: "toolDetails"
-                    ) {
-                        ToolDetailsPanelContent(tool: selectedTool!)
+            if selectedTool != nil {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTool = nil
+                        }
                     }
+                    .transition(.opacity)
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text(selectedTool?.name ?? "Tool")
+                            .font(.system(size: 15, weight: .semibold))
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTool = nil
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(16)
+
+                    Divider()
+
+                    ToolDetailsPanelContent(tool: selectedTool!)
                 }
+                .frame(width: 700, height: 550)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
+                .transition(.opacity)
             }
 
             if showThinkingPanel {
@@ -153,7 +204,13 @@ struct CCHistoryDetailView: View {
 // MARK: - Filter Toolbar
 
 struct FilterToolbarView: View {
-    @Binding var filterOptions: FilterOptions
+    @Binding var showUser: Bool
+    @Binding var showAssistant: Bool
+    @Binding var showSystem: Bool
+    @Binding var showToolCalls: Bool
+    @Binding var showToolOutputs: Bool
+    @Binding var showThinking: Bool
+    @Binding var showEmpty: Bool
     @Binding var searchText: String
     @Binding var showThinkingPanel: Bool
     let hasThinking: Bool
@@ -164,19 +221,19 @@ struct FilterToolbarView: View {
     var body: some View {
         HStack(spacing: 8) {
             HStack(spacing: 4) {
-                FilterToggle(label: "User", isOn: $filterOptions.showUser)
-                FilterToggle(label: "Claude", isOn: $filterOptions.showAssistant)
-                FilterToggle(label: "System", isOn: $filterOptions.showSystem)
+                FilterToggle(label: "User", isOn: $showUser)
+                FilterToggle(label: "Claude", isOn: $showAssistant)
+                FilterToggle(label: "System", isOn: $showSystem)
 
                 Divider().frame(height: 20)
 
-                FilterToggle(label: "Tools", isOn: $filterOptions.showToolCalls)
-                FilterToggle(label: "Outputs", isOn: $filterOptions.showToolOutputs)
-                FilterToggle(label: "Thinking", isOn: $filterOptions.showThinking)
+                FilterToggle(label: "Tools", isOn: $showToolCalls)
+                FilterToggle(label: "Outputs", isOn: $showToolOutputs)
+                FilterToggle(label: "Thinking", isOn: $showThinking)
 
                 Divider().frame(height: 20)
 
-                FilterToggle(label: "Empty", isOn: $filterOptions.showEmptyMessages)
+                FilterToggle(label: "Empty", isOn: $showEmpty)
             }
 
             Spacer()
