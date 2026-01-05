@@ -118,16 +118,16 @@ enum MessageType: String, Codable, CaseIterable {
 
 // MARK: - Tool Use
 
-struct ToolUseBlock: Identifiable, Hashable {
+struct ToolUseBlock: Identifiable, Hashable, Codable {
     let id: String
     let name: String
     let input: String
     let output: String?
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: ToolUseBlock, rhs: ToolUseBlock) -> Bool {
         lhs.id == rhs.id
     }

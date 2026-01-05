@@ -15,6 +15,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
+    @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
 
     var body: some View {
         Form {
@@ -29,6 +30,17 @@ struct SettingsView: View {
                 }
             } header: {
                 Text("Appearance")
+            }
+
+            Section {
+                Picker("Font Size", selection: $logsFontSize) {
+                    Text("Small (10pt)").tag(10)
+                    Text("Medium (11pt)").tag(11)
+                    Text("Default (12pt)").tag(12)
+                    Text("Large (14pt)").tag(14)
+                }
+            } header: {
+                Text("Logs")
             }
 
             Section {

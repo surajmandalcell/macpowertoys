@@ -31,11 +31,15 @@ final class AppInitializer {
         LogManager.shared.info("App initializing...", source: "AppInitializer")
 
         LogManager.shared.modelContext = modelContext
+        ConversationCacheService.shared.setModelContext(modelContext)
 
         await LogManager.shared.loadPersistedLogs()
 
         Task.detached(priority: .background) {
             await LogManager.shared.pruneOldLogs()
+            await MainActor.run {
+                ConversationCacheService.shared.pruneStaleCache()
+            }
         }
 
         _ = SettingsManager.shared

@@ -13,11 +13,13 @@ final class ProjectManager {
     var loadingProgress: Double = 0
     var selectedSession: CCSession?
     var currentMessages: [CCMessage] = []
+    var isLoadingMessages: Bool = false
 
     private var fileWatcher: FileWatcher?
     private let claudeDirectory: URL
     private var refreshTask: Task<Void, Never>?
     private var loadTask: Task<Void, Never>?
+    private let cacheService = ConversationCacheService.shared
 
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -142,16 +144,43 @@ final class ProjectManager {
         messageLoadTask?.cancel()
         selectedSession = session
         currentMessages = []
+        isLoadingMessages = true
+
+        if let cachedMessages = cacheService.getCachedMessages(sessionId: session.id, filePath: session.filePath) {
+            currentMessages = cachedMessages
+            isLoadingMessages = false
+            LogManager.shared.debug("Cache hit for session \(session.id)", source: "ProjectManager")
+            return
+        }
+
+        LogManager.shared.debug("Cache miss for session \(session.id), streaming parse", source: "ProjectManager")
 
         let filePath = session.filePath
+        let sessionId = session.id
+        let projectPath = filePath.deletingLastPathComponent().lastPathComponent
+
         messageLoadTask = Task {
-            let messages = await Task.detached(priority: .userInitiated) {
-                CCHistoryParser.parseJSONLFile(at: filePath)
-            }.value
+            var allMessages: [CCMessage] = []
+            let stream = CCHistoryParser.parseJSONLFileStreaming(at: filePath)
+
+            for await message in stream {
+                guard !Task.isCancelled else { return }
+                allMessages.append(message)
+                await MainActor.run {
+                    self.currentMessages.append(message)
+                }
+            }
 
             guard !Task.isCancelled else { return }
+
             await MainActor.run {
-                self.currentMessages = messages
+                self.cacheService.cacheConversation(
+                    sessionId: sessionId,
+                    projectPath: projectPath,
+                    filePath: filePath,
+                    messages: allMessages
+                )
+                self.isLoadingMessages = false
             }
         }
         await messageLoadTask?.value
@@ -181,6 +210,11 @@ final class ProjectManager {
             guard !Task.isCancelled else { return }
 
             let jsonlPaths = changedPaths.filter { $0.hasSuffix(".jsonl") }
+
+            for path in jsonlPaths {
+                let sessionId = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+                cacheService.invalidate(sessionId)
+            }
 
             if jsonlPaths.isEmpty {
                 await loadProjects()
