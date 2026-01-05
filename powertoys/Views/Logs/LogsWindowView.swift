@@ -9,6 +9,7 @@ import AppKit
 struct LogsWindowView: View {
     @State private var selectedLevels: Set<LogLevel> = Set(LogLevel.allCases)
     @State private var searchText = ""
+    @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
 
     private var filteredLogs: [LogEntryData] {
         LogManager.shared.logs.filter { entry in
@@ -112,7 +113,7 @@ struct LogsWindowView: View {
 
             Divider()
 
-            LogTextView(logs: filteredLogs.reversed())
+            LogTextView(logs: filteredLogs.reversed(), fontSize: CGFloat(logsFontSize))
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -122,6 +123,7 @@ struct LogsWindowView: View {
 
 private struct LogTextView: NSViewRepresentable {
     let logs: [LogEntryData]
+    let fontSize: CGFloat
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -137,7 +139,7 @@ private struct LogTextView: NSViewRepresentable {
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 12, height: 8)
         textView.isRichText = true
-        textView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
 
         scrollView.documentView = textView
         return scrollView
@@ -150,8 +152,7 @@ private struct LogTextView: NSViewRepresentable {
 
     private func buildAttributedString() -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let monoFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        let boldFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .medium)
+        let monoFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "HH:mm:ss"
 
@@ -173,8 +174,9 @@ private struct LogTextView: NSViewRepresentable {
         }
 
         if result.length == 0 {
+            let emptyFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
             let emptyAttrs: [NSAttributedString.Key: Any] = [
-                .font: monoFont,
+                .font: emptyFont,
                 .foregroundColor: NSColor.tertiaryLabelColor
             ]
             result.append(NSAttributedString(string: "No logs to display", attributes: emptyAttrs))
@@ -185,10 +187,10 @@ private struct LogTextView: NSViewRepresentable {
 
     private func colorForLevel(_ level: LogLevel) -> NSColor {
         switch level {
-        case .error: return .systemRed
-        case .warning: return .systemOrange
-        case .info: return .labelColor
-        case .debug: return .secondaryLabelColor
+        case .error: return NSColor.systemRed.withAlphaComponent(0.85)
+        case .warning: return NSColor.systemOrange.withAlphaComponent(0.85)
+        case .info: return .secondaryLabelColor
+        case .debug: return .tertiaryLabelColor
         }
     }
 }

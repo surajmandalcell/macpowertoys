@@ -16,29 +16,73 @@ class CCHistoryParser {
         guard let data = try? String(contentsOf: url, encoding: .utf8) else {
             return []
         }
-        
+
         let lines = data.components(separatedBy: .newlines)
         var messages: [CCMessage] = []
-        
+
         for line in lines {
             guard !line.isEmpty,
                   let lineData = line.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
                 continue
             }
-            
-            // Skip file-history-snapshot and other non-message types
+
             guard let type = json["type"] as? String,
                   ["user", "assistant", "system"].contains(type) else {
                 continue
             }
-            
+
             if let message = parseMessage(from: json) {
                 messages.append(message)
             }
         }
-        
+
         return messages
+    }
+
+    /// Stream-parse a JSONL file, yielding messages as they're parsed
+    static func parseJSONLFileStreaming(at url: URL) -> AsyncStream<CCMessage> {
+        AsyncStream { continuation in
+            Task.detached(priority: .userInitiated) {
+                guard let handle = FileHandle(forReadingAtPath: url.path) else {
+                    continuation.finish()
+                    return
+                }
+                defer { try? handle.close() }
+
+                var buffer = Data()
+                let chunkSize = 8192
+
+                while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
+                    buffer.append(chunk)
+
+                    while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                        let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                        buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
+
+                        guard !lineData.isEmpty,
+                              let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                              let type = json["type"] as? String,
+                              ["user", "assistant", "system"].contains(type),
+                              let message = parseMessage(from: json) else {
+                            continue
+                        }
+
+                        continuation.yield(message)
+                    }
+                }
+
+                if !buffer.isEmpty,
+                   let json = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
+                   let type = json["type"] as? String,
+                   ["user", "assistant", "system"].contains(type),
+                   let message = parseMessage(from: json) {
+                    continuation.yield(message)
+                }
+
+                continuation.finish()
+            }
+        }
     }
     
     /// Parse session metadata (first user message, timestamp) quickly without loading all messages
