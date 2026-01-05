@@ -2,8 +2,6 @@
 //  AppDelegate.swift
 //  powertoys
 //
-//  Created by Suraj Mandal on 2026-01-02.
-//
 
 import Foundation
 import AppKit
