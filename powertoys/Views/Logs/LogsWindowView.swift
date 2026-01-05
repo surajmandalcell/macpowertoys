@@ -35,33 +35,14 @@ struct LogsWindowView: View {
     private var sidebar: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                        .font(.system(size: 12))
-                    TextField("Search logs...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13))
-                    if !searchText.isEmpty {
-                        Button { searchText = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(8)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .padding(.horizontal, 12)
-                .padding(.top, 52)
-                .padding(.bottom, 12)
+                SearchField(text: $searchText, placeholder: "Search logs...")
+                    .padding(.horizontal, 12)
+                    .padding(.top, 52)
+                    .padding(.bottom, 12)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("FILTER BY LEVEL")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 12)
+                    SidebarSectionHeader(title: "Filter by Level")
+                        .padding(.horizontal, 4)
 
                     ForEach(LogLevel.allCases, id: \.self) { level in
                         LogLevelFilterRow(
@@ -90,10 +71,7 @@ struct LogsWindowView: View {
                 .padding(.bottom, 12)
             }
 
-            Text("Logs")
-                .font(.system(size: 13, weight: .medium))
-                .padding(.leading, 84)
-                .padding(.top, 8)
+            SidebarTitle(text: "Logs")
         }
         .frame(width: 220)
         .background(VisualEffectBackground())
