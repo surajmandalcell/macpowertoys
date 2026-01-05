@@ -65,9 +65,46 @@ struct ToolSettingsView: View {
 
 struct CCHistorySettings: View {
     @AppStorage("cchistory.autoRefresh") private var autoRefresh = true
+    @State private var cacheSessionCount: Int = 0
+    @State private var cacheFileSize: Int64 = 0
+    @State private var showingClearConfirm = false
 
     var body: some View {
         Toggle("Auto-refresh", isOn: $autoRefresh)
+
+        LabeledContent("Cached Sessions", value: "\(cacheSessionCount)")
+        LabeledContent("Cache Size", value: formatBytes(cacheFileSize))
+
+        Button(role: .destructive) {
+            showingClearConfirm = true
+        } label: {
+            Label("Clear Cache", systemImage: "trash")
+        }
+        .confirmationDialog("Clear Cache?", isPresented: $showingClearConfirm) {
+            Button("Clear Cache", role: .destructive) {
+                Task {
+                    await SessionMetadataCache.shared.clearAndDeleteFile()
+                    await updateCacheStats()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will force CC History to re-read all conversation files on next load.")
+        }
+        .onAppear {
+            Task { await updateCacheStats() }
+        }
+    }
+
+    private func updateCacheStats() async {
+        cacheSessionCount = await SessionMetadataCache.shared.cacheSize()
+        cacheFileSize = await SessionMetadataCache.shared.cacheFileSize()
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        if bytes < 1024 { return "\(bytes) B" }
+        if bytes < 1024 * 1024 { return String(format: "%.1f KB", Double(bytes) / 1024) }
+        return String(format: "%.1f MB", Double(bytes) / (1024 * 1024))
     }
 }
 
