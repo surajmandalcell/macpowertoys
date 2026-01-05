@@ -8,7 +8,6 @@ import SwiftUI
 struct CCHistoryWindowView: View {
     @State private var projectManager = ProjectManager()
     @State private var bookmarkManager = BookmarkManager()
-    @State private var selectionManager = SelectionManager()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -21,7 +20,6 @@ struct CCHistoryWindowView: View {
         }
         .environment(projectManager)
         .environment(bookmarkManager)
-        .environment(selectionManager)
         .ignoresSafeArea()
         .background(WindowAccessor())
         .onAppear {

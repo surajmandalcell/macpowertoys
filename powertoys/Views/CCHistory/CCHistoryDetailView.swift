@@ -9,7 +9,6 @@ import SwiftUI
 
 struct CCHistoryDetailView: View {
     @Environment(ProjectManager.self) private var projectManager
-    @Environment(SelectionManager.self) private var selectionManager
     @Environment(BookmarkManager.self) private var bookmarkManager
 
     @AppStorage("cchistory.filter.showUser") private var showUser = true
@@ -23,7 +22,6 @@ struct CCHistoryDetailView: View {
     @State private var searchText: String = ""
     @State private var selectedTool: ToolUseBlock?
     @State private var showThinkingPanel: Bool = false
-    @State private var showSelectionMode: Bool = false
 
     private var filterOptions: FilterOptions {
         FilterOptions(
@@ -52,7 +50,6 @@ struct CCHistoryDetailView: View {
                             showEmpty: $showEmpty,
                             searchText: $searchText,
                             showThinkingPanel: $showThinkingPanel,
-                            showSelectionMode: $showSelectionMode,
                             hasThinking: hasThinkingContent
                         )
 
@@ -72,7 +69,6 @@ struct CCHistoryDetailView: View {
                                 messages: filteredMessages,
                                 searchText: searchText,
                                 filterOptions: filterOptions,
-                                showSelectionMode: showSelectionMode,
                                 onToolSelect: { tool in
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         selectedTool = tool
@@ -103,7 +99,7 @@ struct CCHistoryDetailView: View {
 
             if showThinkingPanel {
                 CenteredModal(isPresented: $showThinkingPanel, title: "Thinking") {
-                    ThinkingPanelContent(messages: filteredMessages)
+                    ThinkingPanelContent(messages: projectManager.currentMessages)
                 }
             }
         }
@@ -113,9 +109,6 @@ struct CCHistoryDetailView: View {
                     await projectManager.loadMessages(for: session)
                 }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .copySelected)) { _ in
-            selectionManager.copySelected(messages: projectManager.currentMessages)
         }
     }
     
@@ -142,12 +135,10 @@ struct FilterToolbarView: View {
     @Binding var showEmpty: Bool
     @Binding var searchText: String
     @Binding var showThinkingPanel: Bool
-    @Binding var showSelectionMode: Bool
     let hasThinking: Bool
 
     @Environment(ProjectManager.self) private var projectManager
     @Environment(BookmarkManager.self) private var bookmarkManager
-    @Environment(SelectionManager.self) private var selectionManager
 
     var body: some View {
         HStack(spacing: 8) {
@@ -170,23 +161,6 @@ struct FilterToolbarView: View {
             Spacer()
 
             if let session = projectManager.selectedSession {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        showSelectionMode.toggle()
-                        if !showSelectionMode {
-                            selectionManager.clearSelection()
-                        }
-                    }
-                } label: {
-                    Image(systemName: showSelectionMode ? "checkmark.circle.fill" : "checkmark.circle")
-                        .font(.system(size: 14))
-                        .foregroundStyle(showSelectionMode ? Color.accentColor : Color.secondary)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Toggle selection mode (⌘C to copy selected)")
-
                 Button {
                     bookmarkManager.toggleBookmark(session)
                 } label: {
@@ -294,58 +268,25 @@ struct MessageListView: View {
     let messages: [CCMessage]
     let searchText: String
     let filterOptions: FilterOptions
-    let showSelectionMode: Bool
     var onToolSelect: ((ToolUseBlock) -> Void)?
 
-    @Environment(SelectionManager.self) private var selectionManager
-
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(messages, id: \.id) { message in
-                        HStack(alignment: .top, spacing: 0) {
-                            if showSelectionMode {
-                                Button {
-                                    handleSelection(message: message)
-                                } label: {
-                                    Image(systemName: selectionManager.isSelected(message.id) ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(selectionManager.isSelected(message.id) ? Color.accentColor : Color(nsColor: .tertiaryLabelColor))
-                                        .frame(width: 24, height: 24)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .padding(.top, 6)
-                            }
-
-                            MessageRowView(
-                                message: message,
-                                isSelected: showSelectionMode && selectionManager.isSelected(message.id),
-                                searchText: searchText,
-                                showToolCalls: filterOptions.showToolCalls,
-                                showToolOutputs: filterOptions.showToolOutputs,
-                                showThinking: filterOptions.showThinking,
-                                onToolSelect: onToolSelect
-                            )
-                            .id(message.id)
-                        }
-                    }
+        ScrollView {
+            LazyVStack(spacing: 2) {
+                ForEach(messages, id: \.id) { message in
+                    MessageRowView(
+                        message: message,
+                        searchText: searchText,
+                        showToolCalls: filterOptions.showToolCalls,
+                        showToolOutputs: filterOptions.showToolOutputs,
+                        showThinking: filterOptions.showThinking,
+                        onToolSelect: onToolSelect
+                    )
+                    .id(message.id)
                 }
-                .padding(.vertical, 8)
             }
-        }
-    }
-
-    private func handleSelection(message: CCMessage) {
-        if NSEvent.modifierFlags.contains(.shift) {
-            if let firstSelected = selectionManager.selectedMessageIds.first {
-                selectionManager.selectRange(from: firstSelected, to: message.id, in: messages)
-            } else {
-                selectionManager.selectMessage(message.id)
-            }
-        } else {
-            selectionManager.toggleMessage(message.id)
+            .padding(.vertical, 8)
+            .textSelection(.enabled)
         }
     }
 }
@@ -396,10 +337,14 @@ struct ToolDetailsPanelContent: View {
 struct ThinkingPanelContent: View {
     let messages: [CCMessage]
 
+    private var thinkingMessages: [CCMessage] {
+        messages.filter { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }.reversed()
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
-                ForEach(messages.filter { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }) { message in
+                ForEach(thinkingMessages) { message in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: message.type.icon)
@@ -428,7 +373,6 @@ struct ThinkingPanelContent: View {
 #Preview {
     CCHistoryDetailView()
         .environment(ProjectManager())
-        .environment(SelectionManager())
         .environment(BookmarkManager())
         .frame(width: 600, height: 500)
 }
