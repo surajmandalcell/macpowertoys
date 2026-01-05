@@ -12,12 +12,14 @@ struct CCHistorySidebarView: View {
     @State private var searchText: String = ""
     @State private var expandedProjects: Set<String> = []
     @State private var isSearching = false
+    @State private var deepSearchEnabled: Bool = false
     @AppStorage("cchistory.expandedProjects") private var storedExpandedProjects: String = ""
+    @AppStorage("cchistory.deepSearchDefault") private var deepSearchDefault = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                SearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching)
+                SearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching, deepSearchEnabled: $deepSearchEnabled)
                     .padding(.horizontal, 12)
                     .padding(.top, 52)
                     .padding(.bottom, 12)
@@ -55,9 +57,12 @@ struct CCHistorySidebarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectBackground())
-        .onAppear { loadExpandedState() }
+        .onAppear {
+            loadExpandedState()
+            deepSearchEnabled = deepSearchDefault
+        }
         .onChange(of: expandedProjects) { _, _ in saveExpandedState() }
-        .task(id: searchText) {
+        .task(id: "\(searchText)|\(deepSearchEnabled)") {
             guard !searchText.isEmpty else {
                 searchResults = []
                 isSearching = false
@@ -65,7 +70,7 @@ struct CCHistorySidebarView: View {
             }
             isSearching = true
             try? await Task.sleep(nanoseconds: 300_000_000)
-            searchResults = await projectManager.searchGlobally(query: searchText)
+            searchResults = await projectManager.searchGlobally(query: searchText, deepSearch: deepSearchEnabled)
             isSearching = false
         }
     }
@@ -110,20 +115,32 @@ struct CCHistorySidebarView: View {
     private var searchResultsList: some View {
         ForEach(searchResults) { result in
             VStack(alignment: .leading, spacing: 2) {
-                Text(result.project.displayName)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 8)
+                HStack(spacing: 4) {
+                    Text(result.project.displayName)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
 
-                SessionRow(session: result.session)
+                    if result.isContentMatch {
+                        Text("content match")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.primary.opacity(0.06))
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(.leading, 8)
+
+                SessionRow(session: result.session, contentPreview: result.isContentMatch ? result.preview : nil)
             }
         }
 
-        if searchResults.isEmpty && !searchText.isEmpty {
+        if searchResults.isEmpty && !searchText.isEmpty && !isSearching {
             ContentUnavailableView(
                 "No Results",
                 systemImage: "magnifyingglass",
-                description: Text("No conversations match '\(searchText)'")
+                description: Text(deepSearchEnabled ? "No conversations match '\(searchText)'" : "No titles match '\(searchText)'\nTry enabling deep search")
             )
             .frame(maxWidth: .infinity)
             .padding(.top, 40)
@@ -148,7 +165,7 @@ private struct BookmarksSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("BOOKMARKS")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.tertiary)
                 .padding(.leading, 8)
 
@@ -203,6 +220,7 @@ private struct ProjectRow: View {
 
                 Text(project.displayName)
                     .font(.system(size: 13))
+                    .foregroundStyle(.primary.opacity(0.75))
                     .lineLimit(1)
 
                 Spacer()
@@ -232,6 +250,7 @@ private struct ProjectRow: View {
 
 private struct SessionRow: View {
     let session: CCSession
+    var contentPreview: String? = nil
 
     @Environment(ProjectManager.self) private var projectManager
     @Environment(BookmarkManager.self) private var bookmarkManager
@@ -239,6 +258,10 @@ private struct SessionRow: View {
 
     private var isSelected: Bool {
         projectManager.selectedSession?.id == session.id
+    }
+
+    private var isActive: Bool {
+        projectManager.isSessionActive(session.id)
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -268,8 +291,15 @@ private struct SessionRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(session.displayTitle)
                         .font(.system(size: 12))
-                        .foregroundStyle(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? .white : .primary.opacity(0.75))
                         .lineLimit(1)
+
+                    if let preview = contentPreview {
+                        Text(preview)
+                            .font(.system(size: 10))
+                            .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary.opacity(0.6))
+                            .lineLimit(1)
+                    }
 
                     HStack(spacing: 6) {
                         if session.timestamp != nil {
@@ -279,7 +309,10 @@ private struct SessionRow: View {
                         }
                         Text("\(session.messageCount) msgs")
                             .font(.system(size: 10))
-                            .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary.opacity(0.7))
+                            .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
+                        if isActive {
+                            PulsingDot()
+                        }
                     }
                 }
 
@@ -311,6 +344,21 @@ private struct SessionRow: View {
                 )
             }
         }
+    }
+}
+
+// MARK: - Pulsing Dot
+
+private struct PulsingDot: View {
+    @State private var isPulsing = false
+
+    var body: some View {
+        Circle()
+            .fill(.green)
+            .frame(width: 5, height: 5)
+            .opacity(isPulsing ? 0.4 : 1.0)
+            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isPulsing)
+            .onAppear { isPulsing = true }
     }
 }
 

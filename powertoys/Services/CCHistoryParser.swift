@@ -138,6 +138,100 @@ class CCHistoryParser {
         return (firstUserMessage, latestTimestamp, messageCount)
     }
     
+    // MARK: - Content Search
+
+    /// Efficiently search file content for a query without fully parsing messages.
+    /// Returns true if any message content contains the query (case-insensitive).
+    nonisolated static func containsContent(at url: URL, query: String) -> Bool {
+        guard let handle = FileHandle(forReadingAtPath: url.path) else { return false }
+        defer { try? handle.close() }
+
+        let lowercasedQuery = query.lowercased()
+        var buffer = Data()
+        let chunkSize = 65536
+
+        while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            buffer.append(chunk)
+
+            while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
+
+                guard !lineData.isEmpty,
+                      let lineString = String(data: lineData, encoding: .utf8) else {
+                    continue
+                }
+
+                if lineString.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+            }
+        }
+
+        if !buffer.isEmpty,
+           let lineString = String(data: buffer, encoding: .utf8),
+           lineString.lowercased().contains(lowercasedQuery) {
+            return true
+        }
+
+        return false
+    }
+
+    /// Search file content and return matching message previews.
+    nonisolated static func searchContent(at url: URL, query: String, maxMatches: Int = 3) -> [String] {
+        guard let handle = FileHandle(forReadingAtPath: url.path) else { return [] }
+        defer { try? handle.close() }
+
+        let lowercasedQuery = query.lowercased()
+        var matches: [String] = []
+        var buffer = Data()
+        let chunkSize = 65536
+
+        while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            buffer.append(chunk)
+
+            while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
+
+                guard !lineData.isEmpty,
+                      let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                      let type = json["type"] as? String,
+                      ["user", "assistant"].contains(type) else {
+                    continue
+                }
+
+                let content = extractContent(from: json)
+                if content.lowercased().contains(lowercasedQuery) {
+                    let preview = extractMatchPreview(from: content, query: query)
+                    matches.append(preview)
+                    if matches.count >= maxMatches { return matches }
+                }
+            }
+        }
+
+        return matches
+    }
+
+    private nonisolated static func extractMatchPreview(from content: String, query: String) -> String {
+        let lowercased = content.lowercased()
+        guard let range = lowercased.range(of: query.lowercased()) else {
+            return String(content.prefix(100))
+        }
+
+        let matchIndex = lowercased.distance(from: lowercased.startIndex, to: range.lowerBound)
+        let startIndex = max(0, matchIndex - 30)
+        let start = content.index(content.startIndex, offsetBy: startIndex)
+        let endIndex = min(content.count, matchIndex + query.count + 50)
+        let end = content.index(content.startIndex, offsetBy: endIndex)
+
+        var preview = String(content[start..<end])
+        if startIndex > 0 { preview = "..." + preview }
+        if endIndex < content.count { preview = preview + "..." }
+
+        return preview.replacingOccurrences(of: "\n", with: " ")
+    }
+
     // MARK: - Private Helpers
 
     private nonisolated static func parseMessage(from json: [String: Any]) -> CCMessage? {
@@ -230,13 +324,13 @@ class CCHistoryParser {
         return nil
     }
     
-    private static let timestampFormatter: ISO8601DateFormatter = {
+    private nonisolated(unsafe) static let timestampFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
 
-    private static let timestampFormatterNoFractional: ISO8601DateFormatter = {
+    private nonisolated(unsafe) static let timestampFormatterNoFractional: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter

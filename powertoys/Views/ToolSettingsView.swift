@@ -65,12 +65,14 @@ struct ToolSettingsView: View {
 
 struct CCHistorySettings: View {
     @AppStorage("cchistory.autoRefresh") private var autoRefresh = true
+    @AppStorage("cchistory.deepSearchDefault") private var deepSearchDefault = false
     @State private var cacheSessionCount: Int = 0
     @State private var cacheFileSize: Int64 = 0
     @State private var showingClearConfirm = false
 
     var body: some View {
         Toggle("Auto-refresh", isOn: $autoRefresh)
+        Toggle("Deep search by default", isOn: $deepSearchDefault)
 
         LabeledContent("Cached Sessions", value: "\(cacheSessionCount)")
         LabeledContent("Cache Size", value: formatBytes(cacheFileSize))

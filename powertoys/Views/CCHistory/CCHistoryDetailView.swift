@@ -14,90 +14,116 @@ struct CCHistoryDetailView: View {
 
     @State private var filterOptions = FilterOptions()
     @State private var searchText: String = ""
-    @State private var isSearching: Bool = false
-    @State private var searchMatchIndices: [Int] = []
-    @State private var currentSearchIndex: Int = 0
     @State private var selectedTool: ToolUseBlock?
     @State private var showThinkingPanel: Bool = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                if projectManager.selectedSession != nil {
-                    FilterToolbarView(
-                        filterOptions: $filterOptions,
-                        searchText: $searchText,
-                        isSearching: $isSearching,
-                        showThinkingPanel: $showThinkingPanel,
-                        hasThinking: hasThinkingContent
-                    )
+        ZStack(alignment: .trailing) {
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    if projectManager.selectedSession != nil {
+                        FilterToolbarView(
+                            filterOptions: $filterOptions,
+                            searchText: $searchText,
+                            showThinkingPanel: $showThinkingPanel,
+                            hasThinking: hasThinkingContent
+                        )
 
-                    Divider()
+                        Divider()
 
-                    if projectManager.isLoadingMessages {
-                        Spacer()
-                        ProgressView()
-                            .controlSize(.small)
-                        Spacer()
-                    } else if filteredMessages.isEmpty {
+                        if projectManager.isLoadingMessages {
+                            Spacer()
+                            ProgressView()
+                                .controlSize(.small)
+                            Spacer()
+                        } else if filteredMessages.isEmpty {
+                            Spacer()
+                            VStack(spacing: 8) {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .font(.system(size: 32))
+                                    .foregroundStyle(.tertiary)
+                                Text("No Messages")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        } else {
+                            MessageListView(
+                                messages: filteredMessages,
+                                searchText: searchText,
+                                filterOptions: filterOptions,
+                                onToolSelect: { tool in
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedTool = tool
+                                    }
+                                }
+                            )
+                        }
+                    } else {
                         Spacer()
                         VStack(spacing: 8) {
-                            Image(systemName: "bubble.left.and.bubble.right")
+                            Image(systemName: "text.bubble")
                                 .font(.system(size: 32))
                                 .foregroundStyle(.tertiary)
-                            Text("No Messages")
+                            Text("Select a Conversation")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                    } else {
-                        MessageListView(
-                            messages: filteredMessages,
-                            searchText: searchText,
-                            filterOptions: filterOptions,
-                            onToolSelect: { tool in
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedTool = tool
-                                }
-                            }
-                        )
                     }
-                } else {
-                    Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "text.bubble")
-                            .font(.system(size: 32))
-                            .foregroundStyle(.tertiary)
-                        Text("Select a Conversation")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if selectedTool != nil {
-                SlideOverPanel(
-                    isPresented: Binding(
-                        get: { selectedTool != nil },
-                        set: { if !$0 { selectedTool = nil } }
-                    ),
-                    title: selectedTool?.name ?? "Tool Details",
-                    persistenceKey: "toolDetails"
-                ) {
-                    ToolDetailsPanelContent(tool: selectedTool!)
+                if selectedTool != nil {
+                    SlideOverPanel(
+                        isPresented: Binding(
+                            get: { selectedTool != nil },
+                            set: { if !$0 { selectedTool = nil } }
+                        ),
+                        title: selectedTool?.name ?? "Tool Details",
+                        persistenceKey: "toolDetails"
+                    ) {
+                        ToolDetailsPanelContent(tool: selectedTool!)
+                    }
                 }
             }
 
             if showThinkingPanel {
-                SlideOverPanel(
-                    isPresented: $showThinkingPanel,
-                    title: "Thinking",
-                    persistenceKey: "thinking"
-                ) {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showThinkingPanel = false
+                        }
+                    }
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Thinking")
+                            .font(.system(size: 15, weight: .semibold))
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showThinkingPanel = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(16)
+
+                    Divider()
+
                     ThinkingPanelContent(messages: filteredMessages)
                 }
+                .frame(width: 600, height: 500)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
+                .transition(.scale(scale: 0.95).combined(with: .opacity))
             }
         }
         .onChange(of: projectManager.selectedSession) { _, session in
@@ -107,9 +133,6 @@ struct CCHistoryDetailView: View {
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .conversationSearch)) { _ in
-            isSearching = true
-        }
         .onReceive(NotificationCenter.default.publisher(for: .copySelected)) { _ in
             selectionManager.copySelected(messages: projectManager.currentMessages)
         }
@@ -118,7 +141,7 @@ struct CCHistoryDetailView: View {
     private var filteredMessages: [CCMessage] {
         projectManager.currentMessages.filter { message in
             filterOptions.shouldShow(message: message)
-        }
+        }.reversed()
     }
 
     private var hasThinkingContent: Bool {
@@ -131,7 +154,6 @@ struct CCHistoryDetailView: View {
 struct FilterToolbarView: View {
     @Binding var filterOptions: FilterOptions
     @Binding var searchText: String
-    @Binding var isSearching: Bool
     @Binding var showThinkingPanel: Bool
     let hasThinking: Bool
 
@@ -139,79 +161,24 @@ struct FilterToolbarView: View {
     @Environment(BookmarkManager.self) private var bookmarkManager
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             HStack(spacing: 4) {
                 FilterToggle(label: "User", isOn: $filterOptions.showUser)
                 FilterToggle(label: "Claude", isOn: $filterOptions.showAssistant)
                 FilterToggle(label: "System", isOn: $filterOptions.showSystem)
 
-                Divider()
-                    .frame(height: 20)
+                Divider().frame(height: 20)
 
                 FilterToggle(label: "Tools", isOn: $filterOptions.showToolCalls)
                 FilterToggle(label: "Outputs", isOn: $filterOptions.showToolOutputs)
                 FilterToggle(label: "Thinking", isOn: $filterOptions.showThinking)
 
-                Divider()
-                    .frame(height: 20)
+                Divider().frame(height: 20)
 
                 FilterToggle(label: "Empty", isOn: $filterOptions.showEmptyMessages)
             }
 
             Spacer()
-
-            if hasThinking {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showThinkingPanel.toggle()
-                    }
-                } label: {
-                    Image(systemName: showThinkingPanel ? "brain.head.profile.fill" : "brain.head.profile")
-                        .font(.system(size: 14))
-                        .foregroundStyle(showThinkingPanel ? .purple : .secondary)
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Toggle Thinking Panel")
-            }
-
-            if isSearching {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-
-                    TextField("Search in conversation...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13))
-                        .frame(width: 180)
-
-                    Button {
-                        searchText = ""
-                        isSearching = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(8)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            } else {
-                Button {
-                    isSearching = true
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
 
             if let session = projectManager.selectedSession {
                 Button {
@@ -220,11 +187,25 @@ struct FilterToolbarView: View {
                     Image(systemName: bookmarkManager.isBookmarked(session) ? "bookmark.fill" : "bookmark")
                         .font(.system(size: 14))
                         .foregroundStyle(bookmarkManager.isBookmarked(session) ? .orange : .secondary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(bookmarkManager.isBookmarked(session) ? "Remove Bookmark" : "Add Bookmark")
+
+                if hasThinking {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showThinkingPanel.toggle()
+                        }
+                    } label: {
+                        Image(systemName: showThinkingPanel ? "brain.head.profile.fill" : "brain.head.profile")
+                            .font(.system(size: 14))
+                            .foregroundStyle(showThinkingPanel ? .purple : .secondary)
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 Menu {
                     Button { ExportManager.export(messages: projectManager.currentMessages, format: .markdown) } label: {
@@ -240,16 +221,41 @@ struct FilterToolbarView: View {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
             }
+
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+
+                TextField("Search...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(width: 160)
+            .padding(8)
+            .background(Color.primary.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-        .padding(.top, 52)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .padding(.top, 44)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }
