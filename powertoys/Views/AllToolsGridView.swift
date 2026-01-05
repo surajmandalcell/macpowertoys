@@ -40,60 +40,51 @@ struct ToolCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
                 Image(systemName: tool.icon)
-                    .font(.system(size: 20))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .background(Color.accentColor.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .font(.system(size: 18))
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(tool.name)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     Text(tool.category.rawValue)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.primary.opacity(0.05))
-                        .clipShape(Capsule())
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
                 }
-                
+
                 Spacer()
             }
 
             Text(tool.description)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 0)
 
             HStack {
                 Spacer()
                 Button(action: openAction) {
                     Text("Open")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(isOpenHovering ? .white : .accentColor)
-                        .padding(.horizontal, 12)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(isOpenHovering ? .white : .secondary)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(isOpenHovering ? Color.accentColor : Color.accentColor.opacity(0.1))
-                        .clipShape(Capsule())
-                        .animation(.easeInOut(duration: 0.1), value: isOpenHovering)
+                        .background(isOpenHovering ? Color.accentColor : Color.primary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
                 .onHover { isOpenHovering = $0 }
             }
         }
         .padding(12)
-        .background(isHovering ? Color.secondary.opacity(0.05) : Color(nsColor: .controlBackgroundColor))
+        .frame(minHeight: 110)
+        .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(isHovering ? Color.accentColor.opacity(0.4) : Color.primary.opacity(0.05), lineWidth: 1)
-        )
-        .animation(.easeInOut(duration: 0.2), value: isHovering)
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
         .contentShape(Rectangle())
         .onTapGesture {
             selectAction()

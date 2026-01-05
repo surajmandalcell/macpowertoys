@@ -22,18 +22,6 @@ struct CCHistorySidebarView: View {
                     .padding(.top, 52)
                     .padding(.bottom, 12)
 
-                if projectManager.isLoading {
-                    VStack(spacing: 4) {
-                        ProgressView(value: projectManager.loadingProgress)
-                            .progressViewStyle(.linear)
-                        Text("Loading projects...")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
-                }
-
                 if !bookmarkManager.bookmarks.isEmpty {
                     BookmarksSection()
                         .padding(.horizontal, 12)
@@ -49,10 +37,27 @@ struct CCHistorySidebarView: View {
                         }
                     }
                     .padding(.horizontal, 12)
+                    .padding(.bottom, projectManager.isLoading ? 44 : 0)
                 }
             }
 
             SidebarTitle(text: "CC History")
+
+            if projectManager.isLoading {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 4) {
+                        ProgressView(value: projectManager.loadingProgress)
+                            .progressViewStyle(.linear)
+                        Text("Loading projects...")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial)
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectBackground())
