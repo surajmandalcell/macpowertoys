@@ -53,6 +53,7 @@ struct WindowAccessor: NSViewRepresentable {
             guard let window = view.window else { return }
             window.isMovableByWindowBackground = true
             window.backgroundColor = .clear
+            WindowStateManager.shared.restoreState(for: window)
         }
         return view
     }

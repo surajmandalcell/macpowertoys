@@ -256,7 +256,7 @@ struct MessageListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                    ForEach(messages, id: \.id) { message in
                         MessageRowView(
                             message: message,
                             isSelected: selectionManager.isSelected(message.id),
@@ -268,7 +268,7 @@ struct MessageListView: View {
                         )
                         .id(message.id)
                         .onTapGesture {
-                            handleTap(message: message, index: index)
+                            handleTap(message: message)
                         }
                     }
                 }
@@ -277,7 +277,7 @@ struct MessageListView: View {
         }
     }
 
-    private func handleTap(message: CCMessage, index: Int) {
+    private func handleTap(message: CCMessage) {
         if NSEvent.modifierFlags.contains(.shift) {
             if let firstSelected = selectionManager.selectedMessageIds.first {
                 selectionManager.selectRange(from: firstSelected, to: message.id, in: messages)

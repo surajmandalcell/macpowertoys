@@ -263,27 +263,23 @@ private struct SessionRow: View {
         projectManager.selectedSession?.id == session.id
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
+
     private var formattedTimestamp: String {
         guard let timestamp = session.timestamp else { return "" }
         let now = Date()
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.minute, .hour, .day], from: timestamp, to: now)
+        let seconds = now.timeIntervalSince(timestamp)
 
-        if let days = components.day, days >= 7 {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return formatter.string(from: timestamp)
-        } else if let days = components.day, days >= 1 {
-            if days == 1 {
-                return "Yesterday"
-            }
-            return "\(days)d ago"
-        } else if let hours = components.hour, hours >= 1 {
-            return "\(hours)h ago"
-        } else if let minutes = components.minute, minutes >= 1 {
-            return "\(minutes)m ago"
-        }
-        return "Just now"
+        if seconds < 60 { return "Just now" }
+        if seconds < 3600 { return "\(Int(seconds / 60))m ago" }
+        if seconds < 86400 { return "\(Int(seconds / 3600))h ago" }
+        if seconds < 172800 { return "Yesterday" }
+        if seconds < 604800 { return "\(Int(seconds / 86400))d ago" }
+        return Self.dateFormatter.string(from: timestamp)
     }
 
     var body: some View {
