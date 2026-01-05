@@ -103,6 +103,12 @@ private struct LogTextView: NSViewRepresentable {
     let logs: [LogEntryData]
     let fontSize: CGFloat
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
@@ -131,15 +137,13 @@ private struct LogTextView: NSViewRepresentable {
     private func buildAttributedString() -> NSAttributedString {
         let result = NSMutableAttributedString()
         let monoFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm:ss"
 
         for (index, entry) in logs.enumerated() {
             if index > 0 {
                 result.append(NSAttributedString(string: "\n"))
             }
 
-            let timeStr = timeFormatter.string(from: entry.timestamp)
+            let timeStr = Self.timeFormatter.string(from: entry.timestamp)
             let levelStr = entry.level.name.prefix(1).uppercased()
             let line = "[\(timeStr)] [\(levelStr)] \(entry.source): \(entry.message)"
 

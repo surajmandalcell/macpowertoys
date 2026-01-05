@@ -61,6 +61,7 @@ struct LogEntryData: Identifiable, Sendable {
 @MainActor
 final class LogManager {
     static let shared = LogManager()
+    private static let iso8601Formatter = ISO8601DateFormatter()
 
     private(set) var logs: [LogEntryData] = []
     private let maxMemoryEntries = 1000
@@ -82,7 +83,7 @@ final class LogManager {
         persistEntry(entry)
 
         #if DEBUG
-        let timestamp = ISO8601DateFormatter().string(from: entry.timestamp)
+        let timestamp = Self.iso8601Formatter.string(from: entry.timestamp)
         print("[\(level.name.uppercased())] [\(source)] \(timestamp): \(message)")
         #endif
     }

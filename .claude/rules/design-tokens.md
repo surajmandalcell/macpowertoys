@@ -28,6 +28,11 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Content area: `Color(nsColor: .windowBackgroundColor)`
 - Sidebar: `NSVisualEffectView` with `.sidebar` material
 
+### Text/Foreground States
+- Subdued primary text: `Color.primary.opacity(0.75)`
+- Selected state secondary: `Color.white.opacity(0.7)`
+- Preview/secondary content: `Color.secondary.opacity(0.6)`
+
 ## Corner Radius Scale
 
 Use only these values:
@@ -47,3 +52,10 @@ Use only these values:
 - Body text: `.system(size: 13)`
 - Captions: `.system(size: 11)`
 - Code: `.system(size: 12, design: .monospaced)`
+
+## App-Specific Aesthetics
+
+Some values deviate from strict tokens for visual refinement:
+- Tool grid cards: `0.03` base opacity for subtle depth
+- Content area padding may vary per-window for alignment
+- Logs/detail views: `0.05` backgrounds where softer contrast preferred
