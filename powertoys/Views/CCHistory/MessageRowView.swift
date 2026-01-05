@@ -151,11 +151,14 @@ struct MessageContentView: View {
         return attributedString
     }
     
+    private static let codeBlockRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: "```(\\w*)\\n([\\s\\S]*?)```", options: [])
+    }()
+
     private func parseContent() -> [ContentBlock] {
         var blocks: [ContentBlock] = []
-        let pattern = "```(\\w*)\\n([\\s\\S]*?)```"
-        
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+
+        guard let regex = Self.codeBlockRegex else {
             return [ContentBlock(content: content, isCode: false, language: nil)]
         }
         

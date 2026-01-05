@@ -11,30 +11,40 @@ class CCHistoryParser {
     
     // MARK: - JSONL Parsing
     
-    /// Parse a JSONL file and extract messages
-    static func parseJSONLFile(at url: URL) -> [CCMessage] {
-        guard let data = try? String(contentsOf: url, encoding: .utf8) else {
-            return []
-        }
+    /// Parse a JSONL file and extract messages using memory-efficient chunked reading
+    nonisolated static func parseJSONLFile(at url: URL) -> [CCMessage] {
+        guard let handle = FileHandle(forReadingAtPath: url.path) else { return [] }
+        defer { try? handle.close() }
 
-        let lines = data.components(separatedBy: .newlines)
         var messages: [CCMessage] = []
+        var buffer = Data()
+        let chunkSize = 65536
 
-        for line in lines {
-            guard !line.isEmpty,
-                  let lineData = line.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
-                continue
-            }
+        while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            buffer.append(chunk)
 
-            guard let type = json["type"] as? String,
-                  ["user", "assistant", "system"].contains(type) else {
-                continue
-            }
+            while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
 
-            if let message = parseMessage(from: json) {
+                guard !lineData.isEmpty,
+                      let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                      let type = json["type"] as? String,
+                      ["user", "assistant", "system"].contains(type),
+                      let message = parseMessage(from: json) else {
+                    continue
+                }
+
                 messages.append(message)
             }
+        }
+
+        if !buffer.isEmpty,
+           let json = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
+           let type = json["type"] as? String,
+           ["user", "assistant", "system"].contains(type),
+           let message = parseMessage(from: json) {
+            messages.append(message)
         }
 
         return messages
@@ -129,8 +139,8 @@ class CCHistoryParser {
     }
     
     // MARK: - Private Helpers
-    
-    private static func parseMessage(from json: [String: Any]) -> CCMessage? {
+
+    private nonisolated static func parseMessage(from json: [String: Any]) -> CCMessage? {
         guard let uuid = json["uuid"] as? String,
               let typeStr = json["type"] as? String,
               let type = MessageType(rawValue: typeStr),
@@ -157,7 +167,7 @@ class CCHistoryParser {
         )
     }
     
-    private static func extractContent(from json: [String: Any]) -> String {
+    private nonisolated static func extractContent(from json: [String: Any]) -> String {
         // Check for message.content (user/assistant messages)
         if let message = json["message"] as? [String: Any] {
             if let content = message["content"] as? String {
@@ -184,7 +194,7 @@ class CCHistoryParser {
         return ""
     }
     
-    private static func extractToolUse(from json: [String: Any]) -> [ToolUseBlock] {
+    private nonisolated static func extractToolUse(from json: [String: Any]) -> [ToolUseBlock] {
         guard let message = json["message"] as? [String: Any],
               let contentArray = message["content"] as? [[String: Any]] else {
             return []
@@ -204,7 +214,7 @@ class CCHistoryParser {
         return toolBlocks
     }
     
-    private static func extractThinking(from json: [String: Any]) -> String? {
+    private nonisolated static func extractThinking(from json: [String: Any]) -> String? {
         guard let message = json["message"] as? [String: Any],
               let contentArray = message["content"] as? [[String: Any]] else {
             return nil
@@ -220,18 +230,23 @@ class CCHistoryParser {
         return nil
     }
     
-    private static func parseTimestamp(_ string: String) -> Date? {
+    private static let timestampFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: string) {
-            return date
-        }
-        // Try without fractional seconds
+        return formatter
+    }()
+
+    private static let timestampFormatterNoFractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: string)
+        return formatter
+    }()
+
+    private nonisolated static func parseTimestamp(_ string: String) -> Date? {
+        timestampFormatter.date(from: string) ?? timestampFormatterNoFractional.date(from: string)
     }
     
-    private static func formatJSON(_ value: Any?) -> String {
+    private nonisolated static func formatJSON(_ value: Any?) -> String {
         guard let value = value else { return "" }
         if let data = try? JSONSerialization.data(withJSONObject: value, options: .prettyPrinted),
            let string = String(data: data, encoding: .utf8) {
