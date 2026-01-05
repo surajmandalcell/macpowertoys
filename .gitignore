@@ -124,3 +124,6 @@ Temporary Items
 
 # Screenshots and images in root directory
 /*.png
+
+# Temporary/reference folders
+tmp/
