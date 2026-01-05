@@ -16,7 +16,7 @@ struct MainWindowView: View {
 
             ZStack(alignment: .topLeading) {
                 contentView
-                    .padding(.top, 52)
+                    .padding(.top, 28)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(Color(nsColor: .windowBackgroundColor))
@@ -48,17 +48,19 @@ struct MainWindowView: View {
 
 struct WindowAccessor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            guard let window = view.window else { return }
-            window.isMovableByWindowBackground = true
-            window.backgroundColor = .clear
-            WindowStateManager.shared.restoreState(for: window)
-        }
-        return view
+        WindowAccessorView()
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private class WindowAccessorView: NSView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window = window else { return }
+        window.isMovableByWindowBackground = true
+        window.backgroundColor = .clear
+    }
 }
 
 #Preview {

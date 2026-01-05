@@ -65,3 +65,73 @@ HStack(spacing: 6) {
 - Always use `Color(nsColor: .windowBackgroundColor)` for content backgrounds to match system
 - Avoid default SwiftUI chrome - if something looks "native but dated", customize it
 - Test focus/unfocus states - defaults often change appearance undesirably
+
+# Window Management (CRITICAL)
+
+## Window State Restoration
+- NEVER restore window position asynchronously in SwiftUI views (causes visible jump)
+- Use `AppDelegate` + `NotificationCenter` for window lifecycle
+- Restore frame BEFORE window becomes visible
+
+## AppDelegate Pattern
+```swift
+class AppDelegate: NSObject, NSApplicationDelegate {
+    private var restoredWindows = Set<NSWindow>()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(windowDidBecomeKey(_:)),
+            name: NSWindow.didBecomeKeyNotification, object: nil
+        )
+    }
+
+    @objc func windowDidBecomeKey(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              !restoredWindows.contains(window) else { return }
+        restoredWindows.insert(window)
+        WindowStateManager.shared.restoreState(for: window)
+    }
+}
+```
+
+## Window Identifiers
+- Set explicit identifiers: `window.identifier = NSWindow.Identifier("main")`
+- Standard names: "main", "cc-history", "logs", "tool-{toolId}"
+
+## Frame Validation
+- Always clamp restored frames to visible screen bounds
+- Handle multi-monitor setups (saved screen may no longer exist)
+
+# Performance Patterns
+
+## File I/O
+- NEVER use `String(contentsOf:)` for files > 100KB - loads entire file into memory
+- Use `FileHandle` with chunked reading (8-64KB chunks)
+- Parse JSONL line-by-line, never load entire file at once
+
+## Static Resources
+- Use `static let` for DateFormatter, ISO8601DateFormatter, NSRegularExpression
+- Never create formatters inside loops or SwiftUI view bodies
+```swift
+// GOOD
+private static let dateFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateStyle = .medium
+    return f
+}()
+
+// BAD - creates new formatter on every call
+func format(_ date: Date) -> String {
+    let f = DateFormatter()  // Don't do this
+    return f.string(from: date)
+}
+```
+
+## SwiftUI Lists
+- NEVER use `Array(collection.enumerated())` in ForEach - breaks SwiftUI diffing
+- Use stable IDs: `ForEach(items, id: \.id)` or `ForEach(items)` if Identifiable
+
+## Async Loading
+- Use `Task.detached(priority: .userInitiated)` for background work
+- Show loading indicators for operations taking > 300ms
+- Use `actor` for thread-safe caches (not classes with locks)
