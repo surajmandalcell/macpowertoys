@@ -172,7 +172,7 @@ struct SidebarExternalRow: View {
                     .frame(width: 20, height: 20)
 
                 Text(title)
-                    .font(.system(size: 13))
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(.primary)
 
                 Spacer()
