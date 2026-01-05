@@ -10,7 +10,8 @@ import AppKit
 import UniformTypeIdentifiers
 
 class ExportManager {
-    
+    private static let iso8601Formatter = ISO8601DateFormatter()
+
     static func export(messages: [CCMessage], format: ExportFormat) {
         let content = formatMessages(messages, format: format)
         
@@ -79,7 +80,7 @@ class ExportManager {
                 "id": message.id,
                 "type": message.type.rawValue,
                 "content": message.content,
-                "timestamp": ISO8601DateFormatter().string(from: message.timestamp)
+                "timestamp": iso8601Formatter.string(from: message.timestamp)
             ]
             
             if !message.toolUse.isEmpty {
