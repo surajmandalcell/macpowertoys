@@ -24,9 +24,9 @@ struct CCHistoryWindowView: View {
         .environment(selectionManager)
         .ignoresSafeArea()
         .background(WindowAccessor())
-        .task {
+        .onAppear {
             projectManager.startWatching()
-            await projectManager.loadProjects()
+            projectManager.loadProjectsInBackground()
         }
         .onDisappear {
             projectManager.stopWatching()

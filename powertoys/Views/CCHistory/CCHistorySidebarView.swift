@@ -258,6 +258,29 @@ private struct SessionRow: View {
         projectManager.selectedSession?.id == session.id
     }
 
+    private var formattedTimestamp: String {
+        guard let timestamp = session.timestamp else { return "" }
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.minute, .hour, .day], from: timestamp, to: now)
+
+        if let days = components.day, days >= 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: timestamp)
+        } else if let days = components.day, days >= 1 {
+            if days == 1 {
+                return "Yesterday"
+            }
+            return "\(days)d ago"
+        } else if let hours = components.hour, hours >= 1 {
+            return "\(hours)h ago"
+        } else if let minutes = components.minute, minutes >= 1 {
+            return "\(minutes)m ago"
+        }
+        return "Just now"
+    }
+
     var body: some View {
         Button {
             Task { await projectManager.loadMessages(for: session) }
@@ -274,8 +297,8 @@ private struct SessionRow: View {
                         .lineLimit(1)
 
                     HStack(spacing: 6) {
-                        if let timestamp = session.timestamp {
-                            Text(timestamp, style: .relative)
+                        if session.timestamp != nil {
+                            Text(formattedTimestamp)
                                 .font(.system(size: 10))
                                 .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
                         }
