@@ -53,10 +53,6 @@ struct ToolSidebarView: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 4) {
-                Divider()
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 4)
-
                 SidebarRow(icon: "gearshape", title: "Settings", isSelected: selectedTool == "settings") {
                     selectedTool = "settings"
                 }
@@ -129,6 +125,7 @@ struct SidebarRow: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(backgroundColor)
@@ -153,7 +150,7 @@ struct VisualEffectBackground: NSViewRepresentable {
         let view = NSVisualEffectView()
         view.material = .sidebar
         view.blendingMode = .behindWindow
-        view.state = .followsWindowActiveState
+        view.state = .active
         view.wantsLayer = true
         return view
     }
@@ -161,6 +158,7 @@ struct VisualEffectBackground: NSViewRepresentable {
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
         nsView.material = .sidebar
         nsView.blendingMode = .behindWindow
+        nsView.state = .active
     }
 }
 

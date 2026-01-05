@@ -14,9 +14,17 @@ struct MainWindowView: View {
             ToolSidebarView(selectedTool: $selectedTool)
                 .frame(width: 220)
 
-            contentView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+            ZStack(alignment: .topLeading) {
+                contentView
+                    .padding(.top, 52)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                Text("PowerToys")
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.leading, 20)
+                    .padding(.top, 14)
+            }
+            .background(Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
         .frame(width: 780, height: 700)
@@ -47,13 +55,9 @@ struct WindowAccessor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            if let window = view.window {
-                window.titlebarAppearsTransparent = true
-                window.titleVisibility = .hidden
-                window.styleMask.insert(.fullSizeContentView)
-                window.isMovableByWindowBackground = true
-                window.backgroundColor = .clear
-            }
+            guard let window = view.window else { return }
+            window.isMovableByWindowBackground = true
+            window.backgroundColor = .clear
         }
         return view
     }
