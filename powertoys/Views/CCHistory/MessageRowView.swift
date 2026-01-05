@@ -264,33 +264,46 @@ struct ToolUseView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-                Text("[tool]")
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.orange)
-
-                Text(tool.name)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.secondary)
-
-                if onSelect != nil {
-                    Button {
-                        onSelect?(tool)
-                    } label: {
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isExpanded.toggle()
                 }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 10)
+
+                    Text("[tool]")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.orange)
+
+                    Text(tool.name)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+
+                    if onSelect != nil {
+                        Button {
+                            onSelect?(tool)
+                        } label: {
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
             if isExpanded {
                 Text(tool.input)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.tertiary)
                     .textSelection(.enabled)
-                    .padding(.leading, 16)
+                    .padding(.leading, 26)
 
                 if showOutput, let output = tool.output {
                     Text(output)
@@ -298,14 +311,8 @@ struct ToolUseView: View {
                         .foregroundStyle(.tertiary)
                         .textSelection(.enabled)
                         .lineLimit(10)
-                        .padding(.leading, 16)
+                        .padding(.leading, 26)
                 }
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isExpanded.toggle()
             }
         }
     }

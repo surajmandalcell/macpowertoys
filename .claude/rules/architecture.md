@@ -5,6 +5,37 @@
 - Main window shows tool settings, actual tool interfaces open in separate windows
 - Sidebar: seamless blurred panel, Settings/Exit at bottom
 
+# Code Principles (MANDATORY)
+
+## Atomicity & Composition
+- Extract reusable UI patterns into atomic components (Views/Components/)
+- Each component should do ONE thing well
+- Prefer composition over duplication - if pattern appears twice, extract it
+- Components: CenteredModal, EmptyStateView, SubtleProgressBar, SearchField, etc.
+
+## Single Source of Truth (SSOT)
+- UI constants (colors, spacing, radii) defined ONCE in design-tokens.md
+- Reusable components define their own styling internally
+- State should live at the lowest necessary level
+- Use @AppStorage for persisted preferences, @State for ephemeral UI state
+
+## Performance First
+- NEVER block main thread with file I/O
+- Use Task.detached for background work
+- Minimize view body recomputation - extract expensive computed properties
+- Use static let for expensive objects (formatters, regex)
+
+## Maintainability
+- No magic numbers - use named constants or computed properties
+- Keep view bodies under 50 lines - extract subviews
+- Prefer explicit over implicit - be clear about intent
+
+## Text Selection & Interactivity
+- NEVER put onTapGesture on containers with selectable text
+- Use Button for clickable elements, not onTapGesture
+- Keep interactive elements (buttons) separate from content
+- Text logs/content must always be fully selectable
+
 # UI Styling (CRITICAL - Avoid Default/Native Ugliness)
 
 ## Window & Titlebar

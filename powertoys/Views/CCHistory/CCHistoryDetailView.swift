@@ -23,6 +23,7 @@ struct CCHistoryDetailView: View {
     @State private var searchText: String = ""
     @State private var selectedTool: ToolUseBlock?
     @State private var showThinkingPanel: Bool = false
+    @State private var showSelectionMode: Bool = false
 
     private var filterOptions: FilterOptions {
         FilterOptions(
@@ -51,6 +52,7 @@ struct CCHistoryDetailView: View {
                             showEmpty: $showEmpty,
                             searchText: $searchText,
                             showThinkingPanel: $showThinkingPanel,
+                            showSelectionMode: $showSelectionMode,
                             hasThinking: hasThinkingContent
                         )
 
@@ -63,20 +65,14 @@ struct CCHistoryDetailView: View {
                             Spacer()
                         } else if filteredMessages.isEmpty {
                             Spacer()
-                            VStack(spacing: 8) {
-                                Image(systemName: "bubble.left.and.bubble.right")
-                                    .font(.system(size: 32))
-                                    .foregroundStyle(.tertiary)
-                                Text("No Messages")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                            }
+                            EmptyStateView(icon: "bubble.left.and.bubble.right", message: "No Messages")
                             Spacer()
                         } else {
                             MessageListView(
                                 messages: filteredMessages,
                                 searchText: searchText,
                                 filterOptions: filterOptions,
+                                showSelectionMode: showSelectionMode,
                                 onToolSelect: { tool in
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         selectedTool = tool
@@ -86,96 +82,29 @@ struct CCHistoryDetailView: View {
                         }
                     } else {
                         Spacer()
-                        VStack(spacing: 8) {
-                            Image(systemName: "text.bubble")
-                                .font(.system(size: 32))
-                                .foregroundStyle(.tertiary)
-                            Text("Select a Conversation")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
+                        EmptyStateView(icon: "text.bubble", message: "Select a Conversation")
                         Spacer()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            if selectedTool != nil {
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTool = nil
-                        }
-                    }
-                    .transition(.opacity)
-
-                VStack(spacing: 0) {
-                    HStack {
-                        Text(selectedTool?.name ?? "Tool")
-                            .font(.system(size: 15, weight: .semibold))
-                        Spacer()
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedTool = nil
-                            }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(16)
-
-                    Divider()
-
-                    ToolDetailsPanelContent(tool: selectedTool!)
+            if let tool = selectedTool {
+                CenteredModal(
+                    isPresented: Binding(
+                        get: { selectedTool != nil },
+                        set: { if !$0 { selectedTool = nil } }
+                    ),
+                    title: tool.name
+                ) {
+                    ToolDetailsPanelContent(tool: tool)
                 }
-                .frame(width: 700, height: 550)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
-                .transition(.opacity)
             }
 
             if showThinkingPanel {
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showThinkingPanel = false
-                        }
-                    }
-                    .transition(.opacity)
-
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Thinking")
-                            .font(.system(size: 15, weight: .semibold))
-                        Spacer()
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showThinkingPanel = false
-                            }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(16)
-
-                    Divider()
-
+                CenteredModal(isPresented: $showThinkingPanel, title: "Thinking") {
                     ThinkingPanelContent(messages: filteredMessages)
                 }
-                .frame(width: 700, height: 550)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
-                .transition(.opacity)
             }
         }
         .onChange(of: projectManager.selectedSession) { _, session in
@@ -213,10 +142,12 @@ struct FilterToolbarView: View {
     @Binding var showEmpty: Bool
     @Binding var searchText: String
     @Binding var showThinkingPanel: Bool
+    @Binding var showSelectionMode: Bool
     let hasThinking: Bool
 
     @Environment(ProjectManager.self) private var projectManager
     @Environment(BookmarkManager.self) private var bookmarkManager
+    @Environment(SelectionManager.self) private var selectionManager
 
     var body: some View {
         HStack(spacing: 8) {
@@ -239,6 +170,23 @@ struct FilterToolbarView: View {
             Spacer()
 
             if let session = projectManager.selectedSession {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showSelectionMode.toggle()
+                        if !showSelectionMode {
+                            selectionManager.clearSelection()
+                        }
+                    }
+                } label: {
+                    Image(systemName: showSelectionMode ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.system(size: 14))
+                        .foregroundStyle(showSelectionMode ? Color.accentColor : Color.secondary)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Toggle selection mode (⌘C to copy selected)")
+
                 Button {
                     bookmarkManager.toggleBookmark(session)
                 } label: {
@@ -346,6 +294,7 @@ struct MessageListView: View {
     let messages: [CCMessage]
     let searchText: String
     let filterOptions: FilterOptions
+    let showSelectionMode: Bool
     var onToolSelect: ((ToolUseBlock) -> Void)?
 
     @Environment(SelectionManager.self) private var selectionManager
@@ -355,18 +304,31 @@ struct MessageListView: View {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(messages, id: \.id) { message in
-                        MessageRowView(
-                            message: message,
-                            isSelected: selectionManager.isSelected(message.id),
-                            searchText: searchText,
-                            showToolCalls: filterOptions.showToolCalls,
-                            showToolOutputs: filterOptions.showToolOutputs,
-                            showThinking: filterOptions.showThinking,
-                            onToolSelect: onToolSelect
-                        )
-                        .id(message.id)
-                        .onTapGesture {
-                            handleTap(message: message)
+                        HStack(alignment: .top, spacing: 0) {
+                            if showSelectionMode {
+                                Button {
+                                    handleSelection(message: message)
+                                } label: {
+                                    Image(systemName: selectionManager.isSelected(message.id) ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(selectionManager.isSelected(message.id) ? Color.accentColor : Color(nsColor: .tertiaryLabelColor))
+                                        .frame(width: 24, height: 24)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 6)
+                            }
+
+                            MessageRowView(
+                                message: message,
+                                isSelected: showSelectionMode && selectionManager.isSelected(message.id),
+                                searchText: searchText,
+                                showToolCalls: filterOptions.showToolCalls,
+                                showToolOutputs: filterOptions.showToolOutputs,
+                                showThinking: filterOptions.showThinking,
+                                onToolSelect: onToolSelect
+                            )
+                            .id(message.id)
                         }
                     }
                 }
@@ -375,17 +337,15 @@ struct MessageListView: View {
         }
     }
 
-    private func handleTap(message: CCMessage) {
+    private func handleSelection(message: CCMessage) {
         if NSEvent.modifierFlags.contains(.shift) {
             if let firstSelected = selectionManager.selectedMessageIds.first {
                 selectionManager.selectRange(from: firstSelected, to: message.id, in: messages)
             } else {
                 selectionManager.selectMessage(message.id)
             }
-        } else if NSEvent.modifierFlags.contains(.command) {
-            selectionManager.toggleMessage(message.id)
         } else {
-            selectionManager.selectMessage(message.id)
+            selectionManager.toggleMessage(message.id)
         }
     }
 }

@@ -47,13 +47,7 @@ struct CCHistorySidebarView: View {
 
             VStack {
                 Spacer()
-                GeometryReader { geo in
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.15))
-                        .frame(width: geo.size.width * projectManager.loadingProgress, height: 2)
-                        .animation(.easeInOut(duration: 0.2), value: projectManager.loadingProgress)
-                }
-                .frame(height: 2)
+                SubtleProgressBar(progress: projectManager.loadingProgress)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
