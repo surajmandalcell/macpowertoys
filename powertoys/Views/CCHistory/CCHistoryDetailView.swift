@@ -151,38 +151,48 @@ struct FilterToolbarView: View {
                     }
                 } label: {
                     Image(systemName: showThinkingPanel ? "brain.head.profile.fill" : "brain.head.profile")
+                        .font(.system(size: 14))
                         .foregroundStyle(showThinkingPanel ? .purple : .secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Toggle Thinking Panel")
             }
 
             if isSearching {
-                HStack {
+                HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass")
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
 
                     TextField("Search in conversation...", text: $searchText)
                         .textFieldStyle(.plain)
-                        .frame(width: 200)
+                        .font(.system(size: 13))
+                        .frame(width: 180)
 
                     Button {
                         searchText = ""
                         isSearching = false
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(6)
-                .background(Color(nsColor: .textBackgroundColor))
+                .padding(8)
+                .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 Button {
                     isSearching = true
                 } label: {
                     Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -192,7 +202,10 @@ struct FilterToolbarView: View {
                     bookmarkManager.toggleBookmark(session)
                 } label: {
                     Image(systemName: bookmarkManager.isBookmarked(session) ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 14))
                         .foregroundStyle(bookmarkManager.isBookmarked(session) ? .orange : .secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(bookmarkManager.isBookmarked(session) ? "Remove Bookmark" : "Add Bookmark")
@@ -209,14 +222,17 @@ struct FilterToolbarView: View {
                     }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 14))
                         .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .padding(.top, 52)
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -225,20 +241,22 @@ struct FilterToolbarView: View {
 struct FilterToggle: View {
     let label: String
     @Binding var isOn: Bool
-    
+    @State private var isHovered = false
+
     var body: some View {
         Button {
             isOn.toggle()
         } label: {
             Text(label)
-                .font(.caption)
+                .font(.system(size: 11))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(isOn ? Color.accentColor.opacity(0.2) : Color.clear)
+                .background(isOn ? Color.accentColor.opacity(0.1) : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
                 .foregroundStyle(isOn ? .primary : .secondary)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 
@@ -255,7 +273,7 @@ struct MessageListView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: 2) {
                     ForEach(messages, id: \.id) { message in
                         MessageRowView(
                             message: message,
@@ -272,7 +290,7 @@ struct MessageListView: View {
                         }
                     }
                 }
-                .padding(16)
+                .padding(.vertical, 8)
             }
         }
     }
