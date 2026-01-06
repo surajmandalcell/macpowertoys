@@ -72,6 +72,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1B05623F2F0C8D45006ED092 /* docs */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = docs;
+			sourceTree = "<group>";
+		};
 		1BDFA9452F08A44C009A9009 = {
 			isa = PBXGroup;
 			children = (
@@ -79,6 +86,7 @@
 				1BDFA95E2F08A44C009A9009 /* powertoysTests */,
 				1BDFA9682F08A44C009A9009 /* powertoysUITests */,
 				1BDFA94F2F08A44C009A9009 /* Products */,
+				1B05623F2F0C8D45006ED092 /* docs */,
 			);
 			sourceTree = "<group>";
 		};
