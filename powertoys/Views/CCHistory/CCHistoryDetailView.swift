@@ -123,8 +123,8 @@ struct FilterToolbarView: View {
     @Environment(BookmarkManager.self) private var bookmarkManager
 
     var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 4) {
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
                 FilterToggle(label: "User", isOn: $showUser)
                 FilterToggle(label: "Claude", isOn: $showAssistant)
                 FilterToggle(label: "System", isOn: $showSystem)
@@ -143,51 +143,53 @@ struct FilterToolbarView: View {
             Spacer()
 
             if let session = projectManager.selectedSession {
-                Button {
-                    bookmarkManager.toggleBookmark(session)
-                } label: {
-                    Image(systemName: bookmarkManager.isBookmarked(session) ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 14))
-                        .foregroundStyle(bookmarkManager.isBookmarked(session) ? .orange : .secondary)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                if hasThinking {
+                HStack(spacing: 4) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showThinkingPanel.toggle()
-                        }
+                        bookmarkManager.toggleBookmark(session)
                     } label: {
-                        Image(systemName: showThinkingPanel ? "brain.head.profile.fill" : "brain.head.profile")
+                        Image(systemName: bookmarkManager.isBookmarked(session) ? "bookmark.fill" : "bookmark")
                             .font(.system(size: 14))
-                            .foregroundStyle(showThinkingPanel ? .purple : .secondary)
-                            .frame(width: 32, height: 32)
+                            .foregroundStyle(bookmarkManager.isBookmarked(session) ? .orange : .secondary)
+                            .frame(width: 28, height: 28)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                }
 
-                Menu {
-                    Button { ExportManager.export(messages: projectManager.currentMessages, format: .markdown) } label: {
-                        Label("Export as Markdown", systemImage: "doc.text")
+                    if hasThinking {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showThinkingPanel.toggle()
+                            }
+                        } label: {
+                            Image(systemName: showThinkingPanel ? "brain.head.profile.fill" : "brain.head.profile")
+                                .font(.system(size: 14))
+                                .foregroundStyle(showThinkingPanel ? .purple : .secondary)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    Button { ExportManager.export(messages: projectManager.currentMessages, format: .json) } label: {
-                        Label("Export as JSON", systemImage: "curlybraces")
+
+                    Menu {
+                        Button { ExportManager.export(messages: projectManager.currentMessages, format: .markdown) } label: {
+                            Label("Export as Markdown", systemImage: "doc.text")
+                        }
+                        Button { ExportManager.export(messages: projectManager.currentMessages, format: .json) } label: {
+                            Label("Export as JSON", systemImage: "curlybraces")
+                        }
+                        Button { ExportManager.export(messages: projectManager.currentMessages, format: .plainText) } label: {
+                            Label("Export as Plain Text", systemImage: "doc.plaintext")
+                        }
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
                     }
-                    Button { ExportManager.export(messages: projectManager.currentMessages, format: .plainText) } label: {
-                        Label("Export as Plain Text", systemImage: "doc.plaintext")
-                    }
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
             }
 
             HStack(spacing: 6) {
@@ -215,7 +217,7 @@ struct FilterToolbarView: View {
             .background(Color.primary.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .padding(.top, 44)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -235,7 +237,7 @@ struct FilterToggle: View {
                 .font(.system(size: 11))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(isOn ? Color.accentColor.opacity(0.1) : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
+                .background(isOn ? Color.accentColor.opacity(0.2) : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
                 .foregroundStyle(isOn ? .primary : .secondary)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
@@ -244,9 +246,23 @@ struct FilterToggle: View {
     }
 }
 
-// MARK: - Message List (Terminal Style)
+// MARK: - Message List (Terminal Style with NSTextView)
 
 struct MessageListView: View {
+    let messages: [CCMessage]
+    let searchText: String
+    let filterOptions: FilterOptions
+
+    var body: some View {
+        TerminalTextView(
+            messages: messages,
+            searchText: searchText,
+            filterOptions: filterOptions
+        )
+    }
+}
+
+private struct TerminalTextView: NSViewRepresentable {
     let messages: [CCMessage]
     let searchText: String
     let filterOptions: FilterOptions
@@ -257,93 +273,115 @@ struct MessageListView: View {
         return f
     }()
 
-    private var formattedContent: AttributedString {
-        var result = AttributedString()
+    private static let codeBlockRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: "```\\w*\\n?", options: [])
+    }()
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 12, height: 8)
+        textView.isRichText = true
+        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        textView.textStorage?.setAttributedString(buildAttributedString())
+    }
+
+    private func buildAttributedString() -> NSAttributedString {
+        let result = NSMutableAttributedString()
         let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         let boldMonoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
 
-        for message in messages {
+        for (index, message) in messages.enumerated() {
+            if index > 0 {
+                result.append(NSAttributedString(string: "\n"))
+            }
+
             // Thinking (if enabled)
             if filterOptions.showThinking, let thinking = message.thinking, !thinking.isEmpty {
-                var thinkingPrefix = AttributedString("[thinking] ")
-                thinkingPrefix.foregroundColor = .purple
-                thinkingPrefix.font = boldMonoFont
-                result.append(thinkingPrefix)
-
-                var thinkingText = AttributedString(thinking + "\n")
-                thinkingText.foregroundColor = NSColor.secondaryLabelColor
-                thinkingText.font = monoFont
-                result.append(thinkingText)
+                result.append(NSAttributedString(
+                    string: "[thinking] ",
+                    attributes: [.font: boldMonoFont, .foregroundColor: NSColor.systemPurple]
+                ))
+                result.append(NSAttributedString(
+                    string: thinking + "\n",
+                    attributes: [.font: monoFont, .foregroundColor: NSColor.secondaryLabelColor]
+                ))
             }
 
             // Role prefix with color
             let (prefix, color) = roleInfo(for: message.type)
-            var roleAttr = AttributedString(prefix + " ")
-            roleAttr.foregroundColor = color
-            roleAttr.font = boldMonoFont
-            result.append(roleAttr)
+            result.append(NSAttributedString(
+                string: prefix + " ",
+                attributes: [.font: boldMonoFont, .foregroundColor: color]
+            ))
 
             // Timestamp
-            var timeAttr = AttributedString(Self.timeFormatter.string(from: message.timestamp) + " ")
-            timeAttr.foregroundColor = NSColor.tertiaryLabelColor
-            timeAttr.font = monoFont
-            result.append(timeAttr)
+            result.append(NSAttributedString(
+                string: Self.timeFormatter.string(from: message.timestamp) + " ",
+                attributes: [.font: monoFont, .foregroundColor: NSColor.tertiaryLabelColor]
+            ))
 
             // Content (strip code block markers, flatten to plain text)
             let plainContent = stripCodeBlockMarkers(message.content)
-            var contentAttr = highlightSearch(plainContent, searchText: searchText)
-            contentAttr.font = monoFont
-            result.append(contentAttr)
-            result.append(AttributedString("\n"))
+            appendWithSearchHighlight(to: result, text: plainContent, font: monoFont)
+            result.append(NSAttributedString(string: "\n"))
 
             // Tool calls (if enabled)
             if filterOptions.showToolCalls {
                 for tool in message.toolUse {
-                    var toolPrefix = AttributedString("[tool] ")
-                    toolPrefix.foregroundColor = .orange
-                    toolPrefix.font = boldMonoFont
-                    result.append(toolPrefix)
-
-                    var toolName = AttributedString(tool.name + "\n")
-                    toolName.foregroundColor = NSColor.secondaryLabelColor
-                    toolName.font = monoFont
-                    result.append(toolName)
-
-                    var toolInput = AttributedString("  " + tool.input + "\n")
-                    toolInput.foregroundColor = NSColor.tertiaryLabelColor
-                    toolInput.font = monoFont
-                    result.append(toolInput)
+                    result.append(NSAttributedString(
+                        string: "[tool] ",
+                        attributes: [.font: boldMonoFont, .foregroundColor: NSColor.systemOrange]
+                    ))
+                    result.append(NSAttributedString(
+                        string: tool.name + "\n",
+                        attributes: [.font: monoFont, .foregroundColor: NSColor.secondaryLabelColor]
+                    ))
+                    result.append(NSAttributedString(
+                        string: "  " + tool.input + "\n",
+                        attributes: [.font: monoFont, .foregroundColor: NSColor.tertiaryLabelColor]
+                    ))
 
                     // Tool output (if enabled)
                     if filterOptions.showToolOutputs, let output = tool.output {
-                        var outputPrefix = AttributedString("[output] ")
-                        outputPrefix.foregroundColor = .green
-                        outputPrefix.font = boldMonoFont
-                        result.append(outputPrefix)
-
+                        result.append(NSAttributedString(
+                            string: "[output] ",
+                            attributes: [.font: boldMonoFont, .foregroundColor: NSColor.systemGreen]
+                        ))
                         let truncatedOutput = output.count > 500 ? String(output.prefix(500)) + "..." : output
-                        var outputText = AttributedString(truncatedOutput + "\n")
-                        outputText.foregroundColor = NSColor.tertiaryLabelColor
-                        outputText.font = monoFont
-                        result.append(outputText)
+                        result.append(NSAttributedString(
+                            string: truncatedOutput + "\n",
+                            attributes: [.font: monoFont, .foregroundColor: NSColor.tertiaryLabelColor]
+                        ))
                     }
                 }
             }
+        }
 
-            result.append(AttributedString("\n"))
+        if result.length == 0 {
+            result.append(NSAttributedString(
+                string: "No messages to display",
+                attributes: [.font: monoFont, .foregroundColor: NSColor.tertiaryLabelColor]
+            ))
         }
 
         return result
-    }
-
-    var body: some View {
-        ScrollView {
-            Text(formattedContent)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-        }
     }
 
     private func roleInfo(for type: MessageType) -> (String, NSColor) {
@@ -355,35 +393,53 @@ struct MessageListView: View {
     }
 
     private func stripCodeBlockMarkers(_ text: String) -> String {
-        var result = text
-        let pattern = "```\\w*\\n?"
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-            result = regex.stringByReplacingMatches(
-                in: result,
-                range: NSRange(result.startIndex..., in: result),
-                withTemplate: ""
-            )
+        guard let regex = Self.codeBlockRegex else {
+            return text.replacingOccurrences(of: "```", with: "")
         }
+        var result = text
+        result = regex.stringByReplacingMatches(
+            in: result,
+            range: NSRange(result.startIndex..., in: result),
+            withTemplate: ""
+        )
         return result.replacingOccurrences(of: "```", with: "")
     }
 
-    private func highlightSearch(_ text: String, searchText: String) -> AttributedString {
-        var attributedString = AttributedString(text)
-        guard !searchText.isEmpty else { return attributedString }
+    private func appendWithSearchHighlight(to result: NSMutableAttributedString, text: String, font: NSFont) {
+        let textColor = NSColor.labelColor
+
+        guard !searchText.isEmpty else {
+            result.append(NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: textColor]))
+            return
+        }
 
         let lowercasedText = text.lowercased()
         let lowercasedSearch = searchText.lowercased()
+        var lastEnd = text.startIndex
 
         var searchStart = lowercasedText.startIndex
         while let range = lowercasedText.range(of: lowercasedSearch, range: searchStart..<lowercasedText.endIndex) {
-            if let attrLower = AttributedString.Index(range.lowerBound, within: attributedString),
-               let attrUpper = AttributedString.Index(range.upperBound, within: attributedString) {
-                attributedString[attrLower..<attrUpper].backgroundColor = .systemYellow.withAlphaComponent(0.3)
+            // Text before match
+            if range.lowerBound > lastEnd {
+                let beforeRange = lastEnd..<range.lowerBound
+                result.append(NSAttributedString(string: String(text[beforeRange]), attributes: [.font: font, .foregroundColor: textColor]))
             }
+
+            // Highlighted match
+            let matchText = String(text[range])
+            result.append(NSAttributedString(
+                string: matchText,
+                attributes: [.font: font, .foregroundColor: textColor, .backgroundColor: NSColor.systemYellow.withAlphaComponent(0.3)]
+            ))
+
+            lastEnd = range.upperBound
             searchStart = range.upperBound
         }
 
-        return attributedString
+        // Remaining text after last match
+        if lastEnd < text.endIndex {
+            result.append(NSAttributedString(string: String(text[lastEnd...]), attributes: [.font: font, .foregroundColor: textColor]))
+        }
     }
 }
 
@@ -430,6 +486,7 @@ struct ToolDetailsPanelContent: View {
     }
 }
 
+@MainActor
 struct ThinkingPanelContent: View {
     let messages: [CCMessage]
 
@@ -443,7 +500,6 @@ struct ThinkingPanelContent: View {
         var result = AttributedString()
         let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         let boldMonoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
-
         let thinkingMessages = messages.filter { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }.reversed()
 
         for message in thinkingMessages {

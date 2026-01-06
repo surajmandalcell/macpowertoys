@@ -72,7 +72,8 @@ struct CCHistorySidebarView: View {
 
     @ViewBuilder
     private var projectsList: some View {
-        ForEach(projectManager.projects) { project in
+        ForEach(projectManager.projects.indices, id: \.self) { projectIndex in
+            let project = projectManager.projects[projectIndex]
             ProjectRow(
                 project: project,
                 isExpanded: expandedProjects.contains(project.id),
@@ -86,8 +87,8 @@ struct CCHistorySidebarView: View {
             )
 
             if expandedProjects.contains(project.id) {
-                ForEach(project.sessions) { session in
-                    SessionRow(session: session)
+                ForEach(projectManager.projects[projectIndex].sessions) { session in
+                    SessionRow(sessionId: session.id, filePath: session.filePath)
                         .padding(.leading, 20)
                 }
             }
@@ -127,7 +128,7 @@ struct CCHistorySidebarView: View {
                 }
                 .padding(.leading, 8)
 
-                SessionRow(session: result.session, contentPreview: result.isContentMatch ? result.preview : nil)
+                SessionRow(sessionId: result.session.id, filePath: result.session.filePath, contentPreview: result.isContentMatch ? result.preview : nil)
             }
         }
 
@@ -244,19 +245,29 @@ private struct ProjectRow: View {
 // MARK: - Session Row
 
 private struct SessionRow: View {
-    let session: CCSession
+    let sessionId: String
+    let filePath: URL
     var contentPreview: String? = nil
 
     @Environment(ProjectManager.self) private var projectManager
     @Environment(BookmarkManager.self) private var bookmarkManager
     @State private var isHovered = false
 
+    private var session: CCSession? {
+        for project in projectManager.projects {
+            if let session = project.sessions.first(where: { $0.id == sessionId }) {
+                return session
+            }
+        }
+        return nil
+    }
+
     private var isSelected: Bool {
-        projectManager.selectedSession?.id == session.id
+        projectManager.selectedSession?.id == sessionId
     }
 
     private var isActive: Bool {
-        projectManager.isSessionActive(session.id)
+        projectManager.isSessionActive(sessionId)
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -265,8 +276,7 @@ private struct SessionRow: View {
         return formatter
     }()
 
-    private var formattedTimestamp: String {
-        guard let timestamp = session.timestamp else { return "" }
+    private func formattedTimestamp(for timestamp: Date) -> String {
         let now = Date()
         let seconds = now.timeIntervalSince(timestamp)
 
@@ -279,87 +289,91 @@ private struct SessionRow: View {
     }
 
     var body: some View {
-        Button {
-            Task { await projectManager.loadMessages(for: session) }
-        } label: {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(session.displayTitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(isSelected ? .white : .primary.opacity(0.75))
-                        .lineLimit(1)
-
-                    if let preview = contentPreview {
-                        Text(preview)
-                            .font(.system(size: 10))
-                            .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary.opacity(0.6))
-                            .lineLimit(1)
-                    }
-
-                    HStack(spacing: 6) {
-                        if session.timestamp != nil {
-                            Text(formattedTimestamp)
-                                .font(.system(size: 10))
-                                .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
-                        }
-                        Text("\(session.messageCount) msgs")
-                            .font(.system(size: 10))
-                            .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
-                        if isActive {
-                            PulsingDot()
-                        }
-                    }
-                }
-
-                Spacer()
-
-                if bookmarkManager.isBookmarked(session) {
-                    Image(systemName: "bookmark.fill")
-                        .foregroundStyle(isSelected ? .white : .orange)
-                        .font(.system(size: 10))
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
-            )
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-        .contextMenu {
+        if let session {
             Button {
-                bookmarkManager.toggleBookmark(session)
+                Task { await projectManager.loadMessages(for: session) }
             } label: {
-                Label(
-                    bookmarkManager.isBookmarked(session) ? "Remove Bookmark" : "Add Bookmark",
-                    systemImage: bookmarkManager.isBookmarked(session) ? "bookmark.slash" : "bookmark"
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(session.displayTitle)
+                            .font(.system(size: 12))
+                            .foregroundStyle(isSelected ? .white : .primary.opacity(0.75))
+                            .lineLimit(1)
+
+                        if let preview = contentPreview {
+                            Text(preview)
+                                .font(.system(size: 10))
+                                .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary.opacity(0.6))
+                                .lineLimit(1)
+                        }
+
+                        HStack(spacing: 6) {
+                            if let timestamp = session.timestamp {
+                                Text(formattedTimestamp(for: timestamp))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
+                            }
+                            if session.messageCount > 0 {
+                                Text("\(session.messageCount) msgs")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
+                            }
+                            if isActive {
+                                PulsingDot()
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    if bookmarkManager.isBookmarked(session) {
+                        Image(systemName: "bookmark.fill")
+                            .foregroundStyle(isSelected ? .white : .orange)
+                            .font(.system(size: 10))
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
                 )
             }
+            .buttonStyle(.plain)
+            .onHover { isHovered = $0 }
+            .contextMenu {
+                Button {
+                    bookmarkManager.toggleBookmark(session)
+                } label: {
+                    Label(
+                        bookmarkManager.isBookmarked(session) ? "Remove Bookmark" : "Add Bookmark",
+                        systemImage: bookmarkManager.isBookmarked(session) ? "bookmark.slash" : "bookmark"
+                    )
+                }
 
-            Divider()
+                Divider()
 
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(session.id, forType: .string)
-            } label: {
-                Label("Copy Session ID", systemImage: "doc.on.doc")
-            }
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(sessionId, forType: .string)
+                } label: {
+                    Label("Copy Session ID", systemImage: "doc.on.doc")
+                }
 
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(session.filePath.path, forType: .string)
-            } label: {
-                Label("Copy Log Path", systemImage: "folder")
-            }
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(filePath.path, forType: .string)
+                } label: {
+                    Label("Copy Log Path", systemImage: "folder")
+                }
 
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString("\(session.id)\n\(session.filePath.path)", forType: .string)
-            } label: {
-                Label("Copy ID & Path", systemImage: "doc.on.doc.fill")
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString("\(sessionId)\n\(filePath.path)", forType: .string)
+                } label: {
+                    Label("Copy ID & Path", systemImage: "doc.on.doc.fill")
+                }
             }
         }
     }

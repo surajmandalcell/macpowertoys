@@ -137,7 +137,81 @@ class CCHistoryParser {
         
         return (firstUserMessage, latestTimestamp, messageCount)
     }
-    
+
+    /// Quick metadata parsing - only gets first user message and timestamp (no message count)
+    nonisolated static func parseSessionMetadataQuick(at url: URL) -> (firstUserMessage: String?, timestamp: Date?) {
+        guard let handle = FileHandle(forReadingAtPath: url.path) else { return (nil, nil) }
+        defer { try? handle.close() }
+
+        guard let chunk = try? handle.read(upToCount: 16384) else { return (nil, nil) }
+        guard let content = String(data: chunk, encoding: .utf8) else { return (nil, nil) }
+
+        var firstUserMessage: String?
+        var latestTimestamp: Date?
+
+        for line in content.components(separatedBy: "\n").prefix(50) {
+            guard !line.isEmpty,
+                  let lineData = line.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                  let type = json["type"] as? String,
+                  ["user", "assistant", "system"].contains(type) else {
+                continue
+            }
+
+            if let timestampStr = json["timestamp"] as? String,
+               let date = parseTimestamp(timestampStr) {
+                if latestTimestamp == nil || date > latestTimestamp! {
+                    latestTimestamp = date
+                }
+            }
+
+            if type == "user" && firstUserMessage == nil {
+                firstUserMessage = extractContent(from: json)
+                if latestTimestamp != nil {
+                    break
+                }
+            }
+        }
+
+        return (firstUserMessage, latestTimestamp)
+    }
+
+    /// Efficiently count messages using chunked reading (for background queue)
+    nonisolated static func countMessages(at url: URL) -> Int {
+        guard let handle = FileHandle(forReadingAtPath: url.path) else { return 0 }
+        defer { try? handle.close() }
+
+        var count = 0
+        var buffer = Data()
+        let chunkSize = 65536
+
+        while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            buffer.append(chunk)
+
+            while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
+
+                guard !lineData.isEmpty,
+                      let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                      let type = json["type"] as? String,
+                      ["user", "assistant", "system"].contains(type) else {
+                    continue
+                }
+                count += 1
+            }
+        }
+
+        if !buffer.isEmpty,
+           let json = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
+           let type = json["type"] as? String,
+           ["user", "assistant", "system"].contains(type) {
+            count += 1
+        }
+
+        return count
+    }
+
     // MARK: - Content Search
 
     /// Efficiently search file content for a query without fully parsing messages.
@@ -324,20 +398,22 @@ class CCHistoryParser {
         return nil
     }
     
-    private nonisolated(unsafe) static let timestampFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
+    private enum Formatters {
+        nonisolated(unsafe) static let timestamp: ISO8601DateFormatter = {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter
+        }()
 
-    private nonisolated(unsafe) static let timestampFormatterNoFractional: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
+        nonisolated(unsafe) static let timestampNoFractional: ISO8601DateFormatter = {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            return formatter
+        }()
+    }
 
     private nonisolated static func parseTimestamp(_ string: String) -> Date? {
-        timestampFormatter.date(from: string) ?? timestampFormatterNoFractional.date(from: string)
+        Formatters.timestamp.date(from: string) ?? Formatters.timestampNoFractional.date(from: string)
     }
     
     private nonisolated static func formatJSON(_ value: Any?) -> String {

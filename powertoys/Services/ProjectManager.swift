@@ -78,8 +78,6 @@ final class ProjectManager {
         isLoading = false
         loadingProgress = 1.0
 
-        await SessionMetadataCache.shared.saveCache()
-
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         LogManager.shared.info("Project load complete: \(loadedProjects.count) projects in \(String(format: "%.2f", elapsed))s", source: "ProjectManager")
     }
@@ -105,8 +103,6 @@ final class ProjectManager {
     // MARK: - Session Loading (Lazy)
 
     private func loadSessionsLazy(in projectFolder: URL) async -> [CCSession] {
-        let projectPath = projectFolder.lastPathComponent
-
         let fileInfos = await Task.detached(priority: .userInitiated) {
             Self.getSessionFiles(in: projectFolder)
         }.value
@@ -127,25 +123,16 @@ final class ProjectManager {
                 )
                 sessions.append(session)
             } else {
-                let parsedMetadata = await Task.detached(priority: .utility) {
-                    CCHistoryParser.parseSessionMetadata(at: fileInfo.url)
+                let quickMetadata = await Task.detached(priority: .utility) {
+                    CCHistoryParser.parseSessionMetadataQuick(at: fileInfo.url)
                 }.value
-
-                let metadata = SessionMetadata(
-                    sessionId: sessionId,
-                    projectPath: projectPath,
-                    firstUserMessage: parsedMetadata.firstUserMessage,
-                    fileModificationDate: fileInfo.modDate,
-                    messageCount: parsedMetadata.messageCount
-                )
-                await SessionMetadataCache.shared.set(metadata)
 
                 let session = CCSession(
                     id: sessionId,
                     filePath: fileInfo.url,
-                    firstUserMessage: parsedMetadata.firstUserMessage,
-                    timestamp: parsedMetadata.timestamp ?? fileInfo.modDate,
-                    messageCount: parsedMetadata.messageCount
+                    firstUserMessage: quickMetadata.firstUserMessage,
+                    timestamp: quickMetadata.timestamp ?? fileInfo.modDate,
+                    messageCount: 0
                 )
                 sessions.append(session)
             }
@@ -258,10 +245,29 @@ final class ProjectManager {
         if session.messageCount != messages.count {
             for projectIndex in projects.indices {
                 if let sessionIndex = projects[projectIndex].sessions.firstIndex(where: { $0.id == session.id }) {
-                    projects[projectIndex].sessions[sessionIndex].messageCount = messages.count
+                    var updatedSession = projects[projectIndex].sessions[sessionIndex]
+                    updatedSession.messageCount = messages.count
+
+                    var updatedProject = projects[projectIndex]
+                    updatedProject.sessions[sessionIndex] = updatedSession
+                    projects[projectIndex] = updatedProject
+
+                    let metadata = SessionMetadata(
+                        sessionId: session.id,
+                        projectPath: updatedProject.id,
+                        firstUserMessage: updatedSession.firstUserMessage,
+                        fileModificationDate: updatedSession.timestamp ?? Date(),
+                        messageCount: messages.count
+                    )
+                    Task {
+                        await SessionMetadataCache.shared.set(metadata)
+                        await SessionMetadataCache.shared.saveCache()
+                    }
+
+                    selectedSession = updatedSession
+                    break
                 }
             }
-            selectedSession?.messageCount = messages.count
         }
 
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
