@@ -30,8 +30,8 @@ final class WindowStateManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self, let window = notification.object as? NSWindow else { return }
-            Task { @MainActor [self] in
+            MainActor.assumeIsolated {
+                guard let self, let window = notification.object as? NSWindow else { return }
                 self.saveState(for: window)
             }
         }
@@ -41,8 +41,8 @@ final class WindowStateManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self, let window = notification.object as? NSWindow else { return }
-            Task { @MainActor [self] in
+            MainActor.assumeIsolated {
+                guard let self, let window = notification.object as? NSWindow else { return }
                 self.saveState(for: window)
             }
         }

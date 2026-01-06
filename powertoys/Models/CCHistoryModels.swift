@@ -26,7 +26,7 @@ struct CCProject: Identifiable, Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: CCProject, rhs: CCProject) -> Bool {
         lhs.id == rhs.id
     }
@@ -52,7 +52,7 @@ struct CCSession: Identifiable, Hashable, Codable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: CCSession, rhs: CCSession) -> Bool {
         lhs.id == rhs.id
     }

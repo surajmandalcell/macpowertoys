@@ -14,12 +14,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if !ensureSingleInstance() {
+            NSApp.terminate(nil)
+            return
+        }
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(windowDidBecomeKey(_:)),
             name: NSWindow.didBecomeKeyNotification,
             object: nil
         )
+    }
+
+    private func ensureSingleInstance() -> Bool {
+        guard let bundleId = Bundle.main.bundleIdentifier else { return true }
+
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+        let otherInstances = runningApps.filter { $0 != NSRunningApplication.current }
+
+        if let existingApp = otherInstances.first {
+            existingApp.activate(options: [.activateAllWindows])
+            return false
+        }
+
+        return true
     }
 
     @MainActor
