@@ -57,7 +57,12 @@ struct NewTransferSheet: View {
         .onAppear {
             guard !didInitialize else { return }
             operation = manager.settings.defaultOperation
+            applyDefaultDestination()
             didInitialize = true
+        }
+        .onChange(of: manager.remotes.count) {
+            guard destination.kind == .local, destination.localPath.isEmpty else { return }
+            applyDefaultDestination()
         }
         .onChange(of: source.fs) {
             scheduleEstimate()
@@ -222,6 +227,14 @@ struct NewTransferSheet: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 4)
+    }
+
+    private func applyDefaultDestination() {
+        guard let firstRemote = manager.remotes.first else { return }
+        destination.kind = .remote
+        if destination.remoteName.isEmpty {
+            destination.remoteName = firstRemote.name
+        }
     }
 
     private func scheduleEstimate() {
