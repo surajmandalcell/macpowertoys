@@ -53,6 +53,14 @@ node_modules/**
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
     }
+
+    static func remoteTransfersKey(_ remote: String) -> String {
+        "rclone.remote.\(remote).transfers"
+    }
+
+    static func remoteCheckersKey(_ remote: String) -> String {
+        "rclone.remote.\(remote).checkers"
+    }
 }
 
 // MARK: - Remote Auth State
@@ -827,12 +835,7 @@ final class RcloneJobManager {
         job.errorMessage = nil
         job.nextRetryAt = nil
 
-        let current = settings
-        let config: [String: Any] = [
-            "Transfers": current.transfers,
-            "Checkers": current.checkers,
-            "LowLevelRetries": current.lowLevelRetries
-        ]
+        let config = effectiveJobConfig(for: job)
 
         let endpoint = job.operation.rcEndpoint
         let excludes = job.excludePatterns
@@ -917,6 +920,53 @@ final class RcloneJobManager {
         }
         let path = full as NSString
         return (path.deletingLastPathComponent, path.lastPathComponent)
+    }
+
+    static func remoteName(fromFs fs: String) -> String? {
+        guard !fs.hasPrefix("/"), let colon = fs.firstIndex(of: ":") else { return nil }
+        return String(fs[..<colon])
+    }
+
+    private func effectiveJobConfig(for job: TransferJob) -> [String: Any] {
+        let current = settings
+        var transfers = current.transfers
+        var checkers = current.checkers
+
+        if let remote = Self.remoteName(fromFs: job.destinationFs) ?? Self.remoteName(fromFs: job.sourceFs) {
+            let defaults = UserDefaults.standard
+            let remoteTransfers = defaults.integer(forKey: RcloneDefaults.remoteTransfersKey(remote))
+            let remoteCheckers = defaults.integer(forKey: RcloneDefaults.remoteCheckersKey(remote))
+            if remoteTransfers > 0 { transfers = remoteTransfers }
+            if remoteCheckers > 0 { checkers = remoteCheckers }
+        }
+
+        return [
+            "Transfers": transfers,
+            "Checkers": checkers,
+            "LowLevelRetries": current.lowLevelRetries
+        ]
+    }
+
+    func estimateSize(fs: String, excludePatterns: [String]) async throws -> (bytes: Int64, files: Int) {
+        guard let client else { throw RcloneRCError.notReachable }
+        let jobid = try await client.startSizeJob(fs: fs, excludePatterns: excludePatterns)
+        let deadline = Date().addingTimeInterval(180)
+        while Date() < deadline {
+            if Task.isCancelled {
+                try? await client.stopJob(jobid: jobid)
+                throw CancellationError()
+            }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard let status = try? await client.jobStatus(jobid: jobid) else { continue }
+            if status.finished {
+                guard status.success, let bytes = status.outputBytes else {
+                    throw RcloneRCError.http(status: 0, message: status.error.isEmpty ? "Could not size the source." : status.error)
+                }
+                return (bytes, status.outputCount ?? 0)
+            }
+        }
+        try? await client.stopJob(jobid: jobid)
+        throw RcloneRCError.http(status: 0, message: "Size estimate timed out.")
     }
 
     private static func isPermanentSubmitError(_ error: Error) -> Bool {

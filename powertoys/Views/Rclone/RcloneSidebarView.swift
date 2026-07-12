@@ -319,6 +319,7 @@ private struct RemoteRow: View {
 
     @State private var isHovering = false
     @State private var isConfirmingRemoval = false
+    @State private var isShowingSettings = false
 
     var body: some View {
         Button(action: action) {
@@ -352,6 +353,9 @@ private struct RemoteRow: View {
         .focusEffectDisabled()
         .onHover { isHovering = $0 }
         .contextMenu {
+            Button("Remote Settings…") {
+                isShowingSettings = true
+            }
             Button("Copy Name") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(remote.name, forType: .string)
@@ -360,6 +364,9 @@ private struct RemoteRow: View {
             Button("Remove…", role: .destructive) {
                 isConfirmingRemoval = true
             }
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            RemoteSettingsSheet(remote: remote)
         }
         .confirmationDialog(
             "Remove “\(remote.displayName)”?",
