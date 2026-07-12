@@ -41,10 +41,7 @@ struct ToolAboutView: View {
 
     private func header(for tool: any Tool) -> some View {
         HStack(spacing: 16) {
-            Image(tool.logoAsset)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 72, height: 72)
+            ToolIconView(tool: tool, size: 72)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(tool.name)
@@ -56,7 +53,7 @@ struct ToolAboutView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Color.primary.opacity(0.06))
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
 
             Spacer()
@@ -72,7 +69,7 @@ struct ToolAboutView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
                     .background(Color.accentColor)
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
             .focusEffectDisabled()

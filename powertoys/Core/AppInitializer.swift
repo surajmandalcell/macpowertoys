@@ -43,6 +43,10 @@ final class AppInitializer {
         }
 
         _ = SettingsManager.shared
+        _ = RulerManager.shared
+        _ = AwakeService.shared
+        _ = ColorPickerService.shared
+        _ = TextExtractorService.shared
 
         applyStoredTheme()
 
