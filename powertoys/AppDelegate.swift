@@ -68,12 +68,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         Task { @MainActor in
             await RcloneJobManager.shared.shutdown()
             await LogManager.shared.flushPending()
             await AppInitializer.shared.shutdown()
             await BackgroundServiceManager.shared.stopAll()
+            sender.reply(toApplicationShouldTerminate: true)
         }
+        return .terminateLater
     }
 }
