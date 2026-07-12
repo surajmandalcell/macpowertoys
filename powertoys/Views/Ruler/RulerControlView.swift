@@ -87,6 +87,7 @@ struct RulerControlView: View {
                             ForEach(RulerUnit.allCases) { unit in Text(unit.rawValue).tag(unit) }
                         }
                         .labelsHidden()
+                        .contentShape(Rectangle())
                         if manager.style.unit == .millimeters || manager.style.unit == .inches {
                             Text(manager.style.hasCalibration(for: NSScreen.main) ? "Calibrated" : "Estimated")
                                 .font(.system(size: 10))
@@ -100,21 +101,26 @@ struct RulerControlView: View {
                         ForEach(RulerZeroCorner.allCases) { corner in Text(corner.title).tag(corner) }
                     }
                     .labelsHidden()
+                    .contentShape(Rectangle())
                 }
                 GridRow {
                     Text("Color").foregroundStyle(.secondary)
                     ColorPicker("Ruler Color", selection: colorBinding, supportsOpacity: false)
                         .labelsHidden()
+                        .contentShape(Rectangle())
                 }
                 GridRow {
                     Text("Opacity").foregroundStyle(.secondary)
                     Slider(value: styleBinding(\.opacity), in: 0.35...1)
+                        .contentShape(Rectangle())
                 }
                 GridRow {
                     Text("Window").foregroundStyle(.secondary)
                     HStack {
                         Toggle("Float", isOn: styleBinding(\.floats))
+                            .contentShape(Rectangle())
                         Toggle("Shadow", isOn: styleBinding(\.hasShadow))
+                            .contentShape(Rectangle())
                     }
                 }
                 GridRow {
@@ -122,6 +128,7 @@ struct RulerControlView: View {
                     HStack {
                         TextField("1.00", text: $calibrationText)
                             .frame(width: 70)
+                            .contentShape(Rectangle())
                         Button("Apply") {
                             guard let value = Double(calibrationText), (0.25...4).contains(value) else { return }
                             manager.setCalibration(value, for: NSScreen.main)
@@ -207,6 +214,7 @@ struct RulerControlView: View {
                         ForEach(RulerCopyFormat.allCases) { format in Text(format.title).tag(format) }
                     }
                     .frame(width: 130)
+                    .contentShape(Rectangle())
                     Spacer()
                     Button("Clear Unpinned", role: .destructive) { manager.clearMeasurements() }
                         .contentShape(Rectangle())
@@ -277,6 +285,7 @@ private struct RulerRow: View {
             }
             .labelsHidden()
             .frame(width: 90)
+            .contentShape(Rectangle())
             Button("Copy") { manager.copy(ruler, as: copyFormat) }
                 .contentShape(Rectangle())
             if ruler.orientation == .joined {

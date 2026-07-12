@@ -112,7 +112,9 @@ struct AwakeView: View {
                 }
                 Divider()
                 HStack {
-                    TextField("Process ID", text: $processID).frame(width: 110)
+                    TextField("Process ID", text: $processID)
+                        .frame(width: 110)
+                        .contentShape(Rectangle())
                     Button("Attach") {
                         guard let id = Int32(processID) else { return }
                         service.attach(to: id)

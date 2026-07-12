@@ -11,6 +11,7 @@ final class RulerGuideController {
     private(set) var verticalGuides: [CGFloat] = []
     private(set) var horizontalGuides: [CGFloat] = []
     private var panels: [NSPanel] = []
+    private var editPanel: NSPanel?
     private var timer: Timer?
 
     private init() {}
@@ -48,6 +49,8 @@ final class RulerGuideController {
         timer = nil
         panels.forEach { $0.close() }
         panels.removeAll()
+        editPanel?.close()
+        editPanel = nil
     }
 
     func pinGuidesAtPointer() {
@@ -68,6 +71,11 @@ final class RulerGuideController {
         guard !verticalGuides.isEmpty || !horizontalGuides.isEmpty else { return }
         isEditing.toggle()
         panels.forEach { $0.ignoresMouseEvents = !isEditing }
+        if isEditing { showEditPanel() }
+        else {
+            editPanel?.close()
+            editPanel = nil
+        }
     }
 
     func moveVerticalGuide(at index: Int, to x: CGFloat) {
@@ -91,6 +99,34 @@ final class RulerGuideController {
                 horizontalGuides: horizontalGuides
             )
         }
+    }
+
+    private func showEditPanel() {
+        let panel = NSPanel(
+            contentRect: CGRect(x: 0, y: 0, width: 150, height: 40),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.level = .screenSaver
+        panel.isOpaque = false
+        panel.backgroundColor = .windowBackgroundColor
+        panel.hasShadow = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        let button = NSButton(title: "Done Editing Guides", target: self, action: #selector(finishEditing))
+        button.bezelStyle = .rounded
+        button.frame = CGRect(x: 8, y: 6, width: 134, height: 28)
+        panel.contentView = NSView(frame: CGRect(x: 0, y: 0, width: 150, height: 40))
+        panel.contentView?.addSubview(button)
+        if let visible = NSScreen.main?.visibleFrame {
+            panel.setFrameOrigin(CGPoint(x: visible.midX - 75, y: visible.maxY - 52))
+        }
+        panel.orderFrontRegardless()
+        editPanel = panel
+    }
+
+    @objc private func finishEditing() {
+        if isEditing { toggleEditing() }
     }
 }
 

@@ -58,16 +58,18 @@ struct TextExtractorView: View {
                     Text("Speed")
                     Picker("Speed", selection: $service.settings.speed) {
                         ForEach(TextRecognitionSpeed.allCases) { speed in Text(speed.title).tag(speed) }
-                    }.labelsHidden()
+                    }.labelsHidden().contentShape(Rectangle())
                 }
                 GridRow {
                     Text("Correction")
                     Toggle("Use language correction", isOn: $service.settings.languageCorrection)
+                        .contentShape(Rectangle())
                 }
                 GridRow {
                     Text("Languages")
                     HStack {
                         TextField("Automatic, or en-US, fr-FR", text: $languages)
+                            .contentShape(Rectangle())
                         Button("Apply") {
                             service.settings.preferredLanguages = languages
                                 .split(separator: ",")
