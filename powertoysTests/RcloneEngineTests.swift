@@ -23,6 +23,7 @@ final class RcloneEngineTests: XCTestCase {
         for key in managedKeys {
             savedDefaults[key] = UserDefaults.standard.object(forKey: key)
         }
+        try? FileManager.default.removeItem(at: AppDataLocation.transfersURL)
     }
 
     override func tearDown() {
@@ -62,7 +63,7 @@ final class RcloneEngineTests: XCTestCase {
 
         let manager = RcloneJobManager()
         await manager.start()
-        defer { Task { await manager.shutdown() } }
+        addTeardownBlock { await manager.shutdown() }
 
         let healthy = await waitFor(15) { manager.daemonIsHealthy }
         XCTAssertTrue(healthy, "daemon should become healthy — status: \(manager.daemonStatusText)")
@@ -96,7 +97,7 @@ final class RcloneEngineTests: XCTestCase {
 
         let manager = RcloneJobManager()
         await manager.start()
-        defer { Task { await manager.shutdown() } }
+        addTeardownBlock { await manager.shutdown() }
 
         let healthy = await waitFor(15) { manager.daemonIsHealthy }
         XCTAssertTrue(healthy, "daemon should become healthy")
@@ -130,7 +131,7 @@ final class RcloneEngineTests: XCTestCase {
 
         let manager = RcloneJobManager()
         await manager.start()
-        defer { Task { await manager.shutdown() } }
+        addTeardownBlock { await manager.shutdown() }
 
         let healthy = await waitFor(15) { manager.daemonIsHealthy }
         XCTAssertTrue(healthy, "daemon should become healthy — status: \(manager.daemonStatusText)")

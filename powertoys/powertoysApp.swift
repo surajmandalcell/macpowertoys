@@ -40,6 +40,7 @@ struct powertoysApp: App {
         Window("PowerToys", id: "main") {
             MainWindowView()
                 .task {
+                    guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
                     await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
                     DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                     DeepLinkHandler.shared.handleCLIArguments()
