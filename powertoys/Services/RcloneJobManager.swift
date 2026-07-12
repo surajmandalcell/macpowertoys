@@ -1268,11 +1268,59 @@ final class RcloneJobManager {
             if remoteCheckers > 0 { checkers = remoteCheckers }
         }
 
-        return [
+        var config: [String: Any] = [
             "Transfers": transfers,
             "Checkers": checkers,
             "LowLevelRetries": current.lowLevelRetries
         ]
+        if let orderBy = job.transferOrder.orderByValue {
+            config["OrderBy"] = orderBy
+        }
+        if job.updateOlderOnly {
+            config["UpdateOlder"] = true
+        }
+        if job.ignoreExisting {
+            config["IgnoreExisting"] = true
+        }
+        if job.compareChecksums {
+            config["CheckSum"] = true
+        }
+        return config
+    }
+
+    func restartTransferQuietly(_ job: TransferJob) {
+        if job.state == .running {
+            pause(job)
+        }
+        if job.state == .paused, job.canResume {
+            resume(job)
+        }
+    }
+
+    func applyTransferSettingsChange(_ job: TransferJob) {
+        persistJobsSoon()
+        if job.state == .running {
+            restartTransferQuietly(job)
+        }
+    }
+
+    func ignoreFile(_ job: TransferJob, path: String, addToGlobalList: Bool) {
+        let rule = "/" + path
+        if !job.excludePatterns.contains(rule) {
+            job.excludePatterns.append(rule)
+        }
+        if addToGlobalList {
+            let name = (path as NSString).lastPathComponent
+            let defaults = UserDefaults.standard
+            let raw = defaults.string(forKey: RcloneDefaults.ignorePatternsKey) ?? RcloneDefaults.ignorePatterns
+            if !RcloneDefaults.parsePatterns(raw).contains(name) {
+                defaults.set(raw.trimmingCharacters(in: .whitespacesAndNewlines) + "\n" + name, forKey: RcloneDefaults.ignorePatternsKey)
+            }
+            LogManager.shared.info("Added “\(name)” to the global ignore list", source: "RcloneJobManager")
+        }
+        LogManager.shared.info("Ignoring \(rule) on \(job.sourceDisplay)", source: "RcloneJobManager")
+        persistJobsSoon()
+        restartTransferQuietly(job)
     }
 
     func deleteRemoteEntries(remote: RcloneRemote, entries: [RemoteEntry]) async -> (deleted: Int, failed: Int) {

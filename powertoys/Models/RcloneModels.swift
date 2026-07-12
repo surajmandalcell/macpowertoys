@@ -179,6 +179,28 @@ struct RcloneRemote: Identifiable, Hashable, Sendable {
 
 // MARK: - Per-file Progress
 
+enum TransferOrder: String, Codable, CaseIterable, Sendable {
+    case `default`
+    case largestFirst
+    case smallestFirst
+
+    var displayName: String {
+        switch self {
+        case .default: return "Default (as listed)"
+        case .largestFirst: return "Largest files first"
+        case .smallestFirst: return "Smallest files first"
+        }
+    }
+
+    var orderByValue: String? {
+        switch self {
+        case .default: return nil
+        case .largestFirst: return "size,desc"
+        case .smallestFirst: return "size,asc"
+        }
+    }
+}
+
 struct FileProgress: Identifiable, Sendable, Hashable {
     let name: String
     let size: Int64
@@ -307,6 +329,10 @@ final class TransferJob: Identifiable {
     var resumeBaselineFiles: Int = 0
     var isSizing = false
     var isRecalculating = false
+    var transferOrder: TransferOrder = .default
+    var updateOlderOnly = false
+    var ignoreExisting = false
+    var compareChecksums = false
     private(set) var displayEta: Double?
     private var lastEtaRefresh = Date.distantPast
 
@@ -498,6 +524,10 @@ struct TransferJobSnapshot: Codable, Sendable {
     let autoResumeOnLaunch: Bool?
     let resumeBaselineBytes: Int64?
     let resumeBaselineFiles: Int?
+    let transferOrder: String?
+    let updateOlderOnly: Bool?
+    let ignoreExisting: Bool?
+    let compareChecksums: Bool?
 }
 
 extension TransferJob {
@@ -531,7 +561,11 @@ extension TransferJob {
             destinationVolumeFingerprint: destinationVolumeFingerprint,
             autoResumeOnLaunch: autoResumeOnLaunch,
             resumeBaselineBytes: resumeBaselineBytes,
-            resumeBaselineFiles: resumeBaselineFiles
+            resumeBaselineFiles: resumeBaselineFiles,
+            transferOrder: transferOrder == .default ? nil : transferOrder.rawValue,
+            updateOlderOnly: updateOlderOnly ? true : nil,
+            ignoreExisting: ignoreExisting ? true : nil,
+            compareChecksums: compareChecksums ? true : nil
         )
     }
 
@@ -563,6 +597,10 @@ extension TransferJob {
         autoResumeOnLaunch = snapshot.autoResumeOnLaunch ?? false
         resumeBaselineBytes = snapshot.resumeBaselineBytes ?? 0
         resumeBaselineFiles = snapshot.resumeBaselineFiles ?? 0
+        transferOrder = snapshot.transferOrder.flatMap(TransferOrder.init(rawValue:)) ?? .default
+        updateOlderOnly = snapshot.updateOlderOnly ?? false
+        ignoreExisting = snapshot.ignoreExisting ?? false
+        compareChecksums = snapshot.compareChecksums ?? false
 
         var restoredStats = TransferStats.empty
         restoredStats.bytes = snapshot.bytes

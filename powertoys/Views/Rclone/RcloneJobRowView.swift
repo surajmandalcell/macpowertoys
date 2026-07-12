@@ -230,7 +230,7 @@ struct TransferJobRow: View {
 
     private var controls: some View {
         HStack(spacing: 6) {
-            ControlIconButton(icon: "info.circle", label: "Details", tint: .secondary) {
+            ControlIconButton(icon: "gearshape", label: "Details & settings", tint: .secondary) {
                 showInfo = true
             }
             if job.canPause {
@@ -318,7 +318,9 @@ struct TransferJobRow: View {
                         .foregroundStyle(.tertiary)
                 } else {
                     ForEach(job.stats.transferring) { file in
-                        FileProgressRow(file: file)
+                        FileProgressRow(file: file) { addToGlobalList in
+                            manager.ignoreFile(job, path: file.name, addToGlobalList: addToGlobalList)
+                        }
                     }
                 }
             }
@@ -384,6 +386,9 @@ private struct CapsuleProgressBar: View {
 
 private struct FileProgressRow: View {
     let file: FileProgress
+    var onIgnore: ((_ addToGlobalList: Bool) -> Void)?
+
+    @State private var isHoveringIgnore = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -409,6 +414,39 @@ private struct FileProgressRow: View {
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
                 .frame(width: 74, alignment: .trailing)
+
+            if let onIgnore {
+                ignoreMenu(onIgnore)
+            }
+        }
+    }
+
+    private func ignoreMenu(_ onIgnore: @escaping (_ addToGlobalList: Bool) -> Void) -> some View {
+        Menu {
+            Button("Ignore This Time") { onIgnore(false) }
+            Button("Ignore and Add to Ignore List") { onIgnore(true) }
+        } label: {
+            Image(systemName: "nosign")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 22, height: 22)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(isHoveringIgnore ? 0.06 : 0))
+                )
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .focusEffectDisabled()
+        .animation(.easeInOut(duration: 0.15), value: isHoveringIgnore)
+        .onHover { isHoveringIgnore = $0 }
+        .help("Ignore this file")
+        .contextMenu {
+            Button("Ignore This Time") { onIgnore(false) }
+            Button("Ignore and Add to Ignore List") { onIgnore(true) }
         }
     }
 }
