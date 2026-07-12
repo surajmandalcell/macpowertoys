@@ -15,6 +15,9 @@ struct NewTransferSheet: View {
     @State private var destination = EndpointConfig()
     @State private var extraExcludesText = ""
     @State private var didInitialize = false
+    @State private var sizeEstimate: (bytes: Int64, files: Int)?
+    @State private var isEstimating = false
+    @State private var estimateTask: Task<Void, Never>?
 
     private var parsedExtraExcludes: [String] {
         extraExcludesText
@@ -36,6 +39,10 @@ struct NewTransferSheet: View {
                 VStack(alignment: .leading, spacing: 20) {
                     operationSection
                     EndpointCard(title: "Source", config: $source, remotes: manager.remotes, chooseDirectoriesOnly: false)
+
+                    if isEstimating || sizeEstimate != nil {
+                        estimateRow
+                    }
                     EndpointCard(title: "Destination", config: $destination, remotes: manager.remotes, chooseDirectoriesOnly: true)
                     excludesSection
                 }
@@ -51,6 +58,12 @@ struct NewTransferSheet: View {
             guard !didInitialize else { return }
             operation = manager.settings.defaultOperation
             didInitialize = true
+        }
+        .onChange(of: source.fs) {
+            scheduleEstimate()
+        }
+        .onDisappear {
+            estimateTask?.cancel()
         }
     }
 
@@ -187,6 +200,53 @@ struct NewTransferSheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
+    }
+
+    private var estimateRow: some View {
+        HStack(spacing: 6) {
+            if isEstimating {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Calculating size…")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            } else if let estimate = sizeEstimate {
+                Image(systemName: "scalemass")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                Text("≈ \(RcloneFormat.bytes(estimate.bytes)) in \(estimate.files) files after ignore rules")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func scheduleEstimate() {
+        estimateTask?.cancel()
+        sizeEstimate = nil
+        isEstimating = false
+        guard source.isValid else { return }
+
+        if source.kind == .local {
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: source.localPath, isDirectory: &isDirectory), isDirectory.boolValue else { return }
+        }
+
+        let fs = source.fs
+        let excludes = manager.settings.ignorePatterns + parsedExtraExcludes
+        isEstimating = true
+
+        estimateTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            let result = try? await manager.estimateSize(fs: fs, excludePatterns: excludes)
+            guard !Task.isCancelled else { return }
+            sizeEstimate = result
+            isEstimating = false
+        }
     }
 
     private func start() {
