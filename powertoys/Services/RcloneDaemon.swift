@@ -138,12 +138,12 @@ final class RcloneDaemon {
     }
 
     private func healthCheck(client: RcloneRCClient, process: Process) async -> String? {
-        for _ in 0..<40 {
+        for _ in 0..<60 {
             guard process.isRunning else { return nil }
             if let version = try? await client.version() {
                 return version
             }
-            try? await Task.sleep(for: .milliseconds(120))
+            try? await Task.sleep(for: .milliseconds(200))
         }
         return nil
     }

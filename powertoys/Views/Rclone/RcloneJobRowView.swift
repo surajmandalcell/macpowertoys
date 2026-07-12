@@ -50,8 +50,31 @@ struct TransferJobRow: View {
         )
         .animation(.easeInOut(duration: 0.15), value: isHovering)
         .onHover { isHovering = $0 }
+        .contextMenu {
+            Button("Details…") { showInfo = true }
+            if job.kind == .directory && !job.state.isTerminal {
+                Button("Recalculate Size & Diff") { manager.recalculate(job) }
+                    .disabled(job.isRecalculating)
+            }
+            Divider()
+            if job.canPause {
+                Button("Pause") { manager.pause(job) }
+            }
+            if job.canResume {
+                Button("Resume") { manager.resume(job) }
+            }
+            if job.canRetry {
+                Button("Retry") { manager.retry(job) }
+            }
+            if job.canCancel {
+                Button("Cancel") { manager.cancel(job) }
+            }
+            if job.state.isTerminal {
+                Button("Remove") { manager.remove(job) }
+            }
+        }
         .sheet(isPresented: $showInfo) {
-            TransferInfoSheet(details: TransferDetails(job: job))
+            TransferInfoSheet(job: job)
         }
     }
 
@@ -157,7 +180,9 @@ struct TransferJobRow: View {
             metric(icon: "clock", text: "ETA \(RcloneFormat.eta(job.displayEta))")
             metric(icon: "arrow.up.arrow.down", text: "\(job.displayFiles)/\(job.effectiveTotalFiles)")
 
-            if job.isSizing && job.state == .running {
+            if job.isRecalculating {
+                progressChip("Recalculating…")
+            } else if job.isSizing && job.state == .running {
                 sizingChip
             }
 
@@ -179,10 +204,14 @@ struct TransferJobRow: View {
     }
 
     private var sizingChip: some View {
+        progressChip("Calculating size…")
+    }
+
+    private func progressChip(_ text: String) -> some View {
         HStack(spacing: 5) {
             ProgressView()
                 .controlSize(.mini)
-            Text("Calculating size…")
+            Text(text)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }

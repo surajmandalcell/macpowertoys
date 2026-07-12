@@ -6,10 +6,26 @@
 import SwiftUI
 
 struct TransferInfoSheet: View {
-    let details: TransferDetails
+    private let job: TransferJob?
+    private let recordDetails: TransferDetails?
 
+    @Environment(RcloneJobManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: InfoTab = .overview
+
+    init(details: TransferDetails) {
+        self.recordDetails = details
+        self.job = nil
+    }
+
+    init(job: TransferJob) {
+        self.job = job
+        self.recordDetails = nil
+    }
+
+    private var details: TransferDetails {
+        job.map { TransferDetails(job: $0) } ?? recordDetails!
+    }
 
     private enum InfoTab: Hashable {
         case overview
@@ -57,7 +73,7 @@ struct TransferInfoSheet: View {
 
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
         .padding(.bottom, 10)
     }
 
@@ -65,15 +81,6 @@ struct TransferInfoSheet: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: details.operation.icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 26, height: 26)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.accentColor.opacity(0.12))
-                )
-
             Text("Transfer Details")
                 .font(.system(size: 15, weight: .semibold))
 
@@ -84,7 +91,8 @@ struct TransferInfoSheet: View {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
         }
-        .padding(16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 
     private var stateBadge: some View {
@@ -176,6 +184,26 @@ struct TransferInfoSheet: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.red)
                     .textSelection(.enabled)
+            }
+
+            if let job, job.kind == .directory, !job.state.isTerminal {
+                LabeledContent {
+                    if job.isRecalculating {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Scanning both sides…")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Button("Recalculate") { manager.recalculate(job) }
+                            .disabled(!manager.daemonIsHealthy)
+                    }
+                } label: {
+                    Text("Size & diff")
+                    Text("Re-scans source and destination so totals and remaining data are exact.")
+                }
             }
         }
     }

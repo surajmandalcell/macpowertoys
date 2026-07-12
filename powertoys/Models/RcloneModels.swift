@@ -306,6 +306,7 @@ final class TransferJob: Identifiable {
     var resumeBaselineBytes: Int64 = 0
     var resumeBaselineFiles: Int = 0
     var isSizing = false
+    var isRecalculating = false
     private(set) var displayEta: Double?
     private var lastEtaRefresh = Date.distantPast
 
