@@ -161,12 +161,117 @@ struct LogsTool: Tool {
     static let shared = LogsTool()
 }
 
+// MARK: - Ruler Tool
+
+struct RulerTool: Tool {
+    let id = "ruler"
+    let name = "Ruler"
+    let description = "Measure layouts across displays with floating rulers, guides, calibrated units, and developer-friendly copy formats."
+    let icon = "ruler"
+    let logoAsset = ""
+    let category = ToolCategory.dev
+    let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
+    var isEnabled = true
+
+    let manual = [
+        ToolManualSection(title: "Rulers", points: [
+            "Create horizontal, vertical, or joined rulers and keep as many visible as you need.",
+            "Drag the body to move a ruler. Drag its highlighted end or corner to resize it.",
+            "Choose points, backing pixels, millimeters, or inches without confusing Retina points with pixels."
+        ]),
+        ToolManualSection(title: "Developer Copy", points: [
+            "Copy dimensions as plain text, CSS, SwiftUI, CGRect, or JSON.",
+            "Use the cursor marker, zero-corner controls, aspect presets, and measurement pins for repeatable checks."
+        ])
+    ]
+
+    static let shared = RulerTool()
+}
+
+// MARK: - Awake Tool
+
+struct AwakeTool: Tool {
+    let id = "awake"
+    let name = "Awake"
+    let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
+    let icon = "cup.and.saucer"
+    let logoAsset = ""
+    let category = ToolCategory.system
+    let capabilities: ToolCapabilities = [.hasWindow, .needsBackgroundService, .needsGlobalHotkeys]
+    let hasTrayTab = true
+    var isEnabled = true
+
+    let manual = [
+        ToolManualSection(title: "Modes", points: [
+            "Passive uses normal macOS power settings. Indefinite remains active until disabled.",
+            "Timed mode counts down for a duration. Until mode expires at a specific date and time.",
+            "Keep Display On is independent and only applies while an active Awake mode is selected."
+        ]),
+        ToolManualSection(title: "System Behavior", points: [
+            "Awake uses macOS power assertions and never edits your Energy settings.",
+            "Manual sleep, closing a MacBook lid, low power, and thermal protection still take precedence."
+        ])
+    ]
+
+    static let shared = AwakeTool()
+}
+
+// MARK: - Color Picker Tool
+
+struct ColorPickerTool: Tool {
+    let id = "color-picker"
+    let name = "Color Picker"
+    let description = "Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values."
+    let icon = "eyedropper"
+    let logoAsset = ""
+    let category = ToolCategory.dev
+    let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
+    var isEnabled = true
+
+    let manual = [
+        ToolManualSection(title: "Pick and Copy", points: [
+            "Press Pick Color to start the native macOS sampler immediately.",
+            "The selected color is copied in your default format and saved to history.",
+            "Open Color History to copy HEX, RGB, HSL, CSS, SwiftUI, or NSColor representations."
+        ])
+    ]
+
+    static let shared = ColorPickerTool()
+}
+
+// MARK: - Text Extractor Tool
+
+struct TextExtractorTool: Tool {
+    let id = "text-extractor"
+    let name = "Text Extractor"
+    let description = "Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition."
+    let icon = "text.viewfinder"
+    let logoAsset = ""
+    let category = ToolCategory.text
+    let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
+    var isEnabled = true
+
+    let manual = [
+        ToolManualSection(title: "Extract Text", points: [
+            "Press Extract Text, drag around a screen region, and release to recognize and copy its text.",
+            "Vision performs recognition locally. Captured pixels are discarded after processing.",
+            "Screen Recording permission is required because macOS protects pixels belonging to other applications."
+        ])
+    ]
+
+    static let shared = TextExtractorTool()
+}
+
 // MARK: - Available Tools
 
 struct ToolRegistry {
     static let allTools: [any Tool] = [
         CCHistoryTool.shared,
-        RcloneTool.shared
+        RcloneTool.shared,
+        RulerTool.shared,
+        AwakeTool.shared,
+        ColorPickerTool.shared,
+        TextExtractorTool.shared
     ]
 
     static func tools(for category: ToolCategory) -> [any Tool] {

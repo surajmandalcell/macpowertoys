@@ -25,5 +25,27 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("n", modifiers: .command)
         }
+
+        CommandMenu("Utilities") {
+            Button("New Horizontal Ruler") {
+                ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerNewHorizontal))
+            }
+            .keyboardShortcut("r", modifiers: [.command, .option, .control])
+
+            Button("Toggle Awake") {
+                ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeToggle))
+            }
+            .keyboardShortcut("a", modifiers: [.command, .option, .control])
+
+            Button("Pick Color") {
+                ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
+            }
+            .keyboardShortcut("c", modifiers: [.command, .option, .control])
+
+            Button("Extract Text") {
+                ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option, .control])
+        }
     }
 }

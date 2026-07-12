@@ -48,6 +48,8 @@ struct TrayPopoverView: View {
         switch selectedTab {
         case "rclone":
             RSyncTrayTab()
+        case "awake":
+            AwakeTrayTab()
         default:
             EmptyStateView(icon: "wrench.adjustable", message: "No tray view")
                 .frame(height: 160)
@@ -69,6 +71,42 @@ struct TrayPopoverView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+}
+
+private struct AwakeTrayTab: View {
+    @State private var service = AwakeService.shared
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Circle().fill(service.isActive ? Color.green : Color.secondary).frame(width: 7, height: 7)
+                Text(service.statusText).font(.system(size: 11)).monospacedDigit().lineLimit(1)
+                Spacer()
+                Button("Open") {
+                    openWindow(id: "awake")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .buttonStyle(.borderless)
+            }
+            HStack(spacing: 6) {
+                Button("Off") { service.setMode(.passive) }
+                Button("Indefinite") { service.setMode(.indefinite) }
+                Button("30 min") { service.setMode(.timed, duration: 1800) }
+                Button("1 hour") { service.setMode(.timed, duration: 3600) }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            Toggle("Keep Display On", isOn: Binding(
+                get: { service.configuration.keepDisplayOn },
+                set: service.setKeepDisplayOn
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .disabled(service.configuration.mode == .passive)
+        }
+        .padding(12)
     }
 }
 
@@ -129,10 +167,7 @@ private struct TrayTabItem: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(tool.logoAsset)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 16, height: 16)
+                ToolIconView(tool: tool, size: 16)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
 
                 if showsLabel {

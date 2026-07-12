@@ -41,10 +41,7 @@ struct ToolCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 12) {
-                Image(tool.logoAsset)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 36, height: 36)
+                ToolIconView(tool: tool, size: 36)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tool.name)

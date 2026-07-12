@@ -17,7 +17,7 @@ struct SidebarRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                if let logoAsset {
+                if let logoAsset, !logoAsset.isEmpty {
                     Image(logoAsset)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
