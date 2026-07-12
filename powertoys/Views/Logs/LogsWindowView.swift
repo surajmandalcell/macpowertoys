@@ -9,6 +9,7 @@ import AppKit
 struct LogsWindowView: View {
     @State private var selectedLevels: Set<LogLevel> = Set(LogLevel.allCases)
     @State private var searchText = ""
+    @State private var showSettings = false
     @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
 
     private var filteredLogs: [LogEntryData] {
@@ -30,48 +31,61 @@ struct LogsWindowView: View {
         }
         .ignoresSafeArea()
         .background(WindowAccessor())
+        .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
+            guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("logs") == true else { return }
+            showSettings = true
+        }
+        .sheet(isPresented: $showSettings) {
+            LogsSettingsSheet()
+        }
     }
 
     private var sidebar: some View {
         ZStack(alignment: .topLeading) {
-            VStack(spacing: 0) {
-                SearchField(text: $searchText, placeholder: "Search logs...")
-                    .padding(.horizontal, 12)
-                    .padding(.top, 52)
-                    .padding(.bottom, 12)
+            sidebarBody
+            SidebarTitle(text: "Logs")
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    SidebarSectionHeader(title: "Filter by Level")
-                        .padding(.horizontal, 4)
+    private var sidebarBody: some View {
+        VStack(spacing: 0) {
+            SearchField(text: $searchText, placeholder: "Search logs...")
+                .padding(.horizontal, 12)
+                .padding(.top, 52)
+                .padding(.bottom, 12)
 
-                    ForEach(LogLevel.allCases, id: \.self) { level in
-                        LogLevelFilterRow(
-                            level: level,
-                            isSelected: selectedLevels.contains(level),
-                            count: LogManager.shared.logs.filter { $0.level == level }.count
-                        ) {
-                            if selectedLevels.contains(level) {
-                                selectedLevels.remove(level)
-                            } else {
-                                selectedLevels.insert(level)
-                            }
+            VStack(alignment: .leading, spacing: 4) {
+                SidebarSectionHeader(title: "Filter by Level")
+                    .padding(.horizontal, 4)
+
+                ForEach(LogLevel.allCases, id: \.self) { level in
+                    LogLevelFilterRow(
+                        level: level,
+                        isSelected: selectedLevels.contains(level),
+                        count: LogManager.shared.logs.filter { $0.level == level }.count
+                    ) {
+                        if selectedLevels.contains(level) {
+                            selectedLevels.remove(level)
+                        } else {
+                            selectedLevels.insert(level)
                         }
                     }
                 }
-                .padding(.bottom, 12)
-
-                Spacer()
-
-                VStack(spacing: 4) {
-                    SidebarActionRow(icon: "trash", title: "Clear Logs") {
-                        LogManager.shared.clearMemoryLogs()
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
             }
+            .padding(.bottom, 12)
 
-            SidebarTitle(text: "Logs")
+            Spacer()
+
+            VStack(spacing: 4) {
+                SidebarActionRow(icon: "gearshape", title: "Settings") {
+                    showSettings = true
+                }
+                SidebarActionRow(icon: "trash", title: "Clear Logs") {
+                    LogManager.shared.clearMemoryLogs()
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
         }
         .frame(width: 220)
         .background(VisualEffectBackground())
@@ -81,7 +95,7 @@ struct LogsWindowView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("\(filteredLogs.count) logs")
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Spacer()
             }
@@ -93,6 +107,46 @@ struct LogsWindowView: View {
 
             LogTextView(logs: filteredLogs.reversed(), fontSize: CGFloat(logsFontSize))
         }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+// MARK: - Settings Sheet
+
+private struct LogsSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Logs Settings")
+                    .font(.system(size: 15, weight: .semibold))
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            Divider()
+
+            Form {
+                Section {
+                    Picker("Font Size", selection: $logsFontSize) {
+                        Text("Small").tag(10)
+                        Text("Medium").tag(11)
+                        Text("Default").tag(12)
+                        Text("Large").tag(14)
+                    }
+                } header: {
+                    Text("Appearance")
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+        }
+        .frame(width: 420, height: 240)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }
@@ -208,6 +262,7 @@ private struct SidebarActionRow: View {
             )
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovered = $0 }
     }
 }
@@ -226,7 +281,7 @@ private struct LogLevelFilterRow: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? .secondary : .tertiary)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.6))
                     .font(.system(size: 14))
 
                 Image(systemName: level.icon)
@@ -239,11 +294,11 @@ private struct LogLevelFilterRow: View {
                 Spacer()
 
                 Text("\(count)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.primary.opacity(0.05))
+                    .background(Color.primary.opacity(0.06))
                     .clipShape(Capsule())
             }
             .padding(.horizontal, 12)
@@ -255,6 +310,7 @@ private struct LogLevelFilterRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovered = $0 }
     }
 }

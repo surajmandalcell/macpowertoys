@@ -15,8 +15,6 @@ struct MessageRowView: View {
     let showThinking: Bool
     var onToolSelect: ((ToolUseBlock) -> Void)?
 
-    @State private var isHovering: Bool = false
-
     private var rolePrefix: String {
         switch message.type {
         case .user: return "[user]"
@@ -221,6 +219,7 @@ struct CodeBlockView: View {
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                 }
             }
             .padding(.horizontal, 12)
@@ -287,11 +286,13 @@ struct ToolUseView: View {
                                 .foregroundStyle(.tertiary)
                         }
                         .buttonStyle(.plain)
+                        .focusEffectDisabled()
                     }
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
 
             if isExpanded {
                 Text(tool.input)
