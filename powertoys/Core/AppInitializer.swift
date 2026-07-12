@@ -47,6 +47,7 @@ final class AppInitializer {
         _ = AwakeService.shared
         _ = ColorPickerService.shared
         _ = TextExtractorService.shared
+        _ = GlobalShortcutManager.shared
 
         applyStoredTheme()
 

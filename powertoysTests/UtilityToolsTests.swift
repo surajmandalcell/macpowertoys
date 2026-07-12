@@ -21,6 +21,14 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(sample.string(.hex), "#FF8000")
         XCTAssertEqual(sample.string(.rgb), "rgb(255, 128, 0)")
         XCTAssertTrue(sample.string(.swiftUI).hasPrefix("Color(red:"))
+        XCTAssertTrue(sample.matches(ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1)))
+        XCTAssertFalse(sample.matches(ColorSample(red: 0, green: 0.5, blue: 0, alpha: 1)))
+    }
+
+    func testJoinedRulerStartsWithBothArms() {
+        let ruler = RulerState(orientation: .joined, frame: CGRect(x: 0, y: 0, width: 400, height: 300), screenID: nil)
+        XCTAssertTrue(ruler.showsHorizontalArm)
+        XCTAssertTrue(ruler.showsVerticalArm)
     }
 
     func testAwakeDurationFormatting() {

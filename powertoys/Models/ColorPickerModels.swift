@@ -25,6 +25,13 @@ struct ColorSample: Codable, Identifiable, Equatable, Sendable {
 
     var color: NSColor { NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha) }
 
+    func matches(_ other: ColorSample, tolerance: Double = 0.0005) -> Bool {
+        abs(red - other.red) < tolerance &&
+        abs(green - other.green) < tolerance &&
+        abs(blue - other.blue) < tolerance &&
+        abs(alpha - other.alpha) < tolerance
+    }
+
     func string(_ format: ColorCopyFormat) -> String {
         let r = Int((red * 255).rounded())
         let g = Int((green * 255).rounded())

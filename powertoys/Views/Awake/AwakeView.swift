@@ -17,7 +17,8 @@ struct AwakeView: View {
                     modes
                     options
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -43,7 +44,7 @@ struct AwakeView: View {
 
     private var status: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("STATUS").sectionHeader()
+            Text("STATUS").utilitySectionHeader()
             HStack(spacing: 10) {
                 Circle().fill(service.isActive ? Color.green : Color.secondary).frame(width: 8, height: 8)
                 Text(service.statusText).font(.system(size: 13)).monospacedDigit()
@@ -52,14 +53,14 @@ struct AwakeView: View {
                     Button("Turn Off") { service.setMode(.passive) }
                 }
             }
-            .sectionCard()
+            .utilitySectionCard()
             if let error = service.assertionError { Text(error).font(.system(size: 11)).foregroundStyle(.red) }
         }
     }
 
     private var modes: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("MODE").sectionHeader()
+            Text("MODE").utilitySectionHeader()
             VStack(alignment: .leading, spacing: 12) {
                 modeButton(.passive)
                 modeButton(.indefinite)
@@ -77,13 +78,13 @@ struct AwakeView: View {
                     Button("Start") { service.setMode(.until, until: expiration) }
                 }
             }
-            .sectionCard()
+            .utilitySectionCard()
         }
     }
 
     private var options: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("QUICK TIMES AND PROCESS").sectionHeader()
+            Text("QUICK TIMES AND PROCESS").utilitySectionHeader()
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     ForEach(service.configuration.presets, id: \.self) { seconds in
@@ -115,7 +116,7 @@ struct AwakeView: View {
                 }
             }
             .font(.system(size: 12))
-            .sectionCard()
+            .utilitySectionCard()
         }
     }
 
@@ -130,14 +131,5 @@ struct AwakeView: View {
         }
         .buttonStyle(.plain)
         .frame(minWidth: 180, alignment: .leading)
-    }
-}
-
-private extension View {
-    func sectionHeader() -> some View {
-        font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-    }
-    func sectionCard() -> some View {
-        padding(14).background(Color.primary.opacity(0.05)).clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
