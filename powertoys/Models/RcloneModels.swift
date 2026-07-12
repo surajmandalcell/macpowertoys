@@ -333,6 +333,8 @@ final class TransferJob: Identifiable {
     var updateOlderOnly = false
     var ignoreExisting = false
     var compareChecksums = false
+    var transfersOverride = 0
+    var checkersOverride = 0
     private(set) var displayEta: Double?
     private var lastEtaRefresh = Date.distantPast
 
@@ -528,6 +530,8 @@ struct TransferJobSnapshot: Codable, Sendable {
     let updateOlderOnly: Bool?
     let ignoreExisting: Bool?
     let compareChecksums: Bool?
+    let transfersOverride: Int?
+    let checkersOverride: Int?
 }
 
 extension TransferJob {
@@ -565,7 +569,9 @@ extension TransferJob {
             transferOrder: transferOrder == .default ? nil : transferOrder.rawValue,
             updateOlderOnly: updateOlderOnly ? true : nil,
             ignoreExisting: ignoreExisting ? true : nil,
-            compareChecksums: compareChecksums ? true : nil
+            compareChecksums: compareChecksums ? true : nil,
+            transfersOverride: transfersOverride > 0 ? transfersOverride : nil,
+            checkersOverride: checkersOverride > 0 ? checkersOverride : nil
         )
     }
 
@@ -601,6 +607,8 @@ extension TransferJob {
         updateOlderOnly = snapshot.updateOlderOnly ?? false
         ignoreExisting = snapshot.ignoreExisting ?? false
         compareChecksums = snapshot.compareChecksums ?? false
+        transfersOverride = snapshot.transfersOverride ?? 0
+        checkersOverride = snapshot.checkersOverride ?? 0
 
         var restoredStats = TransferStats.empty
         restoredStats.bytes = snapshot.bytes
