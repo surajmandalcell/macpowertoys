@@ -65,6 +65,48 @@ final class RcloneDaemon {
         return FileManager.default.isExecutableFile(atPath: path) ? path : nil
     }
 
+    // MARK: Stray daemon registry
+
+    private static var registryDirectory: URL {
+        AppDataLocation.directory.appendingPathComponent("daemons", isDirectory: true)
+    }
+
+    private static func register(daemonPid: pid_t) {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: registryDirectory, withIntermediateDirectories: true)
+        let marker = registryDirectory.appendingPathComponent(String(daemonPid))
+        let owner = String(ProcessInfo.processInfo.processIdentifier)
+        try? owner.data(using: .utf8)?.write(to: marker)
+    }
+
+    private static func unregister(daemonPid: pid_t) {
+        try? FileManager.default.removeItem(at: registryDirectory.appendingPathComponent(String(daemonPid)))
+    }
+
+    private static func reapStrayDaemons() {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(atPath: registryDirectory.path) else { return }
+        for entry in entries {
+            let marker = registryDirectory.appendingPathComponent(entry)
+            guard let daemonPid = pid_t(entry), daemonPid > 0 else {
+                try? fm.removeItem(at: marker)
+                continue
+            }
+            let ownerPid = (try? String(contentsOf: marker, encoding: .utf8))
+                .flatMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            if let ownerPid, ownerPid > 0, kill(ownerPid, 0) == 0 {
+                continue
+            }
+            defer { try? fm.removeItem(at: marker) }
+            guard kill(daemonPid, 0) == 0 else { continue }
+            var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+            guard proc_pidpath(daemonPid, &buffer, UInt32(buffer.count)) > 0,
+                  (String(cString: buffer) as NSString).lastPathComponent == "rclone" else { continue }
+            kill(daemonPid, SIGTERM)
+            LogManager.shared.info("Reaped stray rclone daemon (pid \(daemonPid))", source: "RcloneDaemon")
+        }
+    }
+
     // MARK: Lifecycle
 
     func ensureRunning(binaryPath: String) async throws -> RcloneRCClient {
@@ -75,6 +117,7 @@ final class RcloneDaemon {
 
     private func startDaemon(binaryPath: String) async throws -> RcloneRCClient {
         state = .starting
+        Self.reapStrayDaemons()
 
         let resolved = await Task.detached(priority: .userInitiated) {
             Self.resolveBinaryPath(preferred: binaryPath)
@@ -117,6 +160,7 @@ final class RcloneDaemon {
                 lastError = error
                 continue
             }
+            Self.register(daemonPid: proc.processIdentifier)
 
             let candidate = RcloneRCClient(port: port)
             if let version = await healthCheck(client: candidate, process: proc) {
@@ -129,6 +173,7 @@ final class RcloneDaemon {
 
             errPipe.fileHandleForReading.readabilityHandler = nil
             proc.terminate()
+            Self.unregister(daemonPid: proc.processIdentifier)
             lastError = RcloneRCError.notReachable
         }
 
@@ -149,8 +194,11 @@ final class RcloneDaemon {
     }
 
     func stop() {
-        if let process, process.isRunning {
-            process.terminate()
+        if let process {
+            if process.isRunning {
+                process.terminate()
+            }
+            Self.unregister(daemonPid: process.processIdentifier)
         }
         (process?.standardError as? Pipe)?.fileHandleForReading.readabilityHandler = nil
         process = nil
