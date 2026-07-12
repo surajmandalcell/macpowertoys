@@ -92,8 +92,7 @@ struct TransferInfoSheet: View {
             }
             Spacer()
         }
-        .padding(.leading, Self.gutter - 10)
-        .padding(.trailing, Self.gutter)
+        .padding(.horizontal, Self.gutter)
         .padding(.bottom, 12)
     }
 
@@ -138,6 +137,23 @@ struct TransferInfoSheet: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
                 if let job {
+                    section("Performance") {
+                        VStack(alignment: .leading, spacing: 2) {
+                            StepperField(label: "Parallel file transfers", value: settingBinding(job, \.transfersOverride), range: 0...64, format: .number)
+                                .font(.system(size: 13))
+                            Text("0 inherits the remote or global setting.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            StepperField(label: "Checkers", value: settingBinding(job, \.checkersOverride), range: 0...128, format: .number)
+                                .font(.system(size: 13))
+                            Text("Parallel comparisons while scanning for changes.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+
                     section("Upload Order") {
                         HStack {
                             Text("Transfer order")

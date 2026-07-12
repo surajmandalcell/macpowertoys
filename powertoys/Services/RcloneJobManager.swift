@@ -102,6 +102,7 @@ final class RcloneJobManager {
     private var engineRetryAttempt = 0
     private var engineFailureBanner: String?
     private var daemonRecoveryInFlight = false
+    private var settingsApplyTasks: [UUID: Task<Void, Never>] = [:]
     private var lastAppliedBandwidth: String?
     private var loadedPersistedJobs = false
     private var persistJobsTask: Task<Void, Never>?
@@ -1268,6 +1269,9 @@ final class RcloneJobManager {
             if remoteCheckers > 0 { checkers = remoteCheckers }
         }
 
+        if job.transfersOverride > 0 { transfers = job.transfersOverride }
+        if job.checkersOverride > 0 { checkers = job.checkersOverride }
+
         var config: [String: Any] = [
             "Transfers": transfers,
             "Checkers": checkers,
@@ -1300,8 +1304,14 @@ final class RcloneJobManager {
 
     func applyTransferSettingsChange(_ job: TransferJob) {
         persistJobsSoon()
-        if job.state == .running {
-            restartTransferQuietly(job)
+        settingsApplyTasks[job.id]?.cancel()
+        settingsApplyTasks[job.id] = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1200))
+            guard let self, !Task.isCancelled else { return }
+            self.settingsApplyTasks[job.id] = nil
+            if job.state == .running {
+                self.restartTransferQuietly(job)
+            }
         }
     }
 
