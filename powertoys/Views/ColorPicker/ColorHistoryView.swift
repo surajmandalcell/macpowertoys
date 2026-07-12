@@ -18,11 +18,14 @@ struct ColorHistoryView: View {
             Divider()
             HStack {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search colors", text: $search).textFieldStyle(.plain)
+                TextField("Search colors", text: $search)
+                    .textFieldStyle(.plain)
+                    .contentShape(Rectangle())
                 Picker("Default", selection: $service.defaultFormat) {
                     ForEach(ColorCopyFormat.allCases) { format in Text(format.title).tag(format) }
                 }
                 .frame(width: 120)
+                .contentShape(Rectangle())
                 Toggle("⌃⌥⌘", isOn: Binding(
                     get: { shortcuts.isColorShortcutEnabled },
                     set: shortcuts.setColorShortcutEnabled

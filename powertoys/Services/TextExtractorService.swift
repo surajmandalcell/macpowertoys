@@ -56,6 +56,7 @@ final class TextExtractorService {
         }
         guard CGRequestScreenCaptureAccess() else {
             state = .failed("Allow PowerToys in System Settings > Privacy & Security > Screen & System Audio Recording, then try again.")
+            ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
             return false
         }
         return true
@@ -94,6 +95,7 @@ final class TextExtractorService {
             state = .copied(text)
         } catch {
             state = .failed(error.localizedDescription)
+            ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
         }
     }
 
@@ -177,6 +179,7 @@ private final class TextRegionSelectionView: NSView {
     private let cancellation: () -> Void
     private var start: CGPoint?
     private var lastPoint: CGPoint?
+    private var shiftWasDownAtMouseDown = false
     private var selection = CGRect.zero
 
     init(frame: CGRect, completion: @escaping (CGRect) -> Void, cancellation: @escaping () -> Void) {
@@ -205,13 +208,14 @@ private final class TextRegionSelectionView: NSView {
     override func mouseDown(with event: NSEvent) {
         start = convert(event.locationInWindow, from: nil)
         lastPoint = start
+        shiftWasDownAtMouseDown = event.modifierFlags.contains(.shift)
         selection = .zero
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard let start else { return }
         let point = convert(event.locationInWindow, from: nil)
-        if event.modifierFlags.contains(.shift), !selection.isEmpty, let lastPoint {
+        if !shiftWasDownAtMouseDown, event.modifierFlags.contains(.shift), !selection.isEmpty, let lastPoint {
             selection = selection.offsetBy(dx: point.x - lastPoint.x, dy: point.y - lastPoint.y)
         } else {
             selection = CGRect(x: min(start.x, point.x), y: min(start.y, point.y), width: abs(point.x - start.x), height: abs(point.y - start.y))
