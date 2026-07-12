@@ -177,6 +177,7 @@ final class RcloneJobManager {
         loadPersistedJobs()
         startVolumeWatch()
         resumeJobsForMountedVolumes()
+        autoResumeInterruptedJobs()
 
         do {
             let client = try await daemon.ensureRunning(binaryPath: settings.binaryPath)
@@ -227,11 +228,21 @@ final class RcloneJobManager {
             }
             authJobId = nil
         }
-        for job in jobs where job.state.isActive {
-            job.state = .cancelled
-            job.finishedAt = Date()
-            insertRecord(for: job)
-            if let jobid = job.rcJobId, let client {
+        for job in jobs where job.state.isActive && !job.state.isTerminal {
+            let jobid = job.rcJobId
+            if job.state == .running {
+                job.resumeBaselineBytes += job.stats.bytes
+                job.resumeBaselineFiles += job.stats.transfers
+                job.stats.bytes = 0
+                job.stats.transfers = 0
+            }
+            if job.state != .paused {
+                job.state = .paused
+                job.autoResumeOnLaunch = true
+            }
+            job.rcJobId = nil
+            job.nextRetryAt = nil
+            if let jobid, let client {
                 try? await client.stopJob(jobid: jobid)
             }
         }
@@ -604,6 +615,10 @@ final class RcloneJobManager {
     func pause(_ job: TransferJob) {
         guard job.canPause else { return }
         let jobid = job.rcJobId
+        job.resumeBaselineBytes += job.stats.bytes
+        job.resumeBaselineFiles += job.stats.transfers
+        job.stats.bytes = 0
+        job.stats.transfers = 0
         job.state = .paused
         job.rcJobId = nil
         job.nextRetryAt = nil
@@ -687,6 +702,19 @@ final class RcloneJobManager {
         }
     }
 
+    private func autoResumeInterruptedJobs() {
+        for job in jobs where job.state == .paused && job.autoResumeOnLaunch {
+            job.autoResumeOnLaunch = false
+            if let volume = Self.offlineVolume(for: job) {
+                job.autoPausedVolume = volume
+                job.errorMessage = "Drive disconnected — will resume when “\((volume as NSString).lastPathComponent)” reconnects."
+                continue
+            }
+            resume(job)
+        }
+        persistJobsSoon()
+    }
+
     private func resumeJobsForMountedVolumes() {
         for job in jobs where job.state == .paused {
             guard let volume = job.autoPausedVolume else { continue }
@@ -737,6 +765,9 @@ final class RcloneJobManager {
         job.nextRetryAt = nil
         job.expectedBytes = nil
         job.expectedFiles = nil
+        job.resumeBaselineBytes = 0
+        job.resumeBaselineFiles = 0
+        job.autoResumeOnLaunch = false
         persistJobsSoon()
     }
 

@@ -300,6 +300,9 @@ final class TransferJob: Identifiable {
     var expectedBytes: Int64?
     var expectedFiles: Int?
     var autoPausedVolume: String?
+    var autoResumeOnLaunch = false
+    var resumeBaselineBytes: Int64 = 0
+    var resumeBaselineFiles: Int = 0
     var isSizing = false
     private(set) var displayEta: Double?
     private var lastEtaRefresh = Date.distantPast
@@ -368,10 +371,18 @@ final class TransferJob: Identifiable {
         max(stats.totalTransfers, expectedFiles ?? 0)
     }
 
+    var displayBytes: Int64 {
+        min(effectiveTotalBytes == 0 ? Int64.max : effectiveTotalBytes, resumeBaselineBytes + stats.bytes)
+    }
+
+    var displayFiles: Int {
+        resumeBaselineFiles + stats.transfers
+    }
+
     var progressFraction: Double {
         let total = effectiveTotalBytes
         guard total > 0 else { return 0 }
-        return min(1.0, Double(stats.bytes) / Double(total))
+        return min(1.0, Double(resumeBaselineBytes + stats.bytes) / Double(total))
     }
 
     func refreshDisplayEta() {
@@ -451,6 +462,9 @@ struct TransferJobSnapshot: Codable, Sendable {
     let expectedBytes: Int64?
     let expectedFiles: Int?
     let autoPausedVolume: String?
+    let autoResumeOnLaunch: Bool?
+    let resumeBaselineBytes: Int64?
+    let resumeBaselineFiles: Int?
 }
 
 extension TransferJob {
@@ -479,7 +493,10 @@ extension TransferJob {
             totalTransfers: stats.totalTransfers,
             expectedBytes: expectedBytes,
             expectedFiles: expectedFiles,
-            autoPausedVolume: autoPausedVolume
+            autoPausedVolume: autoPausedVolume,
+            autoResumeOnLaunch: autoResumeOnLaunch,
+            resumeBaselineBytes: resumeBaselineBytes,
+            resumeBaselineFiles: resumeBaselineFiles
         )
     }
 
@@ -506,6 +523,9 @@ extension TransferJob {
         expectedBytes = snapshot.expectedBytes
         expectedFiles = snapshot.expectedFiles
         autoPausedVolume = snapshot.autoPausedVolume
+        autoResumeOnLaunch = snapshot.autoResumeOnLaunch ?? false
+        resumeBaselineBytes = snapshot.resumeBaselineBytes ?? 0
+        resumeBaselineFiles = snapshot.resumeBaselineFiles ?? 0
 
         var restoredStats = TransferStats.empty
         restoredStats.bytes = snapshot.bytes
