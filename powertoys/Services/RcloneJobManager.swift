@@ -101,6 +101,7 @@ final class RcloneJobManager {
     private var engineRetryTask: Task<Void, Never>?
     private var engineRetryAttempt = 0
     private var engineFailureBanner: String?
+    private var daemonRecoveryInFlight = false
     private var lastAppliedBandwidth: String?
     private var loadedPersistedJobs = false
     private var persistJobsTask: Task<Void, Never>?
@@ -984,6 +985,8 @@ final class RcloneJobManager {
     }
 
     private func recoverFromDaemonLoss() {
+        guard !daemonRecoveryInFlight else { return }
+        daemonRecoveryInFlight = true
         LogManager.shared.error("rclone daemon stopped unexpectedly — restarting engine", source: "RcloneJobManager")
         for job in jobs where job.state == .running {
             job.resumeBaselineBytes += job.stats.bytes
@@ -996,6 +999,7 @@ final class RcloneJobManager {
         persistJobsSoon()
         Task { [weak self] in
             await self?.restartDaemon()
+            self?.daemonRecoveryInFlight = false
         }
     }
 
