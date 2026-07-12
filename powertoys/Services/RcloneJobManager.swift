@@ -1098,6 +1098,7 @@ final class RcloneJobManager {
         if job.destinationVolumeFingerprint == nil {
             job.destinationVolumeFingerprint = VolumeIdentity.fingerprint(forPath: job.destinationFs)
         }
+        persistJobsSoon()
 
         job.state = .running
         job.startedAt = job.startedAt ?? Date()
