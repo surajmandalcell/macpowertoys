@@ -9,6 +9,7 @@ struct ToolAboutView: View {
     let toolId: String
 
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     private var tool: (any Tool)? {
         ToolRegistry.tool(for: toolId)
@@ -63,6 +64,7 @@ struct ToolAboutView: View {
             Button {
                 openWindow(id: tool.id)
                 NSApplication.shared.activate(ignoringOtherApps: true)
+                dismissWindow(id: "main")
             } label: {
                 Text("Open \(tool.name)")
                     .font(.system(size: 13, weight: .semibold))

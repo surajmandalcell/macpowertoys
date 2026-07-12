@@ -1275,6 +1275,7 @@ final class RcloneJobManager {
         ]
         if let orderBy = job.transferOrder.orderByValue {
             config["OrderBy"] = orderBy
+            config["CheckFirst"] = true
         }
         if job.updateOlderOnly {
             config["UpdateOlder"] = true
