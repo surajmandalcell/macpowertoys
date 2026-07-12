@@ -1045,6 +1045,7 @@ final class RcloneJobManager {
     }
 
     private func persistJobsNow() {
+        guard loadedPersistedJobs else { return }
         let snapshots = jobs.map(\.snapshot)
         guard let data = try? JSONEncoder().encode(snapshots) else { return }
         try? data.write(to: AppDataLocation.transfersURL, options: .atomic)
