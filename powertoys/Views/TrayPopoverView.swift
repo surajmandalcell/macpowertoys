@@ -160,11 +160,16 @@ private struct TrayTabItem: View {
 
 private struct RSyncTrayTab: View {
     @State private var manager = RcloneJobManager.shared
+    @State private var contentHeight: CGFloat = 60
     @Environment(\.openWindow) private var openWindow
     @Query(sort: \TransferRecord.createdAt, order: .reverse) private var records: [TransferRecord]
 
     private var recentRecords: [TransferRecord] {
         Array(records.prefix(3))
+    }
+
+    private var maxContentHeight: CGFloat {
+        (NSScreen.main?.visibleFrame.height ?? 900) * 0.7 - 130
     }
 
     var body: some View {
@@ -185,7 +190,13 @@ private struct RSyncTrayTab: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { newHeight in
+                    contentHeight = newHeight
+                }
             }
+            .frame(height: min(max(contentHeight, 44), maxContentHeight))
             .padding(.bottom, 2)
         }
     }
