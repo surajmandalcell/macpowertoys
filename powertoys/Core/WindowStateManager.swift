@@ -76,7 +76,12 @@ final class WindowStateManager {
 
         let frame = NSRect(x: state.x, y: state.y, width: state.width, height: state.height)
 
-        if NSScreen.screens.contains(where: { $0.frame.intersects(frame) }) {
+        let sufficientlyVisible = NSScreen.screens.contains { screen in
+            let overlap = screen.visibleFrame.intersection(frame)
+            return overlap.width >= 200 && overlap.height >= 100
+        }
+
+        if sufficientlyVisible {
             window.setFrame(frame, display: true)
         }
     }

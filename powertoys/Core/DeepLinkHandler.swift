@@ -78,26 +78,26 @@ final class DeepLinkHandler {
             return
         }
 
+        let windowId: String?
         switch toolId {
         case "cc-history", "cchistory":
-            action(id: "cc-history")
-            NSApplication.shared.activate(ignoringOtherApps: true)
-
+            windowId = "cc-history"
+        case "rclone", "cloud-sync", "cloudsync", "rsync":
+            windowId = "rclone"
         case "logs":
-            action(id: "logs")
-            NSApplication.shared.activate(ignoringOtherApps: true)
-
-        case "main", "settings":
-            action(id: "main")
-            NSApplication.shared.activate(ignoringOtherApps: true)
-
+            windowId = "logs"
+        case "main", "settings", "home":
+            windowId = "main"
         default:
-            if ToolRegistry.tool(for: toolId) != nil {
-                action(id: toolId)
-                NSApplication.shared.activate(ignoringOtherApps: true)
-            } else {
-                LogManager.shared.warning("Unknown tool ID: \(toolId)", source: "DeepLinkHandler")
-            }
+            windowId = ToolRegistry.tool(for: toolId) != nil ? toolId : nil
         }
+
+        guard let windowId else {
+            LogManager.shared.warning("Unknown tool ID: \(toolId)", source: "DeepLinkHandler")
+            return
+        }
+
+        action(id: windowId)
+        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 }

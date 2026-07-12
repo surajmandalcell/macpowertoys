@@ -7,57 +7,60 @@ import SwiftUI
 
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
-    @State private var searchText = ""
     @Environment(\.openWindow) private var openWindow
+    @State private var searchText = ""
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            VStack(spacing: 0) {
-                SearchField(text: $searchText, placeholder: "Search")
-                    .padding(.horizontal, 12)
-                    .padding(.top, 52)
-                    .padding(.bottom, 12)
+            sidebarBody
+            SidebarTitle(text: "PowerToys")
+        }
+    }
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: selectedTool == "all-tools") {
-                            selectedTool = "all-tools"
-                        }
+    private var sidebarBody: some View {
+        VStack(spacing: 0) {
+            SearchField(text: $searchText, placeholder: "Search")
+                .padding(.horizontal, 12)
+                .padding(.top, 52)
+                .padding(.bottom, 12)
 
-                        ForEach(filteredCategories, id: \.id) { category in
-                            SidebarSectionHeader(title: category.rawValue)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 4) {
+                    SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: selectedTool == "all-tools") {
+                        selectedTool = "all-tools"
+                    }
 
-                            ForEach(filteredTools(for: category), id: \.id) { tool in
-                                SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id) {
-                                    selectedTool = tool.id
-                                }
+                    ForEach(filteredCategories, id: \.id) { category in
+                        SidebarSectionHeader(title: category.rawValue)
+
+                        ForEach(filteredTools(for: category), id: \.id) { tool in
+                            SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id, logoAsset: tool.logoAsset) {
+                                selectedTool = tool.id
                             }
                         }
                     }
-                    .padding(.horizontal, 12)
-                }
-
-                Spacer(minLength: 0)
-
-                VStack(spacing: 4) {
-                    SidebarRow(icon: "gearshape", title: "Settings", isSelected: selectedTool == "settings") {
-                        selectedTool = "settings"
-                    }
-
-                    SidebarExternalRow(icon: "doc.text.magnifyingglass", title: "Logs") {
-                        openWindow(id: "logs")
-                        NSApplication.shared.activate(ignoringOtherApps: true)
-                    }
-
-                    SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
-                        NSApplication.shared.terminate(nil)
-                    }
                 }
                 .padding(.horizontal, 12)
-                .padding(.bottom, 12)
             }
 
-            SidebarTitle(text: "PowerToys")
+            Spacer(minLength: 0)
+
+            VStack(spacing: 4) {
+                SidebarExternalRow(icon: "doc.text.magnifyingglass", title: "Logs") {
+                    openWindow(id: "logs")
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
+
+                SidebarRow(icon: "gearshape", title: "Settings", isSelected: false) {
+                    NotificationCenter.default.post(name: .openToolSettings, object: "home")
+                }
+
+                SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
+                    NSApplication.shared.terminate(nil)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectBackground())
