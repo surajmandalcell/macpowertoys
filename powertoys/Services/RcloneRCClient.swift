@@ -267,6 +267,14 @@ actor RcloneRCClient {
         _ = try await post("core/bwlimit", body: ["rate": rate])
     }
 
+    func deleteFile(fs: String, remote: String) async throws {
+        _ = try await post("operations/deletefile", body: ["fs": fs, "remote": remote], timeout: 120)
+    }
+
+    func purgeDirectory(fs: String, remote: String) async throws {
+        _ = try await post("operations/purge", body: ["fs": fs, "remote": remote], timeout: 300)
+    }
+
     func stats(group: String) async throws -> TransferStats {
         let json = try await post("core/stats", body: ["group": group])
         return Self.parseStats(json)
