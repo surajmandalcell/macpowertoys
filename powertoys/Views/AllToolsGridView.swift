@@ -8,6 +8,7 @@ import SwiftUI
 struct AllToolsGridView: View {
     @Binding var selectedTool: String?
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         ScrollView {
@@ -19,6 +20,7 @@ struct AllToolsGridView: View {
                         openAction: {
                             openWindow(id: tool.id)
                             NSApplication.shared.activate(ignoringOtherApps: true)
+                            dismissWindow(id: "main")
                         }
                     )
                 }

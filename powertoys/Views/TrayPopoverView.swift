@@ -14,6 +14,10 @@ struct TrayPopoverView: View {
         ToolRegistry.allTools.filter { $0.hasTrayTab }
     }
 
+    private var maxPopoverHeight: CGFloat {
+        (NSScreen.main?.visibleFrame.height ?? 900) * 0.7
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             TrayTabStrip(tools: trayTools, selected: $selectedTab)
@@ -31,6 +35,7 @@ struct TrayPopoverView: View {
             footer
         }
         .frame(width: 340)
+        .frame(maxHeight: maxPopoverHeight)
         .onAppear {
             if !trayTools.contains(where: { $0.id == selectedTab }), let first = trayTools.first {
                 selectedTab = first.id
@@ -168,29 +173,34 @@ private struct RSyncTrayTab: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 10)
 
-            Group {
-                if !manager.isDaemonRunning {
-                    engineOffState
-                } else if manager.activeJobs.isEmpty {
-                    idleState
-                } else {
-                    activeTransfers
+            ScrollView(showsIndicators: false) {
+                Group {
+                    if !manager.isDaemonRunning {
+                        engineOffState
+                    } else if manager.activeJobs.isEmpty {
+                        idleState
+                    } else {
+                        activeTransfers
+                    }
                 }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-
-            actionRow
                 .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+                .padding(.vertical, 10)
+            }
+            .padding(.bottom, 2)
         }
     }
 
     private var statusRow: some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(manager.daemonIsHealthy ? Color.green : Color.secondary)
-                .frame(width: 6, height: 6)
+            if manager.daemonIsHealthy {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 6, height: 6)
+            } else {
+                TrayRetryButton {
+                    Task { await manager.start() }
+                }
+            }
 
             Text(manager.isDaemonRunning ? manager.daemonStatusText : "Engine not running")
                 .font(.system(size: 11))
@@ -199,39 +209,20 @@ private struct RSyncTrayTab: View {
 
             Spacer()
 
-            if manager.aggregateSpeed > 0 {
-                Text(RcloneFormat.speed(manager.aggregateSpeed))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
+            TrayActionButton(title: "Open RSync", isPrimary: false) {
+                openWindow(id: "rclone")
+                NSApplication.shared.activate(ignoringOtherApps: true)
             }
         }
     }
 
     private var engineOffState: some View {
-        VStack(spacing: 8) {
-            Text("Start the engine to queue and monitor transfers from here.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button {
-                Task { await manager.start() }
-            } label: {
-                Text("Start Engine")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 5)
-                    .background(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        Text("Engine is not running — hit retry to start it.")
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
     }
 
     private var idleState: some View {
@@ -273,35 +264,44 @@ private struct RSyncTrayTab: View {
 
     private var activeTransfers: some View {
         VStack(spacing: 8) {
-            ForEach(manager.activeJobs.prefix(4)) { job in
+            ForEach(manager.activeJobs.prefix(8)) { job in
                 TrayTransferRow(job: job)
             }
 
-            if manager.activeJobs.count > 4 {
-                Text("+\(manager.activeJobs.count - 4) more")
+            if manager.activeJobs.count > 8 {
+                Text("+\(manager.activeJobs.count - 8) more")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
         }
     }
 
-    private var actionRow: some View {
-        HStack(spacing: 8) {
-            TrayActionButton(title: "New Transfer", isPrimary: true) {
-                openWindow(id: "rclone")
-                NSApplication.shared.activate(ignoringOtherApps: true)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    NotificationCenter.default.post(name: .newTransferRequested, object: nil)
-                }
-            }
+}
 
-            TrayActionButton(title: "Open RSync", isPrimary: false) {
-                openWindow(id: "rclone")
-                NSApplication.shared.activate(ignoringOtherApps: true)
-            }
+// MARK: - Retry Button
 
-            Spacer()
+private struct TrayRetryButton: View {
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, height: 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(isHovering ? 0.1 : 0.06))
+                )
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { isHovering = $0 }
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .help("Restart the engine")
     }
 }
 

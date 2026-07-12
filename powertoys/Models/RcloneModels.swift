@@ -195,8 +195,8 @@ enum TransferOrder: String, Codable, CaseIterable, Sendable {
     var orderByValue: String? {
         switch self {
         case .default: return nil
-        case .largestFirst: return "size,desc"
-        case .smallestFirst: return "size,asc"
+        case .largestFirst: return "size,descending"
+        case .smallestFirst: return "size,ascending"
         }
     }
 }

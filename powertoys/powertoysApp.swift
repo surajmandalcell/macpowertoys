@@ -99,7 +99,7 @@ struct powertoysApp: App {
             TrayPopoverView()
                 .modelContainer(modelContainer)
         } label: {
-            Image(systemName: "slider.horizontal.3")
+            Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
     }
