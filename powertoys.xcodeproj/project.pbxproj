@@ -29,9 +29,22 @@
 		1BDFA9652F08A44C009A9009 /* powertoysUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = powertoysUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		1BAA00012F0AAAAA009A9009 /* Exceptions for "powertoys" folder in "powertoys" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 1BDFA94D2F08A44C009A9009 /* powertoys */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1BDFA9502F08A44C009A9009 /* powertoys */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1BAA00012F0AAAAA009A9009 /* Exceptions for "powertoys" folder in "powertoys" target */,
+			);
 			path = powertoys;
 			sourceTree = "<group>";
 		};
@@ -411,6 +424,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = powertoys/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PowerToys;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -445,6 +459,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = powertoys/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PowerToys;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
