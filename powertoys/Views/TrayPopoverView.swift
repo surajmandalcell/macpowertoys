@@ -225,7 +225,7 @@ private struct RSyncTrayTab: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 5)
                     .background(Color.accentColor)
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
             .focusEffectDisabled()
@@ -363,7 +363,7 @@ private struct TrayActionButton: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
-                    Capsule().fill(isPrimary ? Color.accentColor.opacity(isHovering ? 0.85 : 1.0) : Color.primary.opacity(isHovering ? 0.1 : 0.06))
+                    RoundedRectangle(cornerRadius: 6).fill(isPrimary ? Color.accentColor.opacity(isHovering ? 0.85 : 1.0) : Color.primary.opacity(isHovering ? 0.1 : 0.06))
                 )
         }
         .buttonStyle(.plain)
