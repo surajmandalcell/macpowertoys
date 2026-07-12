@@ -53,6 +53,14 @@ struct LogEntryData: Identifiable, Sendable {
         self.source = source
         self.message = message
     }
+
+    init(id: UUID, timestamp: Date, level: LogLevel, source: String, message: String) {
+        self.id = id
+        self.timestamp = timestamp
+        self.level = level
+        self.source = source
+        self.message = message
+    }
 }
 
 // MARK: - Log Manager
@@ -67,9 +75,15 @@ final class LogManager {
     private let maxMemoryEntries = 1000
     private let retentionDays = 2
 
-    var modelContext: ModelContext?
+    private var persistence: LogPersistence?
+    private var pendingPersist: [LogEntryData] = []
+    private var flushTask: Task<Void, Never>?
 
     private init() {}
+
+    func configurePersistence(container: ModelContainer) {
+        persistence = LogPersistence(modelContainer: container)
+    }
 
     func log(_ message: String, level: LogLevel, source: String) {
         let entry = LogEntryData(level: level, source: source, message: message)
@@ -80,12 +94,30 @@ final class LogManager {
             logs.removeFirst(logs.count - maxMemoryEntries)
         }
 
-        persistEntry(entry)
+        pendingPersist.append(entry)
+        scheduleFlush()
 
         #if DEBUG
         let timestamp = Self.iso8601Formatter.string(from: entry.timestamp)
         print("[\(level.name.uppercased())] [\(source)] \(timestamp): \(message)")
         #endif
+    }
+
+    private func scheduleFlush() {
+        guard flushTask == nil else { return }
+        flushTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            await self?.flushPending()
+        }
+    }
+
+    func flushPending() async {
+        flushTask?.cancel()
+        flushTask = nil
+        guard let persistence, !pendingPersist.isEmpty else { return }
+        let batch = pendingPersist
+        pendingPersist.removeAll()
+        await persistence.persist(batch)
     }
 
     func error(_ message: String, source: String = "App") {
@@ -131,75 +163,14 @@ final class LogManager {
 
         logs.removeAll { $0.timestamp < cutoffDate }
 
-        await prunePersistedLogs(before: cutoffDate)
+        await persistence?.prune(before: cutoffDate)
 
         info("Pruned logs older than \(retentionDays) days", source: "LogManager")
     }
 
-    private func persistEntry(_ entry: LogEntryData) {
-        guard let context = modelContext else { return }
-
-        let persistedEntry = LogEntry(
-            id: entry.id,
-            timestamp: entry.timestamp,
-            level: entry.level.rawValue,
-            source: entry.source,
-            message: entry.message
-        )
-
-        context.insert(persistedEntry)
-
-        do {
-            try context.save()
-        } catch {
-            print("Failed to persist log entry: \(error)")
-        }
-    }
-
-    private func prunePersistedLogs(before date: Date) async {
-        guard let context = modelContext else { return }
-
-        do {
-            let descriptor = FetchDescriptor<LogEntry>(
-                predicate: #Predicate { $0.timestamp < date }
-            )
-            let oldLogs = try context.fetch(descriptor)
-
-            for log in oldLogs {
-                context.delete(log)
-            }
-
-            try context.save()
-        } catch {
-            print("Failed to prune persisted logs: \(error)")
-        }
-    }
-
     func loadPersistedLogs() async {
-        guard let context = modelContext else { return }
-
-        do {
-            let cutoffDate = Calendar.current.date(byAdding: .day, value: -retentionDays, to: Date()) ?? Date()
-            let descriptor = FetchDescriptor<LogEntry>(
-                predicate: #Predicate { $0.timestamp >= cutoffDate },
-                sortBy: [SortDescriptor(\.timestamp, order: .forward)]
-            )
-
-            let persistedLogs = try context.fetch(descriptor)
-
-            let loadedEntries = persistedLogs.compactMap { entry -> LogEntryData? in
-                guard let level = LogLevel(rawValue: entry.level) else { return nil }
-                return LogEntryData(
-                    level: level,
-                    source: entry.source,
-                    message: entry.message
-                )
-            }
-
-            logs = loadedEntries.suffix(maxMemoryEntries).map { $0 }
-
-        } catch {
-            print("Failed to load persisted logs: \(error)")
-        }
+        guard let persistence else { return }
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -retentionDays, to: Date()) ?? Date()
+        logs = await persistence.load(since: cutoffDate, limit: maxMemoryEntries)
     }
 }

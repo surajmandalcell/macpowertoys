@@ -33,6 +33,7 @@ struct SearchField: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
             }
 
             if let deepSearch = deepSearchEnabled {
@@ -45,6 +46,7 @@ struct SearchField: View {
                         .opacity(deepSearch.wrappedValue || isHoveringDeepSearch ? 1.0 : 0.5)
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .onHover { isHoveringDeepSearch = $0 }
                 .help(deepSearch.wrappedValue ? "Deep search enabled (searching content)" : "Enable deep search (search message content)")
             }
