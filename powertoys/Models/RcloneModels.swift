@@ -299,6 +299,7 @@ final class TransferJob: Identifiable {
     var nextRetryAt: Date?
     var expectedBytes: Int64?
     var expectedFiles: Int?
+    var autoPausedVolume: String?
     var isSizing = false
     private(set) var displayEta: Double?
     private var lastEtaRefresh = Date.distantPast
@@ -449,6 +450,7 @@ struct TransferJobSnapshot: Codable, Sendable {
     let totalTransfers: Int
     let expectedBytes: Int64?
     let expectedFiles: Int?
+    let autoPausedVolume: String?
 }
 
 extension TransferJob {
@@ -476,7 +478,8 @@ extension TransferJob {
             transfers: stats.transfers,
             totalTransfers: stats.totalTransfers,
             expectedBytes: expectedBytes,
-            expectedFiles: expectedFiles
+            expectedFiles: expectedFiles,
+            autoPausedVolume: autoPausedVolume
         )
     }
 
@@ -502,6 +505,7 @@ extension TransferJob {
         finishedAt = snapshot.finishedAt
         expectedBytes = snapshot.expectedBytes
         expectedFiles = snapshot.expectedFiles
+        autoPausedVolume = snapshot.autoPausedVolume
 
         var restoredStats = TransferStats.empty
         restoredStats.bytes = snapshot.bytes

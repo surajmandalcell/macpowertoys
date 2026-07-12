@@ -342,6 +342,25 @@ private struct TrayTransferRow: View {
                 }
             }
             .frame(height: 4)
+
+            ForEach(job.stats.transferring.prefix(3)) { file in
+                HStack(spacing: 6) {
+                    Text(file.name)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Spacer(minLength: 4)
+
+                    Text("\(file.percentage)%")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+                .padding(.leading, 16)
+            }
         }
     }
 }
