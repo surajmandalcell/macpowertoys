@@ -311,9 +311,11 @@ final class TransferJob: Identifiable {
         excludePatterns: [String],
         extraExcludes: [String] = [],
         bypassGlobalIgnores: Bool = false,
-        maxRetries: Int
+        maxRetries: Int,
+        id: UUID = UUID(),
+        createdAt: Date = Date()
     ) {
-        self.id = UUID()
+        self.id = id
         self.operation = operation
         self.kind = kind
         self.sourceFs = sourceFs
@@ -323,7 +325,7 @@ final class TransferJob: Identifiable {
         self.excludePatterns = excludePatterns
         self.extraExcludes = extraExcludes
         self.bypassGlobalIgnores = bypassGlobalIgnores
-        self.createdAt = Date()
+        self.createdAt = createdAt
         self.state = .queued
         self.stats = .empty
         self.rcJobId = nil
@@ -370,6 +372,103 @@ final class TransferJob: Identifiable {
         if raw == nil || displayEta == nil || now.timeIntervalSince(lastEtaRefresh) >= 3 {
             displayEta = raw
             lastEtaRefresh = now
+        }
+    }
+}
+
+// MARK: - Transfer Job Snapshot (persistence)
+
+struct TransferJobSnapshot: Codable, Sendable {
+    let id: UUID
+    let operation: String
+    let kind: String
+    let sourceFs: String
+    let destinationFs: String
+    let sourceDisplay: String
+    let destinationDisplay: String
+    let excludePatterns: [String]
+    let extraExcludes: [String]
+    let bypassGlobalIgnores: Bool
+    let createdAt: Date
+    let state: String
+    let attempt: Int
+    let maxRetries: Int
+    let errorMessage: String?
+    let startedAt: Date?
+    let finishedAt: Date?
+    let bytes: Int64
+    let totalBytes: Int64
+    let transfers: Int
+    let totalTransfers: Int
+    let expectedBytes: Int64?
+    let expectedFiles: Int?
+}
+
+extension TransferJob {
+    var snapshot: TransferJobSnapshot {
+        TransferJobSnapshot(
+            id: id,
+            operation: operation.rawValue,
+            kind: kind.rawValue,
+            sourceFs: sourceFs,
+            destinationFs: destinationFs,
+            sourceDisplay: sourceDisplay,
+            destinationDisplay: destinationDisplay,
+            excludePatterns: excludePatterns,
+            extraExcludes: extraExcludes,
+            bypassGlobalIgnores: bypassGlobalIgnores,
+            createdAt: createdAt,
+            state: state.rawValue,
+            attempt: attempt,
+            maxRetries: maxRetries,
+            errorMessage: errorMessage,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
+            bytes: stats.bytes,
+            totalBytes: stats.totalBytes,
+            transfers: stats.transfers,
+            totalTransfers: stats.totalTransfers,
+            expectedBytes: expectedBytes,
+            expectedFiles: expectedFiles
+        )
+    }
+
+    convenience init(snapshot: TransferJobSnapshot) {
+        self.init(
+            operation: RcloneOperation(rawValue: snapshot.operation) ?? .copy,
+            kind: TransferKind(rawValue: snapshot.kind) ?? .directory,
+            sourceFs: snapshot.sourceFs,
+            destinationFs: snapshot.destinationFs,
+            sourceDisplay: snapshot.sourceDisplay,
+            destinationDisplay: snapshot.destinationDisplay,
+            excludePatterns: snapshot.excludePatterns,
+            extraExcludes: snapshot.extraExcludes,
+            bypassGlobalIgnores: snapshot.bypassGlobalIgnores,
+            maxRetries: snapshot.maxRetries,
+            id: snapshot.id,
+            createdAt: snapshot.createdAt
+        )
+
+        attempt = snapshot.attempt
+        errorMessage = snapshot.errorMessage
+        startedAt = snapshot.startedAt
+        finishedAt = snapshot.finishedAt
+        expectedBytes = snapshot.expectedBytes
+        expectedFiles = snapshot.expectedFiles
+
+        var restoredStats = TransferStats.empty
+        restoredStats.bytes = snapshot.bytes
+        restoredStats.totalBytes = snapshot.totalBytes
+        restoredStats.transfers = snapshot.transfers
+        restoredStats.totalTransfers = snapshot.totalTransfers
+        stats = restoredStats
+
+        let restoredState = TransferState(rawValue: snapshot.state) ?? .failed
+        if restoredState.isTerminal {
+            state = restoredState
+        } else {
+            state = .failed
+            errorMessage = "Interrupted — PowerToys quit while this transfer was active."
         }
     }
 }

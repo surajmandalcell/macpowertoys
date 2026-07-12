@@ -89,6 +89,8 @@ final class RcloneJobManager {
     private var pollTask: Task<Void, Never>?
     private var started = false
     private var lastAppliedBandwidth: String?
+    private var loadedPersistedJobs = false
+    private var persistJobsTask: Task<Void, Never>?
 
     private let pollInterval: Duration = .milliseconds(700)
 
@@ -162,6 +164,7 @@ final class RcloneJobManager {
         guard !started else { return }
         started = true
         errorBanner = nil
+        loadPersistedJobs()
 
         do {
             let client = try await daemon.ensureRunning(binaryPath: settings.binaryPath)
@@ -220,6 +223,9 @@ final class RcloneJobManager {
                 try? await client.stopJob(jobid: jobid)
             }
         }
+        persistJobsTask?.cancel()
+        persistJobsTask = nil
+        persistJobsNow()
         daemon.stop()
         client = nil
         started = false
@@ -562,6 +568,7 @@ final class RcloneJobManager {
             maxRetries: current.maxRetries
         )
         jobs.insert(job, at: 0)
+        persistJobsSoon()
         LogManager.shared.info("Queued \(operation.displayName): \(sourceDisplay) → \(destinationDisplay)", source: "RcloneJobManager")
         return job
     }
@@ -573,6 +580,7 @@ final class RcloneJobManager {
         job.finishedAt = Date()
         job.nextRetryAt = nil
         insertRecord(for: job)
+        persistJobsSoon()
         Task {
             if let jobid, let client {
                 try? await client.stopJob(jobid: jobid)
@@ -600,15 +608,18 @@ final class RcloneJobManager {
         job.nextRetryAt = nil
         job.expectedBytes = nil
         job.expectedFiles = nil
+        persistJobsSoon()
     }
 
     func remove(_ job: TransferJob) {
         guard job.state.isTerminal else { return }
         jobs.removeAll { $0.id == job.id }
+        persistJobsSoon()
     }
 
     func clearFinished() {
         jobs.removeAll { $0.state.isTerminal }
+        persistJobsSoon()
     }
 
     // MARK: Polling
@@ -745,7 +756,33 @@ final class RcloneJobManager {
             LogManager.shared.error("Failed: \(job.sourceDisplay) → \(job.destinationDisplay): \(error ?? "")", source: "RcloneJobManager")
         }
         insertRecord(for: job)
+        persistJobsSoon()
         Task { await client.deleteStats(group: job.statsGroup) }
+    }
+
+    // MARK: Job persistence
+
+    private func loadPersistedJobs() {
+        guard !loadedPersistedJobs else { return }
+        loadedPersistedJobs = true
+        guard let data = try? Data(contentsOf: AppDataLocation.transfersURL),
+              let snapshots = try? JSONDecoder().decode([TransferJobSnapshot].self, from: data) else { return }
+        jobs = snapshots.map { TransferJob(snapshot: $0) }
+    }
+
+    func persistJobsSoon() {
+        guard persistJobsTask == nil else { return }
+        persistJobsTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            self?.persistJobsTask = nil
+            self?.persistJobsNow()
+        }
+    }
+
+    private func persistJobsNow() {
+        let snapshots = jobs.map(\.snapshot)
+        guard let data = try? JSONEncoder().encode(snapshots) else { return }
+        try? data.write(to: AppDataLocation.transfersURL, options: .atomic)
     }
 
     // MARK: Activity records

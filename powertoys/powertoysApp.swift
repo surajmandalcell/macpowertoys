@@ -27,8 +27,9 @@ struct powertoysApp: App {
 
     init() {
         do {
+            AppDataLocation.migrateLegacyStoreIfNeeded()
             let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            let config = ModelConfiguration(schema: schema, url: AppDataLocation.storeURL)
             modelContainer = try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
