@@ -98,6 +98,9 @@ final class RcloneJobManager {
     private var client: RcloneRCClient?
     private var pollTask: Task<Void, Never>?
     private var started = false
+    private var engineRetryTask: Task<Void, Never>?
+    private var engineRetryAttempt = 0
+    private var engineFailureBanner: String?
     private var lastAppliedBandwidth: String?
     private var loadedPersistedJobs = false
     private var persistJobsTask: Task<Void, Never>?
@@ -174,7 +177,6 @@ final class RcloneJobManager {
     func start() async {
         guard !started else { return }
         started = true
-        errorBanner = nil
         loadPersistedJobs()
         startVolumeWatch()
         resumeJobsForMountedVolumes()
@@ -187,6 +189,8 @@ final class RcloneJobManager {
                 return
             }
             self.client = client
+            engineRetryAttempt = 0
+            clearEngineFailureBanner()
             lastAppliedBandwidth = nil
             pruneRecords()
             Task.detached(priority: .background) { Self.sweepTemporaryCaches() }
@@ -199,12 +203,38 @@ final class RcloneJobManager {
             startPolling()
         } catch {
             started = false
-            errorBanner = (error as? LocalizedError)?.errorDescription ?? "Could not start rclone."
+            let message = (error as? LocalizedError)?.errorDescription ?? "Could not start rclone."
+            engineFailureBanner = message
+            errorBanner = message
             LogManager.shared.error("rclone start failed: \(error)", source: "RcloneJobManager")
+            scheduleEngineRetry()
         }
     }
 
+    private func scheduleEngineRetry() {
+        guard engineRetryTask == nil else { return }
+        engineRetryAttempt += 1
+        let delay = min(30.0, pow(2.0, Double(engineRetryAttempt)))
+        LogManager.shared.info("Retrying rclone engine start in \(Int(delay))s (attempt \(engineRetryAttempt))", source: "RcloneJobManager")
+        engineRetryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !Task.isCancelled else { return }
+            self.engineRetryTask = nil
+            guard !self.started else { return }
+            await self.start()
+        }
+    }
+
+    private func clearEngineFailureBanner() {
+        if let failure = engineFailureBanner, errorBanner == failure {
+            errorBanner = nil
+        }
+        engineFailureBanner = nil
+    }
+
     func restartDaemon() async {
+        engineRetryTask?.cancel()
+        engineRetryTask = nil
         pollTask?.cancel()
         pollTask = nil
         daemon.stop()
@@ -214,6 +244,8 @@ final class RcloneJobManager {
     }
 
     func shutdown() async {
+        engineRetryTask?.cancel()
+        engineRetryTask = nil
         pollTask?.cancel()
         pollTask = nil
         authTask?.cancel()
@@ -897,6 +929,11 @@ final class RcloneJobManager {
     private func tick() async {
         guard let client else { return }
 
+        if !daemon.isRunning {
+            recoverFromDaemonLoss()
+            return
+        }
+
         if authNeedsDaemonRestart && activeJobs.isEmpty && !isAuthInProgress {
             authNeedsDaemonRestart = false
             let stale = pendingAuthCleanupName
@@ -944,6 +981,22 @@ final class RcloneJobManager {
         }
 
         promoteQueuedJobs(client: client)
+    }
+
+    private func recoverFromDaemonLoss() {
+        LogManager.shared.error("rclone daemon stopped unexpectedly — restarting engine", source: "RcloneJobManager")
+        for job in jobs where job.state == .running {
+            job.resumeBaselineBytes += job.stats.bytes
+            job.resumeBaselineFiles += job.stats.transfers
+            job.stats.bytes = 0
+            job.stats.transfers = 0
+            job.rcJobId = nil
+            job.state = .queued
+        }
+        persistJobsSoon()
+        Task { [weak self] in
+            await self?.restartDaemon()
+        }
     }
 
     private func applyProbe(_ job: TransferJob, stats: TransferStats?, status: JobStatusResult?, client: RcloneRCClient) {
@@ -1243,6 +1296,33 @@ final class RcloneJobManager {
         }
         LogManager.shared.info("Cleanup on \(remote.name): deleted \(deleted), failed \(failed)", source: "RcloneJobManager")
         return (deleted, failed)
+    }
+
+    func recalculate(_ job: TransferJob) {
+        guard client != nil, job.kind == .directory, !job.isRecalculating else { return }
+        job.isRecalculating = true
+        Task { [weak self] in
+            defer { job.isRecalculating = false }
+            guard let self else { return }
+            do {
+                async let sourceTask = self.estimateSize(fs: job.sourceFs, excludePatterns: job.excludePatterns)
+                async let destinationTask = self.estimateSize(fs: job.destinationFs, excludePatterns: job.excludePatterns)
+                let source = try await sourceTask
+                let destination = try await destinationTask
+                let sessionBytes = job.state == .running ? job.stats.bytes : 0
+                let sessionFiles = job.state == .running ? job.stats.transfers : 0
+                job.expectedBytes = source.bytes
+                job.expectedFiles = source.files
+                job.resumeBaselineBytes = max(0, destination.bytes - sessionBytes)
+                job.resumeBaselineFiles = max(0, destination.files - sessionFiles)
+                job.refreshDisplayEta()
+                self.persistJobsSoon()
+                let remaining = max(0, source.bytes - destination.bytes)
+                LogManager.shared.info("Recalculated \(job.sourceDisplay): source \(RcloneFormat.bytes(source.bytes)) (\(source.files) files), destination \(RcloneFormat.bytes(destination.bytes)) (\(destination.files) files), \(RcloneFormat.bytes(remaining)) left to upload", source: "RcloneJobManager")
+            } catch {
+                LogManager.shared.warning("Recalculate failed for \(job.sourceDisplay): \(error)", source: "RcloneJobManager")
+            }
+        }
     }
 
     func estimateSize(fs: String, excludePatterns: [String]) async throws -> (bytes: Int64, files: Int) {
