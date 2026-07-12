@@ -10,7 +10,10 @@ struct TextExtractorView: View {
                 Image(systemName: "text.viewfinder")
                 Text("Text Extractor").font(.system(size: 13, weight: .medium))
                 Spacer()
-                Button("Extract Text") { service.begin() }.buttonStyle(.borderedProminent).controlSize(.small)
+                Button("Extract Text") { service.begin() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .contentShape(Rectangle())
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
@@ -25,6 +28,7 @@ struct TextExtractorView: View {
             .padding(.bottom, 20)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .animation(.easeInOut(duration: 0.16), value: service.lastText.isEmpty)
         .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
     }
 
@@ -39,6 +43,7 @@ struct TextExtractorView: View {
                     Button("Open Privacy Settings") {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
                     }
+                    .contentShape(Rectangle())
                 }
             }
             .utilitySectionCard()
@@ -69,6 +74,7 @@ struct TextExtractorView: View {
                                 .map { $0.trimmingCharacters(in: .whitespaces) }
                                 .filter { !$0.isEmpty }
                         }
+                        .contentShape(Rectangle())
                     }
                 }
             }

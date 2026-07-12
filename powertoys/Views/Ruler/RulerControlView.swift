@@ -39,15 +39,22 @@ struct RulerControlView: View {
             Spacer()
             Button(guides.isVisible ? "Hide Crosshair" : "Crosshair") { guides.toggleCrosshair() }
                 .controlSize(.small)
+                .contentShape(Rectangle())
             Button("Pin Guides") { guides.pinGuidesAtPointer() }
                 .controlSize(.small)
+                .contentShape(Rectangle())
             if !guides.verticalGuides.isEmpty {
+                Button(guides.isEditing ? "Done Editing" : "Edit Guides") { guides.toggleEditing() }
+                    .controlSize(.small)
+                    .contentShape(Rectangle())
                 Button("Clear Guides") { guides.clearGuides() }
                     .controlSize(.small)
+                    .contentShape(Rectangle())
             }
             Button("Measure Region") { MeasurementOverlayController.shared.begin() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .contentShape(Rectangle())
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
@@ -62,6 +69,7 @@ struct RulerControlView: View {
                     } label: {
                         Label(orientation.title, systemImage: icon(for: orientation))
                             .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.bordered)
                 }
@@ -118,6 +126,7 @@ struct RulerControlView: View {
                             guard let value = Double(calibrationText), (0.25...4).contains(value) else { return }
                             manager.setCalibration(value, for: NSScreen.main)
                         }
+                        .contentShape(Rectangle())
                         Text("× physical scale").foregroundStyle(.tertiary)
                     }
                 }
@@ -148,9 +157,12 @@ struct RulerControlView: View {
                 }
                 HStack {
                     Button("Group Visible") { manager.groupVisible() }
+                        .contentShape(Rectangle())
                     Button("Ungroup") { manager.ungroupAll() }
+                        .contentShape(Rectangle())
                     Spacer()
                     Button("Remove All", role: .destructive) { manager.removeAll() }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .font(.system(size: 11))
@@ -176,6 +188,7 @@ struct RulerControlView: View {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(copyFormat.render(frame: measurement.frame), forType: .string)
                         }
+                        .contentShape(Rectangle())
                         Button {
                             manager.toggleMeasurementPin(measurement.id)
                         } label: {
@@ -196,6 +209,7 @@ struct RulerControlView: View {
                     .frame(width: 130)
                     Spacer()
                     Button("Clear Unpinned", role: .destructive) { manager.clearMeasurements() }
+                        .contentShape(Rectangle())
                 }
                 .font(.system(size: 11))
             }
@@ -227,7 +241,10 @@ struct RulerControlView: View {
     }
 
     private func preset(_ title: String, _ ratio: Double?) -> some View {
-        Button(title) { manager.aspectRatio = ratio }.buttonStyle(.bordered).controlSize(.small)
+        Button(title) { manager.aspectRatio = ratio }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .contentShape(Rectangle())
     }
 
     private func icon(for orientation: RulerOrientation) -> String {
@@ -261,20 +278,26 @@ private struct RulerRow: View {
             .labelsHidden()
             .frame(width: 90)
             Button("Copy") { manager.copy(ruler, as: copyFormat) }
+                .contentShape(Rectangle())
             if ruler.orientation == .joined {
                 Button("H") { manager.toggleArm(ruler.id, horizontal: true) }
+                    .contentShape(Rectangle())
                     .foregroundStyle(ruler.showsHorizontalArm ? .primary : .secondary)
                     .help("Toggle horizontal arm")
                 Button("V") { manager.toggleArm(ruler.id, horizontal: false) }
+                    .contentShape(Rectangle())
                     .foregroundStyle(ruler.showsVerticalArm ? .primary : .secondary)
                     .help("Toggle vertical arm")
             }
             Button { manager.reset(ruler.id) } label: { Image(systemName: "arrow.counterclockwise") }
+                .contentShape(Rectangle())
                 .help("Reset ruler")
             Button(ruler.isVisible ? "Hide" : "Show") {
                 ruler.isVisible ? manager.hide(ruler.id) : manager.show(ruler.id)
             }
+            .contentShape(Rectangle())
             Button(role: .destructive) { manager.remove(ruler.id) } label: { Image(systemName: "trash") }
+                .contentShape(Rectangle())
                 .help("Remove ruler")
         }
         .buttonStyle(.borderless)

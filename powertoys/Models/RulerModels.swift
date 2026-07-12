@@ -32,7 +32,7 @@ enum RulerZeroCorner: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 
     var reversesHorizontal: Bool { self == .topRight || self == .bottomRight }
-    var reversesVertical: Bool { self == .bottomLeft || self == .bottomRight }
+    var reversesVertical: Bool { self == .topLeft || self == .topRight }
 }
 
 struct RulerStyle: Codable, Equatable, Sendable {
@@ -59,6 +59,26 @@ struct RulerStyle: Codable, Equatable, Sendable {
     func hasCalibration(for screen: NSScreen?) -> Bool {
         guard let id = screen?.displayID else { return false }
         return displayCalibrations[String(id)] != nil
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case unit, zeroCorner, opacity, red, green, blue, floats, hasShadow, calibration, displayCalibrations
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        unit = try values.decodeIfPresent(RulerUnit.self, forKey: .unit) ?? .pixels
+        zeroCorner = try values.decodeIfPresent(RulerZeroCorner.self, forKey: .zeroCorner) ?? .topLeft
+        opacity = try values.decodeIfPresent(Double.self, forKey: .opacity) ?? 0.94
+        red = try values.decodeIfPresent(Double.self, forKey: .red) ?? 0.96
+        green = try values.decodeIfPresent(Double.self, forKey: .green) ?? 0.72
+        blue = try values.decodeIfPresent(Double.self, forKey: .blue) ?? 0.22
+        floats = try values.decodeIfPresent(Bool.self, forKey: .floats) ?? true
+        hasShadow = try values.decodeIfPresent(Bool.self, forKey: .hasShadow) ?? true
+        calibration = try values.decodeIfPresent(Double.self, forKey: .calibration) ?? 1
+        displayCalibrations = try values.decodeIfPresent([String: Double].self, forKey: .displayCalibrations) ?? [:]
     }
 }
 
@@ -92,6 +112,25 @@ struct RulerState: Codable, Identifiable, Equatable, Sendable {
         width = frame.width
         height = frame.height
         self.screenID = screenID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, orientation, x, y, width, height, screenID, groupID, isVisible, showsHorizontalArm, showsVerticalArm
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        orientation = try values.decode(RulerOrientation.self, forKey: .orientation)
+        x = try values.decode(Double.self, forKey: .x)
+        y = try values.decode(Double.self, forKey: .y)
+        width = try values.decode(Double.self, forKey: .width)
+        height = try values.decode(Double.self, forKey: .height)
+        screenID = try values.decodeIfPresent(UInt32.self, forKey: .screenID)
+        groupID = try values.decodeIfPresent(UUID.self, forKey: .groupID)
+        isVisible = try values.decodeIfPresent(Bool.self, forKey: .isVisible) ?? true
+        showsHorizontalArm = try values.decodeIfPresent(Bool.self, forKey: .showsHorizontalArm) ?? true
+        showsVerticalArm = try values.decodeIfPresent(Bool.self, forKey: .showsVerticalArm) ?? true
     }
 }
 
@@ -165,11 +204,15 @@ enum RulerCopyFormat: String, CaseIterable, Identifiable {
         let width = Double(frame.width).formatted(.number.precision(.fractionLength(0...2)))
         let height = Double(frame.height).formatted(.number.precision(.fractionLength(0...2)))
         switch self {
-        case .plain: return "\(width) × \(height) at (\(x), \(y))"
+        case .plain:
+            let centerX = Double(frame.midX).formatted(.number.precision(.fractionLength(0...2)))
+            let centerY = Double(frame.midY).formatted(.number.precision(.fractionLength(0...2)))
+            let diagonal = hypot(Double(frame.width), Double(frame.height)).formatted(.number.precision(.fractionLength(0...2)))
+            return "\(width) × \(height) at (\(x), \(y)); center (\(centerX), \(centerY)); diagonal \(diagonal)"
         case .css: return "width: \(width)px; height: \(height)px;"
         case .swiftUI: return ".frame(width: \(width), height: \(height))"
         case .cgRect: return "CGRect(x: \(x), y: \(y), width: \(width), height: \(height))"
-        case .json: return "{\"x\":\(x),\"y\":\(y),\"width\":\(width),\"height\":\(height)}"
+        case .json: return "{\"x\":\(x),\"y\":\(y),\"width\":\(width),\"height\":\(height),\"centerX\":\(frame.midX),\"centerY\":\(frame.midY)}"
         }
     }
 }

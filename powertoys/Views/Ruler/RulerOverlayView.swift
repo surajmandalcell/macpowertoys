@@ -6,7 +6,8 @@ final class RulerOverlayView: NSView {
     private weak var manager: RulerManager?
     private var startLocation: CGPoint?
     private var startFrame: CGRect?
-    private var isResizing = false
+    private var resizesWidth = false
+    private var resizesHeight = false
     private var cursorLocation: CGPoint?
     private var tracking: NSTrackingArea?
 
@@ -58,10 +59,16 @@ final class RulerOverlayView: NSView {
         startLocation = NSEvent.mouseLocation
         startFrame = window?.frame
         let local = convert(event.locationInWindow, from: nil)
-        isResizing = switch state.orientation {
-        case .horizontal: local.x > bounds.maxX - 18
-        case .vertical: local.y < bounds.minY + 18
-        case .joined: local.x > bounds.maxX - 18 || local.y < bounds.minY + 18
+        switch state.orientation {
+        case .horizontal:
+            resizesWidth = local.x > bounds.maxX - 18
+            resizesHeight = false
+        case .vertical:
+            resizesWidth = false
+            resizesHeight = local.y < bounds.minY + 18
+        case .joined:
+            resizesWidth = local.x > bounds.maxX - 18
+            resizesHeight = local.y < bounds.minY + 18
         }
     }
 
@@ -70,15 +77,12 @@ final class RulerOverlayView: NSView {
         let now = NSEvent.mouseLocation
         let delta = CGPoint(x: now.x - startLocation.x, y: now.y - startLocation.y)
         var frame = startFrame
-        if isResizing {
-            switch state.orientation {
-            case .horizontal:
-                frame.size.width = max(54, startFrame.width + delta.x)
-            case .vertical:
-                frame.size.height = max(54, startFrame.height + delta.y)
-            case .joined:
-                frame.size.width = max(54, startFrame.width + delta.x)
-                frame.size.height = max(54, startFrame.height + delta.y)
+        if resizesWidth || resizesHeight {
+            if resizesWidth { frame.size.width = max(54, startFrame.width + delta.x) }
+            if resizesHeight {
+                let maximumY = startFrame.maxY
+                frame.size.height = max(54, startFrame.height - delta.y)
+                frame.origin.y = maximumY - frame.height
             }
         } else {
             frame.origin.x += delta.x
@@ -86,7 +90,7 @@ final class RulerOverlayView: NSView {
         }
         let previous = window?.frame.origin ?? frame.origin
         manager?.updateFrame(id: state.id, frame: frame)
-        if !isResizing {
+        if !resizesWidth && !resizesHeight {
             let actual = window?.frame.origin ?? frame.origin
             manager?.moveGroup(containing: state.id, delta: CGPoint(x: actual.x - previous.x, y: actual.y - previous.y))
         }
@@ -131,10 +135,12 @@ final class RulerOverlayView: NSView {
         case .joined:
             let path = NSBezierPath()
             if state.showsHorizontalArm {
-                path.appendRoundedRect(NSRect(x: 0, y: bounds.height - 54, width: bounds.width, height: 54), xRadius: 6, yRadius: 6)
+                let y = style.zeroCorner == .topLeft || style.zeroCorner == .topRight ? bounds.height - 54 : 0
+                path.appendRoundedRect(NSRect(x: 0, y: y, width: bounds.width, height: 54), xRadius: 6, yRadius: 6)
             }
             if state.showsVerticalArm {
-                path.appendRoundedRect(NSRect(x: 0, y: 0, width: 54, height: bounds.height), xRadius: 6, yRadius: 6)
+                let x = style.zeroCorner.reversesHorizontal ? bounds.width - 54 : 0
+                path.appendRoundedRect(NSRect(x: x, y: 0, width: 54, height: bounds.height), xRadius: 6, yRadius: 6)
             }
             return path
         }
@@ -144,14 +150,17 @@ final class RulerOverlayView: NSView {
         guard state.orientation != .vertical, state.orientation != .joined || state.showsHorizontalArm else { return }
         let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration(for: window?.screen))
         let ticks = RulerGeometry.ticks(length: bounds.width, pointsPerUnit: scale, reversed: style.zeroCorner.reversesHorizontal)
-        let top = state.orientation == .joined ? bounds.maxY : bounds.maxY
+        let drawsFromTop = state.orientation != .joined || style.zeroCorner == .topLeft || style.zeroCorner == .topRight
+        let edge = drawsFromTop ? bounds.maxY : bounds.minY
         for tick in ticks {
             let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
             let path = NSBezierPath()
-            path.move(to: CGPoint(x: tick.position, y: top))
-            path.line(to: CGPoint(x: tick.position, y: top - length))
+            path.move(to: CGPoint(x: tick.position, y: edge))
+            path.line(to: CGPoint(x: tick.position, y: edge + (drawsFromTop ? -length : length)))
             path.stroke()
-            if tick.level == 2 { drawLabel(tick.value, at: CGPoint(x: tick.position + 3, y: top - 34)) }
+            if tick.level == 2 {
+                drawLabel(tick.value, at: CGPoint(x: tick.position + 3, y: edge + (drawsFromTop ? -34 : 22)))
+            }
         }
     }
 
@@ -159,13 +168,18 @@ final class RulerOverlayView: NSView {
         guard state.orientation != .horizontal, state.orientation != .joined || state.showsVerticalArm else { return }
         let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration(for: window?.screen))
         let ticks = RulerGeometry.ticks(length: bounds.height, pointsPerUnit: scale, reversed: style.zeroCorner.reversesVertical)
+        let drawsFromRight = state.orientation == .joined && style.zeroCorner.reversesHorizontal
         for tick in ticks {
             let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
             let path = NSBezierPath()
-            path.move(to: CGPoint(x: 0, y: tick.position))
-            path.line(to: CGPoint(x: length, y: tick.position))
+            let edge = drawsFromRight ? bounds.maxX : bounds.minX
+            path.move(to: CGPoint(x: edge, y: tick.position))
+            path.line(to: CGPoint(x: edge + (drawsFromRight ? -length : length), y: tick.position))
             path.stroke()
-            if tick.level == 2 { drawLabel(tick.value, at: CGPoint(x: 22, y: tick.position - 6)) }
+            if tick.level == 2 {
+                let labelX = drawsFromRight ? bounds.maxX - 50 : 22
+                drawLabel(tick.value, at: CGPoint(x: labelX, y: tick.position - 6))
+            }
         }
     }
 
@@ -186,8 +200,9 @@ final class RulerOverlayView: NSView {
             path.line(to: CGPoint(x: cursorLocation.x, y: bounds.maxY))
         }
         if state.orientation != .horizontal {
-            path.move(to: CGPoint(x: bounds.minX, y: cursorLocation.y))
-            path.line(to: CGPoint(x: min(54, bounds.maxX), y: cursorLocation.y))
+            let rightArm = state.orientation == .joined && style.zeroCorner.reversesHorizontal
+            path.move(to: CGPoint(x: rightArm ? bounds.maxX - 54 : bounds.minX, y: cursorLocation.y))
+            path.line(to: CGPoint(x: rightArm ? bounds.maxX : min(54, bounds.maxX), y: cursorLocation.y))
         }
         path.lineWidth = 1
         path.stroke()

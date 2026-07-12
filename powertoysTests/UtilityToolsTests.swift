@@ -31,6 +31,17 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertTrue(ruler.showsVerticalArm)
     }
 
+    func testOlderRulerPayloadsReceiveNewDefaults() throws {
+        let stateData = Data(#"{"id":"00000000-0000-0000-0000-000000000001","orientation":"joined","x":1,"y":2,"width":300,"height":200,"isVisible":true}"#.utf8)
+        let state = try JSONDecoder().decode(RulerState.self, from: stateData)
+        XCTAssertTrue(state.showsHorizontalArm)
+        XCTAssertTrue(state.showsVerticalArm)
+
+        let styleData = Data(#"{"unit":"px","zeroCorner":"topLeft","opacity":1,"red":1,"green":1,"blue":1,"floats":true,"hasShadow":true,"calibration":1}"#.utf8)
+        let style = try JSONDecoder().decode(RulerStyle.self, from: styleData)
+        XCTAssertTrue(style.displayCalibrations.isEmpty)
+    }
+
     func testAwakeDurationFormatting() {
         XCTAssertEqual(AwakeService.duration(65), "01:05")
         XCTAssertEqual(AwakeService.duration(3661), "1:01:01")
