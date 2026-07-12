@@ -106,7 +106,11 @@ struct RcloneSidebarView: View {
                         ForEach(manager.remotes) { remote in
                             RemoteRow(
                                 remote: remote,
-                                isSelected: content == .browse(remote)
+                                isSelected: content == .browse(remote),
+                                onReconnect: {
+                                    manager.beginReconnect(remote)
+                                    showAddRemote = true
+                                }
                             ) {
                                 content = .browse(remote)
                             }
@@ -307,6 +311,7 @@ private struct RemoteRow: View {
     @Environment(RcloneJobManager.self) private var manager
     let remote: RcloneRemote
     let isSelected: Bool
+    let onReconnect: () -> Void
     let action: () -> Void
 
     @State private var isHovering = false
@@ -348,6 +353,9 @@ private struct RemoteRow: View {
         .contextMenu {
             Button("Remote Settings…") {
                 isShowingSettings = true
+            }
+            Button("Reconnect…") {
+                onReconnect()
             }
             Button("Clean Up by Ignore Rules…") {
                 isShowingCleanup = true

@@ -18,6 +18,8 @@ struct RcloneWindowView: View {
     @State private var manager = RcloneJobManager.shared
     @State private var content: RSyncContent = .transfers
     @State private var showAddRemote = false
+    @AppStorage("rclone.lastContent") private var lastContent = "transfers"
+    @AppStorage("rclone.lastFilter") private var lastFilter = JobFilter.all.rawValue
 
     var body: some View {
         @Bindable var manager = manager
@@ -54,7 +56,30 @@ struct RcloneWindowView: View {
         }
         .task {
             manager.modelContext = modelContext
+            restoreUIState()
             await manager.start()
+        }
+        .onChange(of: content) {
+            switch content {
+            case .transfers: lastContent = "transfers"
+            case .activity: lastContent = "activity"
+            case .settings: lastContent = "settings"
+            case .browse: lastContent = "transfers"
+            }
+        }
+        .onChange(of: manager.filter) {
+            lastFilter = manager.filter.rawValue
+        }
+    }
+
+    private func restoreUIState() {
+        if let filter = JobFilter(rawValue: lastFilter) {
+            manager.filter = filter
+        }
+        switch lastContent {
+        case "activity": content = .activity
+        case "settings": content = .settings
+        default: content = .transfers
         }
     }
 

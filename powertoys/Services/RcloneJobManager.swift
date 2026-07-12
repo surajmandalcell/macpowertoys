@@ -91,6 +91,7 @@ final class RcloneJobManager {
     private var authTask: Task<Void, Never>?
     private var authCleanupTask: Task<Void, Never>?
     private var authNeedsDaemonRestart = false
+    private var reconnectProcess: Process?
     private var pendingAuthCleanupName: String?
 
     let daemon = RcloneDaemon()
@@ -217,6 +218,8 @@ final class RcloneJobManager {
         pollTask = nil
         authTask?.cancel()
         authTask = nil
+        reconnectProcess?.terminate()
+        reconnectProcess = nil
         if case .waiting(let name) = authState {
             authGeneration = UUID()
             authState = .idle
@@ -412,6 +415,59 @@ final class RcloneJobManager {
         }
     }
 
+    func beginReconnect(_ remote: RcloneRemote) {
+        guard !isAuthInProgress else { return }
+        let generation = UUID()
+        authGeneration = generation
+        authState = .waiting(name: remote.name)
+        LogManager.shared.info("Reconnecting remote '\(remote.name)'", source: "RcloneJobManager")
+
+        let preferredBinary = settings.binaryPath
+        authTask?.cancel()
+        authTask = Task { [weak self] in
+            await self?.runReconnectFlow(remoteName: remote.name, preferredBinary: preferredBinary, generation: generation)
+        }
+    }
+
+    private func runReconnectFlow(remoteName: String, preferredBinary: String, generation: UUID) async {
+        let binary = await Task.detached(priority: .userInitiated) {
+            RcloneDaemon.resolveBinaryPath(preferred: preferredBinary)
+        }.value
+
+        guard authGeneration == generation else { return }
+        guard let binary else {
+            finishAuth(generation: generation, state: .failed("rclone binary not found."))
+            return
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: binary)
+        process.arguments = ["config", "reconnect", "\(remoteName):", "--auto-confirm"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        reconnectProcess = process
+
+        let status: Int32 = await withCheckedContinuation { continuation in
+            process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(returning: -1)
+            }
+        }
+
+        reconnectProcess = nil
+        guard authGeneration == generation else { return }
+
+        if status == 0 {
+            await refreshRemotes()
+            finishAuth(generation: generation, state: .succeeded(name: remoteName))
+            LogManager.shared.info("Remote '\(remoteName)' reconnected", source: "RcloneJobManager")
+        } else {
+            finishAuth(generation: generation, state: .failed("Reconnect was cancelled or failed. Try again."))
+        }
+    }
+
     private func runAuthFlow(name: String, generation: UUID) async {
         await authCleanupTask?.value
         guard authGeneration == generation else { return }
@@ -499,6 +555,8 @@ final class RcloneJobManager {
     }
 
     func cancelAuth() {
+        reconnectProcess?.terminate()
+        reconnectProcess = nil
         guard case .waiting(let name) = authState else {
             authGeneration = UUID()
             authState = .idle
