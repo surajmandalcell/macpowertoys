@@ -14,6 +14,7 @@ final class AwakeService {
 
     private var assertionID = IOPMAssertionID(0)
     private var timer: Timer?
+    private var timedDeadline: TimeInterval?
     private let key = "awake.configuration.v1"
 
     var isActive: Bool { configuration.mode != .passive && assertionID != 0 }
@@ -27,6 +28,9 @@ final class AwakeService {
         configuration = UserDefaults.standard.data(forKey: key)
             .flatMap { try? JSONDecoder().decode(AwakeConfiguration.self, from: $0) }
             ?? AwakeConfiguration()
+        if configuration.mode == .timed, let expiry = configuration.expiresAt {
+            timedDeadline = ProcessInfo.processInfo.systemUptime + max(0, expiry.timeIntervalSinceNow)
+        }
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
             guard let action = note.object as? ToolActionID else { return }
             Task { @MainActor in self?.handle(action, parameters: note.userInfo as? [String: String] ?? [:]) }
@@ -39,12 +43,15 @@ final class AwakeService {
         switch mode {
         case .passive, .indefinite:
             configuration.expiresAt = nil
+            timedDeadline = nil
         case .timed:
             let seconds = max(1, duration ?? configuration.intervalSeconds)
             configuration.intervalSeconds = seconds
             configuration.expiresAt = Date().addingTimeInterval(seconds)
+            timedDeadline = ProcessInfo.processInfo.systemUptime + seconds
         case .until:
             configuration.expiresAt = date ?? configuration.expiresAt ?? Date().addingTimeInterval(3600)
+            timedDeadline = nil
         }
         applyConfiguration()
     }
@@ -78,7 +85,12 @@ final class AwakeService {
         releaseAssertion()
         assertionError = nil
 
-        if let expiry = configuration.expiresAt, expiry <= Date(), configuration.mode != .indefinite {
+        if configuration.mode == .timed, timedDeadline == nil {
+            timedDeadline = ProcessInfo.processInfo.systemUptime + max(1, configuration.intervalSeconds)
+            configuration.expiresAt = Date().addingTimeInterval(max(1, configuration.intervalSeconds))
+        }
+
+        if configuration.mode == .until, let expiry = configuration.expiresAt, expiry <= Date() {
             configuration.mode = .passive
             configuration.expiresAt = nil
         }
@@ -129,15 +141,32 @@ final class AwakeService {
             setMode(.passive)
             return
         }
-        if let expiry = configuration.expiresAt, expiry <= Date(), configuration.mode != .indefinite {
-            setMode(.passive)
-            return
+        switch configuration.mode {
+        case .timed:
+            if let timedDeadline, ProcessInfo.processInfo.systemUptime >= timedDeadline {
+                setMode(.passive)
+                return
+            }
+        case .until:
+            if let expiry = configuration.expiresAt, expiry <= Date() {
+                setMode(.passive)
+                return
+            }
+        case .passive, .indefinite:
+            break
         }
         updateRemaining()
     }
 
     private func updateRemaining() {
-        remaining = configuration.expiresAt.map { max(0, $0.timeIntervalSinceNow) }
+        switch configuration.mode {
+        case .timed:
+            remaining = timedDeadline.map { max(0, $0 - ProcessInfo.processInfo.systemUptime) }
+        case .until:
+            remaining = configuration.expiresAt.map { max(0, $0.timeIntervalSinceNow) }
+        case .passive, .indefinite:
+            remaining = nil
+        }
     }
 
     private func save() {

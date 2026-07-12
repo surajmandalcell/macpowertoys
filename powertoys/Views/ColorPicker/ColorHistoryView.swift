@@ -26,7 +26,8 @@ struct ColorHistoryView: View {
             .padding(12)
             Divider()
             if samples.isEmpty {
-                ContentUnavailableView("No Colors", systemImage: "eyedropper", description: Text("Pick a color to add it to history."))
+                EmptyStateView(icon: "eyedropper", message: "Pick a color to add it to history")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(samples) { sample in ColorSampleRow(sample: sample) }
                     .listStyle(.inset)
@@ -58,10 +59,16 @@ private struct ColorSampleRow: View {
                 .fill(Color(nsColor: sample.color))
                 .frame(width: 34, height: 34)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.1)))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(sample.string(service.defaultFormat)).font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
-                Text(sample.createdAt, style: .relative).font(.system(size: 10)).foregroundStyle(.secondary)
+            Button {
+                service.copy(sample, as: service.defaultFormat)
+            } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(sample.string(service.defaultFormat)).font(.system(size: 12, design: .monospaced))
+                    Text(sample.createdAt, style: .relative).font(.system(size: 10)).foregroundStyle(.secondary)
+                }
             }
+            .buttonStyle(.plain)
+            .help("Copy \(service.defaultFormat.title)")
             Spacer()
             Menu {
                 ForEach(ColorCopyFormat.allCases) { format in

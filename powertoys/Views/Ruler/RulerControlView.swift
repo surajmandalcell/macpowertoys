@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RulerControlView: View {
     @State private var manager = RulerManager.shared
+    @State private var guides = RulerGuideController.shared
     @State private var copyFormat = RulerCopyFormat.plain
     @State private var calibrationText = ""
 
@@ -16,13 +17,14 @@ struct RulerControlView: View {
                     activeSection
                     measurementsSection
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             manager.restore()
-            calibrationText = manager.style.calibration.formatted(.number.precision(.fractionLength(2)))
+            calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
         }
         .onReceive(NotificationCenter.default.publisher(for: .toolActionRequested)) { note in
             guard let action = note.object as? ToolActionID, action == .rulerOpen else { return }
@@ -35,6 +37,14 @@ struct RulerControlView: View {
             Image(systemName: "ruler")
             Text("Ruler").font(.system(size: 13, weight: .medium))
             Spacer()
+            Button(guides.isVisible ? "Hide Crosshair" : "Crosshair") { guides.toggleCrosshair() }
+                .controlSize(.small)
+            Button("Pin Guides") { guides.pinGuidesAtPointer() }
+                .controlSize(.small)
+            if !guides.verticalGuides.isEmpty {
+                Button("Clear Guides") { guides.clearGuides() }
+                    .controlSize(.small)
+            }
             Button("Measure Region") { MeasurementOverlayController.shared.begin() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -64,10 +74,17 @@ struct RulerControlView: View {
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
                 GridRow {
                     Text("Units").foregroundStyle(.secondary)
-                    Picker("Units", selection: styleBinding(\.unit)) {
-                        ForEach(RulerUnit.allCases) { unit in Text(unit.rawValue).tag(unit) }
+                    HStack {
+                        Picker("Units", selection: styleBinding(\.unit)) {
+                            ForEach(RulerUnit.allCases) { unit in Text(unit.rawValue).tag(unit) }
+                        }
+                        .labelsHidden()
+                        if manager.style.unit == .millimeters || manager.style.unit == .inches {
+                            Text(manager.style.hasCalibration(for: NSScreen.main) ? "Calibrated" : "Estimated")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .labelsHidden()
                 }
                 GridRow {
                     Text("Zero Corner").foregroundStyle(.secondary)
@@ -99,7 +116,7 @@ struct RulerControlView: View {
                             .frame(width: 70)
                         Button("Apply") {
                             guard let value = Double(calibrationText), (0.25...4).contains(value) else { return }
-                            manager.style.calibration = value
+                            manager.setCalibration(value, for: NSScreen.main)
                         }
                         Text("× physical scale").foregroundStyle(.tertiary)
                     }
@@ -187,12 +204,9 @@ struct RulerControlView: View {
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            Text(title).utilitySectionHeader()
             content()
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .utilitySectionCard()
         }
     }
 
@@ -247,6 +261,16 @@ private struct RulerRow: View {
             .labelsHidden()
             .frame(width: 90)
             Button("Copy") { manager.copy(ruler, as: copyFormat) }
+            if ruler.orientation == .joined {
+                Button("H") { manager.toggleArm(ruler.id, horizontal: true) }
+                    .foregroundStyle(ruler.showsHorizontalArm ? .primary : .secondary)
+                    .help("Toggle horizontal arm")
+                Button("V") { manager.toggleArm(ruler.id, horizontal: false) }
+                    .foregroundStyle(ruler.showsVerticalArm ? .primary : .secondary)
+                    .help("Toggle vertical arm")
+            }
+            Button { manager.reset(ruler.id) } label: { Image(systemName: "arrow.counterclockwise") }
+                .help("Reset ruler")
             Button(ruler.isVisible ? "Hide" : "Show") {
                 ruler.isVisible ? manager.hide(ruler.id) : manager.show(ruler.id)
             }

@@ -77,6 +77,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         AwakeService.shared.shutdown()
+        GlobalShortcutManager.shared.shutdown()
         Task { @MainActor in
             await RcloneJobManager.shared.shutdown()
             await LogManager.shared.flushPending()

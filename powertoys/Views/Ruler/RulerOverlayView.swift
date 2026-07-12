@@ -58,7 +58,11 @@ final class RulerOverlayView: NSView {
         startLocation = NSEvent.mouseLocation
         startFrame = window?.frame
         let local = convert(event.locationInWindow, from: nil)
-        isResizing = local.x > bounds.maxX - 18 || local.y < bounds.minY + 18
+        isResizing = switch state.orientation {
+        case .horizontal: local.x > bounds.maxX - 18
+        case .vertical: local.y < bounds.minY + 18
+        case .joined: local.x > bounds.maxX - 18 || local.y < bounds.minY + 18
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -67,8 +71,15 @@ final class RulerOverlayView: NSView {
         let delta = CGPoint(x: now.x - startLocation.x, y: now.y - startLocation.y)
         var frame = startFrame
         if isResizing {
-            frame.size.width = max(54, startFrame.width + delta.x)
-            frame.size.height = max(54, startFrame.height + delta.y)
+            switch state.orientation {
+            case .horizontal:
+                frame.size.width = max(54, startFrame.width + delta.x)
+            case .vertical:
+                frame.size.height = max(54, startFrame.height + delta.y)
+            case .joined:
+                frame.size.width = max(54, startFrame.width + delta.x)
+                frame.size.height = max(54, startFrame.height + delta.y)
+            }
         } else {
             frame.origin.x += delta.x
             frame.origin.y += delta.y
@@ -76,7 +87,8 @@ final class RulerOverlayView: NSView {
         let previous = window?.frame.origin ?? frame.origin
         manager?.updateFrame(id: state.id, frame: frame)
         if !isResizing {
-            manager?.moveGroup(containing: state.id, delta: CGPoint(x: frame.origin.x - previous.x, y: frame.origin.y - previous.y))
+            let actual = window?.frame.origin ?? frame.origin
+            manager?.moveGroup(containing: state.id, delta: CGPoint(x: actual.x - previous.x, y: actual.y - previous.y))
         }
     }
 
@@ -99,6 +111,7 @@ final class RulerOverlayView: NSView {
     override func rightMouseDown(with event: NSEvent) {
         let menu = NSMenu()
         menu.addItem(withTitle: "Set Origin at Pointer", action: #selector(setOrigin), keyEquivalent: "")
+        menu.addItem(withTitle: "Reset Ruler", action: #selector(resetRuler), keyEquivalent: "")
         menu.addItem(withTitle: state.isVisible ? "Hide Ruler" : "Show Ruler", action: #selector(hideRuler), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Remove Ruler", action: #selector(removeRuler), keyEquivalent: "")
@@ -107,6 +120,7 @@ final class RulerOverlayView: NSView {
     }
 
     @objc private func setOrigin() { manager?.setOriginAtPointer(state.id) }
+    @objc private func resetRuler() { manager?.reset(state.id) }
     @objc private func hideRuler() { manager?.hide(state.id) }
     @objc private func removeRuler() { manager?.remove(state.id) }
 
@@ -116,15 +130,19 @@ final class RulerOverlayView: NSView {
             return NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
         case .joined:
             let path = NSBezierPath()
-            path.appendRoundedRect(NSRect(x: 0, y: bounds.height - 54, width: bounds.width, height: 54), xRadius: 6, yRadius: 6)
-            path.appendRoundedRect(NSRect(x: 0, y: 0, width: 54, height: bounds.height), xRadius: 6, yRadius: 6)
+            if state.showsHorizontalArm {
+                path.appendRoundedRect(NSRect(x: 0, y: bounds.height - 54, width: bounds.width, height: 54), xRadius: 6, yRadius: 6)
+            }
+            if state.showsVerticalArm {
+                path.appendRoundedRect(NSRect(x: 0, y: 0, width: 54, height: bounds.height), xRadius: 6, yRadius: 6)
+            }
             return path
         }
     }
 
     private func drawHorizontalTicksIfNeeded() {
-        guard state.orientation != .vertical else { return }
-        let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration)
+        guard state.orientation != .vertical, state.orientation != .joined || state.showsHorizontalArm else { return }
+        let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration(for: window?.screen))
         let ticks = RulerGeometry.ticks(length: bounds.width, pointsPerUnit: scale, reversed: style.zeroCorner.reversesHorizontal)
         let top = state.orientation == .joined ? bounds.maxY : bounds.maxY
         for tick in ticks {
@@ -138,8 +156,8 @@ final class RulerOverlayView: NSView {
     }
 
     private func drawVerticalTicksIfNeeded() {
-        guard state.orientation != .horizontal else { return }
-        let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration)
+        guard state.orientation != .horizontal, state.orientation != .joined || state.showsVerticalArm else { return }
+        let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration(for: window?.screen))
         let ticks = RulerGeometry.ticks(length: bounds.height, pointsPerUnit: scale, reversed: style.zeroCorner.reversesVertical)
         for tick in ticks {
             let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
@@ -154,7 +172,7 @@ final class RulerOverlayView: NSView {
     private func drawLabel(_ value: Double, at point: CGPoint) {
         let text = value.formatted(.number.precision(.fractionLength(0...1)))
         text.draw(at: point, withAttributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular),
             .foregroundColor: NSColor.labelColor.withAlphaComponent(0.82)
         ])
     }

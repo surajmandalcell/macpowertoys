@@ -21,7 +21,8 @@ struct TextExtractorView: View {
                 if !service.lastText.isEmpty { resultCard }
                 Spacer()
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
@@ -29,7 +30,7 @@ struct TextExtractorView: View {
 
     private var stateCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("STATUS").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            Text("STATUS").utilitySectionHeader()
             HStack(spacing: 10) {
                 Image(systemName: stateIcon)
                 Text(stateText).font(.system(size: 12))
@@ -40,15 +41,13 @@ struct TextExtractorView: View {
                     }
                 }
             }
-            .padding(14)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .utilitySectionCard()
         }
     }
 
     private var settingsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("RECOGNITION").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            Text("RECOGNITION").utilitySectionHeader()
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
                 GridRow {
                     Text("Speed")
@@ -74,21 +73,17 @@ struct TextExtractorView: View {
                 }
             }
             .font(.system(size: 12))
-            .padding(14)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .utilitySectionCard()
         }
     }
 
     private var resultCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("LAST RESULT").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            Text("LAST RESULT").utilitySectionHeader()
             ScrollView {
                 Text(service.lastText).font(.system(size: 12)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(14)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .utilitySectionCard()
         }
     }
 

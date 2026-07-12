@@ -45,9 +45,20 @@ struct RulerStyle: Codable, Equatable, Sendable {
     var floats = true
     var hasShadow = true
     var calibration = 1.0
+    var displayCalibrations: [String: Double] = [:]
 
     var color: NSColor {
         NSColor(srgbRed: red, green: green, blue: blue, alpha: 1)
+    }
+
+    func calibration(for screen: NSScreen?) -> Double {
+        guard let id = screen?.displayID else { return calibration }
+        return displayCalibrations[String(id)] ?? calibration
+    }
+
+    func hasCalibration(for screen: NSScreen?) -> Bool {
+        guard let id = screen?.displayID else { return false }
+        return displayCalibrations[String(id)] != nil
     }
 }
 
@@ -61,6 +72,8 @@ struct RulerState: Codable, Identifiable, Equatable, Sendable {
     var screenID: UInt32?
     var groupID: UUID?
     var isVisible = true
+    var showsHorizontalArm = true
+    var showsVerticalArm = true
 
     var frame: CGRect {
         get { CGRect(x: x, y: y, width: width, height: height) }
