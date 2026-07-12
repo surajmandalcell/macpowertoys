@@ -51,6 +51,11 @@ final class RulerManager {
     func show(_ id: UUID) {
         guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
         rulers[index].isVisible = true
+        let requestedScreen = rulers[index].screenID.flatMap { savedID in
+            NSScreen.screens.first { $0.displayID == savedID }
+        }
+        rulers[index].frame = clamped(rulers[index].frame, to: requestedScreen)
+        rulers[index].screenID = (requestedScreen ?? NSScreen.screens.first(where: { $0.frame.intersects(rulers[index].frame) }) ?? NSScreen.main)?.displayID
         let state = rulers[index]
         let panel = panels[id] ?? RulerOverlayPanel(state: state, manager: self)
         panels[id] = panel
@@ -88,6 +93,14 @@ final class RulerManager {
         persist()
     }
 
+    func setCalibration(_ value: Double, for screen: NSScreen?) {
+        guard let id = screen?.displayID else {
+            style.calibration = value
+            return
+        }
+        style.displayCalibrations[String(id)] = value
+    }
+
     func updateScreen(id: UUID, screen: NSScreen?) {
         guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
         rulers[index].screenID = screen?.displayID
@@ -104,6 +117,39 @@ final class RulerManager {
         case .joined: frame.origin = CGPoint(x: pointer.x, y: pointer.y - frame.height)
         }
         updateFrame(id: id, frame: frame)
+    }
+
+    func reset(_ id: UUID) {
+        guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
+        let orientation = rulers[index].orientation
+        let screen = panels[id]?.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
+        let size: CGSize = switch orientation {
+        case .horizontal: CGSize(width: min(560, visible.width * 0.6), height: 54)
+        case .vertical: CGSize(width: 54, height: min(560, visible.height * 0.65))
+        case .joined: CGSize(width: min(560, visible.width * 0.6), height: min(340, visible.height * 0.5))
+        }
+        rulers[index].frame = CGRect(
+            x: visible.midX - size.width / 2,
+            y: visible.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+        rulers[index].showsHorizontalArm = true
+        rulers[index].showsVerticalArm = true
+        panels[id]?.apply(state: rulers[index], style: style)
+        persist()
+    }
+
+    func toggleArm(_ id: UUID, horizontal: Bool) {
+        guard let index = rulers.firstIndex(where: { $0.id == id }), rulers[index].orientation == .joined else { return }
+        if horizontal { rulers[index].showsHorizontalArm.toggle() }
+        else { rulers[index].showsVerticalArm.toggle() }
+        if !rulers[index].showsHorizontalArm && !rulers[index].showsVerticalArm {
+            rulers[index].showsHorizontalArm = true
+        }
+        panels[id]?.apply(state: rulers[index], style: style)
+        persist()
     }
 
     func groupVisible() {

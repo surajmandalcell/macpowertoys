@@ -103,6 +103,7 @@ final class TextExtractorService {
             let request = VNRecognizeTextRequest()
             request.recognitionLevel = settings.speed == .accurate ? .accurate : .fast
             request.usesLanguageCorrection = settings.languageCorrection
+            request.automaticallyDetectsLanguage = settings.preferredLanguages.isEmpty
             if !settings.preferredLanguages.isEmpty { request.recognitionLanguages = settings.preferredLanguages }
             let handler = VNImageRequestHandler(cgImage: image, options: [:])
             try handler.perform([request])
@@ -175,6 +176,7 @@ private final class TextRegionSelectionView: NSView {
     private let completion: (CGRect) -> Void
     private let cancellation: () -> Void
     private var start: CGPoint?
+    private var lastPoint: CGPoint?
     private var selection = CGRect.zero
 
     init(frame: CGRect, completion: @escaping (CGRect) -> Void, cancellation: @escaping () -> Void) {
@@ -202,13 +204,19 @@ private final class TextRegionSelectionView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         start = convert(event.locationInWindow, from: nil)
+        lastPoint = start
         selection = .zero
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard let start else { return }
         let point = convert(event.locationInWindow, from: nil)
-        selection = CGRect(x: min(start.x, point.x), y: min(start.y, point.y), width: abs(point.x - start.x), height: abs(point.y - start.y))
+        if event.modifierFlags.contains(.shift), !selection.isEmpty, let lastPoint {
+            selection = selection.offsetBy(dx: point.x - lastPoint.x, dy: point.y - lastPoint.y)
+        } else {
+            selection = CGRect(x: min(start.x, point.x), y: min(start.y, point.y), width: abs(point.x - start.x), height: abs(point.y - start.y))
+        }
+        lastPoint = point
         needsDisplay = true
     }
 

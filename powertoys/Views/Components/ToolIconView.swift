@@ -13,7 +13,7 @@ struct ToolIconView: View {
                     .padding(size * 0.22)
                     .foregroundStyle(.primary)
                     .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: min(12, size * 0.22)))
+                    .clipShape(RoundedRectangle(cornerRadius: size <= 24 ? 4 : 8))
             } else {
                 Image(tool.logoAsset)
                     .resizable()

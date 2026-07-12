@@ -49,18 +49,8 @@ final class ColorPickerService {
     }
 
     func add(_ sample: ColorSample) {
-        let wasPinned = history.first { existing in
-            abs(existing.red - sample.red) < 0.0005 &&
-            abs(existing.green - sample.green) < 0.0005 &&
-            abs(existing.blue - sample.blue) < 0.0005 &&
-            abs(existing.alpha - sample.alpha) < 0.0005
-        }?.isPinned ?? false
-        history.removeAll { existing in
-            abs(existing.red - sample.red) < 0.0005 &&
-            abs(existing.green - sample.green) < 0.0005 &&
-            abs(existing.blue - sample.blue) < 0.0005 &&
-            abs(existing.alpha - sample.alpha) < 0.0005
-        }
+        let wasPinned = history.first { $0.matches(sample) }?.isPinned ?? false
+        history.removeAll { $0.matches(sample) }
         var latest = sample
         latest.isPinned = wasPinned
         history.insert(latest, at: 0)

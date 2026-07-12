@@ -18,6 +18,10 @@ A native macOS utility app built with SwiftUI, featuring a pluggable architectur
 - **Raycast and Shortcuts** - Separate searchable commands for each utility through
   the included Raycast extension and Apple App Shortcuts.
 
+Default global shortcuts use Control-Option-Command plus `R` for Ruler, `A` for
+Awake, `C` for Color Picker, and `T` for Text Extractor. Raycast commands can be
+assigned independent aliases and hotkeys.
+
 ### CC History
 
 Browse and search your Claude Code conversation history with a clean, native interface.

@@ -168,7 +168,7 @@ struct RulerTool: Tool {
     let name = "Ruler"
     let description = "Measure layouts across displays with floating rulers, guides, calibrated units, and developer-friendly copy formats."
     let icon = "ruler"
-    let logoAsset = ""
+    let logoAsset = "RulerLogo"
     let category = ToolCategory.dev
     let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
     var isEnabled = true
@@ -195,7 +195,7 @@ struct AwakeTool: Tool {
     let name = "Awake"
     let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
     let icon = "cup.and.saucer"
-    let logoAsset = ""
+    let logoAsset = "AwakeLogo"
     let category = ToolCategory.system
     let capabilities: ToolCapabilities = [.hasWindow, .needsBackgroundService, .needsGlobalHotkeys]
     let hasTrayTab = true
@@ -223,7 +223,7 @@ struct ColorPickerTool: Tool {
     let name = "Color Picker"
     let description = "Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values."
     let icon = "eyedropper"
-    let logoAsset = ""
+    let logoAsset = "ColorPickerLogo"
     let category = ToolCategory.dev
     let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
     var isEnabled = true
@@ -246,7 +246,7 @@ struct TextExtractorTool: Tool {
     let name = "Text Extractor"
     let description = "Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition."
     let icon = "text.viewfinder"
-    let logoAsset = ""
+    let logoAsset = "TextExtractorLogo"
     let category = ToolCategory.text
     let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
     var isEnabled = true
