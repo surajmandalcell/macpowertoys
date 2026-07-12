@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct CCHistorySidebarView: View {
+    var openSettings: (() -> Void)? = nil
+
     @Environment(ProjectManager.self) private var projectManager
     @Environment(BookmarkManager.self) private var bookmarkManager
 
@@ -18,6 +20,7 @@ struct CCHistorySidebarView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
+            SidebarTitle(text: "Claude History")
             VStack(spacing: 0) {
                 SearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching, deepSearchEnabled: $deepSearchEnabled)
                     .padding(.horizontal, 12)
@@ -41,9 +44,15 @@ struct CCHistorySidebarView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 20)
                 }
-            }
 
-            SidebarTitle(text: "CC History")
+                if let openSettings {
+                    VStack(spacing: 4) {
+                        SidebarActionRow(icon: "gearshape", title: "Settings", action: openSettings)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                }
+            }
 
             VStack {
                 Spacer()
@@ -190,6 +199,7 @@ private struct BookmarksSection: View {
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .focusEffectDisabled()
                     }
                 }
             }
@@ -238,6 +248,7 @@ private struct ProjectRow: View {
             )
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovered = $0 }
     }
 }
@@ -341,6 +352,7 @@ private struct SessionRow: View {
                 )
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .onHover { isHovered = $0 }
             .contextMenu {
                 Button {
@@ -376,6 +388,42 @@ private struct SessionRow: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Sidebar Action Row
+
+private struct SidebarActionRow: View {
+    let icon: String
+    let title: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20, height: 20)
+
+                Text(title)
+                    .font(.system(size: 13))
+
+                Spacer()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { isHovered = $0 }
     }
 }
 
