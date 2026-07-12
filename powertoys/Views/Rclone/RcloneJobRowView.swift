@@ -49,6 +49,9 @@ struct TransferJobRow: View {
                 .fill(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         )
         .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .animation(.easeInOut(duration: 0.18), value: job.state)
+        .animation(.easeInOut(duration: 0.18), value: hasTransferringFiles)
+        .animation(.easeInOut(duration: 0.18), value: job.errorMessage != nil)
         .onHover { isHovering = $0 }
         .contextMenu {
             Button("Details…") { showInfo = true }
@@ -136,20 +139,9 @@ struct TransferJobRow: View {
 
     // MARK: Progress
 
-    @ViewBuilder
     private var progressSection: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            CapsuleProgressBar(fraction: job.progressFraction, tint: progressTint, indeterminate: job.state == .queued)
-                .frame(height: 6)
-
-            if job.state == .queued {
-                Text("Queued")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            } else if job.state == .retrying {
-                retryHint
-            }
-        }
+        CapsuleProgressBar(fraction: job.progressFraction, tint: progressTint, indeterminate: job.state == .queued)
+            .frame(height: 6)
     }
 
     @ViewBuilder
@@ -187,6 +179,10 @@ struct TransferJobRow: View {
             }
 
             Spacer(minLength: 8)
+
+            if job.state == .retrying {
+                retryHint
+            }
 
             if job.attempt > 0 {
                 Text("Attempt \(job.attempt)/\(job.maxRetries)")

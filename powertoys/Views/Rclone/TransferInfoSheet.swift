@@ -13,6 +13,10 @@ struct TransferInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: InfoTab = .overview
 
+    private static let textGutter: CGFloat = 34
+    private static let cardMargin: CGFloat = 20
+    private static let cardPadding: CGFloat = 14
+
     init(details: TransferDetails) {
         self.recordDetails = details
         self.job = nil
@@ -51,7 +55,7 @@ struct TransferInfoSheet: View {
             Divider()
             switch selectedTab {
             case .overview:
-                detailsForm
+                overviewContent
             case .files:
                 TransferFileTreeView(rootFs: details.sourceFs)
                     .padding(.top, 12)
@@ -59,22 +63,6 @@ struct TransferInfoSheet: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(width: 640, height: 620)
-    }
-
-    private var tabBar: some View {
-        HStack {
-            Picker("View", selection: $selectedTab) {
-                Text("Overview").tag(InfoTab.overview)
-                Text("Files").tag(InfoTab.files)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 220)
-
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 10)
     }
 
     // MARK: Header
@@ -91,7 +79,8 @@ struct TransferInfoSheet: View {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 20)
+        .padding(.leading, Self.textGutter)
+        .padding(.trailing, Self.cardMargin)
         .padding(.vertical, 16)
     }
 
@@ -111,127 +100,182 @@ struct TransferInfoSheet: View {
         .fixedSize()
     }
 
-    // MARK: Form
+    private var tabBar: some View {
+        HStack {
+            Picker("View", selection: $selectedTab) {
+                Text("Overview").tag(InfoTab.overview)
+                Text("Files").tag(InfoTab.files)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 220)
 
-    private var detailsForm: some View {
-        Form {
-            routeSection
-            resultSection
-            timingSection
-            ignoreRulesSection
+            Spacer()
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+        .padding(.leading, Self.textGutter)
+        .padding(.trailing, Self.cardMargin)
+        .padding(.bottom, 12)
     }
 
-    private var routeSection: some View {
-        Section("Route") {
-            HStack(spacing: 8) {
-                Text(details.sourceDisplay)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                Text(details.destinationDisplay)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .font(.system(size: 13))
+    // MARK: Overview
 
-            LabeledContent("Kind", value: details.kind == .directory ? "Folder" : "Single file")
-
-            LabeledContent("Source") {
-                Text(details.sourceFs)
-                    .font(.system(size: 12, design: .monospaced))
-                    .textSelection(.enabled)
-                    .multilineTextAlignment(.trailing)
+    private var overviewContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                section("Route") { routeRows }
+                section("Result") { resultRows }
+                section("Timing") { timingRows }
+                section("Ignore Rules") { ignoreRuleRows }
             }
-
-            LabeledContent("Destination") {
-                Text(details.destinationFs)
-                    .font(.system(size: 12, design: .monospaced))
-                    .textSelection(.enabled)
-                    .multilineTextAlignment(.trailing)
-            }
+            .padding(.horizontal, Self.cardMargin)
+            .padding(.top, 14)
+            .padding(.bottom, 20)
         }
     }
 
-    private var resultSection: some View {
-        Section("Result") {
-            LabeledContent("State") {
-                HStack(spacing: 4) {
-                    Image(systemName: details.state.icon)
-                        .font(.system(size: 11))
-                    Text(details.state.displayName)
-                }
-                .foregroundStyle(details.state.tint)
+    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .padding(.leading, Self.textGutter - Self.cardMargin)
+
+            VStack(alignment: .leading, spacing: 10) {
+                content()
             }
+            .padding(Self.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
 
-            LabeledContent("Data moved", value: "\(RcloneFormat.bytes(details.bytes)) of \(RcloneFormat.bytes(details.totalBytes))")
+    private func row(_ label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(.system(size: 13))
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+    }
 
-            LabeledContent("Files", value: "\(details.filesTransferred) of \(details.totalFiles)")
+    private func monoRow(_ label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(.system(size: 12, design: .monospaced))
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+    }
 
-            LabeledContent("Average speed", value: RcloneFormat.speed(details.averageSpeed))
+    // MARK: Rows
 
-            if details.attempts > 0 {
-                LabeledContent("Attempts", value: "\(details.attempts)")
-            }
+    @ViewBuilder
+    private var routeRows: some View {
+        HStack(spacing: 8) {
+            Text(details.sourceDisplay)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.tertiary)
+            Text(details.destinationDisplay)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: 13))
 
-            if let message = details.errorMessage {
-                Text(message)
+        row("Kind", value: details.kind == .directory ? "Folder" : "Single file")
+        monoRow("Source", value: details.sourceFs)
+        monoRow("Destination", value: details.destinationFs)
+    }
+
+    @ViewBuilder
+    private var resultRows: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("State")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            HStack(spacing: 4) {
+                Image(systemName: details.state.icon)
                     .font(.system(size: 11))
-                    .foregroundStyle(.red)
-                    .textSelection(.enabled)
+                Text(details.state.displayName)
+                    .font(.system(size: 13))
             }
+            .foregroundStyle(details.state.tint)
+        }
 
-            if let job, job.kind == .directory, !job.state.isTerminal {
-                LabeledContent {
-                    if job.isRecalculating {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Scanning both sides…")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        Button("Recalculate") { manager.recalculate(job) }
-                            .disabled(!manager.daemonIsHealthy)
-                    }
-                } label: {
+        row("Data moved", value: "\(RcloneFormat.bytes(details.bytes)) of \(RcloneFormat.bytes(details.totalBytes))")
+        row("Files", value: "\(details.filesTransferred) of \(details.totalFiles)")
+        row("Average speed", value: RcloneFormat.speed(details.averageSpeed))
+
+        if details.attempts > 0 {
+            row("Attempts", value: "\(details.attempts)")
+        }
+
+        if let message = details.errorMessage {
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(.red)
+                .textSelection(.enabled)
+        }
+
+        if let job, job.kind == .directory, !job.state.isTerminal {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Size & diff")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
                     Text("Re-scans source and destination so totals and remaining data are exact.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 12)
+                if job.isRecalculating {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Scanning both sides…")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button("Recalculate") { manager.recalculate(job) }
+                        .disabled(!manager.daemonIsHealthy)
                 }
             }
         }
     }
 
-    private var timingSection: some View {
-        Section("Timing") {
-            LabeledContent("Created", value: Self.dateFormatter.string(from: details.createdAt))
-
-            LabeledContent("Started", value: details.startedAt.map(Self.dateFormatter.string(from:)) ?? "—")
-
-            LabeledContent("Finished", value: details.finishedAt.map(Self.dateFormatter.string(from:)) ?? "—")
-
-            LabeledContent("Duration", value: RcloneFormat.duration(duration))
-        }
+    @ViewBuilder
+    private var timingRows: some View {
+        row("Created", value: Self.dateFormatter.string(from: details.createdAt))
+        row("Started", value: details.startedAt.map(Self.dateFormatter.string(from:)) ?? "—")
+        row("Finished", value: details.finishedAt.map(Self.dateFormatter.string(from:)) ?? "—")
+        row("Duration", value: RcloneFormat.duration(duration))
     }
 
-    private var ignoreRulesSection: some View {
-        Section("Ignore Rules") {
-            if details.excludePatterns.isEmpty {
-                Text("None")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-            } else {
-                ForEach(details.excludePatterns, id: \.self) { pattern in
-                    Text(pattern)
-                        .font(.system(size: 11, design: .monospaced))
-                        .textSelection(.enabled)
-                }
+    @ViewBuilder
+    private var ignoreRuleRows: some View {
+        if details.excludePatterns.isEmpty {
+            Text("None")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+        } else {
+            ForEach(details.excludePatterns, id: \.self) { pattern in
+                Text(pattern)
+                    .font(.system(size: 11, design: .monospaced))
+                    .textSelection(.enabled)
             }
         }
     }
