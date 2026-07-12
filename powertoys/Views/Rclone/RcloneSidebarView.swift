@@ -13,7 +13,49 @@ struct RcloneSidebarView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             sidebarBody
-            SidebarTitle(text: "RSync")
+            titleRow
+        }
+    }
+
+    private var titleRow: some View {
+        HStack(spacing: 6) {
+            Text("RSync")
+                .font(.system(size: 13, weight: .medium))
+
+            Circle()
+                .fill(daemonStatusColor)
+                .frame(width: 6, height: 6)
+
+            if case .running(_, let version) = manager.daemon.state {
+                Text(version)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            if !manager.daemonIsHealthy {
+                Button {
+                    Task { await manager.restartDaemon() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help("Reconnect")
+            }
+        }
+        .padding(.leading, 84)
+        .padding(.top, 8)
+    }
+
+    private var daemonStatusColor: Color {
+        switch manager.daemon.state {
+        case .running: return .green
+        case .starting: return .orange
+        case .failed: return .red
+        case .stopped: return .secondary
         }
     }
 
@@ -25,13 +67,6 @@ struct RcloneSidebarView: View {
             .padding(.horizontal, 12)
             .padding(.top, 52)
 
-            DaemonStatusPill(
-                text: manager.daemonStatusText,
-                isHealthy: manager.daemonIsHealthy,
-                reconnect: { Task { await manager.restartDaemon() } }
-            )
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -126,49 +161,6 @@ private struct NewTransferButton: View {
         .focusEffectDisabled()
         .onHover { isHovering = $0 }
         .animation(.easeInOut(duration: 0.15), value: isHovering)
-    }
-}
-
-// MARK: - Daemon Status Pill
-
-private struct DaemonStatusPill: View {
-    let text: String
-    let isHealthy: Bool
-    let reconnect: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(isHealthy ? Color.green : Color.red)
-                .frame(width: 6, height: 6)
-
-            Text(text)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-
-            Spacer(minLength: 4)
-
-            if !isHealthy {
-                Button(action: reconnect) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .help("Reconnect")
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.primary.opacity(0.06))
-        )
     }
 }
 

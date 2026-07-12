@@ -61,16 +61,6 @@ struct RcloneTransferListView: View {
 
             Spacer()
 
-            if manager.isGloballyPaused || !manager.activeJobs.isEmpty {
-                GlobalPauseButton(isPaused: manager.isGloballyPaused) {
-                    if manager.isGloballyPaused {
-                        manager.resumeAll()
-                    } else {
-                        manager.pauseAll()
-                    }
-                }
-            }
-
             if hasTerminalJobs {
                 Button {
                     manager.clearFinished()
@@ -93,6 +83,16 @@ struct RcloneTransferListView: View {
                 .animation(.easeInOut(duration: 0.15), value: isHoveringClearFinished)
                 .onHover { isHoveringClearFinished = $0 }
                 .onDisappear { isHoveringClearFinished = false }
+            }
+
+            if manager.isGloballyPaused || !manager.activeJobs.isEmpty {
+                GlobalPauseButton(isPaused: manager.isGloballyPaused) {
+                    if manager.isGloballyPaused {
+                        manager.resumeAll()
+                    } else {
+                        manager.pauseAll()
+                    }
+                }
             }
         }
         .padding(.horizontal, 20)

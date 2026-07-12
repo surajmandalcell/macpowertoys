@@ -6,6 +6,7 @@
 import Foundation
 import SwiftData
 import CryptoKit
+import AppKit
 
 // MARK: - Settings Keys (single source of truth)
 
@@ -99,6 +100,7 @@ final class RcloneJobManager {
     private var lastAppliedBandwidth: String?
     private var loadedPersistedJobs = false
     private var persistJobsTask: Task<Void, Never>?
+    private var volumeObservers: [NSObjectProtocol] = []
 
     private let pollInterval: Duration = .milliseconds(700)
 
@@ -173,6 +175,8 @@ final class RcloneJobManager {
         started = true
         errorBanner = nil
         loadPersistedJobs()
+        startVolumeWatch()
+        resumeJobsForMountedVolumes()
 
         do {
             let client = try await daemon.ensureRunning(binaryPath: settings.binaryPath)
@@ -638,6 +642,82 @@ final class RcloneJobManager {
         }
     }
 
+    // MARK: Volume watch (external drives)
+
+    private func startVolumeWatch() {
+        guard volumeObservers.isEmpty else { return }
+        let center = NSWorkspace.shared.notificationCenter
+
+        volumeObservers.append(center.addObserver(forName: NSWorkspace.didUnmountNotification, object: nil, queue: .main) { note in
+            let path = (note.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL)?.path
+            Task { @MainActor in
+                if let path {
+                    RcloneJobManager.shared.handleVolumeUnmounted(path)
+                }
+            }
+        })
+
+        volumeObservers.append(center.addObserver(forName: NSWorkspace.didMountNotification, object: nil, queue: .main) { note in
+            let path = (note.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL)?.path
+            Task { @MainActor in
+                if let path {
+                    RcloneJobManager.shared.handleVolumeMounted(path)
+                }
+            }
+        })
+    }
+
+    private func handleVolumeUnmounted(_ volumePath: String) {
+        let volumeName = (volumePath as NSString).lastPathComponent
+        for job in jobs where job.canPause && Self.jobUsesVolume(job, volumePath) {
+            pause(job)
+            job.autoPausedVolume = volumePath
+            job.errorMessage = "Drive disconnected — will resume when “\(volumeName)” reconnects."
+            LogManager.shared.warning("Auto-paused (drive disconnected): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+        }
+        persistJobsSoon()
+    }
+
+    private func handleVolumeMounted(_ volumePath: String) {
+        for job in jobs where job.state == .paused && job.autoPausedVolume == volumePath {
+            job.autoPausedVolume = nil
+            job.errorMessage = nil
+            resume(job)
+            LogManager.shared.info("Auto-resumed (drive reconnected): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+        }
+    }
+
+    private func resumeJobsForMountedVolumes() {
+        for job in jobs where job.state == .paused {
+            guard let volume = job.autoPausedVolume else { continue }
+            if FileManager.default.fileExists(atPath: volume) {
+                job.autoPausedVolume = nil
+                job.errorMessage = nil
+                resume(job)
+            }
+        }
+    }
+
+    static func jobUsesVolume(_ job: TransferJob, _ volumePath: String) -> Bool {
+        fsUsesVolume(job.sourceFs, volumePath) || fsUsesVolume(job.destinationFs, volumePath)
+    }
+
+    private static func fsUsesVolume(_ fs: String, _ volumePath: String) -> Bool {
+        fs.hasPrefix("/") && (fs == volumePath || fs.hasPrefix(volumePath + "/"))
+    }
+
+    private static func offlineVolume(for job: TransferJob) -> String? {
+        for fs in [job.sourceFs, job.destinationFs] where fs.hasPrefix("/Volumes/") {
+            let components = fs.split(separator: "/", maxSplits: 2, omittingEmptySubsequences: true)
+            guard components.count >= 2 else { continue }
+            let volume = "/" + components[0] + "/" + components[1]
+            if !FileManager.default.fileExists(atPath: volume) {
+                return volume
+            }
+        }
+        return nil
+    }
+
     func retry(_ job: TransferJob) {
         guard job.canRetry else { return }
         if job.kind == .directory && !job.bypassGlobalIgnores {
@@ -778,6 +858,16 @@ final class RcloneJobManager {
 
     private func handleFailure(_ job: TransferJob, message: String, client: RcloneRCClient, permanent: Bool = false) {
         guard job.state == .running else { return }
+
+        if let volume = Self.offlineVolume(for: job) {
+            let volumeName = (volume as NSString).lastPathComponent
+            pause(job)
+            job.autoPausedVolume = volume
+            job.errorMessage = "Drive disconnected — will resume when “\(volumeName)” reconnects."
+            LogManager.shared.warning("Auto-paused (drive offline): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+            return
+        }
+
         let policy = settings.retryPolicy
         if !permanent && job.attempt < job.maxRetries {
             job.attempt += 1
