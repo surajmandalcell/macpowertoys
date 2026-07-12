@@ -14,7 +14,7 @@ final class AwakeService {
 
     private var assertionID = IOPMAssertionID(0)
     private var timer: Timer?
-    private var timedDeadline: TimeInterval?
+    private var timedDeadline: ContinuousClock.Instant?
     private let key = "awake.configuration.v1"
 
     var isActive: Bool { configuration.mode != .passive && assertionID != 0 }
@@ -29,7 +29,7 @@ final class AwakeService {
             .flatMap { try? JSONDecoder().decode(AwakeConfiguration.self, from: $0) }
             ?? AwakeConfiguration()
         if configuration.mode == .timed, let expiry = configuration.expiresAt {
-            timedDeadline = ProcessInfo.processInfo.systemUptime + max(0, expiry.timeIntervalSinceNow)
+            timedDeadline = .now.advanced(by: .seconds(max(0, expiry.timeIntervalSinceNow)))
         }
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
             guard let action = note.object as? ToolActionID else { return }
@@ -48,7 +48,7 @@ final class AwakeService {
             let seconds = max(1, duration ?? configuration.intervalSeconds)
             configuration.intervalSeconds = seconds
             configuration.expiresAt = Date().addingTimeInterval(seconds)
-            timedDeadline = ProcessInfo.processInfo.systemUptime + seconds
+            timedDeadline = .now.advanced(by: .seconds(seconds))
         case .until:
             configuration.expiresAt = date ?? configuration.expiresAt ?? Date().addingTimeInterval(3600)
             timedDeadline = nil
@@ -86,7 +86,7 @@ final class AwakeService {
         assertionError = nil
 
         if configuration.mode == .timed, timedDeadline == nil {
-            timedDeadline = ProcessInfo.processInfo.systemUptime + max(1, configuration.intervalSeconds)
+            timedDeadline = .now.advanced(by: .seconds(max(1, configuration.intervalSeconds)))
             configuration.expiresAt = Date().addingTimeInterval(max(1, configuration.intervalSeconds))
         }
 
@@ -143,7 +143,7 @@ final class AwakeService {
         }
         switch configuration.mode {
         case .timed:
-            if let timedDeadline, ProcessInfo.processInfo.systemUptime >= timedDeadline {
+            if let timedDeadline, ContinuousClock.now >= timedDeadline {
                 setMode(.passive)
                 return
             }
@@ -161,7 +161,10 @@ final class AwakeService {
     private func updateRemaining() {
         switch configuration.mode {
         case .timed:
-            remaining = timedDeadline.map { max(0, $0 - ProcessInfo.processInfo.systemUptime) }
+            remaining = timedDeadline.map { deadline in
+                let components = ContinuousClock.now.duration(to: deadline).components
+                return max(0, Double(components.seconds) + Double(components.attoseconds) / 1e18)
+            }
         case .until:
             remaining = configuration.expiresAt.map { max(0, $0.timeIntervalSinceNow) }
         case .passive, .indefinite:

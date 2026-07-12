@@ -1,14 +1,34 @@
 import Carbon.HIToolbox
 import Foundation
+import Observation
 
+enum GlobalShortcutKey: String, CaseIterable, Identifiable {
+    case c, p, k
+    var id: String { rawValue }
+    var title: String { rawValue.uppercased() }
+    var keyCode: UInt32 {
+        switch self {
+        case .c: UInt32(kVK_ANSI_C)
+        case .p: UInt32(kVK_ANSI_P)
+        case .k: UInt32(kVK_ANSI_K)
+        }
+    }
+}
+
+@Observable
 @MainActor
 final class GlobalShortcutManager {
     static let shared = GlobalShortcutManager()
 
     private var eventHandler: EventHandlerRef?
-    private var hotKeys: [EventHotKeyRef?] = []
+    private var hotKeys: [UInt32: EventHotKeyRef] = [:]
+    private(set) var colorKey: GlobalShortcutKey
+    private(set) var isColorShortcutEnabled: Bool
 
     private init() {
+        colorKey = UserDefaults.standard.string(forKey: "shortcut.color-picker.key")
+            .flatMap(GlobalShortcutKey.init(rawValue:)) ?? .c
+        isColorShortcutEnabled = UserDefaults.standard.object(forKey: "shortcut.color-picker.enabled") as? Bool ?? true
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(
             GetApplicationEventTarget(),
@@ -20,15 +40,33 @@ final class GlobalShortcutManager {
         )
         register(id: 1, keyCode: UInt32(kVK_ANSI_R))
         register(id: 2, keyCode: UInt32(kVK_ANSI_A))
-        register(id: 3, keyCode: UInt32(kVK_ANSI_C))
+        if isColorShortcutEnabled { register(id: 3, keyCode: colorKey.keyCode) }
         register(id: 4, keyCode: UInt32(kVK_ANSI_T))
     }
 
     func shutdown() {
-        hotKeys.compactMap { $0 }.forEach { _ = UnregisterEventHotKey($0) }
+        hotKeys.values.forEach { _ = UnregisterEventHotKey($0) }
         hotKeys.removeAll()
         if let eventHandler { RemoveEventHandler(eventHandler) }
         eventHandler = nil
+    }
+
+    func setColorKey(_ key: GlobalShortcutKey) {
+        guard key != colorKey else { return }
+        colorKey = key
+        UserDefaults.standard.set(key.rawValue, forKey: "shortcut.color-picker.key")
+        if isColorShortcutEnabled {
+            unregister(id: 3)
+            register(id: 3, keyCode: key.keyCode)
+        }
+    }
+
+    func setColorShortcutEnabled(_ enabled: Bool) {
+        guard enabled != isColorShortcutEnabled else { return }
+        isColorShortcutEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "shortcut.color-picker.enabled")
+        if enabled { register(id: 3, keyCode: colorKey.keyCode) }
+        else { unregister(id: 3) }
     }
 
     private func register(id: UInt32, keyCode: UInt32) {
@@ -42,7 +80,12 @@ final class GlobalShortcutManager {
             0,
             &reference
         )
-        if status == noErr { hotKeys.append(reference) }
+        if status == noErr, let reference { hotKeys[id] = reference }
+    }
+
+    private func unregister(id: UInt32) {
+        guard let reference = hotKeys.removeValue(forKey: id) else { return }
+        _ = UnregisterEventHotKey(reference)
     }
 
     private func run(id: UInt32) {

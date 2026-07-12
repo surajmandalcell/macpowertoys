@@ -36,6 +36,7 @@ struct AwakeView: View {
             ))
             .toggleStyle(.switch)
             .controlSize(.small)
+            .contentShape(Rectangle())
             .disabled(service.configuration.mode == .passive)
         }
         .padding(.horizontal, 20)
@@ -51,6 +52,7 @@ struct AwakeView: View {
                 Spacer()
                 if service.configuration.mode != .passive {
                     Button("Turn Off") { service.setMode(.passive) }
+                        .contentShape(Rectangle())
                 }
             }
             .utilitySectionCard()
@@ -67,15 +69,20 @@ struct AwakeView: View {
                 HStack {
                     modeButton(.timed)
                     Stepper("\(hours) h", value: $hours, in: 0...168)
+                        .contentShape(Rectangle())
                     Stepper("\(minutes) min", value: $minutes, in: 0...59, step: 5)
+                        .contentShape(Rectangle())
                     Button("Start") { service.setMode(.timed, duration: TimeInterval(hours * 3600 + minutes * 60)) }
                         .disabled(hours == 0 && minutes == 0)
+                        .contentShape(Rectangle())
                 }
                 HStack {
                     modeButton(.until)
                     DatePicker("", selection: $expiration, in: Date()...)
                         .labelsHidden()
+                        .contentShape(Rectangle())
                     Button("Start") { service.setMode(.until, until: expiration) }
+                        .contentShape(Rectangle())
                 }
             }
             .utilitySectionCard()
@@ -89,6 +96,7 @@ struct AwakeView: View {
                 HStack {
                     ForEach(service.configuration.presets, id: \.self) { seconds in
                         Button(AwakeService.duration(seconds)) { service.setMode(.timed, duration: seconds) }
+                            .contentShape(Rectangle())
                             .contextMenu {
                                 Button("Remove Preset") {
                                     service.setPresets(service.configuration.presets.filter { $0 != seconds })
@@ -99,6 +107,7 @@ struct AwakeView: View {
                         service.setPresets(service.configuration.presets + [TimeInterval(hours * 3600 + minutes * 60)])
                     } label: { Image(systemName: "plus") }
                     .help("Add the current interval as a preset")
+                    .contentShape(Rectangle())
                     .disabled(hours == 0 && minutes == 0)
                 }
                 Divider()
@@ -109,9 +118,11 @@ struct AwakeView: View {
                         service.attach(to: id)
                         if service.configuration.mode == .passive { service.setMode(.indefinite) }
                     }
+                    .contentShape(Rectangle())
                     if let id = service.configuration.attachedProcessID {
                         Text("Stops when PID \(id) exits").foregroundStyle(.secondary)
                         Button("Detach") { service.attach(to: nil) }
+                            .contentShape(Rectangle())
                     }
                 }
             }
@@ -130,6 +141,7 @@ struct AwakeView: View {
             }
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .frame(minWidth: 180, alignment: .leading)
     }
 }
