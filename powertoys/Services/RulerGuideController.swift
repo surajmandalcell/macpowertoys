@@ -7,6 +7,7 @@ final class RulerGuideController {
     static let shared = RulerGuideController()
 
     private(set) var isVisible = false
+    private(set) var isEditing = false
     private(set) var verticalGuides: [CGFloat] = []
     private(set) var horizontalGuides: [CGFloat] = []
     private var panels: [NSPanel] = []
@@ -29,7 +30,7 @@ final class RulerGuideController {
             panel.hasShadow = false
             panel.ignoresMouseEvents = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-            panel.contentView = RulerGuideView(frame: CGRect(origin: .zero, size: screen.frame.size), screenFrame: screen.frame)
+            panel.contentView = RulerGuideView(frame: CGRect(origin: .zero, size: screen.frame.size), screenFrame: screen.frame, controller: self)
             panel.orderFrontRegardless()
             return panel
         }
@@ -42,6 +43,7 @@ final class RulerGuideController {
 
     func hide() {
         isVisible = false
+        isEditing = false
         timer?.invalidate()
         timer = nil
         panels.forEach { $0.close() }
@@ -62,6 +64,24 @@ final class RulerGuideController {
         refresh()
     }
 
+    func toggleEditing() {
+        guard !verticalGuides.isEmpty || !horizontalGuides.isEmpty else { return }
+        isEditing.toggle()
+        panels.forEach { $0.ignoresMouseEvents = !isEditing }
+    }
+
+    func moveVerticalGuide(at index: Int, to x: CGFloat) {
+        guard verticalGuides.indices.contains(index) else { return }
+        verticalGuides[index] = x
+        refresh()
+    }
+
+    func moveHorizontalGuide(at index: Int, to y: CGFloat) {
+        guard horizontalGuides.indices.contains(index) else { return }
+        horizontalGuides[index] = y
+        refresh()
+    }
+
     private func refresh() {
         let pointer = NSEvent.mouseLocation
         for panel in panels {
@@ -75,13 +95,17 @@ final class RulerGuideController {
 }
 
 private final class RulerGuideView: NSView {
+    private enum DragTarget { case vertical(Int), horizontal(Int) }
     private let screenFrame: CGRect
+    private weak var controller: RulerGuideController?
     private var pointer = CGPoint.zero
     private var verticalGuides: [CGFloat] = []
     private var horizontalGuides: [CGFloat] = []
+    private var dragTarget: DragTarget?
 
-    init(frame: CGRect, screenFrame: CGRect) {
+    init(frame: CGRect, screenFrame: CGRect, controller: RulerGuideController) {
         self.screenFrame = screenFrame
+        self.controller = controller
         super.init(frame: frame)
     }
 
@@ -114,4 +138,27 @@ private final class RulerGuideView: NSView {
         }
         path.stroke()
     }
+
+    override func mouseDown(with event: NSEvent) {
+        let local = convert(event.locationInWindow, from: nil)
+        let global = CGPoint(x: local.x + screenFrame.minX, y: local.y + screenFrame.minY)
+        if let match = verticalGuides.enumerated().min(by: { abs($0.element - global.x) < abs($1.element - global.x) }),
+           abs(match.element - global.x) <= 8 {
+            dragTarget = .vertical(match.offset)
+        } else if let match = horizontalGuides.enumerated().min(by: { abs($0.element - global.y) < abs($1.element - global.y) }),
+                  abs(match.element - global.y) <= 8 {
+            dragTarget = .horizontal(match.offset)
+        }
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let local = convert(event.locationInWindow, from: nil)
+        switch dragTarget {
+        case .vertical(let index): controller?.moveVerticalGuide(at: index, to: local.x + screenFrame.minX)
+        case .horizontal(let index): controller?.moveHorizontalGuide(at: index, to: local.y + screenFrame.minY)
+        case nil: break
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) { dragTarget = nil }
 }

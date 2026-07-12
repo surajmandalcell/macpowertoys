@@ -17,7 +17,7 @@ finished. Do not install or relaunch PowerToys before completing that transfer.
 - Move and resize on 1x and 2x screens. Confirm a horizontal ruler remains 54 points
   tall and a vertical ruler remains 54 points wide.
 - Exercise every zero corner, unit, opacity, color, shadow, float, aspect preset,
-  arm toggle, group, reset, show/hide, crosshair, pinned guide, and copy format.
+  arm toggle, group, reset, show/hide, crosshair, pinned/dragged guide, and copy format.
 - Calibrate two displays independently and confirm reconnecting either restores its
   value.
 - Disconnect a display while rulers are visible, relaunch, and confirm every frame is
@@ -42,6 +42,8 @@ finished. Do not install or relaunch PowerToys before completing that transfer.
 - Verify duplicate samples move to the top without losing their pin.
 - Verify copy, pin, delete, search, clear-unpinned, relaunch persistence, Copy Last,
   global shortcut, App Shortcut, and Raycast commands.
+- Focus a history row and verify Return copies the default while number keys 1–9 copy
+  the corresponding format. Change and disable the global shortcut from the toolbar.
 
 ## Text Extractor
 
