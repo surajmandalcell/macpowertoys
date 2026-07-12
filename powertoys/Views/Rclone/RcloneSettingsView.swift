@@ -36,12 +36,8 @@ struct RcloneSettingsView: View {
             }
 
             Section {
-                Stepper(value: $transfers, in: 1...64) {
-                    LabeledContent("Parallel transfers", value: "\(transfers)")
-                }
-                Stepper(value: $checkers, in: 1...128) {
-                    LabeledContent("Checkers", value: "\(checkers)")
-                }
+                StepperField(label: "Parallel transfers", value: $transfers, range: 1...64, format: .number)
+                StepperField(label: "Checkers", value: $checkers, range: 1...128, format: .number)
                 TextField("Bandwidth limit", text: $bandwidthLimit, prompt: Text("e.g. 10M, off"))
                     .font(.system(size: 12, design: .monospaced))
                 Picker("Default operation", selection: $defaultOperation) {
@@ -58,18 +54,10 @@ struct RcloneSettingsView: View {
             }
 
             Section {
-                Stepper(value: $maxRetries, in: 0...20) {
-                    LabeledContent("Max retries", value: "\(maxRetries)")
-                }
-                Stepper(value: $retryBackoff, in: 0...300, step: 1) {
-                    LabeledContent("Retry backoff", value: "\(Int(retryBackoff))s")
-                }
-                Stepper(value: $lowLevelRetries, in: 1...50) {
-                    LabeledContent("Low-level retries", value: "\(lowLevelRetries)")
-                }
-                Stepper(value: $maxConcurrentJobs, in: 1...16) {
-                    LabeledContent("Concurrent jobs", value: "\(maxConcurrentJobs)")
-                }
+                StepperField(label: "Max retries", value: $maxRetries, range: 0...20, format: .number)
+                StepperField(label: "Retry backoff", value: $retryBackoff, range: 0...300, format: .number, suffix: "s")
+                StepperField(label: "Low-level retries", value: $lowLevelRetries, range: 1...50, format: .number)
+                StepperField(label: "Concurrent jobs", value: $maxConcurrentJobs, range: 1...16, format: .number)
             } header: {
                 Text("Retries")
             } footer: {
@@ -87,6 +75,46 @@ struct RcloneSettingsView: View {
                 Text("Leave empty to locate rclone on the system PATH.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+struct StepperField<Value: Strideable, Format: ParseableFormatStyle>: View
+where Format.FormatInput == Value, Format.FormatOutput == String {
+    let label: String
+    @Binding var value: Value
+    let range: ClosedRange<Value>
+    let format: Format
+    var suffix: String? = nil
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(label)
+            Spacer()
+            TextField("", value: $value, format: format)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .multilineTextAlignment(.trailing)
+                .monospacedDigit()
+                .frame(width: 56)
+                .padding(.vertical, 2)
+                .padding(.horizontal, 6)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            if let suffix {
+                Text(suffix)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
+            Stepper("", value: $value, in: range)
+                .labelsHidden()
+        }
+        .onChange(of: value) { _, newValue in
+            if newValue < range.lowerBound {
+                value = range.lowerBound
+            } else if newValue > range.upperBound {
+                value = range.upperBound
             }
         }
     }

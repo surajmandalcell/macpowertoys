@@ -320,6 +320,7 @@ private struct RemoteRow: View {
     @State private var isHovering = false
     @State private var isConfirmingRemoval = false
     @State private var isShowingSettings = false
+    @State private var isShowingCleanup = false
 
     var body: some View {
         Button(action: action) {
@@ -356,6 +357,9 @@ private struct RemoteRow: View {
             Button("Remote Settings…") {
                 isShowingSettings = true
             }
+            Button("Clean Up by Ignore Rules…") {
+                isShowingCleanup = true
+            }
             Button("Copy Name") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(remote.name, forType: .string)
@@ -367,6 +371,9 @@ private struct RemoteRow: View {
         }
         .sheet(isPresented: $isShowingSettings) {
             RemoteSettingsSheet(remote: remote)
+        }
+        .sheet(isPresented: $isShowingCleanup) {
+            CleanupRemoteSheet(remote: remote, startPath: "")
         }
         .confirmationDialog(
             "Remove “\(remote.displayName)”?",

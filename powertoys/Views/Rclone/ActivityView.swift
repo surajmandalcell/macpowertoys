@@ -58,7 +58,7 @@ struct ActivityView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .padding(.top, 52)
+        .padding(.top, 12)
     }
 
     // MARK: Ledger
@@ -111,6 +111,7 @@ private struct ActivityRow: View {
     let record: TransferRecord
 
     @State private var isHovering = false
+    @State private var isHoveringInfo = false
     @State private var showInfo = false
 
     private static let timeFormatter: DateFormatter = {
@@ -157,10 +158,16 @@ private struct ActivityRow: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.primary.opacity(isHoveringInfo ? 0.06 : 0))
+                    )
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .focusEffectDisabled()
+            .animation(.easeInOut(duration: 0.15), value: isHoveringInfo)
+            .onHover { isHoveringInfo = $0 }
             .help("Details")
         }
         .padding(.horizontal, 10)

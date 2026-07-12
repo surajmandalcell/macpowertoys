@@ -13,6 +13,7 @@ struct TransferJobRow: View {
     @State private var isHovering = false
     @State private var isExpanded = false
     @State private var showInfo = false
+    @State private var isHoveringDisclosure = false
 
     private var progressTint: Color {
         switch job.state {
@@ -204,38 +205,35 @@ struct TransferJobRow: View {
 
     private var controls: some View {
         HStack(spacing: 6) {
-            controlButton(icon: "info.circle", label: "Details", tint: .secondary) {
+            ControlIconButton(icon: "info.circle", label: "Details", tint: .secondary) {
                 showInfo = true
             }
+            if job.canPause {
+                ControlIconButton(icon: "pause.circle", label: "Pause", tint: .secondary) {
+                    manager.pause(job)
+                }
+            }
+            if job.canResume {
+                ControlIconButton(icon: "play.circle", label: "Resume", tint: .accentColor) {
+                    manager.resume(job)
+                }
+            }
             if job.canCancel {
-                controlButton(icon: "xmark.circle", label: "Cancel", tint: .secondary) {
+                ControlIconButton(icon: "xmark.circle", label: "Cancel", tint: .secondary) {
                     manager.cancel(job)
                 }
             }
             if job.canRetry {
-                controlButton(icon: "arrow.clockwise", label: "Retry", tint: .accentColor) {
+                ControlIconButton(icon: "arrow.clockwise", label: "Retry", tint: .accentColor) {
                     manager.retry(job)
                 }
             }
             if job.state.isTerminal {
-                controlButton(icon: "trash", label: "Remove", tint: .secondary) {
+                ControlIconButton(icon: "trash", label: "Remove", tint: .secondary) {
                     manager.remove(job)
                 }
             }
         }
-    }
-
-    private func controlButton(icon: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(tint)
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-        .help(label)
     }
 
     private var disclosureButton: some View {
@@ -247,10 +245,17 @@ struct TransferJobRow: View {
                 .foregroundStyle(.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 .frame(width: 24, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(isHoveringDisclosure ? 0.06 : 0))
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
+        .animation(.easeInOut(duration: 0.15), value: isHoveringDisclosure)
+        .onHover { isHoveringDisclosure = $0 }
+        .onDisappear { isHoveringDisclosure = false }
         .help(isExpanded ? "Hide files" : "Show files")
     }
 
@@ -294,6 +299,36 @@ struct TransferJobRow: View {
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
+    }
+}
+
+// MARK: - Control Icon Button
+
+private struct ControlIconButton: View {
+    let icon: String
+    let label: String
+    let tint: Color
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .onHover { isHovering = $0 }
+        .help(label)
     }
 }
 

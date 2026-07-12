@@ -40,6 +40,6 @@ struct RcloneSettingsPage: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .padding(.top, 52)
+        .padding(.top, 12)
     }
 }
