@@ -31,16 +31,12 @@ struct RemoteSettingsSheet: View {
 
             Form {
                 Section {
-                    Stepper(value: $transfers, in: 0...64) {
-                        LabeledContent("Parallel transfers", value: transfers == 0 ? "Global (\(globalTransfers))" : "\(transfers)")
-                    }
-                    Stepper(value: $checkers, in: 0...128) {
-                        LabeledContent("Checkers", value: checkers == 0 ? "Global (\(globalCheckers))" : "\(checkers)")
-                    }
+                    overrideRow(label: "Parallel transfers", value: $transfers, range: 0...64, globalValue: globalTransfers)
+                    overrideRow(label: "Checkers", value: $checkers, range: 0...128, globalValue: globalCheckers)
                 } header: {
                     Text("Overrides")
                 } footer: {
-                    Text("Set to Global to inherit the app-wide value. Overrides apply to new transfers using this remote. Bandwidth limit stays global — it throttles the whole engine.")
+                    Text("0 inherits the app-wide value. Overrides apply when a transfer starts — pause and resume a running transfer to apply changes. Bandwidth limit stays global — it throttles the whole engine.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -48,7 +44,7 @@ struct RemoteSettingsSheet: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
         }
-        .frame(width: 440, height: 260)
+        .frame(width: 440, height: 300)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             transfers = UserDefaults.standard.integer(forKey: RcloneDefaults.remoteTransfersKey(remote.name))
@@ -59,6 +55,15 @@ struct RemoteSettingsSheet: View {
         }
         .onChange(of: checkers) { _, newValue in
             UserDefaults.standard.set(newValue, forKey: RcloneDefaults.remoteCheckersKey(remote.name))
+        }
+    }
+
+    private func overrideRow(label: String, value: Binding<Int>, range: ClosedRange<Int>, globalValue: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            StepperField(label: label, value: value, range: range, format: .number)
+            Text(value.wrappedValue == 0 ? "Using Global (\(globalValue))" : "0 = Global (\(globalValue))")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
         }
     }
 

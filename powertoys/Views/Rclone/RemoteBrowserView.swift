@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Combine
 import QuickLook
 import CoreTransferable
 import UniformTypeIdentifiers
@@ -22,6 +23,7 @@ struct RemoteBrowserView: View {
     @State private var isDropTargeted = false
     @State private var showsDropToast = false
     @State private var dropToastTask: Task<Void, Never>?
+    @State private var isShowingCleanup = false
 
     private var pathComponents: [String] {
         path.isEmpty ? [] : path.split(separator: "/").map(String.init)
@@ -35,6 +37,13 @@ struct RemoteBrowserView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .quickLookPreview($previewURL)
+        .sheet(isPresented: $isShowingCleanup) {
+            CleanupRemoteSheet(remote: remote, startPath: path)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .remoteCleanupCompleted)) { notification in
+            guard notification.object as? String == remote.name else { return }
+            Task { await load() }
+        }
         .task(id: "\(remote.name)|\(path)") { await load() }
         .onChange(of: remote) {
             path = ""
@@ -70,10 +79,12 @@ struct RemoteBrowserView: View {
             .focusEffectDisabled()
             .help("Refresh")
             .disabled(isLoading)
+
+            CleanupHeaderButton { isShowingCleanup = true }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .padding(.top, 52)
+        .padding(.top, 12)
     }
 
     private var breadcrumbs: some View {
@@ -324,6 +335,32 @@ struct RemoteBrowserView: View {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not list folder."
         }
         isLoading = false
+    }
+}
+
+// MARK: - Cleanup Header Button
+
+private struct CleanupHeaderButton: View {
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash.slash")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isHovering ? Color.primary.opacity(0.06) : .clear)
+                )
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { isHovering = $0 }
+        .help("Clean up by ignore rules…")
     }
 }
 

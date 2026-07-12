@@ -8,6 +8,9 @@ import SwiftUI
 struct RcloneTransferListView: View {
     @Environment(RcloneJobManager.self) private var manager
 
+    @State private var isHoveringClearFinished = false
+    @State private var isHoveringBannerDismiss = false
+
     private var hasTerminalJobs: Bool {
         manager.jobs.contains { $0.state.isTerminal }
     }
@@ -58,21 +61,43 @@ struct RcloneTransferListView: View {
 
             Spacer()
 
+            if manager.isGloballyPaused || !manager.activeJobs.isEmpty {
+                GlobalPauseButton(isPaused: manager.isGloballyPaused) {
+                    if manager.isGloballyPaused {
+                        manager.resumeAll()
+                    } else {
+                        manager.pauseAll()
+                    }
+                }
+            }
+
             if hasTerminalJobs {
                 Button {
                     manager.clearFinished()
                 } label: {
                     Label("Clear finished", systemImage: "xmark.bin")
                         .font(.system(size: 12))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.primary.opacity(isHoveringClearFinished ? 0.06 : 0))
+                        )
+                        .contentShape(Rectangle())
+                        .padding(.horizontal, -8)
+                        .padding(.vertical, -4)
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
                 .foregroundStyle(.secondary)
+                .animation(.easeInOut(duration: 0.15), value: isHoveringClearFinished)
+                .onHover { isHoveringClearFinished = $0 }
+                .onDisappear { isHoveringClearFinished = false }
             }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .padding(.top, 52)
+        .padding(.top, 12)
     }
 
     // MARK: Error banner
@@ -92,9 +117,18 @@ struct RcloneTransferListView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
+                    .frame(width: 20, height: 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.primary.opacity(isHoveringBannerDismiss ? 0.06 : 0))
+                    )
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .focusEffectDisabled()
+            .animation(.easeInOut(duration: 0.15), value: isHoveringBannerDismiss)
+            .onHover { isHoveringBannerDismiss = $0 }
+            .onDisappear { isHoveringBannerDismiss = false }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -142,5 +176,34 @@ struct RcloneTransferListView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Global Pause Button
+
+private struct GlobalPauseButton: View {
+    let isPaused: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(isPaused ? "Resume all" : "Pause all", systemImage: isPaused ? "play.circle" : "pause.circle")
+                .font(.system(size: 12))
+                .foregroundStyle(isPaused ? Color.accentColor : .secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .onHover { isHovering = $0 }
+        .onDisappear { isHovering = false }
     }
 }
