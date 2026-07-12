@@ -399,6 +399,12 @@ private struct FileProgressRow: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            Text(RcloneFormat.bytes(file.size))
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+                .frame(width: 58, alignment: .trailing)
+
             CapsuleProgressBar(fraction: file.fraction, tint: .accentColor)
                 .frame(width: 80, height: 4)
 
