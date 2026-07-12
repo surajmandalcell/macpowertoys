@@ -7,8 +7,11 @@ import Foundation
 
 enum AppDataLocation {
     static var directory: URL {
+        let folderName = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            ? "PowerToys-Tests"
+            : "PowerToys"
         let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("PowerToys", isDirectory: true)
+            .appendingPathComponent(folderName, isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
