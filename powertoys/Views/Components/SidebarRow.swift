@@ -9,6 +9,7 @@ struct SidebarRow: View {
     let icon: String
     let title: String
     var isSelected: Bool = false
+    var logoAsset: String? = nil
     let action: () -> Void
 
     @State private var isHovering = false
@@ -16,10 +17,17 @@ struct SidebarRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isSelected ? .white : .primary)
-                    .frame(width: 20, height: 20)
+                if let logoAsset {
+                    Image(logoAsset)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(isSelected ? .white : .primary)
+                        .frame(width: 20, height: 20)
+                }
 
                 Text(title)
                     .font(.system(size: 13, weight: isSelected ? .medium : .regular))
@@ -36,6 +44,7 @@ struct SidebarRow: View {
             )
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
 
@@ -80,6 +89,7 @@ struct SidebarExternalRow: View {
             )
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
 }
