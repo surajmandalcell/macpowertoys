@@ -300,6 +300,8 @@ final class TransferJob: Identifiable {
     var expectedBytes: Int64?
     var expectedFiles: Int?
     var autoPausedVolume: String?
+    var sourceVolumeFingerprint: String?
+    var destinationVolumeFingerprint: String?
     var autoResumeOnLaunch = false
     var resumeBaselineBytes: Int64 = 0
     var resumeBaselineFiles: Int = 0
@@ -400,6 +402,34 @@ final class TransferJob: Identifiable {
     }
 }
 
+// MARK: - Volume Identity (external drive fingerprinting)
+
+enum VolumeIdentity {
+    static func mountPoint(forPath path: String) -> String? {
+        guard path.hasPrefix("/Volumes/") else { return nil }
+        let components = path.split(separator: "/", omittingEmptySubsequences: true)
+        guard components.count >= 2 else { return nil }
+        return "/" + components[0] + "/" + components[1]
+    }
+
+    static func fingerprint(forMountPoint mountPoint: String) -> String? {
+        let url = URL(fileURLWithPath: mountPoint)
+        guard let values = try? url.resourceValues(forKeys: [.volumeUUIDStringKey, .volumeTotalCapacityKey, .volumeNameKey]) else {
+            return nil
+        }
+        if let uuid = values.volumeUUIDString, !uuid.isEmpty {
+            return "uuid:" + uuid
+        }
+        let name = values.volumeName ?? (mountPoint as NSString).lastPathComponent
+        let capacity = values.volumeTotalCapacity ?? 0
+        return "vol:\(name):\(capacity)"
+    }
+
+    static func fingerprint(forPath path: String) -> String? {
+        mountPoint(forPath: path).flatMap { fingerprint(forMountPoint: $0) }
+    }
+}
+
 // MARK: - Ignore Pattern Matching (approximate rclone glob semantics)
 
 enum IgnoreMatcher {
@@ -462,6 +492,8 @@ struct TransferJobSnapshot: Codable, Sendable {
     let expectedBytes: Int64?
     let expectedFiles: Int?
     let autoPausedVolume: String?
+    let sourceVolumeFingerprint: String?
+    let destinationVolumeFingerprint: String?
     let autoResumeOnLaunch: Bool?
     let resumeBaselineBytes: Int64?
     let resumeBaselineFiles: Int?
@@ -494,6 +526,8 @@ extension TransferJob {
             expectedBytes: expectedBytes,
             expectedFiles: expectedFiles,
             autoPausedVolume: autoPausedVolume,
+            sourceVolumeFingerprint: sourceVolumeFingerprint,
+            destinationVolumeFingerprint: destinationVolumeFingerprint,
             autoResumeOnLaunch: autoResumeOnLaunch,
             resumeBaselineBytes: resumeBaselineBytes,
             resumeBaselineFiles: resumeBaselineFiles
@@ -523,6 +557,8 @@ extension TransferJob {
         expectedBytes = snapshot.expectedBytes
         expectedFiles = snapshot.expectedFiles
         autoPausedVolume = snapshot.autoPausedVolume
+        sourceVolumeFingerprint = snapshot.sourceVolumeFingerprint
+        destinationVolumeFingerprint = snapshot.destinationVolumeFingerprint
         autoResumeOnLaunch = snapshot.autoResumeOnLaunch ?? false
         resumeBaselineBytes = snapshot.resumeBaselineBytes ?? 0
         resumeBaselineFiles = snapshot.resumeBaselineFiles ?? 0

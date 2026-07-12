@@ -50,8 +50,14 @@ final class WindowStateManager {
         observers = [moveObserver, resizeObserver]
     }
 
+    private static let knownWindowPrefixes = ["main", "cc-history", "rclone", "logs"]
+
+    private static func isTrackedIdentifier(_ identifier: String) -> Bool {
+        knownWindowPrefixes.contains { identifier.hasPrefix($0) }
+    }
+
     func saveState(for window: NSWindow) {
-        guard let identifier = window.identifier?.rawValue, !identifier.isEmpty else { return }
+        guard let identifier = window.identifier?.rawValue, Self.isTrackedIdentifier(identifier) else { return }
 
         let frame = window.frame
         let state = WindowState(
@@ -67,7 +73,7 @@ final class WindowStateManager {
     }
 
     func restoreState(for window: NSWindow) {
-        guard let identifier = window.identifier?.rawValue, !identifier.isEmpty else { return }
+        guard let identifier = window.identifier?.rawValue, Self.isTrackedIdentifier(identifier) else { return }
 
         guard let data = UserDefaults.standard.data(forKey: key(for: identifier)),
               let state = try? JSONDecoder().decode(WindowState.self, from: data) else {
