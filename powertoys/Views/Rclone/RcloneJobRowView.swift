@@ -152,10 +152,10 @@ struct TransferJobRow: View {
     private var metricsRow: some View {
         HStack(spacing: 14) {
             metric(icon: "internaldrive",
-                   text: "\(RcloneFormat.bytes(job.stats.bytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "")")
+                   text: "\(RcloneFormat.bytes(job.displayBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "")")
             metric(icon: "speedometer", text: RcloneFormat.speed(job.stats.speed))
             metric(icon: "clock", text: "ETA \(RcloneFormat.eta(job.displayEta))")
-            metric(icon: "arrow.up.arrow.down", text: "\(job.stats.transfers)/\(job.effectiveTotalFiles)")
+            metric(icon: "arrow.up.arrow.down", text: "\(job.displayFiles)/\(job.effectiveTotalFiles)")
 
             if job.isSizing && job.state == .running {
                 sizingChip

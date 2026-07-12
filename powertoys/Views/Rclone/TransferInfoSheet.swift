@@ -241,9 +241,9 @@ struct TransferDetails {
         createdAt = job.createdAt
         startedAt = job.startedAt
         finishedAt = job.finishedAt
-        bytes = job.stats.bytes
+        bytes = job.displayBytes
         totalBytes = job.effectiveTotalBytes
-        filesTransferred = job.stats.transfers
+        filesTransferred = job.displayFiles
         totalFiles = job.effectiveTotalFiles
         attempts = job.attempt
         if let duration = job.duration, duration > 0 {

@@ -44,9 +44,9 @@ final class TransferRecord {
         self.createdAt = job.createdAt
         self.startedAt = job.startedAt
         self.finishedAt = job.finishedAt
-        self.bytes = job.stats.bytes
+        self.bytes = job.displayBytes
         self.totalBytes = job.stats.totalBytes
-        self.filesTransferred = job.stats.transfers
+        self.filesTransferred = job.displayFiles
         self.totalFiles = job.stats.totalTransfers
         self.attempts = job.attempt
         if let duration = job.duration, duration > 0 {
