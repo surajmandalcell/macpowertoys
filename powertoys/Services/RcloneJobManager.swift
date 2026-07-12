@@ -597,6 +597,47 @@ final class RcloneJobManager {
         }
     }
 
+    func pause(_ job: TransferJob) {
+        guard job.canPause else { return }
+        let jobid = job.rcJobId
+        job.state = .paused
+        job.rcJobId = nil
+        job.nextRetryAt = nil
+        persistJobsSoon()
+        LogManager.shared.info("Paused: \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+        Task {
+            if let jobid, let client {
+                try? await client.stopJob(jobid: jobid)
+                await client.deleteStats(group: job.statsGroup)
+            }
+        }
+    }
+
+    func resume(_ job: TransferJob) {
+        guard job.canResume else { return }
+        job.state = .queued
+        job.errorMessage = nil
+        job.nextRetryAt = nil
+        persistJobsSoon()
+        LogManager.shared.info("Resumed: \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+    }
+
+    var isGloballyPaused = false
+
+    func pauseAll() {
+        isGloballyPaused = true
+        for job in jobs where job.canPause {
+            pause(job)
+        }
+    }
+
+    func resumeAll() {
+        isGloballyPaused = false
+        for job in jobs where job.canResume {
+            resume(job)
+        }
+    }
+
     func retry(_ job: TransferJob) {
         guard job.canRetry else { return }
         if job.kind == .directory && !job.bypassGlobalIgnores {
@@ -814,6 +855,7 @@ final class RcloneJobManager {
     }
 
     private func promoteQueuedJobs(client: RcloneRCClient) {
+        guard !isGloballyPaused else { return }
         let maxConcurrent = settings.maxConcurrentJobs
         var runningCount = jobs.filter { $0.state == .running }.count
         let now = Date()

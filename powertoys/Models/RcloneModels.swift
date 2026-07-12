@@ -57,6 +57,7 @@ enum TransferState: String, Codable, Sendable {
     case queued
     case running
     case retrying
+    case paused
     case completed
     case failed
     case cancelled
@@ -66,6 +67,7 @@ enum TransferState: String, Codable, Sendable {
         case .queued: return "Queued"
         case .running: return "Running"
         case .retrying: return "Retrying"
+        case .paused: return "Paused"
         case .completed: return "Completed"
         case .failed: return "Failed"
         case .cancelled: return "Cancelled"
@@ -77,6 +79,7 @@ enum TransferState: String, Codable, Sendable {
         case .queued: return "clock"
         case .running: return "arrow.up.circle"
         case .retrying: return "arrow.clockwise.circle"
+        case .paused: return "pause.circle.fill"
         case .completed: return "checkmark.circle.fill"
         case .failed: return "exclamationmark.triangle.fill"
         case .cancelled: return "xmark.circle"
@@ -88,6 +91,7 @@ enum TransferState: String, Codable, Sendable {
         case .queued: return .secondary
         case .running: return .accentColor
         case .retrying: return .orange
+        case .paused: return .orange
         case .completed: return .green
         case .failed: return .red
         case .cancelled: return .secondary
@@ -95,7 +99,7 @@ enum TransferState: String, Codable, Sendable {
     }
 
     var isActive: Bool {
-        self == .queued || self == .running || self == .retrying
+        self == .queued || self == .running || self == .retrying || self == .paused
     }
 
     var isTerminal: Bool {
@@ -339,7 +343,15 @@ final class TransferJob: Identifiable {
     }
 
     var canCancel: Bool {
+        state == .running || state == .queued || state == .retrying || state == .paused
+    }
+
+    var canPause: Bool {
         state == .running || state == .queued || state == .retrying
+    }
+
+    var canResume: Bool {
+        state == .paused
     }
 
     var duration: TimeInterval? {
@@ -373,6 +385,41 @@ final class TransferJob: Identifiable {
             displayEta = raw
             lastEtaRefresh = now
         }
+    }
+}
+
+// MARK: - Ignore Pattern Matching (approximate rclone glob semantics)
+
+enum IgnoreMatcher {
+    static func matches(path: String, name: String, isDir: Bool, patterns: [String]) -> Bool {
+        for pattern in patterns {
+            if matches(path: path, name: name, isDir: isDir, pattern: pattern) {
+                return true
+            }
+        }
+        return false
+    }
+
+    static func matches(path: String, name: String, isDir: Bool, pattern: String) -> Bool {
+        if pattern == name || pattern == path {
+            return true
+        }
+        if pattern.hasPrefix("*.") {
+            let suffix = String(pattern.dropFirst(1))
+            return name.hasSuffix(suffix)
+        }
+        if pattern.hasSuffix("*"), !pattern.contains("/") {
+            let prefix = String(pattern.dropLast())
+            return name.hasPrefix(prefix)
+        }
+        if pattern.hasSuffix("/**") {
+            let directory = String(pattern.dropLast(3))
+            if isDir && (name == directory || path == directory) { return true }
+            if path.hasPrefix(directory + "/") { return true }
+            if path.contains("/" + directory + "/") { return true }
+            if isDir && path.hasSuffix("/" + directory) { return true }
+        }
+        return false
     }
 }
 
@@ -464,7 +511,7 @@ extension TransferJob {
         stats = restoredStats
 
         let restoredState = TransferState(rawValue: snapshot.state) ?? .failed
-        if restoredState.isTerminal {
+        if restoredState.isTerminal || restoredState == .paused {
             state = restoredState
         } else {
             state = .failed
