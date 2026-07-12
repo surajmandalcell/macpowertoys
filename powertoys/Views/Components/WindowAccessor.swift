@@ -20,5 +20,6 @@ private class WindowAccessorView: NSView {
         guard let window = window else { return }
         window.isMovableByWindowBackground = true
         window.backgroundColor = .clear
+        window.tabbingMode = .disallowed
     }
 }
