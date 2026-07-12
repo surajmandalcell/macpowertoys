@@ -53,6 +53,7 @@ struct powertoysApp: App {
         .defaultSize(width: 780, height: 700)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.presented)
         .commands {
             AppCommands()
             CommandMenu("Navigation") {
