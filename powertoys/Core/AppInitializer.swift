@@ -28,10 +28,10 @@ final class AppInitializer {
 
         state = .initializing
 
-        LogManager.shared.info("App initializing...", source: "AppInitializer")
-
-        LogManager.shared.modelContext = modelContext
+        LogManager.shared.configurePersistence(container: modelContext.container)
         ConversationCacheService.shared.setModelContext(modelContext)
+
+        LogManager.shared.info("App initializing...", source: "AppInitializer")
 
         await LogManager.shared.loadPersistedLogs()
 
@@ -45,6 +45,10 @@ final class AppInitializer {
         _ = SettingsManager.shared
 
         applyStoredTheme()
+
+        if UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") {
+            Task { await RcloneJobManager.shared.start() }
+        }
 
         LogManager.shared.info("App initialization complete", source: "AppInitializer")
 

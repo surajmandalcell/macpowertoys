@@ -10,12 +10,24 @@ import SwiftData
 struct powertoysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
+    @AppStorage("app.showTray") private var showTray = true
+
+    private var trayBinding: Binding<Bool> {
+        Binding(
+            get: { showTray },
+            set: { newValue in
+                if newValue != showTray {
+                    showTray = newValue
+                }
+            }
+        )
+    }
 
     let modelContainer: ModelContainer
 
     init() {
         do {
-            let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self])
+            let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             modelContainer = try ModelContainer(for: schema, configurations: [config])
         } catch {
@@ -24,20 +36,24 @@ struct powertoysApp: App {
     }
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        Window("PowerToys", id: "main") {
             MainWindowView()
                 .task {
                     await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
                     DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                     DeepLinkHandler.shared.handleCLIArguments()
+                    for id in ["cc-history", "rclone"] where UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
+                        openWindow(id: id)
+                    }
                 }
         }
         .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 700)
         .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
         .commands {
-            CommandGroup(replacing: .newItem) { }
+            AppCommands()
             CommandMenu("Navigation") {
                 Button("All Tools") { NotificationCenter.default.post(name: .navigateToCategory, object: ToolCategory.all) }
                     .keyboardShortcut("1", modifiers: .command)
@@ -49,34 +65,40 @@ struct powertoysApp: App {
             }
         }
 
-        WindowGroup(id: "cc-history") {
+        Window("Claude History", id: "cc-history") {
             CCHistoryWindowView()
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 1200, height: 800)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["cc-history"]))
+        .restorationBehavior(.disabled)
 
-        WindowGroup(id: "logs") {
+        Window("RSync", id: "rclone") {
+            RcloneWindowView()
+        }
+        .modelContainer(modelContainer)
+        .defaultSize(width: 1000, height: 720)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["rclone"]))
+        .restorationBehavior(.disabled)
+
+        Window("Logs", id: "logs") {
             LogsWindowView()
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 900, height: 600)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["logs"]))
+        .restorationBehavior(.disabled)
 
-        MenuBarExtra {
-            Button("Open PowerToys") {
-                openWindow(id: "main")
-                NSApplication.shared.activate(ignoringOtherApps: true)
-            }
-            .keyboardShortcut("o")
-            Divider()
-            Button("Quit") { NSApplication.shared.terminate(nil) }
-                .keyboardShortcut("q")
+        MenuBarExtra(isInserted: trayBinding) {
+            TrayPopoverView()
+                .modelContainer(modelContainer)
         } label: {
-            Image(systemName: "wrench.adjustable.fill")
+            Image(systemName: "bolt.fill")
         }
+        .menuBarExtraStyle(.window)
     }
 }
 
@@ -91,4 +113,7 @@ extension Notification.Name {
     static let globalSearch = Notification.Name("globalSearch")
     static let conversationSearch = Notification.Name("conversationSearch")
     static let copySelected = Notification.Name("copySelected")
+    static let selectMainTab = Notification.Name("selectMainTab")
+    static let openToolSettings = Notification.Name("openToolSettings")
+    static let newTransferRequested = Notification.Name("newTransferRequested")
 }

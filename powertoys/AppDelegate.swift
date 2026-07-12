@@ -28,6 +28,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func ensureSingleInstance() -> Bool {
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return true
+        }
+
         guard let bundleId = Bundle.main.bundleIdentifier else { return true }
 
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
@@ -66,6 +70,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         Task { @MainActor in
+            await RcloneJobManager.shared.shutdown()
+            await LogManager.shared.flushPending()
             await AppInitializer.shared.shutdown()
             await BackgroundServiceManager.shared.stopAll()
         }
