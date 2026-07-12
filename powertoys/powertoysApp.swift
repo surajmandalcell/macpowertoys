@@ -95,6 +95,38 @@ struct powertoysApp: App {
         .handlesExternalEvents(matching: Set(["logs"]))
         .restorationBehavior(.disabled)
 
+        Window("Ruler", id: "ruler") {
+            RulerControlView()
+        }
+        .defaultSize(width: 680, height: 680)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["ruler"]))
+        .restorationBehavior(.disabled)
+
+        Window("Awake", id: "awake") {
+            AwakeView()
+        }
+        .defaultSize(width: 680, height: 620)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["awake"]))
+        .restorationBehavior(.disabled)
+
+        Window("Color Picker", id: "color-picker") {
+            ColorHistoryView()
+        }
+        .defaultSize(width: 620, height: 640)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["color-picker"]))
+        .restorationBehavior(.disabled)
+
+        Window("Text Extractor", id: "text-extractor") {
+            TextExtractorView()
+        }
+        .defaultSize(width: 680, height: 620)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["text-extractor"]))
+        .restorationBehavior(.disabled)
+
         MenuBarExtra(isInserted: trayBinding) {
             TrayPopoverView()
                 .modelContainer(modelContainer)

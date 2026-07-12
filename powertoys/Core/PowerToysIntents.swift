@@ -11,6 +11,10 @@ enum PowerToolTarget: String, AppEnum {
     case rsync
     case claudeHistory
     case logs
+    case ruler
+    case awake
+    case colorPicker
+    case textExtractor
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "PowerToys Tool"
 
@@ -18,7 +22,11 @@ enum PowerToolTarget: String, AppEnum {
         .home: "PowerToys",
         .rsync: "RSync",
         .claudeHistory: "Claude History",
-        .logs: "Logs"
+        .logs: "Logs",
+        .ruler: "Ruler",
+        .awake: "Awake",
+        .colorPicker: "Color Picker",
+        .textExtractor: "Text Extractor"
     ]
 
     var deepLinkId: String {
@@ -27,7 +35,51 @@ enum PowerToolTarget: String, AppEnum {
         case .rsync: return "rclone"
         case .claudeHistory: return "cc-history"
         case .logs: return "logs"
+        case .ruler: return "ruler"
+        case .awake: return "awake"
+        case .colorPicker: return "color-picker"
+        case .textExtractor: return "text-extractor"
         }
+    }
+}
+
+struct OpenRulerIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ruler"
+    static let description = IntentDescription("Opens the PowerToys Ruler controls.")
+    static let openAppWhenRun = true
+    @MainActor func perform() async throws -> some IntentResult {
+        ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
+        return .result()
+    }
+}
+
+struct OpenAwakeIntent: AppIntent {
+    static let title: LocalizedStringResource = "Awake"
+    static let description = IntentDescription("Opens PowerToys Awake controls.")
+    static let openAppWhenRun = true
+    @MainActor func perform() async throws -> some IntentResult {
+        ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeOpen))
+        return .result()
+    }
+}
+
+struct PickColorIntent: AppIntent {
+    static let title: LocalizedStringResource = "Color Picker"
+    static let description = IntentDescription("Picks and copies an onscreen color.")
+    static let openAppWhenRun = true
+    @MainActor func perform() async throws -> some IntentResult {
+        ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
+        return .result()
+    }
+}
+
+struct ExtractTextIntent: AppIntent {
+    static let title: LocalizedStringResource = "Text Extractor"
+    static let description = IntentDescription("Selects onscreen text and copies it using local recognition.")
+    static let openAppWhenRun = true
+    @MainActor func perform() async throws -> some IntentResult {
+        ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
+        return .result()
     }
 }
 
@@ -95,6 +147,30 @@ struct PowerToysShortcuts: AppShortcutsProvider {
             phrases: ["Open Claude History in \(.applicationName)", "Browse conversations in \(.applicationName)"],
             shortTitle: "Claude History",
             systemImageName: "text.bubble"
+        )
+        AppShortcut(
+            intent: OpenRulerIntent(),
+            phrases: ["Open Ruler in \(.applicationName)", "Measure with \(.applicationName)"],
+            shortTitle: "Ruler",
+            systemImageName: "ruler"
+        )
+        AppShortcut(
+            intent: OpenAwakeIntent(),
+            phrases: ["Open Awake in \(.applicationName)"],
+            shortTitle: "Awake",
+            systemImageName: "cup.and.saucer"
+        )
+        AppShortcut(
+            intent: PickColorIntent(),
+            phrases: ["Pick a color with \(.applicationName)"],
+            shortTitle: "Color Picker",
+            systemImageName: "eyedropper"
+        )
+        AppShortcut(
+            intent: ExtractTextIntent(),
+            phrases: ["Extract text with \(.applicationName)"],
+            shortTitle: "Text Extractor",
+            systemImageName: "text.viewfinder"
         )
     }
 }
