@@ -13,8 +13,7 @@ struct TransferInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: InfoTab = .overview
 
-    private static let textGutter: CGFloat = 34
-    private static let cardMargin: CGFloat = 20
+    private static let gutter: CGFloat = 20
     private static let cardPadding: CGFloat = 14
 
     init(details: TransferDetails) {
@@ -34,6 +33,7 @@ struct TransferInfoSheet: View {
     private enum InfoTab: Hashable {
         case overview
         case files
+        case settings
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -59,6 +59,8 @@ struct TransferInfoSheet: View {
             case .files:
                 TransferFileTreeView(rootFs: details.sourceFs)
                     .padding(.top, 12)
+            case .settings:
+                settingsContent
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -72,49 +74,46 @@ struct TransferInfoSheet: View {
             Text("Transfer Details")
                 .font(.system(size: 15, weight: .semibold))
 
-            stateBadge
-
             Spacer()
 
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
         }
-        .padding(.leading, Self.textGutter)
-        .padding(.trailing, Self.cardMargin)
+        .padding(.horizontal, Self.gutter)
         .padding(.vertical, 16)
     }
 
-    private var stateBadge: some View {
-        HStack(spacing: 4) {
-            Image(systemName: details.state.icon)
-                .font(.system(size: 10, weight: .semibold))
-            Text(details.state.displayName)
-                .font(.system(size: 11, weight: .medium))
-        }
-        .foregroundStyle(details.state.tint)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            Capsule().fill(details.state.tint.opacity(0.12))
-        )
-        .fixedSize()
-    }
-
     private var tabBar: some View {
-        HStack {
-            Picker("View", selection: $selectedTab) {
-                Text("Overview").tag(InfoTab.overview)
-                Text("Files").tag(InfoTab.files)
+        HStack(spacing: 6) {
+            tabButton("Overview", .overview)
+            tabButton("Files", .files)
+            if job != nil {
+                tabButton("Settings", .settings)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 220)
-
             Spacer()
         }
-        .padding(.leading, Self.textGutter)
-        .padding(.trailing, Self.cardMargin)
+        .padding(.leading, Self.gutter - 10)
+        .padding(.trailing, Self.gutter)
         .padding(.bottom, 12)
+    }
+
+    private func tabButton(_ title: String, _ tab: InfoTab) -> some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: selectedTab == tab ? .medium : .regular))
+                .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(selectedTab == tab ? Color.primary.opacity(0.06) : .clear)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
     }
 
     // MARK: Overview
@@ -127,9 +126,82 @@ struct TransferInfoSheet: View {
                 section("Timing") { timingRows }
                 section("Ignore Rules") { ignoreRuleRows }
             }
-            .padding(.horizontal, Self.cardMargin)
+            .padding(.horizontal, Self.gutter)
             .padding(.top, 14)
             .padding(.bottom, 20)
+        }
+    }
+
+    // MARK: Settings
+
+    private var settingsContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                if let job {
+                    section("Upload Order") {
+                        HStack {
+                            Text("Transfer order")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 12)
+                            Picker("Transfer order", selection: settingBinding(job, \.transferOrder)) {
+                                ForEach(TransferOrder.allCases, id: \.self) { order in
+                                    Text(order.displayName).tag(order)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .fixedSize()
+                        }
+                    }
+
+                    section("Comparison") {
+                        settingToggle("Only update older files",
+                                      caption: "Skip files whose copy on the destination is newer.",
+                                      isOn: settingBinding(job, \.updateOlderOnly))
+                        settingToggle("Skip files that already exist",
+                                      caption: "Never touch a file the destination already has, even if it changed.",
+                                      isOn: settingBinding(job, \.ignoreExisting))
+                        settingToggle("Compare by checksum",
+                                      caption: "Use checksums instead of size and modification time. Slower but exact.",
+                                      isOn: settingBinding(job, \.compareChecksums))
+                    }
+
+                    Text("Changes apply instantly — a running transfer restarts seamlessly and already-verified files are skipped.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.horizontal, Self.gutter)
+            .padding(.top, 14)
+            .padding(.bottom, 20)
+        }
+    }
+
+    private func settingBinding<Value>(_ job: TransferJob, _ keyPath: ReferenceWritableKeyPath<TransferJob, Value>) -> Binding<Value> {
+        Binding(
+            get: { job[keyPath: keyPath] },
+            set: { newValue in
+                job[keyPath: keyPath] = newValue
+                manager.applyTransferSettingsChange(job)
+            }
+        )
+    }
+
+    private func settingToggle(_ title: String, caption: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13))
+                Text(caption)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 12)
+            Toggle(title, isOn: isOn)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
         }
     }
 
@@ -138,7 +210,6 @@ struct TransferInfoSheet: View {
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
-                .padding(.leading, Self.textGutter - Self.cardMargin)
 
             VStack(alignment: .leading, spacing: 10) {
                 content()
