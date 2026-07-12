@@ -947,6 +947,33 @@ final class RcloneJobManager {
         ]
     }
 
+    func deleteRemoteEntries(remote: RcloneRemote, entries: [RemoteEntry]) async -> (deleted: Int, failed: Int) {
+        guard !remote.name.isEmpty,
+              !remote.name.hasPrefix("/"),
+              remote.pathPrefix.hasSuffix(":") else {
+            LogManager.shared.error("Cleanup refused: '\(remote.pathPrefix)' is not a configured remote", source: "RcloneJobManager")
+            return (0, entries.count)
+        }
+        guard let client else { return (0, entries.count) }
+        var deleted = 0
+        var failed = 0
+        for entry in entries {
+            do {
+                if entry.isDir {
+                    try await client.purgeDirectory(fs: remote.pathPrefix, remote: entry.path)
+                } else {
+                    try await client.deleteFile(fs: remote.pathPrefix, remote: entry.path)
+                }
+                deleted += 1
+            } catch {
+                failed += 1
+                LogManager.shared.warning("Cleanup failed for \(entry.path): \(error)", source: "RcloneJobManager")
+            }
+        }
+        LogManager.shared.info("Cleanup on \(remote.name): deleted \(deleted), failed \(failed)", source: "RcloneJobManager")
+        return (deleted, failed)
+    }
+
     func estimateSize(fs: String, excludePatterns: [String]) async throws -> (bytes: Int64, files: Int) {
         guard let client else { throw RcloneRCError.notReachable }
         let jobid = try await client.startSizeJob(fs: fs, excludePatterns: excludePatterns)
