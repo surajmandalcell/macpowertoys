@@ -8,20 +8,23 @@ minor/major version), ship it locally:
    patch = fixes, minor = features, major = breaking/redesign. Increment
    `CURRENT_PROJECT_VERSION` on every install.
 3. **Commit and push** the checkpoint (per global checkpoint-commit policy).
-4. **Build Release and install**:
+4. **Build Release and install** — builds MUST be throttled; the user accepts
+   slower builds in exchange for a responsive machine. Never run an
+   unthrottled full build:
    ```
-   xcodebuild -project powertoys.xcodeproj -scheme powertoys -configuration Release build
+   taskpolicy -c utility nice -n 10 xcodebuild -project powertoys.xcodeproj \
+     -scheme powertoys -configuration Release -jobs 4 build
    osascript -e 'tell application "powertoys" to quit'   # transfers auto-pause and auto-resume
    rm -rf /Applications/PowerToys.app
    ditto <BUILT_PRODUCTS_DIR>/powertoys.app /Applications/PowerToys.app
    open /Applications/PowerToys.app
    ```
-   Automatic signing (team GF57JXJF5A) — never pass CODE_SIGN_IDENTITY manually.
+   Same throttle wrapper for Debug builds and `xcodebuild test`. Automatic
+   signing (team GF57JXJF5A) — never pass CODE_SIGN_IDENTITY manually.
 5. **Cleanup** — never leave versioned copies of the app anywhere (no
    PowerToys-1.x.app, no .zip exports). /Applications holds exactly one bundle.
-   Purge this project's DerivedData when it exceeds a few GB:
-   `rm -rf ~/Library/Developer/Xcode/DerivedData/powertoys-*` (forces a clean
-   rebuild — do it between tasks, not mid-iteration).
+   Keep DerivedData unless it exceeds several GB — purging forces an
+   expensive full rebuild; incremental builds are the cheap path.
 
 Interrupting transfers is safe by design: quitting marks active transfers
 paused with auto-resume-on-launch; the new build continues them with byte
