@@ -538,8 +538,14 @@ extension TransferJob {
         if restoredState.isTerminal || restoredState == .paused {
             state = restoredState
         } else {
-            state = .failed
-            errorMessage = "Interrupted — PowerToys quit while this transfer was active."
+            state = .paused
+            autoResumeOnLaunch = true
+            resumeBaselineBytes = (snapshot.resumeBaselineBytes ?? 0) + snapshot.bytes
+            resumeBaselineFiles = (snapshot.resumeBaselineFiles ?? 0) + snapshot.transfers
+            var carried = stats
+            carried.bytes = 0
+            carried.transfers = 0
+            stats = carried
         }
     }
 }
