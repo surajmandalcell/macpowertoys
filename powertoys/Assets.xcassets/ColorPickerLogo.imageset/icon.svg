@@ -1,18 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
-    <linearGradient id="spectrum" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FF705D"/>
-      <stop offset=".52" stop-color="#7568F2"/>
-      <stop offset="1" stop-color="#5FA8E0"/>
-    </linearGradient>
   </defs>
   <g clip-path="url(#tile)">
     <rect width="512" height="512" fill="#23272E"/>
-    <circle cx="224" cy="326" r="150" fill="url(#spectrum)"/>
-    <path d="M486-34 350 142" fill="none" stroke="#F7F5F0" stroke-width="78"
+    <circle cx="126" cy="332" r="94" fill="#FF705D"/>
+    <circle cx="256" cy="312" r="94" fill="#7568F2"/>
+    <circle cx="386" cy="332" r="94" fill="#5FA8E0"/>
+    <path d="M492-40 346 194" fill="none" stroke="#F7F5F0" stroke-width="78"
           stroke-linecap="round"/>
-    <path d="m350 142-43 59" fill="none" stroke="#F7F5F0" stroke-width="38"
+    <path d="m346 194-44 60" fill="none" stroke="#F7F5F0" stroke-width="38"
           stroke-linecap="round"/>
   </g>
 </svg>
