@@ -78,18 +78,23 @@ final class ToolActionRouter {
     }
 
     func execute(url: URL) -> Bool {
-        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "run" else { return false }
+        guard let request = Self.request(from: url) else { return false }
+        execute(request)
+        return true
+    }
+
+    nonisolated static func request(from url: URL) -> ToolActionRequest? {
+        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "run" else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
         guard let value = components.first,
               let action = ToolActionID(rawValue: value.replacingOccurrences(of: "/", with: "."))
-        else { return false }
+        else { return nil }
 
         let parameters = URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?
             .reduce(into: [String: String]()) { result, item in
                 if let value = item.value { result[item.name] = value }
             } ?? [:]
-        execute(ToolActionRequest(action: action, parameters: parameters))
-        return true
+        return ToolActionRequest(action: action, parameters: parameters)
     }
 }
