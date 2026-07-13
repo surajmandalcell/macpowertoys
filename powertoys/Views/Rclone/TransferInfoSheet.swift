@@ -33,6 +33,7 @@ struct TransferInfoSheet: View {
     private enum InfoTab: String, Hashable {
         case overview
         case files
+        case changes
         case settings
     }
 
@@ -49,7 +50,10 @@ struct TransferInfoSheet: View {
     }
 
     private var visibleTab: InfoTab {
-        job == nil && selectedTab == .settings ? .overview : selectedTab
+        if job == nil && (selectedTab == .changes || selectedTab == .settings) {
+            return .overview
+        }
+        return selectedTab
     }
 
     var body: some View {
@@ -63,6 +67,10 @@ struct TransferInfoSheet: View {
             case .files:
                 TransferFileTreeView(sourceFs: details.sourceFs, destinationFs: details.destinationFs)
                     .padding(.top, 12)
+            case .changes:
+                if let job {
+                    TransferChangesTab(jobID: job.id)
+                }
             case .settings:
                 settingsContent
             }
@@ -92,6 +100,7 @@ struct TransferInfoSheet: View {
             tabButton("Overview", .overview)
             tabButton("Files", .files)
             if job != nil {
+                tabButton("Changes", .changes)
                 tabButton("Settings", .settings)
             }
             Spacer()
@@ -350,6 +359,97 @@ struct TransferInfoSheet: View {
                     .font(.system(size: 11, design: .monospaced))
                     .textSelection(.enabled)
             }
+        }
+    }
+}
+
+private struct TransferChangesTab: View {
+    let jobID: UUID
+
+    @State private var history = LocalChangeHistory.shared
+
+    private var entries: [LocalChangeRecord] {
+        history.entries.filter { $0.jobID == jobID }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("CHANGED FILES AUDIT")
+                        .utilitySectionHeader()
+                    Text("The latest source-folder changes observed after this transfer was added.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("\(entries.count) / 100")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
+
+            if entries.isEmpty {
+                ContentUnavailableView(
+                    "No Local Changes",
+                    systemImage: "folder.badge.questionmark",
+                    description: Text("Changes appear here while this local source is being watched.")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 6) {
+                        ForEach(entries) { entry in
+                            changeRow(entry)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 20)
+    }
+
+    private func changeRow(_ entry: LocalChangeRecord) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: entry.kind.icon)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(changeTint(entry.kind))
+                .frame(width: 24, height: 24)
+                .background(changeTint(entry.kind).opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.relativePath)
+                    .font(.system(size: 12, design: .monospaced))
+                    .lineLimit(2)
+                    .textSelection(.enabled)
+                Text("\(entry.kind.displayName) · \(entry.operation.displayName) · \(entry.sourceDisplay)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func changeTint(_ kind: FileChangeKind) -> Color {
+        switch kind {
+        case .created: return .green
+        case .modified: return .blue
+        case .removed: return .red
+        case .renamed: return .orange
         }
     }
 }

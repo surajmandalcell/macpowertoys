@@ -165,6 +165,40 @@ final class RcloneModelTests: XCTestCase {
         XCTAssertEqual(job.networkBytes, 900)
     }
 
+    func testReplannedRemainingFilesRestoreLogicalFileProgress() {
+        let job = makeJob()
+        job.resumeBaselineFiles = 1_979
+        job.attemptPlannedFiles = 838
+        job.expectedFiles = 2_817
+        job.stats.totalTransfers = 3
+
+        XCTAssertEqual(job.displayFiles, 2_814)
+
+        job.stats.transfers = 3
+        XCTAssertEqual(job.displayFiles, 2_817)
+
+        job.stats = .empty
+        XCTAssertEqual(job.displayFiles, 1_979)
+
+        job.resumeBaselineBytes = 653
+        job.attemptPlannedBytes = 62
+        job.expectedBytes = 715
+        XCTAssertEqual(job.displayBytes, 653)
+    }
+
+    func testCommittingReplannedFilesPreservesSkippedProgress() {
+        let job = makeJob()
+        job.resumeBaselineFiles = 1_979
+        job.attemptPlannedFiles = 838
+        job.expectedFiles = 2_817
+        job.stats.totalTransfers = 3
+
+        job.commitAttemptProgress()
+
+        XCTAssertEqual(job.resumeBaselineFiles, 2_814)
+        XCTAssertEqual(job.displayFiles, 2_814)
+    }
+
     func testCommittingAttemptExcludesInFlightBytes() {
         let job = makeJob()
         job.attemptPlannedBytes = 1_000

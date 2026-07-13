@@ -16,7 +16,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
 struct AppSettingsSheet: View {
     enum SettingsTab: String, CaseIterable, Identifiable {
         case general = "General"
-        case changes = "Changes"
         case marketplace = "Marketplace"
         case about = "About"
 
@@ -38,8 +37,6 @@ struct AppSettingsSheet: View {
                 switch selectedTab {
                 case .general:
                     GeneralSettingsTab()
-                case .changes:
-                    ChangesSettingsTab()
                 case .marketplace:
                     MarketplaceSettingsView()
                 case .about:
@@ -196,93 +193,6 @@ private struct GeneralSettingsTab: View {
         case .automatic: NSApp.appearance = nil
         case .light: NSApp.appearance = NSAppearance(named: .aqua)
         case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
-        }
-    }
-}
-
-// MARK: - Changes
-
-private struct ChangesSettingsTab: View {
-    @State private var history = LocalChangeHistory.shared
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("LOCAL CHANGES")
-                        .utilitySectionHeader()
-                    Text("The latest 100 source-folder changes observed after a transfer was added.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text("\(history.entries.count) / 100")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .monospacedDigit()
-            }
-
-            if history.entries.isEmpty {
-                ContentUnavailableView(
-                    "No Local Changes",
-                    systemImage: "folder.badge.questionmark",
-                    description: Text("Changes appear here while a local source transfer is active or using Continuous Sync.")
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 6) {
-                        ForEach(history.entries) { entry in
-                            changeRow(entry)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 20)
-    }
-
-    private func changeRow(_ entry: LocalChangeRecord) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: entry.kind.icon)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(changeTint(entry.kind))
-                .frame(width: 24, height: 24)
-                .background(changeTint(entry.kind).opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(entry.relativePath)
-                    .font(.system(size: 12, design: .monospaced))
-                    .lineLimit(2)
-                    .textSelection(.enabled)
-                Text("\(entry.kind.displayName) · \(entry.operation.displayName) · \(entry.sourceDisplay)")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 12)
-
-            Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.trailing)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .padding(10)
-        .background(Color.primary.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func changeTint(_ kind: FileChangeKind) -> Color {
-        switch kind {
-        case .created: return .green
-        case .modified: return .blue
-        case .removed: return .red
-        case .renamed: return .orange
         }
     }
 }

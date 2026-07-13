@@ -458,6 +458,9 @@ final class TransferJob: Identifiable {
     }
 
     var displayBytes: Int64 {
+        guard stats.totalBytes > 0 else {
+            return min(effectiveTotalBytes, resumeBaselineBytes)
+        }
         let plan = attemptPlannedBytes ?? stats.totalBytes
         let remaining = max(0, stats.totalBytes - stats.bytes)
         let completed = max(0, plan - min(plan, remaining))
@@ -465,7 +468,14 @@ final class TransferJob: Identifiable {
     }
 
     var displayFiles: Int {
-        resumeBaselineFiles + min(attemptPlannedFiles ?? stats.totalTransfers, stats.transfers)
+        min(effectiveTotalFiles, resumeBaselineFiles + completedAttemptFiles)
+    }
+
+    private var completedAttemptFiles: Int {
+        let plan = attemptPlannedFiles ?? stats.totalTransfers
+        guard stats.totalTransfers > 0 else { return min(plan, stats.transfers) }
+        let remaining = max(0, stats.totalTransfers - stats.transfers)
+        return max(min(plan, stats.transfers), plan - min(plan, remaining))
     }
 
     var networkBytes: Int64 {
@@ -497,7 +507,7 @@ final class TransferJob: Identifiable {
         let committed = max(0, plan - min(plan, remaining))
 
         resumeBaselineBytes += committed
-        resumeBaselineFiles += min(attemptPlannedFiles ?? stats.totalTransfers, stats.transfers)
+        resumeBaselineFiles += completedAttemptFiles
         networkBaselineBytes += stats.bytes
         attemptPlannedBytes = nil
         attemptPlannedFiles = nil
@@ -752,7 +762,7 @@ extension TransferJob {
             let plan = attemptPlannedBytes ?? snapshot.totalBytes
             let remaining = max(0, snapshot.totalBytes - snapshot.bytes) + inFlight
             resumeBaselineBytes += max(0, plan - min(plan, remaining))
-            resumeBaselineFiles += min(attemptPlannedFiles ?? snapshot.totalTransfers, snapshot.transfers)
+            resumeBaselineFiles += completedAttemptFiles
             networkBaselineBytes += snapshot.bytes
             attemptPlannedBytes = nil
             attemptPlannedFiles = nil
