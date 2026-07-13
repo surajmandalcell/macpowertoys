@@ -1,5 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#1C1D22"/>
-  <path d="M114 104h94v28h-66v66h-28zm214 0h94v94h-28v-66h-66zM114 314h28v66h66v28h-94zm280 0h28v94h-94v-28h66zM178 190h180v34h-72v134h-38V224h-70z" fill="#FFB13D" opacity=".3" transform="translate(22 28)"/>
-  <path d="M92 76h94v28h-66v66H92zm214 0h94v94h-28v-66h-66zM92 286h28v66h66v28H92zm280 0h28v94h-94v-28h66zM156 162h180v34h-72v134h-38V196h-70z" fill="#F4F4F5"/>
+  <rect width="512" height="512" rx="112" fill="#FFB51F"/>
+  <g transform="translate(18 22)" fill="none" stroke="#C56A00" stroke-width="42"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 184v-82h82M330 102h82v82M100 328v82h82M412 328v82h-82"/>
+    <path d="M176 194h160M256 194v154" stroke-width="56"/>
+  </g>
+  <g fill="none" stroke="#25262B" stroke-width="42" stroke-linecap="round"
+     stroke-linejoin="round">
+    <path d="M82 162V80h82M312 80h82v82M82 306v82h82M394 306v82h-82"/>
+    <path d="M158 172h160M238 172v154" stroke-width="56"/>
+  </g>
 </svg>
