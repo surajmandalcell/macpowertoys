@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 name: PowerToys
 description: Design language for PowerToys and its child tools (RSync, Claude History, Logs)
 colors:
@@ -13,8 +13,12 @@ colors:
   text-subdued: "Color.primary.opacity(0.75)"
   text-on-selection: "Color.white.opacity(0.7)"
   text-preview: "Color.secondary.opacity(0.6)"
-  icon-ground: "#1C1D22"                        # Glass Layers icon plate
-  icon-accent-rsync: "#FFB13D"
+  icon-ink: "#25262B"
+  icon-paper: "#FBFAFF"
+  icon-ruler: "#FF6B4A"
+  icon-awake: "#08A857"
+  icon-color-picker: "#6758E8"
+  icon-text-extractor: "#FFB51F"
 typography:
   title: { size: 13, weight: medium }
   body: { size: 13, weight: regular }
@@ -134,14 +138,65 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   cards/rows only — never duplicated into sheet headers.
 - **Empty state** — `EmptyStateView(icon:message:)`, centered.
 
-## Iconography — "Glass Layers"
+## App and Tool Icons
 
-App and tool icons are flat, layered marks: a `#1C1D22` rounded-rect ground, a
-tinted echo plate at 0.28–0.3 opacity offset down-right (+30/+40 in a 512 grid),
-and a white 0.92–0.94 top plate. Bold geometric silhouettes (bolt, arrows,
-bubble), 22pt stroke, round joins. **No gradients, no baked shadows, no gloss** —
-Tahoe/Liquid Glass supplies material effects at render time; baking them in is a
-bug. Menu bar icons are single-color template renders of the same mark.
+Icons are a colorful family of bold, friendly utility marks. Each tool gets a
+distinct saturated ground so its Dock icon is identifiable at a glance, while
+the shared geometry makes the set feel related.
+
+### Construction
+
+- Work in a `512 × 512` SVG view box.
+- Use a full-canvas rounded square with `rx="112"` as the ground.
+- Keep the semantic glyph inside an 80–432 optical safe area and let it occupy
+  roughly 60–70% of the canvas.
+- Build the glyph from the fewest recognizable shapes. Prefer broad filled
+  silhouettes and 42–64pt strokes over detailed illustration.
+- Every exposed stroke uses `stroke-linecap="round"` and
+  `stroke-linejoin="round"`. Round the ends of filled shapes too.
+- Add one darker echo of the glyph 18–24pt down and right. The echo is a solid
+  darker shade of the ground, not a transparent shadow.
+- Use near-white `#FBFAFF` for foregrounds on dark grounds and ink `#25262B` on
+  light grounds. Never mix white and ink foregrounds without a contrast reason.
+- No text, hairlines, tiny cutouts, gradients, gloss, blur, or baked drop shadow.
+  macOS supplies the environmental material and shadow.
+
+### Tool Palette
+
+| Tool | Ground | Echo | Foreground |
+|---|---|---|---|
+| PowerToys | `#1C1D22` | `#6E522E` | `#FBFAFF` |
+| Ruler | `#FF6B4A` | `#B83226` | `#FFF8F4` |
+| Awake | `#08A857` | `#08763F` | `#F7FFF9` |
+| Color Picker | `#6758E8` | `#372C9B` | `#FBFAFF` |
+| Text Extractor | `#FFB51F` | `#C56A00` | `#25262B` |
+
+New tools must receive their own semantic hue. Do not reuse a palette merely
+because it already exists in another asset.
+
+### Generation Workflow
+
+1. Pick one literal object or action for the tool. Do not combine metaphors.
+2. Sketch the glyph at 512px using only rounded rectangles, broad paths, and
+   round-capped strokes.
+3. Duplicate the glyph once, move it 18–24pt down-right, and recolor it with the
+   tool's echo token. Keep the foreground copy on top.
+4. Save the source as `Assets.xcassets/<Tool>Logo.imageset/icon.svg` with a
+   single universal image entry in `Contents.json`. Tool icons stay vector and
+   are not manually rasterized for the asset catalog.
+5. Validate and preview from the repository root:
+
+   ```sh
+   xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg
+   sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg \
+     --out /tmp/<Tool>-icon.png
+   ```
+
+6. Inspect the preview at 512, 64, 32, and 16px. The metaphor must still read at
+   32px; at 16px it may simplify, but it must not collapse into visual noise.
+
+Menu bar icons are the exception: use a single-color template silhouette of the
+same metaphor because macOS controls their tint.
 
 ## Window Chrome & Structure
 
