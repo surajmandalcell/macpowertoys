@@ -105,31 +105,87 @@ private struct SettingsTabPill: View {
 
 private struct GeneralSettingsTab: View {
     @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
+    @State private var showSyncConflictDialog = false
+
+    private var syncManager: SettingsSyncManager { SettingsSyncManager.shared }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("APPEARANCE")
-                        .utilitySectionHeader()
-
-                    Picker("Theme", selection: $selectedTheme) {
-                        ForEach(AppTheme.allCases) { theme in
-                            Text(theme.rawValue).tag(theme.rawValue)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .onChange(of: selectedTheme) { _, newValue in
-                        applyTheme(AppTheme(rawValue: newValue) ?? .automatic)
-                    }
-                    .utilitySectionCard()
-                }
+                appearanceSection
+                syncSection
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
             .padding(.top, 12)
         }
+        .confirmationDialog(
+            "iCloud already contains MacPowerToys settings",
+            isPresented: $showSyncConflictDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Use iCloud Settings") { syncManager.resolveConflict(useCloud: true) }
+            Button("Replace iCloud with This Mac", role: .destructive) {
+                syncManager.resolveConflict(useCloud: false)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Choose whether this Mac should adopt the settings already in iCloud, or overwrite iCloud with the settings on this Mac.")
+        }
+    }
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("APPEARANCE")
+                .utilitySectionHeader()
+
+            Picker("Theme", selection: $selectedTheme) {
+                ForEach(AppTheme.allCases) { theme in
+                    Text(theme.rawValue).tag(theme.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .onChange(of: selectedTheme) { _, newValue in
+                applyTheme(AppTheme(rawValue: newValue) ?? .automatic)
+            }
+            .utilitySectionCard()
+        }
+    }
+
+    private var syncSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ICLOUD")
+                .utilitySectionHeader()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Sync settings via iCloud", isOn: syncBinding)
+                    .font(.system(size: 13))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+
+                Text(syncManager.lastSyncDescription
+                     ?? "Syncs appearance, safe tool preferences, and marketplace sources. Never syncs credentials, histories, file paths, or installed apps.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .utilitySectionCard()
+        }
+    }
+
+    private var syncBinding: Binding<Bool> {
+        Binding(
+            get: { syncManager.isEnabled },
+            set: { enabled in
+                if enabled {
+                    if syncManager.enable() == .conflict {
+                        showSyncConflictDialog = true
+                    }
+                } else {
+                    syncManager.disable()
+                }
+            }
+        )
     }
 
     private func applyTheme(_ theme: AppTheme) {

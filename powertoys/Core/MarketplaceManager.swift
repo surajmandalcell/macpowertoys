@@ -267,7 +267,18 @@ final class MarketplaceManager {
 
         sources = updated
         catalogs[source.id] = catalog
+        NotificationCenter.default.post(name: .marketplaceSourcesChanged, object: nil)
         LogManager.shared.info("Added marketplace source \(catalog.source.name) (\(url))", source: "MarketplaceManager")
+    }
+
+    func applySyncedSourceURLs(_ urlStrings: [String]) async {
+        let desired = urlStrings.compactMap(URL.init(string:))
+        for url in desired where !sources.contains(where: { $0.url == url }) {
+            try? await addSource(url)
+        }
+        for source in sources where !desired.contains(source.url) {
+            try? await removeSourceOnly(source.url)
+        }
     }
 
     func refreshAll() async {
@@ -309,6 +320,7 @@ final class MarketplaceManager {
         await store.deleteCatalogData(cacheKey: MarketplaceStore.cacheKey(for: url))
         catalogs[url.absoluteString] = nil
         sources = removed
+        NotificationCenter.default.post(name: .marketplaceSourcesChanged, object: nil)
         LogManager.shared.info("Removed marketplace source \(url) (apps kept)", source: "MarketplaceManager")
     }
 
@@ -369,6 +381,7 @@ final class MarketplaceManager {
         receipts.removeAll { $0.toolID == receipt.toolID }
         receipts.append(receipt)
         receipts.sort { $0.toolID < $1.toolID }
+        NotificationCenter.default.post(name: .marketplaceReceiptsChanged, object: nil)
     }
 
     func uninstall(_ receipt: MarketplaceReceipt) async throws {
@@ -381,6 +394,7 @@ final class MarketplaceManager {
         }
         try await store.deleteInstalled(toolID: receipt.toolID)
         receipts.removeAll { $0.toolID == receipt.toolID }
+        NotificationCenter.default.post(name: .marketplaceReceiptsChanged, object: nil)
     }
 
     func sourceAvailable(for receipt: MarketplaceReceipt) -> Bool {
