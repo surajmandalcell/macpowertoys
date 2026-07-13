@@ -5,6 +5,7 @@
 
 import Foundation
 import Darwin
+import Security
 
 @Observable
 final class RcloneDaemon {
@@ -131,16 +132,23 @@ final class RcloneDaemon {
         var lastError: Error?
         for _ in 0..<3 {
             guard let port = Self.findFreePort() else { continue }
+            guard let credentials = Self.makeCredentials() else {
+                state = .failed("Could not secure the local rclone connection.")
+                throw RcloneRCError.notReachable
+            }
 
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: resolved)
             proc.arguments = [
                 "rcd",
                 "--rc-addr", "127.0.0.1:\(port)",
-                "--rc-no-auth",
                 "--rc-web-gui=false",
                 "--rc-job-expire-duration", "168h"
             ]
+            var environment = ProcessInfo.processInfo.environment
+            environment["RCLONE_RC_USER"] = credentials.username
+            environment["RCLONE_RC_PASS"] = credentials.password
+            proc.environment = environment
             let errPipe = Pipe()
             proc.standardError = errPipe
             proc.standardOutput = Pipe()
@@ -162,7 +170,7 @@ final class RcloneDaemon {
             }
             Self.register(daemonPid: proc.processIdentifier)
 
-            let candidate = RcloneRCClient(port: port)
+            let candidate = RcloneRCClient(port: port, credentials: credentials)
             if let version = await healthCheck(client: candidate, process: proc) {
                 self.process = proc
                 self.client = candidate
@@ -180,6 +188,13 @@ final class RcloneDaemon {
         let message = (lastError as? LocalizedError)?.errorDescription ?? "Failed to start rclone daemon."
         state = .failed(message)
         throw RcloneRCError.http(status: 0, message: message)
+    }
+
+    nonisolated static func makeCredentials() -> RcloneRCCredentials? {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else { return nil }
+        let password = bytes.map { String(format: "%02x", $0) }.joined()
+        return RcloneRCCredentials(username: "macpowertoys", password: password)
     }
 
     private func healthCheck(client: RcloneRCClient, process: Process) async -> String? {
