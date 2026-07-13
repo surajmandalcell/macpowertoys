@@ -174,20 +174,31 @@ final class MarketplaceManager {
     private let reservedToolIDs: Set<String>
     private let hostEnvironment: HostEnvironment
     private let fetch: CatalogFetcher
+    private let installerAdapters: InstallerAdapters
     private let uninstallHandler: (@MainActor (MarketplaceReceipt) async throws -> Void)?
+    private var installerInstance: MarketplaceInstaller?
 
     init(
         rootDirectory: URL = AppDataLocation.directory.appendingPathComponent("Marketplace", isDirectory: true),
         reservedToolIDs: Set<String> = Set(ToolRegistry.allTools.map(\.id)),
         hostEnvironment: HostEnvironment = .current,
         fetch: @escaping CatalogFetcher = MarketplaceManager.httpFetcher,
+        installerAdapters: InstallerAdapters = .live,
         uninstall: (@MainActor (MarketplaceReceipt) async throws -> Void)? = nil
     ) {
         store = MarketplaceStore(root: rootDirectory)
         self.reservedToolIDs = reservedToolIDs
         self.hostEnvironment = hostEnvironment
         self.fetch = fetch
+        self.installerAdapters = installerAdapters
         uninstallHandler = uninstall
+    }
+
+    private var installer: MarketplaceInstaller {
+        if let installerInstance { return installerInstance }
+        let created = MarketplaceInstaller(store: store, adapters: installerAdapters)
+        installerInstance = created
+        return created
     }
 
     static let httpFetcher: CatalogFetcher = { url, etag in
@@ -320,6 +331,38 @@ final class MarketplaceManager {
     }
 
     // MARK: Installed tools
+
+    func installTool(_ manifest: MarketplaceToolManifest, from source: MarketplaceSource) async throws {
+        guard manifest.isCompatible(with: hostEnvironment) else {
+            throw MarketplaceInstallError.incompatible
+        }
+        for app in NSRunningApplication.runningApplications(withBundleIdentifier: manifest.artifact.bundleID) {
+            app.terminate()
+        }
+        let receipt = try await installer.install(
+            manifest,
+            sourceID: source.sourceID ?? source.id,
+            sourceURL: source.url
+        )
+        try await recordInstall(receipt)
+        LogManager.shared.info(
+            "Installed \(manifest.name) \(manifest.version) (build \(manifest.build))",
+            source: "MarketplaceManager"
+        )
+    }
+
+    func installedAppURL(for toolID: String) async -> URL? {
+        let url = await store.installedDirectory(toolID: toolID)
+            .appendingPathComponent(MarketplaceInstaller.appBundleName)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    func launchInstalledTool(toolID: String) async throws {
+        guard let appURL = await installedAppURL(for: toolID) else {
+            throw MarketplaceInstallError.appMissing
+        }
+        try await NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
+    }
 
     func recordInstall(_ receipt: MarketplaceReceipt) async throws {
         try await store.saveReceipt(receipt)
