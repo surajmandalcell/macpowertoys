@@ -147,6 +147,44 @@ final class RcloneModelTests: XCTestCase {
         XCTAssertEqual(job.progressFraction, 1)
     }
 
+    func testRetryBytesDoNotInflateLogicalProgressOrTotal() {
+        let job = makeJob()
+        job.attemptPlannedBytes = 700
+        job.attemptPlannedFiles = 7
+        job.expectedBytes = 700
+        job.expectedFiles = 7
+        job.stats.bytes = 900
+        job.stats.totalBytes = 950
+        job.stats.transfers = 6
+        job.stats.totalTransfers = 9
+
+        XCTAssertEqual(job.displayBytes, 650)
+        XCTAssertEqual(job.effectiveTotalBytes, 700)
+        XCTAssertEqual(job.displayFiles, 6)
+        XCTAssertEqual(job.effectiveTotalFiles, 7)
+        XCTAssertEqual(job.networkBytes, 900)
+    }
+
+    func testCommittingAttemptExcludesInFlightBytes() {
+        let job = makeJob()
+        job.attemptPlannedBytes = 1_000
+        job.attemptPlannedFiles = 10
+        job.expectedBytes = 1_000
+        job.expectedFiles = 10
+        job.stats.bytes = 500
+        job.stats.totalBytes = 1_000
+        job.stats.transfers = 3
+        job.stats.transferring = [fileProgress(size: 500, bytes: 200)]
+
+        job.commitAttemptProgress()
+
+        XCTAssertEqual(job.resumeBaselineBytes, 300)
+        XCTAssertEqual(job.resumeBaselineFiles, 3)
+        XCTAssertEqual(job.networkBytes, 500)
+        XCTAssertNil(job.attemptPlannedBytes)
+        XCTAssertEqual(job.stats, .empty)
+    }
+
     func testTransferJobSnapshotRoundTripsAllUserControlledOptions() {
         let job = makeJob()
         job.state = .paused

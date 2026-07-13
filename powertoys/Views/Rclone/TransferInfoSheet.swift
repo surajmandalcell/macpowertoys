@@ -308,6 +308,12 @@ struct TransferInfoSheet: View {
         }
 
         row("Data moved", value: "\(RcloneFormat.bytes(details.bytes)) of \(RcloneFormat.bytes(details.totalBytes))")
+        if let job, job.networkBytes > job.displayBytes {
+            row("Network attempted", value: RcloneFormat.bytes(job.networkBytes))
+            Text("Network attempts include retried bytes. They do not increase the planned transfer total.")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+        }
         row("Files", value: "\(details.filesTransferred) of \(details.totalFiles)")
         row("Average speed", value: RcloneFormat.speed(details.averageSpeed))
 
@@ -322,31 +328,6 @@ struct TransferInfoSheet: View {
                 .textSelection(.enabled)
         }
 
-        if let job, job.kind == .directory, !job.state.isTerminal {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Size & diff")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                    Text("Re-scans source and destination so totals and remaining data are exact.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer(minLength: 12)
-                if job.isRecalculating {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Scanning both sides…")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Button("Recalculate") { manager.recalculate(job) }
-                        .disabled(!manager.daemonIsHealthy)
-                }
-            }
-        }
     }
 
     @ViewBuilder
