@@ -4,8 +4,15 @@ import XCTest
 final class ToolRegistryTests: XCTestCase {
     func testRegistryContainsEveryShippedToolWindow() {
         XCTAssertEqual(
-            Set(ToolRegistry.allTools.map(\.id)),
+            Set(ToolRegistry.builtInTools.map(\.id)),
             Set(["cc-history", "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor"])
+        )
+    }
+
+    func testAllToolsStartsWithBuiltIns() {
+        XCTAssertEqual(
+            Array(ToolRegistry.allTools.prefix(ToolRegistry.builtInTools.count)).map(\.id),
+            ToolRegistry.builtInTools.map(\.id)
         )
     }
 

@@ -28,7 +28,24 @@ final class MarketplaceModelTests: XCTestCase {
     }
 
     func testReservedIDsMatchToolRegistry() {
-        XCTAssertEqual(Set(ToolRegistry.allTools.map(\.id)), Self.builtInToolIDs)
+        XCTAssertEqual(Set(ToolRegistry.builtInTools.map(\.id)), Self.builtInToolIDs)
+    }
+
+    func testMarketplaceToolMapsReceipt() throws {
+        let catalog = try decode("valid-catalog.json")
+        let receipt = MarketplaceReceipt(
+            manifest: catalog.tools[0],
+            sourceID: catalog.source.id,
+            sourceURL: URL(string: "https://raw.githubusercontent.com/acme/tools/main/catalog.json")!,
+            installedAt: Date(timeIntervalSince1970: 1_780_000_000)
+        )
+        let tool = MarketplaceTool(receipt: receipt, iconFileURL: nil)
+        XCTAssertEqual(tool.id, "window-snapper")
+        XCTAssertEqual(tool.name, "Window Snapper")
+        XCTAssertEqual(tool.category, .system)
+        XCTAssertEqual(tool.manual.first?.title, "Snapping")
+        XCTAssertFalse(tool.hasTrayTab)
+        XCTAssertNil(tool.iconFileURL)
     }
 
     func testDecodesValidCatalog() throws {
