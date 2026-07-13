@@ -118,32 +118,6 @@ final class DeepLinkHandler {
 
     private func openTool(id toolId: String) {
         LogManager.shared.info("Opening tool via deep link: \(toolId)", source: "DeepLinkHandler")
-
-        guard let action = openWindowAction else {
-            LogManager.shared.warning("OpenWindowAction not available", source: "DeepLinkHandler")
-            return
-        }
-
-        let windowId: String?
-        switch toolId {
-        case "cc-history", "cchistory":
-            windowId = "cc-history"
-        case "rclone", "cloud-sync", "cloudsync", "rsync":
-            windowId = "rclone"
-        case "logs":
-            windowId = "logs"
-        case "main", "settings", "home":
-            windowId = "main"
-        default:
-            windowId = ToolRegistry.tool(for: toolId) != nil ? toolId : nil
-        }
-
-        guard let windowId else {
-            LogManager.shared.warning("Unknown tool ID: \(toolId)", source: "DeepLinkHandler")
-            return
-        }
-
-        action(id: windowId)
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        ToolActionRouter.shared.open(toolID: toolId)
     }
 }

@@ -8,7 +8,6 @@ import SwiftUI
 struct ToolAboutView: View {
     let toolId: String
 
-    @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
     private var tool: (any Tool)? {
@@ -59,8 +58,7 @@ struct ToolAboutView: View {
             Spacer()
 
             Button {
-                openWindow(id: tool.id)
-                NSApplication.shared.activate(ignoringOtherApps: true)
+                ToolActionRouter.shared.open(toolID: tool.id)
                 dismissWindow(id: "main")
             } label: {
                 Text("Open \(tool.name)")

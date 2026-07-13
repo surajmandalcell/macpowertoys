@@ -180,7 +180,7 @@ final class MarketplaceManager {
 
     init(
         rootDirectory: URL = AppDataLocation.directory.appendingPathComponent("Marketplace", isDirectory: true),
-        reservedToolIDs: Set<String> = Set(ToolRegistry.allTools.map(\.id)),
+        reservedToolIDs: Set<String> = Set(ToolRegistry.builtInTools.map(\.id)),
         hostEnvironment: HostEnvironment = .current,
         fetch: @escaping CatalogFetcher = MarketplaceManager.httpFetcher,
         installerAdapters: InstallerAdapters = .live,
@@ -385,6 +385,15 @@ final class MarketplaceManager {
 
     func sourceAvailable(for receipt: MarketplaceReceipt) -> Bool {
         sources.contains { $0.url == receipt.sourceURL || $0.sourceID == receipt.sourceID }
+    }
+
+    var installedTools: [any Tool] {
+        receipts.map { MarketplaceTool(receipt: $0, iconFileURL: iconFileURL(for: $0.toolID)) }
+    }
+
+    nonisolated func iconFileURL(for toolID: String) -> URL? {
+        let url = store.root.appendingPathComponent("Cache/Icons/\(toolID).png")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
     // MARK: Aggregation

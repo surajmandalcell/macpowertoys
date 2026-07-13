@@ -49,6 +49,7 @@ final class ToolActionRouter {
 
     private var openWindowAction: OpenWindowAction?
     private var pending: [ToolActionRequest] = []
+    private var pendingToolOpens: [String] = []
 
     private init() {}
 
@@ -57,6 +58,43 @@ final class ToolActionRouter {
         let requests = pending
         pending.removeAll()
         requests.forEach(execute)
+        let toolOpens = pendingToolOpens
+        pendingToolOpens.removeAll()
+        toolOpens.forEach { open(toolID: $0) }
+    }
+
+    private static let windowAliases: [String: String] = [
+        "cchistory": "cc-history",
+        "cloud-sync": "rclone",
+        "cloudsync": "rclone",
+        "rsync": "rclone",
+        "settings": "main",
+        "home": "main"
+    ]
+
+    func open(toolID: String) {
+        let resolved = Self.windowAliases[toolID] ?? toolID
+        if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
+            guard let openWindowAction else {
+                if pendingToolOpens.last != resolved { pendingToolOpens.append(resolved) }
+                return
+            }
+            openWindowAction(id: resolved)
+            NSApp.activate(ignoringOtherApps: true)
+        } else if MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) {
+            Task {
+                do {
+                    try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved)
+                } catch {
+                    LogManager.shared.error(
+                        "Failed to launch marketplace tool \(resolved): \(error)",
+                        source: "ToolActionRouter"
+                    )
+                }
+            }
+        } else {
+            LogManager.shared.warning("Unknown tool ID: \(resolved)", source: "ToolActionRouter")
+        }
     }
 
     func execute(_ request: ToolActionRequest) {
