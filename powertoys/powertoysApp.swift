@@ -97,6 +97,7 @@ struct powertoysApp: App {
 
         Window("Ruler", id: "ruler") {
             RulerControlView()
+                .background(WindowAccessor(identifier: "ruler"))
         }
         .defaultSize(width: 680, height: 680)
         .windowStyle(.hiddenTitleBar)
@@ -105,6 +106,7 @@ struct powertoysApp: App {
 
         Window("Awake", id: "awake") {
             AwakeView()
+                .background(WindowAccessor(identifier: "awake"))
         }
         .defaultSize(width: 680, height: 620)
         .windowStyle(.hiddenTitleBar)
@@ -113,6 +115,7 @@ struct powertoysApp: App {
 
         Window("Color Picker", id: "color-picker") {
             ColorHistoryView()
+                .background(WindowAccessor(identifier: "color-picker"))
         }
         .defaultSize(width: 620, height: 640)
         .windowStyle(.hiddenTitleBar)
@@ -121,6 +124,7 @@ struct powertoysApp: App {
 
         Window("Text Extractor", id: "text-extractor") {
             TextExtractorView()
+                .background(WindowAccessor(identifier: "text-extractor"))
         }
         .defaultSize(width: 680, height: 620)
         .windowStyle(.hiddenTitleBar)
