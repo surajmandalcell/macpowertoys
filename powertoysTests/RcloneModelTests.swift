@@ -199,6 +199,8 @@ final class RcloneModelTests: XCTestCase {
         job.autoResumeOnLaunch = true
         job.resumeBaselineBytes = 123
         job.resumeBaselineFiles = 4
+        job.networkBaselineBytes = 456
+        job.continuousSync = true
 
         let restored = TransferJob(snapshot: job.snapshot)
 
@@ -214,6 +216,8 @@ final class RcloneModelTests: XCTestCase {
         XCTAssertTrue(restored.autoResumeOnLaunch)
         XCTAssertEqual(restored.resumeBaselineBytes, 123)
         XCTAssertEqual(restored.resumeBaselineFiles, 4)
+        XCTAssertEqual(restored.networkBaselineBytes, 456)
+        XCTAssertTrue(restored.continuousSync)
     }
 
     func testTerminalSnapshotRestoresWithoutAutoResume() {

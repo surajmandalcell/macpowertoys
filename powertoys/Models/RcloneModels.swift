@@ -380,6 +380,7 @@ final class TransferJob: Identifiable {
     var attemptPlannedBytes: Int64?
     var attemptPlannedFiles: Int?
     var networkBaselineBytes: Int64 = 0
+    var continuousSync = false
     var isSizing = false
     var transferOrder: TransferOrder = .default
     var priority: TransferPriority = .normal
@@ -503,6 +504,25 @@ final class TransferJob: Identifiable {
         stats = .empty
     }
 
+    func prepareForNewRun() {
+        state = .queued
+        attempt = 0
+        errorMessage = nil
+        stats = .empty
+        rcJobId = nil
+        startedAt = nil
+        finishedAt = nil
+        nextRetryAt = nil
+        expectedBytes = nil
+        expectedFiles = nil
+        resumeBaselineBytes = 0
+        resumeBaselineFiles = 0
+        attemptPlannedBytes = nil
+        attemptPlannedFiles = nil
+        networkBaselineBytes = 0
+        isSizing = false
+    }
+
     func refreshDisplayEta() {
         let remaining = max(0, effectiveTotalBytes - displayBytes)
         let raw = stats.speed > 0 ? Double(remaining) / stats.speed : stats.eta
@@ -613,6 +633,7 @@ struct TransferJobSnapshot: Codable, Sendable {
     let attemptPlannedBytes: Int64?
     let attemptPlannedFiles: Int?
     let networkBaselineBytes: Int64?
+    let continuousSync: Bool?
     let transferOrder: String?
     let priority: Int?
     let isExpanded: Bool?
@@ -659,6 +680,7 @@ extension TransferJob {
             attemptPlannedBytes: attemptPlannedBytes,
             attemptPlannedFiles: attemptPlannedFiles,
             networkBaselineBytes: networkBaselineBytes,
+            continuousSync: continuousSync ? true : nil,
             transferOrder: transferOrder == .default ? nil : transferOrder.rawValue,
             priority: priority == .normal ? nil : priority.rawValue,
             isExpanded: isExpanded ? true : nil,
@@ -703,6 +725,7 @@ extension TransferJob {
         attemptPlannedFiles = snapshot.attemptPlannedFiles
             ?? max(0, (snapshot.expectedFiles ?? snapshot.totalTransfers) - resumeBaselineFiles)
         networkBaselineBytes = snapshot.networkBaselineBytes ?? 0
+        continuousSync = snapshot.continuousSync ?? false
         transferOrder = snapshot.transferOrder.flatMap(TransferOrder.init(rawValue:)) ?? .default
         priority = snapshot.priority.flatMap(TransferPriority.init(rawValue:)) ?? .normal
         isExpanded = snapshot.isExpanded ?? false

@@ -34,6 +34,7 @@ final class AppInitializer {
         LogManager.shared.info("App initializing...", source: "AppInitializer")
 
         await LogManager.shared.loadPersistedLogs()
+        await LocalChangeHistory.shared.restore()
 
         Task.detached(priority: .background) {
             await LogManager.shared.pruneOldLogs()
@@ -53,7 +54,9 @@ final class AppInitializer {
 
         applyStoredTheme()
 
-        if UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") {
+        let hasContinuousJobs = await RcloneJobManager.hasPersistedContinuousJobs()
+        let shouldStartRclone = UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") || hasContinuousJobs
+        if shouldStartRclone {
             Task { await RcloneJobManager.shared.start() }
         }
 

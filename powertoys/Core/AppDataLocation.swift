@@ -23,6 +23,10 @@ enum AppDataLocation {
         directory.appendingPathComponent("transfers.json")
     }
 
+    static var localChangesURL: URL {
+        directory.appendingPathComponent("local-changes.json")
+    }
+
     static func migrateLegacyStoreIfNeeded() {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: storeURL.path) else { return }

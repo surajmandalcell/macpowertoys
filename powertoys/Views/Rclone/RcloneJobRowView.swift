@@ -67,6 +67,11 @@ struct TransferJobRow: View {
             if job.canCancel {
                 Button("Cancel") { manager.cancel(job) }
             }
+            if RcloneJobManager.supportsContinuousSync(job), job.state == .completed || job.continuousSync {
+                Button(job.continuousSync ? "Turn Off Continuous Sync" : "Turn On Continuous Sync") {
+                    manager.setContinuousSync(!job.continuousSync, for: job)
+                }
+            }
             if job.state.isTerminal {
                 Button("Remove") { manager.remove(job) }
             }
@@ -280,6 +285,15 @@ struct TransferJobRow: View {
             if job.canRetry {
                 ControlIconButton(icon: "arrow.clockwise", label: "Retry", tint: .accentColor) {
                     manager.retry(job)
+                }
+            }
+            if RcloneJobManager.supportsContinuousSync(job), job.state == .completed || job.continuousSync {
+                ControlIconButton(
+                    icon: "arrow.triangle.2.circlepath",
+                    label: job.continuousSync ? "Turn off Continuous Sync" : "Turn on Continuous Sync",
+                    tint: job.continuousSync ? .accentColor : .secondary
+                ) {
+                    manager.setContinuousSync(!job.continuousSync, for: job)
                 }
             }
             if job.state.isTerminal {

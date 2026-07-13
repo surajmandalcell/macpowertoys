@@ -278,10 +278,10 @@ final class ProjectManager {
 
     func startWatching() {
         stopWatching()
-        fileWatcher = FileWatcher(path: claudeDirectory.path, latency: 1.0) { [weak self] changedPaths in
+        fileWatcher = FileWatcher(path: claudeDirectory.path, latency: 1.0) { [weak self] changes in
             guard let self else { return }
             Task { @MainActor in
-                self.handleFileChange(changedPaths: changedPaths)
+                self.handleFileChange(changedPaths: changes.map(\.path))
             }
         }
         fileWatcher?.start()
