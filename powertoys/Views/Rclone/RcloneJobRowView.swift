@@ -253,7 +253,14 @@ struct TransferJobRow: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .focusEffectDisabled()
-        .help("Priority: \(job.priority.displayName). Higher priority queued transfers start first.")
+        .help(priorityHelp)
+    }
+
+    private var priorityHelp: String {
+        if job.state == .running {
+            return "Priority: \(job.priority.displayName). Applies if this transfer queues again; the active file is not interrupted."
+        }
+        return "Priority: \(job.priority.displayName). Higher priority queued transfers start first."
     }
 
     private var controls: some View {

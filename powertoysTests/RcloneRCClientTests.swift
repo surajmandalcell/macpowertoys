@@ -50,6 +50,7 @@ final class RcloneRCClientTests: XCTestCase {
         XCTAssertEqual(providers[0].displayName, "Google Drive")
         XCTAssertEqual(providers[0].options[0].name, "client_id")
         XCTAssertEqual(providers[0].options[0].examples.first?.help, "Use rclone's client ID")
+        XCTAssertFalse(providers[0].options[0].usesExclusivePicker)
     }
 
     func testConfigurationStepUsesNonInteractiveProtocol() async throws {
@@ -91,6 +92,7 @@ final class RcloneRCClientTests: XCTestCase {
         XCTAssertEqual(step.state, "*oauth-islocal,teamdrive,,")
         XCTAssertEqual(step.option?.name, "config_is_local")
         XCTAssertEqual(step.option?.examples.map(\.value), ["true", "false"])
+        XCTAssertTrue(step.option?.usesExclusivePicker == true)
     }
 
     func testConfigurationContinuationPreservesStateAndParameters() async throws {

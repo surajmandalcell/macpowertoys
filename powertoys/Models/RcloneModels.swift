@@ -330,10 +330,16 @@ enum TransferFileStatus: String, Sendable, Equatable {
     case uploaded
     case pending
 
+    private static let modificationTolerance: TimeInterval = 2
+
     static func resolve(source: RemoteEntry, destination: RemoteEntry?) -> TransferFileStatus {
         guard let destination,
               source.isDir == destination.isDir,
               source.isDir || source.size == destination.size else { return .pending }
+        if let sourceDate = source.modTime, let destinationDate = destination.modTime,
+           abs(sourceDate.timeIntervalSince(destinationDate)) > modificationTolerance {
+            return .pending
+        }
         return .uploaded
     }
 }

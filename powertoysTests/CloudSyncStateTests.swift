@@ -98,13 +98,23 @@ final class CloudSyncStateTests: XCTestCase {
     }
 
     func testFileStatusRequiresMatchingDestinationFile() {
-        let source = entry(path: "folder/file.mov", size: 100)
-        let matching = entry(path: "folder/file.mov", size: 100)
-        let partial = entry(path: "folder/file.mov", size: 60)
+        let timestamp = Date(timeIntervalSince1970: 100)
+        let source = entry(path: "folder/file.mov", size: 100, modTime: timestamp)
+        let matching = entry(path: "folder/file.mov", size: 100, modTime: timestamp)
+        let partial = entry(path: "folder/file.mov", size: 60, modTime: timestamp)
+        let stale = entry(path: "folder/file.mov", size: 100, modTime: timestamp.addingTimeInterval(-10))
 
         XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: matching), .uploaded)
         XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: partial), .pending)
+        XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: stale), .pending)
         XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: nil), .pending)
+    }
+
+    func testIgnoreMatcherCoversFileAndDirectoryPatterns() {
+        XCTAssertTrue(IgnoreMatcher.matches(path: "build/cache.tmp", name: "cache.tmp", isDir: false, pattern: "*.tmp"))
+        XCTAssertTrue(IgnoreMatcher.matches(path: "app/node_modules/pkg.js", name: "pkg.js", isDir: false, pattern: "node_modules/**"))
+        XCTAssertTrue(IgnoreMatcher.matches(path: "draft.partial", name: "draft.partial", isDir: false, pattern: "draft*"))
+        XCTAssertFalse(IgnoreMatcher.matches(path: "Sources/main.swift", name: "main.swift", isDir: false, pattern: "*.tmp"))
     }
 
     private func makeJob(createdAt: Date) -> TransferJob {
@@ -120,12 +130,12 @@ final class CloudSyncStateTests: XCTestCase {
         )
     }
 
-    private func entry(path: String, size: Int64) -> RemoteEntry {
+    private func entry(path: String, size: Int64, modTime: Date? = nil) -> RemoteEntry {
         RemoteEntry(
             path: path,
             name: (path as NSString).lastPathComponent,
             size: size,
-            modTime: nil,
+            modTime: modTime,
             isDir: false,
             mimeType: "application/octet-stream"
         )

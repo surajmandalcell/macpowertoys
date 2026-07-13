@@ -44,8 +44,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         guard let bundleId = Bundle.main.bundleIdentifier else { return true }
-
-        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+        let supportedBundleIDs = [bundleId, AppIdentity.legacyBundleIdentifier]
+        let runningApps = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
         let otherInstances = runningApps.filter { $0 != NSRunningApplication.current }
 
         if let existingApp = otherInstances.first {

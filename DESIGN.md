@@ -1,7 +1,7 @@
 ---
 version: 4
-name: PowerToys
-description: Design language for PowerToys and its child tools
+name: MacPowerToys
+description: Design language for MacPowerToys and its child tools
 colors:
   hover: "Color.primary.opacity(0.06)"          # the ONLY hover background
   hover-strong: "Color.primary.opacity(0.1)"    # filled buttons only
@@ -52,11 +52,11 @@ components:
   progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
 ---
 
-# PowerToys Design Language
+# MacPowerToys Design Language
 
 ## Overview
 
-PowerToys is a dense, quiet, native-feeling macOS utility. It should read like a
+MacPowerToys is a dense, quiet, native-feeling macOS utility. It should read like a
 first-party Apple tool that a careful engineer polished: flat surfaces, one accent
 color doing all the talking, small type, generous alignment discipline, zero
 decoration for its own sake. Nothing bounces, glows, or gradients. When in doubt,
@@ -352,7 +352,7 @@ same metaphor because macOS controls their tint.
   forms carry opaque insets that break the one-left-edge rule.
 - Tray popover: 340pt wide, ≤70% of screen height; chrome-style tool tabs on
   top, status row (dot/retry + status text left, primary window shortcut right),
-  scrolling live transfer rows, footer (Open PowerToys / Quit).
+  scrolling live transfer rows, footer (Open MacPowerToys / Quit).
 
 ## Do's and Don'ts
 

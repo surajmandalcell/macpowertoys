@@ -100,6 +100,7 @@ final class RcloneJobManager {
     private var authGeneration = UUID()
     private var authTask: Task<Void, Never>?
     private var reconnectProcess: Process?
+    private var remoteBeingCreated: String?
 
     let daemon = RcloneDaemon()
     private var client: RcloneRCClient?
@@ -261,19 +262,12 @@ final class RcloneJobManager {
         authTask = nil
         reconnectProcess?.terminate()
         reconnectProcess = nil
-        if case .waiting(let name) = authState {
-            authGeneration = UUID()
-            authState = .idle
-            if let client {
-                try? await client.deleteRemoteConfig(name: name)
-            }
-        } else if case .question(let name, _) = authState {
-            authGeneration = UUID()
-            authState = .idle
-            if let client {
-                try? await client.deleteRemoteConfig(name: name)
-            }
+        authGeneration = UUID()
+        authState = .idle
+        if let name = remoteBeingCreated, let client {
+            try? await client.deleteRemoteConfig(name: name)
         }
+        remoteBeingCreated = nil
         for job in jobs where job.state.isActive && !job.state.isTerminal {
             let jobid = job.rcJobId
             if job.state == .running {
@@ -462,6 +456,7 @@ final class RcloneJobManager {
         }
         let generation = UUID()
         authGeneration = generation
+        remoteBeingCreated = name
         authState = .waiting(name: name)
         LogManager.shared.info("Starting \(provider.displayName) authorization for remote '\(name)'", source: "RcloneJobManager")
 
@@ -480,6 +475,7 @@ final class RcloneJobManager {
         guard !isAuthInProgress else { return }
         let generation = UUID()
         authGeneration = generation
+        remoteBeingCreated = nil
         authState = .waiting(name: remote.name)
         LogManager.shared.info("Reconnecting remote '\(remote.name)'", source: "RcloneJobManager")
 
@@ -536,6 +532,7 @@ final class RcloneJobManager {
         generation: UUID
     ) async {
         guard let client else {
+            remoteBeingCreated = nil
             finishAuth(generation: generation, state: .failed("Cloud Sync engine is not running."))
             return
         }
@@ -552,6 +549,7 @@ final class RcloneJobManager {
         } catch {
             guard authGeneration == generation, !Task.isCancelled else { return }
             try? await client.deleteRemoteConfig(name: name)
+            remoteBeingCreated = nil
             finishAuth(generation: generation, state: .failed((error as? LocalizedError)?.errorDescription ?? "Could not configure this connector."))
         }
     }
@@ -567,14 +565,19 @@ final class RcloneJobManager {
         if step.isComplete {
             if step.error.isEmpty {
                 await refreshRemotes()
+                remoteBeingCreated = nil
                 finishAuth(generation: generation, state: .succeeded(name: name))
                 LogManager.shared.info("Remote '\(name)' connected", source: "RcloneJobManager")
             } else {
+                if let client { try? await client.deleteRemoteConfig(name: name) }
+                remoteBeingCreated = nil
                 finishAuth(generation: generation, state: .failed(step.error))
             }
             return
         }
         guard let option = step.option else {
+            if let client { try? await client.deleteRemoteConfig(name: name) }
+            remoteBeingCreated = nil
             finishAuth(generation: generation, state: .failed(step.error.isEmpty ? "rclone returned an incomplete configuration step." : step.error))
             return
         }
@@ -622,6 +625,7 @@ final class RcloneJobManager {
         generation: UUID
     ) async {
         guard let client else {
+            remoteBeingCreated = nil
             finishAuth(generation: generation, state: .failed("Cloud Sync engine is not running."))
             return
         }
@@ -641,6 +645,8 @@ final class RcloneJobManager {
             )
         } catch {
             guard authGeneration == generation, !Task.isCancelled else { return }
+            try? await client.deleteRemoteConfig(name: name)
+            remoteBeingCreated = nil
             finishAuth(generation: generation, state: .failed((error as? LocalizedError)?.errorDescription ?? "Could not continue connector setup."))
         }
     }
@@ -656,14 +662,16 @@ final class RcloneJobManager {
     func cancelAuth() {
         reconnectProcess?.terminate()
         reconnectProcess = nil
-        let name: String
+        let activeName: String
         switch authState {
-        case .waiting(let remoteName), .question(let remoteName, _): name = remoteName
+        case .waiting(let remoteName), .question(let remoteName, _): activeName = remoteName
         default:
             authGeneration = UUID()
             authState = .idle
             return
         }
+        let createdName = remoteBeingCreated == activeName ? activeName : nil
+        remoteBeingCreated = nil
         authGeneration = UUID()
         authTask?.cancel()
         authTask = nil
@@ -671,8 +679,8 @@ final class RcloneJobManager {
 
         Task { [weak self] in
             guard let self else { return }
-            if let client = self.client {
-                try? await client.deleteRemoteConfig(name: name)
+            if let createdName, let client = self.client {
+                try? await client.deleteRemoteConfig(name: createdName)
                 await self.refreshRemotes()
             }
         }
@@ -1263,7 +1271,7 @@ final class RcloneJobManager {
                         config: config
                     )
                 }
-                if job.state == .cancelled {
+                if job.state != .running {
                     try? await client.stopJob(jobid: jobid)
                     await client.deleteStats(group: group)
                 } else {

@@ -10,6 +10,8 @@ struct TransferFileTreeView: View {
     let sourceFs: String
     let destinationFs: String
 
+    private static let indexLimit = 5_000
+
     @Environment(RcloneJobManager.self) private var manager
     @AppStorage(RcloneDefaults.ignorePatternsKey) private var patternsText = RcloneDefaults.ignorePatterns
 
@@ -222,7 +224,7 @@ struct TransferFileTreeView: View {
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         if indexTruncated {
-                            Text("showing first 5,000")
+                            Text("showing first \(Self.indexLimit.formatted())")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.tertiary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -273,10 +275,21 @@ struct TransferFileTreeView: View {
                 }
             }
         } else {
-            HStack(spacing: 0) {
-                statusColumn(title: "NOT UPLOADED", status: .pending, tint: .orange)
-                Divider()
-                statusColumn(title: "UPLOADED", status: .uploaded, tint: .green)
+            VStack(spacing: 0) {
+                if indexTruncated {
+                    Text("Comparison is limited to the first \(Self.indexLimit.formatted()) source entries.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                    Divider()
+                }
+                HStack(spacing: 0) {
+                    statusColumn(title: "NOT UPLOADED", status: .pending, tint: .orange)
+                    Divider()
+                    statusColumn(title: "UPLOADED", status: .uploaded, tint: .green)
+                }
             }
         }
     }
@@ -408,9 +421,9 @@ struct TransferFileTreeView: View {
         indexTask = Task {
             do {
                 var entries = try await manager.listDirectory(fs: sourceFs, path: "", recurse: true)
-                if entries.count > 5000 {
+                if entries.count > Self.indexLimit {
                     indexTruncated = true
-                    entries = Array(entries.prefix(5000))
+                    entries = Array(entries.prefix(Self.indexLimit))
                 }
                 allEntries = entries
             } catch is CancellationError {
@@ -456,18 +469,7 @@ struct TransferFileTreeView: View {
     // MARK: Ignore patterns
 
     private func isIgnored(_ entry: RemoteEntry, patterns: [String]) -> Bool {
-        for pattern in patterns {
-            if pattern == entry.name || pattern == entry.path { return true }
-            if pattern.hasPrefix("*."), entry.name.hasSuffix(String(pattern.dropFirst())) { return true }
-            if pattern.hasSuffix("/**") {
-                let dir = String(pattern.dropLast(3))
-                if entry.path == dir || entry.path.hasPrefix(dir + "/") { return true }
-                if !dir.contains("/"), entry.path.split(separator: "/").contains(Substring(dir)) { return true }
-            }
-            if pattern.hasSuffix("*"), !pattern.hasPrefix("*"), !pattern.hasSuffix("/**"),
-               entry.name.hasPrefix(String(pattern.dropLast())) { return true }
-        }
-        return false
+        IgnoreMatcher.matches(path: entry.path, name: entry.name, isDir: entry.isDir, patterns: patterns)
     }
 
     private func addIgnorePattern(for entry: RemoteEntry) {
