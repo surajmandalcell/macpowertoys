@@ -11,7 +11,7 @@ struct TransferInfoSheet: View {
 
     @Environment(RcloneJobManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedTab: InfoTab = .overview
+    @AppStorage("cloudsync.details.selectedTab") private var selectedTab: InfoTab = .overview
 
     private static let gutter: CGFloat = 20
     private static let cardPadding: CGFloat = 14
@@ -30,7 +30,7 @@ struct TransferInfoSheet: View {
         job.map { TransferDetails(job: $0) } ?? recordDetails!
     }
 
-    private enum InfoTab: Hashable {
+    private enum InfoTab: String, Hashable {
         case overview
         case files
         case settings
@@ -57,7 +57,7 @@ struct TransferInfoSheet: View {
             case .overview:
                 overviewContent
             case .files:
-                TransferFileTreeView(rootFs: details.sourceFs)
+                TransferFileTreeView(sourceFs: details.sourceFs, destinationFs: details.destinationFs)
                     .padding(.top, 12)
             case .settings:
                 settingsContent
@@ -92,7 +92,8 @@ struct TransferInfoSheet: View {
             }
             Spacer()
         }
-        .padding(.horizontal, Self.gutter)
+        .padding(.leading, Self.gutter + 10)
+        .padding(.trailing, Self.gutter)
         .padding(.bottom, 12)
     }
 
@@ -183,7 +184,7 @@ struct TransferInfoSheet: View {
                                       isOn: settingBinding(job, \.compareChecksums))
                     }
 
-                    Text("Changes apply instantly — a running transfer restarts seamlessly and already-verified files are skipped.")
+                    Text("Changes apply to queued work immediately. A running transfer restarts after a short delay; completed files are skipped, while the active file may restart if its cloud backend cannot resume it.")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }

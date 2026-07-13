@@ -20,7 +20,7 @@ enum PowerToolTarget: String, AppEnum {
 
     static let caseDisplayRepresentations: [PowerToolTarget: DisplayRepresentation] = [
         .home: "PowerToys",
-        .rsync: "RSync",
+        .rsync: "Cloud Sync",
         .claudeHistory: "Claude History",
         .logs: "Logs",
         .ruler: "Ruler",
@@ -101,8 +101,8 @@ struct OpenToolIntent: AppIntent {
 }
 
 struct OpenRSyncIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open RSync"
-    static let description = IntentDescription("Opens the RSync file transfer tool.")
+    static let title: LocalizedStringResource = "Open Cloud Sync"
+    static let description = IntentDescription("Opens the Cloud Sync file transfer tool.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -138,8 +138,8 @@ struct PowerToysShortcuts: AppShortcutsProvider {
         )
         AppShortcut(
             intent: OpenRSyncIntent(),
-            phrases: ["Open RSync in \(.applicationName)", "Start a transfer in \(.applicationName)"],
-            shortTitle: "Open RSync",
+            phrases: ["Open Cloud Sync in \(.applicationName)", "Start a transfer in \(.applicationName)"],
+            shortTitle: "Open Cloud Sync",
             systemImageName: "arrow.up.arrow.down.circle"
         )
         AppShortcut(

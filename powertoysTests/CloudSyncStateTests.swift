@@ -1,0 +1,124 @@
+import XCTest
+@testable import powertoys
+
+@MainActor
+final class CloudSyncStateTests: XCTestCase {
+    func testPriorityHasFiveOrderedStages() {
+        XCTAssertEqual(TransferPriority.allCases.map(\.rawValue), [1, 2, 3, 4, 5])
+        XCTAssertEqual(TransferPriority.normal.displayName, "Normal")
+        XCTAssertEqual(TransferPriority.urgent.displayName, "Urgent")
+    }
+
+    func testSnapshotPersistsPriorityAndExpandedState() {
+        let job = makeJob(createdAt: Date(timeIntervalSince1970: 10))
+        job.priority = .high
+        job.isExpanded = true
+
+        let restored = TransferJob(snapshot: job.snapshot)
+
+        XCTAssertEqual(restored.priority, .high)
+        XCTAssertTrue(restored.isExpanded)
+    }
+
+    func testLegacySnapshotDefaultsToNormalAndCollapsed() throws {
+        let job = makeJob(createdAt: Date(timeIntervalSince1970: 10))
+        let data = try JSONEncoder().encode(job.snapshot)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json.removeValue(forKey: "priority")
+        json.removeValue(forKey: "isExpanded")
+        let legacyData = try JSONSerialization.data(withJSONObject: json)
+
+        let snapshot = try JSONDecoder().decode(TransferJobSnapshot.self, from: legacyData)
+        let restored = TransferJob(snapshot: snapshot)
+
+        XCTAssertEqual(restored.priority, .normal)
+        XCTAssertFalse(restored.isExpanded)
+    }
+
+    func testQueuedJobsSortByPriorityThenCreationTime() {
+        let oldNormal = makeJob(createdAt: Date(timeIntervalSince1970: 1))
+        let newerUrgent = makeJob(createdAt: Date(timeIntervalSince1970: 3))
+        newerUrgent.priority = .urgent
+        let olderUrgent = makeJob(createdAt: Date(timeIntervalSince1970: 2))
+        olderUrgent.priority = .urgent
+
+        let ordered = RcloneJobManager.orderedReadyJobs([newerUrgent, oldNormal, olderUrgent])
+
+        XCTAssertEqual(ordered.map(\.id), [olderUrgent.id, newerUrgent.id, oldNormal.id])
+    }
+
+    func testInterruptedSnapshotPreservesCompletedProgressForResume() {
+        let job = makeJob(createdAt: Date(timeIntervalSince1970: 1))
+        job.state = .running
+        job.stats.bytes = 400
+        job.stats.transfers = 3
+        job.stats.totalBytes = 1_000
+        job.stats.totalTransfers = 10
+
+        let restored = TransferJob(snapshot: job.snapshot)
+
+        XCTAssertEqual(restored.state, .paused)
+        XCTAssertTrue(restored.autoResumeOnLaunch)
+        XCTAssertEqual(restored.resumeBaselineBytes, 400)
+        XCTAssertEqual(restored.resumeBaselineFiles, 3)
+        XCTAssertEqual(restored.displayBytes, 400)
+        XCTAssertEqual(restored.displayFiles, 3)
+    }
+
+    func testInterruptedSnapshotDoesNotCountAnUncommittedActiveFile() {
+        let job = makeJob(createdAt: Date(timeIntervalSince1970: 1))
+        job.state = .running
+        job.stats.bytes = 400
+        job.stats.totalBytes = 1_000
+        job.stats.transferring = [
+            FileProgress(
+                name: "large.mov",
+                size: 500,
+                bytes: 250,
+                percentage: 50,
+                speed: 100,
+                speedAvg: 100,
+                eta: 2.5
+            )
+        ]
+
+        let restored = TransferJob(snapshot: job.snapshot)
+
+        XCTAssertEqual(restored.resumeBaselineBytes, 150)
+        XCTAssertEqual(restored.displayBytes, 150)
+    }
+
+    func testFileStatusRequiresMatchingDestinationFile() {
+        let source = entry(path: "folder/file.mov", size: 100)
+        let matching = entry(path: "folder/file.mov", size: 100)
+        let partial = entry(path: "folder/file.mov", size: 60)
+
+        XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: matching), .uploaded)
+        XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: partial), .pending)
+        XCTAssertEqual(TransferFileStatus.resolve(source: source, destination: nil), .pending)
+    }
+
+    private func makeJob(createdAt: Date) -> TransferJob {
+        TransferJob(
+            operation: .copy,
+            sourceFs: "/source",
+            destinationFs: "remote:backup",
+            sourceDisplay: "source",
+            destinationDisplay: "backup",
+            excludePatterns: [],
+            maxRetries: 3,
+            createdAt: createdAt
+        )
+    }
+
+    private func entry(path: String, size: Int64) -> RemoteEntry {
+        RemoteEntry(
+            path: path,
+            name: (path as NSString).lastPathComponent,
+            size: size,
+            modTime: nil,
+            isDir: false,
+            mimeType: "application/octet-stream"
+        )
+    }
+}

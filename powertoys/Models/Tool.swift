@@ -90,11 +90,11 @@ struct CCHistoryTool: Tool {
     static let shared = CCHistoryTool()
 }
 
-// MARK: - RSync Tool
+// MARK: - Cloud Sync Tool
 
 struct RcloneTool: Tool {
     let id = "rclone"
-    let name = "RSync"
+    let name = "Cloud Sync"
     let description = "Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules."
     let icon = "arrow.up.arrow.down.circle"
     let logoAsset = "CloudSyncLogo"
@@ -105,7 +105,7 @@ struct RcloneTool: Tool {
 
     let manual: [ToolManualSection] = [
         ToolManualSection(title: "Connect Google Drive", points: [
-            "Click + next to Remotes in the RSync sidebar.",
+            "Click + next to Remotes in the Cloud Sync sidebar.",
             "Pick a name and press Connect — your browser opens to sign in with Google.",
             "Approve access and the remote appears immediately. Tokens refresh automatically from then on."
         ]),

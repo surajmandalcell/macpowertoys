@@ -77,7 +77,7 @@ struct powertoysApp: App {
         .handlesExternalEvents(matching: Set(["cc-history"]))
         .restorationBehavior(.disabled)
 
-        Window("RSync", id: "rclone") {
+        Window("Cloud Sync", id: "rclone") {
             RcloneWindowView()
         }
         .modelContainer(modelContainer)
