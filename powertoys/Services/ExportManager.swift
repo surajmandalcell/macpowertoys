@@ -37,7 +37,7 @@ class ExportManager {
         NSPasteboard.general.setString(content, forType: .string)
     }
     
-    private static func formatMessages(_ messages: [CCMessage], format: ExportFormat) -> String {
+    static func formatMessages(_ messages: [CCMessage], format: ExportFormat) -> String {
         switch format {
         case .markdown:
             return formatAsMarkdown(messages)

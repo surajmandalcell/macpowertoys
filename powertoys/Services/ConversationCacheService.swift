@@ -12,7 +12,7 @@ final class ConversationCacheService {
 
     private var modelContext: ModelContext?
 
-    private init() {}
+    init() {}
 
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context

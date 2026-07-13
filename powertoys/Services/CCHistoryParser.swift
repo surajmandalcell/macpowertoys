@@ -253,7 +253,7 @@ class CCHistoryParser {
 
     /// Search file content and return matching message previews.
     nonisolated static func searchContent(at url: URL, query: String, maxMatches: Int = 3) -> [String] {
-        guard let handle = FileHandle(forReadingAtPath: url.path) else { return [] }
+        guard maxMatches > 0, let handle = FileHandle(forReadingAtPath: url.path) else { return [] }
         defer { try? handle.close() }
 
         let lowercasedQuery = query.lowercased()
@@ -281,6 +281,16 @@ class CCHistoryParser {
                     matches.append(preview)
                     if matches.count >= maxMatches { return matches }
                 }
+            }
+        }
+
+        if !buffer.isEmpty,
+           let json = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
+           let type = json["type"] as? String,
+           ["user", "assistant"].contains(type) {
+            let content = extractContent(from: json)
+            if content.lowercased().contains(lowercasedQuery) {
+                matches.append(extractMatchPreview(from: content, query: query))
             }
         }
 
