@@ -60,7 +60,7 @@ final class RcloneRCClientTests: XCTestCase {
             XCTAssertEqual(json["name"] as? String, "archive")
             XCTAssertEqual(json["type"] as? String, "drive")
             XCTAssertEqual(opt["nonInteractive"] as? Bool, true)
-            XCTAssertEqual(opt["all"] as? Bool, true)
+            XCTAssertNil(opt["all"], "the form already collects provider options; rclone should only ask post-config questions")
             return Self.response(for: request, json: [
                 "State": "*oauth-islocal,teamdrive,,",
                 "Option": [

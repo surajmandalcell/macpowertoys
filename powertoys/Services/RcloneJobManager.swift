@@ -69,8 +69,16 @@ node_modules/**
 enum RemoteAuthState: Equatable {
     case idle
     case waiting(name: String)
+    case question(name: String, prompt: RemoteConfigurationPrompt)
     case succeeded(name: String)
     case failed(String)
+}
+
+struct RemoteConfigurationPrompt: Equatable {
+    let providerName: String
+    let state: String
+    let option: RcloneProviderOption
+    let parameters: [String: String]
 }
 
 // MARK: - Job Manager
@@ -80,19 +88,18 @@ final class RcloneJobManager {
     static let shared = RcloneJobManager()
 
     private(set) var remotes: [RcloneRemote] = []
+    private(set) var providers: [RcloneProvider] = []
+    private(set) var isLoadingProviders = false
+    private(set) var providerLoadError: String?
     var jobs: [TransferJob] = []
     var filter: JobFilter = .all
     var errorBanner: String?
     var isPresentingNewTransfer = false
     var authState: RemoteAuthState = .idle
     var modelContext: ModelContext?
-    private var authJobId: Int?
     private var authGeneration = UUID()
     private var authTask: Task<Void, Never>?
-    private var authCleanupTask: Task<Void, Never>?
-    private var authNeedsDaemonRestart = false
     private var reconnectProcess: Process?
-    private var pendingAuthCleanupName: String?
 
     let daemon = RcloneDaemon()
     private var client: RcloneRCClient?
@@ -258,12 +265,14 @@ final class RcloneJobManager {
             authGeneration = UUID()
             authState = .idle
             if let client {
-                if let jobid = authJobId {
-                    try? await client.stopJob(jobid: jobid)
-                }
                 try? await client.deleteRemoteConfig(name: name)
             }
-            authJobId = nil
+        } else if case .question(let name, _) = authState {
+            authGeneration = UUID()
+            authState = .idle
+            if let client {
+                try? await client.deleteRemoteConfig(name: name)
+            }
         }
         for job in jobs where job.state.isActive && !job.state.isTerminal {
             let jobid = job.rcJobId
@@ -304,6 +313,22 @@ final class RcloneJobManager {
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         } catch {
             LogManager.shared.warning("Failed to list remotes: \(error)", source: "RcloneJobManager")
+        }
+    }
+
+    func loadProviders() async {
+        guard providers.isEmpty, !isLoadingProviders else { return }
+        guard let client else {
+            providerLoadError = "Cloud Sync engine is not running."
+            return
+        }
+        isLoadingProviders = true
+        providerLoadError = nil
+        defer { isLoadingProviders = false }
+        do {
+            providers = try await client.providers().filter { $0.name != "local" }
+        } catch {
+            providerLoadError = (error as? LocalizedError)?.errorDescription ?? "Could not load connectors."
         }
     }
 
@@ -414,8 +439,10 @@ final class RcloneJobManager {
     // MARK: Remote management
 
     var isAuthInProgress: Bool {
-        if case .waiting = authState { return true }
-        return false
+        switch authState {
+        case .waiting, .question: return true
+        default: return false
+        }
     }
 
     static func isValidRemoteName(_ name: String) -> Bool {
@@ -423,7 +450,7 @@ final class RcloneJobManager {
         return name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" || $0 == "." }
     }
 
-    func beginAddGoogleDrive(named rawName: String) {
+    func beginAddRemote(named rawName: String, provider: RcloneProvider, parameters: [String: String]) {
         let name = rawName.trimmingCharacters(in: .whitespaces)
         guard Self.isValidRemoteName(name) else {
             authState = .failed("Names can use letters, numbers, dots, dashes, and underscores.")
@@ -433,19 +460,19 @@ final class RcloneJobManager {
             authState = .failed("A remote named “\(name)” already exists.")
             return
         }
-        if authNeedsDaemonRestart && !activeJobs.isEmpty {
-            authState = .failed("A previous attempt is still winding down. Finish or cancel running transfers, then retry.")
-            return
-        }
-
         let generation = UUID()
         authGeneration = generation
         authState = .waiting(name: name)
-        LogManager.shared.info("Starting Google Drive authorization for remote '\(name)'", source: "RcloneJobManager")
+        LogManager.shared.info("Starting \(provider.displayName) authorization for remote '\(name)'", source: "RcloneJobManager")
 
         authTask?.cancel()
         authTask = Task { [weak self] in
-            await self?.runAuthFlow(name: name, generation: generation)
+            await self?.runConfiguration(
+                name: name,
+                providerName: provider.name,
+                parameters: parameters,
+                generation: generation
+            )
         }
     }
 
@@ -502,63 +529,119 @@ final class RcloneJobManager {
         }
     }
 
-    private func runAuthFlow(name: String, generation: UUID) async {
-        await authCleanupTask?.value
-        guard authGeneration == generation else { return }
-
-        if authNeedsDaemonRestart {
-            authNeedsDaemonRestart = false
-            let stale = pendingAuthCleanupName
-            pendingAuthCleanupName = nil
-            await restartDaemon()
-            if let stale, let client {
-                try? await client.deleteRemoteConfig(name: stale)
-            }
-            guard authGeneration == generation else { return }
-        }
-
+    private func runConfiguration(
+        name: String,
+        providerName: String,
+        parameters: [String: String],
+        generation: UUID
+    ) async {
         guard let client else {
-            finishAuth(generation: generation, state: .failed("RSync engine is not running."))
+            finishAuth(generation: generation, state: .failed("Cloud Sync engine is not running."))
             return
         }
 
         do {
-            let jobid = try await client.startConfigCreate(name: name, type: "drive", parameters: ["scope": "drive"])
-            guard authGeneration == generation, !Task.isCancelled else {
-                try? await client.stopJob(jobid: jobid)
-                try? await client.deleteRemoteConfig(name: name)
-                return
-            }
-            authJobId = jobid
-
-            let deadline = Date().addingTimeInterval(300)
-            while authGeneration == generation, !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(800))
-                guard authGeneration == generation, !Task.isCancelled else { return }
-
-                if Date() > deadline {
-                    await abandonAuthAttempt(name: name, generation: generation, message: "Authorization timed out. Try again.")
-                    return
-                }
-
-                guard let status = try? await client.jobStatus(jobid: jobid), status.finished else { continue }
-                guard authGeneration == generation else { return }
-                authJobId = nil
-
-                if status.success {
-                    await refreshRemotes()
-                    finishAuth(generation: generation, state: .succeeded(name: name))
-                    LogManager.shared.info("Google Drive remote '\(name)' connected", source: "RcloneJobManager")
-                } else {
-                    try? await client.deleteRemoteConfig(name: name)
-                    await refreshRemotes()
-                    finishAuth(generation: generation, state: .failed(status.error.isEmpty ? "Google Drive authorization failed." : status.error))
-                }
-                return
-            }
+            let step = try await client.beginConfiguration(name: name, type: providerName, parameters: parameters)
+            await handleConfigurationStep(
+                step,
+                name: name,
+                providerName: providerName,
+                parameters: parameters,
+                generation: generation
+            )
         } catch {
-            authJobId = nil
-            finishAuth(generation: generation, state: .failed((error as? LocalizedError)?.errorDescription ?? "Could not start Google Drive sign-in."))
+            guard authGeneration == generation, !Task.isCancelled else { return }
+            try? await client.deleteRemoteConfig(name: name)
+            finishAuth(generation: generation, state: .failed((error as? LocalizedError)?.errorDescription ?? "Could not configure this connector."))
+        }
+    }
+
+    private func handleConfigurationStep(
+        _ step: RcloneConfigurationStep,
+        name: String,
+        providerName: String,
+        parameters: [String: String],
+        generation: UUID
+    ) async {
+        guard authGeneration == generation, !Task.isCancelled else { return }
+        if step.isComplete {
+            if step.error.isEmpty {
+                await refreshRemotes()
+                finishAuth(generation: generation, state: .succeeded(name: name))
+                LogManager.shared.info("Remote '\(name)' connected", source: "RcloneJobManager")
+            } else {
+                finishAuth(generation: generation, state: .failed(step.error))
+            }
+            return
+        }
+        guard let option = step.option else {
+            finishAuth(generation: generation, state: .failed(step.error.isEmpty ? "rclone returned an incomplete configuration step." : step.error))
+            return
+        }
+
+        if option.name == "config_is_local" {
+            await continueConfiguration(
+                name: name,
+                prompt: RemoteConfigurationPrompt(
+                    providerName: providerName,
+                    state: step.state,
+                    option: option,
+                    parameters: parameters
+                ),
+                answer: "true",
+                generation: generation
+            )
+            return
+        }
+
+        authState = .question(
+            name: name,
+            prompt: RemoteConfigurationPrompt(
+                providerName: providerName,
+                state: step.state,
+                option: option,
+                parameters: parameters
+            )
+        )
+    }
+
+    func answerConfigurationPrompt(_ answer: String) {
+        guard case .question(let name, let prompt) = authState else { return }
+        let generation = authGeneration
+        authState = .waiting(name: name)
+        authTask?.cancel()
+        authTask = Task { [weak self] in
+            await self?.continueConfiguration(name: name, prompt: prompt, answer: answer, generation: generation)
+        }
+    }
+
+    private func continueConfiguration(
+        name: String,
+        prompt: RemoteConfigurationPrompt,
+        answer: String,
+        generation: UUID
+    ) async {
+        guard let client else {
+            finishAuth(generation: generation, state: .failed("Cloud Sync engine is not running."))
+            return
+        }
+        do {
+            let step = try await client.continueConfiguration(
+                name: name,
+                parameters: prompt.parameters,
+                state: prompt.state,
+                result: answer
+            )
+            await handleConfigurationStep(
+                step,
+                name: name,
+                providerName: prompt.providerName,
+                parameters: prompt.parameters,
+                generation: generation
+            )
+        } catch {
+            guard authGeneration == generation, !Task.isCancelled else { return }
+            finishAuth(generation: generation, state: .failed((error as? LocalizedError)?.errorDescription ?? "Could not continue connector setup."))
         }
     }
 
@@ -566,64 +649,37 @@ final class RcloneJobManager {
         guard authGeneration == generation else { return }
         authState = state
         if case .failed(let message) = state {
-            LogManager.shared.warning("Google Drive authorization failed: \(message)", source: "RcloneJobManager")
+            LogManager.shared.warning("Remote authorization failed: \(message)", source: "RcloneJobManager")
         }
-    }
-
-    private func abandonAuthAttempt(name: String, generation: UUID, message: String) async {
-        if let jobid = authJobId, let client {
-            try? await client.stopJob(jobid: jobid)
-        }
-        authJobId = nil
-        if let client {
-            try? await client.deleteRemoteConfig(name: name)
-        }
-        if activeJobs.isEmpty {
-            await restartDaemon()
-        } else {
-            authNeedsDaemonRestart = true
-            pendingAuthCleanupName = name
-        }
-        await refreshRemotes()
-        finishAuth(generation: generation, state: .failed(message))
     }
 
     func cancelAuth() {
         reconnectProcess?.terminate()
         reconnectProcess = nil
-        guard case .waiting(let name) = authState else {
+        let name: String
+        switch authState {
+        case .waiting(let remoteName), .question(let remoteName, _): name = remoteName
+        default:
             authGeneration = UUID()
             authState = .idle
             return
         }
-        let jobid = authJobId
-        authJobId = nil
         authGeneration = UUID()
         authTask?.cancel()
         authTask = nil
         authState = .idle
 
-        authCleanupTask = Task { [weak self] in
+        Task { [weak self] in
             guard let self else { return }
             if let client = self.client {
-                if let jobid {
-                    try? await client.stopJob(jobid: jobid)
-                }
                 try? await client.deleteRemoteConfig(name: name)
                 await self.refreshRemotes()
             }
-            if self.activeJobs.isEmpty {
-                await self.restartDaemon()
-            } else {
-                self.authNeedsDaemonRestart = true
-                self.pendingAuthCleanupName = name
-            }
-            self.authCleanupTask = nil
         }
     }
 
     func acknowledgeAuthResult() {
-        if case .waiting = authState {
+        if isAuthInProgress {
             cancelAuth()
             return
         }
@@ -933,21 +989,6 @@ final class RcloneJobManager {
 
         if !daemon.isRunning {
             recoverFromDaemonLoss()
-            return
-        }
-
-        if authNeedsDaemonRestart && activeJobs.isEmpty && !isAuthInProgress {
-            authNeedsDaemonRestart = false
-            let stale = pendingAuthCleanupName
-            pendingAuthCleanupName = nil
-            Task { [weak self] in
-                guard let self else { return }
-                await self.restartDaemon()
-                if let stale, let freshClient = self.client {
-                    try? await freshClient.deleteRemoteConfig(name: stale)
-                    await self.refreshRemotes()
-                }
-            }
             return
         }
 

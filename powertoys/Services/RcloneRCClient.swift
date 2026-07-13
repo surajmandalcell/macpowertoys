@@ -176,7 +176,9 @@ actor RcloneRCClient {
             throw RcloneRCError.decoding("missing providers")
         }
         return rawProviders.compactMap(Self.parseProvider).sorted {
-            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+            let lhs = $0.description.isEmpty ? $0.name : $0.description
+            let rhs = $1.description.isEmpty ? $1.name : $1.description
+            return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
         }
     }
 
@@ -277,7 +279,7 @@ actor RcloneRCClient {
             "name": name,
             "type": type,
             "parameters": parameters,
-            "opt": ["nonInteractive": true, "all": true]
+            "opt": ["nonInteractive": true]
         ], timeout: 360)
         return Self.parseConfigurationStep(json)
     }
