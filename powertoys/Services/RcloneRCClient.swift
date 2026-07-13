@@ -22,6 +22,51 @@ struct AboutResult: Sendable {
     let free: Int64?
 }
 
+struct RcloneRCCredentials: Sendable, Equatable {
+    let username: String
+    let password: String
+}
+
+struct RcloneOptionExample: Sendable, Equatable {
+    let value: String
+    let help: String
+}
+
+struct RcloneProviderOption: Sendable, Equatable, Identifiable {
+    let name: String
+    let fieldName: String
+    let help: String
+    let type: String
+    let defaultValue: String
+    let required: Bool
+    let isPassword: Bool
+    let advanced: Bool
+    let hidden: Bool
+    let exclusive: Bool
+    let examples: [RcloneOptionExample]
+
+    var id: String { fieldName.isEmpty ? name : fieldName }
+    var label: String { name.replacingOccurrences(of: "_", with: " ").capitalized }
+}
+
+struct RcloneProvider: Sendable, Equatable, Identifiable {
+    let name: String
+    let description: String
+    let prefix: String
+    let options: [RcloneProviderOption]
+
+    var id: String { name }
+    var displayName: String { description.isEmpty ? name : description }
+}
+
+struct RcloneConfigurationStep: Sendable, Equatable {
+    let state: String
+    let option: RcloneProviderOption?
+    let error: String
+
+    var isComplete: Bool { state.isEmpty }
+}
+
 enum RcloneRCError: LocalizedError {
     case notReachable
     case http(status: Int, message: String)
@@ -40,14 +85,22 @@ enum RcloneRCError: LocalizedError {
 
 actor RcloneRCClient {
     private let baseURL: URL
+    private let credentials: RcloneRCCredentials?
     private let session: URLSession
 
-    init(port: Int) {
+    init(port: Int, credentials: RcloneRCCredentials? = nil) {
         self.baseURL = URL(string: "http://127.0.0.1:\(port)")!
+        self.credentials = credentials
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 12
         config.waitsForConnectivity = false
         self.session = URLSession(configuration: config)
+    }
+
+    init(baseURL: URL, credentials: RcloneRCCredentials? = nil, session: URLSession) {
+        self.baseURL = baseURL
+        self.credentials = credentials
+        self.session = session
     }
 
     // MARK: Core requests
@@ -56,6 +109,10 @@ actor RcloneRCClient {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let credentials {
+            let token = Data("\(credentials.username):\(credentials.password)".utf8).base64EncodedString()
+            request.setValue("Basic \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         if let timeout {
             request.timeoutInterval = timeout
@@ -111,6 +168,16 @@ actor RcloneRCClient {
             }
         }
         return result
+    }
+
+    func providers() async throws -> [RcloneProvider] {
+        let json = try await post("config/providers", body: [:], timeout: 60)
+        guard let rawProviders = json["providers"] as? [[String: Any]] else {
+            throw RcloneRCError.decoding("missing providers")
+        }
+        return rawProviders.compactMap(Self.parseProvider).sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+        }
     }
 
     func about(fs: String) async throws -> AboutResult {
@@ -205,6 +272,16 @@ actor RcloneRCClient {
         return try? Date(raw, strategy: .iso8601.year().month().day().timeZone(separator: .omitted).time(includingFractionalSeconds: true))
     }
 
+    func beginConfiguration(name: String, type: String, parameters: [String: Any]) async throws -> RcloneConfigurationStep {
+        let json = try await post("config/create", body: [
+            "name": name,
+            "type": type,
+            "parameters": parameters,
+            "opt": ["nonInteractive": true, "all": true]
+        ], timeout: 360)
+        return Self.parseConfigurationStep(json)
+    }
+
     func startConfigCreate(name: String, type: String, parameters: [String: Any]) async throws -> Int {
         let json = try await post("config/create", body: [
             "name": name,
@@ -213,6 +290,25 @@ actor RcloneRCClient {
             "_async": true
         ])
         return try Self.parseJobId(json)
+    }
+
+    func continueConfiguration(
+        name: String,
+        parameters: [String: Any],
+        state: String,
+        result: String
+    ) async throws -> RcloneConfigurationStep {
+        let json = try await post("config/update", body: [
+            "name": name,
+            "parameters": parameters,
+            "opt": [
+                "nonInteractive": true,
+                "continue": true,
+                "state": state,
+                "result": result
+            ]
+        ], timeout: 360)
+        return Self.parseConfigurationStep(json)
     }
 
     func deleteRemoteConfig(name: String) async throws {
@@ -227,6 +323,56 @@ actor RcloneRCClient {
             return Int(jobid)
         }
         throw RcloneRCError.decoding("missing jobid")
+    }
+
+    private static func parseProvider(_ json: [String: Any]) -> RcloneProvider? {
+        guard let name = json["Name"] as? String, !name.isEmpty else { return nil }
+        let options = (json["Options"] as? [[String: Any]] ?? []).compactMap(parseOption)
+        return RcloneProvider(
+            name: name,
+            description: json["Description"] as? String ?? "",
+            prefix: json["Prefix"] as? String ?? name,
+            options: options
+        )
+    }
+
+    private static func parseOption(_ json: [String: Any]) -> RcloneProviderOption? {
+        guard let name = json["Name"] as? String, !name.isEmpty else { return nil }
+        let examples = (json["Examples"] as? [[String: Any]] ?? []).map {
+            RcloneOptionExample(value: stringValue($0["Value"]), help: $0["Help"] as? String ?? "")
+        }
+        return RcloneProviderOption(
+            name: name,
+            fieldName: json["FieldName"] as? String ?? name,
+            help: json["Help"] as? String ?? "",
+            type: json["Type"] as? String ?? "string",
+            defaultValue: stringValue(json["Default"]),
+            required: json["Required"] as? Bool ?? false,
+            isPassword: json["IsPassword"] as? Bool ?? false,
+            advanced: json["Advanced"] as? Bool ?? false,
+            hidden: (json["Hide"] as? Int ?? 0) != 0,
+            exclusive: json["Exclusive"] as? Bool ?? false,
+            examples: examples
+        )
+    }
+
+    private static func parseConfigurationStep(_ json: [String: Any]) -> RcloneConfigurationStep {
+        RcloneConfigurationStep(
+            state: json["State"] as? String ?? json["state"] as? String ?? "",
+            option: (json["Option"] as? [String: Any]).flatMap(parseOption),
+            error: json["Error"] as? String ?? json["error"] as? String ?? ""
+        )
+    }
+
+    private static func stringValue(_ value: Any?) -> String {
+        switch value {
+        case let value as String: return value
+        case let value as Bool: return value ? "true" : "false"
+        case let value as Int: return String(value)
+        case let value as Int64: return String(value)
+        case let value as Double: return String(value)
+        default: return ""
+        }
     }
 
     func jobStatus(jobid: Int) async throws -> JobStatusResult {
