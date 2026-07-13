@@ -8,6 +8,7 @@
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class CCHistoryPerformanceTests: XCTestCase {
 
     // MARK: - Session Metadata Cache Tests

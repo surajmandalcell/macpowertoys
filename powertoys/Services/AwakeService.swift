@@ -32,8 +32,11 @@ final class AwakeService {
             timedDeadline = .now.advanced(by: .seconds(max(0, expiry.timeIntervalSinceNow)))
         }
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
-            guard let action = note.object as? ToolActionID else { return }
-            Task { @MainActor in self?.handle(action, parameters: note.userInfo as? [String: String] ?? [:]) }
+            guard let self, let action = note.object as? ToolActionID else { return }
+            let parameters = note.userInfo as? [String: String] ?? [:]
+            Task { @MainActor [self, action, parameters] in
+                self.handle(action, parameters: parameters)
+            }
         }
         applyConfiguration()
     }
@@ -130,7 +133,8 @@ final class AwakeService {
         timer?.invalidate()
         guard configuration.mode != .passive || configuration.attachedProcessID != nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.tick() }
+            guard let self else { return }
+            Task { @MainActor [self] in self.tick() }
         }
         timer?.tolerance = 0.2
     }

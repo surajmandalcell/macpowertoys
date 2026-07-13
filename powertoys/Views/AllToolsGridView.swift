@@ -77,12 +77,14 @@ struct ToolCard: View {
                         .background(isOpenHovering ? Color.accentColor : Color.primary.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
+                .accessibilityIdentifier("tool.\(tool.id).open")
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
                 .onHover { isOpenHovering = $0 }
             }
         }
         .padding(12)
+        .accessibilityIdentifier("tool.\(tool.id).card")
         .frame(minHeight: 110)
         .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))

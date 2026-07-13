@@ -16,10 +16,8 @@ protocol Tool: Identifiable {
     var icon: String { get }
     var logoAsset: String { get }
     var category: ToolCategory { get }
-    var capabilities: ToolCapabilities { get }
     var manual: [ToolManualSection] { get }
     var hasTrayTab: Bool { get }
-    var isEnabled: Bool { get set }
 }
 
 extension Tool {
@@ -66,8 +64,6 @@ struct CCHistoryTool: Tool {
     let icon = "text.bubble"
     let logoAsset = "ClaudeHistoryLogo"
     let category = ToolCategory.dev
-    let capabilities: ToolCapabilities = [.hasWindow]
-    var isEnabled: Bool = true
 
     let manual: [ToolManualSection] = [
         ToolManualSection(title: "Browsing", points: [
@@ -99,15 +95,13 @@ struct RcloneTool: Tool {
     let icon = "arrow.up.arrow.down.circle"
     let logoAsset = "CloudSyncLogo"
     let category = ToolCategory.files
-    let capabilities: ToolCapabilities = [.hasWindow]
     let hasTrayTab = true
-    var isEnabled: Bool = true
 
     let manual: [ToolManualSection] = [
-        ToolManualSection(title: "Connect Google Drive", points: [
+        ToolManualSection(title: "Connect Cloud Storage", points: [
             "Click + next to Remotes in the Cloud Sync sidebar.",
-            "Pick a name and press Connect — your browser opens to sign in with Google.",
-            "Approve access and the remote appears immediately. Tokens refresh automatically from then on."
+            "Choose any connector offered by your installed rclone version, enter its required settings, and press Connect.",
+            "For OAuth connectors, complete the provider's browser sign-in. rclone stores and refreshes the resulting credentials."
         ]),
         ToolManualSection(title: "Transfers", points: [
             "Press ⌘N or click New Transfer.",
@@ -142,8 +136,6 @@ struct LogsTool: Tool {
     let icon = "doc.text.magnifyingglass"
     let logoAsset = "LogsLogo"
     let category = ToolCategory.system
-    let capabilities: ToolCapabilities = [.hasWindow]
-    var isEnabled: Bool = true
 
     let manual: [ToolManualSection] = [
         ToolManualSection(title: "Reading Logs", points: [
@@ -170,8 +162,6 @@ struct RulerTool: Tool {
     let icon = "ruler"
     let logoAsset = "RulerLogo"
     let category = ToolCategory.dev
-    let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
-    var isEnabled = true
 
     let manual = [
         ToolManualSection(title: "Rulers", points: [
@@ -197,9 +187,7 @@ struct AwakeTool: Tool {
     let icon = "cup.and.saucer"
     let logoAsset = "AwakeLogo"
     let category = ToolCategory.system
-    let capabilities: ToolCapabilities = [.hasWindow, .needsBackgroundService, .needsGlobalHotkeys]
     let hasTrayTab = true
-    var isEnabled = true
 
     let manual = [
         ToolManualSection(title: "Modes", points: [
@@ -225,8 +213,6 @@ struct ColorPickerTool: Tool {
     let icon = "eyedropper"
     let logoAsset = "ColorPickerLogo"
     let category = ToolCategory.dev
-    let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
-    var isEnabled = true
 
     let manual = [
         ToolManualSection(title: "Pick and Copy", points: [
@@ -248,8 +234,6 @@ struct TextExtractorTool: Tool {
     let icon = "text.viewfinder"
     let logoAsset = "TextExtractorLogo"
     let category = ToolCategory.text
-    let capabilities: ToolCapabilities = [.hasWindow, .needsGlobalHotkeys]
-    var isEnabled = true
 
     let manual = [
         ToolManualSection(title: "Extract Text", points: [
@@ -268,6 +252,7 @@ struct ToolRegistry {
     static let allTools: [any Tool] = [
         CCHistoryTool.shared,
         RcloneTool.shared,
+        LogsTool.shared,
         RulerTool.shared,
         AwakeTool.shared,
         ColorPickerTool.shared,

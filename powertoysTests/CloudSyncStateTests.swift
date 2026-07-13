@@ -9,6 +9,15 @@ final class CloudSyncStateTests: XCTestCase {
         XCTAssertEqual(TransferPriority.urgent.displayName, "Urgent")
     }
 
+    func testRemoteNamesAcceptSafeRcloneCharactersOnly() {
+        for name in ["archive", "Drive-2", "backup_home", "s3.eu"] {
+            XCTAssertTrue(RcloneJobManager.isValidRemoteName(name), "Expected a valid remote name: \(name)")
+        }
+        for name in ["", "-archive", ".hidden", "two words", "remote:", "folder/name"] {
+            XCTAssertFalse(RcloneJobManager.isValidRemoteName(name), "Expected an invalid remote name: \(name)")
+        }
+    }
+
     func testSnapshotPersistsPriorityAndExpandedState() {
         let job = makeJob(createdAt: Date(timeIntervalSince1970: 10))
         job.priority = .high

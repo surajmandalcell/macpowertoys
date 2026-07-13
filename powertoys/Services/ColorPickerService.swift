@@ -22,11 +22,11 @@ final class ColorPickerService {
         defaultFormat = UserDefaults.standard.string(forKey: formatKey)
             .flatMap(ColorCopyFormat.init(rawValue:)) ?? .hex
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
-            guard let action = note.object as? ToolActionID else { return }
-            Task { @MainActor in
+            guard let self, let action = note.object as? ToolActionID else { return }
+            Task { @MainActor [self, action] in
                 switch action {
-                case .colorPickerPick: self?.pick()
-                case .colorPickerCopyLast: self?.copyLast()
+                case .colorPickerPick: self.pick()
+                case .colorPickerCopyLast: self.copyLast()
                 default: break
                 }
             }
@@ -36,14 +36,15 @@ final class ColorPickerService {
     func pick() {
         NSApp.activate(ignoringOtherApps: true)
         sampler.show { [weak self] color in
-            guard let color, let converted = color.usingColorSpace(.sRGB) else { return }
-            Task { @MainActor in
-                self?.add(ColorSample(
+            guard let self, let color, let converted = color.usingColorSpace(.sRGB) else { return }
+            let sample = ColorSample(
                     red: converted.redComponent,
                     green: converted.greenComponent,
                     blue: converted.blueComponent,
                     alpha: converted.alphaComponent
-                ))
+                )
+            Task { @MainActor [self, sample] in
+                self.add(sample)
             }
         }
     }

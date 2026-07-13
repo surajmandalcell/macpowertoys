@@ -36,7 +36,8 @@ final class RulerGuideController {
             return panel
         }
         timer = Timer.scheduledTimer(withTimeInterval: 1 / 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            guard let self else { return }
+            Task { @MainActor [self] in self.refresh() }
         }
         timer?.tolerance = 1 / 120
         refresh()
