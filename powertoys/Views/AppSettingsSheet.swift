@@ -14,55 +14,36 @@ enum AppTheme: String, CaseIterable, Identifiable {
 }
 
 struct AppSettingsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
+    enum SettingsTab: String, CaseIterable, Identifiable {
+        case general = "General"
+        case marketplace = "Marketplace"
+        case about = "About"
 
-    private static let sheetSize = CGSize(width: 460, height: 400)
-    private static let iconSize: CGFloat = 44
-    private static let iconCornerRadius: CGFloat = 8
-
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        var id: String { rawValue }
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            header
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedTab: SettingsTab = .general
 
+    private static let sheetSize = CGSize(width: 680, height: 560)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            tabStrip
             Divider()
 
-            Form {
-                Section {
-                    Picker("Theme", selection: $selectedTheme) {
-                        ForEach(AppTheme.allCases) { theme in
-                            Text(theme.rawValue).tag(theme.rawValue)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .onChange(of: selectedTheme) { _, newValue in
-                        applyTheme(AppTheme(rawValue: newValue) ?? .automatic)
-                    }
-                } header: {
-                    sectionHeader("Appearance")
-                }
-
-                Section {
-                    aboutRow
-
-                    LabeledContent("Developer", value: "Suraj Mandal")
-                        .font(.system(size: 13))
-
-                    LabeledContent("Contact") {
-                        Link("surajmandalcell@gmail.com", destination: URL(string: "mailto:surajmandalcell@gmail.com")!)
-                    }
-                    .font(.system(size: 13))
-                } header: {
-                    sectionHeader("About")
+            Group {
+                switch selectedTab {
+                case .general:
+                    GeneralSettingsTab()
+                case .marketplace:
+                    MarketplaceSettingsView()
+                case .about:
+                    AboutSettingsTab()
                 }
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(width: Self.sheetSize.width, height: Self.sheetSize.height)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -80,6 +61,122 @@ struct AppSettingsSheet: View {
         .padding(.vertical, 14)
     }
 
+    private var tabStrip: some View {
+        HStack(spacing: 2) {
+            ForEach(SettingsTab.allCases) { tab in
+                SettingsTabPill(
+                    title: tab.rawValue,
+                    isSelected: selectedTab == tab
+                ) {
+                    selectedTab = tab
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 10)
+    }
+}
+
+private struct SettingsTabPill: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.primary.opacity(isSelected || isHovering ? 0.06 : 0))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+    }
+}
+
+// MARK: - General
+
+private struct GeneralSettingsTab: View {
+    @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("APPEARANCE")
+                        .utilitySectionHeader()
+
+                    Picker("Theme", selection: $selectedTheme) {
+                        ForEach(AppTheme.allCases) { theme in
+                            Text(theme.rawValue).tag(theme.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .onChange(of: selectedTheme) { _, newValue in
+                        applyTheme(AppTheme(rawValue: newValue) ?? .automatic)
+                    }
+                    .utilitySectionCard()
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+            .padding(.top, 12)
+        }
+    }
+
+    private func applyTheme(_ theme: AppTheme) {
+        switch theme {
+        case .automatic: NSApp.appearance = nil
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+// MARK: - About
+
+private struct AboutSettingsTab: View {
+    private static let iconSize: CGFloat = 44
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ABOUT")
+                        .utilitySectionHeader()
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        aboutRow
+
+                        LabeledContent("Developer", value: "Suraj Mandal")
+                            .font(.system(size: 13))
+
+                        LabeledContent("Contact") {
+                            Link("surajmandalcell@gmail.com", destination: URL(string: "mailto:surajmandalcell@gmail.com")!)
+                        }
+                        .font(.system(size: 13))
+                    }
+                    .utilitySectionCard()
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+            .padding(.top, 12)
+        }
+    }
+
     private var aboutRow: some View {
         HStack(spacing: 12) {
             appIcon
@@ -94,7 +191,6 @@ struct AppSettingsSheet: View {
 
             Spacer()
         }
-        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -104,35 +200,14 @@ struct AppSettingsSheet: View {
                 .resizable()
                 .frame(width: Self.iconSize, height: Self.iconSize)
         } else {
-            RoundedRectangle(cornerRadius: Self.iconCornerRadius)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.accentColor.opacity(0.2), Color.accentColor.opacity(0.1)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(0.06))
                 .frame(width: Self.iconSize, height: Self.iconSize)
                 .overlay {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 20))
                         .foregroundStyle(Color.accentColor)
                 }
-        }
-    }
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-    }
-
-    private func applyTheme(_ theme: AppTheme) {
-        switch theme {
-        case .automatic: NSApp.appearance = nil
-        case .light: NSApp.appearance = NSAppearance(named: .aqua)
-        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
         }
     }
 }
