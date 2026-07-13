@@ -1,12 +1,14 @@
-# PowerToys for Raycast
+# MacPowerToys for Raycast
 
-This extension exposes PowerToys utilities as separate Raycast Root Search commands.
+This companion extension exposes MacPowerToys actions as separate Raycast Root Search commands.
 
 ## Local installation
 
-1. Open Raycast's **Import Extension** command.
-2. Select this `raycast` directory.
-3. Run `npm install && npm run dev` while developing.
+1. Install and open MacPowerToys.
+2. Run `npm ci && npm run build` in this directory.
+3. Open Raycast's **Import Extension** command and select this directory.
+4. Assign aliases or hotkeys to the commands you use.
 
-PowerToys must be installed with the `powertoys` URL scheme. Commands launch the app
-when needed and send a stable action identifier to its shared command router.
+Commands use the local `macpowertoys://` URL scheme. No cloud service is required by the extension.
+
+Before submitting to the Raycast Store, add the owner's Raycast account username as the manifest `author`, then run `npm run lint:store` and `npm run publish`.
