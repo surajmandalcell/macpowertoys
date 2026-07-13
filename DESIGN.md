@@ -1,7 +1,7 @@
 ---
-version: 2
+version: 3
 name: PowerToys
-description: Design language for PowerToys and its child tools (RSync, Claude History, Logs)
+description: Design language for PowerToys and its child tools
 colors:
   hover: "Color.primary.opacity(0.06)"          # the ONLY hover background
   hover-strong: "Color.primary.opacity(0.1)"    # filled buttons only
@@ -13,12 +13,12 @@ colors:
   text-subdued: "Color.primary.opacity(0.75)"
   text-on-selection: "Color.white.opacity(0.7)"
   text-preview: "Color.secondary.opacity(0.6)"
-  icon-ink: "#25262B"
-  icon-paper: "#FBFAFF"
-  icon-ruler: "#FF6B4A"
-  icon-awake: "#08A857"
-  icon-color-picker: "#6758E8"
-  icon-text-extractor: "#FFB51F"
+  icon-ink: "#23272E"
+  icon-paper: "#F7F5F0"
+  icon-ruler: "#F04E23"
+  icon-awake: "#F5B71E"
+  icon-color-picker: "#23272E"
+  icon-text-extractor: "#5A4FE0"
 typography:
   title: { size: 13, weight: medium }
   body: { size: 13, weight: regular }
@@ -140,36 +140,37 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 
 ## App and Tool Icons
 
-Icons are a colorful family of bold, friendly utility marks. Each tool gets a
-distinct saturated ground so its Dock icon is identifiable at a glance, while
-the shared geometry makes the set feel related.
+Icons follow the bold, friendly-flat language of current independent macOS
+utilities. Each tool gets one oversized metaphor, a distinct saturated ground,
+and enough personality to remain recognizable without a label.
 
 ### Construction
 
 - Work in a `512 × 512` SVG view box.
 - Use a full-canvas rounded square with `rx="112"` as the ground.
-- Keep the semantic glyph inside an 80–432 optical safe area and let it occupy
-  roughly 60–70% of the canvas.
-- Build the glyph from the fewest recognizable shapes. Prefer broad filled
-  silhouettes and 42–64pt strokes over detailed illustration.
+- Let the glyph occupy 60–72% of the tile width. Structural elements may bleed
+  through the tile edge so the subject feels large instead of sticker-like.
+- Build one literal metaphor from at most three colors and the fewest
+  recognizable shapes. Prefer broad closed silhouettes and 28–64pt bands over
+  detailed illustration or floating linework.
 - Every exposed stroke uses `stroke-linecap="round"` and
   `stroke-linejoin="round"`. Round the ends of filled shapes too.
-- Add one darker echo of the glyph 18–24pt down and right. The echo is a solid
-  darker shade of the ground, not a transparent shadow.
-- Use near-white `#FBFAFF` for foregrounds on dark grounds and ink `#25262B` on
-  light grounds. Never mix white and ink foregrounds without a contrast reason.
-- No text, hairlines, tiny cutouts, gradients, gloss, blur, or baked drop shadow.
-  macOS supplies the environmental material and shadow.
+- Create depth only with meaningful overlap, such as one object passing behind
+  another. Never duplicate and offset the glyph as a shadow.
+- Use punch-through details sparingly and only when they clearly read as a
+  physical cutout. Never use one for a catchlight or decorative control.
+- Use warm off-white `#F7F5F0` and charcoal `#23272E`, never pure white or black.
+- No decorative outline, gloss, blur, rim light, or baked drop shadow. A gradient
+  is allowed only when color itself is the metaphor, as in Color Picker.
 
 ### Tool Palette
 
-| Tool | Ground | Echo | Foreground |
+| Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
-| PowerToys | `#1C1D22` | `#6E522E` | `#FBFAFF` |
-| Ruler | `#FF6B4A` | `#B83226` | `#FFF8F4` |
-| Awake | `#08A857` | `#08763F` | `#F7FFF9` |
-| Color Picker | `#6758E8` | `#372C9B` | `#FBFAFF` |
-| Text Extractor | `#FFB51F` | `#C56A00` | `#25262B` |
+| Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
+| Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
+| Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
+| Text Extractor | `#5A4FE0` | `#F7F5F0` | Three descending text lines |
 
 New tools must receive their own semantic hue. Do not reuse a palette merely
 because it already exists in another asset.
@@ -177,10 +178,10 @@ because it already exists in another asset.
 ### Generation Workflow
 
 1. Pick one literal object or action for the tool. Do not combine metaphors.
-2. Sketch the glyph at 512px using only rounded rectangles, broad paths, and
-   round-capped strokes.
-3. Duplicate the glyph once, move it 18–24pt down-right, and recolor it with the
-   tool's echo token. Keep the foreground copy on top.
+2. Sketch the glyph at 512px using rounded filled shapes and broad round-capped
+   bands. Make it larger than feels initially comfortable.
+3. Crop one structural element at the tile boundary or use meaningful overlap.
+   Do not create depth with an offset copy of the whole glyph.
 4. Save the source as `Assets.xcassets/<Tool>Logo.imageset/icon.svg` with a
    single universal image entry in `Contents.json`. Tool icons stay vector and
    are not manually rasterized for the asset catalog.
@@ -219,7 +220,7 @@ same metaphor because macOS controls their tint.
   `Button`; logs and content text must stay selectable.
 - **Never** put hover opacities other than 0.06 (0.1 for filled), selection
   other than 0.1/0.2, or radii outside {4, 6, 8, 12}.
-- **Never** use capsule buttons, gradients, or baked icon effects.
+- **Never** use capsule buttons, UI gradients, or baked icon effects.
 - **Never** create formatters/regex inside view bodies or loops — `static let`.
 - **Never** use `Array(x.enumerated())` in `ForEach` — stable IDs only.
 - **Never** block the main thread with file I/O — `Task.detached`, chunked reads.

@@ -1,11 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#08A857"/>
-  <path d="M144 184q0-20 20-20h206q20 0 20 20v98c0 84-50 134-123 134s-123-50-123-134z"
-        fill="#08763F" transform="translate(22 26)"/>
-  <path d="M116 158q0-20 20-20h206q20 0 20 20v98c0 84-50 134-123 134s-123-50-123-134z"
-        fill="#F7FFF9"/>
-  <path d="M362 204h28c58 0 58 88 0 88h-22" fill="none" stroke="#F7FFF9"
-        stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M184 82c-24 26 18 38-6 66m82-66c-24 26 18 38-6 66" fill="none"
-        stroke="#F7FFF9" stroke-width="22" stroke-linecap="round"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#F5B71E"/>
+    <g fill="none" stroke="#F7F5F0" stroke-width="34" stroke-linecap="round">
+      <path d="M220-24l32 116"/>
+      <path d="M286-28v116"/>
+      <path d="M352-24 320 92"/>
+    </g>
+    <path d="M58 272C112 148 390 148 454 272 390 396 112 396 58 272Z" fill="#23272E"/>
+    <path d="M90 272c52-88 270-88 332 0-62 88-280 88-332 0Z" fill="#F7F5F0"/>
+    <circle cx="286" cy="272" r="88" fill="#23272E"/>
+    <circle cx="316" cy="238" r="24" fill="#F6F1E7"/>
+  </g>
 </svg>
