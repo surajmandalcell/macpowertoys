@@ -425,7 +425,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = powertoys/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PowerToys;
+				INFOPLIST_KEY_CFBundleDisplayName = MacPowerToys;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -433,8 +433,9 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.6.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.surajmandal.powertoys;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.surajmandal.macpowertoys;
+				PRODUCT_MODULE_NAME = powertoys;
+				PRODUCT_NAME = MacPowerToys;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -460,7 +461,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = powertoys/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PowerToys;
+				INFOPLIST_KEY_CFBundleDisplayName = MacPowerToys;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -468,8 +469,9 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.6.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.surajmandal.powertoys;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.surajmandal.macpowertoys;
+				PRODUCT_MODULE_NAME = powertoys;
+				PRODUCT_NAME = MacPowerToys;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -497,7 +499,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/powertoys.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/powertoys";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacPowerToys.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MacPowerToys";
 			};
 			name = Debug;
 		};
@@ -518,7 +520,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/powertoys.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/powertoys";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacPowerToys.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MacPowerToys";
 			};
 			name = Release;
 		};

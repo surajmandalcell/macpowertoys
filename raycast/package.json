@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "powertoys-for-mac",
-  "title": "PowerToys for Mac",
-  "description": "Launch focused PowerToys utilities from Raycast.",
+  "title": "MacPowerToys",
+  "description": "Launch focused MacPowerToys utilities from Raycast.",
   "icon": "assets/extension-icon.png",
   "author": "surajmandal",
   "categories": ["Developer Tools", "System"],

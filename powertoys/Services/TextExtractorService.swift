@@ -55,7 +55,7 @@ final class TextExtractorService {
             return false
         }
         guard CGRequestScreenCaptureAccess() else {
-            state = .failed("Allow PowerToys in System Settings > Privacy & Security > Screen & System Audio Recording, then try again.")
+            state = .failed("Allow MacPowerToys in System Settings > Privacy & Security > Screen & System Audio Recording, then try again.")
             ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
             return false
         }
