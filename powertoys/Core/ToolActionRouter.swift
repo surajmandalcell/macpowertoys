@@ -78,7 +78,7 @@ final class ToolActionRouter {
     }
 
     func execute(url: URL) -> Bool {
-        guard url.scheme == "powertoys", url.host == "run" else { return false }
+        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "run" else { return false }
         let components = url.pathComponents.filter { $0 != "/" }
         guard let value = components.first,
               let action = ToolActionID(rawValue: value.replacingOccurrences(of: "/", with: "."))

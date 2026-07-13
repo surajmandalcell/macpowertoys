@@ -19,7 +19,7 @@ struct SidebarTitle: View {
 #Preview {
     ZStack(alignment: .topLeading) {
         Color.gray.opacity(0.2)
-        SidebarTitle(text: "PowerToys")
+        SidebarTitle(text: "MacPowerToys")
     }
     .frame(width: 220, height: 100)
 }

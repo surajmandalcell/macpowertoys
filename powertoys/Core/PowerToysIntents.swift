@@ -16,10 +16,10 @@ enum PowerToolTarget: String, AppEnum {
     case colorPicker
     case textExtractor
 
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "PowerToys Tool"
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "MacPowerToys Tool"
 
     static let caseDisplayRepresentations: [PowerToolTarget: DisplayRepresentation] = [
-        .home: "PowerToys",
+        .home: "MacPowerToys",
         .rsync: "Cloud Sync",
         .claudeHistory: "Claude History",
         .logs: "Logs",
@@ -45,7 +45,7 @@ enum PowerToolTarget: String, AppEnum {
 
 struct OpenRulerIntent: AppIntent {
     static let title: LocalizedStringResource = "Ruler"
-    static let description = IntentDescription("Opens the PowerToys Ruler controls.")
+    static let description = IntentDescription("Opens the MacPowerToys Ruler controls.")
     static let openAppWhenRun = true
     @MainActor func perform() async throws -> some IntentResult {
         ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
@@ -55,7 +55,7 @@ struct OpenRulerIntent: AppIntent {
 
 struct OpenAwakeIntent: AppIntent {
     static let title: LocalizedStringResource = "Awake"
-    static let description = IntentDescription("Opens PowerToys Awake controls.")
+    static let description = IntentDescription("Opens MacPowerToys Awake controls.")
     static let openAppWhenRun = true
     @MainActor func perform() async throws -> some IntentResult {
         ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeOpen))
@@ -84,8 +84,8 @@ struct ExtractTextIntent: AppIntent {
 }
 
 struct OpenToolIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open PowerToys Tool"
-    static let description = IntentDescription("Opens a PowerToys tool window.")
+    static let title: LocalizedStringResource = "Open MacPowerToys Tool"
+    static let description = IntentDescription("Opens a MacPowerToys tool window.")
     static let openAppWhenRun = true
 
     @Parameter(title: "Tool", default: .home)
@@ -93,7 +93,7 @@ struct OpenToolIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        if let url = URL(string: "powertoys://open/\(tool.deepLinkId)") {
+        if let url = URL(string: "macpowertoys://open/\(tool.deepLinkId)") {
             DeepLinkHandler.shared.handle(url: url)
         }
         return .result()
@@ -107,7 +107,7 @@ struct OpenRSyncIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        if let url = URL(string: "powertoys://open/rclone") {
+        if let url = URL(string: "macpowertoys://open/rclone") {
             DeepLinkHandler.shared.handle(url: url)
         }
         return .result()
@@ -121,7 +121,7 @@ struct OpenClaudeHistoryIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        if let url = URL(string: "powertoys://open/cc-history") {
+        if let url = URL(string: "macpowertoys://open/cc-history") {
             DeepLinkHandler.shared.handle(url: url)
         }
         return .result()

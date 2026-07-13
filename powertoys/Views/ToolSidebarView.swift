@@ -13,7 +13,7 @@ struct ToolSidebarView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             sidebarBody
-            SidebarTitle(text: "PowerToys")
+            SidebarTitle(text: "MacPowerToys")
         }
     }
 

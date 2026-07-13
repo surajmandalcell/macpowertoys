@@ -26,7 +26,7 @@ final class DeepLinkHandler {
     func handle(url: URL) {
         LogManager.shared.info("Handling deep link: \(url.absoluteString)", source: "DeepLinkHandler")
 
-        guard url.scheme == "powertoys" else {
+        guard Self.isSupportedScheme(url.scheme) else {
             LogManager.shared.warning("Invalid scheme: \(url.scheme ?? "nil")", source: "DeepLinkHandler")
             return
         }
@@ -38,6 +38,10 @@ final class DeepLinkHandler {
         }
 
         processURL(url)
+    }
+
+    nonisolated static func isSupportedScheme(_ scheme: String?) -> Bool {
+        scheme == "macpowertoys" || scheme == "powertoys"
     }
 
     func handleCLIArguments(_ args: [String] = CommandLine.arguments) {

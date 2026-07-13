@@ -85,7 +85,7 @@ struct AppSettingsSheet: View {
             appIcon
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("PowerToys")
+                Text("MacPowerToys")
                     .font(.system(size: 13, weight: .semibold))
                 Text("Version \(appVersion)")
                     .font(.system(size: 11))

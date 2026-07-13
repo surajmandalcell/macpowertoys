@@ -108,7 +108,7 @@ final class AwakeService {
         let result = IOPMAssertionCreateWithName(
             assertionType as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "PowerToys Awake is active" as CFString,
+            "MacPowerToys Awake is active" as CFString,
             &assertionID
         )
         if result != kIOReturnSuccess {

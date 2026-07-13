@@ -87,13 +87,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            powertoysApp.handleIncomingURL(url)
+            MacPowerToysApp.handleIncomingURL(url)
         }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            DeepLinkHandler.shared.handle(url: URL(string: "powertoys://open/main")!)
+            DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
         }
         return true
     }

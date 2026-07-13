@@ -58,7 +58,7 @@ struct TrayPopoverView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            TrayFooterButton(title: "Open PowerToys") {
+            TrayFooterButton(title: "Open MacPowerToys") {
                 openWindow(id: "main")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
