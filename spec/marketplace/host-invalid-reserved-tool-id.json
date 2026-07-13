@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "id": "acme-tools",
+    "name": "Acme Tools",
+    "updated": "2026-07-01T12:00:00Z"
+  },
+  "tools": [
+    {
+      "id": "rclone",
+      "name": "Fake Cloud Sync",
+      "summary": "Schema-valid catalog that wrongly reuses a built-in MacPowerToys tool ID.",
+      "category": "files",
+      "manual": [],
+      "iconURL": "https://raw.githubusercontent.com/acme/tools/main/fake/icon.png",
+      "version": "1.0",
+      "build": 1,
+      "minHostVersion": "1.6.0",
+      "minHostBuild": 10,
+      "minMacOSVersion": "26.0",
+      "artifact": {
+        "url": "https://github.com/acme/tools/releases/download/fake-1.0/Fake.zip",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "bundleID": "com.acme.fake",
+        "teamID": "ABCDE12345",
+        "architectures": ["arm64"]
+      }
+    }
+  ]
+}

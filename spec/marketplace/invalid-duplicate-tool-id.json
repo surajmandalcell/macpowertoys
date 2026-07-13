@@ -1,0 +1,50 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "id": "acme-tools",
+    "name": "Acme Tools",
+    "updated": "2026-07-01T12:00:00Z"
+  },
+  "tools": [
+    {
+      "id": "window-snapper",
+      "name": "Window Snapper",
+      "summary": "Snap windows into halves, thirds, and custom grids with keyboard shortcuts.",
+      "category": "system",
+      "manual": [],
+      "iconURL": "https://raw.githubusercontent.com/acme/tools/main/window-snapper/icon.png",
+      "version": "2.1.0",
+      "build": 34,
+      "minHostVersion": "1.6.0",
+      "minHostBuild": 10,
+      "minMacOSVersion": "26.0",
+      "artifact": {
+        "url": "https://github.com/acme/tools/releases/download/v2.1.0/WindowSnapper.zip",
+        "sha256": "9f2c1a4be0d5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+        "bundleID": "com.acme.window-snapper",
+        "teamID": "ABCDE12345",
+        "architectures": ["arm64", "x86_64"]
+      }
+    },
+    {
+      "id": "window-snapper",
+      "name": "Window Snapper Pro",
+      "summary": "A second tool wrongly reusing the same ID.",
+      "category": "system",
+      "manual": [],
+      "iconURL": "https://raw.githubusercontent.com/acme/tools/main/window-snapper-pro/icon.png",
+      "version": "1.0",
+      "build": 1,
+      "minHostVersion": "1.6.0",
+      "minHostBuild": 10,
+      "minMacOSVersion": "26.0",
+      "artifact": {
+        "url": "https://github.com/acme/tools/releases/download/pro-1.0/WindowSnapperPro.zip",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "bundleID": "com.acme.window-snapper-pro",
+        "teamID": "ABCDE12345",
+        "architectures": ["arm64"]
+      }
+    }
+  ]
+}
