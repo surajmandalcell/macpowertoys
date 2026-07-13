@@ -1,13 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#FFB51F"/>
-  <g transform="translate(18 22)" fill="none" stroke="#C56A00" stroke-width="42"
-     stroke-linecap="round" stroke-linejoin="round">
-    <path d="M100 184v-82h82M330 102h82v82M100 328v82h82M412 328v82h-82"/>
-    <path d="M176 194h160M256 194v154" stroke-width="56"/>
-  </g>
-  <g fill="none" stroke="#25262B" stroke-width="42" stroke-linecap="round"
-     stroke-linejoin="round">
-    <path d="M82 162V80h82M312 80h82v82M82 306v82h82M394 306v82h-82"/>
-    <path d="M158 172h160M238 172v154" stroke-width="56"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#5A4FE0"/>
+    <g fill="none" stroke="#F7F5F0" stroke-width="36" stroke-linecap="round"
+       stroke-linejoin="round">
+      <path d="M150 54H54v96M362 54h96v96M54 362v96h96M458 362v96h-96"/>
+    </g>
+    <rect x="124" y="166" width="264" height="44" rx="22" fill="#F7F5F0"/>
+    <rect x="124" y="234" width="145" height="44" rx="22" fill="#F7F5F0"/>
+    <rect x="124" y="302" width="106" height="44" rx="22" fill="#F7F5F0"/>
   </g>
 </svg>

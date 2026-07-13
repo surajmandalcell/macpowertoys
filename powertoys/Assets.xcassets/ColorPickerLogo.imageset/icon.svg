@@ -1,11 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#6758E8"/>
-  <path d="m328 82 98 98-72 72-24-24-148 148-80 34 34-80 148-148-24-24z"
-        fill="#372C9B" stroke="#372C9B" stroke-width="18" stroke-linecap="round"
-        stroke-linejoin="round" transform="translate(20 24)"/>
-  <path d="m308 58 98 98-72 72-24-24-148 148-80 34 34-80 148-148-24-24z"
-        fill="#FBFAFF" stroke="#FBFAFF" stroke-width="18" stroke-linecap="round"
-        stroke-linejoin="round"/>
-  <path d="m236 132 98 98" fill="none" stroke="#30286F" stroke-width="24"
-        stroke-linecap="round"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF705D"/>
+      <stop offset=".52" stop-color="#7568F2"/>
+      <stop offset="1" stop-color="#5FA8E0"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#23272E"/>
+    <circle cx="224" cy="326" r="150" fill="url(#spectrum)"/>
+    <path d="M486-34 350 142" fill="none" stroke="#F7F5F0" stroke-width="78"
+          stroke-linecap="round"/>
+    <path d="m350 142-43 59" fill="none" stroke="#F7F5F0" stroke-width="38"
+          stroke-linecap="round"/>
+  </g>
 </svg>

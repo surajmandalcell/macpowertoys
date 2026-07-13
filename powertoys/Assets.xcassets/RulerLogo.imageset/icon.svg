@@ -1,7 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#FF6B4A"/>
-  <rect x="92" y="220" width="372" height="120" rx="44" fill="#B83226"/>
-  <rect x="62" y="184" width="372" height="120" rx="44" fill="#FFF8F4"/>
-  <path d="M126 184v46m58-46v30m58-30v46m58-46v30m58-30v46"
-        fill="none" stroke="#3A211E" stroke-width="22" stroke-linecap="round"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#F04E23"/>
+    <g transform="rotate(-30 256 256)">
+      <rect x="-58" y="181" width="628" height="150" rx="62" fill="#23272E"/>
+      <g fill="#F6F1E7">
+        <rect x="20" y="181" width="24" height="82" rx="12"/>
+        <rect x="66" y="181" width="24" height="52" rx="12"/>
+        <rect x="112" y="181" width="24" height="82" rx="12"/>
+        <rect x="158" y="181" width="24" height="52" rx="12"/>
+        <rect x="204" y="181" width="24" height="82" rx="12"/>
+        <rect x="250" y="181" width="24" height="52" rx="12"/>
+        <rect x="296" y="181" width="24" height="82" rx="12"/>
+        <rect x="342" y="181" width="24" height="52" rx="12"/>
+        <rect x="388" y="181" width="24" height="82" rx="12"/>
+        <rect x="434" y="181" width="24" height="52" rx="12"/>
+        <rect x="480" y="181" width="24" height="82" rx="12"/>
+        <rect x="526" y="181" width="24" height="52" rx="12"/>
+      </g>
+    </g>
+  </g>
 </svg>
