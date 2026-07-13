@@ -284,16 +284,6 @@ actor RcloneRCClient {
         return Self.parseConfigurationStep(json)
     }
 
-    func startConfigCreate(name: String, type: String, parameters: [String: Any]) async throws -> Int {
-        let json = try await post("config/create", body: [
-            "name": name,
-            "type": type,
-            "parameters": parameters,
-            "_async": true
-        ])
-        return try Self.parseJobId(json)
-    }
-
     func continueConfiguration(
         name: String,
         parameters: [String: Any],

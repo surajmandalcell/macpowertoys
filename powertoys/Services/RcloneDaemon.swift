@@ -20,7 +20,7 @@ final class RcloneDaemon {
     private var process: Process?
     private var client: RcloneRCClient?
 
-    private static let candidatePaths = [
+    private nonisolated static let candidatePaths = [
         "/opt/homebrew/bin/rclone",
         "/usr/local/bin/rclone",
         "/usr/bin/rclone",

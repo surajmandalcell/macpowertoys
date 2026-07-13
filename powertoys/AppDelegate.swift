@@ -105,7 +105,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             await RcloneJobManager.shared.shutdown()
             await LogManager.shared.flushPending()
             await AppInitializer.shared.shutdown()
-            await BackgroundServiceManager.shared.stopAll()
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater

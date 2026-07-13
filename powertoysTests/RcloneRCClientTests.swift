@@ -1,6 +1,7 @@
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class RcloneRCClientTests: XCTestCase {
     override func tearDown() {
         URLProtocolStub.handler = nil
@@ -90,6 +91,64 @@ final class RcloneRCClientTests: XCTestCase {
         XCTAssertEqual(step.state, "*oauth-islocal,teamdrive,,")
         XCTAssertEqual(step.option?.name, "config_is_local")
         XCTAssertEqual(step.option?.examples.map(\.value), ["true", "false"])
+    }
+
+    func testConfigurationContinuationPreservesStateAndParameters() async throws {
+        URLProtocolStub.handler = { request in
+            XCTAssertEqual(request.url?.path, "/config/update")
+            let body = try XCTUnwrap(request.httpBody)
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            let opt = try XCTUnwrap(json["opt"] as? [String: Any])
+            let parameters = try XCTUnwrap(json["parameters"] as? [String: String])
+            XCTAssertEqual(json["name"] as? String, "archive")
+            XCTAssertEqual(parameters["scope"], "drive")
+            XCTAssertEqual(opt["nonInteractive"] as? Bool, true)
+            XCTAssertEqual(opt["continue"] as? Bool, true)
+            XCTAssertEqual(opt["state"] as? String, "oauth-state")
+            XCTAssertEqual(opt["result"] as? String, "true")
+            return Self.response(for: request, json: ["State": "", "Error": ""])
+        }
+
+        let step = try await makeClient().continueConfiguration(
+            name: "archive",
+            parameters: ["scope": "drive"],
+            state: "oauth-state",
+            result: "true"
+        )
+
+        XCTAssertTrue(step.isComplete)
+        XCTAssertEqual(step.error, "")
+    }
+
+    func testProviderOptionDecodesPasswordAdvancedAndNumericDefaults() async throws {
+        URLProtocolStub.handler = { request in
+            Self.response(for: request, json: [
+                "providers": [[
+                    "Name": "sftp",
+                    "Description": "SFTP",
+                    "Options": [[
+                        "Name": "pass",
+                        "FieldName": "pass",
+                        "Type": "string",
+                        "Default": 22,
+                        "Required": true,
+                        "IsPassword": true,
+                        "Advanced": true,
+                        "Hide": 0,
+                        "Exclusive": false
+                    ]]
+                ]]
+            ])
+        }
+
+        let providers = try await makeClient().providers()
+        let option = try XCTUnwrap(providers.first?.options.first)
+
+        XCTAssertEqual(option.defaultValue, "22")
+        XCTAssertTrue(option.required)
+        XCTAssertTrue(option.isPassword)
+        XCTAssertTrue(option.advanced)
+        XCTAssertFalse(option.hidden)
     }
 
     private func makeClient(credentials: RcloneRCCredentials? = nil) -> RcloneRCClient {
