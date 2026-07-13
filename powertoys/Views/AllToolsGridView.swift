@@ -7,7 +7,6 @@ import SwiftUI
 
 struct AllToolsGridView: View {
     @Binding var selectedTool: String?
-    @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
@@ -18,8 +17,7 @@ struct AllToolsGridView: View {
                         tool: tool,
                         selectAction: { selectedTool = tool.id },
                         openAction: {
-                            openWindow(id: tool.id)
-                            NSApplication.shared.activate(ignoringOtherApps: true)
+                            ToolActionRouter.shared.open(toolID: tool.id)
                             dismissWindow(id: "main")
                         }
                     )

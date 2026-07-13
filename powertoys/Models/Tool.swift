@@ -15,6 +15,7 @@ protocol Tool: Identifiable {
     var description: String { get }
     var icon: String { get }
     var logoAsset: String { get }
+    var iconFileURL: URL? { get }
     var category: ToolCategory { get }
     var manual: [ToolManualSection] { get }
     var hasTrayTab: Bool { get }
@@ -22,6 +23,7 @@ protocol Tool: Identifiable {
 
 extension Tool {
     var hasTrayTab: Bool { false }
+    var iconFileURL: URL? { nil }
 }
 
 // MARK: - Manual
@@ -246,10 +248,27 @@ struct TextExtractorTool: Tool {
     static let shared = TextExtractorTool()
 }
 
+// MARK: - Marketplace Tool
+
+struct MarketplaceTool: Tool {
+    let receipt: MarketplaceReceipt
+    let iconFileURL: URL?
+
+    var id: String { receipt.toolID }
+    var name: String { receipt.name }
+    var description: String { receipt.summary }
+    var icon: String { "shippingbox" }
+    var logoAsset: String { "" }
+    var category: ToolCategory { receipt.category.toolCategory }
+    var manual: [ToolManualSection] {
+        receipt.manual.map { ToolManualSection(title: $0.title, points: $0.points) }
+    }
+}
+
 // MARK: - Available Tools
 
 struct ToolRegistry {
-    static let allTools: [any Tool] = [
+    static let builtInTools: [any Tool] = [
         CCHistoryTool.shared,
         RcloneTool.shared,
         LogsTool.shared,
@@ -258,6 +277,10 @@ struct ToolRegistry {
         ColorPickerTool.shared,
         TextExtractorTool.shared
     ]
+
+    static var allTools: [any Tool] {
+        builtInTools + MarketplaceManager.shared.installedTools
+    }
 
     static func tools(for category: ToolCategory) -> [any Tool] {
         if category == .all {

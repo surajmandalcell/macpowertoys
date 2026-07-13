@@ -343,6 +343,17 @@ final class MarketplaceManagerTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: receiptFile.path))
     }
 
+    func testInstalledToolsExposeMarketplaceTools() async throws {
+        let manager = try makeAcmeManager()
+        try await manager.addSource(Self.acmeURL)
+        _ = try await installFirstTool(manager)
+
+        let tools = manager.installedTools
+        XCTAssertEqual(tools.map(\.id), ["window-snapper"])
+        XCTAssertEqual(tools.first?.category, .system)
+        XCTAssertNil(tools.first?.iconFileURL)
+    }
+
     func testRejectsOversizedCatalog() async throws {
         let huge = Data(repeating: 0x20, count: MarketplaceManager.maxCatalogBytes + 1)
         let manager = makeManager(responses: [
