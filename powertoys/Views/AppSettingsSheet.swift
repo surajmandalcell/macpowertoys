@@ -316,6 +316,26 @@ private struct AboutSettingsTab: View {
                     }
                     .utilitySectionCard()
                 }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("OPEN SOURCE")
+                        .utilitySectionHeader()
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        LabeledContent("Cloud Sync engine") {
+                            Link("Powered by rclone", destination: URL(string: "https://rclone.org/")!)
+                        }
+                        .font(.system(size: 13))
+
+                        Text("rclone is independent free and open-source software by Nick Craig-Wood and contributors.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+
+                        Link("rclone MIT licence", destination: URL(string: "https://rclone.org/licence/")!)
+                            .font(.system(size: 11))
+                    }
+                    .utilitySectionCard()
+                }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
