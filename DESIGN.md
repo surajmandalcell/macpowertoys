@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 name: PowerToys
 description: Design language for PowerToys and its child tools
 colors:
@@ -15,6 +15,12 @@ colors:
   text-preview: "Color.secondary.opacity(0.6)"
   icon-ink: "#23272E"
   icon-paper: "#F7F5F0"
+  icon-midnight-ground: "#1C1D22"
+  icon-midnight-echo: "#5B5D66"
+  icon-midnight-glyph: "#F4F4F5"
+  icon-porcelain-ground: "#E7E7EA"
+  icon-porcelain-echo: "#A6A8AF"
+  icon-porcelain-glyph: "#25262B"
   icon-ruler: "#F04E23"
   icon-awake: "#F5B71E"
   icon-color-picker: "#23272E"
@@ -141,8 +147,53 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 ## App and Tool Icons
 
 Icons follow the bold, friendly-flat language of current independent macOS
-utilities. Each tool gets one oversized metaphor, a distinct saturated ground,
-and enough personality to remain recognizable without a label.
+utilities. Each tool gets one oversized metaphor and enough personality to
+remain recognizable without a label. The family has three approved treatments:
+the tool's **Chosen Color** identity plus the neutral **Midnight** and
+**Porcelain** appearance families.
+
+### Appearance Strategy
+
+The neutral appearance rule is intentionally inverted against the surrounding
+desktop for stronger Dock separation:
+
+- **Light macOS appearance uses Midnight.** The dark tile remains clearly bounded
+  against a light desktop and light launcher surfaces.
+- **Dark macOS appearance uses Porcelain.** The light tile remains clearly bounded
+  against a dark desktop and dark launcher surfaces.
+- A tool may explicitly keep its Chosen Color identity in one or both
+  appearances. These exceptions are product decisions, not automatic palette
+  substitutions.
+- Appearance changes are implemented through asset-catalog luminosity variants.
+  SwiftUI and AppKit always request the same named image. Do not add per-view or
+  per-window theme branches.
+
+#### Neutral Palette
+
+| Family | Ground | Echo | Primary glyph | Dark detail |
+|---|---|---|---|---|
+| Midnight | `#1C1D22` | `#5B5D66` | `#F4F4F5` | `#25262B` |
+| Porcelain | `#E7E7EA` | `#A6A8AF` | `#25262B` | `#F4F4F5` |
+
+Use these exact neutral shades. They are not aliases of the warmer Chosen Color
+ink `#23272E` and paper `#F7F5F0`. Mixing the two neutral families within one
+variant weakens the deliberate temperature and contrast difference.
+
+#### Tool Appearance Matrix
+
+| Tool | Light appearance | Dark appearance | Decision |
+|---|---|---|---|
+| Cloud Sync | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
+| Claude History | Midnight | Chosen Color | Preserve the terracotta message echo in dark mode |
+| Logs | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
+| Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
+| Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
+| Color Picker | Chosen Color | Chosen Color | Colored samples are semantic and fixed |
+| Text Extractor | Chosen Color | Chosen Color | Yellow OCR lens identity is fixed |
+
+The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
+with a `luminosity: dark` appearance only when the matrix calls for a different
+dark asset. Tools that use Chosen Color in both modes keep one universal SVG.
 
 ### Construction
 
@@ -150,51 +201,140 @@ and enough personality to remain recognizable without a label.
 - Use a full-canvas rounded square with `rx="112"` as the ground.
 - Let the glyph occupy 60–72% of the tile width. Structural elements may bleed
   through the tile edge so the subject feels large instead of sticker-like.
-- Build one literal metaphor from at most three colors and the fewest
-  recognizable shapes. Prefer broad closed silhouettes and 28–64pt bands over
-  detailed illustration or floating linework.
+- Build one literal metaphor from the fewest recognizable shapes. Prefer broad
+  closed silhouettes and 28–64pt bands over detailed illustration or floating
+  linework.
 - Every exposed stroke uses `stroke-linecap="round"` and
   `stroke-linejoin="round"`. Round the ends of filled shapes too.
-- Create depth only with meaningful overlap, such as one object passing behind
-  another. Never duplicate and offset the glyph as a shadow.
+- Chosen Color icons normally create depth with meaningful overlap, such as one
+  object passing behind another. Midnight and Porcelain use the approved solid
+  echo construction below.
 - Use punch-through details sparingly and only when they clearly read as a
   physical cutout. Never use one for a catchlight or decorative control.
 - Use warm off-white `#F7F5F0` and charcoal `#23272E`, never pure white or black.
-- No decorative outline, gloss, blur, rim light, or baked drop shadow. A gradient
-  is allowed only when color itself is the metaphor, as in Color Picker.
+- No decorative outline, gloss, blur, rim light, or soft drop shadow. A gradient
+  is allowed only when color itself is the metaphor or part of an approved
+  legacy Chosen Color asset.
 
-### Tool Palette
+### Solid Echo Construction
+
+Midnight and Porcelain derive their depth from one flat copy of the semantic
+glyph behind the foreground:
+
+1. Construct the complete semantic foreground silhouette first.
+2. Duplicate that silhouette once and place the copy behind the foreground.
+3. Offset the echo by exactly `18px` right and `22px` down with
+   `transform="translate(18 22)"`.
+4. Fill or stroke the complete echo with the family echo token. Neutral echoes
+   are fully opaque. They never use blur, gradients, blend modes, or multiple
+   offsets.
+5. Keep the echo's geometry, scale, rotation, line caps, and line joins identical
+   to the foreground. Only its position and color differ.
+6. The echo may be clipped by the rounded-square ground. Do not shrink the glyph
+   merely to keep the echo inside the tile.
+
+Compound glyphs must behave as one silhouette. Put all echo pieces inside one
+`<g>` with one shared fill or stroke. When a Chosen Color legacy icon uses a
+translucent semantic echo, apply `opacity` to the group, never to overlapping
+children. This prevents darker seams where parts overlap. Claude History is the
+reference: the rounded message body and bottom pointer share one terracotta
+shadow group, so the pointer never looks like a second shadow.
+
+At 32px the echo should read as a narrow lower-right depth cue, not a duplicate
+icon. If it becomes a second symbol, the foreground is too small or the offset
+has been changed.
+
+### Chosen Color Palette
 
 | Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
+| Cloud Sync | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
+| Claude History | `#1C1D22` | `#FFFFFF` at `.92` | `#D97757` message echo at `.30` |
+| Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
 | Text Extractor | `#F5B71E` | `#23272E`, `#F7F5F0` | Three descending handwritten lines |
 
-New tools must receive their own semantic hue. Do not reuse a palette merely
-because it already exists in another asset.
+New Chosen Color tools should receive their own semantic hue unless a documented
+product decision deliberately links them to an existing color. Neutral
+appearance variants always use the closed Midnight or Porcelain palette instead
+of inventing tool-specific grays.
+
+### Asset Catalog Structure
+
+An image set with different appearance assets uses this shape:
+
+```json
+{
+  "images": [
+    {
+      "filename": "icon.svg",
+      "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "icon-dark.svg",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "preserves-vector-representation": true
+  }
+}
+```
+
+- `icon.svg` is always the light-appearance result from the matrix.
+- `icon-dark.svg` is always the dark-appearance result from the matrix.
+- Both files remain vector SVGs at a `512 × 512` view box.
+- Keep `preserves-vector-representation` enabled for appearance-aware image
+  sets.
+- If both appearances use the same Chosen Color icon, keep a single universal
+  image entry. Do not duplicate an identical dark file.
+- Launcher cards and the Dock use the same named asset. Do not create a separate
+  Dock-only color treatment.
 
 ### Generation Workflow
 
 1. Pick one literal object or action for the tool. Do not combine metaphors.
-2. Sketch the glyph at 512px using rounded filled shapes and broad round-capped
-   bands. Make it larger than feels initially comfortable.
-3. Crop one structural element at the tile boundary or use meaningful overlap.
-   Do not create depth with an offset copy of the whole glyph.
-4. Save the source as `Assets.xcassets/<Tool>Logo.imageset/icon.svg` with a
-   single universal image entry in `Contents.json`. Tool icons stay vector and
-   are not manually rasterized for the asset catalog.
-5. Validate and preview from the repository root:
+2. Sketch and approve the Chosen Color glyph at 512px using rounded filled
+   shapes and broad round-capped bands. Make it larger than feels initially
+   comfortable.
+3. Look up the tool in the appearance matrix before generating neutral assets.
+   Never assume every tool receives both neutral families.
+4. For a Midnight or Porcelain result, preserve the exact semantic geometry and
+   apply only the closed palette plus the `18 × 22` solid echo. Do not redesign
+   the metaphor between appearances.
+5. Save the light result as
+   `Assets.xcassets/<Tool>Logo.imageset/icon.svg`. Add `icon-dark.svg` and the
+   luminosity appearance entry only when the dark result differs.
+6. Validate every referenced SVG and preview each appearance from the repository
+   root:
 
    ```sh
    xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg
+   xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon-dark.svg
    sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg \
-     --out /tmp/<Tool>-icon.png
+     --out /tmp/<Tool>-icon-light.png
+   sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon-dark.svg \
+     --out /tmp/<Tool>-icon-dark.png
    ```
 
-6. Inspect the preview at 512, 64, 32, and 16px. The metaphor must still read at
-   32px; at 16px it may simplify, but it must not collapse into visual noise.
+7. Inspect every active appearance at 512, 64, 32, and 16px. The metaphor must
+   still read at 32px, and the echo must remain a depth cue. At 16px the glyph
+   may simplify, but it must not collapse into visual noise.
+8. Build the app so `actool` validates `Contents.json`, both luminosity slots,
+   and vector preservation. Check the icon once on a light desktop and once on a
+   dark desktop before release.
 
 Menu bar icons are the exception: use a single-color template silhouette of the
 same metaphor because macOS controls their tint.
