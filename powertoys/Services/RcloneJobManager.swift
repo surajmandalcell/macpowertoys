@@ -277,7 +277,7 @@ final class RcloneJobManager {
         for job in jobs where job.state.isActive && !job.state.isTerminal {
             let jobid = job.rcJobId
             if job.state == .running {
-                job.resumeBaselineBytes += job.stats.bytes
+                job.resumeBaselineBytes += job.stats.completedBytes
                 job.resumeBaselineFiles += job.stats.transfers
                 job.stats.bytes = 0
                 job.stats.transfers = 0
@@ -765,7 +765,7 @@ final class RcloneJobManager {
     func pause(_ job: TransferJob) {
         guard job.canPause else { return }
         let jobid = job.rcJobId
-        job.resumeBaselineBytes += job.stats.bytes
+        job.resumeBaselineBytes += job.stats.completedBytes
         job.resumeBaselineFiles += job.stats.transfers
         job.stats.bytes = 0
         job.stats.transfers = 0
@@ -789,6 +789,19 @@ final class RcloneJobManager {
         job.nextRetryAt = nil
         persistJobsSoon()
         LogManager.shared.info("Resumed: \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+    }
+
+    func setExpanded(_ expanded: Bool, for job: TransferJob) {
+        guard job.isExpanded != expanded else { return }
+        job.isExpanded = expanded
+        persistJobsSoon()
+    }
+
+    func setPriority(_ priority: TransferPriority, for job: TransferJob) {
+        guard job.priority != priority else { return }
+        job.priority = priority
+        persistJobsSoon()
+        LogManager.shared.info("Set \(job.sourceDisplay) priority to \(priority.displayName)", source: "RcloneJobManager")
     }
 
     var isGloballyPaused = false
@@ -1031,7 +1044,7 @@ final class RcloneJobManager {
         daemonRecoveryInFlight = true
         LogManager.shared.error("rclone daemon stopped unexpectedly — restarting engine", source: "RcloneJobManager")
         for job in jobs where job.state == .running {
-            job.resumeBaselineBytes += job.stats.bytes
+            job.resumeBaselineBytes += job.stats.completedBytes
             job.resumeBaselineFiles += job.stats.transfers
             job.stats.bytes = 0
             job.stats.transfers = 0
@@ -1176,7 +1189,7 @@ final class RcloneJobManager {
         var runningCount = jobs.filter { $0.state == .running }.count
         let now = Date()
 
-        for job in jobs.reversed() {
+        for job in Self.orderedReadyJobs(jobs, at: now) {
             guard runningCount < maxConcurrent else { break }
 
             let readyRetry = job.state == .retrying && (job.nextRetryAt ?? now) <= now
@@ -1185,6 +1198,17 @@ final class RcloneJobManager {
             submit(job, client: client)
             runningCount += 1
         }
+    }
+
+    static func orderedReadyJobs(_ jobs: [TransferJob], at now: Date = Date()) -> [TransferJob] {
+        jobs
+            .filter { job in
+                job.state == .queued || (job.state == .retrying && (job.nextRetryAt ?? now) <= now)
+            }
+            .sorted {
+                if $0.priority != $1.priority { return $0.priority.rawValue > $1.priority.rawValue }
+                return $0.createdAt < $1.createdAt
+            }
     }
 
     private func submit(_ job: TransferJob, client: RcloneRCClient) {

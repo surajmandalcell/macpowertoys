@@ -11,7 +11,6 @@ struct TransferJobRow: View {
     let job: TransferJob
 
     @State private var isHovering = false
-    @State private var isExpanded = false
     @State private var showInfo = false
     @State private var isHoveringDisclosure = false
 
@@ -39,7 +38,7 @@ struct TransferJobRow: View {
                 errorStrip(message)
             }
 
-            if hasTransferringFiles || isExpanded {
+            if hasTransferringFiles || job.isExpanded {
                 perFileSection
             }
         }
@@ -191,9 +190,10 @@ struct TransferJobRow: View {
                     .monospacedDigit()
             }
 
+            priorityMenu
             controls
 
-            if hasTransferringFiles {
+            if hasTransferringFiles || job.isExpanded {
                 disclosureButton
             }
         }
@@ -227,6 +227,34 @@ struct TransferJobRow: View {
     }
 
     // MARK: Controls
+
+    private var priorityMenu: some View {
+        Menu {
+            ForEach(TransferPriority.allCases.reversed(), id: \.self) { priority in
+                Button {
+                    manager.setPriority(priority, for: job)
+                } label: {
+                    if job.priority == priority {
+                        Label(priority.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(priority.displayName)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: job.priority.icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(job.priority == .normal ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .focusEffectDisabled()
+        .help("Priority: \(job.priority.displayName). Higher priority queued transfers start first.")
+    }
 
     private var controls: some View {
         HStack(spacing: 6) {
@@ -263,12 +291,14 @@ struct TransferJobRow: View {
 
     private var disclosureButton: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.18)) { isExpanded.toggle() }
+            withAnimation(.easeInOut(duration: 0.18)) {
+                manager.setExpanded(!job.isExpanded, for: job)
+            }
         } label: {
             Image(systemName: "chevron.right")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .rotationEffect(.degrees(job.isExpanded ? 90 : 0))
                 .frame(width: 24, height: 24)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
@@ -281,7 +311,7 @@ struct TransferJobRow: View {
         .animation(.easeInOut(duration: 0.15), value: isHoveringDisclosure)
         .onHover { isHoveringDisclosure = $0 }
         .onDisappear { isHoveringDisclosure = false }
-        .help(isExpanded ? "Hide files" : "Show files")
+        .help(job.isExpanded ? "Hide files" : "Show files")
     }
 
     // MARK: Error strip
@@ -309,7 +339,7 @@ struct TransferJobRow: View {
 
     @ViewBuilder
     private var perFileSection: some View {
-        if isExpanded {
+        if job.isExpanded {
             VStack(alignment: .leading, spacing: 6) {
                 Divider()
                 if job.stats.transferring.isEmpty {

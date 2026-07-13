@@ -4,9 +4,11 @@
 //
 
 import SwiftUI
+import CryptoKit
 
 struct TransferFileTreeView: View {
-    let rootFs: String
+    let sourceFs: String
+    let destinationFs: String
 
     @Environment(RcloneJobManager.self) private var manager
     @AppStorage(RcloneDefaults.ignorePatternsKey) private var patternsText = RcloneDefaults.ignorePatterns
@@ -26,7 +28,12 @@ struct TransferFileTreeView: View {
     @State private var indexError: String?
     @State private var indexTask: Task<Void, Never>?
 
-    @State private var showPatternEditor = false
+    @AppStorage("cloudsync.files.showPatternEditor") private var showPatternEditor = false
+    @AppStorage("cloudsync.files.splitByUploadStatus") private var splitByUploadStatus = false
+    @AppStorage("cloudsync.files.hideIgnored") private var hideIgnored = false
+    @State private var destinationEntries: [String: RemoteEntry] = [:]
+    @State private var isLoadingDestination = false
+    @State private var destinationError: String?
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
 
@@ -40,6 +47,11 @@ struct TransferFileTreeView: View {
         RcloneDefaults.parsePatterns(patternsText)
     }
 
+    private var expandedStorageKey: String {
+        let digest = SHA256.hash(data: Data(sourceFs.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        return "cloudsync.files.expanded.\(digest)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             controls
@@ -47,7 +59,15 @@ struct TransferFileTreeView: View {
             content
         }
         .overlay(alignment: .bottom) { toastView }
-        .task { await loadRoots() }
+        .task {
+            restoreExpandedPaths()
+            await loadRoots()
+        }
+        .task(id: splitByUploadStatus) {
+            guard splitByUploadStatus else { return }
+            ensureIndex()
+            await loadDestinationIndex()
+        }
         .task(id: searchText) {
             guard !searchText.isEmpty else {
                 debouncedSearch = ""
@@ -59,6 +79,7 @@ struct TransferFileTreeView: View {
             ensureIndex()
         }
         .onDisappear { indexTask?.cancel() }
+        .onChange(of: expanded) { persistExpandedPaths() }
     }
 
     // MARK: Controls
@@ -68,6 +89,16 @@ struct TransferFileTreeView: View {
             SearchField(text: $searchText, placeholder: "Filter files...", isLoading: isIndexing)
 
             HStack(spacing: 6) {
+                Toggle("Split uploaded", isOn: $splitByUploadStatus)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(.system(size: 11))
+
+                Toggle("Hide ignored", isOn: $hideIgnored)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(.system(size: 11))
+
                 Spacer()
                 Text("\(currentPatterns.count) patterns active")
                     .font(.system(size: 11))
@@ -104,7 +135,9 @@ struct TransferFileTreeView: View {
 
     @ViewBuilder
     private var content: some View {
-        if !debouncedSearch.isEmpty {
+        if splitByUploadStatus {
+            splitStatusView
+        } else if !debouncedSearch.isEmpty {
             searchResults
         } else if isLoadingRoot {
             centered { ProgressView() }
@@ -136,7 +169,7 @@ struct TransferFileTreeView: View {
         let patterns = currentPatterns
         return ScrollView {
             LazyVStack(spacing: 1) {
-                ForEach(visibleRows) { row in
+                ForEach(visibleRows.filter { !hideIgnored || !isIgnored($0.entry, patterns: patterns) }) { row in
                     FileTreeRowView(
                         entry: row.entry,
                         label: row.entry.name,
@@ -217,7 +250,87 @@ struct TransferFileTreeView: View {
     }
 
     private var filteredEntries: [RemoteEntry] {
-        (allEntries ?? []).filter { $0.path.localizedCaseInsensitiveContains(debouncedSearch) }
+        let patterns = currentPatterns
+        return (allEntries ?? []).filter {
+            $0.path.localizedCaseInsensitiveContains(debouncedSearch)
+                && (!hideIgnored || !isIgnored($0, patterns: patterns))
+        }
+    }
+
+    @ViewBuilder
+    private var splitStatusView: some View {
+        if let indexError {
+            centered { Text(indexError).font(.system(size: 12)).foregroundStyle(.secondary) }
+        } else if let destinationError {
+            centered { Text(destinationError).font(.system(size: 12)).foregroundStyle(.secondary) }
+        } else if allEntries == nil || isIndexing || isLoadingDestination {
+            centered {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Comparing source and destination…")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            HStack(spacing: 0) {
+                statusColumn(title: "NOT UPLOADED", status: .pending, tint: .orange)
+                Divider()
+                statusColumn(title: "UPLOADED", status: .uploaded, tint: .green)
+            }
+        }
+    }
+
+    private func statusColumn(title: String, status: TransferFileStatus, tint: Color) -> some View {
+        let entries = statusEntries(status)
+        return VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Circle().fill(tint).frame(width: 6, height: 6)
+                Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+                Text("\(entries.count)").font(.system(size: 10)).foregroundStyle(.tertiary).monospacedDigit()
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            Divider()
+
+            if entries.isEmpty {
+                Text(status == .uploaded ? "Nothing uploaded yet" : "Everything is uploaded")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(entries) { entry in
+                            FileTreeRowView(
+                                entry: entry,
+                                label: entry.path,
+                                depth: 0,
+                                showsDisclosure: false,
+                                isExpanded: false,
+                                isLoading: false,
+                                isIgnored: isIgnored(entry, patterns: currentPatterns),
+                                onToggle: {},
+                                onIgnore: { addIgnorePattern(for: entry) }
+                            )
+                        }
+                    }
+                    .padding(8)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func statusEntries(_ status: TransferFileStatus) -> [RemoteEntry] {
+        let patterns = currentPatterns
+        return (allEntries ?? [])
+            .filter { !$0.isDir }
+            .filter { !hideIgnored || !isIgnored($0, patterns: patterns) }
+            .filter { debouncedSearch.isEmpty || $0.path.localizedCaseInsensitiveContains(debouncedSearch) }
+            .filter { TransferFileStatus.resolve(source: $0, destination: destinationEntries[$0.path]) == status }
+            .sorted { $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending }
     }
 
     private func centered(@ViewBuilder _ inner: () -> some View) -> some View {
@@ -266,7 +379,7 @@ struct TransferFileTreeView: View {
                 loadingPaths.insert(entry.path)
                 Task {
                     do {
-                        childrenCache[entry.path] = Self.sorted(try await manager.listDirectory(fs: rootFs, path: entry.path))
+                        childrenCache[entry.path] = Self.sorted(try await manager.listDirectory(fs: sourceFs, path: entry.path))
                     } catch {
                         expanded.remove(entry.path)
                         showToast("Couldn't open '\(entry.name)': \(error.localizedDescription)")
@@ -281,7 +394,7 @@ struct TransferFileTreeView: View {
         isLoadingRoot = true
         rootError = nil
         do {
-            roots = Self.sorted(try await manager.listDirectory(fs: rootFs, path: ""))
+            roots = Self.sorted(try await manager.listDirectory(fs: sourceFs, path: ""))
         } catch {
             rootError = error.localizedDescription
         }
@@ -294,7 +407,7 @@ struct TransferFileTreeView: View {
         indexError = nil
         indexTask = Task {
             do {
-                var entries = try await manager.listDirectory(fs: rootFs, path: "", recurse: true)
+                var entries = try await manager.listDirectory(fs: sourceFs, path: "", recurse: true)
                 if entries.count > 5000 {
                     indexTruncated = true
                     entries = Array(entries.prefix(5000))
@@ -307,6 +420,30 @@ struct TransferFileTreeView: View {
             isIndexing = false
             indexTask = nil
         }
+    }
+
+    private func loadDestinationIndex() async {
+        guard destinationEntries.isEmpty, !isLoadingDestination else { return }
+        isLoadingDestination = true
+        destinationError = nil
+        defer { isLoadingDestination = false }
+        do {
+            let entries = try await manager.listDirectory(fs: destinationFs, path: "", recurse: true)
+            destinationEntries = Dictionary(uniqueKeysWithValues: entries.map { ($0.path, $0) })
+        } catch {
+            destinationError = "Could not compare the destination: \(error.localizedDescription)"
+        }
+    }
+
+    private func restoreExpandedPaths() {
+        guard let data = UserDefaults.standard.data(forKey: expandedStorageKey),
+              let paths = try? JSONDecoder().decode([String].self, from: data) else { return }
+        expanded = Set(paths)
+    }
+
+    private func persistExpandedPaths() {
+        guard let data = try? JSONEncoder().encode(expanded.sorted()) else { return }
+        UserDefaults.standard.set(data, forKey: expandedStorageKey)
     }
 
     private static func sorted(_ entries: [RemoteEntry]) -> [RemoteEntry] {
