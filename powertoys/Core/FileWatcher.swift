@@ -6,15 +6,45 @@
 import Foundation
 import CoreServices
 
+enum FileChangeKind: String, Codable, Sendable, CaseIterable {
+    case created
+    case modified
+    case removed
+    case renamed
+
+    var displayName: String { rawValue.capitalized }
+
+    var icon: String {
+        switch self {
+        case .created: return "plus.circle"
+        case .modified: return "pencil.circle"
+        case .removed: return "minus.circle"
+        case .renamed: return "arrow.left.arrow.right.circle"
+        }
+    }
+
+    static func resolve(_ flags: FSEventStreamEventFlags) -> FileChangeKind {
+        if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemRemoved) != 0 { return .removed }
+        if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemRenamed) != 0 { return .renamed }
+        if flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemCreated) != 0 { return .created }
+        return .modified
+    }
+}
+
+struct FileChangeEvent: Sendable, Hashable {
+    let path: String
+    let kind: FileChangeKind
+}
+
 final class FileWatcher: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let path: String
-    private let callback: @Sendable ([String]) -> Void
+    private let callback: @Sendable ([FileChangeEvent]) -> Void
     private let latency: CFTimeInterval
     private var isRunning = false
     private let lock = NSLock()
 
-    init(path: String, latency: CFTimeInterval = 0.5, callback: @escaping @Sendable ([String]) -> Void) {
+    init(path: String, latency: CFTimeInterval = 0.5, callback: @escaping @Sendable ([FileChangeEvent]) -> Void) {
         self.path = path
         self.latency = latency
         self.callback = callback
@@ -44,14 +74,18 @@ final class FileWatcher: @unchecked Sendable {
 
         guard let stream = FSEventStreamCreate(
             nil,
-            { _, info, numEvents, eventPaths, _, _ in
+            { _, info, numEvents, eventPaths, eventFlags, _ in
                 guard let info = info else { return }
                 let watcher = Unmanaged<FileWatcher>.fromOpaque(info).takeUnretainedValue()
                 guard let paths = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
-                let changedPaths = Array(paths.prefix(numEvents))
+                var seen: Set<FileChangeEvent> = []
+                let changes = paths.prefix(numEvents).enumerated().compactMap { index, path -> FileChangeEvent? in
+                    let change = FileChangeEvent(path: path, kind: FileChangeKind.resolve(eventFlags[index]))
+                    return seen.insert(change).inserted ? change : nil
+                }
 
                 Task { @MainActor in
-                    watcher.callback(changedPaths)
+                    watcher.callback(changes)
                 }
             },
             &context,

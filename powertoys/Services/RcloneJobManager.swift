@@ -115,8 +115,12 @@ final class RcloneJobManager {
     private var loadedPersistedJobs = false
     private var persistJobsTask: Task<Void, Never>?
     private var volumeObservers: [NSObjectProtocol] = []
+    private var sourceWatchers: [UUID: FileWatcher] = [:]
+    private var continuousSyncTasks: [UUID: Task<Void, Never>] = [:]
+    private var jobsWithPendingChanges: Set<UUID> = []
 
     private let pollInterval: Duration = .milliseconds(700)
+    private let continuousSyncDelay: Duration = .seconds(30)
 
     // MARK: Settings
 
@@ -188,6 +192,7 @@ final class RcloneJobManager {
         guard !started else { return }
         started = true
         loadPersistedJobs()
+        restoreSourceWatchers()
         startVolumeWatch()
         resumeJobsForMountedVolumes()
         autoResumeInterruptedJobs()
@@ -268,6 +273,15 @@ final class RcloneJobManager {
             try? await client.deleteRemoteConfig(name: name)
         }
         remoteBeingCreated = nil
+        for watcher in sourceWatchers.values {
+            watcher.stop()
+        }
+        sourceWatchers.removeAll()
+        for task in continuousSyncTasks.values {
+            task.cancel()
+        }
+        continuousSyncTasks.removeAll()
+        await LocalChangeHistory.shared.flush()
         for job in jobs where job.state.isActive && !job.state.isTerminal {
             let jobid = job.rcJobId
             if job.state == .running {
@@ -746,18 +760,138 @@ final class RcloneJobManager {
         job.sourceVolumeFingerprint = VolumeIdentity.fingerprint(forPath: sourceFs)
         job.destinationVolumeFingerprint = VolumeIdentity.fingerprint(forPath: destinationFs)
         jobs.insert(job, at: 0)
+        startSourceWatcher(for: job)
         persistJobsSoon()
         LogManager.shared.info("Queued \(operation.displayName): \(sourceDisplay) → \(destinationDisplay)", source: "RcloneJobManager")
         return job
     }
 
+    static func supportsContinuousSync(_ job: TransferJob) -> Bool {
+        job.kind == .directory && job.sourceFs.hasPrefix("/")
+    }
+
+    func setContinuousSync(_ enabled: Bool, for job: TransferJob) {
+        guard Self.supportsContinuousSync(job), job.continuousSync != enabled else { return }
+        job.continuousSync = enabled
+
+        if enabled {
+            startSourceWatcher(for: job)
+            if job.state == .completed, jobsWithPendingChanges.contains(job.id) {
+                scheduleContinuousSync(for: job)
+            }
+            LogManager.shared.info("Continuous \(job.operation.displayName) enabled for \(job.sourceDisplay)", source: "RcloneJobManager")
+        } else {
+            continuousSyncTasks[job.id]?.cancel()
+            continuousSyncTasks[job.id] = nil
+            if job.state.isTerminal {
+                stopSourceWatcher(for: job)
+            }
+            LogManager.shared.info("Continuous \(job.operation.displayName) disabled for \(job.sourceDisplay)", source: "RcloneJobManager")
+        }
+        persistJobsSoon()
+    }
+
+    private func restoreSourceWatchers() {
+        for job in jobs where !job.state.isTerminal || job.continuousSync {
+            startSourceWatcher(for: job)
+            if job.continuousSync, job.state == .completed {
+                jobsWithPendingChanges.insert(job.id)
+                scheduleContinuousSync(for: job)
+            }
+        }
+    }
+
+    private func startSourceWatcher(for job: TransferJob) {
+        guard Self.supportsContinuousSync(job), sourceWatchers[job.id] == nil else { return }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: job.sourceFs, isDirectory: &isDirectory), isDirectory.boolValue else { return }
+
+        let watcher = FileWatcher(path: job.sourceFs, latency: 1) { [weak self, weak job] changes in
+            guard let self, let job else { return }
+            Task { @MainActor in
+                self.handleSourceChanges(changes, for: job)
+            }
+        }
+        sourceWatchers[job.id] = watcher
+        watcher.start()
+    }
+
+    private func stopSourceWatcher(for job: TransferJob, discardPendingChanges: Bool = true) {
+        sourceWatchers.removeValue(forKey: job.id)?.stop()
+        continuousSyncTasks.removeValue(forKey: job.id)?.cancel()
+        if discardPendingChanges {
+            jobsWithPendingChanges.remove(job.id)
+        }
+    }
+
+    private func handleSourceChanges(_ changes: [FileChangeEvent], for job: TransferJob) {
+        guard jobs.contains(where: { $0.id == job.id }), !job.state.isTerminal || job.continuousSync else { return }
+        let root = URL(fileURLWithPath: job.sourceFs).standardizedFileURL.path
+        let prefix = root.hasSuffix("/") ? root : root + "/"
+        let records = changes.compactMap { change -> LocalChangeRecord? in
+            let path = URL(fileURLWithPath: change.path).standardizedFileURL.path
+            guard path.hasPrefix(prefix) else { return nil }
+            let relativePath = String(path.dropFirst(prefix.count))
+            guard !relativePath.isEmpty else { return nil }
+
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            let name = (relativePath as NSString).lastPathComponent
+            guard !IgnoreMatcher.matches(
+                path: relativePath,
+                name: name,
+                isDir: exists && isDirectory.boolValue,
+                patterns: job.excludePatterns
+            ) else { return nil }
+
+            return LocalChangeRecord(
+                jobID: job.id,
+                operation: job.operation,
+                sourceDisplay: job.sourceDisplay,
+                relativePath: relativePath,
+                kind: change.kind
+            )
+        }
+        guard !records.isEmpty else { return }
+
+        LocalChangeHistory.shared.record(records)
+        jobsWithPendingChanges.insert(job.id)
+        if job.continuousSync, job.state == .completed {
+            scheduleContinuousSync(for: job)
+        }
+    }
+
+    private func scheduleContinuousSync(for job: TransferJob) {
+        guard job.continuousSync, job.state == .completed else { return }
+        continuousSyncTasks[job.id]?.cancel()
+        continuousSyncTasks[job.id] = Task { [weak self, weak job] in
+            guard let self, let job else { return }
+            try? await Task.sleep(for: self.continuousSyncDelay)
+            guard !Task.isCancelled else { return }
+            self.continuousSyncTasks[job.id] = nil
+            self.queueContinuousSync(for: job)
+        }
+    }
+
+    private func queueContinuousSync(for job: TransferJob) {
+        guard job.continuousSync,
+              job.state == .completed,
+              jobsWithPendingChanges.remove(job.id) != nil else { return }
+
+        job.prepareForNewRun()
+        persistJobsSoon()
+        LogManager.shared.info("Queued continuous \(job.operation.displayName) for \(job.sourceDisplay)", source: "RcloneJobManager")
+    }
+
     func cancel(_ job: TransferJob) {
         guard job.canCancel else { return }
         let jobid = job.rcJobId
+        job.continuousSync = false
         job.state = .cancelled
         job.finishedAt = Date()
         job.nextRetryAt = nil
         insertRecord(for: job)
+        stopSourceWatcher(for: job)
         persistJobsSoon()
         Task {
             if let jobid, let client {
@@ -853,6 +987,9 @@ final class RcloneJobManager {
 
     private func handleVolumeUnmounted(_ volumePath: String) {
         let volumeName = (volumePath as NSString).lastPathComponent
+        for job in jobs where Self.fsUsesVolume(job.sourceFs, volumePath) {
+            stopSourceWatcher(for: job, discardPendingChanges: false)
+        }
         for job in jobs where job.canPause && Self.jobUsesVolume(job, volumePath) {
             pause(job)
             job.autoPausedVolume = volumePath
@@ -872,6 +1009,12 @@ final class RcloneJobManager {
             job.errorMessage = nil
             resume(job)
             LogManager.shared.info("Auto-resumed (drive reconnected): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+        }
+        for job in jobs where Self.jobUsesVolume(job, volumePath) && (!job.state.isTerminal || job.continuousSync) {
+            startSourceWatcher(for: job)
+            if job.continuousSync, job.state == .completed, jobsWithPendingChanges.contains(job.id) {
+                scheduleContinuousSync(for: job)
+            }
         }
     }
 
@@ -961,32 +1104,23 @@ final class RcloneJobManager {
             }
             job.excludePatterns = excludes
         }
-        job.state = .queued
-        job.attempt = 0
-        job.errorMessage = nil
-        job.stats = .empty
-        job.rcJobId = nil
-        job.startedAt = nil
-        job.finishedAt = nil
-        job.nextRetryAt = nil
-        job.expectedBytes = nil
-        job.expectedFiles = nil
-        job.resumeBaselineBytes = 0
-        job.resumeBaselineFiles = 0
-        job.attemptPlannedBytes = nil
-        job.attemptPlannedFiles = nil
-        job.networkBaselineBytes = 0
+        job.prepareForNewRun()
         job.autoResumeOnLaunch = false
+        startSourceWatcher(for: job)
         persistJobsSoon()
     }
 
     func remove(_ job: TransferJob) {
         guard job.state.isTerminal else { return }
+        stopSourceWatcher(for: job)
         jobs.removeAll { $0.id == job.id }
         persistJobsSoon()
     }
 
     func clearFinished() {
+        for job in jobs where job.state.isTerminal {
+            stopSourceWatcher(for: job)
+        }
         jobs.removeAll { $0.state.isTerminal }
         persistJobsSoon()
     }
@@ -1140,6 +1274,11 @@ final class RcloneJobManager {
             LogManager.shared.error("Failed: \(job.sourceDisplay) → \(job.destinationDisplay): \(error ?? "")", source: "RcloneJobManager")
         }
         insertRecord(for: job)
+        if success, job.continuousSync, jobsWithPendingChanges.contains(job.id) {
+            scheduleContinuousSync(for: job)
+        } else if !job.continuousSync {
+            stopSourceWatcher(for: job, discardPendingChanges: false)
+        }
         persistJobsSoon()
         Task { await client.deleteStats(group: job.statsGroup) }
     }
@@ -1152,6 +1291,15 @@ final class RcloneJobManager {
         guard let data = try? Data(contentsOf: AppDataLocation.transfersURL),
               let snapshots = try? JSONDecoder().decode([TransferJobSnapshot].self, from: data) else { return }
         jobs = snapshots.map { TransferJob(snapshot: $0) }
+    }
+
+    static func hasPersistedContinuousJobs() async -> Bool {
+        let url = AppDataLocation.transfersURL
+        return await Task.detached(priority: .utility) {
+            guard let data = try? Data(contentsOf: url),
+                  let snapshots = try? JSONDecoder().decode([TransferJobSnapshot].self, from: data) else { return false }
+            return snapshots.contains { $0.continuousSync == true }
+        }.value
     }
 
     func persistJobsSoon() {

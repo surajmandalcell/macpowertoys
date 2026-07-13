@@ -54,6 +54,23 @@ final class RcloneJobManagerLogicTests: XCTestCase {
         XCTAssertNil(RcloneJobManager.remoteName(fromFs: "relative/path"))
     }
 
+    func testContinuousSyncRequiresALocalSourceFolder() {
+        XCTAssertTrue(RcloneJobManager.supportsContinuousSync(makeJob(source: "/Volumes/NVMe")))
+        XCTAssertFalse(RcloneJobManager.supportsContinuousSync(makeJob(source: "drive:folder")))
+
+        let file = TransferJob(
+            operation: .copy,
+            kind: .file,
+            sourceFs: "/source/file.txt",
+            destinationFs: "remote:file.txt",
+            sourceDisplay: "file.txt",
+            destinationDisplay: "file.txt",
+            excludePatterns: [],
+            maxRetries: 3
+        )
+        XCTAssertFalse(RcloneJobManager.supportsContinuousSync(file))
+    }
+
     func testDerivedJobCollectionsAndAggregateSpeed() {
         let manager = RcloneJobManager()
         let running = makeJob()
