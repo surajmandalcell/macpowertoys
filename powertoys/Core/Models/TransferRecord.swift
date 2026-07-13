@@ -45,9 +45,9 @@ final class TransferRecord {
         self.startedAt = job.startedAt
         self.finishedAt = job.finishedAt
         self.bytes = job.displayBytes
-        self.totalBytes = job.stats.totalBytes
+        self.totalBytes = job.effectiveTotalBytes
         self.filesTransferred = job.displayFiles
-        self.totalFiles = job.stats.totalTransfers
+        self.totalFiles = job.effectiveTotalFiles
         self.attempts = job.attempt
         if let duration = job.duration, duration > 0 {
             self.averageSpeed = Double(job.stats.bytes) / duration

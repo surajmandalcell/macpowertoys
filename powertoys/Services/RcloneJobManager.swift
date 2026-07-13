@@ -271,10 +271,7 @@ final class RcloneJobManager {
         for job in jobs where job.state.isActive && !job.state.isTerminal {
             let jobid = job.rcJobId
             if job.state == .running {
-                job.resumeBaselineBytes += job.stats.completedBytes
-                job.resumeBaselineFiles += job.stats.transfers
-                job.stats.bytes = 0
-                job.stats.transfers = 0
+                job.commitAttemptProgress()
             }
             if job.state != .paused {
                 job.state = .paused
@@ -773,10 +770,9 @@ final class RcloneJobManager {
     func pause(_ job: TransferJob) {
         guard job.canPause else { return }
         let jobid = job.rcJobId
-        job.resumeBaselineBytes += job.stats.completedBytes
-        job.resumeBaselineFiles += job.stats.transfers
-        job.stats.bytes = 0
-        job.stats.transfers = 0
+        if job.state == .running {
+            job.commitAttemptProgress()
+        }
         job.state = .paused
         job.rcJobId = nil
         job.nextRetryAt = nil
@@ -977,6 +973,9 @@ final class RcloneJobManager {
         job.expectedFiles = nil
         job.resumeBaselineBytes = 0
         job.resumeBaselineFiles = 0
+        job.attemptPlannedBytes = nil
+        job.attemptPlannedFiles = nil
+        job.networkBaselineBytes = 0
         job.autoResumeOnLaunch = false
         persistJobsSoon()
     }
@@ -1052,10 +1051,7 @@ final class RcloneJobManager {
         daemonRecoveryInFlight = true
         LogManager.shared.error("rclone daemon stopped unexpectedly — restarting engine", source: "RcloneJobManager")
         for job in jobs where job.state == .running {
-            job.resumeBaselineBytes += job.stats.completedBytes
-            job.resumeBaselineFiles += job.stats.transfers
-            job.stats.bytes = 0
-            job.stats.transfers = 0
+            job.commitAttemptProgress()
             job.rcJobId = nil
             job.state = .queued
         }
@@ -1069,10 +1065,12 @@ final class RcloneJobManager {
     private func applyProbe(_ job: TransferJob, stats: TransferStats?, status: JobStatusResult?, client: RcloneRCClient) {
         if let stats {
             job.stats = stats
+            job.captureAttemptPlan()
             job.refreshDisplayEta()
         }
 
         guard job.rcJobId != nil, let status, status.finished else { return }
+        job.captureAttemptPlan(force: true)
 
         if status.success && job.stats.errors == 0 && !job.stats.fatalError {
             finish(job, success: true, error: nil, client: client)
@@ -1116,6 +1114,7 @@ final class RcloneJobManager {
 
         let policy = settings.retryPolicy
         if !permanent && job.attempt < job.maxRetries {
+            job.commitAttemptProgress()
             job.attempt += 1
             job.state = .retrying
             job.errorMessage = message
@@ -1134,8 +1133,8 @@ final class RcloneJobManager {
         job.errorMessage = error
         job.finishedAt = Date()
         job.nextRetryAt = nil
+        job.captureAttemptPlan(force: true)
         if success {
-            job.stats.bytes = job.stats.totalBytes
             LogManager.shared.info("Completed: \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
         } else {
             LogManager.shared.error("Failed: \(job.sourceDisplay) → \(job.destinationDisplay): \(error ?? "")", source: "RcloneJobManager")
@@ -1233,6 +1232,7 @@ final class RcloneJobManager {
         persistJobsSoon()
 
         job.state = .running
+        job.isSizing = job.kind == .directory
         job.startedAt = job.startedAt ?? Date()
         job.errorMessage = nil
         job.nextRetryAt = nil
@@ -1276,42 +1276,10 @@ final class RcloneJobManager {
                     await client.deleteStats(group: group)
                 } else {
                     job.rcJobId = jobid
-                    beginSizing(job, client: client)
                 }
             } catch {
                 let message = (error as? LocalizedError)?.errorDescription ?? "Could not start transfer."
                 handleFailure(job, message: message, client: client, permanent: Self.isPermanentSubmitError(error))
-            }
-        }
-    }
-
-    private func beginSizing(_ job: TransferJob, client: RcloneRCClient) {
-        guard job.kind == .directory, job.expectedBytes == nil, !job.isSizing else { return }
-        job.isSizing = true
-
-        Task { [weak self] in
-            defer { job.isSizing = false }
-            guard self != nil else { return }
-            do {
-                let jobid = try await client.startSizeJob(fs: job.sourceFs, excludePatterns: job.excludePatterns)
-                let deadline = Date().addingTimeInterval(600)
-                while Date() < deadline, !job.state.isTerminal {
-                    try? await Task.sleep(for: .seconds(1))
-                    guard let status = try? await client.jobStatus(jobid: jobid) else { continue }
-                    if status.finished {
-                        if status.success {
-                            job.expectedBytes = status.outputBytes
-                            job.expectedFiles = status.outputCount
-                            if let bytes = status.outputBytes {
-                                LogManager.shared.info("Sized \(job.sourceDisplay): \(RcloneFormat.bytes(bytes)) in \(status.outputCount ?? 0) files", source: "RcloneJobManager")
-                            }
-                        }
-                        return
-                    }
-                }
-                try? await client.stopJob(jobid: jobid)
-            } catch {
-                LogManager.shared.debug("Sizing failed for \(job.sourceDisplay): \(error)", source: "RcloneJobManager")
             }
         }
     }
@@ -1348,11 +1316,12 @@ final class RcloneJobManager {
         var config: [String: Any] = [
             "Transfers": transfers,
             "Checkers": checkers,
-            "LowLevelRetries": current.lowLevelRetries
+            "LowLevelRetries": current.lowLevelRetries,
+            "Retries": 1,
+            "CheckFirst": true
         ]
         if let orderBy = job.transferOrder.orderByValue {
             config["OrderBy"] = orderBy
-            config["CheckFirst"] = true
         }
         if job.updateOlderOnly {
             config["UpdateOlder"] = true
@@ -1432,55 +1401,6 @@ final class RcloneJobManager {
         }
         LogManager.shared.info("Cleanup on \(remote.name): deleted \(deleted), failed \(failed)", source: "RcloneJobManager")
         return (deleted, failed)
-    }
-
-    func recalculate(_ job: TransferJob) {
-        guard client != nil, job.kind == .directory, !job.isRecalculating else { return }
-        job.isRecalculating = true
-        Task { [weak self] in
-            defer { job.isRecalculating = false }
-            guard let self else { return }
-            do {
-                async let sourceTask = self.estimateSize(fs: job.sourceFs, excludePatterns: job.excludePatterns)
-                async let destinationTask = self.estimateSize(fs: job.destinationFs, excludePatterns: job.excludePatterns)
-                let source = try await sourceTask
-                let destination = try await destinationTask
-                let sessionBytes = job.state == .running ? job.stats.bytes : 0
-                let sessionFiles = job.state == .running ? job.stats.transfers : 0
-                job.expectedBytes = source.bytes
-                job.expectedFiles = source.files
-                job.resumeBaselineBytes = max(0, destination.bytes - sessionBytes)
-                job.resumeBaselineFiles = max(0, destination.files - sessionFiles)
-                job.refreshDisplayEta()
-                self.persistJobsSoon()
-                let remaining = max(0, source.bytes - destination.bytes)
-                LogManager.shared.info("Recalculated \(job.sourceDisplay): source \(RcloneFormat.bytes(source.bytes)) (\(source.files) files), destination \(RcloneFormat.bytes(destination.bytes)) (\(destination.files) files), \(RcloneFormat.bytes(remaining)) left to upload", source: "RcloneJobManager")
-            } catch {
-                LogManager.shared.warning("Recalculate failed for \(job.sourceDisplay): \(error)", source: "RcloneJobManager")
-            }
-        }
-    }
-
-    func estimateSize(fs: String, excludePatterns: [String]) async throws -> (bytes: Int64, files: Int) {
-        guard let client else { throw RcloneRCError.notReachable }
-        let jobid = try await client.startSizeJob(fs: fs, excludePatterns: excludePatterns)
-        let deadline = Date().addingTimeInterval(180)
-        while Date() < deadline {
-            if Task.isCancelled {
-                try? await client.stopJob(jobid: jobid)
-                throw CancellationError()
-            }
-            try? await Task.sleep(for: .milliseconds(400))
-            guard let status = try? await client.jobStatus(jobid: jobid) else { continue }
-            if status.finished {
-                guard status.success, let bytes = status.outputBytes else {
-                    throw RcloneRCError.http(status: 0, message: status.error.isEmpty ? "Could not size the source." : status.error)
-                }
-                return (bytes, status.outputCount ?? 0)
-            }
-        }
-        try? await client.stopJob(jobid: jobid)
-        throw RcloneRCError.http(status: 0, message: "Size estimate timed out.")
     }
 
     private static func isPermanentSubmitError(_ error: Error) -> Bool {

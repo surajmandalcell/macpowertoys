@@ -377,8 +377,10 @@ final class TransferJob: Identifiable {
     var autoResumeOnLaunch = false
     var resumeBaselineBytes: Int64 = 0
     var resumeBaselineFiles: Int = 0
+    var attemptPlannedBytes: Int64?
+    var attemptPlannedFiles: Int?
+    var networkBaselineBytes: Int64 = 0
     var isSizing = false
-    var isRecalculating = false
     var transferOrder: TransferOrder = .default
     var priority: TransferPriority = .normal
     var isExpanded = false
@@ -447,34 +449,63 @@ final class TransferJob: Identifiable {
     }
 
     var effectiveTotalBytes: Int64 {
-        max(stats.totalBytes, expectedBytes ?? 0)
+        expectedBytes ?? (resumeBaselineBytes + (attemptPlannedBytes ?? stats.totalBytes))
     }
 
     var effectiveTotalFiles: Int {
-        max(stats.totalTransfers, expectedFiles ?? 0)
+        expectedFiles ?? (resumeBaselineFiles + (attemptPlannedFiles ?? stats.totalTransfers))
     }
 
     var displayBytes: Int64 {
-        min(effectiveTotalBytes == 0 ? Int64.max : effectiveTotalBytes, resumeBaselineBytes + stats.bytes)
+        let plan = attemptPlannedBytes ?? stats.totalBytes
+        let remaining = max(0, stats.totalBytes - stats.bytes)
+        let completed = max(0, plan - min(plan, remaining))
+        return min(effectiveTotalBytes == 0 ? Int64.max : effectiveTotalBytes, resumeBaselineBytes + completed)
     }
 
     var displayFiles: Int {
-        resumeBaselineFiles + stats.transfers
+        resumeBaselineFiles + min(attemptPlannedFiles ?? stats.totalTransfers, stats.transfers)
+    }
+
+    var networkBytes: Int64 {
+        networkBaselineBytes + stats.bytes
     }
 
     var progressFraction: Double {
         let total = effectiveTotalBytes
         guard total > 0 else { return 0 }
-        return min(1.0, Double(resumeBaselineBytes + stats.bytes) / Double(total))
+        return min(1.0, Double(displayBytes) / Double(total))
+    }
+
+    func captureAttemptPlan(force: Bool = false) {
+        guard attemptPlannedBytes == nil, attemptPlannedFiles == nil else { return }
+        guard force || stats.bytes > 0 || stats.transfers > 0 || !stats.transferring.isEmpty else { return }
+
+        attemptPlannedBytes = stats.totalBytes
+        attemptPlannedFiles = stats.totalTransfers
+        expectedBytes = resumeBaselineBytes + stats.totalBytes
+        expectedFiles = resumeBaselineFiles + stats.totalTransfers
+        isSizing = false
+    }
+
+    func commitAttemptProgress() {
+        captureAttemptPlan(force: true)
+        let inFlightBytes = stats.transferring.reduce(0) { $0 + $1.bytes }
+        let plan = attemptPlannedBytes ?? stats.totalBytes
+        let remaining = max(0, stats.totalBytes - stats.bytes) + inFlightBytes
+        let committed = max(0, plan - min(plan, remaining))
+
+        resumeBaselineBytes += committed
+        resumeBaselineFiles += min(attemptPlannedFiles ?? stats.totalTransfers, stats.transfers)
+        networkBaselineBytes += stats.bytes
+        attemptPlannedBytes = nil
+        attemptPlannedFiles = nil
+        stats = .empty
     }
 
     func refreshDisplayEta() {
-        let raw: Double?
-        if let expected = expectedBytes, expected > stats.totalBytes, stats.speed > 0 {
-            raw = Double(expected - stats.bytes) / stats.speed
-        } else {
-            raw = stats.eta
-        }
+        let remaining = max(0, effectiveTotalBytes - displayBytes)
+        let raw = stats.speed > 0 ? Double(remaining) / stats.speed : stats.eta
         let now = Date()
         if raw == nil || displayEta == nil || now.timeIntervalSince(lastEtaRefresh) >= 3 {
             displayEta = raw
@@ -579,6 +610,9 @@ struct TransferJobSnapshot: Codable, Sendable {
     let autoResumeOnLaunch: Bool?
     let resumeBaselineBytes: Int64?
     let resumeBaselineFiles: Int?
+    let attemptPlannedBytes: Int64?
+    let attemptPlannedFiles: Int?
+    let networkBaselineBytes: Int64?
     let transferOrder: String?
     let priority: Int?
     let isExpanded: Bool?
@@ -622,6 +656,9 @@ extension TransferJob {
             autoResumeOnLaunch: autoResumeOnLaunch,
             resumeBaselineBytes: resumeBaselineBytes,
             resumeBaselineFiles: resumeBaselineFiles,
+            attemptPlannedBytes: attemptPlannedBytes,
+            attemptPlannedFiles: attemptPlannedFiles,
+            networkBaselineBytes: networkBaselineBytes,
             transferOrder: transferOrder == .default ? nil : transferOrder.rawValue,
             priority: priority == .normal ? nil : priority.rawValue,
             isExpanded: isExpanded ? true : nil,
@@ -661,6 +698,11 @@ extension TransferJob {
         autoResumeOnLaunch = snapshot.autoResumeOnLaunch ?? false
         resumeBaselineBytes = snapshot.resumeBaselineBytes ?? 0
         resumeBaselineFiles = snapshot.resumeBaselineFiles ?? 0
+        attemptPlannedBytes = snapshot.attemptPlannedBytes
+            ?? max(0, (snapshot.expectedBytes ?? snapshot.totalBytes) - resumeBaselineBytes)
+        attemptPlannedFiles = snapshot.attemptPlannedFiles
+            ?? max(0, (snapshot.expectedFiles ?? snapshot.totalTransfers) - resumeBaselineFiles)
+        networkBaselineBytes = snapshot.networkBaselineBytes ?? 0
         transferOrder = snapshot.transferOrder.flatMap(TransferOrder.init(rawValue:)) ?? .default
         priority = snapshot.priority.flatMap(TransferPriority.init(rawValue:)) ?? .normal
         isExpanded = snapshot.isExpanded ?? false
@@ -683,12 +725,15 @@ extension TransferJob {
         } else {
             state = .paused
             autoResumeOnLaunch = true
-            resumeBaselineBytes = (snapshot.resumeBaselineBytes ?? 0) + max(0, snapshot.bytes - (snapshot.inFlightBytes ?? 0))
-            resumeBaselineFiles = (snapshot.resumeBaselineFiles ?? 0) + snapshot.transfers
-            var carried = stats
-            carried.bytes = 0
-            carried.transfers = 0
-            stats = carried
+            let inFlight = snapshot.inFlightBytes ?? 0
+            let plan = attemptPlannedBytes ?? snapshot.totalBytes
+            let remaining = max(0, snapshot.totalBytes - snapshot.bytes) + inFlight
+            resumeBaselineBytes += max(0, plan - min(plan, remaining))
+            resumeBaselineFiles += min(attemptPlannedFiles ?? snapshot.totalTransfers, snapshot.transfers)
+            networkBaselineBytes += snapshot.bytes
+            attemptPlannedBytes = nil
+            attemptPlannedFiles = nil
+            stats = .empty
         }
     }
 }
