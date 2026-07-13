@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/surajmandalcell/powertoys/main/marketplace.schema.json",
+  "title": "MacPowerToys Marketplace Catalog",
+  "description": "A catalog of independently signed and notarized companion apps installable through MacPowerToys. Catalogs are fetched from raw GitHub URLs. Tool IDs must be unique within a catalog and must not reuse a built-in MacPowerToys tool ID (cc-history, rclone, logs, ruler, awake, color-picker, text-extractor). When the same tool ID appears in multiple saved sources, the first-added source owns it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "source", "tools"],
+  "properties": {
+    "formatVersion": {
+      "const": 1,
+      "description": "Catalog format version. MacPowerToys rejects catalogs with any other value."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "updated"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "updated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tool" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+){0,3}$"
+    },
+    "httpsURL": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
+    },
+    "manualSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "points"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "summary", "category", "manual", "iconURL",
+        "version", "build",
+        "minHostVersion", "minHostBuild", "minMacOSVersion",
+        "artifact"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "category": { "enum": ["developer", "text", "files", "system"] },
+        "manual": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/manualSection" }
+        },
+        "iconURL": { "$ref": "#/$defs/httpsURL" },
+        "version": { "$ref": "#/$defs/version" },
+        "build": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Monotonic numeric revision. MacPowerToys compares builds, not version strings, to detect updates."
+        },
+        "minHostVersion": { "$ref": "#/$defs/version" },
+        "minHostBuild": { "type": "integer", "minimum": 0 },
+        "minMacOSVersion": { "$ref": "#/$defs/version" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "settingsSync": { "$ref": "#/$defs/settingsSync" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "sha256", "bundleID", "teamID", "architectures"],
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/httpsURL",
+          "description": "ZIP archive containing exactly one signed, notarized .app bundle. Normally a GitHub Release asset."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bundleID": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+        },
+        "teamID": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{10}$",
+          "description": "Apple Developer Team ID the .app must be Developer ID signed with."
+        },
+        "architectures": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["arm64", "x86_64"] }
+        }
+      }
+    },
+    "settingsSync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys"],
+      "description": "Opt-in host-managed settings contract. MacPowerToys may sync only the listed preference keys from the tool's defaults domain via iCloud.",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "formatVersion": 1,
+      "source": {
+        "id": "acme-tools",
+        "name": "Acme Tools",
+        "updated": "2026-07-01T12:00:00Z"
+      },
+      "tools": [
+        {
+          "id": "window-snapper",
+          "name": "Window Snapper",
+          "summary": "Snap windows into halves, thirds, and custom grids with keyboard shortcuts.",
+          "category": "system",
+          "manual": [
+            {
+              "title": "Snapping",
+              "points": ["Drag a window to a screen edge to snap it."]
+            }
+          ],
+          "iconURL": "https://raw.githubusercontent.com/acme/tools/main/window-snapper/icon.png",
+          "version": "2.1.0",
+          "build": 34,
+          "minHostVersion": "1.6.0",
+          "minHostBuild": 10,
+          "minMacOSVersion": "26.0",
+          "artifact": {
+            "url": "https://github.com/acme/tools/releases/download/v2.1.0/WindowSnapper.zip",
+            "sha256": "9f2c1a4be0d5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+            "bundleID": "com.acme.window-snapper",
+            "teamID": "ABCDE12345",
+            "architectures": ["arm64", "x86_64"]
+          },
+          "settingsSync": {
+            "keys": ["snapper.gridColumns", "snapper.showOverlay"]
+          }
+        }
+      ]
+    }
+  ]
+}
