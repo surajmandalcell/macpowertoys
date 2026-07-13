@@ -87,7 +87,7 @@ final class MarketplaceModelTests: XCTestCase {
     }
 
     func testRejectsDuplicateToolIDs() throws {
-        try assertThrows("invalid-duplicate-tool-id.json") {
+        try assertThrows("host-invalid-duplicate-tool-id.json") {
             XCTAssertEqual($0, .duplicateToolID("window-snapper"))
         }
     }

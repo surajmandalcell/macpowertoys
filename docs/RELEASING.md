@@ -19,3 +19,13 @@ The `Release` GitHub Actions workflow performs signing, notarization, stapling, 
 - `APP_SPECIFIC_PASSWORD`
 
 Do not publish from a dirty worktree. Do not install over a running Cloud Sync transfer.
+
+## iCloud entitlement
+
+The app now carries the `com.apple.developer.ubiquity-kvstore-identifier` entitlement for iCloud settings sync. Developer ID signing therefore needs a Developer ID provisioning profile that includes iCloud key-value storage for `com.surajmandal.macpowertoys`. Unsigned CI builds (`CODE_SIGNING_ALLOWED=NO`) are unaffected.
+
+## Marketplace release checks
+
+- Run `scripts/validate-marketplace-fixtures.py` (CI does this) after any change to `marketplace.schema.json` or `spec/marketplace/`.
+- Before release, verify a marketplace install end to end with a quarantined, signed, and notarized test archive: checksum mismatch must abort, an unsigned or wrong-team app must be rejected, and update/uninstall must preserve or remove data as documented.
+- Verify iCloud settings sync between two Macs signed into the same account: first-enable conflict prompt, propagation of the theme and source list, and that credentials, paths, and histories never appear in the key-value store.
