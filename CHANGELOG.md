@@ -6,6 +6,9 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Added
 
+- Marketplace for installing independently signed, notarized companion tools from user-added catalog sources, with a public catalog schema (`marketplace.schema.json`), checksum and Developer ID/notarization verification, atomic install with rollback, and two-tier source removal.
+- Tabbed App Settings sheet with General, Marketplace, and About tabs.
+- Optional iCloud settings sync for an explicit allowlist of preferences, marketplace source URLs, and opt-in host-managed tool settings, with a first-enable conflict prompt.
 - MacPowerToys product identity with copy-only migration from PowerToys data.
 - Cloud Sync provider discovery for the connector catalog exposed by rclone.
 - Authenticated loopback rclone control API with per-launch random credentials.

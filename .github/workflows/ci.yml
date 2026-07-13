@@ -21,6 +21,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install rclone
         run: brew install rclone
+      - name: Validate marketplace catalog schema and fixtures
+        run: |
+          python3 -m venv "$RUNNER_TEMP/schema-venv"
+          "$RUNNER_TEMP/schema-venv/bin/pip" install --quiet jsonschema
+          "$RUNNER_TEMP/schema-venv/bin/python" scripts/validate-marketplace-fixtures.py
       - name: Build and run unit tests
         run: |
           xcodebuild test \
