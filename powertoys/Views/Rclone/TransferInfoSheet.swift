@@ -48,12 +48,16 @@ struct TransferInfoSheet: View {
         return finishedAt.timeIntervalSince(startedAt)
     }
 
+    private var visibleTab: InfoTab {
+        job == nil && selectedTab == .settings ? .overview : selectedTab
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
             tabBar
             Divider()
-            switch selectedTab {
+            switch visibleTab {
             case .overview:
                 overviewContent
             case .files:
@@ -102,13 +106,13 @@ struct TransferInfoSheet: View {
             selectedTab = tab
         } label: {
             Text(title)
-                .font(.system(size: 12, weight: selectedTab == tab ? .medium : .regular))
-                .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                .font(.system(size: 12, weight: visibleTab == tab ? .medium : .regular))
+                .foregroundStyle(visibleTab == tab ? .primary : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(selectedTab == tab ? Color.primary.opacity(0.06) : .clear)
+                        .fill(visibleTab == tab ? Color.primary.opacity(0.06) : .clear)
                 )
                 .contentShape(Rectangle())
         }

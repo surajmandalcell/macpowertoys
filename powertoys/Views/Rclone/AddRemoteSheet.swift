@@ -130,7 +130,7 @@ struct AddRemoteSheet: View {
                         .font(.system(size: 12, design: .monospaced))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.06)))
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
 
                     if !visibleOptions.isEmpty {
                         fieldTitle("CONNECTION OPTIONS")
@@ -162,10 +162,11 @@ struct AddRemoteSheet: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .labelsHidden()
-            } else if !option.examples.isEmpty {
+            } else if option.usesExclusivePicker {
                 Picker(option.label, selection: valueBinding(option)) {
-                    if !option.exclusive {
-                        Text(option.defaultValue.isEmpty ? "Default" : option.defaultValue).tag(option.defaultValue)
+                    if !option.defaultValue.isEmpty,
+                       !option.examples.contains(where: { $0.value == option.defaultValue }) {
+                        Text(option.defaultValue).tag(option.defaultValue)
                     }
                     ForEach(option.examples, id: \.value) { example in
                         Text(example.help.split(separator: "\n").first.map(String.init) ?? example.value)
@@ -214,7 +215,12 @@ struct AddRemoteSheet: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if !prompt.option.examples.isEmpty {
+            if prompt.option.type == "bool" {
+                Toggle("Enabled", isOn: promptBoolBinding(prompt.option))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            } else if prompt.option.usesExclusivePicker {
                 Picker(prompt.option.label, selection: $promptAnswer) {
                     ForEach(prompt.option.examples, id: \.value) { example in
                         Text(example.help.split(separator: "\n").first.map(String.init) ?? example.value)
@@ -245,8 +251,17 @@ struct AddRemoteSheet: View {
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
-            promptAnswer = prompt.option.examples.first?.value ?? prompt.option.defaultValue
+            promptAnswer = prompt.option.defaultValue.isEmpty
+                ? (prompt.option.examples.first?.value ?? "")
+                : prompt.option.defaultValue
         }
+    }
+
+    private func promptBoolBinding(_ option: RcloneProviderOption) -> Binding<Bool> {
+        Binding(
+            get: { (promptAnswer.isEmpty ? option.defaultValue : promptAnswer).lowercased() == "true" },
+            set: { promptAnswer = $0 ? "true" : "false" }
+        )
     }
 
     private func waitingView(remoteName: String) -> some View {

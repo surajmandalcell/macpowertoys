@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import AppKit
 
 enum AppDataLocation {
     static var directory: URL {
@@ -64,9 +65,17 @@ enum AppDataLocation {
 
 enum AppIdentity {
     static let displayName = "MacPowerToys"
-    static let bundleIdentifier = "com.surajmandal.macpowertoys"
-    static let legacyBundleIdentifier = "com.surajmandal.powertoys"
+    nonisolated static let bundleIdentifier = "com.surajmandal.macpowertoys"
+    nonisolated static let legacyBundleIdentifier = "com.surajmandal.powertoys"
     private static let defaultsMigrationKey = "app.identityMigratedFromPowerToys"
+
+    static var isLegacyAppRunning: Bool {
+        hasLegacyApp(in: NSWorkspace.shared.runningApplications.map(\.bundleIdentifier))
+    }
+
+    nonisolated static func hasLegacyApp(in bundleIdentifiers: [String?]) -> Bool {
+        bundleIdentifiers.contains(legacyBundleIdentifier)
+    }
 
     static func migrateLegacyData() {
         _ = AppDataLocation.directory

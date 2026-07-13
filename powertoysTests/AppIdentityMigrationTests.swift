@@ -40,4 +40,9 @@ final class AppIdentityMigrationTests: XCTestCase {
         XCTAssertTrue(DeepLinkHandler.isSupportedScheme("powertoys"))
         XCTAssertFalse(DeepLinkHandler.isSupportedScheme("https"))
     }
+
+    func testLegacyProcessDetectionPreventsConcurrentMigration() {
+        XCTAssertTrue(AppIdentity.hasLegacyApp(in: ["com.example.other", AppIdentity.legacyBundleIdentifier]))
+        XCTAssertFalse(AppIdentity.hasLegacyApp(in: ["com.example.other", AppIdentity.bundleIdentifier]))
+    }
 }

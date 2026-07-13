@@ -47,6 +47,7 @@ struct RcloneProviderOption: Sendable, Equatable, Identifiable {
 
     var id: String { fieldName.isEmpty ? name : fieldName }
     var label: String { name.replacingOccurrences(of: "_", with: " ").capitalized }
+    var usesExclusivePicker: Bool { exclusive && !examples.isEmpty }
 }
 
 struct RcloneProvider: Sendable, Equatable, Identifiable {

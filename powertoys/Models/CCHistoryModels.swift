@@ -11,7 +11,7 @@ import Foundation
 
 struct CCProject: Identifiable, Hashable {
     let id: String           // Folder name (encoded path)
-    let path: String         // Decoded path (e.g., /Users/surajmandal/dev/...)
+    let path: String         // Decoded path (e.g., /Users/example/dev/...)
     let displayName: String  // Last path component
     var sessions: [CCSession]
     

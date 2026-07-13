@@ -27,10 +27,16 @@ struct MacPowerToysApp: App {
 
     init() {
         do {
-            AppIdentity.migrateLegacyData()
-            AppDataLocation.migrateLegacyStoreIfNeeded()
             let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
-            let config = ModelConfiguration(schema: schema, url: AppDataLocation.storeURL)
+            let legacyAppIsRunning = AppIdentity.isLegacyAppRunning
+            let config: ModelConfiguration
+            if legacyAppIsRunning {
+                config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            } else {
+                AppIdentity.migrateLegacyData()
+                AppDataLocation.migrateLegacyStoreIfNeeded()
+                config = ModelConfiguration(schema: schema, url: AppDataLocation.storeURL)
+            }
             modelContainer = try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
