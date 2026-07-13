@@ -7,7 +7,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct powertoysApp: App {
+struct MacPowerToysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
     @AppStorage("app.showTray") private var showTray = true
@@ -27,6 +27,7 @@ struct powertoysApp: App {
 
     init() {
         do {
+            AppIdentity.migrateLegacyData()
             AppDataLocation.migrateLegacyStoreIfNeeded()
             let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
             let config = ModelConfiguration(schema: schema, url: AppDataLocation.storeURL)
@@ -37,7 +38,7 @@ struct powertoysApp: App {
     }
 
     var body: some Scene {
-        Window("PowerToys", id: "main") {
+        Window("MacPowerToys", id: "main") {
             MainWindowView()
                 .task {
                     guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
@@ -141,7 +142,7 @@ struct powertoysApp: App {
     }
 }
 
-extension powertoysApp {
+extension MacPowerToysApp {
     static func handleIncomingURL(_ url: URL) {
         DeepLinkHandler.shared.handle(url: url)
     }

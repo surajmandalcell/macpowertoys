@@ -35,7 +35,7 @@ struct CCHistorySettingsPage: View {
                 } header: {
                     Text("General")
                 } footer: {
-                    Text("Opens Claude History automatically when PowerToys launches.")
+                    Text("Opens Claude History automatically when MacPowerToys launches.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
