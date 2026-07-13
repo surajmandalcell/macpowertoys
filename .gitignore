@@ -128,3 +128,8 @@ Temporary Items
 # Temporary/reference folders
 tmp/
 default.profraw
+*.profraw
+.claude/settings.local.json
+raycast/node_modules/
+raycast/dist/
+raycast/raycast-env.d.ts

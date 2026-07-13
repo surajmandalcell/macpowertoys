@@ -1,13 +1,12 @@
 # Utility Suite Verification
 
-This checklist is intentionally deferred until the active large-file upload is
-finished. Do not install or relaunch PowerToys before completing that transfer.
+Use this checklist only when no Cloud Sync transfer is active. Never install or relaunch MacPowerToys over an active transfer.
 
 ## Static checks
 
 - Build the `powertoys` Debug and Release configurations.
 - Run `powertoysTests`, including `UtilityToolsTests`.
-- In `raycast`, run `npm install`, `npm run lint`, and `npm run build`.
+- In `raycast`, run `npm ci`, `npm run lint`, and `npm run build`.
 - Confirm App Intent metadata extraction succeeds without shortcut warnings.
 
 ## Ruler
@@ -27,7 +26,7 @@ finished. Do not install or relaunch PowerToys before completing that transfer.
 ## Awake
 
 - Verify Passive, Indefinite, Timed, and Until modes with and without Keep Display On.
-- Inspect `pmset -g assertions` for the PowerToys reason and confirm every disable,
+- Inspect `pmset -g assertions` for the MacPowerToys reason and confirm every disable,
   expiration, and quit path releases it.
 - Change the wall clock during Timed mode and confirm the interval does not change.
 - Change timezone during Until mode and confirm the absolute deadline remains correct.
@@ -58,9 +57,9 @@ finished. Do not install or relaunch PowerToys before completing that transfer.
 
 ## Regression and release
 
-- Confirm PowerToys does not auto-open tool windows on normal launch.
-- Exercise Claude History, RSync, Logs, menu bar, window restoration, and app quit.
+- Confirm MacPowerToys does not auto-open tool windows on normal launch.
+- Exercise Claude History, Cloud Sync, Logs, menu bar, window restoration, and app quit.
 - Verify VoiceOver labels, keyboard navigation, light/dark mode, increased contrast,
   and reduced transparency.
-- Install the signed Release build only after the upload completes, then repeat the
+- Install the signed Release build only when no transfer is active, then repeat the
   cold-launch and single-instance command matrix.

@@ -1,30 +1,124 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "powertoys-for-mac",
+  "name": "macpowertoys",
   "title": "MacPowerToys",
   "description": "Launch focused MacPowerToys utilities from Raycast.",
-  "icon": "assets/extension-icon.png",
-  "author": "surajmandal",
-  "categories": ["Developer Tools", "System"],
+  "icon": "extension-icon.png",
+  "platforms": [
+    "macOS"
+  ],
+  "categories": [
+    "Developer Tools",
+    "System"
+  ],
   "license": "MIT",
   "commands": [
-    { "name": "ruler", "title": "Ruler", "description": "Open Ruler controls", "mode": "no-view" },
-    { "name": "new-horizontal-ruler", "title": "New Horizontal Ruler", "description": "Create a horizontal ruler", "mode": "no-view" },
-    { "name": "new-vertical-ruler", "title": "New Vertical Ruler", "description": "Create a vertical ruler", "mode": "no-view" },
-    { "name": "new-joined-ruler", "title": "New Joined Ruler", "description": "Create a joined L ruler", "mode": "no-view" },
-    { "name": "measure-region", "title": "Measure Region", "description": "Measure a screen region", "mode": "no-view" },
-    { "name": "awake", "title": "Awake", "description": "Open Awake controls", "mode": "no-view" },
-    { "name": "toggle-awake", "title": "Toggle Awake", "description": "Toggle the previous Awake state", "mode": "no-view" },
-    { "name": "awake-indefinitely", "title": "Awake Indefinitely", "description": "Keep the Mac awake indefinitely", "mode": "no-view" },
-    { "name": "awake-30-minutes", "title": "Awake for 30 Minutes", "description": "Keep the Mac awake for 30 minutes", "mode": "no-view" },
-    { "name": "awake-1-hour", "title": "Awake for 1 Hour", "description": "Keep the Mac awake for one hour", "mode": "no-view" },
-    { "name": "awake-until", "title": "Awake Until...", "description": "Open Awake to choose an expiration time", "mode": "no-view" },
-    { "name": "color-picker", "title": "Color Picker", "description": "Pick and copy an onscreen color", "mode": "no-view" },
-    { "name": "color-history", "title": "Color History", "description": "Open saved color history", "mode": "no-view" },
-    { "name": "copy-last-color", "title": "Copy Last Color", "description": "Copy the most recently picked color", "mode": "no-view" },
-    { "name": "text-extractor", "title": "Text Extractor", "description": "Select and copy onscreen text", "mode": "no-view" }
+    {
+      "name": "ruler",
+      "title": "Ruler",
+      "description": "Open Ruler controls",
+      "mode": "no-view"
+    },
+    {
+      "name": "new-horizontal-ruler",
+      "title": "New Horizontal Ruler",
+      "description": "Create a horizontal ruler",
+      "mode": "no-view"
+    },
+    {
+      "name": "new-vertical-ruler",
+      "title": "New Vertical Ruler",
+      "description": "Create a vertical ruler",
+      "mode": "no-view"
+    },
+    {
+      "name": "new-joined-ruler",
+      "title": "New Joined Ruler",
+      "description": "Create a joined L ruler",
+      "mode": "no-view"
+    },
+    {
+      "name": "measure-region",
+      "title": "Measure Region",
+      "description": "Measure a screen region",
+      "mode": "no-view"
+    },
+    {
+      "name": "awake",
+      "title": "Awake",
+      "description": "Open Awake controls",
+      "mode": "no-view"
+    },
+    {
+      "name": "toggle-awake",
+      "title": "Toggle Awake",
+      "description": "Toggle the previous Awake state",
+      "mode": "no-view"
+    },
+    {
+      "name": "awake-indefinitely",
+      "title": "Awake Indefinitely",
+      "description": "Keep the Mac awake indefinitely",
+      "mode": "no-view"
+    },
+    {
+      "name": "awake-30-minutes",
+      "title": "Awake for 30 Minutes",
+      "description": "Keep the Mac awake for 30 minutes",
+      "mode": "no-view"
+    },
+    {
+      "name": "awake-1-hour",
+      "title": "Awake for 1 Hour",
+      "description": "Keep the Mac awake for one hour",
+      "mode": "no-view"
+    },
+    {
+      "name": "awake-until",
+      "title": "Awake Until...",
+      "description": "Open Awake to choose an expiration time",
+      "mode": "no-view"
+    },
+    {
+      "name": "color-picker",
+      "title": "Color Picker",
+      "description": "Pick and copy an onscreen color",
+      "mode": "no-view"
+    },
+    {
+      "name": "color-history",
+      "title": "Color History",
+      "description": "Open saved color history",
+      "mode": "no-view"
+    },
+    {
+      "name": "copy-last-color",
+      "title": "Copy Last Color",
+      "description": "Copy the most recently picked color",
+      "mode": "no-view"
+    },
+    {
+      "name": "text-extractor",
+      "title": "Text Extractor",
+      "description": "Select and copy onscreen text",
+      "mode": "no-view"
+    }
   ],
-  "dependencies": { "@raycast/api": "^1.102.0" },
-  "devDependencies": { "@raycast/eslint-config": "^2.0.4", "@types/node": "22.15.3", "eslint": "^9.22.0", "prettier": "^3.5.3", "typescript": "^5.8.3" },
-  "scripts": { "build": "ray build -e dist", "dev": "ray develop", "lint": "ray lint", "publish": "npx @raycast/api@latest publish" }
+  "dependencies": {
+    "@raycast/api": "^1.102.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "22.15.3",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "eslint . && prettier --check .",
+    "lint:store": "ray lint",
+    "publish": "npx @raycast/api@latest publish"
+  }
 }
