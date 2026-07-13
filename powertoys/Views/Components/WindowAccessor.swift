@@ -7,17 +7,40 @@ import SwiftUI
 import AppKit
 
 struct WindowAccessor: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        WindowAccessorView()
+    var windowIdentifier: String?
+
+    init(identifier: String? = nil) {
+        windowIdentifier = identifier
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func makeNSView(context: Context) -> NSView {
+        WindowAccessorView(windowIdentifier: windowIdentifier)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? WindowAccessorView)?.windowIdentifier = windowIdentifier
+    }
 }
 
 private class WindowAccessorView: NSView {
+    var windowIdentifier: String?
+
+    init(windowIdentifier: String?) {
+        self.windowIdentifier = windowIdentifier
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let window = window else { return }
+        if let windowIdentifier {
+            window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
+        }
         window.isMovableByWindowBackground = true
         window.backgroundColor = .clear
         window.tabbingMode = .disallowed

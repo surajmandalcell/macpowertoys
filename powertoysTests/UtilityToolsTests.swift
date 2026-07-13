@@ -1,7 +1,17 @@
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class UtilityToolsTests: XCTestCase {
+    func testDockIconMatchesActiveToolWindow() {
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler"), "RulerLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "awake-AppWindow-1"), "AwakeLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "color-picker"), "ColorPickerLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "text-extractor"), "TextExtractorLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
+    }
+
     func testRulerTicksRespectDirection() {
         let forward = RulerGeometry.ticks(length: 100, pointsPerUnit: 1, reversed: false)
         let reverse = RulerGeometry.ticks(length: 100, pointsPerUnit: 1, reversed: true)

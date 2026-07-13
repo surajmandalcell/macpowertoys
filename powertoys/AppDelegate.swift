@@ -9,6 +9,17 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var restoredWindows = Set<ObjectIdentifier>()
 
+    private static let dockIconAssets = [
+        "main": "AppIcon",
+        "cc-history": "ClaudeHistoryLogo",
+        "rclone": "CloudSyncLogo",
+        "logs": "LogsLogo",
+        "ruler": "RulerLogo",
+        "awake": "AwakeLogo",
+        "color-picker": "ColorPickerLogo",
+        "text-extractor": "TextExtractorLogo"
+    ]
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
     }
@@ -48,10 +59,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
+        updateDockIcon(for: window.identifier?.rawValue)
+
         let windowId = ObjectIdentifier(window)
         guard !restoredWindows.contains(windowId) else { return }
         restoredWindows.insert(windowId)
         WindowStateManager.shared.restoreState(for: window)
+    }
+
+    static func dockIconAsset(for windowIdentifier: String?) -> String {
+        guard let windowIdentifier else { return "AppIcon" }
+        return dockIconAssets.first { windowIdentifier.hasPrefix($0.key) }?.value ?? "AppIcon"
+    }
+
+    private func updateDockIcon(for windowIdentifier: String?) {
+        guard let icon = NSImage(named: Self.dockIconAsset(for: windowIdentifier)) else { return }
+        NSApp.applicationIconImage = icon
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
