@@ -51,6 +51,18 @@ You can also open `powertoys.xcodeproj` in Xcode and run the `powertoys` scheme.
 
 Do not replace a running installation while Cloud Sync is transferring data. Pause or finish transfers first, then install the new build.
 
+## Marketplace
+
+App Settings > Marketplace can install companion tools published by third parties. A catalog is a JSON file (usually a raw GitHub URL) matching [marketplace.schema.json](marketplace.schema.json); app archives are normally GitHub Release assets.
+
+Marketplace tools are independently signed and notarized `.app` bundles that run out of process — MacPowerToys never loads downloaded code into its own process. Before activating an install, MacPowerToys verifies the archive's SHA-256 checksum against the catalog, rejects unsafe archive entries, and requires a Developer ID signature from the catalog-declared team, Apple notarization, and the declared bundle identifier. Quarantine attributes are never stripped. Installed tools appear in the launcher next to built-in tools and are stored under the app's own data directory, so uninstalling from the same screen removes the app and its host-managed data.
+
+Removing a catalog source offers two behaviors: **Remove Source Only** keeps installed apps working (they reconnect if the source is re-added), while **Remove Source and Associated Apps** also quits and deletes the apps that came from that source.
+
+## iCloud settings sync
+
+App Settings > General can sync a small allowlist of preferences through iCloud: appearance, safe tool preferences, marketplace source URLs, and marketplace tool settings that explicitly opt into the host-managed contract. Credentials, rclone configuration, file paths, histories, logs, transfer state, window geometry, and installed apps are never synced. On first enable, if iCloud already holds settings, MacPowerToys asks whether to adopt them or replace them with this Mac's settings.
+
 ## Raycast
 
 The `raycast` directory contains separate Root Search commands for Ruler, Awake, Color Picker, and Text Extractor actions.
@@ -92,7 +104,7 @@ powertoysUITests/           UI smoke tests
 raycast/                    Companion Raycast extension
 ```
 
-Tools implement the internal `Tool` protocol and register with `ToolRegistry`. This is an internal module boundary, not an external plug-in API.
+Tools implement the internal `Tool` protocol and register with `ToolRegistry`. This is an internal module boundary, not an external plug-in API. Marketplace tools are separate signed apps launched through `NSWorkspace`; `MarketplaceManager` owns catalogs and receipts, and `MarketplaceInstaller` owns download verification and atomic install.
 
 ## Contributing
 
