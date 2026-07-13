@@ -23,6 +23,14 @@ xcodebuild build-for-testing \
   CODE_SIGNING_ALLOWED=NO
 ```
 
+## Tests and coverage
+
+`make build-for-testing` compiles the app and every test target without launching the app. Run `make test` when no important Cloud Sync transfer is active; macOS unit tests launch an isolated app test host.
+
+Pull requests run unit tests, local rclone integration tests, and UI smoke tests in clean GitHub runners. CI reports line coverage for `Core`, `Models`, and `Services` and rejects changes below the current 25% floor. SwiftUI `body` generation is intentionally excluded from this business-logic metric; user flows are protected by the separate UI smoke job.
+
+Tests should assert observable behavior at a public or internal module seam. Prefer exhaustive state/enum tables and boundary cases over tests coupled to private methods. Every bug fix should include a test that fails before the fix.
+
 For the Raycast extension:
 
 ```bash
