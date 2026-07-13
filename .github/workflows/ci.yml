@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS build and tests
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rclone
+        run: brew install rclone
+      - name: Build and run unit tests
+        run: |
+          xcodebuild test \
+            -project powertoys.xcodeproj \
+            -scheme powertoys \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-derived" \
+            -only-testing:powertoysTests \
+            -skip-testing:powertoysUITests \
+            CODE_SIGNING_ALLOWED=NO
+
+  raycast:
+    name: Raycast lint and build
+    runs-on: macos-26
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: raycast
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: raycast/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  ui-smoke:
+    name: macOS UI smoke tests
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated UI smoke tests
+        run: |
+          xcodebuild test \
+            -project powertoys.xcodeproj \
+            -scheme powertoys \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-ui-derived" \
+            -only-testing:powertoysUITests
