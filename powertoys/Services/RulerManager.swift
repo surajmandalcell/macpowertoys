@@ -23,8 +23,8 @@ final class RulerManager {
         rulers = Self.decode([RulerState].self, key: statesKey) ?? []
         measurements = Self.decode([RulerMeasurement].self, key: measurementsKey) ?? []
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
-            guard let action = note.object as? ToolActionID else { return }
-            Task { @MainActor in self?.handle(action) }
+            guard let self, let action = note.object as? ToolActionID else { return }
+            Task { @MainActor [self, action] in self.handle(action) }
         }
     }
 

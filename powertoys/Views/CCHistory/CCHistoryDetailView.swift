@@ -496,27 +496,23 @@ struct ThinkingPanelContent: View {
         return f
     }()
 
-    private var formattedThinking: AttributedString {
-        var result = AttributedString()
-        let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        let boldMonoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+    private var formattedThinking: Text {
+        var result = Text("")
+        let monoFont = Font.system(size: 12, weight: .regular, design: .monospaced)
+        let boldMonoFont = Font.system(size: 12, weight: .medium, design: .monospaced)
         let thinkingMessages = messages.filter { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }.reversed()
 
         for message in thinkingMessages {
-            var timeAttr = AttributedString(Self.timeFormatter.string(from: message.timestamp) + " ")
-            timeAttr.foregroundColor = NSColor.tertiaryLabelColor
-            timeAttr.font = monoFont
-            result.append(timeAttr)
-
-            var prefix = AttributedString("[thinking] ")
-            prefix.foregroundColor = .purple
-            prefix.font = boldMonoFont
-            result.append(prefix)
-
-            var content = AttributedString((message.thinking ?? "") + "\n\n")
-            content.foregroundColor = NSColor.secondaryLabelColor
-            content.font = monoFont
-            result.append(content)
+            let time = Text(Self.timeFormatter.string(from: message.timestamp) + " ")
+                .foregroundColor(Color(nsColor: .tertiaryLabelColor))
+                .font(monoFont)
+            let prefix = Text("[thinking] ")
+                .foregroundColor(.purple)
+                .font(boldMonoFont)
+            let content = Text((message.thinking ?? "") + "\n\n")
+                .foregroundColor(Color(nsColor: .secondaryLabelColor))
+                .font(monoFont)
+            result = Text("\(result)\(time)\(prefix)\(content)")
         }
 
         return result
@@ -524,7 +520,7 @@ struct ThinkingPanelContent: View {
 
     var body: some View {
         ScrollView {
-            Text(formattedThinking)
+            formattedThinking
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)

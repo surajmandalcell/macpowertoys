@@ -113,7 +113,8 @@ final class GlobalShortcutManager {
         )
         guard status == noErr else { return status }
         let manager = Unmanaged<GlobalShortcutManager>.fromOpaque(userData).takeUnretainedValue()
-        Task { @MainActor in manager.run(id: hotKeyID.id) }
+        let id = hotKeyID.id
+        Task { @MainActor in manager.run(id: id) }
         return noErr
     }
 }

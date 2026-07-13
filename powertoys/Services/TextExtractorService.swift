@@ -21,8 +21,8 @@ final class TextExtractorService {
             .flatMap { try? JSONDecoder().decode(TextExtractorSettings.self, from: $0) }
             ?? TextExtractorSettings()
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
-            guard let action = note.object as? ToolActionID, action == .textExtractorCapture else { return }
-            Task { @MainActor in self?.begin() }
+            guard let self, let action = note.object as? ToolActionID, action == .textExtractorCapture else { return }
+            Task { @MainActor [self] in self.begin() }
         }
     }
 

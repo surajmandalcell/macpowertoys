@@ -46,7 +46,7 @@ struct LogEntryData: Identifiable, Sendable {
     let source: String
     let message: String
 
-    init(level: LogLevel, source: String, message: String) {
+    nonisolated init(level: LogLevel, source: String, message: String) {
         self.id = UUID()
         self.timestamp = Date()
         self.level = level
@@ -54,7 +54,7 @@ struct LogEntryData: Identifiable, Sendable {
         self.message = message
     }
 
-    init(id: UUID, timestamp: Date, level: LogLevel, source: String, message: String) {
+    nonisolated init(id: UUID, timestamp: Date, level: LogLevel, source: String, message: String) {
         self.id = id
         self.timestamp = timestamp
         self.level = level

@@ -8,6 +8,7 @@
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class CCHistoryTests: XCTestCase {
 
     // MARK: - FilterOptions Tests
