@@ -91,6 +91,17 @@ struct TransferJobRow: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.tertiary)
             pathChip(job.destinationDisplay)
+            HStack(spacing: 4) {
+                Image(systemName: "clock")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                Text("ETA \(RcloneFormat.eta(job.displayEta))")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .fixedSize()
             Spacer(minLength: 8)
             stateBadge
         }
@@ -169,7 +180,6 @@ struct TransferJobRow: View {
             metric(icon: "internaldrive",
                    text: "\(RcloneFormat.bytes(job.displayBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "")")
             metric(icon: "speedometer", text: RcloneFormat.speed(job.stats.speed))
-            metric(icon: "clock", text: "ETA \(RcloneFormat.eta(job.displayEta))")
             metric(icon: "arrow.up.arrow.down", text: "\(job.displayFiles)/\(job.effectiveTotalFiles)")
 
             if job.isSizing && job.state == .running {
@@ -189,7 +199,6 @@ struct TransferJobRow: View {
                     .monospacedDigit()
             }
 
-            priorityMenu
             controls
 
             if hasTransferringFiles || job.isExpanded {
@@ -199,7 +208,7 @@ struct TransferJobRow: View {
     }
 
     private var sizingChip: some View {
-        progressChip("Comparing both sides…")
+        progressChip("Comparing")
     }
 
     private func progressChip(_ text: String) -> some View {
@@ -210,6 +219,7 @@ struct TransferJobRow: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
+        .fixedSize()
     }
 
     private func metric(icon: String, text: String) -> some View {
@@ -223,44 +233,10 @@ struct TransferJobRow: View {
                 .monospacedDigit()
                 .contentTransition(.numericText())
         }
+        .fixedSize()
     }
 
     // MARK: Controls
-
-    private var priorityMenu: some View {
-        Menu {
-            ForEach(TransferPriority.allCases.reversed(), id: \.self) { priority in
-                Button {
-                    manager.setPriority(priority, for: job)
-                } label: {
-                    if job.priority == priority {
-                        Label(priority.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(priority.displayName)
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: job.priority.icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(job.priority == .normal ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .focusEffectDisabled()
-        .help(priorityHelp)
-    }
-
-    private var priorityHelp: String {
-        if job.state == .running {
-            return "Priority: \(job.priority.displayName). Applies if this transfer queues again; the active file is not interrupted."
-        }
-        return "Priority: \(job.priority.displayName). Higher priority queued transfers start first."
-    }
 
     private var controls: some View {
         HStack(spacing: 6) {
