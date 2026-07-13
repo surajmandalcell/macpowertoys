@@ -7,6 +7,7 @@ Complete this once before making the repository public.
 - Confirm `git status` contains only intentional files.
 - Scan the full Git history for credentials, private paths, transfer names, conversation content, logs, and screenshots.
 - The previously tracked files under `docs/screenshots/` contained local UI data. Their deletion from the current tree does not remove them from Git history. Create a clean public repository or explicitly approve a history rewrite before publication.
+- Rename the GitHub repository from `powertoys` to `MacPowerToys`, then update badges, clone URLs, and security links after the rename.
 - Enable GitHub private vulnerability reporting, secret scanning, Dependabot alerts, and branch protection for `main`.
 - Add repository topics, a social preview, the project description, and the privacy and security links.
 
