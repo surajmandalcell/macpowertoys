@@ -18,7 +18,9 @@ Notable changes are documented here. The project follows semantic versioning aft
 - Renamed the RSync utility to Cloud Sync.
 - Preserved both `macpowertoys://` and legacy `powertoys://` deep links.
 - Made pause and recovery progress exclude uncommitted bytes from an active file.
+- Prevented the new app identity from migrating or resuming work while legacy PowerToys is still running.
 
 ### Security
 
 - Removed unauthenticated access to the local rclone remote-control server.
+- Preserved existing rclone credentials when reconnect setup is cancelled or the app closes.
