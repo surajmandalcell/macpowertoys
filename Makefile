@@ -10,7 +10,7 @@ build-for-testing:
 	$(XCODEBUILD) -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
 
 test:
-	$(XCODEBUILD) test -destination 'platform=macOS' -only-testing:powertoysTests -skip-testing:powertoysUITests
+	$(XCODEBUILD) test -destination 'platform=macOS' -only-testing:powertoysTests -skip-testing:powertoysUITests CODE_SIGNING_ALLOWED=NO
 
 raycast:
 	npm --prefix raycast ci
