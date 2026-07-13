@@ -4,12 +4,12 @@
   </defs>
   <g clip-path="url(#tile)">
     <rect width="512" height="512" fill="#5A4FE0"/>
-    <g fill="none" stroke="#F7F5F0" stroke-width="36" stroke-linecap="round"
-       stroke-linejoin="round">
-      <path d="M150 54H54v96M362 54h96v96M54 362v96h96M458 362v96h-96"/>
-    </g>
-    <rect x="124" y="166" width="264" height="44" rx="22" fill="#F7F5F0"/>
-    <rect x="124" y="234" width="145" height="44" rx="22" fill="#F7F5F0"/>
-    <rect x="124" y="302" width="106" height="44" rx="22" fill="#F7F5F0"/>
+    <path d="m330 330 190 190" fill="none" stroke="#23272E" stroke-width="76"
+          stroke-linecap="round"/>
+    <circle cx="214" cy="214" r="166" fill="#23272E"/>
+    <circle cx="214" cy="214" r="118" fill="#F7F5F0"/>
+    <rect x="126" y="148" width="176" height="36" rx="18" fill="#23272E"/>
+    <rect x="126" y="210" width="132" height="36" rx="18" fill="#23272E"/>
+    <rect x="126" y="272" width="92" height="36" rx="18" fill="#23272E"/>
   </g>
 </svg>
