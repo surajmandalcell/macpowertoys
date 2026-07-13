@@ -24,6 +24,8 @@ Do not publish from a dirty worktree. Do not install over a running Cloud Sync t
 
 The app now carries the `com.apple.developer.ubiquity-kvstore-identifier` entitlement for iCloud settings sync. Developer ID signing therefore needs a Developer ID provisioning profile that includes iCloud key-value storage for `com.surajmandal.macpowertoys`. Unsigned CI builds (`CODE_SIGNING_ALLOWED=NO`) are unaffected.
 
+For local signed builds, sign into Xcode > Settings > Accounts once, then run `make build SIGNED=1` — automatic signing generates the development profile with the iCloud capability. iCloud sync silently no-ops in unsigned builds.
+
 ## Marketplace release checks
 
 - Run `scripts/validate-marketplace-fixtures.py` (CI does this) after any change to `marketplace.schema.json` or `spec/marketplace/`.

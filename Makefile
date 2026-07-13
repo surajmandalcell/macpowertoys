@@ -3,8 +3,15 @@ SCHEME := powertoys
 DERIVED_DATA ?= /tmp/macpowertoys-derived
 XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -scheme $(SCHEME) -jobs 4 -derivedDataPath $(DERIVED_DATA)
 
+# SIGNED=1 signs with the personal team's automatic profile (requires an Apple ID
+# in Xcode > Settings > Accounts); the iCloud entitlement only works when signed.
+SIGNING := CODE_SIGNING_ALLOWED=NO
+ifeq ($(SIGNED),1)
+SIGNING := -allowProvisioningUpdates
+endif
+
 build:
-	$(XCODEBUILD) -configuration Release CODE_SIGNING_ALLOWED=NO build
+	$(XCODEBUILD) -configuration Release $(SIGNING) build
 
 build-for-testing:
 	$(XCODEBUILD) -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing

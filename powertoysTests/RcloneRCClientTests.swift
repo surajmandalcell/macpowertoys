@@ -390,7 +390,7 @@ private final class URLProtocolStub: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         do {
             let handler = try XCTUnwrap(Self.handler)
-            let (response, data) = try handler(request)
+            let (response, data) = try handler(Self.resolvingStreamedBody(request))
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)
@@ -400,4 +400,20 @@ private final class URLProtocolStub: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+
+    private static func resolvingStreamedBody(_ request: URLRequest) -> URLRequest {
+        guard request.httpBody == nil, let stream = request.httpBodyStream else { return request }
+        stream.open()
+        defer { stream.close() }
+        var body = Data()
+        var buffer = [UInt8](repeating: 0, count: 16 * 1024)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: buffer.count)
+            guard read > 0 else { break }
+            body.append(buffer, count: read)
+        }
+        var resolved = request
+        resolved.httpBody = body
+        return resolved
+    }
 }
