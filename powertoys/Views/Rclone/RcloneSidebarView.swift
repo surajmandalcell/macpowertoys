@@ -19,7 +19,7 @@ struct RcloneSidebarView: View {
 
     private var titleRow: some View {
         HStack(spacing: 6) {
-            Text("RSync")
+            Text("Cloud Sync")
                 .font(.system(size: 13, weight: .medium))
 
             Circle()
@@ -296,7 +296,7 @@ private struct RemotesSectionHeader: View {
             .buttonStyle(.plain)
             .focusEffectDisabled()
             .onHover { isHoveringAdd = $0 }
-            .help("Connect Google Drive")
+        .help("Add cloud connector")
         }
         .padding(.leading, 8)
         .padding(.trailing, 4)

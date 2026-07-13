@@ -201,6 +201,34 @@ enum TransferOrder: String, Codable, CaseIterable, Sendable {
     }
 }
 
+enum TransferPriority: Int, Codable, CaseIterable, Sendable {
+    case background = 1
+    case low = 2
+    case normal = 3
+    case high = 4
+    case urgent = 5
+
+    var displayName: String {
+        switch self {
+        case .background: return "Background"
+        case .low: return "Low"
+        case .normal: return "Normal"
+        case .high: return "High"
+        case .urgent: return "Urgent"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .background: return "1.circle"
+        case .low: return "2.circle"
+        case .normal: return "3.circle"
+        case .high: return "4.circle"
+        case .urgent: return "5.circle.fill"
+        }
+    }
+}
+
 struct FileProgress: Identifiable, Sendable, Hashable {
     let name: String
     let size: Int64
@@ -239,6 +267,10 @@ struct TransferStats: Sendable, Equatable {
 
     var fraction: Double {
         totalBytes > 0 ? min(1.0, Double(bytes) / Double(totalBytes)) : 0
+    }
+
+    var completedBytes: Int64 {
+        max(0, bytes - transferring.reduce(0) { $0 + $1.bytes })
     }
 }
 
@@ -294,6 +326,18 @@ struct RemoteEntry: Identifiable, Sendable, Hashable {
     }
 }
 
+enum TransferFileStatus: String, Sendable, Equatable {
+    case uploaded
+    case pending
+
+    static func resolve(source: RemoteEntry, destination: RemoteEntry?) -> TransferFileStatus {
+        guard let destination,
+              source.isDir == destination.isDir,
+              source.isDir || source.size == destination.size else { return .pending }
+        return .uploaded
+    }
+}
+
 // MARK: - Transfer Job
 
 @Observable
@@ -330,6 +374,8 @@ final class TransferJob: Identifiable {
     var isSizing = false
     var isRecalculating = false
     var transferOrder: TransferOrder = .default
+    var priority: TransferPriority = .normal
+    var isExpanded = false
     var updateOlderOnly = false
     var ignoreExisting = false
     var compareChecksums = false
@@ -515,6 +561,7 @@ struct TransferJobSnapshot: Codable, Sendable {
     let startedAt: Date?
     let finishedAt: Date?
     let bytes: Int64
+    let inFlightBytes: Int64?
     let totalBytes: Int64
     let transfers: Int
     let totalTransfers: Int
@@ -527,6 +574,8 @@ struct TransferJobSnapshot: Codable, Sendable {
     let resumeBaselineBytes: Int64?
     let resumeBaselineFiles: Int?
     let transferOrder: String?
+    let priority: Int?
+    let isExpanded: Bool?
     let updateOlderOnly: Bool?
     let ignoreExisting: Bool?
     let compareChecksums: Bool?
@@ -555,6 +604,7 @@ extension TransferJob {
             startedAt: startedAt,
             finishedAt: finishedAt,
             bytes: stats.bytes,
+            inFlightBytes: stats.transferring.reduce(0) { $0 + $1.bytes },
             totalBytes: stats.totalBytes,
             transfers: stats.transfers,
             totalTransfers: stats.totalTransfers,
@@ -567,6 +617,8 @@ extension TransferJob {
             resumeBaselineBytes: resumeBaselineBytes,
             resumeBaselineFiles: resumeBaselineFiles,
             transferOrder: transferOrder == .default ? nil : transferOrder.rawValue,
+            priority: priority == .normal ? nil : priority.rawValue,
+            isExpanded: isExpanded ? true : nil,
             updateOlderOnly: updateOlderOnly ? true : nil,
             ignoreExisting: ignoreExisting ? true : nil,
             compareChecksums: compareChecksums ? true : nil,
@@ -604,6 +656,8 @@ extension TransferJob {
         resumeBaselineBytes = snapshot.resumeBaselineBytes ?? 0
         resumeBaselineFiles = snapshot.resumeBaselineFiles ?? 0
         transferOrder = snapshot.transferOrder.flatMap(TransferOrder.init(rawValue:)) ?? .default
+        priority = snapshot.priority.flatMap(TransferPriority.init(rawValue:)) ?? .normal
+        isExpanded = snapshot.isExpanded ?? false
         updateOlderOnly = snapshot.updateOlderOnly ?? false
         ignoreExisting = snapshot.ignoreExisting ?? false
         compareChecksums = snapshot.compareChecksums ?? false
@@ -623,7 +677,7 @@ extension TransferJob {
         } else {
             state = .paused
             autoResumeOnLaunch = true
-            resumeBaselineBytes = (snapshot.resumeBaselineBytes ?? 0) + snapshot.bytes
+            resumeBaselineBytes = (snapshot.resumeBaselineBytes ?? 0) + max(0, snapshot.bytes - (snapshot.inFlightBytes ?? 0))
             resumeBaselineFiles = (snapshot.resumeBaselineFiles ?? 0) + snapshot.transfers
             var carried = stats
             carried.bytes = 0

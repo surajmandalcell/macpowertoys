@@ -255,7 +255,7 @@ private struct RSyncTrayTab: View {
 
             Spacer()
 
-            TrayActionButton(title: "Open RSync", isPrimary: false) {
+            TrayActionButton(title: "Open Cloud Sync", isPrimary: false) {
                 openWindow(id: "rclone")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
