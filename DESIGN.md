@@ -18,7 +18,7 @@ colors:
   icon-ruler: "#F04E23"
   icon-awake: "#F5B71E"
   icon-color-picker: "#23272E"
-  icon-text-extractor: "#5A4FE0"
+  icon-text-extractor: "#F5B71E"
 typography:
   title: { size: 13, weight: medium }
   body: { size: 13, weight: regular }
@@ -170,7 +170,7 @@ and enough personality to remain recognizable without a label.
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
-| Text Extractor | `#5A4FE0` | `#23272E`, `#F7F5F0` | Three descending text lines |
+| Text Extractor | `#F5B71E` | `#23272E`, `#F7F5F0` | Three descending handwritten lines |
 
 New tools must receive their own semantic hue. Do not reuse a palette merely
 because it already exists in another asset.

@@ -3,13 +3,16 @@
     <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
   </defs>
   <g clip-path="url(#tile)">
-    <rect width="512" height="512" fill="#5A4FE0"/>
+    <rect width="512" height="512" fill="#F5B71E"/>
     <path d="m330 330 190 190" fill="none" stroke="#23272E" stroke-width="76"
           stroke-linecap="round"/>
     <circle cx="214" cy="214" r="166" fill="#23272E"/>
     <circle cx="214" cy="214" r="118" fill="#F7F5F0"/>
-    <rect x="126" y="148" width="176" height="36" rx="18" fill="#23272E"/>
-    <rect x="126" y="210" width="132" height="36" rx="18" fill="#23272E"/>
-    <rect x="126" y="272" width="92" height="36" rx="18" fill="#23272E"/>
+    <g fill="none" stroke="#23272E" stroke-width="18" stroke-linecap="round"
+       stroke-linejoin="round">
+      <path d="M148 164c14-16 28 18 42 0s28 18 42 0 26 14 42-2"/>
+      <path d="M148 216c13-14 26 16 39 0s26 16 39 0 24 12 36-2"/>
+      <path d="M148 268c12-12 24 14 36 0s24 14 36-2"/>
+    </g>
   </g>
 </svg>
