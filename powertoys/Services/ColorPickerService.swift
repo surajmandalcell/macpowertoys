@@ -2,6 +2,13 @@ import AppKit
 import Observation
 import UniformTypeIdentifiers
 
+@MainActor
+protocol ColorSampling: AnyObject {
+    func show(selectionHandler: @escaping @Sendable (NSColor?) -> Void)
+}
+
+extension NSColorSampler: ColorSampling {}
+
 @Observable
 @MainActor
 final class ColorPickerService {
@@ -19,11 +26,12 @@ final class ColorPickerService {
         }
     }
     var exportError: String?
+    private(set) var isPicking = false
     var defaultFormat: ColorCopyFormat {
         didSet { defaults.set(defaultFormat.rawValue, forKey: formatKey) }
     }
 
-    private let sampler = NSColorSampler()
+    private let sampler: any ColorSampling
     private let defaults: UserDefaults
     private let historyKey = "color-picker.history.v1"
     private let projectsKey = "color-picker.projects.v1"
@@ -31,8 +39,9 @@ final class ColorPickerService {
     private let formatKey = "color-picker.format.v1"
     private let maximumHistory = 100
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, sampler: any ColorSampling = NSColorSampler()) {
         self.defaults = defaults
+        self.sampler = sampler
         history = defaults.data(forKey: historyKey)
             .flatMap { try? JSONDecoder().decode([ColorSample].self, from: $0) } ?? []
         projects = defaults.data(forKey: projectsKey)
@@ -55,17 +64,20 @@ final class ColorPickerService {
     }
 
     func pick() {
+        guard !isPicking else { return }
+        isPicking = true
         NSApp.activate(ignoringOtherApps: true)
         sampler.show { [weak self] color in
-            guard let self, let color, let converted = color.usingColorSpace(.sRGB) else { return }
-            let sample = ColorSample(
+            Task { @MainActor [weak self, color] in
+                guard let self else { return }
+                self.isPicking = false
+                guard let color, let converted = color.usingColorSpace(.sRGB) else { return }
+                self.add(ColorSample(
                     red: converted.redComponent,
                     green: converted.greenComponent,
                     blue: converted.blueComponent,
                     alpha: converted.alphaComponent
-                )
-            Task { @MainActor [self, sample] in
-                self.add(sample)
+                ))
             }
         }
     }

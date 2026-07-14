@@ -387,6 +387,8 @@ These are binding polish rules. Treat them as defects when they regress.
   its compact scale: adjacent search fields and selects are exactly 28pt high.
 - A compact tool window uses its titlebar for the tool title and primary
   actions. Never repeat that content in an in-window header row.
+- Titlebar actions remain visually discrete: use one semantic action per
+  `ToolbarItem`, and apply the accent fill only to the primary action.
 - A tool's settings open inside that tool window and replace its content. Use
   full, labeled setting rows; never make a compact menu the only settings UI.
 - Settings stays at the far right of the titlebar and uses `gearshape`.

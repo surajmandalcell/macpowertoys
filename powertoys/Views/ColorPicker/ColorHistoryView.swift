@@ -82,34 +82,39 @@ struct ColorHistoryView: View {
 
     @ToolbarContentBuilder
     private var titlebarActions: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            HStack(spacing: 8) {
-                if page == .history && !samples.isEmpty {
-                    Button("Clear", role: .destructive) {
-                        service.clearUnpinned(in: service.selectedProjectID)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11))
-                    .frame(height: 24)
-                    .contentShape(Rectangle())
-                    .help("Clear unpinned colors in \(selectedProjectName)")
-                    .accessibilityIdentifier("color-picker.clear")
+        if page == .history && !samples.isEmpty {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Clear", role: .destructive) {
+                    service.clearUnpinned(in: service.selectedProjectID)
                 }
-                Button("Pick Color") { service.pick() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .frame(height: 24)
-                    .contentShape(Rectangle())
-                    .help("Pick a color for \(selectedProjectName)")
-                    .accessibilityIdentifier("color-picker.pick")
-                ColorPickerIconButton(
-                    systemName: "gearshape",
-                    help: page == .settings ? "Close Settings" : "Settings"
-                ) {
-                    page = page == .settings ? .history : .settings
-                }
-                .accessibilityIdentifier("color-picker.settings")
+                .buttonStyle(.plain)
+                .font(.system(size: 11))
+                .frame(height: 24)
+                .contentShape(Rectangle())
+                .help("Clear unpinned colors in \(selectedProjectName)")
+                .accessibilityIdentifier("color-picker.clear")
             }
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            Button("Pick Color") { service.pick() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .frame(height: 24)
+                .contentShape(Rectangle())
+                .disabled(service.isPicking)
+                .help("Pick a color for \(selectedProjectName)")
+                .accessibilityIdentifier("color-picker.pick")
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            ColorPickerIconButton(
+                systemName: "gearshape",
+                help: page == .settings ? "Close Settings" : "Settings"
+            ) {
+                page = page == .settings ? .history : .settings
+            }
+            .accessibilityIdentifier("color-picker.settings")
         }
     }
 
@@ -424,6 +429,11 @@ private struct ColorFormatSelect: View {
 }
 
 private struct ColorSampleRow: View {
+    private static let relativeDateStyle = Date.RelativeFormatStyle(
+        presentation: .numeric,
+        unitsStyle: .abbreviated
+    )
+
     let sample: ColorSample
     @State private var service = ColorPickerService.shared
     @State private var isHovering = false
@@ -441,7 +451,7 @@ private struct ColorSampleRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
-                Text(sample.createdAt, style: .relative)
+                Text(sample.createdAt.formatted(Self.relativeDateStyle))
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }

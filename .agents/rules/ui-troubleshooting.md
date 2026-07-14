@@ -16,6 +16,18 @@ and a runtime check. Promote stable design values to `DESIGN.md`.
   leading pill boundary with the first content surface and confirm tab frames
   do not move when selection changes.
 
+## Titlebar Actions Merging
+
+- **Symptom:** Plain text, primary, and icon actions appear as one continuous
+  accented pill in the titlebar.
+- **Cause:** Mixed-style controls were nested inside one `ToolbarItem`, so the
+  toolbar treated the entire view as one semantic action.
+- **Invariant:** Put one semantic action in each `ToolbarItem`. Never wrap mixed
+  plain, prominent, and icon actions in one titlebar `HStack`; only the primary
+  action receives the accent fill.
+- **Check:** Inspect default, hover, disabled, and active states in the running
+  app. Every action keeps a separate visible boundary and hit target.
+
 ## Handoff Check
 
 - Inspect default, hover, selected, disabled, and settings states in the running
