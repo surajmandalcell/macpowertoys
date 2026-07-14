@@ -32,11 +32,19 @@ struct TextExtractorView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            Group {
+            ZStack(alignment: .bottomLeading) {
                 switch page {
                 case .history: history
                 case .settings: settings
                 }
+
+                FloatingSettingsButton(
+                    isActive: page == .settings,
+                    helpText: page == .settings ? "Back to History" : "Recognition Settings"
+                ) {
+                    page = page == .settings ? .history : .settings
+                }
+                .accessibilityIdentifier("text-extractor.settings")
             }
         }
         .frame(
@@ -68,13 +76,6 @@ struct TextExtractorView: View {
                     .disabled(isExtracting)
                     .help("Select text anywhere on screen")
                     .accessibilityIdentifier("text-extractor.extract")
-                CompactTitlebarIconButton(
-                    systemName: page == .settings ? "gearshape.fill" : "gearshape",
-                    help: page == .settings ? "Back to History" : "Recognition Settings"
-                ) {
-                    page = page == .settings ? .history : .settings
-                }
-                .accessibilityIdentifier("text-extractor.settings")
             }
         }
     }
@@ -115,7 +116,7 @@ struct TextExtractorView: View {
                         }
                     }
                     .padding(.horizontal, UtilityLayout.horizontalInset)
-                    .padding(.bottom, UtilityLayout.contentBottomInset)
+                    .padding(.bottom, UtilityLayout.floatingButtonContentInset)
                 }
                 .thinScrollIndicators()
             }
@@ -227,7 +228,8 @@ struct TextExtractorView: View {
                 .utilitySectionCard()
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.vertical, 14)
+            .padding(.top, 14)
+            .padding(.bottom, UtilityLayout.floatingButtonContentInset)
         }
         .thinScrollIndicators()
     }
