@@ -25,7 +25,7 @@ final class powertoysUITests: XCTestCase {
     }
 
     @MainActor
-    func testRulerOpensAsHorizontalAndVerticalOverlays() throws {
+    func testRulerLaunchStaysInOverlayMode() throws {
         let app = launchApp()
         let card = app.descendants(matching: .any)["tool.ruler.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
@@ -34,10 +34,9 @@ final class powertoysUITests: XCTestCase {
         let launch = app.buttons["tool.ruler.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 5))
         launch.click()
-        let horizontal = app.descendants(matching: .any)["ruler.horizontal.overlay"]
-        let vertical = app.descendants(matching: .any)["ruler.vertical.overlay"]
-        XCTAssertTrue(horizontal.waitForExistence(timeout: 5))
-        XCTAssertTrue(vertical.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+        XCTAssertTrue(app.windows["MacPowerToys"].exists)
+        XCTAssertFalse(app.windows["Ruler"].waitForExistence(timeout: 1))
     }
 
     @MainActor

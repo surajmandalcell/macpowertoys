@@ -106,6 +106,7 @@ final class RulerManager {
         }
         rulers[index].frame = clamped(rulers[index].frame, to: requestedScreen)
         rulers[index].screenID = (requestedScreen ?? NSScreen.screens.first(where: { $0.frame.intersects(rulers[index].frame) }) ?? NSScreen.main)?.displayID
+        if AppRuntime.isRunningTests && !AppRuntime.isUITesting { return }
         let state = rulers[index]
         let panel = panels[id] ?? RulerOverlayPanel(state: state, manager: self)
         panels[id] = panel
@@ -279,7 +280,7 @@ final class RulerManager {
     }
 
     private func persist() {
-        guard !AppRuntime.isUITesting else { return }
+        guard !AppRuntime.isRunningTests else { return }
         defaults.set(try? JSONEncoder().encode(rulers), forKey: statesKey)
         defaults.set(try? JSONEncoder().encode(style), forKey: styleKey)
         defaults.set(try? JSONEncoder().encode(measurements), forKey: measurementsKey)
