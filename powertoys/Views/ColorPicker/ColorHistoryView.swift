@@ -57,26 +57,14 @@ struct ColorHistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            ZStack(alignment: .bottomLeading) {
-                VStack(spacing: 0) {
-                    if page != .settings {
-                        tabBar
-                        Divider()
-                    }
-                    switch page {
-                    case .history: history
-                    case .projects: projects
-                    case .settings: settings
-                    }
-                }
-
-                FloatingSettingsButton(
-                    isActive: page == .settings,
-                    helpText: page == .settings ? "Back to History" : "Settings"
-                ) {
-                    page = page == .settings ? .history : .settings
-                }
-                .accessibilityIdentifier("color-picker.settings")
+            if page != .settings {
+                tabBar
+                Divider()
+            }
+            switch page {
+            case .history: history
+            case .projects: projects
+            case .settings: settings
             }
         }
         .frame(
@@ -110,10 +98,19 @@ struct ColorHistoryView: View {
         CompactTitlebar(showsBottomSeparator: false) {
             CompactTitlebarTitle(title: "Color Picker")
         } actions: {
-            CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
-                .disabled(service.isPicking)
-                .help("Pick a color for \(selectedProjectName)")
-                .accessibilityIdentifier("color-picker.pick")
+            HStack(spacing: 8) {
+                CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
+                    .disabled(service.isPicking)
+                    .help("Pick a color for \(selectedProjectName)")
+                    .accessibilityIdentifier("color-picker.pick")
+                CompactTitlebarIconButton(
+                    systemName: "gearshape",
+                    help: page == .settings ? "Close Settings" : "Settings"
+                ) {
+                    page = page == .settings ? .history : .settings
+                }
+                .accessibilityIdentifier("color-picker.settings")
+            }
         }
     }
 
@@ -170,7 +167,7 @@ struct ColorHistoryView: View {
                         }
                     }
                     .padding(.horizontal, UtilityLayout.horizontalInset)
-                    .padding(.bottom, UtilityLayout.floatingButtonContentInset)
+                    .padding(.bottom, UtilityLayout.contentBottomInset)
                 }
                 .thinScrollIndicators()
             }
@@ -207,7 +204,7 @@ struct ColorHistoryView: View {
                     }
                 }
                 .padding(.horizontal, UtilityLayout.horizontalInset)
-                .padding(.bottom, UtilityLayout.floatingButtonContentInset)
+                .padding(.bottom, UtilityLayout.contentBottomInset)
             }
             .thinScrollIndicators()
         }
@@ -351,7 +348,7 @@ struct ColorHistoryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.bottom, UtilityLayout.floatingButtonContentInset)
+            .padding(.bottom, UtilityLayout.contentBottomInset)
         }
         .thinScrollIndicators()
     }
