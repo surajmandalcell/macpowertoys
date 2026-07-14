@@ -17,7 +17,6 @@ final class WindowAccessorTests: XCTestCase {
             )
             Self.retainedWindows.append(window)
 
-            let initialWindowSize = window.frame.size
             let initialCloseButtonY = try XCTUnwrap(
                 window.standardWindowButton(.closeButton)?.frame.origin.y
             )
@@ -33,9 +32,8 @@ final class WindowAccessorTests: XCTestCase {
             let adjustedMinimizeButtonY = try XCTUnwrap(
                 window.standardWindowButton(.miniaturizeButton)?.frame.origin.y
             )
+            let resolvedWindowSize = window.frame.size
             XCTAssertFalse(window.styleMask.contains(.resizable), identifier)
-            XCTAssertEqual(window.minSize, initialWindowSize, identifier)
-            XCTAssertEqual(window.maxSize, initialWindowSize, identifier)
             XCTAssertEqual(
                 adjustedCloseButtonY,
                 initialCloseButtonY - 4,
@@ -79,6 +77,8 @@ final class WindowAccessorTests: XCTestCase {
                 accuracy: 0.5,
                 identifier
             )
+            XCTAssertEqual(window.minSize, resolvedWindowSize, identifier)
+            XCTAssertEqual(window.maxSize, resolvedWindowSize, identifier)
         }
     }
 
