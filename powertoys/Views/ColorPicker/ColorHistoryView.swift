@@ -89,7 +89,8 @@ struct ColorHistoryView: View {
                         service.clearUnpinned(in: service.selectedProjectID)
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
+                    .frame(height: 24)
                     .contentShape(Rectangle())
                     .help("Clear unpinned colors in \(selectedProjectName)")
                     .accessibilityIdentifier("color-picker.clear")
@@ -97,11 +98,12 @@ struct ColorHistoryView: View {
                 Button("Pick Color") { service.pick() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .frame(height: 24)
                     .contentShape(Rectangle())
                     .help("Pick a color for \(selectedProjectName)")
                     .accessibilityIdentifier("color-picker.pick")
                 ColorPickerIconButton(
-                    systemName: page == .settings ? "gearshape.fill" : "gearshape",
+                    systemName: "gearshape",
                     help: page == .settings ? "Close Settings" : "Settings"
                 ) {
                     page = page == .settings ? .history : .settings
