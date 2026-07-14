@@ -45,6 +45,8 @@ struct TextExtractorView: View {
                     page = page == .settings ? .history : .settings
                 }
                 .accessibilityIdentifier("text-extractor.settings")
+                .padding(.leading, UtilityLayout.horizontalInset)
+                .padding(.bottom, UtilityLayout.contentBottomInset)
             }
         }
         .frame(
