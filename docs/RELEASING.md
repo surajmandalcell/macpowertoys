@@ -11,6 +11,10 @@ MacPowerToys releases are currently built and verified locally. The repository d
 5. Quit the installed app, then run `make install ALLOW_INSTALL=1`.
 6. Exercise startup, tray behavior, every built-in tool, and quit/relaunch.
 
+Make embeds the source commit in the app and refuses installation if the
+worktree is dirty or `HEAD` changes during the build. Do not copy a product
+from older DerivedData.
+
 The default build uses the Apple Development identity in the local login keychain for team `GF57JXJF5A`. `ADHOC=1` is the explicit fallback for Macs without that identity. Both modes intentionally omit provisioning-only entitlements, including iCloud, so builds do not require automatic profile creation.
 
 An Apple Development signature is for local development. Distribution to other Macs without Gatekeeper warnings requires a paid Apple Developer membership, a Developer ID Application certificate, and Apple notarization.

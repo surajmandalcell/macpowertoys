@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>MPTSourceCommit</key>
+	<string>$(MPT_SOURCE_COMMIT)</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Text Extractor captures only the region you select so Apple Vision can recognize its text locally.</string>
 	<key>CFBundleURLTypes</key>

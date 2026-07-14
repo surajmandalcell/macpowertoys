@@ -16,6 +16,8 @@ rules, and before inspecting or changing implementation files.
 ## Mandatory Current Build Rule
 
 - Always build, open, test, install, and report the latest source state only.
+- Commit the complete source state and confirm the worktree is clean before the
+  final visual launch or installation.
 - Before opening an app, confirm its embedded `MPTSourceCommit` equals current
   `HEAD`. A missing or different commit means the app must not be opened.
 - Never use `MACPOWERTOYS_UI_TEST=1` for visual verification. Test mode skips

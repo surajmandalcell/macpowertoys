@@ -7,6 +7,11 @@ After every verified code or UI change, build, replace, and relaunch
 for local installation. If a Cloud Sync transfer is active, leave the installed
 app untouched and report the blocked installation explicitly.
 
+Use `make install ALLOW_INSTALL=1` for local replacement. The build embeds its
+source commit, and the installer must refuse the product if the worktree is
+dirty or `HEAD` changed while it was building. Never copy an older DerivedData
+product into Applications.
+
 For a release checkpoint:
 
 1. Run the unit and integration suite in isolated DerivedData.
