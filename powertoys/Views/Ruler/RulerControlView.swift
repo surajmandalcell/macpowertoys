@@ -11,46 +11,43 @@ struct RulerControlView: View {
             header
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    createSection
+                VStack(alignment: .leading, spacing: 16) {
                     settingsSection
+                    guidesSection
                     activeSection
                     measurementsSection
                 }
                 .padding(.horizontal, 20)
+                .padding(.top, 16)
                 .padding(.bottom, 20)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(VisualEffectBackground(material: .hudWindow))
         .onAppear {
             manager.restore()
             calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
         }
         .onReceive(NotificationCenter.default.publisher(for: .toolActionRequested)) { note in
-            guard let action = note.object as? ToolActionID, action == .rulerOpen else { return }
+            guard let action = note.object as? ToolActionID, action == .rulerSettings else { return }
             manager.restore()
         }
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: "ruler")
-            Text("Ruler").font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+            Text("Ruler Settings").font(.system(size: 13, weight: .medium))
             Spacer()
-            Button(guides.isVisible ? "Hide Crosshair" : "Crosshair") { guides.toggleCrosshair() }
-                .controlSize(.small)
-                .contentShape(Rectangle())
-            Button("Pin Guides") { guides.pinGuidesAtPointer() }
-                .controlSize(.small)
-                .contentShape(Rectangle())
-            if !guides.verticalGuides.isEmpty {
-                Button(guides.isEditing ? "Done Editing" : "Edit Guides") { guides.toggleEditing() }
-                    .controlSize(.small)
-                    .contentShape(Rectangle())
-                Button("Clear Guides") { guides.clearGuides() }
-                    .controlSize(.small)
-                    .contentShape(Rectangle())
+            Menu {
+                ForEach(RulerOrientation.allCases) { orientation in
+                    Button(orientation.title) { manager.create(orientation) }
+                }
+            } label: {
+                Label("New Ruler", systemImage: "plus")
             }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
             Button("Measure Region") { MeasurementOverlayController.shared.begin() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -58,23 +55,6 @@ struct RulerControlView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-    }
-
-    private var createSection: some View {
-        section("NEW RULER") {
-            HStack(spacing: 8) {
-                ForEach(RulerOrientation.allCases) { orientation in
-                    Button {
-                        manager.create(orientation)
-                    } label: {
-                        Label(orientation.title, systemImage: icon(for: orientation))
-                            .frame(maxWidth: .infinity)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-        }
     }
 
     private var settingsSection: some View {
@@ -87,6 +67,7 @@ struct RulerControlView: View {
                             ForEach(RulerUnit.allCases) { unit in Text(unit.rawValue).tag(unit) }
                         }
                         .labelsHidden()
+                        .frame(width: 130)
                         .contentShape(Rectangle())
                         if manager.style.unit == .millimeters || manager.style.unit == .inches {
                             Text(manager.style.hasCalibration(for: NSScreen.main) ? "Calibrated" : "Estimated")
@@ -101,6 +82,7 @@ struct RulerControlView: View {
                         ForEach(RulerZeroCorner.allCases) { corner in Text(corner.title).tag(corner) }
                     }
                     .labelsHidden()
+                    .frame(width: 130)
                     .contentShape(Rectangle())
                 }
                 GridRow {
@@ -118,8 +100,12 @@ struct RulerControlView: View {
                     Text("Window").foregroundStyle(.secondary)
                     HStack {
                         Toggle("Float", isOn: styleBinding(\.floats))
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
                             .contentShape(Rectangle())
                         Toggle("Shadow", isOn: styleBinding(\.hasShadow))
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
                             .contentShape(Rectangle())
                     }
                 }
@@ -147,6 +133,26 @@ struct RulerControlView: View {
                     }
                 }
             }
+            .font(.system(size: 12))
+        }
+    }
+
+    private var guidesSection: some View {
+        section("GUIDES") {
+            HStack(spacing: 12) {
+                Button(guides.isVisible ? "Hide Crosshair" : "Show Crosshair") {
+                    guides.toggleCrosshair()
+                }
+                Button("Pin at Pointer") { guides.pinGuidesAtPointer() }
+                if !guides.verticalGuides.isEmpty {
+                    Button(guides.isEditing ? "Done Editing" : "Edit Guides") {
+                        guides.toggleEditing()
+                    }
+                    Button("Clear", role: .destructive) { guides.clearGuides() }
+                }
+                Spacer()
+            }
+            .buttonStyle(.borderless)
             .font(.system(size: 12))
         }
     }
@@ -249,18 +255,15 @@ struct RulerControlView: View {
     }
 
     private func preset(_ title: String, _ ratio: Double?) -> some View {
-        Button(title) { manager.aspectRatio = ratio }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+        let isSelected = manager.aspectRatio == ratio
+        return Button(title) { manager.aspectRatio = ratio }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: isSelected ? .medium : .regular))
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(isSelected ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
-    }
-
-    private func icon(for orientation: RulerOrientation) -> String {
-        switch orientation {
-        case .horizontal: "arrow.left.and.right"
-        case .vertical: "arrow.up.and.down"
-        case .joined: "arrow.down.left.and.arrow.up.right"
-        }
     }
 }
 

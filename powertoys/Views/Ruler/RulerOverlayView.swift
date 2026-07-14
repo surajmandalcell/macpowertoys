@@ -114,18 +114,42 @@ final class RulerOverlayView: NSView {
 
     override func rightMouseDown(with event: NSEvent) {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Set Origin at Pointer", action: #selector(setOrigin), keyEquivalent: "")
-        menu.addItem(withTitle: "Reset Ruler", action: #selector(resetRuler), keyEquivalent: "")
-        menu.addItem(withTitle: state.isVisible ? "Hide Ruler" : "Show Ruler", action: #selector(hideRuler), keyEquivalent: "")
+        menu.addItem(item("New Horizontal Ruler", #selector(newHorizontal), "ruler"))
+        menu.addItem(item("New Vertical Ruler", #selector(newVertical), "ruler.fill"))
+        menu.addItem(item("New Joined Ruler", #selector(newJoined), "square.dashed"))
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Remove Ruler", action: #selector(removeRuler), keyEquivalent: "")
-        for item in menu.items { item.target = self }
+        menu.addItem(item("Measure Region", #selector(measureRegion), "viewfinder"))
+        menu.addItem(item(
+            RulerGuideController.shared.isVisible ? "Hide Crosshair" : "Show Crosshair",
+            #selector(toggleCrosshair),
+            "scope"
+        ))
+        menu.addItem(.separator())
+        menu.addItem(item("Set Origin at Pointer", #selector(setOrigin), "scope"))
+        menu.addItem(item("Reset Ruler", #selector(resetRuler), "arrow.counterclockwise"))
+        menu.addItem(item(state.isVisible ? "Hide Ruler" : "Show Ruler", #selector(hideRuler), "eye.slash"))
+        menu.addItem(.separator())
+        menu.addItem(item("Ruler Settings…", #selector(openSettings), "gearshape"))
+        menu.addItem(item("Remove Ruler", #selector(removeRuler), "trash"))
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 
+    private func item(_ title: String, _ action: Selector, _ symbol: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        return item
+    }
+
+    @objc private func newHorizontal() { manager?.create(.horizontal) }
+    @objc private func newVertical() { manager?.create(.vertical) }
+    @objc private func newJoined() { manager?.create(.joined) }
+    @objc private func measureRegion() { MeasurementOverlayController.shared.begin() }
+    @objc private func toggleCrosshair() { RulerGuideController.shared.toggleCrosshair() }
     @objc private func setOrigin() { manager?.setOriginAtPointer(state.id) }
     @objc private func resetRuler() { manager?.reset(state.id) }
     @objc private func hideRuler() { manager?.hide(state.id) }
+    @objc private func openSettings() { manager?.openSettings() }
     @objc private func removeRuler() { manager?.remove(state.id) }
 
     private func rulerShape() -> NSBezierPath {

@@ -106,7 +106,7 @@ struct MacPowerToysApp: App {
             RulerControlView()
                 .background(WindowAccessor(identifier: "ruler"))
         }
-        .defaultSize(width: 680, height: 680)
+        .defaultSize(width: 560, height: 600)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["ruler"]))
         .restorationBehavior(.disabled)
@@ -115,7 +115,7 @@ struct MacPowerToysApp: App {
             AwakeView()
                 .background(WindowAccessor(identifier: "awake"))
         }
-        .defaultSize(width: 680, height: 620)
+        .defaultSize(width: 560, height: 500)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["awake"]))
         .restorationBehavior(.disabled)
@@ -124,7 +124,8 @@ struct MacPowerToysApp: App {
             ColorHistoryView()
                 .background(WindowAccessor(identifier: "color-picker"))
         }
-        .defaultSize(width: 620, height: 640)
+        .defaultSize(width: 520, height: 260)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["color-picker"]))
         .restorationBehavior(.disabled)
@@ -133,7 +134,8 @@ struct MacPowerToysApp: App {
             TextExtractorView()
                 .background(WindowAccessor(identifier: "text-extractor"))
         }
-        .defaultSize(width: 680, height: 620)
+        .defaultSize(width: 480, height: 250)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["text-extractor"]))
         .restorationBehavior(.disabled)

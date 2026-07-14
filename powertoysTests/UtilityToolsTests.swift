@@ -62,4 +62,9 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(ToolActionID.colorPickerCopyLast.toolID, "color-picker")
         XCTAssertEqual(ToolActionID.textExtractorCapture.toolID, "text-extractor")
     }
+
+    func testGlobalShortcutKeysCoverAlphabetWithoutDuplicateCodes() {
+        XCTAssertEqual(GlobalShortcutKey.allCases.map(\.title), Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init))
+        XCTAssertEqual(Set(GlobalShortcutKey.allCases.map(\.keyCode)).count, 26)
+    }
 }

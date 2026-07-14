@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ColorHistoryView: View {
     @State private var service = ColorPickerService.shared
-    @State private var shortcuts = GlobalShortcutManager.shared
     @State private var search = ""
 
     private var samples: [ColorSample] {
@@ -12,56 +11,48 @@ struct ColorHistoryView: View {
         }
     }
 
+    private var windowHeight: CGFloat {
+        260 + CGFloat(max(0, min(samples.count, 5) - 1) * 56)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            HStack {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search colors", text: $search)
-                    .textFieldStyle(.plain)
-                    .contentShape(Rectangle())
-                Picker("Default", selection: $service.defaultFormat) {
-                    ForEach(ColorCopyFormat.allCases) { format in Text(format.title).tag(format) }
-                }
-                .frame(width: 120)
-                .contentShape(Rectangle())
-                Toggle("⌃⌥⌘", isOn: Binding(
-                    get: { shortcuts.isColorShortcutEnabled },
-                    set: shortcuts.setColorShortcutEnabled
-                ))
-                .toggleStyle(.checkbox)
-                .contentShape(Rectangle())
-                Picker("Shortcut key", selection: Binding(
-                    get: { shortcuts.colorKey },
-                    set: shortcuts.setColorKey
-                )) {
-                    ForEach(GlobalShortcutKey.allCases) { key in Text(key.title).tag(key) }
-                }
-                .labelsHidden()
-                .frame(width: 48)
-                .contentShape(Rectangle())
-            }
-            .padding(12)
-            Divider()
+            toolbar
             if samples.isEmpty {
                 EmptyStateView(icon: "eyedropper", message: "Pick a color to add it to history")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(samples) { sample in ColorSampleRow(sample: sample) }
-                    .listStyle(.inset)
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 6) {
+                        ForEach(samples) { sample in
+                            ColorSampleRow(sample: sample)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                }
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(width: 520, height: windowHeight)
+        .background(VisualEffectBackground(material: .hudWindow))
+        .animation(.easeInOut(duration: 0.16), value: samples.count)
     }
 
     private var header: some View {
         HStack {
             Image(systemName: "eyedropper")
+                .foregroundStyle(Color.accentColor)
             Text("Color Picker").font(.system(size: 13, weight: .medium))
             Spacer()
-            Button("Clear", role: .destructive) { service.clearUnpinned() }
-                .contentShape(Rectangle())
+            GlobalShortcutMenu(action: .colorPicker)
+            if !service.history.isEmpty {
+                Button("Clear", role: .destructive) { service.clearUnpinned() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
+                    .contentShape(Rectangle())
+            }
             Button("Pick Color") { service.pick() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -70,11 +61,38 @@ struct ColorHistoryView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
+
+    private var toolbar: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                TextField("Search colors", text: $search)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+            }
+            .padding(.horizontal, 9)
+            .frame(height: 28)
+            .background(Color.primary.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            Picker("Copy format", selection: $service.defaultFormat) {
+                ForEach(ColorCopyFormat.allCases) { format in
+                    Text(format.title).tag(format)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 120)
+        }
+        .padding(12)
+    }
 }
 
 private struct ColorSampleRow: View {
     let sample: ColorSample
     @State private var service = ColorPickerService.shared
+    @State private var isHovering = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -106,12 +124,13 @@ private struct ColorSampleRow: View {
         }
         .buttonStyle(.borderless)
         .contentShape(Rectangle())
-        .padding(.vertical, 4)
-        .padding(.horizontal, 4)
-        .background(isFocused ? Color.accentColor.opacity(0.1) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(10)
+        .background(rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(isHovering ? 0.1 : 0), radius: 6, y: 2)
         .focusable()
         .focused($isFocused)
+        .onHover { isHovering = $0 }
         .onKeyPress(.return) {
             service.copy(sample, as: service.defaultFormat)
             return .handled
@@ -123,5 +142,10 @@ private struct ColorSampleRow: View {
             service.copy(sample, as: ColorCopyFormat.allCases[number - 1])
             return .handled
         }
+    }
+
+    private var rowBackground: Color {
+        if isFocused { return Color.accentColor.opacity(0.1) }
+        return Color.primary.opacity(isHovering ? 0.06 : 0.03)
     }
 }

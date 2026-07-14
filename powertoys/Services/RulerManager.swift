@@ -26,10 +26,20 @@ final class RulerManager {
             guard let self, let action = note.object as? ToolActionID else { return }
             Task { @MainActor [self, action] in self.handle(action) }
         }
+        NotificationCenter.default.addObserver(forName: .commandOpenSettings, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard self != nil, NSApp.keyWindow == nil else { return }
+                ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
+            }
+        }
     }
 
     func restore() {
         for state in rulers where state.isVisible { show(state.id) }
+    }
+
+    func openSettings() {
+        ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
     }
 
     func create(_ orientation: RulerOrientation) {
@@ -203,6 +213,7 @@ final class RulerManager {
 
     private func handle(_ action: ToolActionID) {
         switch action {
+        case .rulerOpen: create(.horizontal)
         case .rulerNewHorizontal: create(.horizontal)
         case .rulerNewVertical: create(.vertical)
         case .rulerNewJoined: create(.joined)
