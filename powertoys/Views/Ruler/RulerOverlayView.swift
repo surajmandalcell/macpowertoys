@@ -129,6 +129,12 @@ final class RulerOverlayView: NSView {
         menu.addItem(item("Reset Ruler", #selector(resetRuler), "arrow.counterclockwise"))
         menu.addItem(item(state.isVisible ? "Hide Ruler" : "Show Ruler", #selector(hideRuler), "eye.slash"))
         menu.addItem(.separator())
+        if manager?.isGrouped(state.id) == true {
+            menu.addItem(item("Ungroup Rulers", #selector(ungroupRulers), "rectangle.3.group"))
+        } else {
+            menu.addItem(item("Group Visible Rulers", #selector(groupRulers), "rectangle.3.group.fill"))
+        }
+        menu.addItem(.separator())
         menu.addItem(item("Ruler Settings…", #selector(openSettings), "gearshape"))
         menu.addItem(item("Remove Ruler", #selector(removeRuler), "trash"))
         NSMenu.popUpContextMenu(menu, with: event, for: self)
@@ -149,22 +155,24 @@ final class RulerOverlayView: NSView {
     @objc private func setOrigin() { manager?.setOriginAtPointer(state.id) }
     @objc private func resetRuler() { manager?.reset(state.id) }
     @objc private func hideRuler() { manager?.hide(state.id) }
+    @objc private func groupRulers() { manager?.groupVisible() }
+    @objc private func ungroupRulers() { manager?.ungroup(containing: state.id) }
     @objc private func openSettings() { manager?.openSettings() }
     @objc private func removeRuler() { manager?.remove(state.id) }
 
     private func rulerShape() -> NSBezierPath {
         switch state.orientation {
         case .horizontal, .vertical:
-            return NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
+            return NSBezierPath(rect: bounds.insetBy(dx: 0.5, dy: 0.5))
         case .joined:
             let path = NSBezierPath()
             if state.showsHorizontalArm {
                 let y = style.zeroCorner == .topLeft || style.zeroCorner == .topRight ? bounds.height - 54 : 0
-                path.appendRoundedRect(NSRect(x: 0, y: y, width: bounds.width, height: 54), xRadius: 6, yRadius: 6)
+                path.append(NSBezierPath(rect: NSRect(x: 0.5, y: y + 0.5, width: bounds.width - 1, height: 53)))
             }
             if state.showsVerticalArm {
                 let x = style.zeroCorner.reversesHorizontal ? bounds.width - 54 : 0
-                path.appendRoundedRect(NSRect(x: x, y: 0, width: 54, height: bounds.height), xRadius: 6, yRadius: 6)
+                path.append(NSBezierPath(rect: NSRect(x: x + 0.5, y: 0.5, width: 53, height: bounds.height - 1)))
             }
             return path
         }

@@ -12,17 +12,18 @@ struct AwakeView: View {
             header
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
                     status
                     modes
                     options
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 20)
+                .padding(.horizontal, UtilityLayout.horizontalInset)
+                .padding(.top, UtilityLayout.contentTopInset)
+                .padding(.bottom, UtilityLayout.contentBottomInset)
             }
+            .thinScrollIndicators()
         }
-        .background(VisualEffectBackground(material: .hudWindow))
+        .utilityWindowBackground()
     }
 
     private var header: some View {
@@ -40,8 +41,8 @@ struct AwakeView: View {
             .contentShape(Rectangle())
             .disabled(service.configuration.mode == .passive)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.vertical, UtilityLayout.headerVerticalInset)
     }
 
     private var status: some View {

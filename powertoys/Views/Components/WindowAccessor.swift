@@ -42,6 +42,8 @@ private class WindowAccessorView: NSView {
             window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
         }
         window.isMovableByWindowBackground = true
+        window.isOpaque = false
+        window.titlebarAppearsTransparent = true
         window.backgroundColor = .clear
         window.tabbingMode = .disallowed
     }

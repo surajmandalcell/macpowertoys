@@ -5,9 +5,11 @@
 
 import Foundation
 import AppKit
+import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var restoredWindows = Set<ObjectIdentifier>()
+    private var ownsInstance = true
 
     private static let dockIconAssets = [
         "main": "AppIcon",
@@ -22,10 +24,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        ownsInstance = AppInstanceCoordinator.shared.ownsInstance
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if !ensureSingleInstance() {
+        if !ownsInstance {
             NSApp.terminate(nil)
             return
         }
@@ -36,24 +39,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSWindow.didBecomeKeyNotification,
             object: nil
         )
-    }
-
-    private func ensureSingleInstance() -> Bool {
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
-            return true
-        }
-
-        guard let bundleId = Bundle.main.bundleIdentifier else { return true }
-        let supportedBundleIDs = [bundleId, AppIdentity.legacyBundleIdentifier]
-        let runningApps = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
-        let otherInstances = runningApps.filter { $0 != NSRunningApplication.current }
-
-        if let existingApp = otherInstances.first {
-            existingApp.activate(options: [.activateAllWindows])
-            return false
-        }
-
-        return true
     }
 
     @MainActor
@@ -108,5 +93,67 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+}
+
+@MainActor
+final class AppInstanceCoordinator {
+    static let shared = AppInstanceCoordinator()
+
+    let ownsInstance: Bool
+    private var instanceLock: ProcessInstanceLock?
+
+    private init() {
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            ownsInstance = true
+            return
+        }
+
+        let supportedBundleIDs = [AppIdentity.bundleIdentifier, AppIdentity.legacyBundleIdentifier]
+        let runningApps = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
+        if let existingApp = runningApps.first(where: { $0 != NSRunningApplication.current }) {
+            existingApp.activate(options: [.activateAllWindows])
+            ownsInstance = false
+            return
+        }
+
+        let lock = ProcessInstanceLock(name: AppIdentity.bundleIdentifier)
+        if lock.acquire() {
+            instanceLock = lock
+            ownsInstance = true
+        } else {
+            let candidates = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
+            candidates.first(where: { $0 != NSRunningApplication.current })?.activate(options: [.activateAllWindows])
+            ownsInstance = false
+        }
+    }
+}
+
+final class ProcessInstanceLock {
+    private let path: String
+    private var descriptor: Int32 = -1
+
+    init(name: String) {
+        path = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("\(name).instance.lock")
+            .path
+    }
+
+    func acquire() -> Bool {
+        guard descriptor == -1 else { return true }
+        let fd = Darwin.open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard fd >= 0 else { return false }
+        guard Darwin.lockf(fd, F_TLOCK, 0) == 0 else {
+            Darwin.close(fd)
+            return false
+        }
+        descriptor = fd
+        return true
+    }
+
+    deinit {
+        guard descriptor >= 0 else { return }
+        _ = Darwin.lockf(descriptor, F_ULOCK, 0)
+        Darwin.close(descriptor)
     }
 }

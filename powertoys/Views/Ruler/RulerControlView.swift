@@ -11,18 +11,19 @@ struct RulerControlView: View {
             header
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
                     settingsSection
                     guidesSection
                     activeSection
                     measurementsSection
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 20)
+                .padding(.horizontal, UtilityLayout.horizontalInset)
+                .padding(.top, UtilityLayout.contentTopInset)
+                .padding(.bottom, UtilityLayout.contentBottomInset)
             }
+            .thinScrollIndicators()
         }
-        .background(VisualEffectBackground(material: .hudWindow))
+        .utilityWindowBackground()
         .onAppear {
             manager.restore()
             calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
@@ -53,8 +54,8 @@ struct RulerControlView: View {
                 .controlSize(.small)
                 .contentShape(Rectangle())
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.vertical, UtilityLayout.headerVerticalInset)
     }
 
     private var settingsSection: some View {

@@ -30,13 +30,13 @@ struct ColorHistoryView: View {
                             ColorSampleRow(sample: sample)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.bottom, UtilityLayout.contentBottomInset)
                 }
             }
         }
         .frame(width: 520, height: windowHeight)
-        .background(VisualEffectBackground(material: .hudWindow))
+        .utilityWindowBackground()
         .animation(.easeInOut(duration: 0.16), value: samples.count)
     }
 
@@ -58,8 +58,8 @@ struct ColorHistoryView: View {
                 .controlSize(.small)
                 .contentShape(Rectangle())
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.vertical, UtilityLayout.headerVerticalInset)
     }
 
     private var toolbar: some View {
@@ -85,7 +85,8 @@ struct ColorHistoryView: View {
             .labelsHidden()
             .frame(width: 120)
         }
-        .padding(12)
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.vertical, 12)
     }
 }
 

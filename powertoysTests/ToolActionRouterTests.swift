@@ -34,4 +34,11 @@ final class ToolActionRouterTests: XCTestCase {
             XCTAssertEqual(action.toolID, action.rawValue.split(separator: ".").first.map(String.init))
         }
     }
+
+    func testWindowIdentifierMatchingDoesNotTreatRulerOverlaysAsSettingsWindows() {
+        XCTAssertTrue(ToolActionRouter.windowIdentifier("awake", matches: "awake"))
+        XCTAssertTrue(ToolActionRouter.windowIdentifier("awake-AppWindow-1", matches: "awake"))
+        XCTAssertFalse(ToolActionRouter.windowIdentifier("ruler.1234", matches: "ruler"))
+        XCTAssertFalse(ToolActionRouter.windowIdentifier("awake-extra", matches: "ruler"))
+    }
 }

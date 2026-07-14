@@ -167,8 +167,10 @@ private struct LogTextView: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
+        scrollView.verticalScroller?.controlSize = .mini
 
         let textView = NSTextView()
         textView.isEditable = false
