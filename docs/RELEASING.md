@@ -6,12 +6,12 @@ MacPowerToys releases are currently built and verified locally. The repository d
 
 1. Confirm Cloud Sync has no active transfers.
 2. Run `make test` and the UI smoke tests locally.
-3. Run `make build SIGNED=1`.
+3. Run `make build`.
 4. Verify the result with `codesign --verify --deep --strict`.
-5. Quit the installed app, then run `make install SIGNED=1 ALLOW_INSTALL=1`.
+5. Quit the installed app, then run `make install ALLOW_INSTALL=1`.
 6. Exercise startup, tray behavior, every built-in tool, and quit/relaunch.
 
-`SIGNED=1` uses the Apple Development identity in the local login keychain for team `GF57JXJF5A`. It intentionally omits provisioning-only entitlements, including iCloud, so the personal build can be signed without automatic profile creation.
+The default build uses the Apple Development identity in the local login keychain for team `GF57JXJF5A`. `ADHOC=1` is the explicit fallback for Macs without that identity. Both modes intentionally omit provisioning-only entitlements, including iCloud, so builds do not require automatic profile creation.
 
 An Apple Development signature is for local development. Distribution to other Macs without Gatekeeper warnings requires a paid Apple Developer membership, a Developer ID Application certificate, and Apple notarization.
 

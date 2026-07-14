@@ -47,10 +47,10 @@ xcodebuild -project powertoys.xcodeproj \
 
 You can also open `powertoys.xcodeproj` in Xcode and run the `powertoys` scheme. The built product is `MacPowerToys.app`.
 
-For a local build signed with the Apple Development certificate in your login keychain:
+`make build` uses the Apple Development certificate in your login keychain. On a Mac without that identity, request an ad-hoc build explicitly:
 
 ```bash
-make build SIGNED=1
+make build ADHOC=1
 ```
 
 This personal-team signature is suitable for installing on the signing Mac. Public distribution still requires a paid Apple Developer membership, Developer ID signing, and notarization.
