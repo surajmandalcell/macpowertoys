@@ -8,6 +8,8 @@ import AppKit
 import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    static let statusItemEventMask: NSEvent.EventTypeMask = .leftMouseDown
+
     private var statusItemClickMonitor: Any?
     private let statusItemClickCoordinator = StatusItemClickCoordinator(
         delay: NSEvent.doubleClickInterval
@@ -45,7 +47,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
-        statusItemClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { event in
+        statusItemClickMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: Self.statusItemEventMask
+        ) { event in
             let hitView = event.window?.contentView?.hitTest(event.locationInWindow)
             guard let statusButton = Self.statusItemButton(containing: hitView) else {
                 return event

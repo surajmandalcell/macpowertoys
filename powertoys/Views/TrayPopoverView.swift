@@ -81,7 +81,7 @@ struct TrayPopoverView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             TrayFooterButton(title: "Open MacPowerToys", systemImage: "macwindow") {
                 openWindow(id: "main")
                 NSApplication.shared.activate(ignoringOtherApps: true)
@@ -93,8 +93,8 @@ struct TrayPopoverView: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(Color.primary.opacity(0.03))
     }
 }
@@ -475,8 +475,8 @@ private struct TrayFooterButton: View {
             Label(title, systemImage: systemImage)
                 .font(.system(size: 11))
                 .foregroundStyle(isHovering ? .primary : .secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
                 .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 6)
