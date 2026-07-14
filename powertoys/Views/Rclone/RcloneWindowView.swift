@@ -34,7 +34,7 @@ struct RcloneWindowView: View {
         }
         .environment(manager)
         .ignoresSafeArea()
-        .background(WindowAccessor())
+        .background(WindowAccessor(identifier: "rclone"))
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("rclone") == true else { return }
             content = .settings

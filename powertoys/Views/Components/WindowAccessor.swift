@@ -7,9 +7,9 @@ import SwiftUI
 import AppKit
 
 struct WindowAccessor: NSViewRepresentable {
-    var windowIdentifier: String?
+    let windowIdentifier: String
 
-    init(identifier: String? = nil) {
+    init(identifier: String) {
         windowIdentifier = identifier
     }
 
@@ -17,16 +17,14 @@ struct WindowAccessor: NSViewRepresentable {
         WindowAccessorView(windowIdentifier: windowIdentifier)
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? WindowAccessorView)?.windowIdentifier = windowIdentifier
-    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 private class WindowAccessorView: NSView {
-    var windowIdentifier: String?
+    let windowIdentifier: String
     private weak var restoredWindow: NSWindow?
 
-    init(windowIdentifier: String?) {
+    init(windowIdentifier: String) {
         self.windowIdentifier = windowIdentifier
         super.init(frame: .zero)
     }
@@ -39,9 +37,7 @@ private class WindowAccessorView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let window = window else { return }
-        if let windowIdentifier {
-            window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
-        }
+        window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
         if restoredWindow !== window {
             WindowStateManager.shared.restoreState(for: window)
             restoredWindow = window
