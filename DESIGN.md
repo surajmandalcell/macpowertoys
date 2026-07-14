@@ -97,8 +97,9 @@ Numbers that update live get `.monospacedDigit()` and
 
 **One left edge.** Within any container, titles, tab strips, section headers, and
 card edges share a single leading gutter (20pt in sheets). Never introduce a
-second, in-between alignment point. When a control has internal padding (tab
-pills), outdent the control so its *text* sits on the gutter.
+second, in-between alignment point. Align the visible outer boundary of a
+stateful control to that gutter; never outdent a selected pill merely to align
+its inset text.
 
 - Sidebar titles: `.padding(.leading, 84)` to clear traffic lights, `.top, 8`.
 - Search field container: `.top, 52` / `.horizontal, 12` / inner `.padding(8)`.
@@ -136,7 +137,7 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 - **Icon button** — 24×24, SF Symbol ~12pt medium, 6pt radius, hover 0.06,
   `.buttonStyle(.plain)` + `.focusEffectDisabled()` + `.contentShape(Rectangle())`.
 - **Tab pill** — text 12pt (medium when selected), 10/5 padding, 6pt radius,
-  selected bg 0.06; strip outdented so text hits the gutter.
+  selected bg 0.06; the selected pill's outer edge sits on the shared gutter.
 - **Section card** — 12pt radius, 0.05 bg, 14pt padding, preceded by an
   UPPERCASE 10pt secondary header on the same gutter.
 - **Card** (grid/tool) — 12pt radius, 0.03 bg, hover 0.06.
@@ -377,6 +378,9 @@ same metaphor because macOS controls their tint.
 
 These are binding polish rules. Treat them as defects when they regress.
 
+- Selected tabs align by their visible pill boundary, not their inset label.
+  The selected pill and the first field, card, or row below it share one outer
+  edge in the rendered window.
 - Controls sharing a row must share the same visible height and text baseline.
   Google Material 3 applies one 56dp input height to search and builds exposed
   dropdowns around text fields. MacPowerToys uses the same parity principle at

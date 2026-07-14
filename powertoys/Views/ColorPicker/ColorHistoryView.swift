@@ -123,7 +123,7 @@ struct ColorHistoryView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .padding(.horizontal, UtilityLayout.horizontalInset - 10)
+        .padding(.horizontal, UtilityLayout.horizontalInset)
         .frame(height: 36)
     }
 
