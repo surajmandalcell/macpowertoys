@@ -125,9 +125,9 @@ MacPowerToys is available under the [MIT License](LICENSE).
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="760" alt="MacPowerToys launcher showing the built-in utilities">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="760" height="713" alt="MacPowerToys launcher with its aligned utility grid">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/text-extractor.png" width="480" alt="Compact Text Extractor utility window">
+  <img src="docs/screenshots/text-extractor.png" width="480" height="352" alt="Compact Text Extractor recognition settings">
 </p>
