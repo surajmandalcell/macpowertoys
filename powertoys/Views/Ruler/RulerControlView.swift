@@ -8,6 +8,24 @@ struct RulerControlView: View {
     @State private var showsCalibrationHelp = false
 
     var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            content
+        }
+        .ignoresSafeArea(.container, edges: .top)
+        .utilityWindowBackground()
+        .onAppear {
+            manager.restore()
+            calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toolActionRequested)) { note in
+            guard let action = note.object as? ToolActionID, action == .rulerSettings else { return }
+            manager.restore()
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
                 settingsSection
@@ -20,37 +38,57 @@ struct RulerControlView: View {
             .padding(.bottom, UtilityLayout.contentBottomInset)
         }
         .thinScrollIndicators()
-        .utilityWindowBackground()
-        .toolbar { titlebarActions }
-        .onAppear {
-            manager.restore()
-            calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .toolActionRequested)) { note in
-            guard let action = note.object as? ToolActionID, action == .rulerSettings else { return }
-            manager.restore()
-        }
     }
 
-    @ToolbarContentBuilder
-    private var titlebarActions: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            HStack(spacing: 8) {
-                Menu {
-                    ForEach(RulerOrientation.allCases) { orientation in
-                        Button(orientation.title) { manager.create(orientation) }
-                    }
-                } label: {
-                    Label("New Ruler", systemImage: "plus")
+    private var header: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "ruler")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+            Text("Ruler Settings")
+                .font(.system(size: 13, weight: .medium))
+            Spacer()
+            Menu {
+                ForEach(RulerOrientation.allCases) { orientation in
+                    Button(orientation.title) { manager.create(orientation) }
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                Button("Measure Region") { MeasurementOverlayController.shared.begin() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                    Text("New Ruler")
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .medium))
+                }
+                .font(.system(size: 11, weight: .medium))
+                .padding(.horizontal, 8)
+                .frame(height: 24)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Create a ruler")
+            .accessibilityIdentifier("ruler.new")
+            Button { MeasurementOverlayController.shared.begin() } label: {
+                Text("Measure Region")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .frame(height: 24)
+                    .background(Color.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                     .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .help("Measure a screen region")
+            .accessibilityIdentifier("ruler.measure")
         }
+        .padding(.leading, 84)
+        .padding(.trailing, 12)
+        .frame(height: 40)
     }
 
     private var settingsSection: some View {
@@ -376,7 +414,7 @@ private struct RulerRow: View {
                 .labelsHidden()
                 .frame(width: 52)
                 .multilineTextAlignment(.trailing)
-            Stepper(label, value: value, in: 54...10_000, step: 10)
+            Stepper(label, value: value, in: RulerGeometry.thickness...10_000, step: 10)
                 .labelsHidden()
                 .controlSize(.small)
         }

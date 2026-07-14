@@ -50,8 +50,8 @@ final class RulerOverlayView: NSView {
         let path = rulerShape()
         style.color.withAlphaComponent(style.backgroundOpacity).setFill()
         path.fill()
-        NSColor.labelColor.withAlphaComponent(0.84).setStroke()
-        path.lineWidth = 1
+        NSColor.labelColor.withAlphaComponent(0.38).setStroke()
+        path.lineWidth = 0.75
         path.stroke()
         drawHorizontalTicksIfNeeded()
         drawVerticalTicksIfNeeded()
@@ -84,10 +84,10 @@ final class RulerOverlayView: NSView {
         let delta = CGPoint(x: now.x - startLocation.x, y: now.y - startLocation.y)
         var frame = startFrame
         if resizesWidth || resizesHeight {
-            if resizesWidth { frame.size.width = max(54, startFrame.width + delta.x) }
+            if resizesWidth { frame.size.width = max(RulerGeometry.thickness, startFrame.width + delta.x) }
             if resizesHeight {
                 let maximumY = startFrame.maxY
-                frame.size.height = max(54, startFrame.height - delta.y)
+                frame.size.height = max(RulerGeometry.thickness, startFrame.height - delta.y)
                 frame.origin.y = maximumY - frame.height
             }
         } else {
@@ -179,12 +179,24 @@ final class RulerOverlayView: NSView {
         case .joined:
             let path = NSBezierPath()
             if state.showsHorizontalArm {
-                let y = style.zeroCorner == .topLeft || style.zeroCorner == .topRight ? bounds.height - 54 : 0
-                path.append(NSBezierPath(rect: NSRect(x: 0.5, y: y + 0.5, width: bounds.width - 1, height: 53)))
+                let y = style.zeroCorner == .topLeft || style.zeroCorner == .topRight
+                    ? bounds.height - RulerGeometry.thickness
+                    : 0
+                path.append(NSBezierPath(rect: NSRect(
+                    x: 0.5,
+                    y: y + 0.5,
+                    width: bounds.width - 1,
+                    height: RulerGeometry.thickness - 1
+                )))
             }
             if state.showsVerticalArm {
-                let x = style.zeroCorner.reversesHorizontal ? bounds.width - 54 : 0
-                path.append(NSBezierPath(rect: NSRect(x: x + 0.5, y: 0.5, width: 53, height: bounds.height - 1)))
+                let x = style.zeroCorner.reversesHorizontal ? bounds.width - RulerGeometry.thickness : 0
+                path.append(NSBezierPath(rect: NSRect(
+                    x: x + 0.5,
+                    y: 0.5,
+                    width: RulerGeometry.thickness - 1,
+                    height: bounds.height - 1
+                )))
             }
             return path
         }
@@ -198,13 +210,15 @@ final class RulerOverlayView: NSView {
         let edge = drawsFromTop ? bounds.maxY : bounds.minY
         let path = NSBezierPath()
         for tick in ticks {
-            let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
+            let length: CGFloat = tick.level == 2 ? 18 : (tick.level == 1 ? 12 : 7)
             path.move(to: CGPoint(x: tick.position, y: edge))
             path.line(to: CGPoint(x: tick.position, y: edge + (drawsFromTop ? -length : length)))
             if tick.level == 2 {
-                drawLabel(tick.value, at: CGPoint(x: tick.position + 3, y: edge + (drawsFromTop ? -34 : 22)))
+                drawLabel(tick.value, at: CGPoint(x: tick.position + 3, y: edge + (drawsFromTop ? -30 : 20)))
             }
         }
+        NSColor.labelColor.withAlphaComponent(0.68).setStroke()
+        path.lineWidth = 0.75
         path.stroke()
     }
 
@@ -215,15 +229,17 @@ final class RulerOverlayView: NSView {
         let drawsFromRight = state.orientation == .joined && style.zeroCorner.reversesHorizontal
         let path = NSBezierPath()
         for tick in ticks {
-            let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
+            let length: CGFloat = tick.level == 2 ? 18 : (tick.level == 1 ? 12 : 7)
             let edge = drawsFromRight ? bounds.maxX : bounds.minX
             path.move(to: CGPoint(x: edge, y: tick.position))
             path.line(to: CGPoint(x: edge + (drawsFromRight ? -length : length), y: tick.position))
             if tick.level == 2 {
-                let labelX = drawsFromRight ? bounds.maxX - 50 : 22
+                let labelX = drawsFromRight ? bounds.maxX - RulerGeometry.thickness + 4 : 20
                 drawLabel(tick.value, at: CGPoint(x: labelX, y: tick.position - 6))
             }
         }
+        NSColor.labelColor.withAlphaComponent(0.68).setStroke()
+        path.lineWidth = 0.75
         path.stroke()
     }
 
@@ -231,7 +247,7 @@ final class RulerOverlayView: NSView {
         let text = value.formatted(.number.precision(.fractionLength(0...1)))
         text.draw(at: point, withAttributes: [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular),
-            .foregroundColor: NSColor.labelColor.withAlphaComponent(0.82)
+            .foregroundColor: NSColor.labelColor.withAlphaComponent(0.74)
         ])
     }
 
@@ -245,8 +261,14 @@ final class RulerOverlayView: NSView {
         }
         if state.orientation != .horizontal {
             let rightArm = state.orientation == .joined && style.zeroCorner.reversesHorizontal
-            path.move(to: CGPoint(x: rightArm ? bounds.maxX - 54 : bounds.minX, y: cursorLocation.y))
-            path.line(to: CGPoint(x: rightArm ? bounds.maxX : min(54, bounds.maxX), y: cursorLocation.y))
+            path.move(to: CGPoint(
+                x: rightArm ? bounds.maxX - RulerGeometry.thickness : bounds.minX,
+                y: cursorLocation.y
+            ))
+            path.line(to: CGPoint(
+                x: rightArm ? bounds.maxX : min(RulerGeometry.thickness, bounds.maxX),
+                y: cursorLocation.y
+            ))
         }
         path.lineWidth = 1
         path.stroke()
@@ -258,6 +280,7 @@ final class RulerOverlayView: NSView {
             let path = NSBezierPath()
             path.move(to: CGPoint(x: bounds.maxX - offset, y: bounds.minY + 3))
             path.line(to: CGPoint(x: bounds.maxX - 3, y: bounds.minY + offset))
+            path.lineWidth = 0.75
             path.stroke()
         }
     }
