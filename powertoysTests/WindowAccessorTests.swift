@@ -16,9 +16,12 @@ final class WindowAccessorTests: XCTestCase {
         )
         Self.retainedWindows.append(window)
 
-        window.contentView = NSHostingView(rootView: WindowAccessor())
+        window.contentView = NSHostingView(
+            rootView: WindowAccessor(identifier: "main")
+        )
         window.contentView?.layoutSubtreeIfNeeded()
 
+        XCTAssertEqual(window.identifier?.rawValue, "main")
         XCTAssertFalse(window.isMovableByWindowBackground)
         XCTAssertTrue(window.isMovable)
     }

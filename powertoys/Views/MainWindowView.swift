@@ -12,7 +12,7 @@ struct MainWindowView: View {
         HomeView()
             .ignoresSafeArea()
             .frame(width: 780, height: 700)
-            .background(WindowAccessor())
+            .background(WindowAccessor(identifier: "main"))
             .sheet(isPresented: $showAppSettings) {
                 AppSettingsSheet()
             }

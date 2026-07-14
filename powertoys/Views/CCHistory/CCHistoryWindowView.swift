@@ -28,7 +28,7 @@ struct CCHistoryWindowView: View {
         .environment(projectManager)
         .environment(bookmarkManager)
         .ignoresSafeArea()
-        .background(WindowAccessor())
+        .background(WindowAccessor(identifier: "cc-history"))
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("cc-history") == true else { return }
             showSettingsPage = true

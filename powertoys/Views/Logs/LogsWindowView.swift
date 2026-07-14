@@ -30,7 +30,7 @@ struct LogsWindowView: View {
             content
         }
         .ignoresSafeArea()
-        .background(WindowAccessor())
+        .background(WindowAccessor(identifier: "logs"))
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("logs") == true else { return }
             showSettings = true
