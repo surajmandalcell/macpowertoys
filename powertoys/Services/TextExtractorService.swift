@@ -138,7 +138,7 @@ private final class TextRegionSelector {
         self.completion = completion
         self.cancellation = cancellation
         panels = NSScreen.screens.map { screen in
-            let panel = NSPanel(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            let panel = TextRegionSelectionPanel(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             panel.level = .screenSaver
             panel.backgroundColor = .clear
             panel.isOpaque = false
@@ -149,6 +149,7 @@ private final class TextRegionSelector {
                 self?.finish(global, screen: screen)
             } cancellation: { [weak self] in self?.cancel() }
             panel.makeKeyAndOrderFront(nil)
+            panel.makeFirstResponder(panel.contentView)
             return panel
         }
         NSApp.activate(ignoringOtherApps: true)
@@ -174,6 +175,10 @@ private final class TextRegionSelector {
     }
 }
 
+private final class TextRegionSelectionPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 private final class TextRegionSelectionView: NSView {
     private let completion: (CGRect) -> Void
     private let cancellation: () -> Void
@@ -190,6 +195,7 @@ private final class TextRegionSelectionView: NSView {
 
     required init?(coder: NSCoder) { nil }
     override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
         NSColor.black.withAlphaComponent(0.2).setFill()
