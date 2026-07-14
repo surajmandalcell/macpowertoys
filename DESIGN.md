@@ -144,6 +144,9 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 - **Card** (grid/tool) — 12pt radius, 0.03 bg, hover 0.06.
 - **Progress bar** — 6pt-high capsule, track `primary.opacity(0.08)`, tint by
   state (accent/green/orange/red).
+- **Scroll indicator:** overlay, autohiding, mini control size. Apply
+  `.thinScrollIndicators()` whenever an indicator is visible; never reserve a
+  thick scrollbar track.
 - **State badge** — 11pt medium text + 10pt icon, tint at 0.12 bg. Lives on
   cards/rows only — never duplicated into sheet headers.
 - **Empty state** — `EmptyStateView(icon:message:)`, centered.

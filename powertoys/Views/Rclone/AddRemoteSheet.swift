@@ -148,9 +148,9 @@ struct AddRemoteSheet: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     fieldTitle("CONNECTOR")
-                    SearchField(text: $searchText, placeholder: "Search connectors…")
                     ProviderDropdown(
                         selection: $selectedProviderID,
+                        searchText: $searchText,
                         providers: filteredProviders,
                         selectedName: selectedProvider?.displayName ?? "Select a connector"
                     )
@@ -464,6 +464,7 @@ private struct ProviderDropdown: View {
     private static let maximumListHeight: CGFloat = 320
 
     @Binding var selection: String
+    @Binding var searchText: String
     let providers: [RcloneProvider]
     let selectedName: String
 
@@ -506,27 +507,34 @@ private struct ProviderDropdown: View {
     }
 
     private func providerList(width: CGFloat) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView(showsIndicators: CGFloat(providers.count) * Self.rowHeight > Self.maximumListHeight) {
-                LazyVStack(spacing: 0) {
-                    if providers.isEmpty {
-                        Text("No connectors found")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: Self.rowHeight)
-                    } else {
-                        ForEach(providers) { provider in
-                            providerRow(provider)
-                                .id(provider.id)
+        VStack(spacing: 0) {
+            SearchField(text: $searchText, placeholder: "Search connectors…")
+                .padding(8)
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: CGFloat(providers.count) * Self.rowHeight > Self.maximumListHeight) {
+                    LazyVStack(spacing: 0) {
+                        if providers.isEmpty {
+                            Text("No connectors found")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, minHeight: Self.rowHeight)
+                        } else {
+                            ForEach(providers) { provider in
+                                providerRow(provider)
+                                    .id(provider.id)
+                            }
                         }
                     }
                 }
+                .thinScrollIndicators()
+                .onAppear {
+                    proxy.scrollTo(selection, anchor: .center)
+                }
             }
-            .onAppear {
-                proxy.scrollTo(selection, anchor: .center)
-            }
+            .frame(height: listHeight)
         }
-        .frame(width: width, height: listHeight)
+        .frame(width: width)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
