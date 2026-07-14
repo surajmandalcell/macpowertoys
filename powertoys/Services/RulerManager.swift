@@ -6,6 +6,7 @@ import Observation
 @MainActor
 final class RulerManager {
     static let shared = RulerManager()
+    private static let rulerThickness: CGFloat = 54
 
     private(set) var rulers: [RulerState] = []
     private(set) var measurements: [RulerMeasurement] = []
@@ -13,6 +14,7 @@ final class RulerManager {
     var aspectRatio: Double?
 
     private var panels: [UUID: RulerOverlayPanel] = [:]
+    private var quitKeyMonitor: Any?
     private let defaults = UserDefaults.standard
     private let statesKey = "ruler.states.v1"
     private let styleKey = "ruler.style.v1"
@@ -38,6 +40,15 @@ final class RulerManager {
                 ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
             }
         }
+        quitKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  event.charactersIgnoringModifiers?.lowercased() == "q",
+                  let identifier = NSApp.keyWindow?.identifier?.rawValue,
+                  Self.isRulerWindowIdentifier(identifier)
+            else { return event }
+            self?.closeTool()
+            return nil
+        }
     }
 
     func restore() {
@@ -48,33 +59,41 @@ final class RulerManager {
         ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
     }
 
-    func create(_ orientation: RulerOrientation) {
-        let screen = NSScreen.main ?? NSScreen.screens.first
-        let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
-        let size: CGSize = switch orientation {
-        case .horizontal: CGSize(width: min(560, visible.width * 0.6), height: 54)
-        case .vertical: CGSize(width: 54, height: min(560, visible.height * 0.65))
-        case .joined: CGSize(width: min(560, visible.width * 0.6), height: min(340, visible.height * 0.5))
+    func openTool() {
+        guard !rulers.isEmpty else {
+            createPair()
+            return
         }
+        let visibleIDs = rulers.filter(\.isVisible).map(\.id)
+        let ids = visibleIDs.isEmpty ? rulers.map(\.id) : visibleIDs
+        ids.forEach(show)
+        if let id = ids.first { focus(id) }
+    }
+
+    func create(_ orientation: RulerOrientation) {
+        let screen = targetScreen
+        let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
+        let size = defaultSize(for: orientation, in: visible)
         let origin = CGPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2)
         var state = RulerState(orientation: orientation, frame: CGRect(origin: origin, size: size), screenID: screen?.displayID)
         state.frame = clamped(state.frame, to: screen)
         rulers.append(state)
         persist()
         show(state.id)
+        focus(state.id)
     }
 
     func createPair() {
-        let screen = NSScreen.main ?? NSScreen.screens.first
+        let screen = targetScreen
         let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
-        let horizontalSize = CGSize(width: min(560, visible.width * 0.6), height: 54)
-        let verticalSize = CGSize(width: 54, height: min(560, visible.height * 0.65))
+        let horizontalSize = defaultSize(for: .horizontal, in: visible)
+        let verticalSize = defaultSize(for: .vertical, in: visible)
         let horizontalOrigin = CGPoint(
-            x: visible.midX - horizontalSize.width / 2,
-            y: visible.midY
+            x: visible.midX - (horizontalSize.width - verticalSize.width) / 2,
+            y: visible.midY - horizontalSize.height + verticalSize.height / 2
         )
         let verticalOrigin = CGPoint(
-            x: horizontalOrigin.x,
+            x: horizontalOrigin.x - verticalSize.width,
             y: horizontalOrigin.y - verticalSize.height + horizontalSize.height
         )
         let groupID = UUID()
@@ -96,6 +115,7 @@ final class RulerManager {
         persist()
         show(horizontal.id)
         show(vertical.id)
+        focus(horizontal.id)
     }
 
     func show(_ id: UUID) {
@@ -135,13 +155,30 @@ final class RulerManager {
         persist()
     }
 
-    func updateFrame(id: UUID, frame: CGRect) {
+    func closeTool() {
+        panels.values.forEach { $0.orderOut(nil) }
+        NSApp.windows.first { $0.identifier?.rawValue == "ruler" }?.close()
+    }
+
+    nonisolated static func isRulerWindowIdentifier(_ identifier: String?) -> Bool {
+        identifier == "ruler" || identifier?.hasPrefix("ruler.") == true
+    }
+
+    func updateFrame(id: UUID, frame: CGRect, persistChanges: Bool = true) {
         guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
         var next = frame
         if let ratio = aspectRatio, ratio > 0 { next.size.height = next.size.width / ratio }
         rulers[index].frame = clamped(next, to: panels[id]?.screen)
-        panels[id]?.setFrame(rulers[index].frame, display: true)
-        persist()
+        panels[id]?.setFrame(rulers[index].frame, display: false)
+        if persistChanges { persist() }
+    }
+
+    func setSize(_ id: UUID, width: Double? = nil, height: Double? = nil) {
+        guard let state = rulers.first(where: { $0.id == id }) else { return }
+        var frame = state.frame
+        if let width, width.isFinite { frame.size.width = max(Self.rulerThickness, width) }
+        if let height, height.isFinite { frame.size.height = max(Self.rulerThickness, height) }
+        updateFrame(id: id, frame: frame)
     }
 
     func setCalibration(_ value: Double, for screen: NSScreen?) {
@@ -153,8 +190,14 @@ final class RulerManager {
     }
 
     func updateScreen(id: UUID, screen: NSScreen?) {
-        guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
-        rulers[index].screenID = screen?.displayID
+        guard let state = rulers.first(where: { $0.id == id }) else { return }
+        let groupID = state.groupID
+        for index in rulers.indices where rulers[index].id == id || groupID != nil && rulers[index].groupID == groupID {
+            let rulerScreen = panels[rulers[index].id]?.screen
+                ?? (rulers[index].id == id ? screen : nil)
+                ?? NSScreen.screens.first { $0.frame.intersects(rulers[index].frame) }
+            rulers[index].screenID = rulerScreen?.displayID
+        }
         persist()
     }
 
@@ -175,11 +218,7 @@ final class RulerManager {
         let orientation = rulers[index].orientation
         let screen = panels[id]?.screen ?? NSScreen.main
         let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
-        let size: CGSize = switch orientation {
-        case .horizontal: CGSize(width: min(560, visible.width * 0.6), height: 54)
-        case .vertical: CGSize(width: 54, height: min(560, visible.height * 0.65))
-        case .joined: CGSize(width: min(560, visible.width * 0.6), height: min(340, visible.height * 0.5))
-        }
+        let size = defaultSize(for: orientation, in: visible)
         rulers[index].frame = CGRect(
             x: visible.midX - size.width / 2,
             y: visible.midY - size.height / 2,
@@ -226,14 +265,14 @@ final class RulerManager {
         persist()
     }
 
-    func moveGroup(containing id: UUID, delta: CGPoint) {
+    func moveGroup(containing id: UUID, delta: CGPoint, persistChanges: Bool = true) {
         guard let groupID = rulers.first(where: { $0.id == id })?.groupID else { return }
         for index in rulers.indices where rulers[index].groupID == groupID && rulers[index].id != id {
             rulers[index].x += delta.x
             rulers[index].y += delta.y
             panels[rulers[index].id]?.setFrameOrigin(rulers[index].frame.origin)
         }
-        persist()
+        if persistChanges { persist() }
     }
 
     func copy(_ state: RulerState, as format: RulerCopyFormat) {
@@ -266,7 +305,7 @@ final class RulerManager {
 
     private func handle(_ action: ToolActionID) {
         switch action {
-        case .rulerOpen: createPair()
+        case .rulerOpen: openTool()
         case .rulerNewHorizontal: create(.horizontal)
         case .rulerNewVertical: create(.vertical)
         case .rulerNewJoined: create(.joined)
@@ -288,6 +327,28 @@ final class RulerManager {
 
     private static func decode<T: Decodable>(_ type: T.Type, key: String) -> T? {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(type, from: $0) }
+    }
+
+    private var targetScreen: NSScreen? {
+        NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main ?? NSScreen.screens.first
+    }
+
+    private func defaultSize(for orientation: RulerOrientation, in visibleFrame: CGRect) -> CGSize {
+        let fraction = min(max(style.defaultSizeFraction, 0.1), 1)
+        return switch orientation {
+        case .horizontal: CGSize(width: max(Self.rulerThickness, visibleFrame.width * fraction), height: Self.rulerThickness)
+        case .vertical: CGSize(width: Self.rulerThickness, height: max(Self.rulerThickness, visibleFrame.height * fraction))
+        case .joined: CGSize(
+            width: max(Self.rulerThickness, visibleFrame.width * fraction),
+            height: max(Self.rulerThickness, visibleFrame.height * fraction)
+        )
+        }
+    }
+
+    private func focus(_ id: UUID) {
+        guard (!AppRuntime.isRunningTests || AppRuntime.isUITesting), let panel = panels[id] else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
     }
 
     private func clamped(_ frame: CGRect, to requestedScreen: NSScreen?) -> CGRect {

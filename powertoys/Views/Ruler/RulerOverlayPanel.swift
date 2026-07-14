@@ -8,7 +8,7 @@ final class RulerOverlayPanel: NSPanel {
         rulerView = RulerOverlayView(state: state, style: manager.style, manager: manager)
         super.init(
             contentRect: state.frame,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -27,12 +27,12 @@ final class RulerOverlayPanel: NSPanel {
     @MainActor
     func apply(state: RulerState, style: RulerStyle) {
         level = style.floats ? .floating : .normal
-        alphaValue = style.opacity
+        alphaValue = 1
         hasShadow = style.hasShadow
         rulerView.update(state: state, style: style)
         if frame != state.frame { setFrame(state.frame, display: true) }
     }
 
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
 }

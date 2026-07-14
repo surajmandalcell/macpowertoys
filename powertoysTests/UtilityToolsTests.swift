@@ -50,6 +50,20 @@ final class UtilityToolsTests: XCTestCase {
         let styleData = Data(#"{"unit":"px","zeroCorner":"topLeft","opacity":1,"red":1,"green":1,"blue":1,"floats":true,"hasShadow":true,"calibration":1}"#.utf8)
         let style = try JSONDecoder().decode(RulerStyle.self, from: styleData)
         XCTAssertTrue(style.displayCalibrations.isEmpty)
+        XCTAssertEqual(style.backgroundOpacity, 1)
+        XCTAssertEqual(style.defaultSizeFraction, 0.3)
+
+        let defaultStyleData = Data(#"{"opacity":0.94}"#.utf8)
+        let migratedDefault = try JSONDecoder().decode(RulerStyle.self, from: defaultStyleData)
+        XCTAssertEqual(migratedDefault.backgroundOpacity, 0.75)
+    }
+
+    func testNewRulerStyleUsesReadableUnitsAndScreenRelativeDefaults() {
+        XCTAssertEqual(RulerUnit.allCases.map(\.title), [
+            "Points (pt)", "Pixels (px)", "Millimeters (mm)", "Inches (in)"
+        ])
+        XCTAssertEqual(RulerStyle().backgroundOpacity, 0.75)
+        XCTAssertEqual(RulerStyle().defaultSizeFraction, 0.3)
     }
 
     func testAwakeDurationFormatting() {

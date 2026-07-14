@@ -36,6 +36,13 @@ final class powertoysUITests: XCTestCase {
         launch.click()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
         XCTAssertFalse(app.windows["Ruler"].waitForExistence(timeout: 1))
+
+        let overlay = app.descendants(matching: .any)["ruler.horizontal.overlay"]
+        XCTAssertTrue(overlay.waitForExistence(timeout: 5))
+        overlay.click()
+        app.typeKey("q", modifierFlags: .command)
+        XCTAssertNotEqual(app.state, .notRunning)
+        XCTAssertFalse(overlay.waitForExistence(timeout: 1))
     }
 
     @MainActor
