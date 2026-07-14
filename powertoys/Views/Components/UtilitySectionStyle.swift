@@ -8,6 +8,7 @@ enum UtilityLayout {
     static let headerVerticalInset: CGFloat = 10
     static let contentTopInset: CGFloat = 16
     static let contentBottomInset: CGFloat = 20
+    static let floatingButtonContentInset: CGFloat = 52
     static let sectionSpacing: CGFloat = 16
     static let cardPadding: CGFloat = 14
     static let cardRadius: CGFloat = 10
