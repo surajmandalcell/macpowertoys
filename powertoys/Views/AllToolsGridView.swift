@@ -85,6 +85,7 @@ struct ToolCard: View {
             }
         }
         .padding(12)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tool.\(tool.id).card")
         .frame(minHeight: 110)
         .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))

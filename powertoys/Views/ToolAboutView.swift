@@ -69,6 +69,7 @@ struct ToolAboutView: View {
                     .background(Color.accentColor)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
+            .accessibilityIdentifier("tool.\(tool.id).launch")
             .buttonStyle(.plain)
             .focusEffectDisabled()
         }
