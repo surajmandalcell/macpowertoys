@@ -9,6 +9,7 @@ struct ToolAboutView: View {
     let toolId: String
 
     @Environment(\.dismissWindow) private var dismissWindow
+    @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
 
     private var tool: (any Tool)? {
         ToolRegistry.tool(for: toolId)
@@ -59,7 +60,9 @@ struct ToolAboutView: View {
 
             Button {
                 ToolActionRouter.shared.open(toolID: tool.id)
-                dismissWindow(id: "main")
+                if closeMainWindowAfterOpeningTool {
+                    dismissWindow(id: "main")
+                }
             } label: {
                 Text("Open \(tool.name)")
                     .font(.system(size: 13, weight: .semibold))

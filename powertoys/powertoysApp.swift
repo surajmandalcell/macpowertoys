@@ -46,11 +46,11 @@ struct MacPowerToysApp: App {
         Window("MacPowerToys", id: "main") {
             MainWindowView()
                 .task {
+                    DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                     guard !AppRuntime.isRunningTests else { return }
                     await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
-                    DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                     DeepLinkHandler.shared.handleCLIArguments()
-                    for id in ["cc-history", "rclone"] where UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
+                    for id in ["cc-history"] where UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
                         openWindow(id: id)
                     }
                 }
@@ -123,9 +123,8 @@ struct MacPowerToysApp: App {
             ColorHistoryView()
                 .background(WindowAccessor(identifier: "color-picker"))
         }
-        .defaultSize(width: 520, height: 260)
+        .defaultSize(width: 420, height: 210)
         .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["color-picker"]))
         .restorationBehavior(.disabled)
 

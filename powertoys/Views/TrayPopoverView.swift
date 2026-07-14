@@ -9,6 +9,7 @@ import SwiftData
 struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab") private var selectedTab = "rclone"
     @Environment(\.openWindow) private var openWindow
+    @State private var slideForward = true
 
     private var trayTools: [any Tool] {
         ToolRegistry.allTools.filter { $0.hasTrayTab }
@@ -20,17 +21,26 @@ struct TrayPopoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TrayTabStrip(tools: trayTools, selected: $selectedTab)
+            TrayTabStrip(tools: trayTools, selected: tabSelection)
                 .padding(.horizontal, 10)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
 
             Divider()
 
-            tabContent
+            ZStack {
+                tabContent
+                    .id(selectedTab)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: slideForward ? .trailing : .leading),
+                        removal: .move(edge: slideForward ? .leading : .trailing)
+                    ))
+            }
+                .clipped()
                 .frame(maxWidth: .infinity)
 
             Divider()
+                .padding(.top, 8)
 
             footer
         }
@@ -41,6 +51,21 @@ struct TrayPopoverView: View {
                 selectedTab = first.id
             }
         }
+    }
+
+    private var tabSelection: Binding<String> {
+        Binding(
+            get: { selectedTab },
+            set: { nextTab in
+                guard nextTab != selectedTab else { return }
+                let oldIndex = trayTools.firstIndex { $0.id == selectedTab } ?? 0
+                let newIndex = trayTools.firstIndex { $0.id == nextTab } ?? 0
+                slideForward = newIndex > oldIndex
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    selectedTab = nextTab
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -70,7 +95,8 @@ struct TrayPopoverView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 }
 

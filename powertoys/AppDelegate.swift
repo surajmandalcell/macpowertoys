@@ -9,6 +9,7 @@ import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var restoredWindows = Set<ObjectIdentifier>()
+    private var statusItemClickMonitor: Any?
     private var ownsInstance = true
 
     private static let dockIconAssets = [
@@ -41,6 +42,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSWindow.didBecomeKeyNotification,
             object: nil
         )
+
+        statusItemClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { event in
+            let hitView = event.window?.contentView?.hitTest(event.locationInWindow)
+            if Self.shouldOpenMainWindowForStatusClick(
+                clickCount: event.clickCount,
+                isStatusItem: Self.isStatusItemView(hitView)
+            ) {
+                DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+            }
+            return event
+        }
+    }
+
+    static func shouldOpenMainWindowForStatusClick(
+        clickCount: Int,
+        isStatusItem: Bool
+    ) -> Bool {
+        clickCount == 2 && isStatusItem
+    }
+
+    private static func isStatusItemView(_ view: NSView?) -> Bool {
+        var candidate = view
+        while let current = candidate {
+            if current is NSStatusBarButton { return true }
+            candidate = current.superview
+        }
+        return false
     }
 
     @MainActor

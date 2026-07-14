@@ -15,11 +15,11 @@ struct RcloneSettingsPage: View {
 
             Form {
                 Section {
-                    Toggle("Start Cloud Sync at launch", isOn: $startAtLaunch)
+                    Toggle("Start sync engine at launch", isOn: $startAtLaunch)
                 } header: {
                     Text("General")
                 } footer: {
-                    Text("Opens Cloud Sync and starts the transfer engine when MacPowerToys launches, so transfers show up in the tray right away.")
+                    Text("Starts the transfer engine in the background when MacPowerToys launches. The Cloud Sync window stays closed until you open it.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
