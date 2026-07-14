@@ -348,6 +348,40 @@ final class RcloneJobManager {
         return try await client.listDirectory(fs: fs, remote: path, recurse: recurse)
     }
 
+    func websiteName(for fs: String) -> String? {
+        websiteRemote(for: fs)?.websiteName
+    }
+
+    func openFolderInWebsite(fs: String, transferKind: TransferKind) {
+        guard let remote = websiteRemote(for: fs),
+              let folderPath = Self.remoteFolderPath(fromFs: fs, transferKind: transferKind) else { return }
+        guard let client else {
+            errorBanner = "Cloud Sync engine is not running."
+            return
+        }
+        let provider = remote.websiteName ?? "cloud provider"
+
+        Task {
+            do {
+                let folderID = folderPath.isEmpty ? nil : try await client.folderID(fs: remote.pathPrefix, remote: folderPath)
+                guard let url = remote.websiteFolderURL(id: folderID) else {
+                    errorBanner = "Could not build the \(provider) folder link."
+                    return
+                }
+                if !NSWorkspace.shared.open(url) {
+                    errorBanner = "Could not open \(provider)."
+                }
+            } catch {
+                errorBanner = "Could not open \(provider): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func websiteRemote(for fs: String) -> RcloneRemote? {
+        guard let name = Self.remoteName(fromFs: fs) else { return nil }
+        return remotes.first { $0.name == name && $0.websiteName != nil }
+    }
+
     func downloadForPreview(remote: RcloneRemote, entry: RemoteEntry) async throws -> URL {
         guard let client else { throw RcloneRCError.notReachable }
 
@@ -1446,6 +1480,12 @@ final class RcloneJobManager {
     static func remoteName(fromFs fs: String) -> String? {
         guard !fs.hasPrefix("/"), let colon = fs.firstIndex(of: ":") else { return nil }
         return String(fs[..<colon])
+    }
+
+    static func remoteFolderPath(fromFs fs: String, transferKind: TransferKind) -> String? {
+        guard remoteName(fromFs: fs) != nil else { return nil }
+        let path = fileEndpointComponents(fs).remote
+        return transferKind == .file ? (path as NSString).deletingLastPathComponent : path
     }
 
     private func effectiveJobConfig(for job: TransferJob) -> [String: Any] {

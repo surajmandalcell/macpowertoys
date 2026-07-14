@@ -45,6 +45,10 @@ final class RcloneJobManagerLogicTests: XCTestCase {
         let remote = RcloneJobManager.fileEndpointComponents("archive:folder/photo.jpg")
         XCTAssertEqual(remote.fs, "archive:")
         XCTAssertEqual(remote.remote, "folder/photo.jpg")
+
+        XCTAssertEqual(RcloneJobManager.remoteFolderPath(fromFs: "archive:folder", transferKind: .directory), "folder")
+        XCTAssertEqual(RcloneJobManager.remoteFolderPath(fromFs: "archive:folder/photo.jpg", transferKind: .file), "folder")
+        XCTAssertNil(RcloneJobManager.remoteFolderPath(fromFs: "/Users/me/photo.jpg", transferKind: .file))
     }
 
     func testRemoteNameOnlyParsesRcloneFileSystems() {

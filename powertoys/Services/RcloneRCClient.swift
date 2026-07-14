@@ -253,6 +253,15 @@ actor RcloneRCClient {
         }
     }
 
+    func folderID(fs: String, remote: String) async throws -> String {
+        let json = try await post("operations/stat", body: ["fs": fs, "remote": remote])
+        guard let item = json["item"] as? [String: Any],
+              let id = item["ID"] as? String, !id.isEmpty else {
+            throw RcloneRCError.decoding("missing folder ID")
+        }
+        return id
+    }
+
     func startCopyFileJob(srcFs: String, srcRemote: String, dstFs: String, dstRemote: String, group: String, config: [String: Any] = [:]) async throws -> Int {
         var body: [String: Any] = [
             "srcFs": srcFs,
