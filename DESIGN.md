@@ -135,7 +135,7 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 
 - **Icon button** — 24×24, SF Symbol ~12pt medium, 6pt radius, hover 0.06,
   `.buttonStyle(.plain)` + `.focusEffectDisabled()` + `.contentShape(Rectangle())`.
-- **Tab pill** — text 12pt (medium when selected), 10/5 padding, 6pt radius,
+- **Tab pill** — text 12pt medium, 10/5 padding, 6pt radius,
   selected bg 0.06; the strip starts on the shared gutter and selection never
   changes its inset or tab positions.
 - **Section card** — 12pt radius, 0.05 bg, 14pt padding, preceded by an
