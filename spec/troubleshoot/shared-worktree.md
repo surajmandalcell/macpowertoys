@@ -12,6 +12,21 @@
 - **Check:** Compare the commit at verification time with `HEAD` at staging time.
   If it changed, inspect overlapping files and rebuild the reconciled result.
 
+## Unowned Changes
+
+- **Symptom:** Work from another thread or agent disappears when cleanup
+  restores whole files.
+- **Cause:** Unexplained diffs were treated as disposable instead of being
+  attributed before removal.
+- **Invariant:** Treat every pre-existing or unexplained hunk as another
+  contributor's work. Before reverting, restoring, stashing, deleting, or
+  replacing it, inspect its diff and relevant history, then ask the owning agent
+  when they can be identified. If its intent remains unknown, preserve it and
+  edit only owned hunks. Discard unowned work only with explicit user approval.
+- **Check:** Compare the initial status with the final diff. Every removed hunk
+  was authored by the current task or explicitly approved, and no whole-file
+  restore removed unowned changes.
+
 ## Shared Files and Staging
 
 - **Symptom:** A commit absorbs unrelated changelog, layout, or agent edits.
