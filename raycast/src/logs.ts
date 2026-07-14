@@ -1,2 +1,2 @@
 import { openTool } from "./run";
-export default openTool("awake");
+export default openTool("logs");

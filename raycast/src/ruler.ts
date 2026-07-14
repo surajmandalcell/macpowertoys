@@ -1,2 +1,2 @@
-import { command } from "./run";
-export default command("ruler.open");
+import { openTool } from "./run";
+export default openTool("ruler");

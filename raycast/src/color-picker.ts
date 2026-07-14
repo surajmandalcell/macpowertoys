@@ -1,2 +1,2 @@
-import { command } from "./run";
-export default command("color-picker.pick");
+import { openTool } from "./run";
+export default openTool("color-picker");

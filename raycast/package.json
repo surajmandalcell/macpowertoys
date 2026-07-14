@@ -15,93 +15,51 @@
   "license": "MIT",
   "commands": [
     {
+      "name": "macpowertoys",
+      "title": "MacPowerToys",
+      "description": "Open MacPowerToys",
+      "mode": "no-view"
+    },
+    {
+      "name": "claude-history",
+      "title": "Claude History",
+      "description": "Open Claude History",
+      "mode": "no-view"
+    },
+    {
+      "name": "cloud-sync",
+      "title": "Cloud Sync",
+      "description": "Open Cloud Sync",
+      "mode": "no-view"
+    },
+    {
+      "name": "logs",
+      "title": "Logs",
+      "description": "Open Logs",
+      "mode": "no-view"
+    },
+    {
       "name": "ruler",
       "title": "Ruler",
-      "description": "Open Ruler controls",
-      "mode": "no-view"
-    },
-    {
-      "name": "new-horizontal-ruler",
-      "title": "New Horizontal Ruler",
-      "description": "Create a horizontal ruler",
-      "mode": "no-view"
-    },
-    {
-      "name": "new-vertical-ruler",
-      "title": "New Vertical Ruler",
-      "description": "Create a vertical ruler",
-      "mode": "no-view"
-    },
-    {
-      "name": "new-joined-ruler",
-      "title": "New Joined Ruler",
-      "description": "Create a joined L ruler",
-      "mode": "no-view"
-    },
-    {
-      "name": "measure-region",
-      "title": "Measure Region",
-      "description": "Measure a screen region",
+      "description": "Open Ruler",
       "mode": "no-view"
     },
     {
       "name": "awake",
       "title": "Awake",
-      "description": "Open Awake controls",
-      "mode": "no-view"
-    },
-    {
-      "name": "toggle-awake",
-      "title": "Toggle Awake",
-      "description": "Toggle the previous Awake state",
-      "mode": "no-view"
-    },
-    {
-      "name": "awake-indefinitely",
-      "title": "Awake Indefinitely",
-      "description": "Keep the Mac awake indefinitely",
-      "mode": "no-view"
-    },
-    {
-      "name": "awake-30-minutes",
-      "title": "Awake for 30 Minutes",
-      "description": "Keep the Mac awake for 30 minutes",
-      "mode": "no-view"
-    },
-    {
-      "name": "awake-1-hour",
-      "title": "Awake for 1 Hour",
-      "description": "Keep the Mac awake for one hour",
-      "mode": "no-view"
-    },
-    {
-      "name": "awake-until",
-      "title": "Awake Until...",
-      "description": "Open Awake to choose an expiration time",
+      "description": "Open Awake",
       "mode": "no-view"
     },
     {
       "name": "color-picker",
       "title": "Color Picker",
-      "description": "Pick and copy an onscreen color",
-      "mode": "no-view"
-    },
-    {
-      "name": "color-history",
-      "title": "Color History",
-      "description": "Open saved color history",
-      "mode": "no-view"
-    },
-    {
-      "name": "copy-last-color",
-      "title": "Copy Last Color",
-      "description": "Copy the most recently picked color",
+      "description": "Open Color Picker",
       "mode": "no-view"
     },
     {
       "name": "text-extractor",
       "title": "Text Extractor",
-      "description": "Select and copy onscreen text",
+      "description": "Open Text Extractor",
       "mode": "no-view"
     }
   ],

@@ -1,2 +1,2 @@
-import { command } from "./run";
-export default command("text-extractor.capture");
+import { openTool } from "./run";
+export default openTool("text-extractor");
