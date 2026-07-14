@@ -27,6 +27,7 @@ private class WindowAccessorView: NSView {
 
     let windowIdentifier: String
     private weak var restoredWindow: NSWindow?
+    private var compactTrafficLightBaselineY: CGFloat?
 
     override var acceptsFirstResponder: Bool {
         windowIdentifier == "awake"
@@ -50,17 +51,9 @@ private class WindowAccessorView: NSView {
         if restoredWindow !== window {
             WindowStateManager.shared.restoreState(for: window)
             restoredWindow = window
+            compactTrafficLightBaselineY = nil
             if isCompactApplet {
-                DispatchQueue.main.async { [weak window] in
-                    guard let window else { return }
-                    for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
-                        guard let button = window.standardWindowButton(buttonType) else { continue }
-                        button.setFrameOrigin(NSPoint(
-                            x: button.frame.origin.x,
-                            y: button.frame.origin.y - UtilityLayout.compactTitlebarTrafficLightVerticalOffset
-                        ))
-                    }
-                }
+                scheduleCompactTrafficLightAlignment(in: window)
             }
         }
         if windowIdentifier == "awake" {
@@ -76,6 +69,30 @@ private class WindowAccessorView: NSView {
         if isCompactApplet {
             window.styleMask.remove(.resizable)
             window.standardWindowButton(.zoomButton)?.isHidden = true
+        }
+    }
+
+    private func scheduleCompactTrafficLightAlignment(in window: NSWindow) {
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            alignCompactTrafficLights(in: window)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
+            guard let self, let window else { return }
+            alignCompactTrafficLights(in: window)
+        }
+    }
+
+    private func alignCompactTrafficLights(in window: NSWindow) {
+        guard let closeButton = window.standardWindowButton(.closeButton) else { return }
+        if compactTrafficLightBaselineY == nil {
+            compactTrafficLightBaselineY = closeButton.frame.origin.y
+        }
+        guard let baselineY = compactTrafficLightBaselineY else { return }
+        let targetY = baselineY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset
+        for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
+            guard let button = window.standardWindowButton(buttonType) else { continue }
+            button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: targetY))
         }
     }
 }
