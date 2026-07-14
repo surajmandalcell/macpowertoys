@@ -55,6 +55,21 @@ struct TransferJobRow: View {
         .contextMenu {
             Button("Details…") { showInfo = true }
             Divider()
+            if let provider = manager.websiteName(for: job.sourceFs) {
+                Button("Open Source in \(provider)") {
+                    manager.openFolderInWebsite(fs: job.sourceFs, transferKind: job.kind)
+                }
+                .disabled(!manager.daemonIsHealthy)
+            }
+            if let provider = manager.websiteName(for: job.destinationFs) {
+                Button("Open Destination in \(provider)") {
+                    manager.openFolderInWebsite(fs: job.destinationFs, transferKind: job.kind)
+                }
+                .disabled(!manager.daemonIsHealthy)
+            }
+            if manager.websiteName(for: job.sourceFs) != nil || manager.websiteName(for: job.destinationFs) != nil {
+                Divider()
+            }
             if job.canPause {
                 Button("Pause") { manager.pause(job) }
             }

@@ -263,6 +263,19 @@ final class RcloneRCClientTests: XCTestCase {
         XCTAssertNotNil(entries[1].modTime)
     }
 
+    func testFolderIDUsesStatWithoutChangingSharing() async throws {
+        URLProtocolStub.handler = { request in
+            XCTAssertEqual(request.url?.path, "/operations/stat")
+            let body = try Self.body(for: request)
+            XCTAssertEqual(body["fs"] as? String, "drive:")
+            XCTAssertEqual(body["remote"] as? String, "photos/2026")
+            return Self.response(for: request, json: ["item": ["ID": "folder-1", "IsDir": true]])
+        }
+
+        let id = try await makeClient().folderID(fs: "drive:", remote: "photos/2026")
+        XCTAssertEqual(id, "folder-1")
+    }
+
     func testCopyFileAndMaintenanceCommandsSendExpectedBodies() async throws {
         var calls: [(String, [String: Any])] = []
         URLProtocolStub.handler = { request in

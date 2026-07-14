@@ -38,8 +38,13 @@ final class RcloneModelTests: XCTestCase {
     }
 
     func testRemoteMetadataCoversKnownAndFallbackProviders() {
-        XCTAssertEqual(RcloneRemote(name: "docs", type: "drive").pathPrefix, "docs:")
+        let drive = RcloneRemote(name: "docs", type: "drive")
+        XCTAssertEqual(drive.pathPrefix, "docs:")
+        XCTAssertEqual(drive.websiteName, "Google Drive")
+        XCTAssertEqual(drive.websiteFolderURL(id: nil)?.absoluteString, "https://drive.google.com/drive/my-drive")
+        XCTAssertEqual(drive.websiteFolderURL(id: "folder-1")?.absoluteString, "https://drive.google.com/drive/folders/folder-1")
         XCTAssertEqual(RcloneRemote(name: "server", type: "sftp").icon, "server.rack")
+        XCTAssertNil(RcloneRemote(name: "server", type: "sftp").websiteName)
         XCTAssertEqual(RcloneRemote(name: "vault", type: "crypt").icon, "lock.shield")
         XCTAssertEqual(RcloneRemote(name: "custom", type: "future-provider").icon, "cloud")
         XCTAssertEqual(RcloneRemote(name: "empty", type: "").typeLabel, "remote")
