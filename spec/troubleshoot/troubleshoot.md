@@ -29,6 +29,7 @@ rules, and before inspecting or changing implementation files.
 
 | Task or symptom | Required topic |
 |---|---|
+| Tray icon, launcher shell, window persistence | [Main shell](main-shell.md) |
 | Applet UI, titlebars, settings placement, gutters, tabs | [UI chrome](ui-chrome.md) |
 | Text Extractor UI or behavior | [Text Extractor](text-extractor.md) |
 | Concurrent edits, staging, overwritten work | [Shared worktree](shared-worktree.md) |
