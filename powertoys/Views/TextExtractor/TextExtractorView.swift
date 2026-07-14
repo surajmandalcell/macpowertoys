@@ -339,7 +339,7 @@ private struct TextExtractionRow: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(extraction.text)
                 .font(.system(size: 12))
-                .lineLimit(2)
+                .lineLimit(1)
                 .multilineTextAlignment(.leading)
             Text(extraction.relativeTimestamp())
                 .font(.system(size: 10))

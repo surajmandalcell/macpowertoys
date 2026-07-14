@@ -27,8 +27,8 @@
   the detail window cannot be dismissed with Escape.
 - **Cause:** Every extraction used the compact row and raw high-resolution time
   output.
-- **Invariant:** Compact rows show a short preview and coarse relative time with
-  no seconds. Large text opens in its own selectable detail view. Escape closes
-  dismissible detail and sheet views.
+- **Invariant:** Compact rows show exactly one preview line and coarse relative
+  time with no seconds. Large text opens in its own selectable detail view.
+  Escape closes dismissible detail and sheet views.
 - **Check:** Open short and large detections, copy text, inspect timestamps, and
   dismiss the detail view with Escape.
