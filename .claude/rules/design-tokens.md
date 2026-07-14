@@ -13,6 +13,11 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Top padding: `.padding(.top, 52)` - aligns with sidebar search bar top
 - Content and search bar start at the same vertical position
 
+### Compact Tool Chrome
+- Titlebar: 32pt high, no bottom border or separator
+- Title and 24pt actions: vertically centered in the full titlebar
+- Floating settings button: 24pt, 8pt from bottom-right window edges
+
 ## Colors
 
 ### Hover States
