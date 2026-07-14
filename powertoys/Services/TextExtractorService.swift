@@ -10,16 +10,24 @@ final class TextExtractorService {
     static let shared = TextExtractorService()
 
     private(set) var state: TextExtractorState = .idle
-    private(set) var lastText = ""
+    private(set) var history: [TextExtraction]
     var settings: TextExtractorSettings { didSet { saveSettings() } }
 
     private let settingsKey = "text-extractor.settings.v1"
+    private let historyKey = "text-extractor.history.v1"
+    private let maximumHistoryCount = 50
+    private let defaults: UserDefaults
     private var selector: TextRegionSelector?
 
-    private init() {
-        settings = UserDefaults.standard.data(forKey: settingsKey)
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        settings = defaults.data(forKey: settingsKey)
             .flatMap { try? JSONDecoder().decode(TextExtractorSettings.self, from: $0) }
             ?? TextExtractorSettings()
+        let decodedHistory = defaults.data(forKey: historyKey)
+            .flatMap { try? JSONDecoder().decode([TextExtraction].self, from: $0) }
+            ?? []
+        history = decodedHistory
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
             guard let self, let action = note.object as? ToolActionID, action == .textExtractorCapture else { return }
             Task { @MainActor [self] in self.begin() }
@@ -42,6 +50,29 @@ final class TextExtractorService {
     }
 
     func reset() { state = .idle }
+
+    func record(_ text: String, createdAt: Date = Date()) {
+        let extraction = TextExtraction(text: text, createdAt: createdAt)
+        history.insert(extraction, at: 0)
+        history = Array(history.prefix(maximumHistoryCount))
+        saveHistory()
+    }
+
+    func copy(_ extraction: TextExtraction) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(extraction.text, forType: .string)
+        state = .copied(extraction.text)
+    }
+
+    func remove(_ id: UUID) {
+        history.removeAll { $0.id == id }
+        saveHistory()
+    }
+
+    func clearHistory() {
+        history.removeAll()
+        saveHistory()
+    }
 
     private func requestPermissionIfNeeded() -> Bool {
         if CGPreflightScreenCaptureAccess() { return true }
@@ -91,7 +122,7 @@ final class TextExtractorService {
             }
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
-            lastText = text
+            record(text)
             state = .copied(text)
         } catch {
             state = .failed(error.localizedDescription)
@@ -119,7 +150,11 @@ final class TextExtractorService {
     }
 
     private func saveSettings() {
-        UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: settingsKey)
+        defaults.set(try? JSONEncoder().encode(settings), forKey: settingsKey)
+    }
+
+    private func saveHistory() {
+        defaults.set(try? JSONEncoder().encode(history), forKey: historyKey)
     }
 }
 

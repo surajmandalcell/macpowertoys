@@ -11,6 +11,39 @@ final class CoreModelTests: XCTestCase {
         XCTAssertTrue(settings.preferredLanguages.isEmpty)
     }
 
+    func testTextExtractorPersistsAndMaintainsHistory() {
+        let suiteName = "TextExtractorTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let service = TextExtractorService(defaults: defaults)
+        let firstDate = Date(timeIntervalSince1970: 100)
+        service.record("First", createdAt: firstDate)
+        service.record("Second", createdAt: Date(timeIntervalSince1970: 200))
+
+        XCTAssertEqual(service.history.map(\.text), ["Second", "First"])
+
+        let restored = TextExtractorService(defaults: defaults)
+        XCTAssertEqual(restored.history, service.history)
+        restored.remove(restored.history[0].id)
+        XCTAssertEqual(restored.history.map(\.text), ["First"])
+        restored.clearHistory()
+        XCTAssertTrue(restored.history.isEmpty)
+
+        for index in 0...50 {
+            restored.record("Item \(index)")
+        }
+        XCTAssertEqual(restored.history.count, 50)
+        XCTAssertEqual(restored.history.first?.text, "Item 50")
+        XCTAssertEqual(restored.history.last?.text, "Item 1")
+    }
+
+    func testLongTextExtractionNeedsExpandedView() {
+        XCTAssertFalse(TextExtraction(text: "Short text").needsExpandedView)
+        XCTAssertTrue(TextExtraction(text: String(repeating: "A", count: 181)).needsExpandedView)
+        XCTAssertTrue(TextExtraction(text: "One\nTwo\nThree\nFour\nFive").needsExpandedView)
+    }
+
     func testCachedMessageMapsKnownAndUnknownTypes() {
         let date = Date(timeIntervalSince1970: 123)
         XCTAssertEqual(CachedMessage(messageId: "1", type: "user", content: "Hi", timestamp: date).toCCMessage(sessionId: "s").type, .user)

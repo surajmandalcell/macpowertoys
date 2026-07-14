@@ -1,54 +1,118 @@
 import SwiftUI
 
+enum TextExtractorLayout {
+    static let windowWidth: CGFloat = 480
+    static let historyBaseHeight: CGFloat = 230
+    static let maximumWindowHeight: CGFloat = 422
+    static let settingsHeight: CGFloat = 280
+    static let maximumVisibleItems = 4
+    static let historyRowHeight: CGFloat = 64
+}
+
 struct TextExtractorView: View {
     @State private var service = TextExtractorService.shared
     @State private var languages = ""
-    @State private var showOptions = false
+    @State private var page = TextExtractorPage.history
+    @State private var selectedExtraction: TextExtraction?
 
     private var windowHeight: CGFloat {
-        250 + (showOptions ? 130 : 0) + (service.lastText.isEmpty ? 0 : 140)
+        switch page {
+        case .history:
+            min(
+                TextExtractorLayout.maximumWindowHeight,
+                TextExtractorLayout.historyBaseHeight
+                    + CGFloat(max(0, min(service.history.count, TextExtractorLayout.maximumVisibleItems) - 1))
+                    * TextExtractorLayout.historyRowHeight
+            )
+        case .settings:
+            TextExtractorLayout.settingsHeight
+        }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            VStack(alignment: .leading, spacing: 14) {
-                capturePrompt
-                statusRow
-                if !service.lastText.isEmpty { result }
-                options
+        Group {
+            switch page {
+            case .history: history
+            case .settings: settings
             }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.top, UtilityLayout.contentTopInset)
-            .padding(.bottom, UtilityLayout.contentBottomInset)
         }
-        .frame(width: 480, height: windowHeight, alignment: .top)
+        .frame(width: TextExtractorLayout.windowWidth, height: windowHeight)
         .utilityWindowBackground()
-        .animation(.easeInOut(duration: 0.16), value: showOptions)
-        .animation(.easeInOut(duration: 0.16), value: service.lastText.isEmpty)
-        .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
+        .toolbar { titlebarActions }
+        .animation(.easeInOut(duration: 0.16), value: windowHeight)
+        .sheet(item: $selectedExtraction) { extraction in
+            TextExtractionDetailView(extraction: extraction)
+        }
+        .onAppear {
+            languages = service.settings.preferredLanguages.joined(separator: ", ")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("text-extractor") == true else { return }
-            showOptions = true
+            page = .settings
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "text.viewfinder")
-                .foregroundStyle(Color.accentColor)
-            Text("Text Extractor")
-                .font(.system(size: 13, weight: .medium))
-            Spacer()
+    @ToolbarContentBuilder
+    private var titlebarActions: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
             GlobalShortcutMenu(action: .textExtractor)
             Button("Extract Text") { service.begin() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .contentShape(Rectangle())
+                .disabled(isExtracting)
+                .help("Select text anywhere on screen")
+                .accessibilityIdentifier("text-extractor.extract")
+            Button {
+                page = page == .settings ? .history : .settings
+            } label: {
+                Image(systemName: page == .settings ? "gearshape.fill" : "gearshape")
+            }
+            .help(page == .settings ? "Back to History" : "Recognition Settings")
+            .accessibilityIdentifier("text-extractor.settings")
         }
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .padding(.vertical, UtilityLayout.headerVerticalInset)
+    }
+
+    private var history: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Text("HISTORY").utilitySectionHeader()
+                if !service.history.isEmpty {
+                    Text("\(service.history.count)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer()
+                if !service.history.isEmpty {
+                    Button("Clear") { service.clearHistory() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
+                        .help("Clear text extraction history")
+                }
+            }
+            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .frame(height: 40)
+
+            statusBanner
+
+            if service.history.isEmpty {
+                capturePrompt
+            } else {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 6) {
+                        ForEach(service.history) { extraction in
+                            TextExtractionRow(extraction: extraction) {
+                                selectedExtraction = extraction
+                            }
+                        }
+                    }
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.bottom, UtilityLayout.contentBottomInset)
+                }
+                .thinScrollIndicators()
+            }
+        }
     }
 
     private var capturePrompt: some View {
@@ -63,7 +127,7 @@ struct TextExtractorView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Select text anywhere")
                     .font(.system(size: 13, weight: .medium))
-                Text("Drag a region. Text is recognized locally and copied automatically.")
+                Text("Drag a region. Recognized text is copied automatically.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -72,80 +136,48 @@ struct TextExtractorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .frame(maxHeight: .infinity, alignment: .center)
+        .padding(.bottom, 24)
     }
 
-    private var statusRow: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: stateIcon)
-                .foregroundStyle(stateTint)
-            Text(stateText)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
-            if case .failed = service.state {
-                Button("Privacy Settings") { openPrivacySettings() }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .contentShape(Rectangle())
-            }
-        }
-        .padding(.horizontal, 2)
-    }
-
-    private var result: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("LAST RESULT").utilitySectionHeader()
-                Spacer()
-                Button("Copy Again") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(service.lastText, forType: .string)
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .contentShape(Rectangle())
-            }
-            ScrollView {
-                Text(service.lastText)
-                    .font(.system(size: 12))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .thinScrollIndicators()
-            .frame(height: 108)
-            .padding(12)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+    @ViewBuilder
+    private var statusBanner: some View {
+        switch service.state {
+        case .recognizing:
+            TextExtractorStatusBanner(
+                icon: "text.magnifyingglass",
+                message: "Recognizing text on this Mac…",
+                tint: .accentColor
+            )
+        case .failed(let message):
+            TextExtractorStatusBanner(
+                icon: "exclamationmark.triangle",
+                message: message,
+                tint: .red,
+                actionTitle: "Privacy Settings",
+                action: openPrivacySettings
+            )
+        default:
+            EmptyView()
         }
     }
 
-    private var options: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                showOptions.toggle()
-            } label: {
-                HStack {
-                    Text("Recognition options")
-                        .font(.system(size: 12, weight: .medium))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .rotationEffect(.degrees(showOptions ? 90 : 0))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-
-            if showOptions {
-                VStack(spacing: 10) {
+    private var settings: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("RECOGNITION OPTIONS").utilitySectionHeader()
+                VStack(spacing: 0) {
                     HStack {
-                        Text("Recognition")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Recognition quality")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Accurate is best for smaller or styled text.")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        Picker("Recognition", selection: $service.settings.speed) {
+                        Picker("Recognition quality", selection: $service.settings.speed) {
                             ForEach(TextRecognitionSpeed.allCases) { speed in
                                 Text(speed.title).tag(speed)
                             }
@@ -153,25 +185,50 @@ struct TextExtractorView: View {
                         .labelsHidden()
                         .frame(width: 110)
                     }
+                    .padding(.bottom, 12)
+
+                    Divider()
+
                     Toggle("Use language correction", isOn: $service.settings.languageCorrection)
-                    HStack {
-                        TextField("Languages: automatic, en-US, fr-FR", text: $languages)
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 8)
-                            .frame(height: 26)
-                            .background(Color.primary.opacity(0.06))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .onSubmit(applyLanguages)
-                        Button("Apply", action: applyLanguages)
-                            .controlSize(.small)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .padding(.vertical, 12)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Preferred languages")
+                            .font(.system(size: 12, weight: .medium))
+                        HStack(spacing: 8) {
+                            TextField("Automatic, en-US, fr-FR", text: $languages)
+                                .textFieldStyle(.plain)
+                                .padding(.horizontal, 8)
+                                .frame(height: 28)
+                                .background(Color.primary.opacity(0.06))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .onSubmit(applyLanguages)
+                            Button("Apply", action: applyLanguages)
+                                .controlSize(.small)
+                        }
+                        Text("Leave empty to detect languages automatically.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(.top, 12)
                 }
                 .font(.system(size: 12))
-                .padding(14)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .transition(.opacity)
+                .utilitySectionCard()
             }
+            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.vertical, 14)
+        }
+        .thinScrollIndicators()
+    }
+
+    private var isExtracting: Bool {
+        switch service.state {
+        case .selecting, .recognizing: true
+        default: false
         }
     }
 
@@ -186,30 +243,138 @@ struct TextExtractorView: View {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
         NSWorkspace.shared.open(url)
     }
+}
 
-    private var stateText: String {
-        switch service.state {
-        case .idle: "Ready"
-        case .selecting: "Drag around text. Press Escape to cancel."
-        case .recognizing: "Recognizing on this Mac…"
-        case .copied: "Copied to the clipboard"
-        case .failed(let message): message
+private enum TextExtractorPage {
+    case history, settings
+}
+
+private struct TextExtractorStatusBanner: View {
+    let icon: String
+    let message: String
+    let tint: Color
+    var actionTitle: String?
+    var action: (() -> Void)?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+                    .contentShape(Rectangle())
+            }
         }
+        .padding(10)
+        .background(tint.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.bottom, 8)
+    }
+}
+
+private struct TextExtractionRow: View {
+    let extraction: TextExtraction
+    let onOpen: () -> Void
+    @State private var service = TextExtractorService.shared
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if extraction.needsExpandedView {
+                Button(action: onOpen) { summary }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .help("Open full text")
+            } else {
+                summary
+            }
+
+            Button { service.copy(extraction) } label: {
+                Image(systemName: "doc.on.doc").frame(width: 24, height: 24)
+            }
+            .help("Copy text")
+
+            if extraction.needsExpandedView {
+                Button(action: onOpen) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .frame(width: 24, height: 24)
+                }
+                .help("Open full text")
+            }
+
+            Button(role: .destructive) { service.remove(extraction.id) } label: {
+                Image(systemName: "trash").frame(width: 24, height: 24)
+            }
+            .help("Delete")
+        }
+        .buttonStyle(.borderless)
+        .padding(9)
+        .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
     }
 
-    private var stateIcon: String {
-        switch service.state {
-        case .idle: "checkmark.circle"
-        case .selecting: "viewfinder"
-        case .recognizing: "text.magnifyingglass"
-        case .copied: "doc.on.clipboard.fill"
-        case .failed: "exclamationmark.triangle"
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(extraction.text)
+                .font(.system(size: 12))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Text(extraction.createdAt, style: .relative)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
+}
 
-    private var stateTint: Color {
-        if case .failed = service.state { return .red }
-        if case .copied = service.state { return .green }
-        return .secondary
+private struct TextExtractionDetailView: View {
+    let extraction: TextExtraction
+    @State private var service = TextExtractorService.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Extracted Text")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(extraction.createdAt, style: .relative)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Copy") { service.copy(extraction) }
+                Button("Done") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(UtilityLayout.horizontalInset)
+
+            Divider()
+
+            ScrollView {
+                Text(extraction.text)
+                    .font(.system(size: 12))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+            }
+            .thinScrollIndicators()
+            .background(Color.primary.opacity(0.03))
+        }
+        .frame(width: 520, height: 360)
+        .utilityWindowBackground()
     }
 }
