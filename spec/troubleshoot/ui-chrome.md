@@ -32,12 +32,13 @@
 
 - **Symptom:** Compact titlebar items sit too high, the traffic lights feel
   cramped, the green zoom control remains, or an applet can be resized.
-- **Cause:** The custom bar copied the native 32pt centerline while AppKit kept
-  its default window controls and resizable style.
+- **Cause:** The custom bar copied the native 32pt centerline, or SwiftUI reset
+  an early AppKit button-frame correction during its final window layout.
 - **Invariant:** Use one 40pt titlebar. Center its title and 24pt actions 20pt
   below the window top, leaving 8pt above and below actions. Move close and
   minimize controls 4pt down to that centerline, hide zoom, and remove the
-  resizable window style for every compact applet.
+  resizable window style for every compact applet. Reapply the traffic-light
+  offset after SwiftUI's delayed window layout; never stack relative offsets.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
   and actions in every compact applet. They stay within 1pt of window-top +
   20pt. Confirm only close and minimize are visible and manual resizing fails.

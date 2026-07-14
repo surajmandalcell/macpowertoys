@@ -49,6 +49,33 @@ final class WindowAccessorTests: XCTestCase {
                 try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden),
                 identifier
             )
+
+            for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
+                guard let button = window.standardWindowButton(buttonType) else {
+                    return XCTFail("Missing traffic light for \(identifier)")
+                }
+                button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: initialCloseButtonY))
+            }
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
+
+            let reappliedCloseButtonY = try XCTUnwrap(
+                window.standardWindowButton(.closeButton)?.frame.origin.y
+            )
+            let reappliedMinimizeButtonY = try XCTUnwrap(
+                window.standardWindowButton(.miniaturizeButton)?.frame.origin.y
+            )
+            XCTAssertEqual(
+                reappliedCloseButtonY,
+                initialCloseButtonY - 4,
+                accuracy: 0.5,
+                identifier
+            )
+            XCTAssertEqual(
+                reappliedMinimizeButtonY,
+                initialCloseButtonY - 4,
+                accuracy: 0.5,
+                identifier
+            )
         }
     }
 
