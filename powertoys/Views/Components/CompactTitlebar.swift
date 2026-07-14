@@ -27,12 +27,15 @@ struct CompactTitlebar<Title: View, Actions: View>: View {
             }
             .padding(.leading, clearsTrafficLights ? UtilityLayout.compactTitlebarTrafficLightInset : UtilityLayout.horizontalInset)
             .padding(.trailing, UtilityLayout.horizontalInset)
-            .frame(height: UtilityLayout.compactTitlebarHeight - (showsBottomSeparator ? 1 : 0))
+            .frame(height: UtilityLayout.compactTitlebarControlBandHeight)
+
+            Spacer(minLength: 0)
 
             if showsBottomSeparator {
                 Divider()
             }
         }
+        .frame(height: UtilityLayout.compactTitlebarHeight)
     }
 }
 
