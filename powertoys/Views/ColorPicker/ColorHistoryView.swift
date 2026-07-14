@@ -1,5 +1,18 @@
 import SwiftUI
 
+enum ColorPickerLayout {
+    static let windowWidth: CGFloat = 420
+    static let historyBaseHeight: CGFloat = 210
+    static let maximumWindowHeight: CGFloat = 420
+    static let settingsHeight: CGFloat = 280
+    static let maximumVisibleSamples = 5
+    static let historyRowHeight: CGFloat = 56
+    static let projectsBaseHeight: CGFloat = 230
+    static let maximumVisibleProjects = 4
+    static let projectRowHeight: CGFloat = 48
+    static let newProjectHeight: CGFloat = 40
+}
+
 struct ColorHistoryView: View {
     @State private var service = ColorPickerService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
@@ -23,9 +36,19 @@ struct ColorHistoryView: View {
 
     private var windowHeight: CGFloat {
         switch page {
-        case .history: 210 + CGFloat(max(0, min(samples.count, 5) - 1) * 56)
-        case .projects: min(420, 230 + CGFloat(min(service.projects.count, 4) * 48) + (isCreatingProject ? 40 : 0))
-        case .settings: 280
+        case .history:
+            ColorPickerLayout.historyBaseHeight
+                + CGFloat(max(0, min(samples.count, ColorPickerLayout.maximumVisibleSamples) - 1))
+                * ColorPickerLayout.historyRowHeight
+        case .projects:
+            min(
+                ColorPickerLayout.maximumWindowHeight,
+                ColorPickerLayout.projectsBaseHeight
+                    + CGFloat(min(service.projects.count, ColorPickerLayout.maximumVisibleProjects))
+                    * ColorPickerLayout.projectRowHeight
+                    + (isCreatingProject ? ColorPickerLayout.newProjectHeight : 0)
+            )
+        case .settings: ColorPickerLayout.settingsHeight
         }
     }
 
@@ -39,7 +62,7 @@ struct ColorHistoryView: View {
             case .settings: settings
             }
         }
-        .frame(width: 420, height: windowHeight)
+        .frame(width: ColorPickerLayout.windowWidth, height: windowHeight)
         .utilityWindowBackground()
         .toolbar { titlebarActions }
         .animation(.easeInOut(duration: 0.16), value: windowHeight)
@@ -94,7 +117,7 @@ struct ColorHistoryView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.horizontal, UtilityLayout.horizontalInset - 10)
         .frame(height: 36)
     }
 
@@ -104,8 +127,8 @@ struct ColorHistoryView: View {
         } label: {
             Label(title, systemImage: icon)
                 .font(.system(size: 12, weight: page == target ? .medium : .regular))
-                .padding(.horizontal, 8)
-                .frame(height: 26)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(page == target ? Color.primary.opacity(0.06) : .clear)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
@@ -121,7 +144,7 @@ struct ColorHistoryView: View {
                 ColorFormatSelect(selection: $service.defaultFormat)
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
 
             if samples.isEmpty {
                 EmptyStateView(
@@ -163,7 +186,7 @@ struct ColorHistoryView: View {
                 .contentShape(Rectangle())
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
 
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 6) {
@@ -191,15 +214,10 @@ struct ColorHistoryView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .disabled(!canCreateProject)
-            Button {
+            ColorPickerIconButton(systemName: "xmark", help: "Cancel") {
                 isCreatingProject = false
                 newProjectName = ""
-            } label: {
-                Image(systemName: "xmark")
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .help("Cancel")
         }
         .padding(.horizontal, 10)
         .frame(height: 34)
@@ -208,10 +226,7 @@ struct ColorHistoryView: View {
     }
 
     private var canCreateProject: Bool {
-        let name = newProjectName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !name.isEmpty && !service.projects.contains {
-            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
-        }
+        service.canCreateProject(named: newProjectName)
     }
 
     private func createProject() {
@@ -254,15 +269,10 @@ struct ColorHistoryView: View {
             .focusEffectDisabled()
 
             if let project {
-                Button { service.export(project) } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .frame(width: 28, height: 28)
+                ColorPickerIconButton(systemName: "square.and.arrow.up", help: "Export \(name) as CSS") {
+                    service.export(project)
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .contentShape(Rectangle())
                 .disabled(count == 0)
-                .help("Export \(name) as CSS")
                 .padding(.trailing, 7)
             }
         }
@@ -285,17 +295,29 @@ struct ColorHistoryView: View {
 
                     Divider()
 
-                    HStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Keyboard shortcut")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("Works anywhere while MacPowerToys is running")
-                                .font(.system(size: 10))
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Keyboard shortcut")
+                            .font(.system(size: 12, weight: .medium))
+                        HStack {
+                            Text("Modifiers")
                                 .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("Control + Option + Command")
                         }
-                        Spacer()
-                        shortcutEditor
+                        Picker("Key", selection: Binding(
+                            get: { shortcuts.key(for: .colorPicker) },
+                            set: { shortcuts.setKey($0, for: .colorPicker) }
+                        )) {
+                            ForEach(GlobalShortcutKey.allCases) { key in
+                                Text(key.title).tag(key)
+                            }
+                        }
+                        .disabled(!shortcuts.isEnabled(.colorPicker))
+                        Text("Works anywhere while MacPowerToys is running")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
                     }
+                    .font(.system(size: 12))
                     .padding(.top, 12)
                 }
                 .padding(14)
@@ -303,39 +325,42 @@ struct ColorHistoryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.top, UtilityLayout.contentTopInset)
             .padding(.bottom, UtilityLayout.contentBottomInset)
         }
         .thinScrollIndicators()
-    }
-
-    private var shortcutEditor: some View {
-        HStack(spacing: 4) {
-            ForEach(["⌃", "⌥", "⌘"], id: \.self) { symbol in
-                Text(symbol)
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 24, height: 24)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            }
-            Picker("Shortcut key", selection: Binding(
-                get: { shortcuts.key(for: .colorPicker) },
-                set: { shortcuts.setKey($0, for: .colorPicker) }
-            )) {
-                ForEach(GlobalShortcutKey.allCases) { key in
-                    Text(key.title).tag(key)
-                }
-            }
-            .labelsHidden()
-            .controlSize(.small)
-            .frame(width: 54)
-        }
-        .disabled(!shortcuts.isEnabled(.colorPicker))
     }
 }
 
 private enum ColorPickerPage {
     case history, projects, settings
+}
+
+private struct ColorPickerIconButton: View {
+    let systemName: String
+    let helpText: String
+    let action: () -> Void
+    @State private var isHovering = false
+
+    init(systemName: String, help: String, action: @escaping () -> Void) {
+        self.systemName = systemName
+        helpText = help
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 24, height: 24)
+                .background(isHovering ? Color.primary.opacity(0.06) : .clear)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { isHovering = $0 }
+        .help(helpText)
+    }
 }
 
 private struct ColorSearchField: View {
@@ -350,13 +375,7 @@ private struct ColorSearchField: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
             if !text.isEmpty {
-                Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .help("Clear search")
+                ColorPickerIconButton(systemName: "xmark.circle.fill", help: "Clear search") { text = "" }
             }
         }
         .padding(.horizontal, 9)
@@ -380,7 +399,7 @@ private struct ColorFormatSelect: View {
                 Text(selection.title).lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
             }
             .font(.system(size: 12))

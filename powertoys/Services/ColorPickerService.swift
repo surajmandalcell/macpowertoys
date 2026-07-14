@@ -111,14 +111,19 @@ final class ColorPickerService {
     @discardableResult
     func createProject(named name: String) -> ColorProject? {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty,
-              !projects.contains(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame })
-        else { return nil }
+        guard canCreateProject(named: name) else { return nil }
         let project = ColorProject(name: name)
         projects.append(project)
         saveProjects()
         selectProject(project.id)
         return project
+    }
+
+    func canCreateProject(named name: String) -> Bool {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !name.isEmpty && !projects.contains {
+            $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+        }
     }
 
     func selectProject(_ id: UUID?) {
