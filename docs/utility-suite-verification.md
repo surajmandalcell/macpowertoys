@@ -13,8 +13,8 @@ Use this checklist only when no Cloud Sync transfer is active. Never install or 
 
 - Create horizontal, vertical, and joined rulers from the window, menu, URL, App
   Shortcut, and Raycast.
-- Move and resize on 1x and 2x screens. Confirm a horizontal ruler remains 54 points
-  tall and a vertical ruler remains 54 points wide.
+- Move and resize on 1x and 2x screens. Confirm a horizontal ruler remains 48 points
+  tall and a vertical ruler remains 48 points wide.
 - Exercise every zero corner, unit, opacity, color, shadow, float, aspect preset,
   arm toggle, group, reset, show/hide, crosshair, pinned/dragged guide, and copy format.
 - Calibrate two displays independently and confirm reconnecting either restores its

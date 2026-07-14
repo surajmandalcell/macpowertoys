@@ -1,0 +1,25 @@
+# Ruler Request List
+
+Reviewed against the current app source and local Raycast registration on
+2026-07-14. Update this list when a direct user correction or verified result
+changes a status.
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Open | Make `Ruler` appear when searching in Raycast. | `raycast/package.json` and `raycast/src/ruler.ts` define the command, but no installed MacPowerToys extension is registered under `~/.config/raycast/extensions`. | Install or register the current extension, then prove that searching `Ruler` shows and opens it. |
+| Done | Open exactly two rulers by default, never three. | `RulerManager.createPair()` appends one horizontal and one vertical ruler; `RulerManagerTests` asserts the count is two. | None. |
+| Done | Place the default pair as a non-overlapping L, while allowing manual overlap only after ungrouping. | `normalizeGroupedPairs()` joins the vertical ruler's right and top edges to the horizontal ruler's left and top edges; the geometry test rejects intersection. Ungrouping removes the enforced relationship. | None. |
+| Done | Persist each ruler's frame and display, then restore it on the correct available screen. | `RulerState` stores its frame and `screenID`; drag completion updates the screen; restore resolves the saved display and clamps missing-display frames. | None. |
+| Verify | Keep Ruler focused when it opens or is clicked so shortcuts do not reach the previously focused app. | `focus(_:)` activates MacPowerToys and makes the overlay key; `mouseDown` repeats both actions. | Prove focus ownership end-to-end from another foreground app in the normal installed build. |
+| Verify | Make Command-Q close the Ruler tool only, without quitting the shared MacPowerToys app. | The Ruler-local key monitor consumes Command-Q for settings and overlay identifiers and calls `closeTool()`. | Exercise Command-Q from both a ruler overlay and Ruler Settings, then confirm the main app and other tools remain running. |
+| Verify | Make Command-W close the focused Ruler window or grouped pair without quitting the app. | The same key monitor routes Command-W to `closeWindow(identifier:)`; `RulerManagerTests` covers the grouped-pair state change. | Exercise Command-W from an overlay and from Ruler Settings in the normal installed build. |
+| Done | Change opacity for the ruler background only and default it to 75%. | `RulerStyle.backgroundOpacity` defaults to `0.75`; the overlay panel stays at alpha 1 while only the color fill uses the setting. | None. |
+| Done | Align the `Pixels (px)` unit control with the other settings rows. | The settings use one SwiftUI `Grid` with trailing labels and leading controls; the Units picker shares the same columns as Zero Corner and Color. | None. |
+| Done | Explain calibration and calculate it automatically when possible. | The info popover explains the behavior; backing scale and reported display dimensions drive pixel and physical units, with a per-display correction value only when needed. | None. |
+| Done | Let the user increase or decrease each ruler's size. | Every active ruler has numeric size fields and steppers; overlay end handles also resize through `setSize` and `updateFrame`. | None. |
+| Done | Default ruler length to 30% of the screen where it opens and expose that default in Settings. | `defaultSizeFraction` defaults to `0.3`; `defaultSize` uses the target screen's visible width or height; Settings exposes a 10% to 90% slider. | None. |
+| Verify | Keep move and resize smooth and free of leaks. | Drag updates avoid UserDefaults writes until mouse-up, and Ruler owns one long-lived manager and panel per ruler. | Profile repeated move and resize operations across displays in the normal installed app, checking frame pacing and stable memory. |
+| Done | Put the Ruler title and top actions in one compact custom titlebar with small, separate controls. | `RulerControlView` uses the shared 40pt `CompactTitlebar`; `New Ruler` and `Measure Region` are discrete 24pt actions and only the primary action receives accent fill. | None. |
+| Done | Reduce ruler border opacity and thickness, thin the tick lines, and make the ruler slightly more compact. | Standard rulers are 48pt thick; border and tick strokes are 0.75pt with reduced opacity and shorter tick lengths. | None. |
+| Verify | Match Free Ruler behavior for the explicitly requested launch, grouping, focus, movement, and resizing flows. | The current source implements the requested two-ruler L, ungrouping, sizing, persistence, and keyboard routing, but no complete side-by-side parity run is recorded. | Run a focused Free Ruler comparison and record intentional differences instead of assuming parity from source. |
+| Done | Prevent stale builds from being shown as finished work. | The troubleshooting current-build rule and `Makefile` require a clean final source, embedded commit provenance, task-unique DerivedData, and exact-source installation before visual handoff. | None. |
