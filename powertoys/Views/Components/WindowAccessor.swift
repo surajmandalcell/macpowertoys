@@ -68,6 +68,8 @@ private class WindowAccessorView: NSView {
         window.tabbingMode = .disallowed
         if isCompactApplet {
             window.styleMask.remove(.resizable)
+            window.minSize = window.frame.size
+            window.maxSize = window.frame.size
             window.standardWindowButton(.zoomButton)?.isHidden = true
         }
     }

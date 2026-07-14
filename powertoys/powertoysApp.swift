@@ -106,6 +106,7 @@ struct MacPowerToysApp: App {
                 .background(WindowAccessor(identifier: "ruler"))
         }
         .defaultSize(width: 560, height: 600)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["ruler"]))
         .restorationBehavior(.disabled)
