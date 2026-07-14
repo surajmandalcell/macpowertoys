@@ -58,6 +58,40 @@ final class RulerManager {
         show(state.id)
     }
 
+    func createPair() {
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
+        let horizontalSize = CGSize(width: min(560, visible.width * 0.6), height: 54)
+        let verticalSize = CGSize(width: 54, height: min(560, visible.height * 0.65))
+        let horizontalOrigin = CGPoint(
+            x: visible.midX - horizontalSize.width / 2,
+            y: visible.midY
+        )
+        let verticalOrigin = CGPoint(
+            x: horizontalOrigin.x,
+            y: horizontalOrigin.y - verticalSize.height + horizontalSize.height
+        )
+        let groupID = UUID()
+        var horizontal = RulerState(
+            orientation: .horizontal,
+            frame: CGRect(origin: horizontalOrigin, size: horizontalSize),
+            screenID: screen?.displayID
+        )
+        var vertical = RulerState(
+            orientation: .vertical,
+            frame: CGRect(origin: verticalOrigin, size: verticalSize),
+            screenID: screen?.displayID
+        )
+        horizontal.groupID = groupID
+        vertical.groupID = groupID
+        horizontal.frame = clamped(horizontal.frame, to: screen)
+        vertical.frame = clamped(vertical.frame, to: screen)
+        rulers.append(contentsOf: [horizontal, vertical])
+        persist()
+        show(horizontal.id)
+        show(vertical.id)
+    }
+
     func show(_ id: UUID) {
         guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
         rulers[index].isVisible = true
@@ -168,6 +202,18 @@ final class RulerManager {
         persist()
     }
 
+    func isGrouped(_ id: UUID) -> Bool {
+        rulers.first(where: { $0.id == id })?.groupID != nil
+    }
+
+    func ungroup(containing id: UUID) {
+        guard let groupID = rulers.first(where: { $0.id == id })?.groupID else { return }
+        for index in rulers.indices where rulers[index].groupID == groupID {
+            rulers[index].groupID = nil
+        }
+        persist()
+    }
+
     func ungroupAll() {
         for index in rulers.indices { rulers[index].groupID = nil }
         persist()
@@ -213,7 +259,7 @@ final class RulerManager {
 
     private func handle(_ action: ToolActionID) {
         switch action {
-        case .rulerOpen: create(.horizontal)
+        case .rulerOpen: createPair()
         case .rulerNewHorizontal: create(.horizontal)
         case .rulerNewVertical: create(.vertical)
         case .rulerNewJoined: create(.joined)

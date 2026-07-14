@@ -27,6 +27,7 @@ struct AllToolsGridView: View {
             .padding(.top, 12)
             .padding(.bottom, 24)
         }
+        .thinScrollIndicators()
     }
 }
 

@@ -105,7 +105,7 @@ struct TransferInfoSheet: View {
             }
             Spacer()
         }
-        .padding(.leading, Self.gutter)
+        .padding(.leading, Self.gutter - 10)
         .padding(.trailing, Self.gutter)
         .padding(.bottom, 12)
     }

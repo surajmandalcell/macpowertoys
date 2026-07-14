@@ -28,9 +28,8 @@ struct MacPowerToysApp: App {
     init() {
         do {
             let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
-            let legacyAppIsRunning = AppIdentity.isLegacyAppRunning
             let config: ModelConfiguration
-            if legacyAppIsRunning {
+            if !AppInstanceCoordinator.shared.ownsInstance {
                 config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             } else {
                 AppIdentity.migrateLegacyData()

@@ -85,7 +85,7 @@ final class ToolActionRouter {
                 if pendingToolOpens.last != resolved { pendingToolOpens.append(resolved) }
                 return
             }
-            openWindowAction(id: resolved)
+            presentSingleWindow(id: resolved, using: openWindowAction)
             NSApp.activate(ignoringOtherApps: true)
         } else if MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) {
             Task {
@@ -110,7 +110,9 @@ final class ToolActionRouter {
         }
 
         if request.action.opensWindow {
-            openWindowAction?(id: request.action.toolID)
+            if let openWindowAction {
+                presentSingleWindow(id: request.action.toolID, using: openWindowAction)
+            }
             NSApp.activate(ignoringOtherApps: true)
         }
 
@@ -119,6 +121,22 @@ final class ToolActionRouter {
             object: request.action,
             userInfo: request.parameters
         )
+    }
+
+    private func presentSingleWindow(id: String, using openWindow: OpenWindowAction) {
+        if let window = NSApp.windows.first(where: {
+            Self.windowIdentifier($0.identifier?.rawValue, matches: id)
+        }) {
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        openWindow(id: id)
+    }
+
+    nonisolated static func windowIdentifier(_ identifier: String?, matches toolID: String) -> Bool {
+        guard let identifier else { return false }
+        return identifier == toolID || identifier.hasPrefix("\(toolID)-")
     }
 
     func execute(url: URL) -> Bool {

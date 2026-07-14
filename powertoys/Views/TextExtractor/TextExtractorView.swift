@@ -19,10 +19,12 @@ struct TextExtractorView: View {
                 if !service.lastText.isEmpty { result }
                 options
             }
-            .padding(16)
+            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.top, UtilityLayout.contentTopInset)
+            .padding(.bottom, UtilityLayout.contentBottomInset)
         }
         .frame(width: 480, height: windowHeight, alignment: .top)
-        .background(VisualEffectBackground(material: .hudWindow))
+        .utilityWindowBackground()
         .animation(.easeInOut(duration: 0.16), value: showOptions)
         .animation(.easeInOut(duration: 0.16), value: service.lastText.isEmpty)
         .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
@@ -45,8 +47,8 @@ struct TextExtractorView: View {
                 .controlSize(.small)
                 .contentShape(Rectangle())
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.vertical, UtilityLayout.headerVerticalInset)
     }
 
     private var capturePrompt: some View {
@@ -112,6 +114,7 @@ struct TextExtractorView: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .thinScrollIndicators()
             .frame(height: 108)
             .padding(12)
             .background(Color.primary.opacity(0.05))
