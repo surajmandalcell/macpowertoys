@@ -18,6 +18,14 @@ enum RulerUnit: String, CaseIterable, Codable, Identifiable, Sendable {
     case inches = "in"
 
     var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .points: "Points (pt)"
+        case .pixels: "Pixels (px)"
+        case .millimeters: "Millimeters (mm)"
+        case .inches: "Inches (in)"
+        }
+    }
 }
 
 enum RulerZeroCorner: String, CaseIterable, Codable, Identifiable, Sendable {
@@ -38,7 +46,8 @@ enum RulerZeroCorner: String, CaseIterable, Codable, Identifiable, Sendable {
 struct RulerStyle: Codable, Equatable, Sendable {
     var unit: RulerUnit = .pixels
     var zeroCorner: RulerZeroCorner = .topLeft
-    var opacity = 0.94
+    var backgroundOpacity = 0.75
+    var defaultSizeFraction = 0.3
     var red = 0.96
     var green = 0.72
     var blue = 0.22
@@ -62,16 +71,25 @@ struct RulerStyle: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case unit, zeroCorner, opacity, red, green, blue, floats, hasShadow, calibration, displayCalibrations
+        case unit, zeroCorner, backgroundOpacity, defaultSizeFraction, red, green, blue, floats, hasShadow, calibration, displayCalibrations
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case opacity
     }
 
     init() {}
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyValues = try decoder.container(keyedBy: LegacyCodingKeys.self)
         unit = try values.decodeIfPresent(RulerUnit.self, forKey: .unit) ?? .pixels
         zeroCorner = try values.decodeIfPresent(RulerZeroCorner.self, forKey: .zeroCorner) ?? .topLeft
-        opacity = try values.decodeIfPresent(Double.self, forKey: .opacity) ?? 0.94
+        let legacyOpacity = try legacyValues.decodeIfPresent(Double.self, forKey: .opacity)
+        backgroundOpacity = try values.decodeIfPresent(Double.self, forKey: .backgroundOpacity)
+            ?? legacyOpacity.map { abs($0 - 0.94) < 0.0001 ? 0.75 : $0 }
+            ?? 0.75
+        defaultSizeFraction = min(max(try values.decodeIfPresent(Double.self, forKey: .defaultSizeFraction) ?? 0.3, 0.1), 1)
         red = try values.decodeIfPresent(Double.self, forKey: .red) ?? 0.96
         green = try values.decodeIfPresent(Double.self, forKey: .green) ?? 0.72
         blue = try values.decodeIfPresent(Double.self, forKey: .blue) ?? 0.22

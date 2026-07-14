@@ -5,6 +5,7 @@ struct RulerControlView: View {
     @State private var guides = RulerGuideController.shared
     @State private var copyFormat = RulerCopyFormat.plain
     @State private var calibrationText = ""
+    @State private var showsCalibrationHelp = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,20 +63,16 @@ struct RulerControlView: View {
         section("APPEARANCE AND UNITS") {
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
                 GridRow {
-                    Text("Units").foregroundStyle(.secondary)
-                    HStack {
-                        Picker("Units", selection: styleBinding(\.unit)) {
-                            ForEach(RulerUnit.allCases) { unit in Text(unit.rawValue).tag(unit) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 130)
-                        .contentShape(Rectangle())
-                        if manager.style.unit == .millimeters || manager.style.unit == .inches {
-                            Text(manager.style.hasCalibration(for: NSScreen.main) ? "Calibrated" : "Estimated")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                        }
+                    Text("Units")
+                        .foregroundStyle(.secondary)
+                        .gridColumnAlignment(.trailing)
+                    Picker("Units", selection: styleBinding(\.unit)) {
+                        ForEach(RulerUnit.allCases) { unit in Text(unit.title).tag(unit) }
                     }
+                    .labelsHidden()
+                    .frame(width: 160, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .gridColumnAlignment(.leading)
                 }
                 GridRow {
                     Text("Zero Corner").foregroundStyle(.secondary)
@@ -83,7 +80,7 @@ struct RulerControlView: View {
                         ForEach(RulerZeroCorner.allCases) { corner in Text(corner.title).tag(corner) }
                     }
                     .labelsHidden()
-                    .frame(width: 130)
+                    .frame(width: 160, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 GridRow {
@@ -93,9 +90,24 @@ struct RulerControlView: View {
                         .contentShape(Rectangle())
                 }
                 GridRow {
-                    Text("Opacity").foregroundStyle(.secondary)
-                    Slider(value: styleBinding(\.opacity), in: 0.35...1)
-                        .contentShape(Rectangle())
+                    Text("Background Opacity").foregroundStyle(.secondary)
+                    HStack {
+                        Slider(value: styleBinding(\.backgroundOpacity), in: 0.1...1)
+                            .contentShape(Rectangle())
+                        Text(manager.style.backgroundOpacity, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit()
+                            .frame(width: 36, alignment: .trailing)
+                    }
+                }
+                GridRow {
+                    Text("Default Size").foregroundStyle(.secondary)
+                    HStack {
+                        Slider(value: styleBinding(\.defaultSizeFraction), in: 0.1...0.9, step: 0.05)
+                            .contentShape(Rectangle())
+                        Text(manager.style.defaultSizeFraction, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit()
+                            .frame(width: 36, alignment: .trailing)
+                    }
                 }
                 GridRow {
                     Text("Window").foregroundStyle(.secondary)
@@ -121,7 +133,24 @@ struct RulerControlView: View {
                             manager.setCalibration(value, for: NSScreen.main)
                         }
                         .contentShape(Rectangle())
-                        Text("× physical scale").foregroundStyle(.tertiary)
+                        Button {
+                            showsCalibrationHelp.toggle()
+                        } label: {
+                            Image(systemName: "info.circle")
+                        }
+                        .buttonStyle(.plain)
+                        .focusEffectDisabled()
+                        .contentShape(Rectangle())
+                        .help("About automatic calibration")
+                        .popover(isPresented: $showsCalibrationHelp, arrowEdge: .trailing) {
+                            Text("Pixels and physical units are calculated automatically from the current display's scale and reported dimensions. Adjust this value only if a real-world measurement is off.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 240, alignment: .leading)
+                                .padding(14)
+                        }
+                        Text(abs(manager.style.calibration(for: NSScreen.main) - 1) < 0.001 ? "Automatic" : "Adjusted")
+                            .foregroundStyle(.tertiary)
                     }
                 }
                 GridRow {
@@ -274,24 +303,19 @@ private struct RulerRow: View {
     @State private var manager = RulerManager.shared
 
     var body: some View {
+        VStack(spacing: 8) {
+            titleRow
+            controlsRow
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var titleRow: some View {
         HStack(spacing: 10) {
             Image(systemName: ruler.isVisible ? "eye" : "eye.slash")
                 .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(ruler.orientation.title).font(.system(size: 12, weight: .medium))
-                Text("\(Int(ruler.width)) × \(Int(ruler.height))")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            }
+            Text(ruler.orientation.title).font(.system(size: 12, weight: .medium))
             Spacer()
-            Picker("Copy format", selection: $copyFormat) {
-                ForEach(RulerCopyFormat.allCases) { format in Text(format.title).tag(format) }
-            }
-            .labelsHidden()
-            .frame(width: 90)
-            .contentShape(Rectangle())
-            Button("Copy") { manager.copy(ruler, as: copyFormat) }
-                .contentShape(Rectangle())
             if ruler.orientation == .joined {
                 Button("H") { manager.toggleArm(ruler.id, horizontal: true) }
                     .contentShape(Rectangle())
@@ -314,6 +338,71 @@ private struct RulerRow: View {
                 .help("Remove ruler")
         }
         .buttonStyle(.borderless)
-        .padding(.vertical, 4)
+    }
+
+    private var controlsRow: some View {
+        HStack(spacing: 8) {
+            Text("Size")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            sizeControls
+            Spacer()
+            Picker("Copy format", selection: $copyFormat) {
+                ForEach(RulerCopyFormat.allCases) { format in Text(format.title).tag(format) }
+            }
+            .labelsHidden()
+            .frame(width: 90)
+            .contentShape(Rectangle())
+            Button("Copy") { manager.copy(ruler, as: copyFormat) }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+    }
+
+    @ViewBuilder
+    private var sizeControls: some View {
+        switch ruler.orientation {
+        case .horizontal:
+            dimensionControl("W", value: widthBinding)
+        case .vertical:
+            dimensionControl("H", value: heightBinding)
+        case .joined:
+            dimensionControl("W", value: widthBinding)
+            Text("×").foregroundStyle(.tertiary)
+            dimensionControl("H", value: heightBinding)
+        }
+    }
+
+    private func dimensionControl(_ label: String, value: Binding<Double>) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.secondary)
+            TextField(label, value: value, format: .number.precision(.fractionLength(0)))
+                .labelsHidden()
+                .frame(width: 52)
+                .multilineTextAlignment(.trailing)
+            Stepper(label, value: value, in: 54...10_000, step: 10)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+    }
+
+    private var widthBinding: Binding<Double> {
+        Binding(
+            get: { currentRuler.width },
+            set: { manager.setSize(ruler.id, width: $0) }
+        )
+    }
+
+    private var heightBinding: Binding<Double> {
+        Binding(
+            get: { currentRuler.height },
+            set: { manager.setSize(ruler.id, height: $0) }
+        )
+    }
+
+    private var currentRuler: RulerState {
+        manager.rulers.first { $0.id == ruler.id } ?? ruler
     }
 }

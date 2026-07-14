@@ -48,7 +48,7 @@ final class RulerOverlayView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         let path = rulerShape()
-        style.color.setFill()
+        style.color.withAlphaComponent(style.backgroundOpacity).setFill()
         path.fill()
         NSColor.labelColor.withAlphaComponent(0.84).setStroke()
         path.lineWidth = 1
@@ -60,6 +60,8 @@ final class RulerOverlayView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKey()
         startLocation = NSEvent.mouseLocation
         startFrame = window?.frame
         let local = convert(event.locationInWindow, from: nil)
@@ -93,10 +95,14 @@ final class RulerOverlayView: NSView {
             frame.origin.y += delta.y
         }
         let previous = window?.frame.origin ?? frame.origin
-        manager?.updateFrame(id: state.id, frame: frame)
+        manager?.updateFrame(id: state.id, frame: frame, persistChanges: false)
         if !resizesWidth && !resizesHeight {
             let actual = window?.frame.origin ?? frame.origin
-            manager?.moveGroup(containing: state.id, delta: CGPoint(x: actual.x - previous.x, y: actual.y - previous.y))
+            manager?.moveGroup(
+                containing: state.id,
+                delta: CGPoint(x: actual.x - previous.x, y: actual.y - previous.y),
+                persistChanges: false
+            )
         }
     }
 
@@ -115,6 +121,8 @@ final class RulerOverlayView: NSView {
         cursorLocation = nil
         needsDisplay = true
     }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func rightMouseDown(with event: NSEvent) {
         let menu = NSMenu()
@@ -188,16 +196,16 @@ final class RulerOverlayView: NSView {
         let ticks = RulerGeometry.ticks(length: bounds.width, pointsPerUnit: scale, reversed: style.zeroCorner.reversesHorizontal)
         let drawsFromTop = state.orientation != .joined || style.zeroCorner == .topLeft || style.zeroCorner == .topRight
         let edge = drawsFromTop ? bounds.maxY : bounds.minY
+        let path = NSBezierPath()
         for tick in ticks {
             let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
-            let path = NSBezierPath()
             path.move(to: CGPoint(x: tick.position, y: edge))
             path.line(to: CGPoint(x: tick.position, y: edge + (drawsFromTop ? -length : length)))
-            path.stroke()
             if tick.level == 2 {
                 drawLabel(tick.value, at: CGPoint(x: tick.position + 3, y: edge + (drawsFromTop ? -34 : 22)))
             }
         }
+        path.stroke()
     }
 
     private func drawVerticalTicksIfNeeded() {
@@ -205,18 +213,18 @@ final class RulerOverlayView: NSView {
         let scale = RulerGeometry.pointsPerUnit(style.unit, screen: window?.screen, calibration: style.calibration(for: window?.screen))
         let ticks = RulerGeometry.ticks(length: bounds.height, pointsPerUnit: scale, reversed: style.zeroCorner.reversesVertical)
         let drawsFromRight = state.orientation == .joined && style.zeroCorner.reversesHorizontal
+        let path = NSBezierPath()
         for tick in ticks {
             let length: CGFloat = tick.level == 2 ? 20 : (tick.level == 1 ? 13 : 8)
-            let path = NSBezierPath()
             let edge = drawsFromRight ? bounds.maxX : bounds.minX
             path.move(to: CGPoint(x: edge, y: tick.position))
             path.line(to: CGPoint(x: edge + (drawsFromRight ? -length : length), y: tick.position))
-            path.stroke()
             if tick.level == 2 {
                 let labelX = drawsFromRight ? bounds.maxX - 50 : 22
                 drawLabel(tick.value, at: CGPoint(x: labelX, y: tick.position - 6))
             }
         }
+        path.stroke()
     }
 
     private func drawLabel(_ value: Double, at point: CGPoint) {
