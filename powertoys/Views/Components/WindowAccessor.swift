@@ -46,6 +46,11 @@ private class WindowAccessorView: NSView {
             WindowStateManager.shared.restoreState(for: window)
             restoredWindow = window
         }
+        if windowIdentifier == "awake" {
+            DispatchQueue.main.async { [weak window] in
+                window?.makeFirstResponder(nil)
+            }
+        }
         window.isMovableByWindowBackground = false
         window.isOpaque = false
         window.backgroundColor = .clear
