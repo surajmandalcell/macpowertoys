@@ -58,7 +58,7 @@ struct ColorHistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .bottomTrailing) {
                 VStack(spacing: 0) {
                     if page != .settings {
                         tabBar
@@ -78,8 +78,7 @@ struct ColorHistoryView: View {
                     page = page == .settings ? .history : .settings
                 }
                 .accessibilityIdentifier("color-picker.settings")
-                .padding(.leading, ColorPickerLayout.bodyHorizontalInset)
-                .padding(.bottom, UtilityLayout.contentBottomInset)
+                .padding([.trailing, .bottom], UtilityLayout.floatingButtonEdgeInset)
             }
         }
         .frame(
@@ -110,7 +109,7 @@ struct ColorHistoryView: View {
     }
 
     private var titlebar: some View {
-        CompactTitlebar(showsBottomSeparator: false) {
+        CompactTitlebar {
             CompactTitlebarTitle(title: "Color Picker")
         } actions: {
             CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }

@@ -46,6 +46,7 @@ spacing:
   sidebar-title-leading: 84   # clears traffic lights
   content-top: 52   # content aligns with sidebar search bar top
   header-top: 0     # window-top strips hug the top (10pt internal only)
+  floating-control-edge: 8
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
@@ -392,13 +393,12 @@ These are binding polish rules. Treat them as defects when they regress.
   Google Material 3 applies one 56dp input height to search and builds exposed
   dropdowns around text fields. MacPowerToys uses the same parity principle at
   its compact scale: adjacent search fields and selects are exactly 28pt high.
-- A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
+- A compact tool window uses one custom 32pt titlebar for the 13pt medium tool
   title and 24pt-high primary actions. The title clears the traffic lights by
-  84pt. Center titles and actions in the top 32pt native control band so their
-  midpoints match the traffic lights. The title is text only, with no tool icon.
-  Never repeat this content in another header row. Color Picker omits the bottom
-  separator; other tools keep their existing separator unless their design
-  explicitly says otherwise.
+  84pt. Center titles, actions, and native traffic lights in the full bar so
+  24pt controls have 4pt above and below. The title is text only, with no tool
+  icon. Never repeat this content in another header row. Compact titlebars have
+  no bottom separator.
 - Titlebar actions remain visually discrete and flat. Never place them in a
   shared rounded container or native toolbar group. Only the primary action
   receives an accent fill, using the 4pt small-button radius. Color Picker uses
@@ -410,10 +410,9 @@ These are binding polish rules. Treat them as defects when they regress.
   full, labeled setting rows; never make a compact menu the only settings UI.
   Homepage tabs and navigation do not remain above settings, and settings
   content begins directly below the titlebar with no top margin.
-- Applet settings uses a small 24pt floating `gearshape` button at the
-  bottom-left of the content, aligned to its body gutter. It remains visible
-  on the settings page and toggles back to tool content. Never place settings
-  in a compact titlebar.
+- Applet settings uses a small 24pt floating `gearshape` button 8pt from the
+  bottom-right window edges. It remains visible on the settings page and
+  toggles back to tool content. Never place settings in a compact titlebar.
 - Destructive history maintenance belongs in Settings, not the titlebar. A
   clear-all action must describe its scope and confirm before deleting saved
   items.

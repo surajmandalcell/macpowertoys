@@ -32,7 +32,7 @@ struct TextExtractorView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .bottomTrailing) {
                 switch page {
                 case .history: history
                 case .settings: settings
@@ -45,8 +45,7 @@ struct TextExtractorView: View {
                     page = page == .settings ? .history : .settings
                 }
                 .accessibilityIdentifier("text-extractor.settings")
-                .padding(.leading, UtilityLayout.horizontalInset)
-                .padding(.bottom, UtilityLayout.contentBottomInset)
+                .padding([.trailing, .bottom], UtilityLayout.floatingButtonEdgeInset)
             }
         }
         .frame(

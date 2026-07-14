@@ -34,7 +34,9 @@ final class ColorPickerUITests: XCTestCase {
 
         let settings = window.descendants(matching: .any)["color-picker.settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 2))
-        XCTAssertLessThan(settings.frame.midX, window.frame.midX)
+        XCTAssertGreaterThan(settings.frame.midX, window.frame.midX)
+        XCTAssertLessThanOrEqual(window.frame.maxX - settings.frame.maxX, 10)
+        XCTAssertLessThanOrEqual(window.frame.maxY - settings.frame.maxY, 10)
         settings.click()
         XCTAssertTrue(window.staticTexts["GLOBAL SHORTCUT"].waitForExistence(timeout: 2))
         XCTAssertTrue(window.staticTexts["Keyboard shortcut"].exists)
