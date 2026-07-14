@@ -28,17 +28,21 @@ final class RcloneRCClientTests: XCTestCase {
                     "Description": "Google Drive",
                     "Prefix": "drive",
                     "Options": [[
-                        "Name": "client_id",
-                        "FieldName": "client_id",
-                        "Help": "OAuth Client Id.",
-                        "Type": "string",
-                        "Required": false,
-                        "IsPassword": false,
-                        "Advanced": false,
-                        "Hide": 0,
-                        "Default": "",
-                        "Examples": [["Value": "", "Help": "Use rclone's client ID"]]
-                    ]]
+                            "Name": "client_id",
+                            "FieldName": "client_id",
+                            "Help": "OAuth Client Id.",
+                            "Type": "string",
+                            "Required": false,
+                            "IsPassword": false,
+                            "Advanced": false,
+                            "Hide": 0,
+                            "Default": "",
+                            "Examples": [["Value": "", "Help": "Use rclone's client ID"]]
+                        ],
+                        ["Name": "client_secret", "Help": "OAuth Client Secret."],
+                        ["Name": "scope", "Help": "OAuth scopes."],
+                        ["Name": "service_account_file", "Help": "Service account JSON file."]
+                    ]
                 ]]
             ])
         }
@@ -51,6 +55,16 @@ final class RcloneRCClientTests: XCTestCase {
         XCTAssertEqual(providers[0].options[0].name, "client_id")
         XCTAssertEqual(providers[0].options[0].examples.first?.help, "Use rclone's client ID")
         XCTAssertFalse(providers[0].options[0].usesExclusivePicker)
+        XCTAssertEqual(providers[0].authenticationModes, [.browser, .serviceAccount, .customOAuth])
+        XCTAssertEqual(
+            RcloneAuthenticationMode.customOAuth.optionNames(in: providers[0]),
+            ["client_id", "client_secret", "scope"]
+        )
+        XCTAssertFalse(RcloneAuthenticationMode.serviceAccount.isConfigured(parameters: [:], provider: providers[0]))
+        XCTAssertTrue(RcloneAuthenticationMode.serviceAccount.isConfigured(
+            parameters: ["service_account_file": "/tmp/account.json"],
+            provider: providers[0]
+        ))
     }
 
     func testConfigurationStepUsesNonInteractiveProtocol() async throws {

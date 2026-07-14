@@ -10,6 +10,7 @@ struct AddRemoteSheet: View {
     @State private var searchText = ""
     @State private var parameters: [String: String] = [:]
     @State private var showAdvanced = false
+    @State private var selectedAuthenticationMode = RcloneAuthenticationMode.browser
     @State private var promptAnswer = ""
 
     private var selectedProvider: RcloneProvider? {
@@ -25,13 +26,40 @@ struct AddRemoteSheet: View {
     }
 
     private var visibleOptions: [RcloneProviderOption] {
-        selectedProvider?.options.filter { !$0.hidden && (showAdvanced || !$0.advanced) } ?? []
+        guard let provider = selectedProvider else { return [] }
+        let options = provider.options.filter { !$0.hidden && !$0.isDeprecated }
+        guard !provider.authenticationModes.isEmpty else {
+            return options.filter { showAdvanced || !$0.advanced }
+        }
+
+        let modeOptions = selectedAuthenticationMode.optionNames(in: provider)
+        let authOptions = provider.authenticationOptionNames
+        return options.filter {
+            $0.required || modeOptions.contains($0.name)
+                || (showAdvanced && !authOptions.contains($0.name))
+        }
+    }
+
+    private var authenticationModes: [RcloneAuthenticationMode] {
+        selectedProvider?.authenticationModes ?? []
+    }
+
+    private var hasAdditionalOptions: Bool {
+        guard let provider = selectedProvider else { return false }
+        if provider.authenticationModes.isEmpty {
+            return provider.options.contains { !$0.hidden && !$0.isDeprecated && $0.advanced }
+        }
+        return provider.options.contains {
+            !$0.hidden && !$0.isDeprecated && !$0.required
+                && !provider.authenticationOptionNames.contains($0.name)
+        }
     }
 
     private var canConnect: Bool {
         guard let provider = selectedProvider,
               RcloneJobManager.isValidRemoteName(name.trimmingCharacters(in: .whitespaces)) else { return false }
-        return provider.options.filter { $0.required && !$0.hidden }.allSatisfy {
+        return selectedAuthenticationMode.isConfigured(parameters: parameters, provider: provider)
+            && provider.options.filter { $0.required && !$0.hidden }.allSatisfy {
             !(parameters[$0.name] ?? $0.defaultValue).isEmpty
         }
     }
@@ -74,9 +102,13 @@ struct AddRemoteSheet: View {
         .onChange(of: selectedProviderID) {
             parameters = [:]
             showAdvanced = false
+            selectedAuthenticationMode = .browser
             if name.isEmpty, let provider = selectedProvider {
                 name = provider.name
             }
+        }
+        .onChange(of: selectedAuthenticationMode) {
+            applyAuthenticationMode()
         }
     }
 
@@ -123,6 +155,10 @@ struct AddRemoteSheet: View {
                         selectedName: selectedProvider?.displayName ?? "Select a connector"
                     )
 
+                    if !authenticationModes.isEmpty {
+                        authenticationSection
+                    }
+
                     fieldTitle("REMOTE NAME")
                     TextField("my-cloud", text: $name)
                         .textFieldStyle(.plain)
@@ -138,16 +174,47 @@ struct AddRemoteSheet: View {
                         }
                     }
 
-                    if selectedProvider?.options.contains(where: { $0.advanced && !$0.hidden }) == true {
-                        Toggle("Show advanced options", isOn: $showAdvanced)
+                    if hasAdditionalOptions {
+                        Toggle(authenticationModes.isEmpty ? "Show advanced options" : "Show provider options", isOn: $showAdvanced)
                             .toggleStyle(.switch)
                             .controlSize(.small)
                             .font(.system(size: 12))
                     }
                 }
                 .padding(20)
+                .animation(.easeInOut(duration: 0.16), value: selectedAuthenticationMode)
             }
         }
+    }
+
+    private var authenticationSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            fieldTitle("SIGN IN")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(authenticationModes) { mode in
+                        AuthenticationModeTab(
+                            title: mode.title,
+                            isSelected: selectedAuthenticationMode == mode
+                        ) {
+                            selectedAuthenticationMode = mode
+                        }
+                    }
+                }
+            }
+            Text(selectedAuthenticationMode.detail)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func applyAuthenticationMode() {
+        guard let provider = selectedProvider else { return }
+        for name in provider.authenticationOptionNames {
+            parameters.removeValue(forKey: name)
+        }
+        parameters.merge(selectedAuthenticationMode.parameterOverrides) { _, selected in selected }
     }
 
     @ViewBuilder
@@ -313,7 +380,7 @@ struct AddRemoteSheet: View {
     private var footer: some View {
         HStack {
             if case .idle = manager.authState, let provider = selectedProvider {
-                Button("Connect") {
+                Button(connectButtonTitle) {
                     let supplied = parameters.filter { !$0.value.isEmpty }
                     manager.beginAddRemote(named: name, provider: provider, parameters: supplied)
                 }
@@ -340,6 +407,12 @@ struct AddRemoteSheet: View {
         }
     }
 
+    private var connectButtonTitle: String {
+        selectedAuthenticationMode == .browser && !authenticationModes.isEmpty
+            ? "Sign In with Browser"
+            : "Connect"
+    }
+
     private func fieldTitle(_ title: String) -> some View {
         Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
     }
@@ -350,6 +423,38 @@ struct AddRemoteSheet: View {
             Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private extension RcloneProviderOption {
+    var isDeprecated: Bool {
+        help.trimmingCharacters(in: .whitespacesAndNewlines)
+            .localizedCaseInsensitiveContains("deprecated:")
+    }
+}
+
+private struct AuthenticationModeTab: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.primary.opacity(isSelected || isHovering ? 0.06 : 0))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
 

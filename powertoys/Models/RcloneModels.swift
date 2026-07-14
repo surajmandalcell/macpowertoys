@@ -823,6 +823,113 @@ struct RcloneSettings: Sendable, Equatable {
     }
 }
 
+// MARK: - Connector Authentication
+
+enum RcloneAuthenticationMode: String, Identifiable, Sendable {
+    case browser
+    case serviceAccount
+    case boxApp
+    case accessToken
+    case environment
+    case publicAccess
+    case customOAuth
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .browser: return "Browser"
+        case .serviceAccount: return "Service account"
+        case .boxApp: return "Box app"
+        case .accessToken: return "Access token"
+        case .environment: return "Environment"
+        case .publicAccess: return "Public"
+        case .customOAuth: return "Custom OAuth"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .browser: return "Sign in on the provider's website. No credentials are needed here."
+        case .serviceAccount: return "Use service-account credentials instead of a personal sign-in."
+        case .boxApp: return "Use credentials exported from a Box application."
+        case .accessToken: return "Connect with an existing provider access token."
+        case .environment: return "Use credentials already available to rclone on this Mac."
+        case .publicAccess: return "Connect without credentials to public data."
+        case .customOAuth: return "Use credentials from your own OAuth application."
+        }
+    }
+
+    func optionNames(in provider: RcloneProvider) -> Set<String> {
+        Set(provider.options.map(\.name).filter(matches))
+    }
+
+    func isConfigured(parameters: [String: String], provider: RcloneProvider) -> Bool {
+        let names: Set<String>
+        switch self {
+        case .browser, .environment, .publicAccess:
+            return true
+        case .customOAuth:
+            names = optionNames(in: provider).intersection(["client_id"])
+        case .boxApp:
+            names = optionNames(in: provider).intersection(["box_config_file", "config_credentials"])
+        case .serviceAccount, .accessToken:
+            names = optionNames(in: provider)
+        }
+        return names.contains { !(parameters[$0] ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    var parameterOverrides: [String: String] {
+        switch self {
+        case .environment: return ["env_auth": "true"]
+        case .publicAccess: return ["anonymous": "true"]
+        default: return [:]
+        }
+    }
+
+    private func matches(_ name: String) -> Bool {
+        switch self {
+        case .browser: return false
+        case .serviceAccount: return name == "service_account_file" || name == "service_account_credentials"
+        case .boxApp: return name == "box_config_file" || name == "config_credentials" || name == "box_sub_type"
+        case .accessToken: return name == "access_token"
+        case .environment: return name == "env_auth"
+        case .publicAccess: return name == "anonymous"
+        case .customOAuth: return ["client_id", "client_secret", "scope", "tenant"].contains(name)
+        }
+    }
+}
+
+extension RcloneProvider {
+    var authenticationModes: [RcloneAuthenticationMode] {
+        guard supportsBrowserAuthentication else { return [] }
+        var modes: [RcloneAuthenticationMode] = [.browser]
+        for mode in [
+            RcloneAuthenticationMode.serviceAccount,
+            .boxApp,
+            .accessToken,
+            .environment,
+            .publicAccess
+        ] where !mode.optionNames(in: self).isEmpty {
+            modes.append(mode)
+        }
+        modes.append(.customOAuth)
+        return modes
+    }
+
+    var authenticationOptionNames: Set<String> {
+        authenticationModes.reduce(into: Set<String>()) { names, mode in
+            names.formUnion(mode.optionNames(in: self))
+        }
+    }
+
+    private var supportsBrowserAuthentication: Bool {
+        let credentialOptions = options.filter { $0.name == "client_id" || $0.name == "client_secret" }
+        return credentialOptions.count == 2
+            && credentialOptions.contains { $0.help.localizedCaseInsensitiveContains("oauth") }
+    }
+}
+
 // MARK: - Formatting Helpers
 
 enum RcloneFormat {
