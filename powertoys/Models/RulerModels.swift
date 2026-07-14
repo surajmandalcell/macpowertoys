@@ -178,6 +178,8 @@ struct RulerMeasurement: Codable, Identifiable, Equatable, Sendable {
 }
 
 enum RulerGeometry {
+    static let thickness: CGFloat = 48
+
     static func ticks(length: CGFloat, pointsPerUnit: CGFloat, reversed: Bool) -> [RulerTick] {
         guard length > 0, pointsPerUnit > 0 else { return [] }
         let minimumSpacing: CGFloat = 5

@@ -6,8 +6,7 @@ import Observation
 @MainActor
 final class RulerManager {
     static let shared = RulerManager()
-    private static let rulerThickness: CGFloat = 54
-    private static let layoutVersion = 2
+    private static let layoutVersion = 3
 
     private(set) var rulers: [RulerState] = []
     private(set) var measurements: [RulerMeasurement] = []
@@ -33,6 +32,7 @@ final class RulerManager {
             measurements = Self.decode([RulerMeasurement].self, key: measurementsKey) ?? []
         }
         if !AppRuntime.isRunningTests, defaults.integer(forKey: layoutVersionKey) < Self.layoutVersion {
+            normalizeStandardThicknesses()
             normalizeGroupedPairs(minimumDefaultLengths: true)
             defaults.set(Self.layoutVersion, forKey: layoutVersionKey)
             persist()
@@ -206,8 +206,8 @@ final class RulerManager {
     func setSize(_ id: UUID, width: Double? = nil, height: Double? = nil) {
         guard let state = rulers.first(where: { $0.id == id }) else { return }
         var frame = state.frame
-        if let width, width.isFinite { frame.size.width = max(Self.rulerThickness, width) }
-        if let height, height.isFinite { frame.size.height = max(Self.rulerThickness, height) }
+        if let width, width.isFinite { frame.size.width = max(RulerGeometry.thickness, width) }
+        if let height, height.isFinite { frame.size.height = max(RulerGeometry.thickness, height) }
         updateFrame(id: id, frame: frame, persistChanges: false)
         normalizeGroupedPairs()
         persist()
@@ -370,12 +370,22 @@ final class RulerManager {
     private func defaultSize(for orientation: RulerOrientation, in visibleFrame: CGRect) -> CGSize {
         let fraction = min(max(style.defaultSizeFraction, 0.1), 1)
         return switch orientation {
-        case .horizontal: CGSize(width: max(Self.rulerThickness, visibleFrame.width * fraction), height: Self.rulerThickness)
-        case .vertical: CGSize(width: Self.rulerThickness, height: max(Self.rulerThickness, visibleFrame.height * fraction))
+        case .horizontal: CGSize(width: max(RulerGeometry.thickness, visibleFrame.width * fraction), height: RulerGeometry.thickness)
+        case .vertical: CGSize(width: RulerGeometry.thickness, height: max(RulerGeometry.thickness, visibleFrame.height * fraction))
         case .joined: CGSize(
-            width: max(Self.rulerThickness, visibleFrame.width * fraction),
-            height: max(Self.rulerThickness, visibleFrame.height * fraction)
+            width: max(RulerGeometry.thickness, visibleFrame.width * fraction),
+            height: max(RulerGeometry.thickness, visibleFrame.height * fraction)
         )
+        }
+    }
+
+    private func normalizeStandardThicknesses() {
+        for index in rulers.indices {
+            switch rulers[index].orientation {
+            case .horizontal: rulers[index].height = RulerGeometry.thickness
+            case .vertical: rulers[index].width = RulerGeometry.thickness
+            case .joined: break
+            }
         }
     }
 
@@ -394,14 +404,14 @@ final class RulerManager {
             let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
             var horizontal = rulers[horizontalIndex].frame
             var vertical = rulers[verticalIndex].frame
-            horizontal.size.height = Self.rulerThickness
-            vertical.size.width = Self.rulerThickness
+            horizontal.size.height = RulerGeometry.thickness
+            vertical.size.width = RulerGeometry.thickness
             if minimumDefaultLengths {
                 horizontal.size.width = max(horizontal.width, defaultSize(for: .horizontal, in: visible).width)
                 vertical.size.height = max(vertical.height, defaultSize(for: .vertical, in: visible).height)
             }
             vertical.origin = CGPoint(
-                x: horizontal.minX - Self.rulerThickness,
+                x: horizontal.minX - RulerGeometry.thickness,
                 y: horizontal.maxY - vertical.height
             )
 
@@ -434,8 +444,8 @@ final class RulerManager {
         let screen = requestedScreen ?? NSScreen.screens.first(where: { $0.frame.intersects(frame) }) ?? NSScreen.main
         guard let visible = screen?.visibleFrame else { return frame }
         var result = frame
-        result.size.width = min(max(result.width, 54), visible.width)
-        result.size.height = min(max(result.height, 54), visible.height)
+        result.size.width = min(max(result.width, RulerGeometry.thickness), visible.width)
+        result.size.height = min(max(result.height, RulerGeometry.thickness), visible.height)
         result.origin.x = min(max(result.origin.x, visible.minX), visible.maxX - result.width)
         result.origin.y = min(max(result.origin.y, visible.minY), visible.maxY - result.height)
         return result

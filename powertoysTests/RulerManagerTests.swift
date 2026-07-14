@@ -22,6 +22,8 @@ final class RulerManagerTests: XCTestCase {
 
         let horizontal = try XCTUnwrap(manager.rulers.first { $0.orientation == .horizontal })
         let vertical = try XCTUnwrap(manager.rulers.first { $0.orientation == .vertical })
+        XCTAssertEqual(horizontal.height, RulerGeometry.thickness)
+        XCTAssertEqual(vertical.width, RulerGeometry.thickness)
         XCTAssertEqual(vertical.frame.maxX, horizontal.frame.minX, accuracy: 0.001)
         XCTAssertEqual(vertical.frame.maxY, horizontal.frame.maxY, accuracy: 0.001)
         XCTAssertFalse(vertical.frame.intersects(horizontal.frame))
@@ -74,7 +76,7 @@ final class RulerManagerTests: XCTestCase {
 
         manager.createPair()
         let vertical = try XCTUnwrap(manager.rulers.first { $0.orientation == .vertical })
-        manager.setSize(vertical.id, height: 54)
+        manager.setSize(vertical.id, height: RulerGeometry.thickness)
         manager.normalizeGroupedPairs(minimumDefaultLengths: true)
 
         let horizontal = try XCTUnwrap(manager.rulers.first { $0.orientation == .horizontal })
