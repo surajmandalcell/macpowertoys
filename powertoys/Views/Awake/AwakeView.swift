@@ -35,6 +35,7 @@ struct AwakeView: View {
     private var header: some View {
         CompactTitlebar {
             CompactTitlebarTitle(title: "Awake")
+                .fontWeight(.bold)
         } actions: {
             Toggle("Keep Display On", isOn: Binding(
                 get: { service.configuration.keepDisplayOn },
@@ -42,6 +43,7 @@ struct AwakeView: View {
             ))
             .toggleStyle(.switch)
             .controlSize(.small)
+            .focusEffectDisabled()
             .contentShape(Rectangle())
         }
     }
