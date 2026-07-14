@@ -19,8 +19,6 @@ struct FloatingSettingsButton: View {
         .focusEffectDisabled()
         .onHover { isHovering = $0 }
         .help(helpText)
-        .padding(.leading, UtilityLayout.horizontalInset)
-        .padding(.bottom, UtilityLayout.contentBottomInset)
     }
 
     private var background: Color {

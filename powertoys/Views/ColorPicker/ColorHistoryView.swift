@@ -58,14 +58,28 @@ struct ColorHistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            if page != .settings {
-                tabBar
-                Divider()
-            }
-            switch page {
-            case .history: history
-            case .projects: projects
-            case .settings: settings
+            ZStack(alignment: .bottomLeading) {
+                VStack(spacing: 0) {
+                    if page != .settings {
+                        tabBar
+                        Divider()
+                    }
+                    switch page {
+                    case .history: history
+                    case .projects: projects
+                    case .settings: settings
+                    }
+                }
+
+                FloatingSettingsButton(
+                    isActive: page == .settings,
+                    helpText: page == .settings ? "Back to History" : "Settings"
+                ) {
+                    page = page == .settings ? .history : .settings
+                }
+                .accessibilityIdentifier("color-picker.settings")
+                .padding(.leading, ColorPickerLayout.bodyHorizontalInset)
+                .padding(.bottom, UtilityLayout.contentBottomInset)
             }
         }
         .frame(
@@ -99,19 +113,10 @@ struct ColorHistoryView: View {
         CompactTitlebar(showsBottomSeparator: false) {
             CompactTitlebarTitle(title: "Color Picker")
         } actions: {
-            HStack(spacing: 8) {
-                CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
-                    .disabled(service.isPicking)
-                    .help("Pick a color for \(selectedProjectName)")
-                    .accessibilityIdentifier("color-picker.pick")
-                CompactTitlebarIconButton(
-                    systemName: "gearshape",
-                    help: page == .settings ? "Close Settings" : "Settings"
-                ) {
-                    page = page == .settings ? .history : .settings
-                }
-                .accessibilityIdentifier("color-picker.settings")
-            }
+            CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
+                .disabled(service.isPicking)
+                .help("Pick a color for \(selectedProjectName)")
+                .accessibilityIdentifier("color-picker.pick")
         }
     }
 
@@ -168,7 +173,7 @@ struct ColorHistoryView: View {
                         }
                     }
                     .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
-                    .padding(.bottom, UtilityLayout.contentBottomInset)
+                    .padding(.bottom, UtilityLayout.floatingButtonContentInset)
                 }
                 .thinScrollIndicators()
             }
@@ -205,7 +210,7 @@ struct ColorHistoryView: View {
                     }
                 }
                 .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
-                .padding(.bottom, UtilityLayout.contentBottomInset)
+                .padding(.bottom, UtilityLayout.floatingButtonContentInset)
             }
             .thinScrollIndicators()
         }
@@ -349,7 +354,7 @@ struct ColorHistoryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
-            .padding(.bottom, UtilityLayout.contentBottomInset)
+            .padding(.bottom, UtilityLayout.floatingButtonContentInset)
         }
         .thinScrollIndicators()
     }

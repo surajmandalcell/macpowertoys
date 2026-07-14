@@ -408,7 +408,10 @@ These are binding polish rules. Treat them as defects when they regress.
   full, labeled setting rows; never make a compact menu the only settings UI.
   Homepage tabs and navigation do not remain above settings, and settings
   content begins directly below the titlebar with no top margin.
-- Settings stays at the far right of the titlebar and uses `gearshape`.
+- Applet settings uses a small 24pt floating `gearshape` button at the
+  bottom-left of the content, aligned to its body gutter. It remains visible
+  on the settings page and toggles back to tool content. Never place settings
+  in a compact titlebar.
 - Destructive history maintenance belongs in Settings, not the titlebar. A
   clear-all action must describe its scope and confirm before deleting saved
   items.
