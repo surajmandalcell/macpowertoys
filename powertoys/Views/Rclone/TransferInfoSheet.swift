@@ -12,6 +12,8 @@ struct TransferInfoSheet: View {
     @Environment(RcloneJobManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
     @AppStorage("cloudsync.details.selectedTab") private var selectedTab: InfoTab = .overview
+    @State private var showTransferPlanInfo = false
+    @State private var isHoveringTransferPlanInfo = false
 
     private static let gutter: CGFloat = 20
     private static let cardPadding: CGFloat = 14
@@ -327,14 +329,37 @@ struct TransferInfoSheet: View {
         row("Average speed", value: RcloneFormat.speed(details.averageSpeed))
 
         if let job, job.kind == .directory {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                HStack(spacing: 2) {
                     Text("Transfer plan")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                    Text("Runs an rclone dry comparison. The total only grows when new work is found.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
+
+                    Button {
+                        showTransferPlanInfo.toggle()
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, height: 24)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.primary.opacity(isHoveringTransferPlanInfo ? 0.06 : 0))
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .accessibilityLabel("About transfer plan")
+                    .onHover { isHoveringTransferPlanInfo = $0 }
+                    .help("About the transfer plan")
+                    .popover(isPresented: $showTransferPlanInfo) {
+                        Text("Runs an rclone dry comparison. The total only grows when new work is found.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 220, alignment: .leading)
+                            .padding(12)
+                    }
                 }
                 Spacer(minLength: 12)
                 if job.isRecalculating {
