@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum AwakeLayout {
+    static let windowWidth: CGFloat = 560
+    static let windowHeight: CGFloat = 500
+}
+
 struct AwakeView: View {
     @State private var service = AwakeService.shared
     @State private var hours = 0
@@ -22,6 +27,7 @@ struct AwakeView: View {
             }
             .thinScrollIndicators()
         }
+        .frame(width: AwakeLayout.windowWidth, height: AwakeLayout.windowHeight)
         .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
     }
@@ -37,7 +43,6 @@ struct AwakeView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
             .contentShape(Rectangle())
-            .disabled(service.configuration.mode == .passive)
         }
     }
 

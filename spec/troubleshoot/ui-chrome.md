@@ -63,3 +63,15 @@
   below the titlebar. The floating settings control remains available to exit.
 - **Check:** Enter settings from every home page, confirm home navigation is
   absent, then toggle back and confirm home state returns.
+
+## Awake Window Controls
+
+- **Symptom:** The Awake window can be enlarged, or `Keep Display On` cannot be
+  changed while the selected mode is Passive.
+- **Cause:** The scene was freely resizable and the display option was disabled
+  whenever Awake was not actively holding a power assertion.
+- **Invariant:** Awake has a fixed 560pt by 500pt content size. Its existing
+  `Keep Display On` titlebar switch remains configurable in Passive mode; do not
+  add a separate titlebar on/off action.
+- **Check:** In Passive mode, toggle `Keep Display On` on and off, then drag a
+  window edge and confirm the content size remains unchanged.

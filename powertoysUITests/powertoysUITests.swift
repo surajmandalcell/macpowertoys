@@ -46,6 +46,37 @@ final class powertoysUITests: XCTestCase {
     }
 
     @MainActor
+    func testAwakeHasFixedSizeAndTitlebarDisplayToggle() throws {
+        let app = launchApp()
+        let card = app.descendants(matching: .any)["tool.awake.card"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.click()
+
+        let launch = app.buttons["tool.awake.launch"]
+        XCTAssertTrue(launch.waitForExistence(timeout: 2))
+        launch.click()
+
+        let window = app.windows["Awake"]
+        XCTAssertTrue(window.waitForExistence(timeout: 5))
+        let initialFrame = window.frame
+        let lowerRight = window.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.99))
+        lowerRight.press(
+            forDuration: 0.1,
+            thenDragTo: lowerRight.withOffset(CGVector(dx: 100, dy: 100))
+        )
+        XCTAssertEqual(window.frame, initialFrame)
+
+        let toggle = window.switches["Keep Display On"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 2))
+        XCTAssertTrue(toggle.isEnabled)
+        let initialValue = String(describing: toggle.value)
+        toggle.click()
+        XCTAssertNotEqual(String(describing: toggle.value), initialValue)
+        toggle.click()
+        XCTAssertEqual(String(describing: toggle.value), initialValue)
+    }
+
+    @MainActor
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
