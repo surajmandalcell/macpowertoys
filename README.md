@@ -4,7 +4,7 @@
   <img src="docs/appicon.svg" width="128" height="128" alt="MacPowerToys icon">
 </p>
 
-MacPowerToys is an open-source collection of focused, native macOS utilities. Each tool has its own window and Dock icon, and the utility commands are individually searchable through Raycast and Apple Shortcuts.
+MacPowerToys is an open-source collection of focused, native macOS utilities. Each tool has its own window and Dock icon, and the app launchers are individually searchable through Raycast.
 
 > [!IMPORTANT]
 > MacPowerToys is currently pre-release software. Build it from source and keep a backup of important data.
@@ -71,7 +71,7 @@ App Settings > General can sync a small allowlist of preferences through iCloud:
 
 ## Raycast
 
-The `raycast` directory contains separate Root Search commands for Ruler, Awake, Color Picker, and Text Extractor actions.
+The `raycast` directory contains one Root Search launcher for MacPowerToys and each built-in tool. Tool actions are intentionally not exposed as separate commands.
 
 ```bash
 cd raycast

@@ -75,11 +75,6 @@ final class ToolActionRouter {
 
     func open(toolID: String) {
         let resolved = Self.windowAliases[toolID] ?? toolID
-        if resolved == "ruler" {
-            execute(ToolActionRequest(action: .rulerOpen))
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
             guard let openWindowAction else {
                 if pendingToolOpens.last != resolved { pendingToolOpens.append(resolved) }

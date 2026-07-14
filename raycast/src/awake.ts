@@ -1,2 +1,2 @@
-import { command } from "./run";
-export default command("awake.open");
+import { openTool } from "./run";
+export default openTool("awake");
