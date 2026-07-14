@@ -39,7 +39,9 @@
 # UI Styling (CRITICAL - Avoid Default/Native Ugliness)
 
 ## Window & Titlebar
-- `.windowStyle(.hiddenTitleBar)` on WindowGroup - ONLY reliable way for seamless titlebar
+- Use `.windowStyle(.hiddenTitleBar)` for custom window chrome. A compact tool
+  may use the system titlebar only when `DESIGN.md` assigns its title and primary
+  actions there.
 - `NSVisualEffectView.state = .active` (NOT .followsWindowActiveState) - prevents appearance changes on focus loss
 - DO NOT manually configure NSWindow properties (titlebarAppearsTransparent, etc.) - SwiftUI overrides them
 - Sidebar extends seamlessly to top with traffic lights floating over it

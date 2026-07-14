@@ -9,6 +9,8 @@ final class ColorPickerTests: XCTestCase {
         let sample = ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1)
 
         let website = try! XCTUnwrap(service.createProject(named: "Website"))
+        XCTAssertFalse(service.canCreateProject(named: " website "))
+        XCTAssertTrue(service.canCreateProject(named: "App"))
         service.add(sample)
         let app = try! XCTUnwrap(service.createProject(named: "App"))
         service.add(sample)

@@ -17,7 +17,6 @@ enum ColorCopyFormat: String, CaseIterable, Codable, Identifiable, Sendable {
 struct ColorProject: Codable, Identifiable, Equatable, Sendable {
     var id = UUID()
     let name: String
-    var createdAt = Date()
 }
 
 struct ColorSample: Codable, Identifiable, Equatable, Sendable {

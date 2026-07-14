@@ -111,9 +111,11 @@ pills), outdent the control so its *text* sits on the gutter.
 
 Depth comes from **opacity layers and vibrancy, never shadows**. Sidebars are
 `.sidebar`-material blur extending seamlessly to the window top with traffic
-lights floating over them. Windows use `.windowStyle(.hiddenTitleBar)`; never
-hand-configure NSWindow titlebar properties. No drop shadows on custom views —
-the only shadows are the system's window shadows.
+lights floating over them. Windows with custom chrome use
+`.windowStyle(.hiddenTitleBar)`. A compact tool whose documented controls live
+in the titlebar uses the system titlebar instead. Never hand-configure NSWindow
+titlebar properties. No drop shadows on custom views; the only shadows are the
+system's window shadows.
 
 ## Shapes
 
