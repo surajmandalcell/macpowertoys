@@ -1,0 +1,52 @@
+# UI Chrome Troubleshooting
+
+## Applet Settings Placement
+
+- **Symptom:** A compact applet wastes titlebar space on a settings gear or
+  restores settings to the top-right after it was moved.
+- **Cause:** An older titlebar rule or shared icon component was treated as the
+  source of truth after the product requirement changed.
+- **Invariant:** Compact applet titlebars contain the text title and primary
+  actions only. A 24pt `gearshape` settings button floats at the bottom-left of
+  applet content, remains visible on the settings page, and toggles back to the
+  applet's home content.
+- **Check:** Inventory compact titlebar actions with `rg`, then open every applet
+  that owns settings. Confirm no titlebar gear exists and the floating gear is
+  visible, clickable, and aligned to that applet's body gutter on home and
+  settings pages.
+
+## Compact Titlebar Structure
+
+- **Symptom:** Title text becomes large, rounded, grouped, gains a redundant
+  icon, or actions merge into one accented control.
+- **Cause:** Native toolbar grouping, system titlebar defaults, or mixed custom
+  actions were used without inspecting their rendered result.
+- **Invariant:** Use the shared custom compact titlebar. Titles are text-only,
+  13pt medium. Actions are flat and discrete; only the primary action receives
+  accent fill. Preserve applet-specific separator behavior.
+- **Check:** Inspect initial focus, hover, disabled, and active states in the
+  running app. Confirm the title and every action retain separate visible
+  boundaries without transient focus chrome.
+
+## Body Gutters and Floating Controls
+
+- **Symptom:** Tabs, cards, fields, or a floating control start on different
+  horizontal edges.
+- **Cause:** A global inset was assumed without checking the applet's local
+  layout token, or label text was aligned instead of the control boundary.
+- **Invariant:** Inspect the current applet layout token first. Align tab pill
+  boundaries, content surfaces, and floating controls to the same body gutter.
+  Reserve enough scroll-bottom space that the floating control never covers the
+  final row or card.
+- **Check:** Compare rendered boundaries, not source padding. Scroll to the last
+  item and confirm it remains fully readable and clickable above the control.
+
+## Settings Page Replacement
+
+- **Symptom:** Home tabs remain above settings or settings gains a false top
+  margin.
+- **Cause:** Home navigation was rendered outside the page switch.
+- **Invariant:** Settings replaces applet home navigation and begins directly
+  below the titlebar. The floating settings control remains available to exit.
+- **Check:** Enter settings from every home page, confirm home navigation is
+  absent, then toggle back and confirm home state returns.
