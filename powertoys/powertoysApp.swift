@@ -101,12 +101,11 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["logs"]))
         .restorationBehavior(.disabled)
 
-        Window("Ruler", id: "ruler") {
+        Window("Ruler Settings", id: "ruler") {
             RulerControlView()
                 .background(WindowAccessor(identifier: "ruler"))
         }
         .defaultSize(width: 560, height: 600)
-        .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["ruler"]))
         .restorationBehavior(.disabled)
 

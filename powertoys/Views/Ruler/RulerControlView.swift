@@ -8,23 +8,20 @@ struct RulerControlView: View {
     @State private var showsCalibrationHelp = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
-                    settingsSection
-                    guidesSection
-                    activeSection
-                    measurementsSection
-                }
-                .padding(.horizontal, UtilityLayout.horizontalInset)
-                .padding(.top, UtilityLayout.contentTopInset)
-                .padding(.bottom, UtilityLayout.contentBottomInset)
+        ScrollView {
+            VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+                settingsSection
+                guidesSection
+                activeSection
+                measurementsSection
             }
-            .thinScrollIndicators()
+            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.top, UtilityLayout.contentTopInset)
+            .padding(.bottom, UtilityLayout.contentBottomInset)
         }
+        .thinScrollIndicators()
         .utilityWindowBackground()
+        .toolbar { titlebarActions }
         .onAppear {
             manager.restore()
             calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
@@ -35,28 +32,25 @@ struct RulerControlView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "ruler")
-                .foregroundStyle(Color.accentColor)
-            Text("Ruler Settings").font(.system(size: 13, weight: .medium))
-            Spacer()
-            Menu {
-                ForEach(RulerOrientation.allCases) { orientation in
-                    Button(orientation.title) { manager.create(orientation) }
+    @ToolbarContentBuilder
+    private var titlebarActions: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            HStack(spacing: 8) {
+                Menu {
+                    ForEach(RulerOrientation.allCases) { orientation in
+                        Button(orientation.title) { manager.create(orientation) }
+                    }
+                } label: {
+                    Label("New Ruler", systemImage: "plus")
                 }
-            } label: {
-                Label("New Ruler", systemImage: "plus")
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                Button("Measure Region") { MeasurementOverlayController.shared.begin() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .contentShape(Rectangle())
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            Button("Measure Region") { MeasurementOverlayController.shared.begin() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .contentShape(Rectangle())
         }
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .padding(.vertical, UtilityLayout.headerVerticalInset)
     }
 
     private var settingsSection: some View {
