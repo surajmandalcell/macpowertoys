@@ -135,9 +135,12 @@ struct MacPowerToysApp: App {
             TextExtractorView()
                 .background(WindowAccessor(identifier: "text-extractor"))
         }
-        .defaultSize(width: 480, height: 250)
+        .defaultSize(
+            width: TextExtractorLayout.windowWidth,
+            height: TextExtractorLayout.historyBaseHeight
+        )
         .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: true))
         .handlesExternalEvents(matching: Set(["text-extractor"]))
         .restorationBehavior(.disabled)
 
