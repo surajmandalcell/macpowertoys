@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -391,15 +391,23 @@ These are binding polish rules. Treat them as defects when they regress.
   its compact scale: adjacent search fields and selects are exactly 28pt high.
 - A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
   title and 24pt-high primary actions. The title clears the traffic lights by
-  84pt. Never repeat this content in another header row.
+  84pt. The title is text only: no tool icon and no bottom separator. Never
+  repeat this content in another header row.
 - Titlebar actions remain visually discrete and flat. Never place them in a
   shared rounded container or native toolbar group. Only the primary action
-  receives an accent fill, using the 4pt small-button radius.
+  receives an accent fill, using the 4pt small-button radius. Suppress default
+  focus outlines on custom titlebar actions so launch-time focus cannot add
+  temporary chrome.
 - Compact sheet and detail headers use the same flat 40pt structure without the
   traffic-light inset. Escape dismisses a dismissible sheet or detail view.
 - A tool's settings open inside that tool window and replace its content. Use
   full, labeled setting rows; never make a compact menu the only settings UI.
+  Homepage tabs and navigation do not remain above settings, and settings
+  content begins directly below the titlebar with no top margin.
 - Settings stays at the far right of the titlebar and uses `gearshape`.
+- Destructive history maintenance belongs in Settings, not the titlebar. A
+  clear-all action must describe its scope and confirm before deleting saved
+  items.
 - A named color project is a working destination, not just a filter. New picks
   go into the selected project and every project can export its saved colors.
 
