@@ -105,7 +105,10 @@ struct MacPowerToysApp: App {
             RulerControlView()
                 .background(WindowAccessor(identifier: "ruler"))
         }
-        .defaultSize(width: 560, height: 600)
+        .defaultSize(
+            width: RulerSettingsLayout.windowWidth,
+            height: RulerSettingsLayout.windowHeight
+        )
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["ruler"]))

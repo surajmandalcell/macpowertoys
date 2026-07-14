@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum RulerSettingsLayout {
+    static let windowWidth: CGFloat = 560
+    static let windowHeight: CGFloat = 600
+}
+
 struct RulerControlView: View {
     @State private var manager = RulerManager.shared
     @State private var guides = RulerGuideController.shared
@@ -12,6 +17,10 @@ struct RulerControlView: View {
             header
             content
         }
+        .frame(
+            width: RulerSettingsLayout.windowWidth,
+            height: RulerSettingsLayout.windowHeight
+        )
         .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
         .onAppear {

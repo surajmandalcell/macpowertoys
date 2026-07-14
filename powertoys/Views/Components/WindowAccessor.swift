@@ -80,7 +80,6 @@ private class WindowAccessorView: NSView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
             guard let self, let window else { return }
             alignCompactTrafficLights(in: window)
-            lockCompactWindowSize(in: window)
         }
     }
 
@@ -95,10 +94,5 @@ private class WindowAccessorView: NSView {
             guard let button = window.standardWindowButton(buttonType) else { continue }
             button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: targetY))
         }
-    }
-
-    private func lockCompactWindowSize(in window: NSWindow) {
-        window.minSize = window.frame.size
-        window.maxSize = window.frame.size
     }
 }
