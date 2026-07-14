@@ -391,20 +391,24 @@ These are binding polish rules. Treat them as defects when they regress.
   its compact scale: adjacent search fields and selects are exactly 28pt high.
 - A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
   title and 24pt-high primary actions. The title clears the traffic lights by
-  84pt. The title is text only: no tool icon and no bottom separator. Never
-  repeat this content in another header row.
+  84pt. The title is text only, with no tool icon. Never repeat this content in
+  another header row. Color Picker omits the bottom separator; other tools keep
+  their existing separator unless their design explicitly says otherwise.
 - Titlebar actions remain visually discrete and flat. Never place them in a
   shared rounded container or native toolbar group. Only the primary action
-  receives an accent fill, using the 4pt small-button radius. Suppress default
-  focus outlines on custom titlebar actions so launch-time focus cannot add
-  temporary chrome.
+  receives an accent fill, using the 4pt small-button radius. Color Picker uses
+  the shared custom actions, which suppress default focus outlines so
+  launch-time focus cannot add temporary chrome.
 - Compact sheet and detail headers use the same flat 40pt structure without the
   traffic-light inset. Escape dismisses a dismissible sheet or detail view.
 - A tool's settings open inside that tool window and replace its content. Use
   full, labeled setting rows; never make a compact menu the only settings UI.
   Homepage tabs and navigation do not remain above settings, and settings
   content begins directly below the titlebar with no top margin.
-- Settings stays at the far right of the titlebar and uses `gearshape`.
+- Applet settings uses a small 24pt floating `gearshape` button at the
+  bottom-left of the content, aligned to the shared gutter. It remains visible
+  on the settings page and toggles back to tool content. Never place settings
+  in a compact titlebar.
 - Destructive history maintenance belongs in Settings, not the titlebar. A
   clear-all action must describe its scope and confirm before deleting saved
   items.
