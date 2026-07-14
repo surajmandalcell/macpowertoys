@@ -21,6 +21,10 @@ struct WindowAccessor: NSViewRepresentable {
 }
 
 private class WindowAccessorView: NSView {
+    private static let compactAppletWindowIdentifiers = Set([
+        "ruler", "awake", "color-picker", "text-extractor"
+    ])
+
     let windowIdentifier: String
     private weak var restoredWindow: NSWindow?
 
@@ -46,5 +50,6 @@ private class WindowAccessorView: NSView {
         window.isOpaque = false
         window.backgroundColor = .clear
         window.tabbingMode = .disallowed
+        window.standardWindowButton(.zoomButton)?.isHidden = Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
     }
 }
