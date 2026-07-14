@@ -402,12 +402,14 @@ These are binding polish rules. Treat them as defects when they regress.
   its compact scale: adjacent search fields and selects are exactly 28pt high.
 - A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
   title and 24pt-high actions. Apply one 4pt top inset to the complete row,
-  never separate vertical padding to its title or controls. This puts every row
-  item on the same 22pt centerline. Move native close and minimize controls 6pt
-  down to that centerline. Hide zoom and start the title at 60pt so the app name
-  reclaims its empty position. The title is text only, with no tool icon. Never
-  repeat this content in another header row. Compact titlebars have no bottom
-  separator, and compact applet windows remain fixed-size.
+  never separate vertical padding to its title or controls. Give the title and
+  action container the same 24pt frame so intrinsic text height cannot create
+  independent-looking title padding. This puts every row item on the same 22pt
+  centerline. Move native close and minimize controls 6pt down to that
+  centerline. Hide zoom and start the title at 60pt so the app name reclaims its
+  empty position. The title is text only, with no tool icon. Never repeat this
+  content in another header row. Compact titlebars have no bottom separator,
+  and compact applet windows remain fixed-size.
 - Titlebar actions remain visually discrete and flat. Never place them in a
   shared rounded container or native toolbar group. Only the primary action
   receives an accent fill. Titlebar buttons and menus alone use the slightly

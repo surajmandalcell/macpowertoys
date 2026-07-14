@@ -16,6 +16,7 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 ### Compact Tool Chrome
 - Titlebar: 40pt high, no bottom border or separator
 - Complete row: one 4pt top inset; never pad row items separately
+- Title and action container: equal 24pt frames; never rely on intrinsic height
 - Title and 24pt actions: centered 22pt below the window top
 - Close and minimize: shifted 6pt down to that centerline
 - Zoom: hidden; title begins at 60pt to reclaim its space

@@ -34,16 +34,17 @@
 ## Compact Titlebar Vertical Alignment
 
 - **Symptom:** Compact titlebar items sit too high, the traffic lights feel
-  cramped, the green zoom control remains, or an applet can be resized.
-- **Cause:** The complete row had no top inset, or individual controls received
-  vertical padding while traffic lights followed a different fixed offset.
+  cramped, the app name appears independently padded, the green zoom control
+  remains, or an applet can be resized.
+- **Cause:** The title used its intrinsic text height while actions used 24pt
+  frames inside a taller row, or traffic lights followed a different offset.
 - **Invariant:** Use one 40pt titlebar. Apply one 4pt top inset to the complete
-  row and no vertical padding to individual row items. The title and 24pt
-  actions share a 22pt centerline. Move close and minimize controls 6pt down to
-  that centerline, hide zoom, and remove the resizable window style for every
-  compact applet. Give each applet an explicit fixed root frame and use SwiftUI
-  content-size window resizability. Reapply the traffic-light offset after
-  delayed layout; never stack relative offsets.
+  row and no vertical padding to individual row items. Give the title and
+  action container equal 24pt frames. They share a 22pt centerline. Move close
+  and minimize controls 6pt down to that centerline, hide zoom, and remove the
+  resizable window style for every compact applet. Give each applet an explicit
+  fixed root frame and use SwiftUI content-size window resizability. Reapply the
+  traffic-light offset after delayed layout; never stack relative offsets.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
   and actions in every compact applet. They stay within 1pt of window-top +
   22pt. Confirm only close and minimize are visible and manual resizing fails.
