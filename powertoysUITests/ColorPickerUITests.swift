@@ -23,6 +23,20 @@ final class ColorPickerUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 5))
         XCTAssertLessThanOrEqual(window.frame.width, 430)
 
+        let historyTab = window.buttons["History"]
+        let projectsTab = window.buttons["Projects"]
+        XCTAssertTrue(historyTab.waitForExistence(timeout: 2))
+        XCTAssertTrue(projectsTab.exists)
+        let historyFrame = historyTab.frame
+        let projectsFrame = projectsTab.frame
+        projectsTab.click()
+        XCTAssertTrue(window.staticTexts["COLOR PROJECTS"].waitForExistence(timeout: 2))
+        XCTAssertEqual(historyTab.frame.minX, historyFrame.minX, accuracy: 0.5)
+        XCTAssertEqual(historyTab.frame.width, historyFrame.width, accuracy: 0.5)
+        XCTAssertEqual(projectsTab.frame.minX, projectsFrame.minX, accuracy: 0.5)
+        XCTAssertEqual(projectsTab.frame.width, projectsFrame.width, accuracy: 0.5)
+        historyTab.click()
+
         let search = window.descendants(matching: .any)["color-picker.search"]
         let format = window.descendants(matching: .any)["color-picker.format"]
         XCTAssertTrue(search.waitForExistence(timeout: 2))
