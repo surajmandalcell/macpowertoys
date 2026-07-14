@@ -370,3 +370,22 @@ same metaphor because macOS controls their tint.
 - **Do** keep view bodies under ~50 lines — extract subviews.
 - **Do** give every interactive element `.contentShape(Rectangle())` and a
   `.help()` tooltip when the icon isn't self-evident.
+
+## Product Nitpicks
+
+These are binding polish rules. Treat them as defects when they regress.
+
+- Controls sharing a row must share the same visible height and text baseline.
+  Google Material 3 applies one 56dp input height to search and builds exposed
+  dropdowns around text fields. MacPowerToys uses the same parity principle at
+  its compact scale: adjacent search fields and selects are exactly 28pt high.
+- A compact tool window uses its titlebar for the tool title and primary
+  actions. Never repeat that content in an in-window header row.
+- A tool's settings open inside that tool window and replace its content. Use
+  full, labeled setting rows; never make a compact menu the only settings UI.
+- Settings stays at the far right of the titlebar and uses `gearshape`.
+- A named color project is a working destination, not just a filter. New picks
+  go into the selected project and every project can export its saved colors.
+
+Sources: [Material 3 SearchBar defaults](https://developer.android.com/reference/kotlin/androidx/compose/material3/SearchBarDefaults),
+[Material 3 exposed dropdown menus](https://developer.android.com/reference/kotlin/androidx/compose/material3/ExposedDropdownMenuBox.composable).
