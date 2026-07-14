@@ -53,6 +53,23 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(restored.samples(in: project.id).count, 1)
     }
 
+    func testClearAllRemovesEveryColorAndKeepsProjects() {
+        let (service, defaults, suite) = makeService()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        service.add(ColorSample(red: 1, green: 0, blue: 0, alpha: 1))
+        service.togglePin(service.history[0].id)
+        let project = try! XCTUnwrap(service.createProject(named: "Brand"))
+        service.add(ColorSample(red: 0, green: 0, blue: 1, alpha: 1))
+        service.togglePin(service.history[0].id)
+
+        service.clearAll()
+        let restored = ColorPickerService(defaults: defaults)
+
+        XCTAssertTrue(service.history.isEmpty)
+        XCTAssertTrue(restored.history.isEmpty)
+        XCTAssertEqual(restored.projects, [project])
+    }
+
     func testProjectCSSUsesHexAndAlphaOnlyWhenNeeded() {
         let samples = [
             ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1),

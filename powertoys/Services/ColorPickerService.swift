@@ -115,8 +115,8 @@ final class ColorPickerService {
         save()
     }
 
-    func clearUnpinned(in projectID: UUID?) {
-        history.removeAll { $0.projectID == projectID && !$0.isPinned }
+    func clearAll() {
+        history.removeAll()
         save()
     }
 
