@@ -19,7 +19,7 @@ MacPowerToys is an open-source collection of focused, native macOS utilities. Ea
 | Awake | Keeps the Mac or display awake indefinitely, for a duration, until a time, or while a process runs. |
 | Color Picker | Samples screen colors, copies common developer formats, and keeps searchable, pinnable local history. |
 | Text Extractor | Captures a selected screen region and recognizes text locally with Apple Vision. |
-| Cloud Sync | Runs local and cloud copy, move, and sync jobs through rclone, with persistent progress, retries, priorities, ignore rules, and remote browsing. |
+| Cloud Sync | Runs local and cloud copy, move, and sync jobs through rclone, with persistent progress, retries, a per-transfer change audit, continuous local-source monitoring, ignore rules, and remote browsing. |
 | Claude History | Browses, searches, and exports local Claude Code JSONL conversation history. |
 | Logs | Searches and filters MacPowerToys diagnostic logs. |
 
@@ -86,7 +86,9 @@ See [Privacy](PRIVACY.md) and [Security Policy](SECURITY.md) for details.
 
 ## Cloud Sync behavior
 
-Cloud Sync preserves completed-file progress across pause, quit, and relaunch. Byte-level continuation of the currently active cloud object depends on the rclone backend; some providers must restart that one file. Priority changes reorder queued transfers without interrupting an active file.
+Cloud Sync calculates the transfer plan before copying, then preserves completed-file progress across pause, quit, and relaunch. The **Recalculate** action runs another rclone dry-run and only raises the plan when it finds new remaining work; it never replaces completed progress or shrinks the original plan. Byte-level continuation of the currently active cloud object depends on the rclone backend, so some providers must restart that one file.
+
+MacPowerToys does not show a misleading priority control for an active file. [rclone's remote-control API](https://rclone.org/rc/) reports active transfers but does not expose safe per-file reprioritization.
 
 The Add Connector sheet reads rclone's provider catalog at runtime, so it supports the connector types included by the installed rclone version instead of maintaining a hard-coded provider list.
 
