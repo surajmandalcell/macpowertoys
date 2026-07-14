@@ -18,16 +18,17 @@ struct AwakeView: View {
                     options
                 }
                 .padding(.horizontal, 20)
+                .padding(.top, 16)
                 .padding(.bottom, 20)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(VisualEffectBackground(material: .hudWindow))
     }
 
     private var header: some View {
         HStack {
             Image(systemName: service.isActive ? "cup.and.saucer.fill" : "cup.and.saucer")
-                .foregroundStyle(service.isActive ? Color.accentColor : .secondary)
+                .foregroundStyle(Color.accentColor)
             Text("Awake").font(.system(size: 13, weight: .medium))
             Spacer()
             Toggle("Keep Display On", isOn: Binding(

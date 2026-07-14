@@ -28,7 +28,7 @@ final class ToolActionRouterTests: XCTestCase {
     }
 
     func testActionMetadataClassifiesWindowActions() {
-        let windowActions: Set<ToolActionID> = [.rulerOpen, .awakeOpen, .colorPickerHistory, .textExtractorOpen]
+        let windowActions: Set<ToolActionID> = [.rulerSettings, .awakeOpen, .colorPickerHistory, .textExtractorOpen]
         for action in ToolActionID.allCases {
             XCTAssertEqual(action.opensWindow, windowActions.contains(action), "Unexpected window classification for \(action)")
             XCTAssertEqual(action.toolID, action.rawValue.split(separator: ".").first.map(String.init))

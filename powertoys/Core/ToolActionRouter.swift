@@ -4,6 +4,7 @@ import SwiftUI
 
 enum ToolActionID: String, CaseIterable, Codable, Sendable {
     case rulerOpen = "ruler.open"
+    case rulerSettings = "ruler.settings"
     case rulerNewHorizontal = "ruler.new-horizontal"
     case rulerNewVertical = "ruler.new-vertical"
     case rulerNewJoined = "ruler.new-joined"
@@ -25,7 +26,7 @@ enum ToolActionID: String, CaseIterable, Codable, Sendable {
 
     var opensWindow: Bool {
         switch self {
-        case .rulerOpen, .awakeOpen, .colorPickerHistory, .textExtractorOpen:
+        case .rulerSettings, .awakeOpen, .colorPickerHistory, .textExtractorOpen:
             true
         default:
             false
@@ -74,6 +75,11 @@ final class ToolActionRouter {
 
     func open(toolID: String) {
         let resolved = Self.windowAliases[toolID] ?? toolID
+        if resolved == "ruler" {
+            execute(ToolActionRequest(action: .rulerOpen))
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
             guard let openWindowAction else {
                 if pendingToolOpens.last != resolved { pendingToolOpens.append(resolved) }

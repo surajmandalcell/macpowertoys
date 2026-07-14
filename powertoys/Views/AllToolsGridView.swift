@@ -23,7 +23,9 @@ struct AllToolsGridView: View {
                     )
                 }
             }
-            .padding([.horizontal, .bottom], 24)
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
         }
     }
 }
@@ -90,7 +92,7 @@ struct ToolCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(Color.primary.opacity(isHovering ? 0.06 : 0), lineWidth: 1)
         )
-        .scaleEffect(isHovering ? 1.01 : 1)
+        .shadow(color: .black.opacity(isHovering ? 0.12 : 0), radius: 8, y: 2)
         .animation(.easeInOut(duration: 0.15), value: isHovering)
         .contentShape(Rectangle())
         .onTapGesture {
