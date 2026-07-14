@@ -32,6 +32,8 @@ Notable changes are documented here. The project follows semantic versioning aft
 - Removed the misleading transfer-level priority control because rclone does not expose safe reprioritization for an active file, and compacted transfer progress, ETA, direction, and comparison status.
 - Unified utility-window insets, translucent titlebar/body material, compact sizing, card hover treatment, and thin overlay scroll indicators.
 - Enforced one running MacPowerToys process and one window per utility while still allowing multiple ruler overlays.
+- Moved Color Picker settings into a focused view and added a confirmed clear-all action that preserves projects.
+- Moved Text Extractor recognition settings to an unobtrusive floating control while keeping extraction as the primary titlebar action.
 - Credited rclone in Cloud Sync About and documentation.
 
 ### Fixed
@@ -39,6 +41,7 @@ Notable changes are documented here. The project follows semantic versioning aft
 - Prevented destination-folder contents and resumed bytes from inflating a transfer plan beyond the source data.
 - Restored the Cloud Sync transfer Changes tab and aligned its tab strip with the detail content.
 - Removed excess top spacing from Logs and clipped top content from compact utility windows.
+- Aligned the launcher card grid with the sidebar search field.
 
 ### Security
 
