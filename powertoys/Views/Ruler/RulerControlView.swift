@@ -10,7 +10,6 @@ struct RulerControlView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             content
         }
         .ignoresSafeArea(.container, edges: .top)
@@ -41,54 +40,39 @@ struct RulerControlView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "ruler")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-            Text("Ruler Settings")
-                .font(.system(size: 13, weight: .medium))
-            Spacer()
-            Menu {
-                ForEach(RulerOrientation.allCases) { orientation in
-                    Button(orientation.title) { manager.create(orientation) }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus")
-                    Text("New Ruler")
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .medium))
-                }
-                .font(.system(size: 11, weight: .medium))
-                .padding(.horizontal, 8)
-                .frame(height: 24)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Create a ruler")
-            .accessibilityIdentifier("ruler.new")
-            Button { MeasurementOverlayController.shared.begin() } label: {
-                Text("Measure Region")
+        CompactTitlebar {
+            CompactTitlebarTitle(title: "Ruler Settings", systemImage: "ruler")
+        } actions: {
+            HStack(spacing: 8) {
+                Menu {
+                    ForEach(RulerOrientation.allCases) { orientation in
+                        Button(orientation.title) { manager.create(orientation) }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text("New Ruler")
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .medium))
+                    }
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .frame(height: 24)
-                    .background(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
                     .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Create a ruler")
+                .accessibilityIdentifier("ruler.new")
+                CompactTitlebarButton(title: "Measure Region", isPrimary: true) {
+                    MeasurementOverlayController.shared.begin()
+                }
+                .contentShape(Rectangle())
+                .help("Measure a screen region")
+                .accessibilityIdentifier("ruler.measure")
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .help("Measure a screen region")
-            .accessibilityIdentifier("ruler.measure")
         }
-        .padding(.leading, 84)
-        .padding(.trailing, 12)
-        .frame(height: 40)
     }
 
     private var settingsSection: some View {

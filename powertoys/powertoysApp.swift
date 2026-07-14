@@ -125,10 +125,10 @@ struct MacPowerToysApp: App {
         }
         .defaultSize(
             width: ColorPickerLayout.windowWidth,
-            height: ColorPickerLayout.historyBaseHeight
+            height: ColorPickerLayout.historyBaseHeight + UtilityLayout.compactTitlebarHeight
         )
         .windowResizability(.contentSize)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: true))
+        .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["color-picker"]))
         .restorationBehavior(.disabled)
 
@@ -138,10 +138,10 @@ struct MacPowerToysApp: App {
         }
         .defaultSize(
             width: TextExtractorLayout.windowWidth,
-            height: TextExtractorLayout.historyBaseHeight
+            height: TextExtractorLayout.historyBaseHeight + UtilityLayout.compactTitlebarHeight
         )
         .windowResizability(.contentSize)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+        .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["text-extractor"]))
         .restorationBehavior(.disabled)
 
