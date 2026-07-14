@@ -28,6 +28,10 @@ private class WindowAccessorView: NSView {
     let windowIdentifier: String
     private weak var restoredWindow: NSWindow?
 
+    override var acceptsFirstResponder: Bool {
+        windowIdentifier == "awake"
+    }
+
     init(windowIdentifier: String) {
         self.windowIdentifier = windowIdentifier
         super.init(frame: .zero)
@@ -60,8 +64,9 @@ private class WindowAccessorView: NSView {
             }
         }
         if windowIdentifier == "awake" {
-            DispatchQueue.main.async { [weak window] in
-                window?.makeFirstResponder(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
+                guard let self, let window else { return }
+                window.makeFirstResponder(self)
             }
         }
         window.isMovableByWindowBackground = false
