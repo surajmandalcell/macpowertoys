@@ -326,6 +326,38 @@ struct TransferInfoSheet: View {
         row("Files", value: "\(details.filesTransferred) of \(details.totalFiles)")
         row("Average speed", value: RcloneFormat.speed(details.averageSpeed))
 
+        if let job, job.kind == .directory {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Transfer plan")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                    Text("Runs an rclone dry comparison. The total only grows when new work is found.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 12)
+                if job.isRecalculating {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Comparing")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                    .fixedSize()
+                } else {
+                    Button("Recalculate") { manager.recalculate(job) }
+                        .disabled(!manager.daemonIsHealthy)
+                }
+            }
+            if let error = job.recalculationError {
+                Text(error)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+            }
+        }
+
         if details.attempts > 0 {
             row("Attempts", value: "\(details.attempts)")
         }

@@ -382,6 +382,8 @@ final class TransferJob: Identifiable {
     var networkBaselineBytes: Int64 = 0
     var continuousSync = false
     var isSizing = false
+    var isRecalculating = false
+    var recalculationError: String?
     var transferOrder: TransferOrder = .default
     var priority: TransferPriority = .normal
     var isExpanded = false
@@ -541,6 +543,25 @@ final class TransferJob: Identifiable {
             displayEta = raw
             lastEtaRefresh = now
         }
+    }
+
+    @discardableResult
+    func applyRecalculatedPlan(
+        remainingBytes: Int64,
+        remainingFiles: Int,
+        baselineRemainingBytes: Int64,
+        baselineRemainingFiles: Int
+    ) -> (bytes: Int64, files: Int) {
+        let addedBytes = max(0, remainingBytes - baselineRemainingBytes)
+        let addedFiles = max(0, remainingFiles - baselineRemainingFiles)
+
+        if addedBytes > 0 {
+            expectedBytes = effectiveTotalBytes + addedBytes
+        }
+        if addedFiles > 0 {
+            expectedFiles = effectiveTotalFiles + addedFiles
+        }
+        return (addedBytes, addedFiles)
     }
 }
 
@@ -797,8 +818,8 @@ enum RcloneFormat {
         let units = ["B", "KB", "MB", "GB", "TB", "PB"]
         var size = Double(value)
         var unit = 0
-        while size >= 1024 && unit < units.count - 1 {
-            size /= 1024
+        while size >= 1_000 && unit < units.count - 1 {
+            size /= 1_000
             unit += 1
         }
         if unit == 0 { return "\(value) B" }
