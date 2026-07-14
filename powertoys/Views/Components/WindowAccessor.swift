@@ -42,9 +42,22 @@ private class WindowAccessorView: NSView {
         super.viewDidMoveToWindow()
         guard let window = window else { return }
         window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
+        let isCompactApplet = Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
         if restoredWindow !== window {
             WindowStateManager.shared.restoreState(for: window)
             restoredWindow = window
+            if isCompactApplet {
+                DispatchQueue.main.async { [weak window] in
+                    guard let window else { return }
+                    for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
+                        guard let button = window.standardWindowButton(buttonType) else { continue }
+                        button.setFrameOrigin(NSPoint(
+                            x: button.frame.origin.x,
+                            y: button.frame.origin.y - UtilityLayout.compactTitlebarTrafficLightVerticalOffset
+                        ))
+                    }
+                }
+            }
         }
         if windowIdentifier == "awake" {
             DispatchQueue.main.async { [weak window] in
@@ -55,6 +68,9 @@ private class WindowAccessorView: NSView {
         window.isOpaque = false
         window.backgroundColor = .clear
         window.tabbingMode = .disallowed
-        window.standardWindowButton(.zoomButton)?.isHidden = Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
+        if isCompactApplet {
+            window.styleMask.remove(.resizable)
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+        }
     }
 }

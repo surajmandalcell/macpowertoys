@@ -30,14 +30,17 @@
 
 ## Compact Titlebar Vertical Alignment
 
-- **Symptom:** Compact titlebar actions or native traffic lights have unequal
-  space above and below them.
-- **Cause:** Controls were centered in only part of the custom titlebar, so they
-  did not share one vertical midpoint with the native traffic lights.
-- **Invariant:** Use one 40pt titlebar. Center its title, 24pt actions, and native
-  traffic lights in that full bar. A 24pt action has 8pt above and below it.
+- **Symptom:** Compact titlebar items sit too high, the traffic lights feel
+  cramped, the green zoom control remains, or an applet can be resized.
+- **Cause:** The custom bar copied the native 32pt centerline while AppKit kept
+  its default window controls and resizable style.
+- **Invariant:** Use one 40pt titlebar. Center its title and 24pt actions 20pt
+  below the window top, leaving 8pt above and below actions. Move close and
+  minimize controls 4pt down to that centerline, hide zoom, and remove the
+  resizable window style for every compact applet.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
-  and actions in every compact applet. They stay within 1pt of each other.
+  and actions in every compact applet. They stay within 1pt of window-top +
+  20pt. Confirm only close and minimize are visible and manual resizing fails.
 
 ## Body Gutters and Floating Controls
 

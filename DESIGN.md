@@ -395,10 +395,11 @@ These are binding polish rules. Treat them as defects when they regress.
   its compact scale: adjacent search fields and selects are exactly 28pt high.
 - A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
   title and 24pt-high primary actions. The title clears the traffic lights by
-  84pt. Center titles, actions, and native traffic lights in the full bar so
-  24pt controls have 8pt above and below. The title is text only, with no tool
-  icon. Never repeat this content in another header row. Compact titlebars have
-  no bottom separator.
+  84pt. Center titles and actions 20pt below the window top so 24pt controls
+  have 8pt above and below. Move native close and minimize controls 4pt down to
+  that same centerline. The title is text only, with no tool icon. Never repeat
+  this content in another header row. Compact titlebars have no bottom
+  separator. Hide the zoom control and keep compact applet windows fixed-size.
 - Titlebar actions remain visually discrete and flat. Never place them in a
   shared rounded container or native toolbar group. Only the primary action
   receives an accent fill, using the 4pt small-button radius. Color Picker uses

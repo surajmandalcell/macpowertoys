@@ -4,6 +4,7 @@ import SwiftUI
 enum UtilityLayout {
     static let horizontalInset: CGFloat = 20
     static let compactTitlebarHeight: CGFloat = 40
+    static let compactTitlebarTrafficLightVerticalOffset: CGFloat = 4
     static let compactTitlebarTrafficLightInset: CGFloat = 84
     static let headerVerticalInset: CGFloat = 10
     static let contentTopInset: CGFloat = 16
