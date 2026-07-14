@@ -420,5 +420,6 @@ These are binding polish rules. Treat them as defects when they regress.
 - A named color project is a working destination, not just a filter. New picks
   go into the selected project and every project can export its saved colors.
 
-Sources: [Material 3 SearchBar defaults](https://developer.android.com/reference/kotlin/androidx/compose/material3/SearchBarDefaults),
+Sources: [Material 3 search height token](https://android.googlesource.com/platform/frameworks/support/+/15ccca2bd51eab204fbee3c140a3076621e8ea61/compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/tokens/SearchBarTokens.kt),
+[Material 3 text-field minimum height](https://android.googlesource.com/platform/frameworks/support/+/3f9a4fb2657058fdc7775cc0f87b448c42c47d0f/compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/TextFieldDefaults.kt),
 [Material 3 exposed dropdown menus](https://developer.android.com/reference/kotlin/androidx/compose/material3/ExposedDropdownMenuBox.composable).
