@@ -5,6 +5,7 @@
 
 import Foundation
 import AppKit
+import CoreGraphics
 
 @Observable
 @MainActor
@@ -50,39 +51,68 @@ final class WindowStateManager {
         observers = [moveObserver, resizeObserver]
     }
 
-    private static let knownWindowPrefixes = ["main", "cc-history", "rclone", "logs"]
+    private static let knownWindowIdentifiers = [
+        "main",
+        "cc-history",
+        "rclone",
+        "logs",
+        "ruler",
+        "awake",
+        "color-picker",
+        "text-extractor"
+    ]
 
-    private static func isTrackedIdentifier(_ identifier: String) -> Bool {
-        knownWindowPrefixes.contains { identifier.hasPrefix($0) }
+    nonisolated static func storageIdentifier(for identifier: String) -> String? {
+        knownWindowIdentifiers.first { knownIdentifier in
+            identifier == knownIdentifier || identifier.hasPrefix("\(knownIdentifier)-")
+        }
     }
 
     func saveState(for window: NSWindow) {
         guard !AppRuntime.isUITesting else { return }
-        guard let identifier = window.identifier?.rawValue, Self.isTrackedIdentifier(identifier) else { return }
+        guard let identifier = window.identifier?.rawValue,
+              let storageIdentifier = Self.storageIdentifier(for: identifier) else { return }
 
         let frame = window.frame
+        let screen = window.screen
         let state = WindowState(
             x: frame.origin.x,
             y: frame.origin.y,
             width: frame.size.width,
-            height: frame.size.height
+            height: frame.size.height,
+            screenIdentifier: screen.flatMap(Self.screenIdentifier(for:)),
+            screenOriginX: screen?.visibleFrame.minX,
+            screenOriginY: screen?.visibleFrame.minY
         )
 
         if let data = try? JSONEncoder().encode(state) {
-            UserDefaults.standard.set(data, forKey: key(for: identifier))
+            UserDefaults.standard.set(data, forKey: key(for: storageIdentifier))
         }
     }
 
     func restoreState(for window: NSWindow) {
         guard !AppRuntime.isUITesting else { return }
-        guard let identifier = window.identifier?.rawValue, Self.isTrackedIdentifier(identifier) else { return }
+        guard let identifier = window.identifier?.rawValue,
+              let storageIdentifier = Self.storageIdentifier(for: identifier) else { return }
 
-        guard let data = UserDefaults.standard.data(forKey: key(for: identifier)),
+        guard let data = UserDefaults.standard.data(forKey: key(for: storageIdentifier)),
               let state = try? JSONDecoder().decode(WindowState.self, from: data) else {
             return
         }
 
-        let frame = NSRect(x: state.x, y: state.y, width: state.width, height: state.height)
+        var frame = NSRect(x: state.x, y: state.y, width: state.width, height: state.height)
+
+        if let savedScreenIdentifier = state.screenIdentifier,
+           let savedScreenOriginX = state.screenOriginX,
+           let savedScreenOriginY = state.screenOriginY,
+           let screen = NSScreen.screens.first(where: {
+               Self.screenIdentifier(for: $0) == savedScreenIdentifier
+           }) {
+            frame.origin.x += screen.visibleFrame.minX - savedScreenOriginX
+            frame.origin.y += screen.visibleFrame.minY - savedScreenOriginY
+            window.setFrame(Self.clamped(frame, to: screen.visibleFrame), display: false)
+            return
+        }
 
         let sufficientlyVisible = NSScreen.screens.contains { screen in
             let overlap = screen.visibleFrame.intersection(frame)
@@ -90,8 +120,34 @@ final class WindowStateManager {
         }
 
         if sufficientlyVisible {
-            window.setFrame(frame, display: true)
+            window.setFrame(frame, display: false)
         }
+    }
+
+    private static func screenIdentifier(for screen: NSScreen) -> String? {
+        guard let number = screen.deviceDescription[
+            NSDeviceDescriptionKey("NSScreenNumber")
+        ] as? NSNumber else { return nil }
+        let displayID = CGDirectDisplayID(number.uint32Value)
+        guard let uuid = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue() else {
+            return nil
+        }
+        return CFUUIDCreateString(nil, uuid) as String
+    }
+
+    private static func clamped(_ frame: NSRect, to visibleFrame: NSRect) -> NSRect {
+        var result = frame
+        result.size.width = min(result.width, visibleFrame.width)
+        result.size.height = min(result.height, visibleFrame.height)
+        result.origin.x = min(
+            max(result.minX, visibleFrame.minX),
+            visibleFrame.maxX - result.width
+        )
+        result.origin.y = min(
+            max(result.minY, visibleFrame.minY),
+            visibleFrame.maxY - result.height
+        )
+        return result
     }
 
     private func key(for windowId: String) -> String {
@@ -104,4 +160,7 @@ private struct WindowState: Codable {
     let y: CGFloat
     let width: CGFloat
     let height: CGFloat
+    let screenIdentifier: String?
+    let screenOriginX: CGFloat?
+    let screenOriginY: CGFloat?
 }

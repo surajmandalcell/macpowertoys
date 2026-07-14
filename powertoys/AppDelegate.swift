@@ -8,8 +8,10 @@ import AppKit
 import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var restoredWindows = Set<ObjectIdentifier>()
     private var statusItemClickMonitor: Any?
+    private let statusItemClickCoordinator = StatusItemClickCoordinator(
+        delay: NSEvent.doubleClickInterval
+    )
     private var ownsInstance = true
 
     private static let dockIconAssets = [
@@ -45,41 +47,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusItemClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { event in
             let hitView = event.window?.contentView?.hitTest(event.locationInWindow)
-            if Self.shouldOpenMainWindowForStatusClick(
-                clickCount: event.clickCount,
-                isStatusItem: Self.isStatusItemView(hitView)
-            ) {
-                DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+            guard let statusButton = Self.statusItemButton(containing: hitView) else {
+                return event
             }
-            return event
+
+            self.statusItemClickCoordinator.handle(
+                clickCount: event.clickCount,
+                singleClick: { [weak statusButton] in
+                    statusButton?.performClick(nil)
+                },
+                doubleClick: {
+                    DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+                }
+            )
+            return nil
         }
     }
 
-    static func shouldOpenMainWindowForStatusClick(
-        clickCount: Int,
-        isStatusItem: Bool
-    ) -> Bool {
-        clickCount == 2 && isStatusItem
-    }
-
-    private static func isStatusItemView(_ view: NSView?) -> Bool {
+    private static func statusItemButton(containing view: NSView?) -> NSStatusBarButton? {
         var candidate = view
         while let current = candidate {
-            if current is NSStatusBarButton { return true }
+            if let button = current as? NSStatusBarButton { return button }
             candidate = current.superview
         }
-        return false
+        return nil
     }
 
     @MainActor
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
         updateDockIcon(for: window.identifier?.rawValue)
-
-        let windowId = ObjectIdentifier(window)
-        guard !restoredWindows.contains(windowId) else { return }
-        restoredWindows.insert(windowId)
-        WindowStateManager.shared.restoreState(for: window)
     }
 
     static func dockIconAsset(for windowIdentifier: String?) -> String {
@@ -123,6 +120,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+}
+
+@MainActor
+final class StatusItemClickCoordinator {
+    private let delay: TimeInterval
+    private var pendingSingleClick: Task<Void, Never>?
+
+    init(delay: TimeInterval) {
+        self.delay = delay
+    }
+
+    func handle(
+        clickCount: Int,
+        singleClick: @escaping @MainActor () -> Void,
+        doubleClick: @escaping @MainActor () -> Void
+    ) {
+        if clickCount >= 2 {
+            pendingSingleClick?.cancel()
+            pendingSingleClick = nil
+            doubleClick()
+            return
+        }
+
+        guard clickCount == 1 else { return }
+        pendingSingleClick?.cancel()
+        pendingSingleClick = Task { @MainActor [delay] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            singleClick()
+        }
     }
 }
 
