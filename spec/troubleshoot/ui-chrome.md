@@ -38,9 +38,9 @@
   below the window top, leaving 8pt above and below actions. Move close and
   minimize controls 4pt down to that centerline, hide zoom, and remove the
   resizable window style for every compact applet. Lock native minimum and
-  maximum sizes to the resolved frame so accessibility resizing cannot bypass
-  the fixed SwiftUI scene. Reapply the traffic-light offset after SwiftUI's
-  delayed window layout; never stack relative offsets.
+  maximum sizes to the resolved frame after SwiftUI's delayed window layout so
+  accessibility resizing cannot bypass the fixed scene. Reapply the
+  traffic-light offset in that pass too; never stack relative offsets.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
   and actions in every compact applet. They stay within 1pt of window-top +
   20pt. Confirm only close and minimize are visible and manual resizing fails.
