@@ -75,3 +75,14 @@
   add a separate titlebar on/off action.
 - **Check:** In Passive mode, toggle `Keep Display On` on and off, then drag a
   window edge and confirm the content size remains unchanged.
+
+## Awake Titlebar Appearance
+
+- **Symptom:** Awake opens with a large focus outline around `Keep Display On`,
+  a bottom titlebar rule, or a title that lacks the requested emphasis.
+- **Cause:** The native switch focus effect remained enabled, the shared
+  titlebar retained a separator, or Awake inherited the default title weight.
+- **Invariant:** Awake uses a bold 13pt title, no titlebar bottom separator, and
+  no transient focus outline around its existing display switch.
+- **Check:** Open Awake from a fresh launch and inspect the titlebar before
+  interacting with it. Then toggle `Keep Display On` and confirm it still works.
