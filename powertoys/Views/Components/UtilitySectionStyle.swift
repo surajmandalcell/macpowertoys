@@ -3,12 +3,12 @@ import SwiftUI
 
 enum UtilityLayout {
     static let horizontalInset: CGFloat = 20
-    static let compactTitlebarHeight: CGFloat = 40
-    static let compactTitlebarControlBandHeight: CGFloat = 32
+    static let compactTitlebarHeight: CGFloat = 32
     static let compactTitlebarTrafficLightInset: CGFloat = 84
     static let headerVerticalInset: CGFloat = 10
     static let contentTopInset: CGFloat = 16
     static let contentBottomInset: CGFloat = 20
+    static let floatingButtonEdgeInset: CGFloat = 8
     static let floatingButtonContentInset: CGFloat = 52
     static let sectionSpacing: CGFloat = 16
     static let cardPadding: CGFloat = 14
