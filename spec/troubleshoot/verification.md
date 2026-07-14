@@ -11,6 +11,20 @@
 - **Check:** Record the exact final build result and inspect default, hover,
   selected, disabled, settings, and dismissal states that the change touches.
 
+## Test Mode Misrepresents the Product
+
+- **Symptom:** A newly built app opens with missing tools or stale-looking
+  state even though the source and bundle are current.
+- **Cause:** The app was launched with `MACPOWERTOYS_UI_TEST=1`. Test mode skips
+  normal initialization and uses isolated runtime state, so the window is not a
+  valid visual preview of the user's app.
+- **Invariant:** Never use UI test mode for visual verification. Open only a
+  normally initialized, signed build whose embedded `MPTSourceCommit` matches
+  current `HEAD`.
+- **Check:** Inspect the process launch environment and app provenance before
+  judging the UI. Quit an invalid preview normally, then relaunch the verified
+  build without UI test mode.
+
 ## UI Test Harness Failure
 
 - **Symptom:** The UI runner exits before establishing a connection and no test

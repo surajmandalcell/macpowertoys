@@ -13,6 +13,16 @@ rules, and before inspecting or changing implementation files.
 5. Re-read routed topics when the user corrects the result or requirements
    change.
 
+## Mandatory Current Build Rule
+
+- Always build, open, test, install, and report the latest source state only.
+- Before opening an app, confirm its embedded `MPTSourceCommit` equals current
+  `HEAD`. A missing or different commit means the app must not be opened.
+- Never use `MACPOWERTOYS_UI_TEST=1` for visual verification. Test mode skips
+  normal initialization and does not represent the user's app or saved state.
+- Use one task-unique DerivedData path and close its preview normally when the
+  check ends. Never reuse or open another task's DerivedData product.
+
 ## Routing
 
 | Task or symptom | Required topic |
