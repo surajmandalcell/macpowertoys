@@ -128,6 +128,7 @@ struct MacPowerToysApp: App {
             height: ColorPickerLayout.historyBaseHeight
         )
         .windowResizability(.contentSize)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: true))
         .handlesExternalEvents(matching: Set(["color-picker"]))
         .restorationBehavior(.disabled)
 

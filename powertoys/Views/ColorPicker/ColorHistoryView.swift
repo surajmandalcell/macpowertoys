@@ -82,28 +82,32 @@ struct ColorHistoryView: View {
 
     @ToolbarContentBuilder
     private var titlebarActions: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            if page == .history && !samples.isEmpty {
-                Button(role: .destructive) {
-                    service.clearUnpinned(in: service.selectedProjectID)
-                } label: {
-                    Image(systemName: "trash")
+        ToolbarItem(placement: .primaryAction) {
+            HStack(spacing: 8) {
+                if page == .history && !samples.isEmpty {
+                    Button("Clear", role: .destructive) {
+                        service.clearUnpinned(in: service.selectedProjectID)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
+                    .contentShape(Rectangle())
+                    .help("Clear unpinned colors in \(selectedProjectName)")
+                    .accessibilityIdentifier("color-picker.clear")
                 }
-                .help("Clear unpinned colors in \(selectedProjectName)")
-                .accessibilityIdentifier("color-picker.clear")
+                Button("Pick Color") { service.pick() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .contentShape(Rectangle())
+                    .help("Pick a color for \(selectedProjectName)")
+                    .accessibilityIdentifier("color-picker.pick")
+                ColorPickerIconButton(
+                    systemName: page == .settings ? "gearshape.fill" : "gearshape",
+                    help: page == .settings ? "Close Settings" : "Settings"
+                ) {
+                    page = page == .settings ? .history : .settings
+                }
+                .accessibilityIdentifier("color-picker.settings")
             }
-            Button("Pick Color") { service.pick() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .help("Pick a color for \(selectedProjectName)")
-                .accessibilityIdentifier("color-picker.pick")
-            Button {
-                page = page == .settings ? .history : .settings
-            } label: {
-                Image(systemName: page == .settings ? "gearshape.fill" : "gearshape")
-            }
-            .help(page == .settings ? "Close Settings" : "Settings")
-            .accessibilityIdentifier("color-picker.settings")
         }
     }
 
