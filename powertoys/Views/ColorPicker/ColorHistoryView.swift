@@ -89,7 +89,7 @@ struct ColorHistoryView: View {
                         service.clearUnpinned(in: service.selectedProjectID)
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .frame(height: 24)
                     .contentShape(Rectangle())
                     .help("Clear unpinned colors in \(selectedProjectName)")
