@@ -8,7 +8,10 @@ final class ColorPickerUITests: XCTestCase {
     @MainActor
     func testCompactPickerKeepsProjectsAndSettingsInOneWindow() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments = [
+            "-ApplePersistenceIgnoreState", "YES",
+            "-app.closeMainWindowAfterOpeningTool", "YES"
+        ]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launch()
 
@@ -34,7 +37,12 @@ final class ColorPickerUITests: XCTestCase {
         settings.click()
         XCTAssertTrue(window.staticTexts["GLOBAL SHORTCUT"].waitForExistence(timeout: 2))
         XCTAssertTrue(window.staticTexts["Keyboard shortcut"].exists)
+        XCTAssertTrue(window.buttons["Clear All"].exists)
+        XCTAssertFalse(window.buttons["History"].exists)
+        XCTAssertFalse(window.buttons["Projects"].exists)
 
+        window.descendants(matching: .any)["color-picker.settings"].click()
+        XCTAssertTrue(window.buttons["Projects"].waitForExistence(timeout: 2))
         window.buttons["Projects"].click()
         XCTAssertTrue(window.staticTexts["COLOR PROJECTS"].waitForExistence(timeout: 2))
         XCTAssertTrue(window.buttons["New Project"].exists)

@@ -20,6 +20,7 @@ struct ColorHistoryView: View {
     @State private var search = ""
     @State private var isCreatingProject = false
     @State private var newProjectName = ""
+    @State private var isConfirmingClearAll = false
     @FocusState private var isProjectNameFocused: Bool
 
     private var samples: [ColorSample] {
@@ -55,8 +56,10 @@ struct ColorHistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            tabBar
-            Divider()
+            if page != .settings {
+                tabBar
+                Divider()
+            }
             switch page {
             case .history: history
             case .projects: projects
@@ -78,6 +81,12 @@ struct ColorHistoryView: View {
         } message: {
             Text(service.exportError ?? "The project could not be written.")
         }
+        .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
+            Button("Clear All", role: .destructive) { service.clearAll() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes every saved color from History and all projects. Projects are kept.")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("color-picker") == true else { return }
             page = .settings
@@ -89,17 +98,6 @@ struct ColorHistoryView: View {
             CompactTitlebarTitle(title: "Color Picker")
         } actions: {
             HStack(spacing: 8) {
-                if page == .history && !samples.isEmpty {
-                    Button("Clear", role: .destructive) {
-                        service.clearUnpinned(in: service.selectedProjectID)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11))
-                    .frame(height: 24)
-                    .contentShape(Rectangle())
-                    .help("Clear unpinned colors in \(selectedProjectName)")
-                    .accessibilityIdentifier("color-picker.clear")
-                }
                 CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
                     .disabled(service.isPicking)
                     .help("Pick a color for \(selectedProjectName)")
@@ -120,7 +118,7 @@ struct ColorHistoryView: View {
             tabButton("History", icon: "clock", page: .history)
             tabButton("Projects", icon: "folder", page: .projects)
             Spacer()
-            Text(page == .settings ? "Settings" : selectedProjectName)
+            Text(selectedProjectName)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -292,13 +290,28 @@ struct ColorHistoryView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("GLOBAL SHORTCUT").utilitySectionHeader()
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     Toggle("Enable Pick Color shortcut", isOn: Binding(
                         get: { shortcuts.isEnabled(.colorPicker) },
                         set: { shortcuts.setEnabled($0, for: .colorPicker) }
                     ))
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 12)
+
+                    Button("Clear All", role: .destructive) {
+                        isConfirmingClearAll = true
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .disabled(service.history.isEmpty)
+                    .help("Clear every saved color")
+                    .accessibilityIdentifier("color-picker.clear-all")
                     .padding(.bottom, 12)
 
                     Divider()
@@ -339,7 +352,7 @@ struct ColorHistoryView: View {
     }
 }
 
-private enum ColorPickerPage {
+private enum ColorPickerPage: Equatable {
     case history, projects, settings
 }
 
@@ -390,6 +403,7 @@ private struct ColorSearchField: View {
         .frame(height: 28)
         .background(Color.primary.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("color-picker.search")
     }
 }
@@ -416,6 +430,7 @@ private struct ColorFormatSelect: View {
             .background(Color.primary.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
+            .accessibilityElement(children: .combine)
         }
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
