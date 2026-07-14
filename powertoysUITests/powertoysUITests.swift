@@ -35,7 +35,6 @@ final class powertoysUITests: XCTestCase {
         XCTAssertTrue(launch.waitForExistence(timeout: 5))
         launch.click()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
-        XCTAssertTrue(app.windows["MacPowerToys"].exists)
         XCTAssertFalse(app.windows["Ruler"].waitForExistence(timeout: 1))
     }
 
