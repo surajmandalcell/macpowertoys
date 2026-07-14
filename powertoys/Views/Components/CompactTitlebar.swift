@@ -16,15 +16,16 @@ struct CompactTitlebar<Title: View, Actions: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            title
+        HStack(alignment: .center, spacing: 8) {
+            title.frame(height: UtilityLayout.compactTitlebarControlHeight)
             Spacer(minLength: 12)
-            actions
+            actions.frame(height: UtilityLayout.compactTitlebarControlHeight)
         }
         .padding(.leading, clearsTrafficLights ? UtilityLayout.compactTitlebarTrafficLightInset : UtilityLayout.horizontalInset)
         .padding(.trailing, UtilityLayout.horizontalInset)
-        .frame(height: UtilityLayout.compactTitlebarHeight - UtilityLayout.compactTitlebarTopInset)
+        .frame(height: UtilityLayout.compactTitlebarControlHeight)
         .padding(.top, UtilityLayout.compactTitlebarTopInset)
+        .frame(height: UtilityLayout.compactTitlebarHeight)
     }
 }
 
