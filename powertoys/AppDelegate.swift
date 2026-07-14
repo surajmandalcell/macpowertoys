@@ -8,7 +8,10 @@ import AppKit
 import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    static let statusItemEventMask: NSEvent.EventTypeMask = .leftMouseDown
+    static let statusItemEventMask: NSEvent.EventTypeMask = [
+        .leftMouseDown,
+        .rightMouseDown
+    ]
 
     private var statusItemClickMonitor: Any?
     private let statusItemClickCoordinator = StatusItemClickCoordinator(
@@ -55,17 +58,66 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
 
+            if event.type == .rightMouseDown {
+                NSMenu.popUpContextMenu(
+                    self.statusItemContextMenu(),
+                    with: event,
+                    for: statusButton
+                )
+                return nil
+            }
+
             self.statusItemClickCoordinator.handle(
                 clickCount: event.clickCount,
                 singleClick: { [weak statusButton] in
                     statusButton?.performClick(nil)
                 },
-                doubleClick: {
-                    DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
-                }
+                doubleClick: self.openMainWindowFromStatusItem
             )
             return nil
         }
+    }
+
+    @MainActor
+    func statusItemContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        menu.addItem(statusItemMenuItem(
+            title: "Open MacPowerToys",
+            symbol: "macwindow",
+            action: #selector(openMainWindowFromStatusItem)
+        ))
+        menu.addItem(statusItemMenuItem(
+            title: "Quit",
+            symbol: "power",
+            action: #selector(quitFromStatusItem)
+        ))
+        return menu
+    }
+
+    @MainActor
+    private func statusItemMenuItem(
+        title: String,
+        symbol: String,
+        action: Selector
+    ) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        item.image = NSImage(
+            systemSymbolName: symbol,
+            accessibilityDescription: title
+        )
+        return item
+    }
+
+    @MainActor
+    @objc func openMainWindowFromStatusItem() {
+        DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+    }
+
+    @MainActor
+    @objc func quitFromStatusItem() {
+        NSApp.terminate(nil)
     }
 
     private static func statusItemButton(containing view: NSView?) -> NSStatusBarButton? {

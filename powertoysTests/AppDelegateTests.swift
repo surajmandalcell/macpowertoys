@@ -2,8 +2,24 @@ import XCTest
 @testable import powertoys
 
 final class AppDelegateTests: XCTestCase {
-    func testStatusItemInterceptsBeforeMenuBarExtraHandlesClick() {
-        XCTAssertEqual(AppDelegate.statusItemEventMask, .leftMouseDown)
+    func testStatusItemInterceptsLeftAndRightClicks() {
+        XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
+        XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.rightMouseDown))
+    }
+
+    @MainActor
+    func testStatusItemContextMenuContainsOnlyOpenAndQuit() {
+        let menu = AppDelegate().statusItemContextMenu()
+
+        XCTAssertEqual(menu.items.map(\.title), ["Open MacPowerToys", "Quit"])
+        XCTAssertTrue(menu.items.allSatisfy { $0.image != nil })
+        XCTAssertEqual(
+            menu.items.map(\.action),
+            [
+                #selector(AppDelegate.openMainWindowFromStatusItem),
+                #selector(AppDelegate.quitFromStatusItem)
+            ]
+        )
     }
 
     @MainActor
