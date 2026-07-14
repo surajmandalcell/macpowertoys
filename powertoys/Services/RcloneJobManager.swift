@@ -1483,6 +1483,89 @@ final class RcloneJobManager {
         return config
     }
 
+    func recalculate(_ job: TransferJob) {
+        guard let client, job.kind == .directory, !job.isRecalculating else { return }
+
+        let baselineRemainingBytes = max(0, job.effectiveTotalBytes - job.displayBytes)
+        let baselineRemainingFiles = max(0, job.effectiveTotalFiles - job.displayFiles)
+        let group = "recalculate/\(job.id.uuidString)/\(UUID().uuidString)"
+        var config = effectiveJobConfig(for: job)
+        config["DryRun"] = true
+        config["CheckFirst"] = true
+
+        job.isRecalculating = true
+        job.recalculationError = nil
+
+        Task { [weak self, weak job] in
+            guard let self, let job else { return }
+            var scanJobID: Int?
+
+            do {
+                scanJobID = try await client.startJob(
+                    endpoint: job.operation.rcEndpoint,
+                    srcFs: job.sourceFs,
+                    dstFs: job.destinationFs,
+                    group: group,
+                    excludePatterns: job.excludePatterns,
+                    config: config
+                )
+
+                let deadline = Date().addingTimeInterval(600)
+                var latestStats = TransferStats.empty
+                var completedScan = false
+                while Date() < deadline {
+                    try Task.checkCancellation()
+                    try await Task.sleep(for: .milliseconds(500))
+                    if let stats = try? await client.stats(group: group) {
+                        latestStats = stats
+                    }
+                    guard let scanJobID,
+                          let status = try? await client.jobStatus(jobid: scanJobID),
+                          status.finished else { continue }
+                    guard status.success, latestStats.errors == 0, !latestStats.fatalError else {
+                        throw RcloneRCError.http(
+                            status: 0,
+                            message: firstNonEmpty(status.error, latestStats.lastError, "Could not recalculate the transfer plan.")
+                        )
+                    }
+
+                    guard jobs.contains(where: { $0.id == job.id }) else {
+                        completedScan = true
+                        break
+                    }
+                    let added = job.applyRecalculatedPlan(
+                        remainingBytes: latestStats.totalBytes,
+                        remainingFiles: latestStats.totalTransfers,
+                        baselineRemainingBytes: baselineRemainingBytes,
+                        baselineRemainingFiles: baselineRemainingFiles
+                    )
+                    job.refreshDisplayEta()
+                    persistJobsSoon()
+                    LogManager.shared.info(
+                        "Recalculated \(job.sourceDisplay): \(RcloneFormat.bytes(latestStats.totalBytes)) and \(latestStats.totalTransfers) files remain; plan increased by \(RcloneFormat.bytes(added.bytes)) and \(added.files) files",
+                        source: "RcloneJobManager"
+                    )
+                    completedScan = true
+                    break
+                }
+
+                if !completedScan, let scanJobID {
+                    try? await client.stopJob(jobid: scanJobID)
+                    throw RcloneRCError.http(status: 0, message: "Recalculation timed out.")
+                }
+            } catch is CancellationError {
+                if let scanJobID { try? await client.stopJob(jobid: scanJobID) }
+            } catch {
+                let message = (error as? LocalizedError)?.errorDescription ?? "Could not recalculate the transfer plan."
+                job.recalculationError = message
+                LogManager.shared.warning("Recalculate failed for \(job.sourceDisplay): \(message)", source: "RcloneJobManager")
+            }
+
+            job.isRecalculating = false
+            await client.deleteStats(group: group)
+        }
+    }
+
     func restartTransferQuietly(_ job: TransferJob) {
         if job.state == .running {
             pause(job)

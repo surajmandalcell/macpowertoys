@@ -199,6 +199,36 @@ final class RcloneModelTests: XCTestCase {
         XCTAssertEqual(job.displayFiles, 2_814)
     }
 
+    func testRecalculationOnlyAddsNewRemainingWork() {
+        let job = makeJob()
+        job.expectedBytes = 1_000
+        job.expectedFiles = 10
+        job.resumeBaselineBytes = 600
+        job.resumeBaselineFiles = 6
+
+        let unchanged = job.applyRecalculatedPlan(
+            remainingBytes: 350,
+            remainingFiles: 3,
+            baselineRemainingBytes: 400,
+            baselineRemainingFiles: 4
+        )
+        XCTAssertEqual(unchanged.bytes, 0)
+        XCTAssertEqual(unchanged.files, 0)
+        XCTAssertEqual(job.expectedBytes, 1_000)
+        XCTAssertEqual(job.expectedFiles, 10)
+
+        let increased = job.applyRecalculatedPlan(
+            remainingBytes: 550,
+            remainingFiles: 6,
+            baselineRemainingBytes: 400,
+            baselineRemainingFiles: 4
+        )
+        XCTAssertEqual(increased.bytes, 150)
+        XCTAssertEqual(increased.files, 2)
+        XCTAssertEqual(job.expectedBytes, 1_150)
+        XCTAssertEqual(job.expectedFiles, 12)
+    }
+
     func testCommittingAttemptExcludesInFlightBytes() {
         let job = makeJob()
         job.attemptPlannedBytes = 1_000
@@ -296,8 +326,9 @@ final class RcloneModelTests: XCTestCase {
 
     func testRcloneFormatCoversUnitsSpeedEtaAndDuration() {
         XCTAssertEqual(RcloneFormat.bytes(0), "0 B")
-        XCTAssertEqual(RcloneFormat.bytes(1_024), "1.0 KB")
-        XCTAssertEqual(RcloneFormat.bytes(1_048_576), "1.0 MB")
+        XCTAssertEqual(RcloneFormat.bytes(1_000), "1.0 KB")
+        XCTAssertEqual(RcloneFormat.bytes(1_000_000), "1.0 MB")
+        XCTAssertEqual(RcloneFormat.bytes(715_465_841_769), "715.5 GB")
         XCTAssertEqual(RcloneFormat.speed(0), "—")
         XCTAssertEqual(RcloneFormat.speed(1_024), "1.0 KB/s")
         XCTAssertEqual(RcloneFormat.eta(nil), "—")
