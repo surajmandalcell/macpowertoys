@@ -44,6 +44,16 @@ final class CoreModelTests: XCTestCase {
         XCTAssertTrue(TextExtraction(text: "One\nTwo\nThree\nFour\nFive").needsExpandedView)
     }
 
+    func testTextExtractionRelativeTimestampOmitsSeconds() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        XCTAssertEqual(TextExtraction(text: "", createdAt: now.addingTimeInterval(-30)).relativeTimestamp(at: now), "Just now")
+        XCTAssertFalse(
+            TextExtraction(text: "", createdAt: now.addingTimeInterval(-90))
+                .relativeTimestamp(at: now)
+                .localizedCaseInsensitiveContains("sec")
+        )
+    }
+
     func testCachedMessageMapsKnownAndUnknownTypes() {
         let date = Date(timeIntervalSince1970: 123)
         XCTAssertEqual(CachedMessage(messageId: "1", type: "user", content: "Hi", timestamp: date).toCCMessage(sessionId: "s").type, .user)

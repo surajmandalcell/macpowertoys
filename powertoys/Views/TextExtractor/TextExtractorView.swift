@@ -38,7 +38,7 @@ struct TextExtractorView: View {
         }
         .frame(width: TextExtractorLayout.windowWidth, height: windowHeight)
         .utilityWindowBackground()
-        .toolbar { titlebarActions }
+        .toolbar { titlebarContent }
         .animation(.easeInOut(duration: 0.16), value: windowHeight)
         .sheet(item: $selectedExtraction) { extraction in
             TextExtractionDetailView(extraction: extraction)
@@ -53,22 +53,50 @@ struct TextExtractorView: View {
     }
 
     @ToolbarContentBuilder
-    private var titlebarActions: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            GlobalShortcutMenu(action: .textExtractor)
-            Button("Extract Text") { service.begin() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+    private var titlebarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            HStack(spacing: 7) {
+                Image(systemName: "text.viewfinder")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+                Text("Text Extractor")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .fixedSize()
+        }
+        ToolbarItem(placement: .primaryAction) {
+            HStack(spacing: 8) {
+                GlobalShortcutMenu(action: .textExtractor)
+                Button { service.begin() } label: {
+                    Text("Extract Text")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .background(Color.accentColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .disabled(isExtracting)
                 .help("Select text anywhere on screen")
                 .accessibilityIdentifier("text-extractor.extract")
-            Button {
-                page = page == .settings ? .history : .settings
-            } label: {
-                Image(systemName: page == .settings ? "gearshape.fill" : "gearshape")
+                Button {
+                    page = page == .settings ? .history : .settings
+                } label: {
+                    Image(systemName: page == .settings ? "gearshape.fill" : "gearshape")
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 24, height: 24)
+                        .background(Color.primary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help(page == .settings ? "Back to History" : "Recognition Settings")
+                .accessibilityIdentifier("text-extractor.settings")
             }
-            .help(page == .settings ? "Back to History" : "Recognition Settings")
-            .accessibilityIdentifier("text-extractor.settings")
         }
     }
 
@@ -330,7 +358,7 @@ private struct TextExtractionRow: View {
                 .font(.system(size: 12))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
-            Text(extraction.createdAt, style: .relative)
+            Text(extraction.relativeTimestamp())
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
         }
@@ -350,7 +378,7 @@ private struct TextExtractionDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Extracted Text")
                         .font(.system(size: 13, weight: .semibold))
-                    Text(extraction.createdAt, style: .relative)
+                    Text(extraction.relativeTimestamp())
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }

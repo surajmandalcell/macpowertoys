@@ -140,7 +140,7 @@ struct MacPowerToysApp: App {
             height: TextExtractorLayout.historyBaseHeight
         )
         .windowResizability(.contentSize)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: true))
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         .handlesExternalEvents(matching: Set(["text-extractor"]))
         .restorationBehavior(.disabled)
 

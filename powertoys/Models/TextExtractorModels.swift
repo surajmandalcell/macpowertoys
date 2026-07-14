@@ -27,6 +27,14 @@ struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
     var needsExpandedView: Bool {
         text.count > 180 || text.filter(\.isNewline).count > 3
     }
+
+    func relativeTimestamp(at now: Date = Date()) -> String {
+        guard abs(createdAt.timeIntervalSince(now)) >= 60 else { return "Just now" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        formatter.dateTimeStyle = .numeric
+        return formatter.localizedString(for: createdAt, relativeTo: now)
+    }
 }
 
 enum TextExtractorState: Equatable {
