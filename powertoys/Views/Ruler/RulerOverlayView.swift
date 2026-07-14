@@ -18,6 +18,10 @@ final class RulerOverlayView: NSView {
         self.manager = manager
         super.init(frame: CGRect(origin: .zero, size: state.frame.size))
         wantsLayer = true
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel("\(state.orientation.title) Ruler")
+        setAccessibilityIdentifier("ruler.\(state.orientation.rawValue).overlay")
         updateTrackingAreas()
     }
 

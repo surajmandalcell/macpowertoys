@@ -34,8 +34,10 @@ final class powertoysUITests: XCTestCase {
         let launch = app.buttons["tool.ruler.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 5))
         launch.click()
-        XCTAssertTrue(app.windows["Horizontal Ruler"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.windows["Vertical Ruler"].waitForExistence(timeout: 5))
+        let horizontal = app.descendants(matching: .any)["ruler.horizontal.overlay"]
+        let vertical = app.descendants(matching: .any)["ruler.vertical.overlay"]
+        XCTAssertTrue(horizontal.waitForExistence(timeout: 5))
+        XCTAssertTrue(vertical.waitForExistence(timeout: 5))
     }
 
     @MainActor
