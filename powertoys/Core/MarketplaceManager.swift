@@ -179,17 +179,20 @@ final class MarketplaceManager {
     private var installerInstance: MarketplaceInstaller?
 
     init(
-        rootDirectory: URL = AppDataLocation.directory.appendingPathComponent("Marketplace", isDirectory: true),
-        reservedToolIDs: Set<String> = Set(ToolRegistry.builtInTools.map(\.id)),
+        rootDirectory: URL? = nil,
+        reservedToolIDs: Set<String>? = nil,
         hostEnvironment: HostEnvironment = .current,
-        fetch: @escaping CatalogFetcher = MarketplaceManager.httpFetcher,
+        fetch: CatalogFetcher? = nil,
         installerAdapters: InstallerAdapters = .live,
         uninstall: (@MainActor (MarketplaceReceipt) async throws -> Void)? = nil
     ) {
-        store = MarketplaceStore(root: rootDirectory)
-        self.reservedToolIDs = reservedToolIDs
+        store = MarketplaceStore(
+            root: rootDirectory
+                ?? AppDataLocation.directory.appendingPathComponent("Marketplace", isDirectory: true)
+        )
+        self.reservedToolIDs = reservedToolIDs ?? Set(ToolRegistry.builtInTools.map(\.id))
         self.hostEnvironment = hostEnvironment
-        self.fetch = fetch
+        self.fetch = fetch ?? Self.httpFetcher
         self.installerAdapters = installerAdapters
         uninstallHandler = uninstall
     }
