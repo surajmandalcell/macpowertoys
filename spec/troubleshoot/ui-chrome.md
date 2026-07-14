@@ -28,6 +28,19 @@
   running app. Confirm the title and every action retain separate visible
   boundaries without transient focus chrome.
 
+## Native Traffic Light Vertical Alignment
+
+- **Symptom:** Compact title text and actions sit below the native traffic
+  lights even though they are centered relative to each other.
+- **Cause:** Custom controls were centered in the full 40pt titlebar while
+  macOS centers traffic lights in the top 32pt control band.
+- **Invariant:** Keep the titlebar 40pt high, but center its title and actions
+  in the top 32pt band. Leave the remaining space below the controls before the
+  optional separator. Sidebar titles already use the native traffic-light
+  center and must not receive an extra offset.
+- **Check:** Compare accessibility frame midpoints for the close button, title,
+  and actions in every compact applet. They stay within 1pt of each other.
+
 ## Body Gutters and Floating Controls
 
 - **Symptom:** Tabs, cards, fields, or a floating control start on different
