@@ -11,6 +11,7 @@ enum ColorPickerLayout {
     static let maximumVisibleProjects = 4
     static let projectRowHeight: CGFloat = 48
     static let newProjectHeight: CGFloat = 40
+    static let settingsControlSpacing: CGFloat = 12
 }
 
 struct ColorHistoryView: View {
@@ -56,14 +57,26 @@ struct ColorHistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             titlebar
-            if page != .settings {
-                tabBar
-                Divider()
-            }
-            switch page {
-            case .history: history
-            case .projects: projects
-            case .settings: settings
+            ZStack(alignment: .bottomLeading) {
+                VStack(spacing: 0) {
+                    if page != .settings {
+                        tabBar
+                        Divider()
+                    }
+                    switch page {
+                    case .history: history
+                    case .projects: projects
+                    case .settings: settings
+                    }
+                }
+
+                FloatingSettingsButton(
+                    isActive: page == .settings,
+                    helpText: page == .settings ? "Back to History" : "Settings"
+                ) {
+                    page = page == .settings ? .history : .settings
+                }
+                .accessibilityIdentifier("color-picker.settings")
             }
         }
         .frame(
@@ -94,22 +107,13 @@ struct ColorHistoryView: View {
     }
 
     private var titlebar: some View {
-        CompactTitlebar {
+        CompactTitlebar(showsBottomSeparator: false) {
             CompactTitlebarTitle(title: "Color Picker")
         } actions: {
-            HStack(spacing: 8) {
-                CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
-                    .disabled(service.isPicking)
-                    .help("Pick a color for \(selectedProjectName)")
-                    .accessibilityIdentifier("color-picker.pick")
-                CompactTitlebarIconButton(
-                    systemName: "gearshape",
-                    help: page == .settings ? "Close Settings" : "Settings"
-                ) {
-                    page = page == .settings ? .history : .settings
-                }
-                .accessibilityIdentifier("color-picker.settings")
-            }
+            CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
+                .disabled(service.isPicking)
+                .help("Pick a color for \(selectedProjectName)")
+                .accessibilityIdentifier("color-picker.pick")
         }
     }
 
@@ -166,7 +170,7 @@ struct ColorHistoryView: View {
                         }
                     }
                     .padding(.horizontal, UtilityLayout.horizontalInset)
-                    .padding(.bottom, UtilityLayout.contentBottomInset)
+                    .padding(.bottom, UtilityLayout.floatingButtonContentInset)
                 }
                 .thinScrollIndicators()
             }
@@ -203,7 +207,7 @@ struct ColorHistoryView: View {
                     }
                 }
                 .padding(.horizontal, UtilityLayout.horizontalInset)
-                .padding(.bottom, UtilityLayout.contentBottomInset)
+                .padding(.bottom, UtilityLayout.floatingButtonContentInset)
             }
             .thinScrollIndicators()
         }
@@ -298,7 +302,8 @@ struct ColorHistoryView: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 12)
+                    .contentShape(Rectangle())
+                    .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
 
                     Button("Clear All", role: .destructive) {
                         isConfirmingClearAll = true
@@ -312,7 +317,7 @@ struct ColorHistoryView: View {
                     .disabled(service.history.isEmpty)
                     .help("Clear every saved color")
                     .accessibilityIdentifier("color-picker.clear-all")
-                    .padding(.bottom, 12)
+                    .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
 
                     Divider()
 
@@ -339,20 +344,20 @@ struct ColorHistoryView: View {
                             .foregroundStyle(.secondary)
                     }
                     .font(.system(size: 12))
-                    .padding(.top, 12)
+                    .padding(.top, ColorPickerLayout.settingsControlSpacing)
                 }
                 .padding(14)
                 .background(Color.primary.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.bottom, UtilityLayout.contentBottomInset)
+            .padding(.bottom, UtilityLayout.floatingButtonContentInset)
         }
         .thinScrollIndicators()
     }
 }
 
-private enum ColorPickerPage: Equatable {
+private enum ColorPickerPage {
     case history, projects, settings
 }
 
