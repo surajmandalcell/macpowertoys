@@ -106,17 +106,6 @@ struct TransferJobRow: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.tertiary)
             pathChip(job.destinationDisplay)
-            HStack(spacing: 4) {
-                Image(systemName: "clock")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
-                Text("ETA \(RcloneFormat.eta(job.displayEta))")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-            }
-            .fixedSize()
             Spacer(minLength: 8)
             stateBadge
         }
@@ -151,8 +140,10 @@ struct TransferJobRow: View {
         HStack(spacing: 4) {
             Image(systemName: job.state.icon)
                 .font(.system(size: 10, weight: .semibold))
-            Text(job.state.displayName)
+            Text(job.state == .running ? "ETA \(RcloneFormat.eta(job.displayEta))" : job.state.displayName)
                 .font(.system(size: 11, weight: .medium))
+                .monospacedDigit()
+                .contentTransition(.numericText())
         }
         .foregroundStyle(job.state.tint)
         .padding(.horizontal, 8)

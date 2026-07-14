@@ -849,6 +849,7 @@ enum RcloneFormat {
         let h = total / 3600
         let m = (total % 3600) / 60
         let s = total % 60
+        if h >= 24 { return String(format: "%dd %dh", h / 24, h % 24) }
         if h > 0 { return String(format: "%dh %dm", h, m) }
         if m > 0 { return String(format: "%dm %ds", m, s) }
         return "\(s)s"
