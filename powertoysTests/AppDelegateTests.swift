@@ -2,6 +2,10 @@ import XCTest
 @testable import powertoys
 
 final class AppDelegateTests: XCTestCase {
+    func testStatusItemInterceptsBeforeMenuBarExtraHandlesClick() {
+        XCTAssertEqual(AppDelegate.statusItemEventMask, .leftMouseDown)
+    }
+
     @MainActor
     func testDoubleClickCancelsDelayedSingleClick() async throws {
         let coordinator = StatusItemClickCoordinator(delay: 0.01)
