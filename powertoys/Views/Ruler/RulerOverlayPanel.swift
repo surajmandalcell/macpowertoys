@@ -13,6 +13,7 @@ final class RulerOverlayPanel: NSPanel {
             defer: false
         )
         identifier = NSUserInterfaceItemIdentifier("ruler.\(state.id.uuidString)")
+        title = "\(state.orientation.title) Ruler"
         isOpaque = false
         backgroundColor = .clear
         hasShadow = manager.style.hasShadow
