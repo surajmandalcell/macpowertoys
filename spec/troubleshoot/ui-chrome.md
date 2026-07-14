@@ -17,32 +17,49 @@
 
 ## Compact Titlebar Structure
 
-- **Symptom:** Title text becomes large, rounded, grouped, gains a redundant
-  icon, or actions merge into one accented control.
-- **Cause:** Native toolbar grouping, system titlebar defaults, or mixed custom
-  actions were used without inspecting their rendered result.
+- **Symptom:** Title text becomes large, grouped, gains a redundant icon, leaves
+  an empty zoom-button gap, or actions differ in size, radius, or focus chrome.
+- **Cause:** Native toolbar defaults and locally styled menus bypassed the shared
+  titlebar control label, while the title still reserved all three traffic-light
+  positions after zoom was hidden.
 - **Invariant:** Use the shared custom compact titlebar. Titles are text-only,
-  13pt medium. Actions are flat and discrete; only the primary action receives
-  accent fill. Compact titlebars have no bottom separator.
+  13pt medium and begin 60pt from the left when traffic lights are present.
+  Actions are flat, discrete, 24pt high, and use the titlebar-only 6pt radius;
+  only the primary action receives accent fill. Compact titlebars have no
+  bottom separator.
 - **Check:** Inspect initial focus, hover, disabled, and active states in the
-  running app. Confirm the title and every action retain separate visible
-  boundaries without transient focus chrome.
+  running app. Confirm the title uses the former zoom space and every action
+  retains a separate boundary without transient or persistent focus chrome.
 
 ## Compact Titlebar Vertical Alignment
 
 - **Symptom:** Compact titlebar items sit too high, the traffic lights feel
   cramped, the green zoom control remains, or an applet can be resized.
-- **Cause:** The custom bar copied the native 32pt centerline, or SwiftUI reset
-  an early AppKit button-frame correction during its final window layout.
-- **Invariant:** Use one 40pt titlebar. Center its title and 24pt actions 20pt
-  below the window top, leaving 8pt above and below actions. Move close and
-  minimize controls 4pt down to that centerline, hide zoom, and remove the
-  resizable window style for every compact applet. Give each applet an explicit
-  fixed root frame and use SwiftUI content-size window resizability. Reapply the
-  traffic-light offset after delayed layout; never stack relative offsets.
+- **Cause:** The complete row had no top inset, or individual controls received
+  vertical padding while traffic lights followed a different fixed offset.
+- **Invariant:** Use one 40pt titlebar. Apply one 4pt top inset to the complete
+  row and no vertical padding to individual row items. The title and 24pt
+  actions share a 22pt centerline. Move close and minimize controls 6pt down to
+  that centerline, hide zoom, and remove the resizable window style for every
+  compact applet. Give each applet an explicit fixed root frame and use SwiftUI
+  content-size window resizability. Reapply the traffic-light offset after
+  delayed layout; never stack relative offsets.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
   and actions in every compact applet. They stay within 1pt of window-top +
-  20pt. Confirm only close and minimize are visible and manual resizing fails.
+  22pt. Confirm only close and minimize are visible and manual resizing fails.
+
+## Compact Titlebar Initial Focus
+
+- **Symptom:** A titlebar button or menu opens with an outline that persists
+  after the window or control loses focus.
+- **Cause:** Only Awake redirected initial focus, and locally styled titlebar
+  menus did not consistently disable the SwiftUI focus effect.
+- **Invariant:** Every compact applet initially focuses its invisible window
+  accessor. Every titlebar button, menu, and switch disables its focus effect
+  without disabling keyboard interaction.
+- **Check:** Fresh-open Awake, Text Extractor, Ruler, and Color Picker. Before
+  interaction and after changing window focus, confirm no titlebar outline is
+  visible. Tab to each control and confirm keyboard activation still works.
 
 ## Body Gutters and Floating Controls
 

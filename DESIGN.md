@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -37,6 +37,7 @@ typography:
 rounded:
   control: 4        # toggles, small buttons
   field: 6          # text fields, icon buttons, pills, chips
+  titlebar-control: 6 # compact titlebar buttons only
   row: 8            # list rows, message bubbles, tray tabs
   card: 12          # cards, panels, sheets' section cards
 spacing:
@@ -44,11 +45,14 @@ spacing:
   color-picker-body-gutter: 12
   card-padding: 14  # inner padding of section cards
   sidebar-title-leading: 84   # clears traffic lights
+  compact-title-leading: 60   # reclaims the hidden zoom position
+  compact-titlebar-top: 4     # applied once to the complete row
   content-top: 52   # content aligns with sidebar search bar top
   header-top: 0     # window-top strips hug the top (10pt internal only)
   floating-control-edge: 8
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
+  compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
   section-card: { radius: 12, bg: colors.card-detail, padding: spacing.card-padding }
   progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
@@ -138,6 +142,9 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 
 - **Icon button** — 24×24, SF Symbol ~12pt medium, 6pt radius, hover 0.06,
   `.buttonStyle(.plain)` + `.focusEffectDisabled()` + `.contentShape(Rectangle())`.
+- **Compact titlebar control** — 24pt high, 6pt radius, hover 0.06, and no
+  focus effect. Buttons and menus share this label treatment; only the primary
+  action receives accent fill.
 - **Tab pill** — text 12pt medium, 10/5 padding, 6pt radius,
   selected bg 0.06; the strip starts on the shared gutter and selection never
   changes its inset or tab positions.
@@ -394,17 +401,20 @@ These are binding polish rules. Treat them as defects when they regress.
   dropdowns around text fields. MacPowerToys uses the same parity principle at
   its compact scale: adjacent search fields and selects are exactly 28pt high.
 - A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
-  title and 24pt-high primary actions. The title clears the traffic lights by
-  84pt. Center titles and actions 20pt below the window top so 24pt controls
-  have 8pt above and below. Move native close and minimize controls 4pt down to
-  that same centerline. The title is text only, with no tool icon. Never repeat
-  this content in another header row. Compact titlebars have no bottom
-  separator. Hide the zoom control and keep compact applet windows fixed-size.
+  title and 24pt-high actions. Apply one 4pt top inset to the complete row,
+  never separate vertical padding to its title or controls. This puts every row
+  item on the same 22pt centerline. Move native close and minimize controls 6pt
+  down to that centerline. Hide zoom and start the title at 60pt so the app name
+  reclaims its empty position. The title is text only, with no tool icon. Never
+  repeat this content in another header row. Compact titlebars have no bottom
+  separator, and compact applet windows remain fixed-size.
 - Titlebar actions remain visually discrete and flat. Never place them in a
   shared rounded container or native toolbar group. Only the primary action
-  receives an accent fill, using the 4pt small-button radius. Color Picker uses
-  the shared custom actions, which suppress default focus outlines so
-  launch-time focus cannot add temporary chrome.
+  receives an accent fill. Titlebar buttons and menus alone use the slightly
+  rounder 6pt control radius; this exception does not change buttons elsewhere.
+  Every compact applet routes initial focus away from its controls, and every
+  titlebar control suppresses the default focus effect so launch-time or stale
+  focus cannot add an outline.
 - Compact sheet and detail headers use the same flat 40pt structure without the
   traffic-light inset. Escape dismisses a dismissible sheet or detail view.
 - A tool's settings open inside that tool window and replace its content. Use

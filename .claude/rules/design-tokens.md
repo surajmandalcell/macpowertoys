@@ -15,9 +15,12 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 
 ### Compact Tool Chrome
 - Titlebar: 40pt high, no bottom border or separator
-- Title and 24pt actions: centered 20pt below the window top
-- Close and minimize: shifted 4pt down to that centerline
-- Zoom: hidden; compact applet windows are fixed-size
+- Complete row: one 4pt top inset; never pad row items separately
+- Title and 24pt actions: centered 22pt below the window top
+- Close and minimize: shifted 6pt down to that centerline
+- Zoom: hidden; title begins at 60pt to reclaim its space
+- Titlebar buttons and menus only: 24pt high with a 6pt radius
+- Compact applet windows are fixed-size
 - Floating settings button: 24pt, 8pt from bottom-right window edges
 
 ## Colors
@@ -44,7 +47,7 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 
 Use only these values:
 - **4pt**: Small buttons, toggles
-- **6pt**: Text fields, search inputs
+- **6pt**: Text fields, search inputs, compact titlebar controls
 - **8pt**: List rows, message bubbles
 - **12pt**: Cards, panels, large containers
 

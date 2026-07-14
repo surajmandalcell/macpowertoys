@@ -50,7 +50,7 @@ struct RulerControlView: View {
 
     private var header: some View {
         CompactTitlebar {
-            CompactTitlebarTitle(title: "Ruler Settings")
+            CompactTitlebarTitle(title: "Ruler")
         } actions: {
             HStack(spacing: 8) {
                 Menu {
@@ -58,20 +58,20 @@ struct RulerControlView: View {
                         Button(orientation.title) { manager.create(orientation) }
                     }
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                        Text("New Ruler")
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .medium))
+                    CompactTitlebarControlLabel {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("New Ruler")
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .medium))
+                        }
                     }
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 8)
-                    .frame(height: 24)
-                    .contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton)
+                .menuStyle(.button)
+                .buttonStyle(.plain)
                 .menuIndicator(.hidden)
                 .fixedSize()
+                .focusEffectDisabled()
                 .help("Create a ruler")
                 .accessibilityIdentifier("ruler.new")
                 CompactTitlebarButton(title: "Measure Region", isPrimary: true) {

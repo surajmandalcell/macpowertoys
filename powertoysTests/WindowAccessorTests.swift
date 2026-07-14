@@ -35,7 +35,7 @@ final class WindowAccessorTests: XCTestCase {
             XCTAssertFalse(window.styleMask.contains(.resizable), identifier)
             XCTAssertEqual(
                 adjustedCloseButtonY,
-                initialCloseButtonY - 4,
+                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
                 accuracy: 0.5,
                 identifier
             )
@@ -66,16 +66,23 @@ final class WindowAccessorTests: XCTestCase {
             )
             XCTAssertEqual(
                 reappliedCloseButtonY,
-                initialCloseButtonY - 4,
+                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
                 accuracy: 0.5,
                 identifier
             )
             XCTAssertEqual(
                 reappliedMinimizeButtonY,
-                initialCloseButtonY - 4,
+                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
                 accuracy: 0.5,
                 identifier
             )
+            let firstResponder = try XCTUnwrap(window.firstResponder as? NSView)
+            let contentView = try XCTUnwrap(window.contentView)
+            XCTAssertTrue(
+                firstResponder === contentView || firstResponder.isDescendant(of: contentView),
+                identifier
+            )
+            XCTAssertFalse(firstResponder is NSControl, identifier)
         }
     }
 

@@ -20,18 +20,18 @@ struct GlobalShortcutMenu: View {
                 }
             }
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "command")
-                    .font(.system(size: 10, weight: .medium))
-                Text("⌃⌥⌘\(shortcuts.key(for: action).title)")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+            CompactTitlebarControlLabel(
+                foregroundStyle: shortcuts.isEnabled(action)
+                    ? AnyShapeStyle(.primary)
+                    : AnyShapeStyle(.tertiary)
+            ) {
+                HStack(spacing: 5) {
+                    Image(systemName: "command")
+                        .font(.system(size: 10, weight: .medium))
+                    Text("⌃⌥⌘\(shortcuts.key(for: action).title)")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                }
             }
-            .foregroundStyle(shortcuts.isEnabled(action) ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
-            .padding(.horizontal, 8)
-            .frame(height: 24)
-            .background(Color.primary.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .contentShape(Rectangle())
         }
         .menuStyle(.button)
         .buttonStyle(.plain)

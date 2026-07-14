@@ -23,7 +23,8 @@ struct CompactTitlebar<Title: View, Actions: View>: View {
         }
         .padding(.leading, clearsTrafficLights ? UtilityLayout.compactTitlebarTrafficLightInset : UtilityLayout.horizontalInset)
         .padding(.trailing, UtilityLayout.horizontalInset)
-        .frame(height: UtilityLayout.compactTitlebarHeight)
+        .frame(height: UtilityLayout.compactTitlebarHeight - UtilityLayout.compactTitlebarTopInset)
+        .padding(.top, UtilityLayout.compactTitlebarTopInset)
     }
 }
 
@@ -41,21 +42,48 @@ struct CompactTitlebarButton: View {
     let title: String
     var isPrimary = false
     let action: () -> Void
-    @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(isPrimary ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-                .padding(.horizontal, 9)
-                .frame(height: 24)
-                .background(isPrimary ? Color.accentColor : isHovering ? Color.primary.opacity(0.06) : .clear)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .contentShape(Rectangle())
+            CompactTitlebarControlLabel(isPrimary: isPrimary) {
+                Text(title)
+            }
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
-        .onHover { isHovering = $0 }
+    }
+}
+
+struct CompactTitlebarControlLabel<Content: View>: View {
+    let isPrimary: Bool
+    let foregroundStyle: AnyShapeStyle
+    let content: Content
+    @State private var isHovering = false
+
+    init(
+        isPrimary: Bool = false,
+        foregroundStyle: AnyShapeStyle? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.isPrimary = isPrimary
+        self.foregroundStyle = foregroundStyle
+            ?? (isPrimary ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(foregroundStyle)
+            .padding(.horizontal, 9)
+            .frame(height: UtilityLayout.compactTitlebarControlHeight)
+            .background(
+                isPrimary
+                    ? Color.accentColor
+                    : isHovering ? Color.primary.opacity(0.06) : .clear
+            )
+            .clipShape(RoundedRectangle(cornerRadius: UtilityLayout.compactTitlebarControlRadius))
+            .contentShape(Rectangle())
+            .onHover { isHovering = $0 }
     }
 }

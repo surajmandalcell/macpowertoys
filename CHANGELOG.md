@@ -6,7 +6,7 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Changed
 
-- Made compact applet titlebars borderless, vertically centered, and shared across every compact tool, with floating settings controls at the bottom-right.
+- Made compact applet titlebars borderless and consistently aligned, with one padded row, compact rounded controls, outline-free initial focus, and app names reclaiming the hidden zoom-button space.
 - Reduced the Raycast extension to MacPowerToys and built-in app launchers; separate tool-action commands are no longer exposed.
 - Embedded the source commit in local builds and made installation refuse stale DerivedData products.
 
