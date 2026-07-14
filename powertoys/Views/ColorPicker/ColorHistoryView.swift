@@ -131,13 +131,18 @@ struct ColorHistoryView: View {
         Button {
             page = target
         } label: {
-            Label(title, systemImage: icon)
-                .font(.system(size: 12, weight: page == target ? .medium : .regular))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(page == target ? Color.primary.opacity(0.06) : .clear)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
+            ZStack {
+                Label(title, systemImage: icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .hidden()
+                Label(title, systemImage: icon)
+                    .font(.system(size: 12, weight: page == target ? .medium : .regular))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(page == target ? Color.primary.opacity(0.06) : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
