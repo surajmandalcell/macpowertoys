@@ -1114,13 +1114,16 @@ final class RcloneJobManager {
         guard job.state.isTerminal else { return }
         stopSourceWatcher(for: job)
         jobs.removeAll { $0.id == job.id }
+        LocalChangeHistory.shared.removeEntries(for: [job.id])
         persistJobsSoon()
     }
 
     func clearFinished() {
-        for job in jobs where job.state.isTerminal {
+        let finished = jobs.filter(\.state.isTerminal)
+        for job in finished {
             stopSourceWatcher(for: job)
         }
+        LocalChangeHistory.shared.removeEntries(for: Set(finished.map(\.id)))
         jobs.removeAll { $0.state.isTerminal }
         persistJobsSoon()
     }
