@@ -14,6 +14,7 @@ The `Release` GitHub Actions workflow performs signing, notarization, stapling, 
 - `MACOS_CERTIFICATE_P12`
 - `MACOS_CERTIFICATE_PASSWORD`
 - `MACOS_KEYCHAIN_PASSWORD`
+- `MACOS_PROVISIONING_PROFILE`
 - `APPLE_ID`
 - `APPLE_TEAM_ID`
 - `APP_SPECIFIC_PASSWORD`
@@ -22,7 +23,7 @@ Do not publish from a dirty worktree. Do not install over a running Cloud Sync t
 
 ## iCloud entitlement
 
-The app now carries the `com.apple.developer.ubiquity-kvstore-identifier` entitlement for iCloud settings sync. Developer ID signing therefore needs a Developer ID provisioning profile that includes iCloud key-value storage for `com.surajmandal.macpowertoys`. Unsigned CI builds (`CODE_SIGNING_ALLOWED=NO`) are unaffected.
+The app now carries the `com.apple.developer.ubiquity-kvstore-identifier` entitlement for iCloud settings sync. Developer ID signing therefore needs a Developer ID provisioning profile that includes iCloud key-value storage for `com.surajmandal.macpowertoys`. Store that profile, base64-encoded, in `MACOS_PROVISIONING_PROFILE`. Unsigned CI builds (`CODE_SIGNING_ALLOWED=NO`) are unaffected.
 
 For local signed builds, sign into Xcode > Settings > Accounts once, then run `make build SIGNED=1` — automatic signing generates the development profile with the iCloud capability. iCloud sync silently no-ops in unsigned builds.
 
