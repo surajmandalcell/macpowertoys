@@ -13,7 +13,7 @@ Complete this once before making the repository public.
 
 ## Verification
 
-- Confirm macOS unit, rclone integration, and UI smoke jobs pass on GitHub Actions.
+- Run macOS unit, rclone integration, and UI smoke tests locally.
 - Run the complete suite on a clean supported Mac account.
 - Verify every tool's Dock icon in light and dark appearance at 32 px and full Dock size.
 - Verify both `macpowertoys://` and legacy `powertoys://` links.
@@ -23,7 +23,8 @@ Complete this once before making the repository public.
 
 ## Distribution
 
-- Configure the six GitHub Actions secrets documented in `RELEASING.md`.
+- Enroll in the paid Apple Developer Program before preparing a public binary.
+- Create a Developer ID Application certificate and an entitlement-compatible provisioning profile.
 - Confirm hardened runtime, Developer ID signature, notarization, stapling, and SHA-256 verification.
 - Verify the archive on a clean account before publishing the tag.
 - Publish explicit pre-release limitations and recovery instructions.

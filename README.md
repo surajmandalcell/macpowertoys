@@ -6,8 +6,6 @@
 
 MacPowerToys is an open-source collection of focused, native macOS utilities. Each tool has its own window and Dock icon, and the utility commands are individually searchable through Raycast and Apple Shortcuts.
 
-[![macOS CI](https://github.com/surajmandalcell/powertoys/actions/workflows/ci.yml/badge.svg)](https://github.com/surajmandalcell/powertoys/actions/workflows/ci.yml)
-
 > [!IMPORTANT]
 > MacPowerToys is currently pre-release software. Build it from source and keep a backup of important data.
 
@@ -48,6 +46,14 @@ xcodebuild -project powertoys.xcodeproj \
 ```
 
 You can also open `powertoys.xcodeproj` in Xcode and run the `powertoys` scheme. The built product is `MacPowerToys.app`.
+
+For a local build signed with the Apple Development certificate in your login keychain:
+
+```bash
+make build SIGNED=1
+```
+
+This personal-team signature is suitable for installing on the signing Mac. Public distribution still requires a paid Apple Developer membership, Developer ID signing, and notarization.
 
 Do not replace a running installation while Cloud Sync is transferring data. Pause or finish transfers first, then install the new build.
 
