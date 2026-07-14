@@ -23,6 +23,19 @@
 - **Check:** Inspect the result bundle message. Never report an early runner exit
   as a passing or failing product test.
 
+## Unsigned UI Runner Gatekeeper Dialog
+
+- **Symptom:** macOS reports `powertoysUITests-Runner.app` as damaged and leaves
+  a Gatekeeper dialog after the test command stops.
+- **Cause:** An app-style UI test runner built with `CODE_SIGNING_ALLOWED=NO` was
+  launched. Unsigned unit-test bundles are safe; unsigned UI runner apps are not.
+- **Invariant:** Never launch an unsigned UI runner. Verify the runner with
+  `codesign --verify --deep --strict` before launch. If a signed runner cannot
+  connect, use live accessibility and visual smoke testing instead.
+- **Check:** Confirm no `powertoysUITests-Runner` process exists, dismiss any
+  remaining dialog normally, and do not claim the system helper was killed when
+  only its dialog was closed.
+
 ## Installation Gate
 
 - **Symptom:** A verified build is not installed, or installation interrupts an

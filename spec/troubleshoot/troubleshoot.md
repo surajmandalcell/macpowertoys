@@ -26,6 +26,8 @@ Read every matching topic. A task may require more than one.
 
 ## Maintenance Contract
 
+- This file is the only troubleshooting entry point. Keep every topic under
+  `spec/troubleshoot/` and never create duplicate compatibility rules elsewhere.
 - The newest direct user correction wins over older notes. Update or delete the
   conflicting note in the same checkpoint.
 - After any repeated defect or user correction, record the verified symptom,
