@@ -41,7 +41,7 @@ private class WindowAccessorView: NSView {
         if let windowIdentifier {
             window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
         }
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.isOpaque = false
         window.titlebarAppearsTransparent = true
         window.backgroundColor = .clear
