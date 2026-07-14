@@ -123,9 +123,8 @@ struct MacPowerToysApp: App {
             ColorHistoryView()
                 .background(WindowAccessor(identifier: "color-picker"))
         }
-        .defaultSize(width: 520, height: 260)
+        .defaultSize(width: 420, height: 210)
         .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["color-picker"]))
         .restorationBehavior(.disabled)
 
