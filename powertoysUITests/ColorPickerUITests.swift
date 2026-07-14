@@ -21,6 +21,7 @@ final class ColorPickerUITests: XCTestCase {
 
         let window = app.windows["Color Picker"]
         XCTAssertTrue(window.waitForExistence(timeout: 5))
+        app.activate()
         XCTAssertLessThanOrEqual(window.frame.width, 430)
 
         let historyTab = window.buttons["History"]
@@ -29,7 +30,6 @@ final class ColorPickerUITests: XCTestCase {
         XCTAssertTrue(projectsTab.exists)
         let historyFrame = historyTab.frame
         let projectsFrame = projectsTab.frame
-        projectsTab.click()
         projectsTab.click()
         XCTAssertTrue(window.staticTexts["COLOR PROJECTS"].waitForExistence(timeout: 2))
         XCTAssertEqual(historyTab.frame.minX, historyFrame.minX, accuracy: 0.5)
