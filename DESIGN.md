@@ -393,10 +393,10 @@ These are binding polish rules. Treat them as defects when they regress.
   Google Material 3 applies one 56dp input height to search and builds exposed
   dropdowns around text fields. MacPowerToys uses the same parity principle at
   its compact scale: adjacent search fields and selects are exactly 28pt high.
-- A compact tool window uses one custom 32pt titlebar for the 13pt medium tool
+- A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
   title and 24pt-high primary actions. The title clears the traffic lights by
   84pt. Center titles, actions, and native traffic lights in the full bar so
-  24pt controls have 4pt above and below. The title is text only, with no tool
+  24pt controls have 8pt above and below. The title is text only, with no tool
   icon. Never repeat this content in another header row. Compact titlebars have
   no bottom separator.
 - Titlebar actions remain visually discrete and flat. Never place them in a
