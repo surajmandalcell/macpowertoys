@@ -21,6 +21,28 @@ jobs:
           project_version="$(xcodebuild -project powertoys.xcodeproj -scheme powertoys -showBuildSettings | awk '/MARKETING_VERSION/ { print $3; exit }')"
           test "$version" = "$project_version"
 
+      - name: Validate release secrets
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          MACOS_PROVISIONING_PROFILE: ${{ secrets.MACOS_PROVISIONING_PROFILE }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+        run: |
+          for name in \
+            MACOS_CERTIFICATE_P12 \
+            MACOS_CERTIFICATE_PASSWORD \
+            MACOS_KEYCHAIN_PASSWORD \
+            MACOS_PROVISIONING_PROFILE \
+            APPLE_ID \
+            APPLE_TEAM_ID \
+            APP_SPECIFIC_PASSWORD
+          do
+            test -n "$(printenv "$name")" || { echo "Missing required secret: $name"; exit 1; }
+          done
+
       - name: Import Developer ID certificate
         env:
           CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -35,6 +57,18 @@ jobs:
           security list-keychain -d user -s build.keychain
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
 
+      - name: Install Developer ID provisioning profile
+        env:
+          PROVISIONING_PROFILE: ${{ secrets.MACOS_PROVISIONING_PROFILE }}
+        run: |
+          profile="$RUNNER_TEMP/MacPowerToys.provisionprofile"
+          printf '%s' "$PROVISIONING_PROFILE" | base64 --decode > "$profile"
+          profile_uuid="$(security cms -D -i "$profile" | plutil -extract UUID raw -)"
+          profile_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$profile_dir"
+          cp "$profile" "$profile_dir/$profile_uuid.provisionprofile"
+          echo "MACOS_PROFILE_UUID=$profile_uuid" >> "$GITHUB_ENV"
+
       - name: Archive
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -47,6 +81,7 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
+            PROVISIONING_PROFILE_SPECIFIER="$MACOS_PROFILE_UUID" \
             ARCHS="arm64 x86_64"
 
       - name: Export signed app
@@ -60,6 +95,10 @@ jobs:
             <key>method</key><string>developer-id</string>
             <key>signingStyle</key><string>manual</string>
             <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingCertificate</key><string>Developer ID Application</string>
+            <key>provisioningProfiles</key><dict>
+              <key>com.surajmandal.macpowertoys</key><string>${MACOS_PROFILE_UUID}</string>
+            </dict>
           </dict></plist>
           EOF
           xcodebuild -exportArchive \
@@ -100,4 +139,6 @@ jobs:
 
       - name: Remove temporary keychain
         if: always()
-        run: security delete-keychain build.keychain || true
+        run: |
+          security delete-keychain build.keychain || true
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/$MACOS_PROFILE_UUID.provisionprofile"
