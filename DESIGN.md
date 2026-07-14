@@ -112,10 +112,11 @@ to that gutter; never outdent the strip merely to align the pill's inset text.
 Depth comes from **opacity layers and vibrancy, never shadows**. Sidebars are
 `.sidebar`-material blur extending seamlessly to the window top with traffic
 lights floating over them. Windows with custom chrome use
-`.windowStyle(.hiddenTitleBar)`. A compact tool whose documented controls live
-in the titlebar uses the system titlebar instead. Never hand-configure NSWindow
-titlebar properties. No drop shadows on custom views; the only shadows are the
-system's window shadows.
+`.windowStyle(.hiddenTitleBar)`. Compact tools also use hidden titlebars and
+render `CompactTitlebar` inside the window. Never use `.unifiedCompact`, native
+toolbar action grouping, or manually configured `NSWindow` titlebar properties.
+No drop shadows on custom views; the only shadows are the system's window
+shadows.
 
 ## Shapes
 
@@ -385,10 +386,14 @@ These are binding polish rules. Treat them as defects when they regress.
   Google Material 3 applies one 56dp input height to search and builds exposed
   dropdowns around text fields. MacPowerToys uses the same parity principle at
   its compact scale: adjacent search fields and selects are exactly 28pt high.
-- A compact tool window uses its titlebar for the tool title and primary
-  actions. Never repeat that content in an in-window header row.
-- Titlebar actions remain visually discrete: use one semantic action per
-  `ToolbarItem`, and apply the accent fill only to the primary action.
+- A compact tool window uses one custom 40pt titlebar for the 13pt medium tool
+  title and 24pt-high primary actions. The title clears the traffic lights by
+  84pt. Never repeat this content in another header row.
+- Titlebar actions remain visually discrete and flat. Never place them in a
+  shared rounded container or native toolbar group. Only the primary action
+  receives an accent fill, using the 4pt small-button radius.
+- Compact sheet and detail headers use the same flat 40pt structure without the
+  traffic-light inset. Escape dismisses a dismissible sheet or detail view.
 - A tool's settings open inside that tool window and replace its content. Use
   full, labeled setting rows; never make a compact menu the only settings UI.
 - Settings stays at the far right of the titlebar and uses `gearshape`.

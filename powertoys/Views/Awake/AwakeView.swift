@@ -10,7 +10,6 @@ struct AwakeView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
                     status
@@ -23,15 +22,17 @@ struct AwakeView: View {
             }
             .thinScrollIndicators()
         }
+        .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
     }
 
     private var header: some View {
-        HStack {
-            Image(systemName: service.isActive ? "cup.and.saucer.fill" : "cup.and.saucer")
-                .foregroundStyle(Color.accentColor)
-            Text("Awake").font(.system(size: 13, weight: .medium))
-            Spacer()
+        CompactTitlebar {
+            CompactTitlebarTitle(
+                title: "Awake",
+                systemImage: service.isActive ? "cup.and.saucer.fill" : "cup.and.saucer"
+            )
+        } actions: {
             Toggle("Keep Display On", isOn: Binding(
                 get: { service.configuration.keepDisplayOn },
                 set: service.setKeepDisplayOn
@@ -41,8 +42,6 @@ struct AwakeView: View {
             .contentShape(Rectangle())
             .disabled(service.configuration.mode == .passive)
         }
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .padding(.vertical, UtilityLayout.headerVerticalInset)
     }
 
     private var status: some View {

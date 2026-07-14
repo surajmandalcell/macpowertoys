@@ -54,6 +54,7 @@ struct ColorHistoryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            titlebar
             tabBar
             Divider()
             switch page {
@@ -62,9 +63,12 @@ struct ColorHistoryView: View {
             case .settings: settings
             }
         }
-        .frame(width: ColorPickerLayout.windowWidth, height: windowHeight)
+        .frame(
+            width: ColorPickerLayout.windowWidth,
+            height: windowHeight + UtilityLayout.compactTitlebarHeight
+        )
+        .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
-        .toolbar { titlebarActions }
         .animation(.easeInOut(duration: 0.16), value: windowHeight)
         .alert("Couldn’t Export Project", isPresented: Binding(
             get: { service.exportError != nil },
@@ -80,41 +84,34 @@ struct ColorHistoryView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var titlebarActions: some ToolbarContent {
-        if page == .history && !samples.isEmpty {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Clear", role: .destructive) {
-                    service.clearUnpinned(in: service.selectedProjectID)
+    private var titlebar: some View {
+        CompactTitlebar {
+            CompactTitlebarTitle(title: "Color Picker", systemImage: "eyedropper")
+        } actions: {
+            HStack(spacing: 8) {
+                if page == .history && !samples.isEmpty {
+                    Button("Clear", role: .destructive) {
+                        service.clearUnpinned(in: service.selectedProjectID)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
+                    .frame(height: 24)
+                    .contentShape(Rectangle())
+                    .help("Clear unpinned colors in \(selectedProjectName)")
+                    .accessibilityIdentifier("color-picker.clear")
                 }
-                .buttonStyle(.plain)
-                .font(.system(size: 11))
-                .frame(height: 24)
-                .contentShape(Rectangle())
-                .help("Clear unpinned colors in \(selectedProjectName)")
-                .accessibilityIdentifier("color-picker.clear")
+                CompactTitlebarButton(title: "Pick Color", isPrimary: true) { service.pick() }
+                    .disabled(service.isPicking)
+                    .help("Pick a color for \(selectedProjectName)")
+                    .accessibilityIdentifier("color-picker.pick")
+                CompactTitlebarIconButton(
+                    systemName: "gearshape",
+                    help: page == .settings ? "Close Settings" : "Settings"
+                ) {
+                    page = page == .settings ? .history : .settings
+                }
+                .accessibilityIdentifier("color-picker.settings")
             }
-        }
-
-        ToolbarItem(placement: .primaryAction) {
-            Button("Pick Color") { service.pick() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .frame(height: 24)
-                .contentShape(Rectangle())
-                .disabled(service.isPicking)
-                .help("Pick a color for \(selectedProjectName)")
-                .accessibilityIdentifier("color-picker.pick")
-        }
-
-        ToolbarItem(placement: .primaryAction) {
-            ColorPickerIconButton(
-                systemName: "gearshape",
-                help: page == .settings ? "Close Settings" : "Settings"
-            ) {
-                page = page == .settings ? .history : .settings
-            }
-            .accessibilityIdentifier("color-picker.settings")
         }
     }
 

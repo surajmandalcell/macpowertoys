@@ -30,15 +30,21 @@ struct TextExtractorView: View {
     }
 
     var body: some View {
-        Group {
-            switch page {
-            case .history: history
-            case .settings: settings
+        VStack(spacing: 0) {
+            titlebar
+            Group {
+                switch page {
+                case .history: history
+                case .settings: settings
+                }
             }
         }
-        .frame(width: TextExtractorLayout.windowWidth, height: windowHeight)
+        .frame(
+            width: TextExtractorLayout.windowWidth,
+            height: windowHeight + UtilityLayout.compactTitlebarHeight
+        )
+        .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
-        .toolbar { titlebarContent }
         .animation(.easeInOut(duration: 0.16), value: windowHeight)
         .sheet(item: $selectedExtraction) { extraction in
             TextExtractionDetailView(extraction: extraction)
@@ -52,49 +58,22 @@ struct TextExtractorView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var titlebarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            HStack(spacing: 7) {
-                Image(systemName: "text.viewfinder")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                Text("Text Extractor")
-                    .font(.system(size: 13, weight: .medium))
-            }
-            .fixedSize()
-        }
-        ToolbarItem(placement: .primaryAction) {
+    private var titlebar: some View {
+        CompactTitlebar {
+            CompactTitlebarTitle(title: "Text Extractor", systemImage: "text.viewfinder")
+        } actions: {
             HStack(spacing: 8) {
                 GlobalShortcutMenu(action: .textExtractor)
-                Button { service.begin() } label: {
-                    Text("Extract Text")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .frame(height: 24)
-                        .background(Color.accentColor)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .disabled(isExtracting)
-                .help("Select text anywhere on screen")
-                .accessibilityIdentifier("text-extractor.extract")
-                Button {
+                CompactTitlebarButton(title: "Extract Text", isPrimary: true) { service.begin() }
+                    .disabled(isExtracting)
+                    .help("Select text anywhere on screen")
+                    .accessibilityIdentifier("text-extractor.extract")
+                CompactTitlebarIconButton(
+                    systemName: page == .settings ? "gearshape.fill" : "gearshape",
+                    help: page == .settings ? "Back to History" : "Recognition Settings"
+                ) {
                     page = page == .settings ? .history : .settings
-                } label: {
-                    Image(systemName: page == .settings ? "gearshape.fill" : "gearshape")
-                        .font(.system(size: 12, weight: .medium))
-                        .frame(width: 24, height: 24)
-                        .background(Color.primary.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .help(page == .settings ? "Back to History" : "Recognition Settings")
                 .accessibilityIdentifier("text-extractor.settings")
             }
         }
@@ -374,23 +353,21 @@ private struct TextExtractionDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
+            CompactTitlebar(clearsTrafficLights: false) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Extracted Text")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                     Text(extraction.relativeTimestamp())
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
-                Spacer()
-                Button("Copy") { service.copy(extraction) }
-                Button("Done") { dismiss() }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.defaultAction)
+            } actions: {
+                HStack(spacing: 6) {
+                    CompactTitlebarButton(title: "Copy") { service.copy(extraction) }
+                    CompactTitlebarButton(title: "Done", isPrimary: true) { dismiss() }
+                        .keyboardShortcut(.defaultAction)
+                }
             }
-            .padding(UtilityLayout.horizontalInset)
-
-            Divider()
 
             ScrollView {
                 Text(extraction.text)
@@ -404,5 +381,6 @@ private struct TextExtractionDetailView: View {
         }
         .frame(width: 520, height: 360)
         .utilityWindowBackground()
+        .onExitCommand { dismiss() }
     }
 }
