@@ -86,7 +86,7 @@ struct ColorHistoryView: View {
 
     private var titlebar: some View {
         CompactTitlebar {
-            CompactTitlebarTitle(title: "Color Picker", systemImage: "eyedropper")
+            CompactTitlebarTitle(title: "Color Picker")
         } actions: {
             HStack(spacing: 8) {
                 if page == .history && !samples.isEmpty {
