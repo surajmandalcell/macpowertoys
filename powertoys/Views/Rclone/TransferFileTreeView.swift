@@ -91,7 +91,7 @@ struct TransferFileTreeView: View {
             SearchField(text: $searchText, placeholder: "Filter files...", isLoading: isIndexing)
 
             HStack(spacing: 6) {
-                Toggle("Split uploaded", isOn: $splitByUploadStatus)
+                Toggle("List uploaded", isOn: $splitByUploadStatus)
                     .toggleStyle(.checkbox)
                     .controlSize(.small)
                     .font(.system(size: 11))
@@ -261,11 +261,13 @@ struct TransferFileTreeView: View {
 
     @ViewBuilder
     private var splitStatusView: some View {
-        if let indexError {
+        if let rootError {
+            centered { Text(rootError).font(.system(size: 12)).foregroundStyle(.secondary) }
+        } else if let indexError {
             centered { Text(indexError).font(.system(size: 12)).foregroundStyle(.secondary) }
         } else if let destinationError {
             centered { Text(destinationError).font(.system(size: 12)).foregroundStyle(.secondary) }
-        } else if allEntries == nil || isIndexing || isLoadingDestination {
+        } else if allEntries == nil || isIndexing || isLoadingRoot || isLoadingDestination {
             centered {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -315,18 +317,34 @@ struct TransferFileTreeView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
-                        ForEach(entries) { entry in
-                            FileTreeRowView(
-                                entry: entry,
-                                label: entry.path,
-                                depth: 0,
-                                showsDisclosure: false,
-                                isExpanded: false,
-                                isLoading: false,
-                                isIgnored: isIgnored(entry, patterns: currentPatterns),
-                                onToggle: {},
-                                onIgnore: { addIgnorePattern(for: entry) }
-                            )
+                        if status == .uploaded {
+                            ForEach(uploadedTreeRows) { row in
+                                FileTreeRowView(
+                                    entry: row.entry,
+                                    label: row.entry.name,
+                                    depth: row.depth,
+                                    showsDisclosure: true,
+                                    isExpanded: expanded.contains(row.entry.path),
+                                    isLoading: loadingPaths.contains(row.entry.path),
+                                    isIgnored: isIgnored(row.entry, patterns: currentPatterns),
+                                    onToggle: { toggleExpand(row.entry) },
+                                    onIgnore: { addIgnorePattern(for: row.entry) }
+                                )
+                            }
+                        } else {
+                            ForEach(entries) { entry in
+                                FileTreeRowView(
+                                    entry: entry,
+                                    label: entry.path,
+                                    depth: 0,
+                                    showsDisclosure: false,
+                                    isExpanded: false,
+                                    isLoading: false,
+                                    isIgnored: isIgnored(entry, patterns: currentPatterns),
+                                    onToggle: {},
+                                    onIgnore: { addIgnorePattern(for: entry) }
+                                )
+                            }
                         }
                     }
                     .padding(8)
@@ -344,6 +362,23 @@ struct TransferFileTreeView: View {
             .filter { debouncedSearch.isEmpty || $0.path.localizedCaseInsensitiveContains(debouncedSearch) }
             .filter { TransferFileStatus.resolve(source: $0, destination: destinationEntries[$0.path]) == status }
             .sorted { $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending }
+    }
+
+    private var uploadedTreeRows: [VisibleRow] {
+        let paths = Self.treePaths(for: statusEntries(.uploaded).map(\.path))
+        return visibleRows.filter { paths.contains($0.entry.path) }
+    }
+
+    static func treePaths(for filePaths: [String]) -> Set<String> {
+        var paths = Set(filePaths)
+        for filePath in filePaths {
+            var parent = (filePath as NSString).deletingLastPathComponent
+            while !parent.isEmpty {
+                paths.insert(parent)
+                parent = (parent as NSString).deletingLastPathComponent
+            }
+        }
+        return paths
     }
 
     private func centered(@ViewBuilder _ inner: () -> some View) -> some View {
