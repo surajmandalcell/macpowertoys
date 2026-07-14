@@ -16,9 +16,10 @@ final class powertoysUITests: XCTestCase {
         XCTAssertTrue(app.windows["MacPowerToys"].waitForExistence(timeout: 5))
 
         for id in ["cc-history", "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor"] {
+            let card = app.descendants(matching: .any)["tool.\(id).card"]
             XCTAssertTrue(
-                app.buttons["tool.\(id).open"].waitForExistence(timeout: 2),
-                "Missing tool button: \(id)"
+                card.waitForExistence(timeout: 2),
+                "Missing tool card: \(id)"
             )
         }
     }
@@ -26,9 +27,13 @@ final class powertoysUITests: XCTestCase {
     @MainActor
     func testRulerOpensInItsOwnWindow() throws {
         let app = launchApp()
-        let button = app.buttons["tool.ruler.open"]
-        XCTAssertTrue(button.waitForExistence(timeout: 5))
-        button.click()
+        let card = app.descendants(matching: .any)["tool.ruler.card"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.click()
+
+        let launch = app.buttons["tool.ruler.launch"]
+        XCTAssertTrue(launch.waitForExistence(timeout: 5))
+        launch.click()
         XCTAssertTrue(app.windows["Ruler"].waitForExistence(timeout: 5))
     }
 
