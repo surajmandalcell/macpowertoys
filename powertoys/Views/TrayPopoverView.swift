@@ -40,7 +40,6 @@ struct TrayPopoverView: View {
                 .frame(maxWidth: .infinity)
 
             Divider()
-                .padding(.top, 8)
 
             footer
         }
@@ -83,20 +82,20 @@ struct TrayPopoverView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            TrayFooterButton(title: "Open MacPowerToys") {
+            TrayFooterButton(title: "Open MacPowerToys", systemImage: "macwindow") {
                 openWindow(id: "main")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
 
             Spacer()
 
-            TrayFooterButton(title: "Quit") {
+            TrayFooterButton(title: "Quit", systemImage: "power") {
                 NSApplication.shared.terminate(nil)
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.03))
     }
 }
 
@@ -466,18 +465,23 @@ private struct TrayActionButton: View {
 
 private struct TrayFooterButton: View {
     let title: String
+    let systemImage: String
     let action: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Label(title, systemImage: systemImage)
                 .font(.system(size: 11))
                 .foregroundStyle(isHovering ? .primary : .secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
                 .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isHovering ? Color.primary.opacity(0.06) : Color.clear)
+                )
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
