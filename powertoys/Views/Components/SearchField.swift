@@ -25,7 +25,7 @@ struct SearchField: View {
 
             if isLoading {
                 ProgressView()
-                    .scaleEffect(0.5)
+                    .controlSize(.mini)
                     .frame(width: 16, height: 16)
             } else if !text.isEmpty {
                 Button { text = "" } label: {
@@ -68,4 +68,3 @@ struct SearchField: View {
     .padding()
     .frame(width: 280)
 }
-

@@ -105,6 +105,7 @@ private struct SettingsTabPill: View {
 
 private struct GeneralSettingsTab: View {
     @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
+    @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
     @State private var showSyncConflictDialog = false
 
     private var syncManager: SettingsSyncManager { SettingsSyncManager.shared }
@@ -113,6 +114,7 @@ private struct GeneralSettingsTab: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 appearanceSection
+                windowSection
                 syncSection
             }
             .padding(.horizontal, 20)
@@ -131,6 +133,28 @@ private struct GeneralSettingsTab: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Choose whether this Mac should adopt the settings already in iCloud, or overwrite iCloud with the settings on this Mac.")
+        }
+    }
+
+    private var windowSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("WINDOWS")
+                .utilitySectionHeader()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(
+                    "Close MacPowerToys after opening a tool",
+                    isOn: $closeMainWindowAfterOpeningTool
+                )
+                .font(.system(size: 13))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                Text("Leave this off to keep the main window open while using a tool.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .utilitySectionCard()
         }
     }
 

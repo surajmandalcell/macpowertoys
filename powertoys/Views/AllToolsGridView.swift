@@ -8,6 +8,7 @@ import SwiftUI
 struct AllToolsGridView: View {
     @Binding var selectedTool: String?
     @Environment(\.dismissWindow) private var dismissWindow
+    @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
 
     var body: some View {
         ScrollView {
@@ -18,7 +19,9 @@ struct AllToolsGridView: View {
                         selectAction: { selectedTool = tool.id },
                         openAction: {
                             ToolActionRouter.shared.open(toolID: tool.id)
-                            dismissWindow(id: "main")
+                            if closeMainWindowAfterOpeningTool {
+                                dismissWindow(id: "main")
+                            }
                         }
                     )
                 }
