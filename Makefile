@@ -26,9 +26,9 @@ raycast:
 
 install: build
 	@test "$(ALLOW_INSTALL)" = "1" || (echo "Refusing to install. Re-run with ALLOW_INSTALL=1 after all Cloud Sync transfers finish." && exit 1)
-	@! pgrep -x MacPowerToys >/dev/null || (echo "Refusing to replace a running MacPowerToys instance." && exit 1)
+	@! pgrep -f '^/Applications/MacPowerToys.app/Contents/MacOS/MacPowerToys$$' >/dev/null || (echo "Refusing to replace the running installed MacPowerToys app." && exit 1)
 	rm -rf /Applications/MacPowerToys.app
 	ditto "$(DERIVED_DATA)/Build/Products/Release/MacPowerToys.app" /Applications/MacPowerToys.app
-	open /Applications/MacPowerToys.app
+	open -n /Applications/MacPowerToys.app
 
 .PHONY: build build-for-testing test raycast install
