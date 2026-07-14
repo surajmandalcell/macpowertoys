@@ -32,10 +32,10 @@
 
 - **Symptom:** Compact titlebar actions or native traffic lights have unequal
   space above and below them.
-- **Cause:** A 32pt native traffic-light band was placed inside a taller custom
-  titlebar, so both groups could not share one vertical midpoint.
-- **Invariant:** Use one 32pt titlebar. Center its title, 24pt actions, and native
-  traffic lights in that full bar. A 24pt action has 4pt above and below it.
+- **Cause:** Controls were centered in only part of the custom titlebar, so they
+  did not share one vertical midpoint with the native traffic lights.
+- **Invariant:** Use one 40pt titlebar. Center its title, 24pt actions, and native
+  traffic lights in that full bar. A 24pt action has 8pt above and below it.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
   and actions in every compact applet. They stay within 1pt of each other.
 
@@ -78,9 +78,10 @@
 
 - **Symptom:** Awake opens with a large focus outline around `Keep Display On`,
   a bottom titlebar rule, or a title that lacks the requested emphasis.
-- **Cause:** The native switch focus effect remained enabled, the shared
-  titlebar retained a separator, or Awake inherited the default title weight.
+- **Cause:** macOS selected the titlebar switch as the first responder, the
+  shared titlebar retained a separator, or Awake inherited the default weight.
 - **Invariant:** Awake uses a bold 13pt title, no titlebar bottom separator, and
   no transient focus outline around its existing display switch.
 - **Check:** Open Awake from a fresh launch and inspect the titlebar before
-  interacting with it. Then toggle `Keep Display On` and confirm it still works.
+  interacting with it. Tab to and toggle `Keep Display On` to confirm keyboard
+  control still works.
