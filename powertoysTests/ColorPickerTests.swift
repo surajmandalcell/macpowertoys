@@ -3,6 +3,25 @@ import XCTest
 
 @MainActor
 final class ColorPickerTests: XCTestCase {
+    func testPickIgnoresRequestsWhileSamplerIsActive() async {
+        let sampler = ColorSamplerStub()
+        let (service, defaults, suite) = makeService(sampler: sampler)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        service.pick()
+        service.pick()
+
+        XCTAssertTrue(service.isPicking)
+        XCTAssertEqual(sampler.showCount, 1)
+
+        sampler.complete(with: nil)
+        await Task.yield()
+        XCTAssertFalse(service.isPicking)
+
+        service.pick()
+        XCTAssertEqual(sampler.showCount, 2)
+    }
+
     func testProjectsOwnNewPicksAndDeduplicateIndependently() {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -57,10 +76,29 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertNil(sample.projectID)
     }
 
-    private func makeService() -> (ColorPickerService, UserDefaults, String) {
+    private func makeService(
+        sampler: any ColorSampling = NSColorSampler()
+    ) -> (ColorPickerService, UserDefaults, String) {
         let suite = "ColorPickerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
-        return (ColorPickerService(defaults: defaults), defaults, suite)
+        return (ColorPickerService(defaults: defaults, sampler: sampler), defaults, suite)
+    }
+}
+
+@MainActor
+private final class ColorSamplerStub: ColorSampling {
+    private(set) var showCount = 0
+    private var selectionHandler: (@Sendable (NSColor?) -> Void)?
+
+    func show(selectionHandler: @escaping @Sendable (NSColor?) -> Void) {
+        showCount += 1
+        self.selectionHandler = selectionHandler
+    }
+
+    func complete(with color: NSColor?) {
+        let selectionHandler = selectionHandler
+        self.selectionHandler = nil
+        selectionHandler?(color)
     }
 }
