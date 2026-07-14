@@ -178,6 +178,7 @@ private final class TextRegionSelector {
             panel.backgroundColor = .clear
             panel.isOpaque = false
             panel.hasShadow = false
+            panel.acceptsMouseMovedEvents = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = TextRegionSelectionView(frame: CGRect(origin: .zero, size: screen.frame.size)) { [weak self] rect in
                 let global = rect.offsetBy(dx: screen.frame.minX, dy: screen.frame.minY)
@@ -221,6 +222,7 @@ private final class TextRegionSelectionView: NSView {
     private var lastPoint: CGPoint?
     private var shiftWasDownAtMouseDown = false
     private var selection = CGRect.zero
+    private var tracking: NSTrackingArea?
 
     init(frame: CGRect, completion: @escaping (CGRect) -> Void, cancellation: @escaping () -> Void) {
         self.completion = completion
@@ -232,9 +234,41 @@ private final class TextRegionSelectionView: NSView {
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .crosshair)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(rect: bounds, options: [.activeAlways, .mouseMoved, .inVisibleRect], owner: self)
+        addTrackingArea(area)
+        tracking = area
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         NSColor.black.withAlphaComponent(0.2).setFill()
         bounds.fill()
+        if let window {
+            let pointer = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            let crosshair = NSBezierPath()
+            crosshair.move(to: CGPoint(x: pointer.x - 18, y: pointer.y))
+            crosshair.line(to: CGPoint(x: pointer.x - 5, y: pointer.y))
+            crosshair.move(to: CGPoint(x: pointer.x + 5, y: pointer.y))
+            crosshair.line(to: CGPoint(x: pointer.x + 18, y: pointer.y))
+            crosshair.move(to: CGPoint(x: pointer.x, y: pointer.y - 18))
+            crosshair.line(to: CGPoint(x: pointer.x, y: pointer.y - 5))
+            crosshair.move(to: CGPoint(x: pointer.x, y: pointer.y + 5))
+            crosshair.line(to: CGPoint(x: pointer.x, y: pointer.y + 18))
+            crosshair.lineCapStyle = .round
+            NSColor.black.withAlphaComponent(0.75).setStroke()
+            crosshair.lineWidth = 4
+            crosshair.stroke()
+            NSColor.white.setStroke()
+            crosshair.lineWidth = 2
+            crosshair.stroke()
+        }
         guard !selection.isEmpty else { return }
         NSGraphicsContext.saveGraphicsState()
         NSColor.clear.setFill()
@@ -262,6 +296,10 @@ private final class TextRegionSelectionView: NSView {
             selection = CGRect(x: min(start.x, point.x), y: min(start.y, point.y), width: abs(point.x - start.x), height: abs(point.y - start.y))
         }
         lastPoint = point
+        needsDisplay = true
+    }
+
+    override func mouseMoved(with event: NSEvent) {
         needsDisplay = true
     }
 
