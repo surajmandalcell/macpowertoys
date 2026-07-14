@@ -48,7 +48,7 @@ struct ColorHistoryView: View {
             Spacer()
             GlobalShortcutMenu(action: .colorPicker)
             if !service.history.isEmpty {
-                Button("Clear", role: .destructive) { service.clearUnpinned() }
+                Button("Clear", role: .destructive) { service.clearUnpinned(in: service.selectedProjectID) }
                     .buttonStyle(.plain)
                     .font(.system(size: 11))
                     .contentShape(Rectangle())

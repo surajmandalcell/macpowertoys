@@ -14,6 +14,12 @@ enum ColorCopyFormat: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 }
 
+struct ColorProject: Codable, Identifiable, Equatable, Sendable {
+    var id = UUID()
+    let name: String
+    var createdAt = Date()
+}
+
 struct ColorSample: Codable, Identifiable, Equatable, Sendable {
     var id = UUID()
     let red: Double
@@ -22,6 +28,7 @@ struct ColorSample: Codable, Identifiable, Equatable, Sendable {
     let alpha: Double
     var createdAt = Date()
     var isPinned = false
+    var projectID: UUID?
 
     var color: NSColor { NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha) }
 
