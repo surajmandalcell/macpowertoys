@@ -114,7 +114,8 @@ struct MacPowerToysApp: App {
             AwakeView()
                 .background(WindowAccessor(identifier: "awake"))
         }
-        .defaultSize(width: 560, height: 500)
+        .defaultSize(width: AwakeLayout.windowWidth, height: AwakeLayout.windowHeight)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["awake"]))
         .restorationBehavior(.disabled)
