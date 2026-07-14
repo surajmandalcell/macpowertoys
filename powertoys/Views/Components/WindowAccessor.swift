@@ -30,7 +30,7 @@ private class WindowAccessorView: NSView {
     private var compactTrafficLightBaselineY: CGFloat?
 
     override var acceptsFirstResponder: Bool {
-        windowIdentifier == "awake"
+        Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
     }
 
     init(windowIdentifier: String) {
@@ -54,12 +54,10 @@ private class WindowAccessorView: NSView {
             compactTrafficLightBaselineY = nil
             if isCompactApplet {
                 scheduleCompactTrafficLightAlignment(in: window)
-            }
-        }
-        if windowIdentifier == "awake" {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
-                guard let self, let window else { return }
-                window.makeFirstResponder(self)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
+                    guard let self, let window else { return }
+                    window.makeFirstResponder(self)
+                }
             }
         }
         window.isMovableByWindowBackground = false
