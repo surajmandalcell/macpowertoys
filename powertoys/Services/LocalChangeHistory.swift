@@ -61,16 +61,23 @@ final class LocalChangeHistory {
             }
             return records
         }.value
-        entries = Array(restored.prefix(limit))
+        entries = limited(restored)
     }
 
     func record(_ records: [LocalChangeRecord]) {
         guard !records.isEmpty else { return }
         entries.insert(contentsOf: records.reversed(), at: 0)
-        if entries.count > limit {
-            entries.removeLast(entries.count - limit)
-        }
+        entries = limited(entries)
         schedulePersist()
+    }
+
+    func removeEntries(for jobIDs: Set<UUID>) {
+        guard !jobIDs.isEmpty else { return }
+        let previousCount = entries.count
+        entries.removeAll { jobIDs.contains($0.jobID) }
+        if entries.count != previousCount {
+            schedulePersist()
+        }
     }
 
     func flush() async {
@@ -86,6 +93,16 @@ final class LocalChangeHistory {
             guard let self, !Task.isCancelled else { return }
             self.persistTask = nil
             await self.persist(self.entries)
+        }
+    }
+
+    private func limited(_ records: [LocalChangeRecord]) -> [LocalChangeRecord] {
+        var counts: [UUID: Int] = [:]
+        return records.filter { record in
+            let count = counts[record.jobID, default: 0]
+            guard count < limit else { return false }
+            counts[record.jobID] = count + 1
+            return true
         }
     }
 
