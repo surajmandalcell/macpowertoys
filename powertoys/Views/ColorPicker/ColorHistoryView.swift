@@ -2,6 +2,7 @@ import SwiftUI
 
 enum ColorPickerLayout {
     static let windowWidth: CGFloat = 420
+    static let bodyHorizontalInset: CGFloat = 12
     static let historyBaseHeight: CGFloat = 210
     static let maximumWindowHeight: CGFloat = 420
     static let settingsHeight: CGFloat = 280
@@ -124,7 +125,7 @@ struct ColorHistoryView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .padding(.horizontal, UtilityLayout.horizontalInset)
+        .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
         .frame(height: 36)
     }
 
@@ -150,7 +151,7 @@ struct ColorHistoryView: View {
                 ColorSearchField(text: $search)
                 ColorFormatSelect(selection: $service.defaultFormat)
             }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
             .padding(.vertical, 10)
 
             if samples.isEmpty {
@@ -166,7 +167,7 @@ struct ColorHistoryView: View {
                             ColorSampleRow(sample: sample)
                         }
                     }
-                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
                     .padding(.bottom, UtilityLayout.contentBottomInset)
                 }
                 .thinScrollIndicators()
@@ -192,7 +193,7 @@ struct ColorHistoryView: View {
                 .focusEffectDisabled()
                 .contentShape(Rectangle())
             }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
             .padding(.vertical, 10)
 
             ScrollView(showsIndicators: false) {
@@ -203,7 +204,7 @@ struct ColorHistoryView: View {
                         projectRow(id: project.id, name: project.name, project: project)
                     }
                 }
-                .padding(.horizontal, UtilityLayout.horizontalInset)
+                .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
                 .padding(.bottom, UtilityLayout.contentBottomInset)
             }
             .thinScrollIndicators()
@@ -347,7 +348,7 @@ struct ColorHistoryView: View {
                 .background(Color.primary.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
             .padding(.bottom, UtilityLayout.contentBottomInset)
         }
         .thinScrollIndicators()

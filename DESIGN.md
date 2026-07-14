@@ -41,6 +41,7 @@ rounded:
   card: 12          # cards, panels, sheets' section cards
 spacing:
   gutter: 20        # one shared left edge for titles, tabs, headers, cards
+  color-picker-body-gutter: 12
   card-padding: 14  # inner padding of section cards
   sidebar-title-leading: 84   # clears traffic lights
   content-top: 52   # content aligns with sidebar search bar top
@@ -385,6 +386,8 @@ These are binding polish rules. Treat them as defects when they regress.
 - A tab strip aligns by the leading pill's boundary, not its inset label. That
   boundary and the first field, card, or row below it share one outer edge;
   selecting another tab never shifts the strip or its tabs.
+- Color Picker uses a compact 12pt body gutter for tabs, fields, cards, and
+  settings. Keep every body surface on that same edge.
 - Controls sharing a row must share the same visible height and text baseline.
   Google Material 3 applies one 56dp input height to search and builds exposed
   dropdowns around text fields. MacPowerToys uses the same parity principle at
