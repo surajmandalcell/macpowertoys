@@ -51,7 +51,7 @@ final class WindowStateManager {
         observers = [moveObserver, resizeObserver]
     }
 
-    private static let knownWindowIdentifiers = [
+    nonisolated private static let knownWindowIdentifiers = [
         "main",
         "cc-history",
         "rclone",
