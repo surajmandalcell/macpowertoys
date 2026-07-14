@@ -341,6 +341,7 @@ final class RcloneModelTests: XCTestCase {
         XCTAssertEqual(RcloneFormat.eta(9), "9s")
         XCTAssertEqual(RcloneFormat.eta(65), "1m 5s")
         XCTAssertEqual(RcloneFormat.eta(3_661), "1h 1m")
+        XCTAssertEqual(RcloneFormat.eta(90_061), "1d 1h")
         XCTAssertEqual(RcloneFormat.duration(0), "—")
         XCTAssertEqual(RcloneFormat.duration(65), "1m 5s")
     }
