@@ -7,6 +7,7 @@ import Observation
 final class RulerManager {
     static let shared = RulerManager()
     private static let rulerThickness: CGFloat = 54
+    private static let layoutVersion = 2
 
     private(set) var rulers: [RulerState] = []
     private(set) var measurements: [RulerMeasurement] = []
@@ -14,11 +15,12 @@ final class RulerManager {
     var aspectRatio: Double?
 
     private var panels: [UUID: RulerOverlayPanel] = [:]
-    private var quitKeyMonitor: Any?
+    private var keyMonitor: Any?
     private let defaults = UserDefaults.standard
     private let statesKey = "ruler.states.v1"
     private let styleKey = "ruler.style.v1"
     private let measurementsKey = "ruler.measurements.v1"
+    private let layoutVersionKey = "ruler.layoutVersion"
 
     private init() {
         if AppRuntime.isUITesting {
@@ -30,6 +32,11 @@ final class RulerManager {
             rulers = Self.decode([RulerState].self, key: statesKey) ?? []
             measurements = Self.decode([RulerMeasurement].self, key: measurementsKey) ?? []
         }
+        if !AppRuntime.isRunningTests, defaults.integer(forKey: layoutVersionKey) < Self.layoutVersion {
+            normalizeGroupedPairs(minimumDefaultLengths: true)
+            defaults.set(Self.layoutVersion, forKey: layoutVersionKey)
+            persist()
+        }
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
             guard let self, let action = note.object as? ToolActionID else { return }
             Task { @MainActor [self, action] in self.handle(action) }
@@ -40,18 +47,22 @@ final class RulerManager {
                 ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
             }
         }
-        quitKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-                  event.charactersIgnoringModifiers?.lowercased() == "q",
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting(.capsLock) == .command,
                   let identifier = NSApp.keyWindow?.identifier?.rawValue,
                   Self.isRulerWindowIdentifier(identifier)
             else { return event }
-            self?.closeTool()
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            case "q": self?.closeTool()
+            case "w": self?.closeWindow(identifier: identifier)
+            default: return event
+            }
             return nil
         }
     }
 
     func restore() {
+        normalizeGroupedPairs()
         for state in rulers where state.isVisible { show(state.id) }
     }
 
@@ -64,6 +75,7 @@ final class RulerManager {
             createPair()
             return
         }
+        normalizeGroupedPairs()
         let visibleIDs = rulers.filter(\.isVisible).map(\.id)
         let ids = visibleIDs.isEmpty ? rulers.map(\.id) : visibleIDs
         ids.forEach(show)
@@ -160,6 +172,24 @@ final class RulerManager {
         NSApp.windows.first { $0.identifier?.rawValue == "ruler" }?.close()
     }
 
+    func closeWindow(identifier: String) {
+        if identifier == "ruler" {
+            NSApp.windows.first { $0.identifier?.rawValue == identifier }?.close()
+            return
+        }
+        guard let id = UUID(uuidString: String(identifier.dropFirst("ruler.".count))),
+              let state = rulers.first(where: { $0.id == id })
+        else { return }
+        let ids = state.groupID.map { groupID in
+            rulers.filter { $0.groupID == groupID }.map(\.id)
+        } ?? [id]
+        for index in rulers.indices where ids.contains(rulers[index].id) {
+            rulers[index].isVisible = false
+            panels[rulers[index].id]?.orderOut(nil)
+        }
+        persist()
+    }
+
     nonisolated static func isRulerWindowIdentifier(_ identifier: String?) -> Bool {
         identifier == "ruler" || identifier?.hasPrefix("ruler.") == true
     }
@@ -178,7 +208,9 @@ final class RulerManager {
         var frame = state.frame
         if let width, width.isFinite { frame.size.width = max(Self.rulerThickness, width) }
         if let height, height.isFinite { frame.size.height = max(Self.rulerThickness, height) }
-        updateFrame(id: id, frame: frame)
+        updateFrame(id: id, frame: frame, persistChanges: false)
+        normalizeGroupedPairs()
+        persist()
     }
 
     func setCalibration(_ value: Double, for screen: NSScreen?) {
@@ -198,6 +230,7 @@ final class RulerManager {
                 ?? NSScreen.screens.first { $0.frame.intersects(rulers[index].frame) }
             rulers[index].screenID = rulerScreen?.displayID
         }
+        normalizeGroupedPairs()
         persist()
     }
 
@@ -245,6 +278,7 @@ final class RulerManager {
     func groupVisible() {
         let id = UUID()
         for index in rulers.indices where rulers[index].isVisible { rulers[index].groupID = id }
+        normalizeGroupedPairs()
         persist()
     }
 
@@ -342,6 +376,51 @@ final class RulerManager {
             width: max(Self.rulerThickness, visibleFrame.width * fraction),
             height: max(Self.rulerThickness, visibleFrame.height * fraction)
         )
+        }
+    }
+
+    func normalizeGroupedPairs(minimumDefaultLengths: Bool = false) {
+        for groupID in Set(rulers.compactMap(\.groupID)) {
+            let indices = rulers.indices.filter { rulers[$0].groupID == groupID }
+            guard indices.count == 2,
+                  let horizontalIndex = indices.first(where: { rulers[$0].orientation == .horizontal }),
+                  let verticalIndex = indices.first(where: { rulers[$0].orientation == .vertical })
+            else { continue }
+
+            let savedScreenID = rulers[horizontalIndex].screenID ?? rulers[verticalIndex].screenID
+            let screen = savedScreenID.flatMap { id in NSScreen.screens.first { $0.displayID == id } }
+                ?? NSScreen.screens.first { $0.frame.intersects(rulers[horizontalIndex].frame) }
+                ?? targetScreen
+            let visible = screen?.visibleFrame ?? CGRect(x: 100, y: 100, width: 1200, height: 800)
+            var horizontal = rulers[horizontalIndex].frame
+            var vertical = rulers[verticalIndex].frame
+            horizontal.size.height = Self.rulerThickness
+            vertical.size.width = Self.rulerThickness
+            if minimumDefaultLengths {
+                horizontal.size.width = max(horizontal.width, defaultSize(for: .horizontal, in: visible).width)
+                vertical.size.height = max(vertical.height, defaultSize(for: .vertical, in: visible).height)
+            }
+            vertical.origin = CGPoint(
+                x: horizontal.minX - Self.rulerThickness,
+                y: horizontal.maxY - vertical.height
+            )
+
+            let union = horizontal.union(vertical)
+            let dx = union.width <= visible.width
+                ? min(max(visible.minX - union.minX, 0), visible.maxX - union.maxX)
+                : visible.minX - union.minX
+            let dy = union.height <= visible.height
+                ? min(max(visible.minY - union.minY, 0), visible.maxY - union.maxY)
+                : visible.minY - union.minY
+            horizontal = horizontal.offsetBy(dx: dx, dy: dy)
+            vertical = vertical.offsetBy(dx: dx, dy: dy)
+
+            rulers[horizontalIndex].frame = horizontal
+            rulers[verticalIndex].frame = vertical
+            rulers[horizontalIndex].screenID = screen?.displayID
+            rulers[verticalIndex].screenID = screen?.displayID
+            panels[rulers[horizontalIndex].id]?.setFrame(horizontal, display: false)
+            panels[rulers[verticalIndex].id]?.setFrame(vertical, display: false)
         }
     }
 

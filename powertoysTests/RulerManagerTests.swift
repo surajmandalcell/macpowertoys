@@ -66,4 +66,36 @@ final class RulerManagerTests: XCTestCase {
         XCTAssertEqual(manager.rulers.map(\.id), originalIDs)
         XCTAssertTrue(manager.rulers.allSatisfy(\.isVisible))
     }
+
+    func testGroupedPairStaysAFullSizedNonOverlappingL() throws {
+        let manager = RulerManager.shared
+        manager.removeAll()
+        defer { manager.removeAll() }
+
+        manager.createPair()
+        let vertical = try XCTUnwrap(manager.rulers.first { $0.orientation == .vertical })
+        manager.setSize(vertical.id, height: 54)
+        manager.normalizeGroupedPairs(minimumDefaultLengths: true)
+
+        let horizontal = try XCTUnwrap(manager.rulers.first { $0.orientation == .horizontal })
+        let resizedVertical = try XCTUnwrap(manager.rulers.first { $0.orientation == .vertical })
+        let screen = try XCTUnwrap(NSScreen.screens.first { $0.displayID == horizontal.screenID })
+        XCTAssertEqual(resizedVertical.height, screen.visibleFrame.height * 0.3, accuracy: 0.001)
+        XCTAssertEqual(resizedVertical.frame.maxX, horizontal.frame.minX, accuracy: 0.001)
+        XCTAssertEqual(resizedVertical.frame.maxY, horizontal.frame.maxY, accuracy: 0.001)
+        XCTAssertFalse(resizedVertical.frame.intersects(horizontal.frame))
+    }
+
+    func testCommandWClosesAGroupedPairWithoutQuittingTheApp() {
+        let manager = RulerManager.shared
+        manager.removeAll()
+        defer { manager.removeAll() }
+
+        manager.createPair()
+        let id = manager.rulers[0].id
+        manager.closeWindow(identifier: "ruler.\(id.uuidString)")
+
+        XCTAssertEqual(manager.rulers.count, 2)
+        XCTAssertTrue(manager.rulers.allSatisfy { !$0.isVisible })
+    }
 }
