@@ -30,6 +30,7 @@ final class ColorPickerUITests: XCTestCase {
         let historyFrame = historyTab.frame
         let projectsFrame = projectsTab.frame
         projectsTab.click()
+        projectsTab.click()
         XCTAssertTrue(window.staticTexts["COLOR PROJECTS"].waitForExistence(timeout: 2))
         XCTAssertEqual(historyTab.frame.minX, historyFrame.minX, accuracy: 0.5)
         XCTAssertEqual(historyTab.frame.width, historyFrame.width, accuracy: 0.5)
