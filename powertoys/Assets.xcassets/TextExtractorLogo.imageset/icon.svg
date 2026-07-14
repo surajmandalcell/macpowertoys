@@ -3,12 +3,13 @@
     <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
   </defs>
   <g clip-path="url(#tile)">
-    <rect width="512" height="512" fill="#F5B71E"/>
-    <path d="m330 330 190 190" fill="none" stroke="#23272E" stroke-width="76"
+    <rect width="512" height="512" fill="#C96C50"/>
+    <circle cx="82" cy="90" r="122" fill="#E59A6E" opacity=".7"/>
+    <path d="m330 330 190 190" fill="none" stroke="#4A2924" stroke-width="76"
           stroke-linecap="round"/>
-    <circle cx="214" cy="214" r="166" fill="#23272E"/>
-    <circle cx="214" cy="214" r="118" fill="#F7F5F0"/>
-    <g fill="none" stroke="#23272E" stroke-width="18" stroke-linecap="round"
+    <circle cx="214" cy="214" r="166" fill="#4A2924"/>
+    <circle cx="214" cy="214" r="118" fill="#F1D6B8"/>
+    <g fill="none" stroke="#7D3F34" stroke-width="18" stroke-linecap="round"
        stroke-linejoin="round">
       <path d="M148 164c14-16 28 18 42 0s28 18 42 0 26 14 42-2"/>
       <path d="M148 216c13-14 26 16 39 0s26 16 39 0 24 12 36-2"/>
