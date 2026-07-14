@@ -11,7 +11,7 @@ enum AppDataLocation {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return prepareDirectory(
             at: root,
-            isTest: ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            isTest: AppRuntime.isRunningTests
         )
     }
 

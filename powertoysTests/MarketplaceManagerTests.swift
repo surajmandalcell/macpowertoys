@@ -209,7 +209,7 @@ final class MarketplaceManagerTests: XCTestCase {
         )
         try await manager.addSource(Self.acmeURL)
 
-        let notModified = try makeManager(
+        let notModified = makeManager(
             responses: [Self.acmeURL: .success(CatalogFetchResult(data: nil, etag: "\"v1\""))],
             log: log
         )

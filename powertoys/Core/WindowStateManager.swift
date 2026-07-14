@@ -57,6 +57,7 @@ final class WindowStateManager {
     }
 
     func saveState(for window: NSWindow) {
+        guard !AppRuntime.isUITesting else { return }
         guard let identifier = window.identifier?.rawValue, Self.isTrackedIdentifier(identifier) else { return }
 
         let frame = window.frame
@@ -73,6 +74,7 @@ final class WindowStateManager {
     }
 
     func restoreState(for window: NSWindow) {
+        guard !AppRuntime.isUITesting else { return }
         guard let identifier = window.identifier?.rawValue, Self.isTrackedIdentifier(identifier) else { return }
 
         guard let data = UserDefaults.standard.data(forKey: key(for: identifier)),

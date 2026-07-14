@@ -23,7 +23,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {
-        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        if !AppRuntime.isUITesting {
+            UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        }
         ownsInstance = AppInstanceCoordinator.shared.ownsInstance
     }
 
@@ -104,7 +106,7 @@ final class AppInstanceCoordinator {
     private var instanceLock: ProcessInstanceLock?
 
     private init() {
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+        if AppRuntime.isRunningTests {
             ownsInstance = true
             return
         }
