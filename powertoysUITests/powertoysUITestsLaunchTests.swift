@@ -21,6 +21,7 @@ final class powertoysUITestsLaunchTests: XCTestCase {
     func testLaunch() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launch()
         XCTAssertTrue(app.windows["MacPowerToys"].waitForExistence(timeout: 5))
 

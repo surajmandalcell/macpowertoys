@@ -19,9 +19,15 @@ final class RulerManager {
     private let measurementsKey = "ruler.measurements.v1"
 
     private init() {
-        style = Self.decode(RulerStyle.self, key: styleKey) ?? RulerStyle()
-        rulers = Self.decode([RulerState].self, key: statesKey) ?? []
-        measurements = Self.decode([RulerMeasurement].self, key: measurementsKey) ?? []
+        if AppRuntime.isUITesting {
+            style = RulerStyle()
+            rulers = []
+            measurements = []
+        } else {
+            style = Self.decode(RulerStyle.self, key: styleKey) ?? RulerStyle()
+            rulers = Self.decode([RulerState].self, key: statesKey) ?? []
+            measurements = Self.decode([RulerMeasurement].self, key: measurementsKey) ?? []
+        }
         NotificationCenter.default.addObserver(forName: .toolActionRequested, object: nil, queue: .main) { [weak self] note in
             guard let self, let action = note.object as? ToolActionID else { return }
             Task { @MainActor [self, action] in self.handle(action) }
@@ -273,6 +279,7 @@ final class RulerManager {
     }
 
     private func persist() {
+        guard !AppRuntime.isUITesting else { return }
         defaults.set(try? JSONEncoder().encode(rulers), forKey: statesKey)
         defaults.set(try? JSONEncoder().encode(style), forKey: styleKey)
         defaults.set(try? JSONEncoder().encode(measurements), forKey: measurementsKey)

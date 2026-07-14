@@ -29,7 +29,7 @@ struct MacPowerToysApp: App {
         do {
             let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
             let config: ModelConfiguration
-            if !AppInstanceCoordinator.shared.ownsInstance {
+            if AppRuntime.isUITesting || !AppInstanceCoordinator.shared.ownsInstance {
                 config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             } else {
                 AppIdentity.migrateLegacyData()
@@ -46,7 +46,7 @@ struct MacPowerToysApp: App {
         Window("MacPowerToys", id: "main") {
             MainWindowView()
                 .task {
-                    guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+                    guard !AppRuntime.isRunningTests else { return }
                     await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
                     DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                     DeepLinkHandler.shared.handleCLIArguments()

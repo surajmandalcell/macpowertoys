@@ -19,8 +19,8 @@ final class MarketplaceInstallerTests: XCTestCase {
         super.tearDown()
     }
 
-    private static let sourceURL = URL(string: "https://raw.githubusercontent.com/acme/tools/main/catalog.json")!
-    private static let zipData = Data("fake-zip-bytes".utf8)
+    private nonisolated static let sourceURL = URL(string: "https://raw.githubusercontent.com/acme/tools/main/catalog.json")!
+    private nonisolated static let zipData = Data("fake-zip-bytes".utf8)
 
     private nonisolated static func digest(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

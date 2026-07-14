@@ -36,6 +36,7 @@ final class powertoysUITests: XCTestCase {
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launch()
         return app
     }
