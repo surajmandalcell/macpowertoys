@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct AddRemoteSheet: View {
@@ -116,13 +117,11 @@ struct AddRemoteSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     fieldTitle("CONNECTOR")
                     SearchField(text: $searchText, placeholder: "Search connectors…")
-                    Picker("Connector", selection: $selectedProviderID) {
-                        ForEach(filteredProviders) { provider in
-                            Text(provider.displayName).tag(provider.id)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: .infinity)
+                    ProviderDropdown(
+                        selection: $selectedProviderID,
+                        providers: filteredProviders,
+                        selectedName: selectedProvider?.displayName ?? "Select a connector"
+                    )
 
                     fieldTitle("REMOTE NAME")
                     TextField("my-cloud", text: $name)
@@ -351,5 +350,155 @@ struct AddRemoteSheet: View {
             Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct ProviderDropdown: View {
+    private static let controlHeight: CGFloat = 28
+    private static let rowHeight: CGFloat = 28
+    private static let maximumListHeight: CGFloat = 320
+
+    @Binding var selection: String
+    let providers: [RcloneProvider]
+    let selectedName: String
+
+    @State private var isPresented = false
+    @State private var isHoveringButton = false
+    @State private var hoveredProviderID: String?
+
+    var body: some View {
+        GeometryReader { geometry in
+            trigger(width: geometry.size.width)
+                .popover(isPresented: $isPresented, arrowEdge: .top) {
+                    providerList(width: geometry.size.width)
+                }
+        }
+        .frame(height: Self.controlHeight)
+    }
+
+    private func trigger(width: CGFloat) -> some View {
+        Button { isPresented.toggle() } label: {
+            HStack(spacing: 8) {
+                TickerText(text: selectedName)
+                    .frame(maxWidth: .infinity)
+                    .id(selectedName)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .frame(width: width, height: Self.controlHeight)
+            .background(Color.primary.opacity(isHoveringButton ? 0.1 : 0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { isHoveringButton = $0 }
+        .help(selectedName)
+        .accessibilityLabel("Connector")
+        .accessibilityValue(selectedName)
+    }
+
+    private func providerList(width: CGFloat) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: CGFloat(providers.count) * Self.rowHeight > Self.maximumListHeight) {
+                LazyVStack(spacing: 0) {
+                    if providers.isEmpty {
+                        Text("No connectors found")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: Self.rowHeight)
+                    } else {
+                        ForEach(providers) { provider in
+                            providerRow(provider)
+                                .id(provider.id)
+                        }
+                    }
+                }
+            }
+            .onAppear {
+                proxy.scrollTo(selection, anchor: .center)
+            }
+        }
+        .frame(width: width, height: listHeight)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func providerRow(_ provider: RcloneProvider) -> some View {
+        Button {
+            selection = provider.id
+            isPresented = false
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .medium))
+                    .opacity(selection == provider.id ? 1 : 0)
+                    .frame(width: 12)
+                TickerText(text: provider.displayName)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: Self.rowHeight)
+            .background(rowBackground(provider.id))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { hoveredProviderID = $0 ? provider.id : nil }
+        .help(provider.displayName)
+    }
+
+    private var listHeight: CGFloat {
+        min(max(CGFloat(providers.count), 1) * Self.rowHeight, Self.maximumListHeight)
+    }
+
+    private func rowBackground(_ providerID: String) -> Color {
+        if hoveredProviderID == providerID { return Color.primary.opacity(0.06) }
+        if selection == providerID { return Color.accentColor.opacity(0.1) }
+        return .clear
+    }
+}
+
+private struct TickerText: View {
+    private static let gap: CGFloat = 24
+    private static let pointsPerSecond: CGFloat = 24
+
+    let text: String
+    @State private var isScrolling = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            if textWidth > geometry.size.width {
+                HStack(spacing: Self.gap) {
+                    label
+                    label.accessibilityHidden(true)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .offset(x: isScrolling ? -(textWidth + Self.gap) : 0)
+                .animation(
+                    .linear(duration: Double((textWidth + Self.gap) / Self.pointsPerSecond))
+                        .repeatForever(autoreverses: false),
+                    value: isScrolling
+                )
+                .onAppear { isScrolling = true }
+            } else {
+                label
+            }
+        }
+        .frame(height: 16)
+        .clipped()
+        .accessibilityLabel(text)
+    }
+
+    private var label: some View {
+        Text(text)
+            .font(.system(size: 12))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var textWidth: CGFloat {
+        ceil((text as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 12)]).width)
     }
 }
