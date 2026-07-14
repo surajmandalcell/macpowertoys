@@ -28,10 +28,7 @@ struct AwakeView: View {
 
     private var header: some View {
         CompactTitlebar {
-            CompactTitlebarTitle(
-                title: "Awake",
-                systemImage: service.isActive ? "cup.and.saucer.fill" : "cup.and.saucer"
-            )
+            CompactTitlebarTitle(title: "Awake")
         } actions: {
             Toggle("Keep Display On", isOn: Binding(
                 get: { service.configuration.keepDisplayOn },

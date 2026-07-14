@@ -60,7 +60,7 @@ struct TextExtractorView: View {
 
     private var titlebar: some View {
         CompactTitlebar {
-            CompactTitlebarTitle(title: "Text Extractor", systemImage: "text.viewfinder")
+            CompactTitlebarTitle(title: "Text Extractor")
         } actions: {
             HStack(spacing: 8) {
                 GlobalShortcutMenu(action: .textExtractor)

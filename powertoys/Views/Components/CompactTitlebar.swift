@@ -16,34 +16,24 @@ struct CompactTitlebar<Title: View, Actions: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                title
-                Spacer(minLength: 12)
-                actions
-            }
-            .padding(.leading, clearsTrafficLights ? UtilityLayout.compactTitlebarTrafficLightInset : UtilityLayout.horizontalInset)
-            .padding(.trailing, UtilityLayout.horizontalInset)
-            .frame(height: UtilityLayout.compactTitlebarHeight - 1)
-
-            Divider()
+        HStack(spacing: 8) {
+            title
+            Spacer(minLength: 12)
+            actions
         }
+        .padding(.leading, clearsTrafficLights ? UtilityLayout.compactTitlebarTrafficLightInset : UtilityLayout.horizontalInset)
+        .padding(.trailing, UtilityLayout.horizontalInset)
+        .frame(height: UtilityLayout.compactTitlebarHeight)
     }
 }
 
 struct CompactTitlebarTitle: View {
     let title: String
-    let systemImage: String
 
     var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-            Text(title)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-        }
+        Text(title)
+            .font(.system(size: 13, weight: .medium))
+            .lineLimit(1)
     }
 }
 

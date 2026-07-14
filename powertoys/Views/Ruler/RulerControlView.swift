@@ -41,7 +41,7 @@ struct RulerControlView: View {
 
     private var header: some View {
         CompactTitlebar {
-            CompactTitlebarTitle(title: "Ruler Settings", systemImage: "ruler")
+            CompactTitlebarTitle(title: "Ruler Settings")
         } actions: {
             HStack(spacing: 8) {
                 Menu {
