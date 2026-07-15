@@ -2,13 +2,15 @@
 
 Notable changes are documented here. The project follows semantic versioning after its first stable release.
 
-## Unreleased
+## [1.7.1] - 2026-07-15
 
 ### Changed
 
 - Made compact applet titlebars borderless and consistently aligned, with one padded row, compact rounded controls, outline-free initial focus, and app names reclaiming the hidden zoom-button space.
 - Reduced the Raycast extension to MacPowerToys and built-in app launchers; separate tool-action commands are no longer exposed.
 - Embedded the source commit in local builds and made installation refuse stale DerivedData products.
+- Finalized the Text Extractor identity with the Cobalt 051 scanning-text icon.
+- Reworked the product README around native transparent window screenshots and a direct macOS download path.
 
 ## [1.7.0] - 2026-07-14
 
