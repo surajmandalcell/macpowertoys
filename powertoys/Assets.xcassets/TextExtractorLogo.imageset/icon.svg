@@ -9,11 +9,5 @@
           stroke-linecap="round"/>
     <circle cx="214" cy="214" r="166" fill="#4A2924"/>
     <circle cx="214" cy="214" r="118" fill="#F1D6B8"/>
-    <g fill="none" stroke="#7D3F34" stroke-width="18" stroke-linecap="round"
-       stroke-linejoin="round">
-      <path d="M148 164c14-16 28 18 42 0s28 18 42 0 26 14 42-2"/>
-      <path d="M148 216c13-14 26 16 39 0s26 16 39 0 24 12 36-2"/>
-      <path d="M148 268c12-12 24 14 36 0s24 14 36-2"/>
-    </g>
   </g>
 </svg>
