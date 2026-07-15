@@ -21,10 +21,8 @@ final class BookmarkManager {
     // MARK: - Public Methods
     
     func addBookmark(_ session: CCSession) {
-        // Don't add duplicates
         guard !isBookmarked(session) else { return }
         
-        // Remove oldest if at capacity
         if bookmarks.count >= maxBookmarks {
             bookmarks.removeFirst()
         }
@@ -72,7 +70,6 @@ final class BookmarkManager {
             return
         }
         
-        // Filter out bookmarks whose files no longer exist
         bookmarks = decoded.filter { FileManager.default.fileExists(atPath: $0.filePath.path) }
     }
     

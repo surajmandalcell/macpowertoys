@@ -262,6 +262,26 @@ struct MessageListView: View {
     }
 }
 
+enum CCHistoryTextSearch {
+    static func ranges(in text: String, matching query: String) -> [Range<String.Index>] {
+        guard !query.isEmpty else { return [] }
+
+        var ranges: [Range<String.Index>] = []
+        var searchStart = text.startIndex
+
+        while let range = text.range(
+            of: query,
+            options: [.caseInsensitive],
+            range: searchStart..<text.endIndex
+        ) {
+            ranges.append(range)
+            searchStart = range.upperBound
+        }
+
+        return ranges
+    }
+}
+
 private struct TerminalTextView: NSViewRepresentable {
     let messages: [CCMessage]
     let searchText: String
@@ -312,7 +332,6 @@ private struct TerminalTextView: NSViewRepresentable {
                 result.append(NSAttributedString(string: "\n"))
             }
 
-            // Thinking (if enabled)
             if filterOptions.showThinking, let thinking = message.thinking, !thinking.isEmpty {
                 result.append(NSAttributedString(
                     string: "[thinking] ",
@@ -324,25 +343,21 @@ private struct TerminalTextView: NSViewRepresentable {
                 ))
             }
 
-            // Role prefix with color
             let (prefix, color) = roleInfo(for: message.type)
             result.append(NSAttributedString(
                 string: prefix + " ",
                 attributes: [.font: boldMonoFont, .foregroundColor: color]
             ))
 
-            // Timestamp
             result.append(NSAttributedString(
                 string: Self.timeFormatter.string(from: message.timestamp) + " ",
                 attributes: [.font: monoFont, .foregroundColor: NSColor.tertiaryLabelColor]
             ))
 
-            // Content (strip code block markers, flatten to plain text)
             let plainContent = stripCodeBlockMarkers(message.content)
             appendWithSearchHighlight(to: result, text: plainContent, font: monoFont)
             result.append(NSAttributedString(string: "\n"))
 
-            // Tool calls (if enabled)
             if filterOptions.showToolCalls {
                 for tool in message.toolUse {
                     result.append(NSAttributedString(
@@ -358,7 +373,6 @@ private struct TerminalTextView: NSViewRepresentable {
                         attributes: [.font: monoFont, .foregroundColor: NSColor.tertiaryLabelColor]
                     ))
 
-                    // Tool output (if enabled)
                     if filterOptions.showToolOutputs, let output = tool.output {
                         result.append(NSAttributedString(
                             string: "[output] ",
@@ -413,19 +427,14 @@ private struct TerminalTextView: NSViewRepresentable {
             return
         }
 
-        let lowercasedText = text.lowercased()
-        let lowercasedSearch = searchText.lowercased()
         var lastEnd = text.startIndex
 
-        var searchStart = lowercasedText.startIndex
-        while let range = lowercasedText.range(of: lowercasedSearch, range: searchStart..<lowercasedText.endIndex) {
-            // Text before match
+        for range in CCHistoryTextSearch.ranges(in: text, matching: searchText) {
             if range.lowerBound > lastEnd {
                 let beforeRange = lastEnd..<range.lowerBound
                 result.append(NSAttributedString(string: String(text[beforeRange]), attributes: [.font: font, .foregroundColor: textColor]))
             }
 
-            // Highlighted match
             let matchText = String(text[range])
             result.append(NSAttributedString(
                 string: matchText,
@@ -433,10 +442,8 @@ private struct TerminalTextView: NSViewRepresentable {
             ))
 
             lastEnd = range.upperBound
-            searchStart = range.upperBound
         }
 
-        // Remaining text after last match
         if lastEnd < text.endIndex {
             result.append(NSAttributedString(string: String(text[lastEnd...]), attributes: [.font: font, .foregroundColor: textColor]))
         }
