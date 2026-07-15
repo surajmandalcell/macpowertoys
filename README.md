@@ -5,117 +5,120 @@
 <h1 align="center">MacPowerToys</h1>
 
 <p align="center">
-  A focused collection of fast, native utilities for macOS.
+  <strong>Small macOS utilities. One native home.</strong><br>
+  Measure, capture, stay awake, search history, and move files<br>
+  without a pile of unrelated menu bar apps.
 </p>
 
 <p align="center">
-  <img alt="macOS 26.2+" src="https://img.shields.io/badge/macOS-26.2%2B-111111?logo=apple">
-  <img alt="Swift 5" src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white">
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-4C8BF5"></a>
+  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/surajmandalcell/macpowertoys?style=flat-square&color=087EFF"></a>
+  <img alt="macOS 26.2 or newer" src="https://img.shields.io/badge/macOS-26.2%2B-171717?style=flat-square&logo=apple">
+  <img alt="Built with Swift" src="https://img.shields.io/badge/Swift-5-F05138?style=flat-square&logo=swift&logoColor=white">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34C759?style=flat-square"></a>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="876" alt="MacPowerToys launcher showing the utility library">
+  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest"><b>Download for macOS</b></a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#build-from-source">Build from source</a>
 </p>
 
-MacPowerToys brings seven practical tools into one consistent SwiftUI app. Each utility has its own remembered window, keyboard-first controls, and a dedicated Raycast launcher.
+<p align="center">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="876" alt="MacPowerToys utility launcher">
+</p>
 
-> [!IMPORTANT]
-> MacPowerToys is pre-release software. Build it from source and keep backups of important data.
+<table>
+  <tr>
+    <td width="33%" align="center"><b>Native</b><br><sub>SwiftUI, AppKit, system materials, and proper Mac windows.</sub></td>
+    <td width="33%" align="center"><b>Private</b><br><sub>Recognition, history, settings, and diagnostics stay local.</sub></td>
+    <td width="33%" align="center"><b>Consistent</b><br><sub>One launcher, remembered windows, and keyboard-first controls.</sub></td>
+  </tr>
+</table>
 
-## Included tools
+## Seven focused tools
 
-| Tool | Purpose |
-|---|---|
-| **Ruler** | Measure layouts with horizontal and vertical rulers, guides, calibrated units, and region capture. |
-| **Awake** | Keep the Mac or display awake indefinitely, for an interval, until a time, or while a process runs. |
-| **Color Picker** | Sample screen colors, copy developer formats, and keep searchable local history. |
-| **Text Extractor** | Select a screen region and copy text using Apple's on-device Vision framework. |
-| **Cloud Sync** | Plan and run copy, move, mirror, and two-way sync jobs with visible progress and change history. |
-| **Claude History** | Search, bookmark, and export local Claude Code conversation history. |
-| **Logs** | Search and filter MacPowerToys diagnostics. |
+| | Tool | What it does |
+|:--:|---|---|
+| <img src="powertoys/Assets.xcassets/RulerLogo.imageset/icon.svg" width="30" alt=""> | **Ruler** | Measure layouts with paired rulers, guides, calibrated units, and region capture. |
+| <img src="powertoys/Assets.xcassets/AwakeLogo.imageset/icon.svg" width="30" alt=""> | **Awake** | Keep the Mac or display awake by duration, end time, or running process. |
+| <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.svg" width="30" alt=""> | **Color Picker** | Sample the screen, copy developer formats, and search local color history. |
+| <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.svg" width="30" alt=""> | **Text Extractor** | Select any screen region and copy text with on-device Apple Vision. |
+| <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="30" alt=""> | **Cloud Sync** | Plan and run copy, move, mirror, and two-way rclone transfers. |
+| <img src="powertoys/Assets.xcassets/ClaudeHistoryLogo.imageset/icon.svg" width="30" alt=""> | **Claude History** | Search, bookmark, and export local Claude Code conversations. |
+| <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="30" alt=""> | **Logs** | Search and filter MacPowerToys diagnostics. |
 
-## A closer look
+## Designed for the Mac
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/ruler.png" alt="Ruler appearance, guide, and active-ruler controls"><br>
-      <sub><b>Ruler</b> · calibrated units, guides, and paired rulers</sub>
+      <img src="docs/screenshots/ruler.png" alt="Ruler controls"><br>
+      <sub><b>Ruler</b> · calibrated units, guides, and paired overlays</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/awake.png" alt="Awake duration and process controls"><br>
-      <sub><b>Awake</b> · precise time, display, and process controls</sub>
+      <img src="docs/screenshots/awake.png" alt="Awake controls"><br>
+      <sub><b>Awake</b> · precise display, time, and process controls</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/color-picker.png" alt="Color Picker history and copy-format controls"><br>
+      <img src="docs/screenshots/color-picker.png" alt="Color Picker history"><br>
       <sub><b>Color Picker</b> · compact, searchable color history</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/text-extractor.png" alt="Text Extractor recognition settings"><br>
-      <sub><b>Text Extractor</b> · private on-device recognition</sub>
+      <img src="docs/screenshots/text-extractor.png" alt="Text Extractor controls"><br>
+      <sub><b>Text Extractor</b> · fast, private text recognition</sub>
     </td>
   </tr>
 </table>
 
 ## Build from source
 
-Requirements: macOS 26.2+, Xcode 26.2+, and [rclone](https://rclone.org/install/) for Cloud Sync. Raycast is optional.
+You need macOS 26.2+, Xcode 26.2+, and
+[rclone](https://rclone.org/install/) for Cloud Sync.
 
 ```bash
 brew install rclone
-git clone https://github.com/surajmandalcell/powertoys.git
-cd powertoys
+git clone https://github.com/surajmandalcell/macpowertoys.git
+cd macpowertoys
 make build
 ```
 
-Open `powertoys.xcodeproj` to run the `powertoys` scheme in Xcode. On a Mac without an Apple Development identity, use an explicit ad-hoc build:
+Open `powertoys.xcodeproj` and run the `powertoys` scheme, or
+use `make build ADHOC=1` on a Mac without an Apple Development
+identity. Raycast users can import the `raycast` directory;
+the extension exposes only the main app and its seven tools.
 
-```bash
-make build ADHOC=1
-```
+> [!NOTE]
+> Personal-team signing works on the signing Mac. Public,
+> warning-free distribution requires Developer ID signing and
+> Apple notarization.
 
-Personal-team signing is suitable for the signing Mac. Public distribution requires a paid Apple Developer membership, Developer ID signing, and notarization.
+## Cloud Sync is powered by rclone
 
-## Cloud Sync, powered by rclone
+MacPowerToys gives the excellent open-source
+[rclone](https://rclone.org/) project a native Mac interface.
+Provider credentials and remote configuration remain under
+rclone's control.
 
-Cloud Sync is a native interface around the excellent open-source [rclone](https://rclone.org/) project. Provider credentials and remote configuration remain under rclone's control.
-
-MacPowerToys dry-runs each transfer before copying, preserves completed-file progress across relaunches, and records the latest 100 local changes per transfer. **Recalculate** only raises the original plan when new remaining work is found; it never discards completed progress or silently lowers the total.
-
-Do not replace a running installation while a transfer is active. Pause or finish the transfer first.
+Every transfer is dry-run planned before data moves. Completed
+progress survives relaunches, **Recalculate** only adds newly
+discovered work, and each transfer keeps its latest 100 local
+changes. Never replace a running installation during a transfer.
 
 ## Privacy and security
 
-- Text recognition runs locally with Apple Vision; MacPowerToys does not upload selected screenshots.
-- Histories, logs, settings, transfer state, and window geometry stay in local Application Support storage.
-- Cloud credentials stay in rclone's local configuration. The loopback control API receives a fresh random credential on every launch.
-- Marketplace apps must match their declared checksum, bundle identifier, Developer ID team, and Apple notarization before installation.
+- Text recognition runs locally with Apple Vision.
+- Histories, logs, settings, and window positions stay local.
+- Cloud credentials remain in rclone's local configuration.
+- The rclone control API uses a fresh random credential per launch.
+- Marketplace apps require a declared checksum, Developer ID,
+  bundle identity, and Apple notarization.
 
-Read the full [Privacy Policy](PRIVACY.md) and [Security Policy](SECURITY.md).
+Read the [Privacy Policy](PRIVACY.md),
+[Security Policy](SECURITY.md), and
+[Contributing Guide](CONTRIBUTING.md).
 
-## Raycast
-
-The companion extension exposes only MacPowerToys and its seven utilities, without cluttering Raycast with internal actions.
-
-```bash
-cd raycast
-npm ci
-npm run build
-```
-
-Import the `raycast` directory through Raycast's **Import Extension** command. Launchers use the `macpowertoys://` URL scheme.
-
-## Project layout
-
-```text
-powertoys/        SwiftUI app, models, services, and assets
-powertoysTests/   Unit and local integration tests
-powertoysUITests/ UI smoke tests
-raycast/          Optional Raycast launchers
-docs/             Product assets and archived specifications
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. MacPowerToys is available under the [MIT License](LICENSE).
+<p align="center">
+  Made for macOS · Released under the <a href="LICENSE">MIT License</a>
+</p>
