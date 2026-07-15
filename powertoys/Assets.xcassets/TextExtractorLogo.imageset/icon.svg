@@ -3,8 +3,8 @@
     <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
   </defs>
   <g clip-path="url(#tile)">
-    <rect width="512" height="512" fill="#C96C50"/>
-    <circle cx="82" cy="90" r="122" fill="#E59A6E" opacity=".7"/>
+    <rect width="512" height="512" fill="#FF6438"/>
+    <circle cx="82" cy="90" r="122" fill="#FFB24F" opacity=".78"/>
     <path d="m330 330 190 190" fill="none" stroke="#4A2924" stroke-width="76"
           stroke-linecap="round"/>
     <circle cx="214" cy="214" r="166" fill="#4A2924"/>
