@@ -33,6 +33,11 @@ struct CCHistoryWindowView: View {
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("cc-history") == true else { return }
             showSettingsPage = true
         }
+        .onChange(of: projectManager.recentlyUpdatedSessionIds) { _, sessionIds in
+            for sessionId in sessionIds {
+                bookmarkManager.markAsUpdated(sessionId)
+            }
+        }
         .onAppear {
             projectManager.startWatching()
             projectManager.loadProjectsInBackground()

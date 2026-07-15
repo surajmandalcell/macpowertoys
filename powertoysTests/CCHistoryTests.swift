@@ -294,6 +294,13 @@ final class CCHistoryTests: XCTestCase {
         XCTAssertTrue(options.shouldShow(message: mixedMessage))
     }
 
+    func testTextSearchUsesOriginalUnicodeIndices() {
+        let text = "İstanbul and İstanbul"
+        let ranges = CCHistoryTextSearch.ranges(in: text, matching: "İS")
+
+        XCTAssertEqual(ranges.map { String(text[$0]) }, ["İs", "İs"])
+    }
+
     func testSessionWithZeroMessageCount() {
         let session = CCSession(
             id: "empty-session",
