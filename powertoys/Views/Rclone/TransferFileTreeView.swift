@@ -121,6 +121,7 @@ struct TransferFileTreeView: View {
 
             if showPatternEditor {
                 TextEditor(text: $patternsText)
+                    .thinScrollIndicators()
                     .font(.system(size: 11, design: .monospaced))
                     .scrollContentBackground(.hidden)
                     .frame(height: 70)
@@ -187,6 +188,7 @@ struct TransferFileTreeView: View {
             }
             .padding(8)
         }
+        .thinScrollIndicators()
     }
 
     @ViewBuilder
@@ -247,6 +249,7 @@ struct TransferFileTreeView: View {
                     }
                     .padding(8)
                 }
+                .thinScrollIndicators()
             }
         }
     }
@@ -349,6 +352,7 @@ struct TransferFileTreeView: View {
                     }
                     .padding(8)
                 }
+                .thinScrollIndicators()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

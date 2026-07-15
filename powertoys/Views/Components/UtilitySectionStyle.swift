@@ -44,6 +44,15 @@ extension View {
     }
 }
 
+extension NSScrollView {
+    func configureThinScrollIndicators() {
+        scrollerStyle = .overlay
+        autohidesScrollers = true
+        verticalScroller?.controlSize = .mini
+        horizontalScroller?.controlSize = .mini
+    }
+}
+
 private struct ThinScrollIndicatorConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         ThinScrollIndicatorView()
@@ -63,10 +72,7 @@ private final class ThinScrollIndicatorView: NSView {
     func configureEnclosingScrollView() {
         DispatchQueue.main.async { [weak self] in
             guard let scrollView = self?.enclosingScrollView else { return }
-            scrollView.scrollerStyle = .overlay
-            scrollView.autohidesScrollers = true
-            scrollView.verticalScroller?.controlSize = .mini
-            scrollView.horizontalScroller?.controlSize = .mini
+            scrollView.configureThinScrollIndicators()
         }
     }
 }

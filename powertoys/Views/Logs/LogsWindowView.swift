@@ -144,6 +144,7 @@ private struct LogsSettingsSheet: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .thinScrollIndicators()
         }
         .frame(width: 420, height: 240)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -166,11 +167,9 @@ private struct LogTextView: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
+        scrollView.configureThinScrollIndicators()
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
-        scrollView.verticalScroller?.controlSize = .mini
 
         let textView = NSTextView()
         textView.isEditable = false

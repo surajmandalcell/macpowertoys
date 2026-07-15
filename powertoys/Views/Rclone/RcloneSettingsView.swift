@@ -21,6 +21,7 @@ struct RcloneSettingsView: View {
         Group {
             Section {
                 TextEditor(text: $ignorePatterns)
+                    .thinScrollIndicators()
                     .font(.system(size: 12, design: .monospaced))
                     .frame(height: 120)
                     .scrollContentBackground(.hidden)

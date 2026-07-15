@@ -155,6 +155,7 @@ struct NewTransferSheet: View {
                 .padding(.top, 2)
 
             TextEditor(text: $extraExcludesText)
+                .thinScrollIndicators()
                 .font(.system(size: 12, design: .monospaced))
                 .scrollContentBackground(.hidden)
                 .padding(6)

@@ -43,6 +43,7 @@ struct RemoteSettingsSheet: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .thinScrollIndicators()
         }
         .frame(width: 440, height: 300)
         .background(Color(nsColor: .windowBackgroundColor))
