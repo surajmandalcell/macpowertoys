@@ -50,94 +50,6 @@ class CCHistoryParser {
         return messages
     }
 
-    /// Stream-parse a JSONL file, yielding messages as they're parsed
-    static func parseJSONLFileStreaming(at url: URL) -> AsyncStream<CCMessage> {
-        AsyncStream { continuation in
-            Task.detached(priority: .userInitiated) {
-                guard let handle = FileHandle(forReadingAtPath: url.path) else {
-                    continuation.finish()
-                    return
-                }
-                defer { try? handle.close() }
-
-                var buffer = Data()
-                let chunkSize = 8192
-
-                while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
-                    buffer.append(chunk)
-
-                    while let newlineRange = buffer.range(of: Data("\n".utf8)) {
-                        let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
-                        buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
-
-                        guard !lineData.isEmpty,
-                              let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                              let type = json["type"] as? String,
-                              ["user", "assistant", "system"].contains(type),
-                              let message = parseMessage(from: json) else {
-                            continue
-                        }
-
-                        continuation.yield(message)
-                    }
-                }
-
-                if !buffer.isEmpty,
-                   let json = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
-                   let type = json["type"] as? String,
-                   ["user", "assistant", "system"].contains(type),
-                   let message = parseMessage(from: json) {
-                    continuation.yield(message)
-                }
-
-                continuation.finish()
-            }
-        }
-    }
-    
-    /// Parse session metadata (first user message, timestamp) quickly without loading all messages
-    nonisolated static func parseSessionMetadata(at url: URL) -> (firstUserMessage: String?, timestamp: Date?, messageCount: Int) {
-        guard let data = try? String(contentsOf: url, encoding: .utf8) else {
-            return (nil, nil, 0)
-        }
-        
-        let lines = data.components(separatedBy: .newlines)
-        var firstUserMessage: String?
-        var latestTimestamp: Date?
-        var messageCount = 0
-        
-        for line in lines {
-            guard !line.isEmpty,
-                  let lineData = line.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
-                continue
-            }
-            
-            guard let type = json["type"] as? String,
-                  ["user", "assistant", "system"].contains(type) else {
-                continue
-            }
-            
-            messageCount += 1
-            
-            // Extract timestamp
-            if let timestampStr = json["timestamp"] as? String {
-                if let date = parseTimestamp(timestampStr) {
-                    if latestTimestamp == nil || date > latestTimestamp! {
-                        latestTimestamp = date
-                    }
-                }
-            }
-            
-            // Get first user message
-            if type == "user" && firstUserMessage == nil {
-                firstUserMessage = extractContent(from: json)
-            }
-        }
-        
-        return (firstUserMessage, latestTimestamp, messageCount)
-    }
-
     /// Quick metadata parsing - only gets first user message and timestamp (no message count)
     nonisolated static func parseSessionMetadataQuick(at url: URL) -> (firstUserMessage: String?, timestamp: Date?) {
         guard let handle = FileHandle(forReadingAtPath: url.path) else { return (nil, nil) }
@@ -174,42 +86,6 @@ class CCHistoryParser {
         }
 
         return (firstUserMessage, latestTimestamp)
-    }
-
-    /// Efficiently count messages using chunked reading (for background queue)
-    nonisolated static func countMessages(at url: URL) -> Int {
-        guard let handle = FileHandle(forReadingAtPath: url.path) else { return 0 }
-        defer { try? handle.close() }
-
-        var count = 0
-        var buffer = Data()
-        let chunkSize = 65536
-
-        while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
-            buffer.append(chunk)
-
-            while let newlineRange = buffer.range(of: Data("\n".utf8)) {
-                let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
-                buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
-
-                guard !lineData.isEmpty,
-                      let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                      let type = json["type"] as? String,
-                      ["user", "assistant", "system"].contains(type) else {
-                    continue
-                }
-                count += 1
-            }
-        }
-
-        if !buffer.isEmpty,
-           let json = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
-           let type = json["type"] as? String,
-           ["user", "assistant", "system"].contains(type) {
-            count += 1
-        }
-
-        return count
     }
 
     // MARK: - Content Search

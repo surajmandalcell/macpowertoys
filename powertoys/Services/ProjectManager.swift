@@ -162,44 +162,6 @@ final class ProjectManager {
         }
     }
 
-    private nonisolated static func extractFirstUserMessage(from url: URL) -> String? {
-        guard let handle = FileHandle(forReadingAtPath: url.path) else { return nil }
-        defer { try? handle.close() }
-
-        guard let chunk = try? handle.read(upToCount: 8192) else { return nil }
-        guard let content = String(data: chunk, encoding: .utf8) else { return nil }
-
-        for line in content.components(separatedBy: "\n") {
-            guard !line.isEmpty,
-                  let lineData = line.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                  let type = json["type"] as? String,
-                  type == "user" else {
-                continue
-            }
-
-            if let message = json["message"] as? [String: Any] {
-                if let text = message["content"] as? String {
-                    return String(text.prefix(100))
-                }
-                if let contentArray = message["content"] as? [[String: Any]] {
-                    for item in contentArray {
-                        if let itemType = item["type"] as? String, itemType == "text",
-                           let text = item["text"] as? String {
-                            return String(text.prefix(100))
-                        }
-                    }
-                }
-            }
-
-            if let text = json["content"] as? String {
-                return String(text.prefix(100))
-            }
-        }
-
-        return nil
-    }
-
     // MARK: - Message Loading
 
     func loadMessages(for session: CCSession, isRefresh: Bool = false) async {

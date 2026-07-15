@@ -31,12 +31,6 @@ class ExportManager {
         }
     }
     
-    static func exportToClipboard(messages: [CCMessage], format: ExportFormat) {
-        let content = formatMessages(messages, format: format)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(content, forType: .string)
-    }
-    
     static func formatMessages(_ messages: [CCMessage], format: ExportFormat) -> String {
         switch format {
         case .markdown:

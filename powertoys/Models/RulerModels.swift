@@ -65,11 +65,6 @@ struct RulerStyle: Codable, Equatable, Sendable {
         return displayCalibrations[String(id)] ?? calibration
     }
 
-    func hasCalibration(for screen: NSScreen?) -> Bool {
-        guard let id = screen?.displayID else { return false }
-        return displayCalibrations[String(id)] != nil
-    }
-
     private enum CodingKeys: String, CodingKey {
         case unit, zeroCorner, backgroundOpacity, defaultSizeFraction, red, green, blue, floats, hasShadow, calibration, displayCalibrations
     }

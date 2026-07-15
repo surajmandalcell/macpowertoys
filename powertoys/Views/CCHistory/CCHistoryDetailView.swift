@@ -443,49 +443,6 @@ private struct TerminalTextView: NSViewRepresentable {
     }
 }
 
-// MARK: - Panel Contents
-
-struct ToolDetailsPanelContent: View {
-    let tool: ToolUseBlock
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Input")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text(tool.input)
-                        .font(.system(.body, design: .monospaced))
-                        .textSelection(.enabled)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(nsColor: .textBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-
-                if let output = tool.output {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Output")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Text(output)
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(nsColor: .textBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                }
-            }
-            .padding(16)
-        }
-    }
-}
-
 @MainActor
 struct ThinkingPanelContent: View {
     let messages: [CCMessage]

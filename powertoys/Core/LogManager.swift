@@ -136,24 +136,6 @@ final class LogManager {
         log(message, level: .debug, source: source)
     }
 
-    func getLogs(since date: Date? = nil, level: LogLevel? = nil, source: String? = nil) -> [LogEntryData] {
-        var result = logs
-
-        if let date {
-            result = result.filter { $0.timestamp >= date }
-        }
-
-        if let level {
-            result = result.filter { $0.level.rawValue <= level.rawValue }
-        }
-
-        if let source {
-            result = result.filter { $0.source == source }
-        }
-
-        return result
-    }
-
     func clearMemoryLogs() {
         logs.removeAll()
     }
