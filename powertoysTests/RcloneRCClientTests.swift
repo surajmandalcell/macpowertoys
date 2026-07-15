@@ -11,7 +11,7 @@ final class RcloneRCClientTests: XCTestCase {
     func testAuthenticatedRequestUsesBasicAuthorization() async throws {
         URLProtocolStub.handler = { request in
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Basic bWFjOnNlY3JldA==")
-            return Self.response(for: request, json: ["version": "1.72.0"])
+            return try Self.response(for: request, json: ["version": "1.72.0"])
         }
 
         let client = makeClient(credentials: .init(username: "mac", password: "secret"))
@@ -22,7 +22,7 @@ final class RcloneRCClientTests: XCTestCase {
     func testProviderDiscoveryDecodesRcloneSchema() async throws {
         URLProtocolStub.handler = { request in
             XCTAssertEqual(request.url?.path, "/config/providers")
-            return Self.response(for: request, json: [
+            return try Self.response(for: request, json: [
                 "providers": [[
                     "Name": "drive",
                     "Description": "Google Drive",
@@ -77,7 +77,7 @@ final class RcloneRCClientTests: XCTestCase {
             XCTAssertEqual(json["type"] as? String, "drive")
             XCTAssertEqual(opt["nonInteractive"] as? Bool, true)
             XCTAssertNil(opt["all"], "the form already collects provider options; rclone should only ask post-config questions")
-            return Self.response(for: request, json: [
+            return try Self.response(for: request, json: [
                 "State": "*oauth-islocal,teamdrive,,",
                 "Option": [
                     "Name": "config_is_local",
@@ -122,7 +122,7 @@ final class RcloneRCClientTests: XCTestCase {
             XCTAssertEqual(opt["continue"] as? Bool, true)
             XCTAssertEqual(opt["state"] as? String, "oauth-state")
             XCTAssertEqual(opt["result"] as? String, "true")
-            return Self.response(for: request, json: ["State": "", "Error": ""])
+            return try Self.response(for: request, json: ["State": "", "Error": ""])
         }
 
         let step = try await makeClient().continueConfiguration(
@@ -138,7 +138,7 @@ final class RcloneRCClientTests: XCTestCase {
 
     func testProviderOptionDecodesPasswordAdvancedAndNumericDefaults() async throws {
         URLProtocolStub.handler = { request in
-            Self.response(for: request, json: [
+            try Self.response(for: request, json: [
                 "providers": [[
                     "Name": "sftp",
                     "Description": "SFTP",
@@ -173,20 +173,20 @@ final class RcloneRCClientTests: XCTestCase {
             paths.append(request.url?.path ?? "")
             switch request.url?.path {
             case "/rc/noop":
-                return Self.response(for: request, json: [:])
+                return try Self.response(for: request, json: [:])
             case "/config/listremotes":
-                return Self.response(for: request, json: ["remotes": ["archive:", "photos:"]])
+                return try Self.response(for: request, json: ["remotes": ["archive:", "photos:"]])
             case "/config/dump":
-                return Self.response(for: request, json: [
+                return try Self.response(for: request, json: [
                     "archive": ["type": "s3"],
                     "photos": ["type": "drive"],
                     "invalid": "not-a-dictionary"
                 ])
             case "/operations/about":
-                return Self.response(for: request, json: ["total": 1_000, "used": 250.0, "free": 750])
+                return try Self.response(for: request, json: ["total": 1_000, "used": 250.0, "free": 750])
             default:
                 XCTFail("Unexpected path: \(request.url?.path ?? "nil")")
-                return Self.response(for: request, json: [:])
+                return try Self.response(for: request, json: [:])
             }
         }
 
@@ -205,7 +205,7 @@ final class RcloneRCClientTests: XCTestCase {
 
     func testProvidersSortByDescriptionAndRejectMissingSchema() async throws {
         URLProtocolStub.handler = { request in
-            Self.response(for: request, json: [
+            try Self.response(for: request, json: [
                 "providers": [
                     ["Name": "z-local", "Description": "Alpha Local"],
                     ["Name": "a-cloud", "Description": "Zulu Cloud"],
@@ -216,7 +216,7 @@ final class RcloneRCClientTests: XCTestCase {
         let providerNames = try await makeClient().providers().map(\.name)
         XCTAssertEqual(providerNames, ["z-local", "a-cloud"])
 
-        URLProtocolStub.handler = { request in Self.response(for: request, json: [:]) }
+        URLProtocolStub.handler = { request in try Self.response(for: request, json: [:]) }
         do {
             _ = try await makeClient().providers()
             XCTFail("Expected a schema error")
@@ -235,7 +235,7 @@ final class RcloneRCClientTests: XCTestCase {
             XCTAssertEqual(body["_group"] as? String, "job/one")
             XCTAssertEqual((body["_config"] as? [String: Any])?["Transfers"] as? Int, 8)
             XCTAssertEqual((body["_filter"] as? [String: Any])?["ExcludeRule"] as? [String], ["*.tmp"])
-            return Self.response(for: request, json: ["jobid": 42.0])
+            return try Self.response(for: request, json: ["jobid": 42.0])
         }
 
         let id = try await makeClient().startJob(
@@ -250,7 +250,7 @@ final class RcloneRCClientTests: XCTestCase {
     }
 
     func testMissingJobIDReturnsDecodingError() async throws {
-        URLProtocolStub.handler = { request in Self.response(for: request, json: [:]) }
+        URLProtocolStub.handler = { request in try Self.response(for: request, json: [:]) }
         do {
             _ = try await makeClient().startSizeJob(fs: "/source", excludePatterns: [])
             XCTFail("Expected a missing job ID error")
@@ -263,7 +263,7 @@ final class RcloneRCClientTests: XCTestCase {
         URLProtocolStub.handler = { request in
             let body = try Self.body(for: request)
             XCTAssertEqual((body["opt"] as? [String: Any])?["recurse"] as? Bool, true)
-            return Self.response(for: request, json: ["list": [
+            return try Self.response(for: request, json: ["list": [
                 ["Path": "z.txt", "Size": 12.0, "ModTime": "2026-07-13T10:20:30Z", "MimeType": "text/plain"],
                 ["Path": "folder", "Name": "Folder", "IsDir": true],
                 ["Name": "missing path"]
@@ -283,7 +283,7 @@ final class RcloneRCClientTests: XCTestCase {
             let body = try Self.body(for: request)
             XCTAssertEqual(body["fs"] as? String, "drive:")
             XCTAssertEqual(body["remote"] as? String, "photos/2026")
-            return Self.response(for: request, json: ["item": ["ID": "folder-1", "IsDir": true]])
+            return try Self.response(for: request, json: ["item": ["ID": "folder-1", "IsDir": true]])
         }
 
         let id = try await makeClient().folderID(fs: "drive:", remote: "photos/2026")
@@ -295,7 +295,8 @@ final class RcloneRCClientTests: XCTestCase {
         URLProtocolStub.handler = { request in
             let body = try Self.body(for: request)
             calls.append((request.url?.path ?? "", body))
-            return Self.response(for: request, json: request.url?.path == "/operations/copyfile" ? ["jobid": 8] : [:])
+            let response = request.url?.path == "/operations/copyfile" ? ["jobid": 8] : [:]
+            return try Self.response(for: request, json: response)
         }
 
         let client = makeClient()
@@ -323,12 +324,12 @@ final class RcloneRCClientTests: XCTestCase {
         URLProtocolStub.handler = { request in
             switch request.url?.path {
             case "/job/status":
-                return Self.response(for: request, json: [
+                return try Self.response(for: request, json: [
                     "finished": true, "success": true, "duration": 2.5,
                     "output": ["bytes": 1_024.0, "count": 3.0]
                 ])
             case "/core/stats":
-                return Self.response(for: request, json: [
+                return try Self.response(for: request, json: [
                     "bytes": 500.0, "totalBytes": 1_000, "speed": 25,
                     "eta": 20, "errors": 1.0, "checks": 2, "totalChecks": 4.0,
                     "transfers": 3, "totalTransfers": 6.0, "elapsedTime": 10,
@@ -339,7 +340,7 @@ final class RcloneRCClientTests: XCTestCase {
                     ], ["size": 1]]
                 ])
             default:
-                return Self.response(for: request, json: [:])
+                return try Self.response(for: request, json: [:])
             }
         }
 
@@ -364,7 +365,7 @@ final class RcloneRCClientTests: XCTestCase {
 
     func testHTTPAndTransportFailuresMapToStableErrors() async throws {
         URLProtocolStub.handler = { request in
-            Self.response(for: request, status: 401, json: ["error": "bad credentials"])
+            try Self.response(for: request, status: 401, json: ["error": "bad credentials"])
         }
         do {
             try await makeClient().ping()
@@ -397,14 +398,19 @@ final class RcloneRCClientTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
-    private static func response(for request: URLRequest, status: Int = 200, json: [String: Any]) -> (HTTPURLResponse, Data) {
-        let response = HTTPURLResponse(
-            url: request.url!,
+    private static func response(
+        for request: URLRequest,
+        status: Int = 200,
+        json: [String: Any]
+    ) throws -> (HTTPURLResponse, Data) {
+        let url = try XCTUnwrap(request.url)
+        let response = try XCTUnwrap(HTTPURLResponse(
+            url: url,
             statusCode: status,
             httpVersion: nil,
             headerFields: ["Content-Type": "application/json"]
-        )!
-        return (response, try! JSONSerialization.data(withJSONObject: json))
+        ))
+        return (response, try JSONSerialization.data(withJSONObject: json))
     }
 }
 

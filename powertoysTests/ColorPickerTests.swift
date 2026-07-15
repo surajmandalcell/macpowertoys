@@ -22,16 +22,16 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(sampler.showCount, 2)
     }
 
-    func testProjectsOwnNewPicksAndDeduplicateIndependently() {
+    func testProjectsOwnNewPicksAndDeduplicateIndependently() throws {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
         let sample = ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1)
 
-        let website = try! XCTUnwrap(service.createProject(named: "Website"))
+        let website = try XCTUnwrap(service.createProject(named: "Website"))
         XCTAssertFalse(service.canCreateProject(named: " website "))
         XCTAssertTrue(service.canCreateProject(named: "App"))
         service.add(sample)
-        let app = try! XCTUnwrap(service.createProject(named: "App"))
+        let app = try XCTUnwrap(service.createProject(named: "App"))
         service.add(sample)
         service.add(sample)
 
@@ -40,10 +40,10 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(service.selectedProjectID, app.id)
     }
 
-    func testProjectsAndSelectionPersist() {
+    func testProjectsAndSelectionPersist() throws {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
-        let project = try! XCTUnwrap(service.createProject(named: "Brand"))
+        let project = try XCTUnwrap(service.createProject(named: "Brand"))
         service.add(ColorSample(red: 0.1, green: 0.2, blue: 0.3, alpha: 1))
 
         let restored = ColorPickerService(defaults: defaults)
@@ -53,12 +53,12 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(restored.samples(in: project.id).count, 1)
     }
 
-    func testClearAllRemovesEveryColorAndKeepsProjects() {
+    func testClearAllRemovesEveryColorAndKeepsProjects() throws {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
         service.add(ColorSample(red: 1, green: 0, blue: 0, alpha: 1))
         service.togglePin(service.history[0].id)
-        let project = try! XCTUnwrap(service.createProject(named: "Brand"))
+        let project = try XCTUnwrap(service.createProject(named: "Brand"))
         service.add(ColorSample(red: 0, green: 0, blue: 1, alpha: 1))
         service.togglePin(service.history[0].id)
 
