@@ -1,5 +1,17 @@
 # Text Extractor Troubleshooting
 
+## Icon Identity
+
+- **Symptom:** The icon drifts from the selected design, adds content inside the
+  lens, or gives each wave a competing accent color.
+- **Cause:** Broad icon explorations were applied without locking the approved
+  geometry and color hierarchy.
+- **Invariant:** Use the selected Cobalt 051 icon: low-right ivory loupe, empty
+  powder-blue lens, and two muted sand waves on cobalt. The waves use one hue
+  family and the lens contains no glyph or decoration.
+- **Check:** Render the asset at 512pt and confirm its silhouette and colors
+  match Cobalt 051 before building the asset catalog.
+
 ## Window Information Architecture
 
 - **Symptom:** Recognition controls occupy the home view, a redundant Ready

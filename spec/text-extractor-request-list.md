@@ -6,7 +6,7 @@ direct user correction or verified result changes a status.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Done | Create 20 visually different handwritten-loupe icon options in `tmp/textextractor.html`. | The page defines and renders exactly 20 named color and material variants. | None. |
-| Done | Use the chosen "Clay Studio" icon in the app. | `TextExtractorLogo.imageset/icon.svg` uses the Clay Studio terracotta, espresso, sand, and handwritten-loupe geometry from the option page. | None. |
+| Done | Use the selected "Cobalt 051" icon in the app. | `TextExtractorLogo.imageset/icon.svg` uses the approved low-right loupe, empty powder-blue lens, and muted sand wave hierarchy on cobalt. | None. |
 | Verify | Fix Text Extractor so region selection, OCR, and automatic clipboard copy work. | `05acf1c` made the overlay panel key, first-responder, and first-click capable. The current service captures with ScreenCaptureKit, recognizes with Vision, records history, and copies to the pasteboard. | Prove selection, recognition, clipboard copy, permission failure, and cancellation end-to-end in the normal installed app. |
 | Done | Put the compact title, shortcut, and primary `Extract Text` action in one consistent titlebar row. | `TextExtractorView` uses the shared 40pt row, 24pt controls, 6pt titlebar radius, 4pt complete-row inset, and one primary accent fill. The normal signed `98f35f6` build showed one aligned row without a launch outline. | None. |
 | Done | Use History as the default body and show `Select text anywhere` only when history is empty. | The history page is the initial state, and `capturePrompt` renders only inside `service.history.isEmpty`. | None. |
