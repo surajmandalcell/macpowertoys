@@ -1,77 +1,104 @@
-# MacPowerToys
-
 <p align="center">
-  <img src="docs/appicon.svg" width="128" height="128" alt="MacPowerToys icon">
+  <img src="docs/appicon.svg" width="112" height="112" alt="MacPowerToys icon">
 </p>
 
-MacPowerToys is an open-source collection of focused, native macOS utilities. Each tool has its own window and Dock icon, and the app launchers are individually searchable through Raycast.
+<h1 align="center">MacPowerToys</h1>
+
+<p align="center">
+  A focused collection of fast, native utilities for macOS.
+</p>
+
+<p align="center">
+  <img alt="macOS 26.2+" src="https://img.shields.io/badge/macOS-26.2%2B-111111?logo=apple">
+  <img alt="Swift 5" src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-4C8BF5"></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="780" alt="MacPowerToys launcher showing the utility library">
+</p>
+
+MacPowerToys brings seven practical tools into one consistent SwiftUI app. Each utility has its own remembered window, keyboard-first controls, and a dedicated Raycast launcher.
 
 > [!IMPORTANT]
-> MacPowerToys is currently pre-release software. Build it from source and keep a backup of important data.
+> MacPowerToys is pre-release software. Build it from source and keep backups of important data.
 
-## Tools
+## Included tools
 
-| Tool | What it does |
+| Tool | Purpose |
 |---|---|
-| Ruler | Floating horizontal, vertical, and joined rulers, calibrated units, guides, region measurement, and developer copy formats. |
-| Awake | Keeps the Mac or display awake indefinitely, for a duration, until a time, or while a process runs. |
-| Color Picker | Samples screen colors, copies common developer formats, and keeps searchable, pinnable local history. |
-| Text Extractor | Captures a selected screen region and recognizes text locally with Apple Vision. |
-| Cloud Sync | Runs local and cloud copy, move, and sync jobs through rclone, with persistent progress, retries, a per-transfer change audit, continuous local-source monitoring, ignore rules, and remote browsing. |
-| Claude History | Browses, searches, and exports local Claude Code JSONL conversation history. |
-| Logs | Searches and filters MacPowerToys diagnostic logs. |
+| **Ruler** | Measure layouts with horizontal and vertical rulers, guides, calibrated units, and region capture. |
+| **Awake** | Keep the Mac or display awake indefinitely, for an interval, until a time, or while a process runs. |
+| **Color Picker** | Sample screen colors, copy developer formats, and keep searchable local history. |
+| **Text Extractor** | Select a screen region and copy text using Apple's on-device Vision framework. |
+| **Cloud Sync** | Plan and run copy, move, mirror, and two-way sync jobs with visible progress and change history. |
+| **Claude History** | Search, bookmark, and export local Claude Code conversation history. |
+| **Logs** | Search and filter MacPowerToys diagnostics. |
 
-## Requirements
+## A closer look
 
-- macOS 26.2 or newer
-- Xcode 26.2 or newer for source builds
-- [rclone](https://rclone.org/install/) for Cloud Sync
-- Raycast only if you want the optional Raycast commands
-
-Install rclone with Homebrew:
-
-```bash
-brew install rclone
-```
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/ruler.png" alt="Ruler appearance, guide, and active-ruler controls"><br>
+      <sub><b>Ruler</b> · calibrated units, guides, and paired rulers</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/awake.png" alt="Awake duration and process controls"><br>
+      <sub><b>Awake</b> · precise time, display, and process controls</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/color-picker.png" alt="Color Picker history and copy-format controls"><br>
+      <sub><b>Color Picker</b> · compact, searchable color history</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/text-extractor.png" alt="Text Extractor recognition settings"><br>
+      <sub><b>Text Extractor</b> · private on-device recognition</sub>
+    </td>
+  </tr>
+</table>
 
 ## Build from source
 
+Requirements: macOS 26.2+, Xcode 26.2+, and [rclone](https://rclone.org/install/) for Cloud Sync. Raycast is optional.
+
 ```bash
+brew install rclone
 git clone https://github.com/surajmandalcell/powertoys.git
 cd powertoys
-xcodebuild -project powertoys.xcodeproj \
-  -scheme powertoys \
-  -configuration Debug \
-  build
+make build
 ```
 
-You can also open `powertoys.xcodeproj` in Xcode and run the `powertoys` scheme. The built product is `MacPowerToys.app`.
-
-`make build` uses the Apple Development certificate in your login keychain. On a Mac without that identity, request an ad-hoc build explicitly:
+Open `powertoys.xcodeproj` to run the `powertoys` scheme in Xcode. On a Mac without an Apple Development identity, use an explicit ad-hoc build:
 
 ```bash
 make build ADHOC=1
 ```
 
-This personal-team signature is suitable for installing on the signing Mac. Public distribution still requires a paid Apple Developer membership, Developer ID signing, and notarization.
+Personal-team signing is suitable for the signing Mac. Public distribution requires a paid Apple Developer membership, Developer ID signing, and notarization.
 
-Do not replace a running installation while Cloud Sync is transferring data. Pause or finish transfers first, then install the new build.
+## Cloud Sync, powered by rclone
 
-## Marketplace
+Cloud Sync is a native interface around the excellent open-source [rclone](https://rclone.org/) project. Provider credentials and remote configuration remain under rclone's control.
 
-App Settings > Marketplace can install companion tools published by third parties. A catalog is a JSON file (usually a raw GitHub URL) matching [marketplace.schema.json](marketplace.schema.json); app archives are normally GitHub Release assets.
+MacPowerToys dry-runs each transfer before copying, preserves completed-file progress across relaunches, and records the latest 100 local changes per transfer. **Recalculate** only raises the original plan when new remaining work is found; it never discards completed progress or silently lowers the total.
 
-Marketplace tools are independently signed and notarized `.app` bundles that run out of process — MacPowerToys never loads downloaded code into its own process. Before activating an install, MacPowerToys verifies the archive's SHA-256 checksum against the catalog, rejects unsafe archive entries, and requires a Developer ID signature from the catalog-declared team, Apple notarization, and the declared bundle identifier. Quarantine attributes are never stripped. Installed tools appear in the launcher next to built-in tools and are stored under the app's own data directory, so uninstalling from the same screen removes the app and its host-managed data.
+Do not replace a running installation while a transfer is active. Pause or finish the transfer first.
 
-Removing a catalog source offers two behaviors: **Remove Source Only** keeps installed apps working (they reconnect if the source is re-added), while **Remove Source and Associated Apps** also quits and deletes the apps that came from that source.
+## Privacy and security
 
-## iCloud settings sync
+- Text recognition runs locally with Apple Vision; MacPowerToys does not upload selected screenshots.
+- Histories, logs, settings, transfer state, and window geometry stay in local Application Support storage.
+- Cloud credentials stay in rclone's local configuration. The loopback control API receives a fresh random credential on every launch.
+- Marketplace apps must match their declared checksum, bundle identifier, Developer ID team, and Apple notarization before installation.
 
-App Settings > General can sync a small allowlist of preferences through iCloud: appearance, safe tool preferences, marketplace source URLs, and marketplace tool settings that explicitly opt into the host-managed contract. Credentials, rclone configuration, file paths, histories, logs, transfer state, window geometry, and installed apps are never synced. On first enable, if iCloud already holds settings, MacPowerToys asks whether to adopt them or replace them with this Mac's settings.
+Read the full [Privacy Policy](PRIVACY.md) and [Security Policy](SECURITY.md).
 
 ## Raycast
 
-The `raycast` directory contains one Root Search launcher for MacPowerToys and each built-in tool. Tool actions are intentionally not exposed as separate commands.
+The companion extension exposes only MacPowerToys and its seven utilities, without cluttering Raycast with internal actions.
 
 ```bash
 cd raycast
@@ -79,55 +106,16 @@ npm ci
 npm run build
 ```
 
-Import the `raycast` directory through Raycast's **Import Extension** command. Commands use the `macpowertoys://` URL scheme. The legacy `powertoys://` scheme remains supported.
+Import the `raycast` directory through Raycast's **Import Extension** command. Launchers use the `macpowertoys://` URL scheme.
 
-## Privacy and security
-
-- Text extraction uses Apple's on-device Vision framework. Selected screenshots are not uploaded by MacPowerToys.
-- Color history, logs, settings, transfer state, and Claude History indexes stay in the user's local Application Support directory.
-- Cloud Sync credentials are managed by rclone in its local config. MacPowerToys protects its loopback rclone control API with a fresh random credential for every launch.
-- Cloud providers and rclone itself may communicate with their own services during transfers and OAuth.
-
-See [Privacy](PRIVACY.md) and [Security Policy](SECURITY.md) for details.
-
-## Cloud Sync behavior
-
-Cloud Sync calculates the transfer plan before copying, then preserves completed-file progress across pause, quit, and relaunch. The **Recalculate** action runs another rclone dry-run and only raises the plan when it finds new remaining work; it never replaces completed progress or shrinks the original plan. Byte-level continuation of the currently active cloud object depends on the rclone backend, so some providers must restart that one file.
-
-MacPowerToys does not show a misleading priority control for an active file. [rclone's remote-control API](https://rclone.org/rc/) reports active transfers but does not expose safe per-file reprioritization.
-
-The Add Connector sheet reads rclone's provider catalog at runtime, so it supports the connector types included by the installed rclone version instead of maintaining a hard-coded provider list.
-
-## Architecture
+## Project layout
 
 ```text
-powertoys/
-├── Core/                  App lifecycle, routing, persistence, shortcuts
-├── Models/                Tool and transfer domain models
-├── Services/              Native services and rclone integration
-├── Views/                 SwiftUI windows grouped by tool
-└── Assets.xcassets/       Appearance-aware app and tool icons
-powertoysTests/             Unit and local integration tests
-powertoysUITests/           UI smoke tests
-raycast/                    Companion Raycast extension
+powertoys/        SwiftUI app, models, services, and assets
+powertoysTests/   Unit and local integration tests
+powertoysUITests/ UI smoke tests
+raycast/          Optional Raycast launchers
+docs/             Product assets and archived specifications
 ```
 
-Tools implement the internal `Tool` protocol and register with `ToolRegistry`. This is an internal module boundary, not an external plug-in API. Marketplace tools are separate signed apps launched through `NSWorkspace`; `MarketplaceManager` owns catalogs and receipts, and `MarketplaceInstaller` owns download verification and atomic install.
-
-## Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. By participating, you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## License
-
-MacPowerToys is available under the [MIT License](LICENSE).
-
-## Screenshots
-
-<p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="760" height="713" alt="MacPowerToys launcher with its aligned utility grid">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/text-extractor.png" width="480" height="352" alt="Compact Text Extractor recognition settings">
-</p>
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. MacPowerToys is available under the [MIT License](LICENSE).
