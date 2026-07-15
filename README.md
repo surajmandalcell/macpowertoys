@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="876" alt="MacPowerToys utility launcher">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="1200" alt="MacPowerToys utility launcher on a dark desktop">
 </p>
 
 <table>
@@ -49,24 +49,29 @@
 
 ## Designed for the Mac
 
+<p align="center">
+  <img src="docs/screenshots/cloud-sync.png" width="1200" alt="Cloud Sync completed transfer workspace on a dark desktop"><br>
+  <sub><b>Cloud Sync</b> · planned rclone transfers, persistent progress, and clear completion state</sub>
+</p>
+
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/ruler.png" alt="Ruler controls"><br>
+      <img src="docs/screenshots/ruler.png" width="100%" alt="Ruler controls on a dark desktop"><br>
       <sub><b>Ruler</b> · calibrated units, guides, and paired overlays</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/awake.png" alt="Awake controls"><br>
+      <img src="docs/screenshots/awake.png" width="100%" alt="Awake controls on a dark desktop"><br>
       <sub><b>Awake</b> · precise display, time, and process controls</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/color-picker.png" alt="Color Picker history"><br>
+      <img src="docs/screenshots/color-picker.png" width="100%" alt="Color Picker history on a dark desktop"><br>
       <sub><b>Color Picker</b> · compact, searchable color history</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/text-extractor.png" alt="Text Extractor controls"><br>
+      <img src="docs/screenshots/text-extractor.png" width="100%" alt="Text Extractor controls on a dark desktop"><br>
       <sub><b>Text Extractor</b> · fast, private text recognition</sub>
     </td>
   </tr>
