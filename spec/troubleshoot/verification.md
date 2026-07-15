@@ -5,14 +5,19 @@
 - **Symptom:** Product screenshots sit on white rectangles, lose their window
   depth, or give every utility the same visual weight.
 - **Cause:** Transparent padding inherited GitHub's light page background and
-  the README presented the launcher and applets at similar sizes.
-- **Invariant:** Capture the exact current UI, never generated UI, on either the
-  current desktop wallpaper or a quiet dark backdrop with an unclipped native
-  window shadow. Present the main launcher full width, Cloud Sync as the first
-  large detail, and compact applets below at a smaller size.
+  the README presented the launcher and applets at similar sizes. Isolated
+  window grabs composited over a later backdrop also froze translucent material
+  against the wrong background.
+- **Invariant:** Capture the exact current UI, never generated UI, in place from
+  the live desktop composite on either the current wallpaper or a quiet dark
+  backdrop. Never layer an isolated window grab over another background. Keep
+  the native window shadow visible. Present the main launcher full width,
+  Cloud Sync as the first large detail, and compact applets below at a smaller
+  size.
 - **Check:** Preview the README hierarchy and confirm there are no white outer
-  backgrounds, the main launcher is largest, Cloud Sync comes next, and every
-  compact applet remains legible at its displayed size.
+  backgrounds, translucent material reflects the visible backdrop, the main
+  launcher is largest, Cloud Sync comes next, and every compact applet remains
+  legible at its displayed size.
 
 ## UI Change Verification
 

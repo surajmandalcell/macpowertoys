@@ -111,7 +111,7 @@ this order:
 3. The numeric contracts and family recipes in this file.
 4. Library defaults, sample galleries, and generated mockups.
 
-Normative light-appearance references:
+Normative native-appearance references:
 
 | Family or control grammar | Reference |
 |---|---|
