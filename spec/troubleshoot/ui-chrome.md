@@ -75,6 +75,19 @@
 - **Check:** Compare rendered boundaries, not source padding. Scroll to the last
   item and confirm it remains fully readable and clickable above the control.
 
+## Thin Scroll Indicators
+
+- **Symptom:** A scrollable view reserves a thick track or shows a full-size
+  indicator while the rest of the app uses thin overlay scrollbars.
+- **Cause:** A visible `ScrollView`, `Form`, `TextEditor`, or AppKit
+  `NSScrollView` bypassed the shared thin-indicator configuration.
+- **Invariant:** Every visible SwiftUI indicator uses
+  `.thinScrollIndicators()`. Native scroll views call
+  `configureThinScrollIndicators()`. Hidden indicators need no modifier.
+- **Check:** Inventory every scrolling source with `rg`, then exercise long
+  content in Claude History, Cloud Sync trees, settings forms, and editors.
+  Visible indicators autohide, overlay content, and use mini control size.
+
 ## Settings Page Replacement
 
 - **Symptom:** Home tabs remain above settings or settings gains a false top

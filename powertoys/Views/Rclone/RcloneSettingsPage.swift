@@ -28,6 +28,7 @@ struct RcloneSettingsPage: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .thinScrollIndicators()
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }

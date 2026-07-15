@@ -45,6 +45,7 @@ struct CCHistorySettingsPage: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .thinScrollIndicators()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))

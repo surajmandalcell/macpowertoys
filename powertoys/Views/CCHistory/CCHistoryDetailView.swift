@@ -301,7 +301,7 @@ private struct TerminalTextView: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
+        scrollView.configureThinScrollIndicators()
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
 
@@ -489,6 +489,7 @@ struct ThinkingPanelContent: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
         }
+        .thinScrollIndicators()
     }
 }
 
