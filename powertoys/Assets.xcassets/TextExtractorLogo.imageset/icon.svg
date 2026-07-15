@@ -1,13 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+    <clipPath id="tile"><rect width="512" height="512" rx="86"/></clipPath>
   </defs>
   <g clip-path="url(#tile)">
-    <rect width="512" height="512" fill="#FF6438"/>
-    <circle cx="82" cy="90" r="122" fill="#FFB24F" opacity=".78"/>
-    <path d="m330 330 190 190" fill="none" stroke="#4A2924" stroke-width="76"
-          stroke-linecap="round"/>
-    <circle cx="214" cy="214" r="166" fill="#4A2924"/>
-    <circle cx="214" cy="214" r="118" fill="#F1D6B8" fill-opacity=".55"/>
+    <rect width="512" height="512" fill="#2155B0"/>
+    <path d="M198.89 433.53A182 182 0 0 1 95.95 319.21" fill="none"
+          stroke="#CF9354" stroke-width="10" stroke-linecap="round"/>
+    <path d="M226.55 470.43A209 209 0 0 1 65.57 309.45" fill="none"
+          stroke="#E0BB90" stroke-width="7" stroke-linecap="round"/>
+    <g opacity=".24" transform="translate(8 9)">
+      <path d="M337.56 362.48 454.12 528.95" fill="none" stroke="#000"
+            stroke-width="70" stroke-linecap="round"/>
+      <circle cx="270" cy="266" r="151" fill="#000"/>
+    </g>
+    <path d="M337.56 362.48 454.12 528.95" fill="none" stroke="#FAF6EA"
+          stroke-width="70" stroke-linecap="round"/>
+    <circle cx="270" cy="266" r="151" fill="#FAF6EA"/>
+    <circle cx="270" cy="266" r="124" fill="#94B0DE"/>
   </g>
 </svg>
