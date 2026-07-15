@@ -66,10 +66,6 @@ actor SessionMetadataCache {
         return abs(cached.fileModificationDate.timeIntervalSince(fileModDate)) < 1.0
     }
 
-    func getAllForProject(_ projectPath: String) -> [SessionMetadata] {
-        cache.values.filter { $0.projectPath == projectPath }
-    }
-
     func clear() {
         cache.removeAll()
         isDirty = true

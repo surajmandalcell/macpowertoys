@@ -969,13 +969,6 @@ final class RcloneJobManager {
         persistJobsSoon()
     }
 
-    func setPriority(_ priority: TransferPriority, for job: TransferJob) {
-        guard job.priority != priority else { return }
-        job.priority = priority
-        persistJobsSoon()
-        LogManager.shared.info("Set \(job.sourceDisplay) priority to \(priority.displayName)", source: "RcloneJobManager")
-    }
-
     var isGloballyPaused = false
 
     func pauseAll() {
