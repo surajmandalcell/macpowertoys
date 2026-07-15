@@ -2,15 +2,17 @@
 
 ## README Window Screenshots
 
-- **Symptom:** Product screenshots render on an opaque white rectangle or lack
-  the depth of a native macOS window capture.
-- **Cause:** Window images were saved as RGB PNGs without transparent corners,
-  padding, or a window shadow.
-- **Invariant:** README window screenshots are RGBA PNGs with transparent outer
-  padding, rounded window corners, and an unclipped macOS-style shadow. Do not
-  place the window on a solid presentation background.
-- **Check:** Confirm `hasAlpha: yes`, a fully transparent corner pixel, and a
-  clean shadow when previewed on both light and dark backgrounds.
+- **Symptom:** Product screenshots sit on white rectangles, lose their window
+  depth, or give every utility the same visual weight.
+- **Cause:** Transparent padding inherited GitHub's light page background and
+  the README presented the launcher and applets at similar sizes.
+- **Invariant:** Capture the exact current UI, never generated UI, on either the
+  current desktop wallpaper or a quiet dark backdrop with an unclipped native
+  window shadow. Present the main launcher full width, Cloud Sync as the first
+  large detail, and compact applets below at a smaller size.
+- **Check:** Preview the README hierarchy and confirm there are no white outer
+  backgrounds, the main launcher is largest, Cloud Sync comes next, and every
+  compact applet remains legible at its displayed size.
 
 ## UI Change Verification
 
