@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="780" alt="MacPowerToys launcher showing the utility library">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="876" alt="MacPowerToys launcher showing the utility library">
 </p>
 
 MacPowerToys brings seven practical tools into one consistent SwiftUI app. Each utility has its own remembered window, keyboard-first controls, and a dedicated Raycast launcher.
