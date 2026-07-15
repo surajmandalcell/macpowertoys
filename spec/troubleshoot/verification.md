@@ -1,5 +1,17 @@
 # Verification Troubleshooting
 
+## README Window Screenshots
+
+- **Symptom:** Product screenshots render on an opaque white rectangle or lack
+  the depth of a native macOS window capture.
+- **Cause:** Window images were saved as RGB PNGs without transparent corners,
+  padding, or a window shadow.
+- **Invariant:** README window screenshots are RGBA PNGs with transparent outer
+  padding, rounded window corners, and an unclipped macOS-style shadow. Do not
+  place the window on a solid presentation background.
+- **Check:** Confirm `hasAlpha: yes`, a fully transparent corner pixel, and a
+  clean shadow when previewed on both light and dark backgrounds.
+
 ## UI Change Verification
 
 - **Symptom:** Source compiles but the final spacing, focus state, or interaction
