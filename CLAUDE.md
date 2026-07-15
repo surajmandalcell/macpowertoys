@@ -4,6 +4,7 @@ SwiftUI macOS utility app with pluggable tools.
 
 ## Rules
 @spec/troubleshoot/troubleshoot.md
+@spec/ruler-request-list.md
 @spec/color-picker-request-list.md
 @DESIGN.md
 @.claude/rules/code-style.md
@@ -17,3 +18,6 @@ inspecting or changing implementation files.
 
 Keep `spec/color-picker-request-list.md` current when Color Picker
 requirements or verification results change.
+
+Keep `spec/ruler-request-list.md` current when Ruler requirements or
+verification results change.
