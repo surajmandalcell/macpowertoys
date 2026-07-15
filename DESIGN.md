@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -12,7 +12,8 @@ colors:
   focus-ring-on-accent: "colors.on-accent"
   disabled-opacity: 0.38
   selection-light: "Color.accentColor.opacity(0.1)"
-  selection-strong: "Color.accentColor.opacity(0.2)"
+  selection-strong: "Color.accentColor"
+  selection-strong-text: "opaque black or white, chosen for >=4.5:1 contrast"
   card: "Color.primary.opacity(0.03)"           # grids, subtle depth
   card-detail: "Color.primary.opacity(0.05)"    # detail/log views, softer contrast
   content-background: "Color(nsColor: .windowBackgroundColor)"
@@ -50,7 +51,8 @@ rounded:
   field: 6          # text fields, icon buttons, pills, chips
   titlebar-control: 6 # compact titlebar buttons only
   row: 8            # list rows, message bubbles, tray tabs
-  card: 12          # cards, panels, sheets' section cards
+  section-card: 10  # compact applet section cards
+  card: 12          # launcher, workspace, and operational cards
 spacing:
   gutter: 20        # one shared left edge for titles, tabs, headers, cards
   color-picker-body-gutter: 12
@@ -61,21 +63,21 @@ spacing:
   compact-title-leading: 60   # reclaims the hidden zoom position
   compact-titlebar-top: 4     # applied once to the complete row
   content-top: 52   # content aligns with sidebar search bar top
-  header-top: 0     # window-top strips hug the top (8pt vertical inset)
+  header-top: 0     # window-top strips hug the top (10pt vertical inset)
   floating-control-edge: 8
 windows:
-  launcher: { width: 780, height: 700, sidebar-width: 220, card-height: 140, resizable: false }
+  launcher: { content-width: 780, content-height: 700, sidebar-width: 220, card-min-height: 110, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-min: 220, sidebar-max: 280, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
   sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
-  sidebar-row: { min-height: 34, radius: 8, icon: 20, inset-x: 10, gap: 10 }
+  sidebar-row: { min-height: 34, radius: 8, icon: 20, inset-x: 10, gap: 10, selected-bg: colors.selection-strong, selected-text: colors.selection-strong-text }
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
   tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: colors.selection-strong }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
-  section-card: { radius: 12, bg: colors.card-detail, padding: spacing.card-padding }
+  section-card: { radius: 10, bg: colors.card-detail, padding: spacing.card-padding }
   progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
 ---
 
@@ -98,6 +100,45 @@ Do not infer those from a tool name. Given that brief, an unfamiliar designer
 must be able to choose one family below, instantiate its shell without guessing,
 and fill the body using the shared components and quality gates.
 
+## Native Visual Baseline
+
+The current app is the visual source of truth. This document explains how to
+extend it; it does not authorize a new web design language. Resolve conflicts in
+this order:
+
+1. Current SwiftUI and AppKit implementation in `powertoys/Views/Components/`.
+2. The current reference screenshots listed below.
+3. The numeric contracts and family recipes in this file.
+4. Library defaults, sample galleries, and generated mockups.
+
+Normative light-appearance references:
+
+| Family or control grammar | Reference |
+|---|---|
+| Main launcher | `docs/screenshots/macpowertoys-launcher.png` |
+| Compact applet, general | `docs/screenshots/awake.png` |
+| Compact tabs and search | `docs/screenshots/color-picker.png` |
+| Dense native controls | `docs/screenshots/ruler.png` |
+| Compact history and settings | `docs/screenshots/text-extractor.png` |
+
+The screenshots bind density, visual weight, control morphology, surface
+continuity, and named tool artwork. Source binds behavior and any detail that a
+still image cannot show. Text Extractor's older screenshot may show obsolete
+traffic-light geometry; the compact titlebar contract below overrides that one
+detail.
+
+MacPowerToys is native-controls-first. Use the real SwiftUI or AppKit `Button`,
+`Toggle`, `Picker`, `Menu`, `TextField`, `Stepper`, `DatePicker`, `Slider`, and
+`ColorPicker` whenever that control exists. Do not redraw these as outlined web
+buttons, equal-width option grids, custom switches, or card-based form fields.
+Custom appearance is limited to the titlebar, material shells, sidebar rows,
+search surfaces, tab pills, named cards, badges, and the exact shared patterns
+defined here.
+
+A browser artifact passes only after comparison beside the appropriate current
+screenshot. Raw wireframes, default component-gallery examples, and generic
+dashboard mockups are not fidelity evidence.
+
 ## Colors
 
 Interactive surfaces are **opacity layers over `Color.primary` or
@@ -116,17 +157,19 @@ hex lives only in icon assets. This keeps light and dark mode free.
   ring uses that same contrast-aware color and reaches at least 3:1 against the
   fill. Never assume white is readable on a person-selected accent.
 - Selection-light is accent at 0.1 for selected content rows and inline choices.
-  Selection-strong is accent at 0.2 for sidebar navigation. Both retain primary
-  text; never swap to a separate selection-text color. Tab pills are the quiet
-  exception: their persistent selected surface is the same primary 0.06 used by
-  their component contract, not an accent selection layer.
+  Selection-strong is the solid system accent for sidebar navigation, with
+  contrast-aware black or white text and symbols. Tab pills are the quiet
+  exception: their persistent selected surface is primary 0.06 with ordinary
+  primary text, not an accent layer, accent text, or underline.
 - Keyboard focus uses the system focus effect except for the repaired compact
   titlebar treatment defined below.
 - Cards: 0.03 for grids and subtle depth; 0.05 where softer contrast is wanted
   (detail sheets, logs).
-- Content areas sit on `Color(nsColor: .windowBackgroundColor)`, sidebars on an
-  `NSVisualEffectView` with `.sidebar` material (state `.active`, never
-  `.followsWindowActiveState`).
+- Launcher and workspace content panes sit on
+  `Color(nsColor: .windowBackgroundColor)`. Their sidebars use an
+  `NSVisualEffectView` with `.sidebar` material, `.behindWindow` blending, and
+  `.active` state. A compact applet is different: its complete titlebar and body
+  share one `.hudWindow` material surface over a clear, non-opaque `NSWindow`.
 - Status tints: green = healthy/complete, orange = retrying/attempts,
   red = failure, secondary = idle/cancelled.
 
@@ -174,10 +217,16 @@ boundary to the gutter, never to the pill's inset text.
 
 ## Elevation & Materials
 
-Depth comes from **opacity layers and vibrancy, never shadows**. Launcher and
-workspace sidebars use `.sidebar` material extending seamlessly to the window
-top. No custom view has a drop shadow; the only shadow is the system window
-shadow. Window chrome belongs to the family contract below.
+Depth comes mainly from opacity layers and vibrancy. Launcher and workspace
+sidebars use `.sidebar` material extending seamlessly to the window top.
+Compact applets use `.hudWindow` material across the complete shell. Do not
+replace either material with an opaque gray fill or a translucent layer whose
+backdrop cannot show through.
+
+The system owns the window shadow. Custom surfaces are shadowless except for a
+launcher tool card while hovered: black at 0.12, radius 8, y offset 2, paired
+with its documented hover stroke. Do not spread that exception to section cards,
+workspace rows, titlebars, or ordinary buttons.
 
 ## Shapes
 
@@ -187,10 +236,12 @@ Closed radius scale — pick the smallest that fits the role:
 - **6pt** text fields, icon buttons, chips, tab pills
 - **8pt** list rows, message bubbles, tray tabs, and the full-width sidebar
   primary action because it occupies a navigation-row slot
-- **12pt** cards, panels, section cards
+- **10pt** compact applet section cards
+- **12pt** launcher, workspace, and operational cards
 
-**Never capsules** for buttons or badges in tool UIs. Progress bars are the one
-capsule-shaped element (they're tracks, not controls).
+Buttons never become capsules. Capsules are reserved for progress tracks and
+compact state or count badges whose changing width benefits from the shape.
+Fields, chips, tab pills, and action buttons use their assigned fixed radius.
 
 ## Window Families
 
@@ -218,7 +269,7 @@ family instead of combining chrome from two families.
 
 | Family | Purpose | Size | Navigation | Title owner |
 |---|---|---|---|---|
-| Main launcher | Discover and open tools | Fixed 780×700 | 220pt catalog sidebar | Sidebar title |
+| Main launcher | Discover and open tools | Fixed 780×700 content | 220pt catalog sidebar | Sidebar title |
 | Full workspace | Sustained, multi-context work | Resizable; content at least 640pt wide | 220–280pt tool sidebar | Sidebar title |
 | Compact applet | One immediate bounded task | Fixed width and bounded height | No sidebar | 40pt compact titlebar |
 
@@ -251,7 +302,7 @@ metrics, or workspace content.
 Canonical anatomy:
 
 ```text
-780 × 700, fixed
+780 × 700 SwiftUI content, fixed
 ┌──────── sidebar 220 ────────┬──────── content 560 ─────────┐
 │ traffic lights  title       │                              │
 │ search at y=52              │ grid or tool detail at y=52  │
@@ -263,8 +314,10 @@ Canonical anatomy:
 └─────────────────────────────┴──────────────────────────────┘
 ```
 
-- The window and sidebar are fixed at 780×700 and 220pt. Do not resize,
-  collapse, or add an inspector.
+- The SwiftUI scene content and sidebar are fixed at 780×700 and 220pt. The
+  current screenshot is 780×732 because the captured `NSWindow` frame adds
+  32pt above that content size. Never shrink the content to force the outer
+  capture to 780×700. Do not resize, collapse, or add an inspector.
 - The sidebar title is `MacPowerToys`, 84pt from the leading window edge and
   8pt from the top. It is the only app title.
 - The custom search field uses 12pt sidebar insets and starts at y=52. It is at
@@ -283,12 +336,14 @@ Canonical anatomy:
 - `All Tools` content begins at y=52. It uses 24pt horizontal and bottom
   padding, an adaptive two-column grid with 220pt minimum columns, and 16pt
   row/column gaps.
-- A launcher tool card is 140pt high at default text sizes, with 12pt outer
+- A launcher tool card is at least 110pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
   name; 10pt uppercase category; two lines of 12pt secondary description; and
-  an 11pt `Open` button aligned bottom-trailing. Rest is 0.03 and hover is 0.06,
-  with no shadow. Accessibility text may expand the complete grid row, never
-  only one card in that row.
+  an 11pt `Open` button aligned bottom-trailing. Rest is 0.03. Hover is 0.06
+  with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,
+  radius 8, y offset 2. `Open` rests on primary 0.06 with secondary text, then
+  becomes solid accent with white text while hovered. Accessibility text may
+  expand the complete grid row, never only one card in that row.
 - Clicking a card selects its detail page. Clicking `Open` opens the tool.
   These are separate actions and must remain separately accessible.
 - A tool detail page uses a 24pt gutter, 72pt named tool icon, the one allowed
@@ -364,7 +419,7 @@ content at least 640 wide; height at least 600; resizable
   a detail replacement or sheet. An inspector is part of content, not a second
   sidebar.
 - At standard text size, a content top strip is 40pt high, starts at the window
-  top, uses 20pt horizontal and 8pt vertical internal padding, and may have one
+  top, uses 20pt horizontal and 10pt vertical internal padding, and may have one
   hairline bottom separator. Its scalable height is
   `max(40, tallest control or line + 16)`. Keep one row with at least 12pt
   between destination context and actions. When that row no longer fits the
@@ -380,7 +435,8 @@ content at least 640 wide; height at least 600; resizable
   16pt row gutter. Headers, tabs, fields, cards, and rows within that container
   share the chosen edge.
 - Pane and top-strip hairlines are permitted where material changes do not
-  provide enough separation. Cards still use opacity depth and never shadows.
+  provide enough separation. Workspace cards use opacity depth without custom
+  shadows; the launcher hover exception does not apply here.
 - On narrow resize, preserve the sidebar and primary content, then remove an
   optional inspector. Never transform the workspace into compact applet chrome.
 - Settings remain inside the tool window. They replace the content destination,
@@ -409,8 +465,16 @@ The first line contains a 26pt operation icon, middle-truncated 12pt source and
 destination paths with an arrow, and an 11pt state badge. A 6pt progress track
 follows. The last line contains 11pt size, speed, and file metrics on the left
 and separate 24pt icon actions on the right. Expanded per-file detail appears
-below without changing the row's outer edges. The badge uses 8pt horizontal and
-4pt vertical padding with 6pt corners; it is never a capsule.
+below without changing the row's outer edges. Source and destination are
+separate primary 0.05 path chips with 8pt horizontal and 4pt vertical padding
+and 6pt corners. The state badge uses 8pt horizontal and 4pt vertical padding
+in a capsule. Sidebar count badges use the same capsule logic.
+
+Cloud Sync's current top strip is operational, not a repeated destination
+title. It shows active count and aggregate speed on the left, then applicable
+`Clear finished` and global pause or resume actions on the right. A future
+operational workspace follows this pattern when live state is more useful than
+a static page title.
 
 Long-running workspaces must show progress and state in the relevant rows.
 Status must never rely on color alone: pair the semantic tint with text or an
@@ -428,6 +492,12 @@ Choose the narrowest approved width that keeps labels and adjacent controls
 legible: 420pt for short data, 480pt for text/history, or 560pt for dense control
 rows. Total window height stays between 250pt and 600pt. If useful content does
 not fit at 560×600 with scrolling, use a full workspace.
+
+These widths and heights are SwiftUI content sizes, not captured `NSWindow`
+frame sizes. Current screenshot captures add 32pt to the declared content
+height. For example, Awake declares 560×500 content and its reference PNG is
+560×532. Browser references must render the outer frame at the screenshot size
+while keeping the internal 500pt content contract intact.
 
 Existing applets are concrete references, not new families:
 
@@ -454,8 +524,13 @@ fixed 420 / 480 / 560 wide; 250–600 high
 └─────────────────────────────────────────────────────┘
 ```
 
-- Render one custom 40pt `CompactTitlebar`. The title is text only, 13pt medium,
-  and never repeats in the body. Do not show a tool icon or a bottom separator.
+- Render one custom 40pt `CompactTitlebar`. The title is text only, normally
+  13pt medium, and never repeats in the body. Awake's current 13pt bold title is
+  a documented existing exception, not a default for new tools. Do not show a
+  tool icon or a bottom separator.
+- The complete applet, including titlebar and body, is one continuous active
+  `.hudWindow` material. The host `NSWindow` is clear and non-opaque. Section
+  cards tint this material; they do not replace it with an opaque page canvas.
 - Inside the 40pt titlebar, center a 28pt wrapper made from a 24pt row plus one
   4pt top inset. This places every 24pt item at y=10…34 with midpoint y=22.
   Do not place the row itself at y=4 and never pad the title separately.
@@ -548,8 +623,8 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   padding, 6pt radius, 12pt search icon, and 13pt text. Use the family-defined
   placeholder.
 - **Sidebar row** - at least 34pt high, 20pt icon, 10pt internal horizontal
-  inset and gap, 8pt radius, 13pt text, hover 0.06, and accent 0.2 selected
-  background with primary text.
+  inset and gap, 8pt radius, 13pt text, hover 0.06, and solid accent selected
+  background with contrast-aware black or white text and symbols.
 - **Sidebar primary action** - at least 34pt high, 12pt horizontal inset, 8pt
   radius, accent fill, contrast-aware 13pt medium label, and one 13pt semantic
   icon.
@@ -558,16 +633,18 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   primary action receives accent fill, and actual keyboard focus uses the 1pt
   inset replacement ring from the compact-family rule.
 - **Tab pill** - text 12pt medium, 10/5 padding, 6pt radius, and selected
-  background 0.06. A selected pill also uses accent text and a 2pt accent
-  underline overlay; an unselected hover uses only the 0.06 background. The
-  strip starts on the shared gutter and selection never moves its tabs.
+  background 0.06 with ordinary primary text. There is no selected underline,
+  accent text, or enclosing segmented-control tray. An unselected hover uses
+  the same 0.06 surface. The strip starts on the shared gutter and selection
+  never moves its tabs.
 - **Tray Tab** - at least 28pt high, 12pt medium text, 10pt horizontal inset,
   8pt radius, and 4pt between tabs. Hover is primary 0.06; selection is accent
-  0.2 with primary text. The selected tab also exposes `isSelected` to
+  with contrast-aware text. The selected tab also exposes `isSelected` to
   accessibility. It is a tray-popover component, never an applet body tab.
-- **Section card** — 12pt radius, 0.05 bg, 14pt padding, preceded by an
+- **Section card** - 10pt radius, 0.05 bg, 14pt padding, preceded by an
   UPPERCASE 10pt secondary header on the same gutter.
-- **Card** (grid/tool) — 12pt radius, 0.03 bg, hover 0.06.
+- **Card** (grid/tool) - 12pt radius, 0.03 bg, hover 0.06. Launcher tool cards
+  also use their documented hover stroke and shadow.
 - **Operational card** - 12pt radius, 0.03 bg, hover 0.06, 14pt padding, and
   10pt vertical spacing. Put identity/state first, progress second, and metrics
   plus discrete actions last.
@@ -576,9 +653,8 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 - **Scroll indicator:** overlay, autohiding, mini control size. Apply
   `.thinScrollIndicators()` whenever an indicator is visible; never reserve a
   thick scrollbar track.
-- **State badge** - 11pt medium text + 10pt icon, 8/4 padding, 6pt radius, and
-  tint at 0.12 bg. Lives on cards/rows only, never in sheet headers and never in
-  a capsule.
+- **State badge** - 11pt medium text + 10pt icon, 8/4 padding, tint at 0.12 bg,
+  and a capsule shape. Lives on cards or rows only, never in sheet headers.
 - **Empty state** — `EmptyStateView(icon:message:)`, centered.
 
 ## App and Tool Icons
@@ -800,9 +876,10 @@ same metaphor because macOS controls their tint.
   `Button`; logs and content text must stay selectable.
 - **Never** put hover opacities other than 0.06 (0.1 for filled), pressed
   opacities other than 0.1 (0.18 for filled), selection
-  other than accent 0.1/0.2 or the explicit Tab Pill primary 0.06, or radii
-  outside {4, 6, 8, 12}.
-- **Never** use capsule buttons, UI gradients, or baked icon effects.
+  other than accent 0.1, solid accent sidebar selection, or the explicit Tab
+  Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
+- **Never** use capsule buttons, UI gradients, or baked icon effects. Capsules
+  remain valid only for progress tracks and documented state or count badges.
 - **Never** add a second alignment gutter inside one container.
 - **Never** use `.formStyle(.grouped)` where its opaque insets break the shared
   edge. Prefer explicit section cards and labeled rows.
@@ -824,8 +901,8 @@ same metaphor because macOS controls their tint.
   hover adds 0.06 primary to an unfilled control or 0.1 to a filled control;
   press adds 0.1 primary to an unfilled control or 0.18 to a filled control;
   disabled applies 0.38 opacity and ignores hover/press; selected uses the
-  assigned 0.1 or 0.2 accent layer except for Tab Pill's explicit primary 0.06
-  surface plus accent underline; focus uses the native system ring except for
+  assigned 0.1 accent layer or solid accent sidebar role, except for Tab Pill's
+  explicit primary 0.06 surface; focus uses the native system ring except for
   the compact replacement ring.
 - A dense control may be visibly 24pt, but its complete rectangular hit region
   must not be smaller. Never make an icon itself the only clickable pixels.
@@ -858,3 +935,8 @@ selected, disabled, focus, empty, error, and settings states; narrow and default
 workspace sizes; keyboard traversal; reduced transparency; and a long-content
 case with visible thin scroll indicators. Repeat the layout-changing states with
 Reduce Motion and accessibility text sizing enabled.
+
+For visual review, place the window beside its normative screenshot at the same
+scale. Check material continuity first, then native control morphology, shell
+geometry, alignment, density, radii, selection, and artwork. A dimensionally
+correct mockup still fails if it reads as a generic web dashboard.
