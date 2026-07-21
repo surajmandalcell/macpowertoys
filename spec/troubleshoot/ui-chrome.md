@@ -7,7 +7,7 @@
 - **Cause:** An older titlebar rule or shared icon component was treated as the
   source of truth after the product requirement changed.
 - **Invariant:** Compact applet titlebars contain the text title and primary
-  actions only. A 24pt `gearshape` settings button floats 8pt from the
+  actions only. A 24pt circular `gearshape` settings button floats 8pt from the
   bottom-right window edges, remains visible on the settings page, and toggles
   back to the applet's home content.
 - **Check:** Inventory compact titlebar actions with `rg`, then open every applet

@@ -22,7 +22,8 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Zoom: hidden; title begins at 60pt to reclaim its space
 - Titlebar buttons and menus only: 24pt high with a 6pt radius
 - Compact applet windows are fixed-size
-- Floating settings button: 24pt, 8pt from bottom-right window edges
+- Floating settings button: 24pt circle, 8pt from bottom-right window edges;
+  fixed-size applet windows restore saved position only, never saved size
 
 ## Colors
 

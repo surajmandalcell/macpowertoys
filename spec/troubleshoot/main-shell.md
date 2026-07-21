@@ -29,6 +29,22 @@
   Treat exact Space placement as unsupported unless Apple adds a public API or
   the product requirement changes to allow automatic reopening of prior scenes.
 
+## Compact Applet Frame Restoration
+
+- **Symptom:** A compact applet opens taller than its content, leaving dead
+  space below the body and a floating settings button that sits well above the
+  bottom-right corner.
+- **Cause:** `WindowStateManager.restoreState` applied the complete saved
+  frame, including a stale height, to windows whose height is content-driven.
+  SwiftUI centers the fixed-size content in the taller window.
+- **Invariant:** Fixed-size applet windows (`awake`, `color-picker`,
+  `text-extractor`, `ruler`) restore position only: keep the saved top-left
+  edge and the window's current content-driven size. Never restore a saved
+  width or height onto a content-sized applet.
+- **Check:** Save an applet frame, change its expected content height, reopen,
+  and confirm the body fills the window with the settings button 8pt from the
+  bottom-right corner.
+
 References: Apple's
 [SwiftUI suppressed launch behavior](https://developer.apple.com/documentation/swiftui/scenelaunchbehavior/suppressed)
 and

@@ -572,8 +572,10 @@ fixed 420 / 480 / 560 wide; 250–600 high
 - Body sections have 16pt between them. A 10pt uppercase section label sits 8pt
   above its aligned card, fields, or rows. Do not add a second gap inside the
   card to compensate.
-- When the applet has a separate settings page, a visible 24pt floating
-  `gearshape` button sits 8pt from the bottom and right window edges. Reserve
+- When the applet has a separate settings page, a visible 24pt circular
+  floating `gearshape` button sits 8pt from the bottom and right window edges.
+  The circle is the one round control in the app; every other button keeps its
+  fixed radius. Reserve
   52pt bottom scroll space so it never covers content. It toggles between home
   and settings and remains visible on both pages. On Settings it uses
   `gearshape.fill` with selection-light background and its accessibility label
