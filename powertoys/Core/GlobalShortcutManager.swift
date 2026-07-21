@@ -41,6 +41,21 @@ enum GlobalShortcutKey: String, CaseIterable, Identifiable {
     }
 }
 
+struct GlobalShortcut: Equatable {
+    var keyCode: UInt32
+    var carbonModifiers: UInt32
+    var keyLabel: String
+
+    var display: String {
+        var symbols = ""
+        if carbonModifiers & UInt32(controlKey) != 0 { symbols += "⌃" }
+        if carbonModifiers & UInt32(optionKey) != 0 { symbols += "⌥" }
+        if carbonModifiers & UInt32(shiftKey) != 0 { symbols += "⇧" }
+        if carbonModifiers & UInt32(cmdKey) != 0 { symbols += "⌘" }
+        return symbols + keyLabel
+    }
+}
+
 enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
     case colorPicker = 3
     case textExtractor = 4
@@ -52,10 +67,20 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
         case .textExtractor: "text-extractor"
         }
     }
-    var defaultKey: GlobalShortcutKey {
+    var defaultShortcut: GlobalShortcut {
         switch self {
-        case .colorPicker: .c
-        case .textExtractor: .t
+        case .colorPicker:
+            GlobalShortcut(
+                keyCode: UInt32(kVK_ANSI_C),
+                carbonModifiers: UInt32(controlKey | optionKey | cmdKey),
+                keyLabel: "C"
+            )
+        case .textExtractor:
+            GlobalShortcut(
+                keyCode: UInt32(kVK_ANSI_2),
+                carbonModifiers: UInt32(shiftKey | cmdKey),
+                keyLabel: "2"
+            )
         }
     }
     var toolAction: ToolActionID {
@@ -73,14 +98,12 @@ final class GlobalShortcutManager {
 
     private var eventHandler: EventHandlerRef?
     private var hotKeys: [UInt32: EventHotKeyRef] = [:]
-    private var keys: [GlobalShortcutAction: GlobalShortcutKey]
+    private var shortcuts: [GlobalShortcutAction: GlobalShortcut]
     private var enabledActions: Set<GlobalShortcutAction>
 
     private init() {
-        keys = Dictionary(uniqueKeysWithValues: GlobalShortcutAction.allCases.map { action in
-            let key = UserDefaults.standard.string(forKey: "shortcut.\(action.defaultsName).key")
-                .flatMap(GlobalShortcutKey.init(rawValue:)) ?? action.defaultKey
-            return (action, key)
+        shortcuts = Dictionary(uniqueKeysWithValues: GlobalShortcutAction.allCases.map { action in
+            (action, Self.storedShortcut(for: action))
         })
         enabledActions = Set(GlobalShortcutAction.allCases.filter { action in
             UserDefaults.standard.object(forKey: "shortcut.\(action.defaultsName).enabled") as? Bool ?? true
@@ -95,23 +118,46 @@ final class GlobalShortcutManager {
             Unmanaged.passUnretained(self).toOpaque(),
             &eventHandler
         )
-        register(id: 1, keyCode: UInt32(kVK_ANSI_R))
-        register(id: 2, keyCode: UInt32(kVK_ANSI_A))
+        let legacyModifiers = UInt32(controlKey | optionKey | cmdKey)
+        register(id: 1, keyCode: UInt32(kVK_ANSI_R), modifiers: legacyModifiers)
+        register(id: 2, keyCode: UInt32(kVK_ANSI_A), modifiers: legacyModifiers)
         for action in enabledActions { register(action) }
     }
 
-    func key(for action: GlobalShortcutAction) -> GlobalShortcutKey {
-        keys[action] ?? action.defaultKey
+    private static func storedShortcut(for action: GlobalShortcutAction) -> GlobalShortcut {
+        let defaults = UserDefaults.standard
+        let prefix = "shortcut.\(action.defaultsName)"
+        if let keyCode = defaults.object(forKey: "\(prefix).keyCode") as? Int,
+           let modifiers = defaults.object(forKey: "\(prefix).modifiers") as? Int,
+           let label = defaults.string(forKey: "\(prefix).keyLabel") {
+            return GlobalShortcut(keyCode: UInt32(keyCode), carbonModifiers: UInt32(modifiers), keyLabel: label)
+        }
+        if let legacy = defaults.string(forKey: "\(prefix).key")
+            .flatMap(GlobalShortcutKey.init(rawValue:)) {
+            return GlobalShortcut(
+                keyCode: legacy.keyCode,
+                carbonModifiers: UInt32(controlKey | optionKey | cmdKey),
+                keyLabel: legacy.title
+            )
+        }
+        return action.defaultShortcut
+    }
+
+    func shortcut(for action: GlobalShortcutAction) -> GlobalShortcut {
+        shortcuts[action] ?? action.defaultShortcut
     }
 
     func isEnabled(_ action: GlobalShortcutAction) -> Bool {
         enabledActions.contains(action)
     }
 
-    func setKey(_ key: GlobalShortcutKey, for action: GlobalShortcutAction) {
-        guard key != self.key(for: action) else { return }
-        keys[action] = key
-        UserDefaults.standard.set(key.rawValue, forKey: "shortcut.\(action.defaultsName).key")
+    func setShortcut(_ shortcut: GlobalShortcut, for action: GlobalShortcutAction) {
+        guard shortcut != self.shortcut(for: action) else { return }
+        shortcuts[action] = shortcut
+        let prefix = "shortcut.\(action.defaultsName)"
+        UserDefaults.standard.set(Int(shortcut.keyCode), forKey: "\(prefix).keyCode")
+        UserDefaults.standard.set(Int(shortcut.carbonModifiers), forKey: "\(prefix).modifiers")
+        UserDefaults.standard.set(shortcut.keyLabel, forKey: "\(prefix).keyLabel")
         if isEnabled(action) {
             unregister(id: action.rawValue)
             register(action)
@@ -138,15 +184,16 @@ final class GlobalShortcutManager {
     }
 
     private func register(_ action: GlobalShortcutAction) {
-        register(id: action.rawValue, keyCode: key(for: action).keyCode)
+        let shortcut = shortcut(for: action)
+        register(id: action.rawValue, keyCode: shortcut.keyCode, modifiers: shortcut.carbonModifiers)
     }
 
-    private func register(id: UInt32, keyCode: UInt32) {
+    private func register(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
         var reference: EventHotKeyRef?
         let hotKeyID = EventHotKeyID(signature: OSType(0x50545759), id: id)
         let status = RegisterEventHotKey(
             keyCode,
-            UInt32(controlKey | optionKey | cmdKey),
+            modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,
