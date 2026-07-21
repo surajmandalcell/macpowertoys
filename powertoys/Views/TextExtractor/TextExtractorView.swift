@@ -4,13 +4,14 @@ enum TextExtractorLayout {
     static let windowWidth: CGFloat = 480
     static let historyBaseHeight: CGFloat = 230
     static let maximumWindowHeight: CGFloat = 422
-    static let settingsHeight: CGFloat = 280
+    static let settingsHeight: CGFloat = 440
     static let maximumVisibleItems = 4
     static let historyRowHeight: CGFloat = 64
 }
 
 struct TextExtractorView: View {
     @State private var service = TextExtractorService.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
     @State private var languages = ""
     @State private var page = TextExtractorPage.history
     @State private var selectedExtraction: TextExtraction?
@@ -71,13 +72,10 @@ struct TextExtractorView: View {
         CompactTitlebar {
             CompactTitlebarTitle(title: "Text Extractor")
         } actions: {
-            HStack(spacing: 8) {
-                GlobalShortcutMenu(action: .textExtractor)
-                CompactTitlebarButton(title: "Extract Text", isPrimary: true) { service.begin() }
-                    .disabled(isExtracting)
-                    .help("Select text anywhere on screen")
-                    .accessibilityIdentifier("text-extractor.extract")
-            }
+            CompactTitlebarButton(title: "Extract Text", isPrimary: true) { service.begin() }
+                .disabled(isExtracting)
+                .help("Select text anywhere on screen")
+                .accessibilityIdentifier("text-extractor.extract")
         }
     }
 
@@ -174,65 +172,107 @@ struct TextExtractorView: View {
 
     private var settings: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("RECOGNITION OPTIONS").utilitySectionHeader()
-                VStack(spacing: 0) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Recognition quality")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("Accurate is best for smaller or styled text.")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Picker("Recognition quality", selection: $service.settings.speed) {
-                            ForEach(TextRecognitionSpeed.allCases) { speed in
-                                Text(speed.title).tag(speed)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 110)
-                    }
-                    .padding(.bottom, 12)
-
-                    Divider()
-
-                    Toggle("Use language correction", isOn: $service.settings.languageCorrection)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .padding(.vertical, 12)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Preferred languages")
-                            .font(.system(size: 12, weight: .medium))
-                        HStack(spacing: 8) {
-                            TextField("Automatic, en-US, fr-FR", text: $languages)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 8)
-                                .frame(height: 28)
-                                .background(Color.primary.opacity(0.06))
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                                .onSubmit(applyLanguages)
-                            Button("Apply", action: applyLanguages)
-                                .controlSize(.small)
-                        }
-                        Text("Leave empty to detect languages automatically.")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.top, 12)
-                }
-                .font(.system(size: 12))
-                .utilitySectionCard()
+            VStack(alignment: .leading, spacing: 16) {
+                shortcutSettings
+                recognitionSettings
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
             .padding(.top, 14)
             .padding(.bottom, UtilityLayout.floatingButtonContentInset)
         }
         .thinScrollIndicators()
+    }
+
+    private var shortcutSettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GLOBAL SHORTCUT").utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 0) {
+                Toggle("Enable Extract Text shortcut", isOn: Binding(
+                    get: { shortcuts.isEnabled(.textExtractor) },
+                    set: { shortcuts.setEnabled($0, for: .textExtractor) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .padding(.bottom, 12)
+
+                Divider()
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Keyboard shortcut")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Works anywhere while MacPowerToys is running.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    ShortcutRecorderField(action: .textExtractor)
+                        .disabled(!shortcuts.isEnabled(.textExtractor))
+                }
+                .padding(.top, 12)
+            }
+            .font(.system(size: 12))
+            .utilitySectionCard()
+        }
+    }
+
+    private var recognitionSettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("RECOGNITION OPTIONS").utilitySectionHeader()
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recognition quality")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Accurate is best for smaller or styled text.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Picker("Recognition quality", selection: $service.settings.speed) {
+                        ForEach(TextRecognitionSpeed.allCases) { speed in
+                            Text(speed.title).tag(speed)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 110)
+                }
+                .padding(.bottom, 12)
+
+                Divider()
+
+                Toggle("Use language correction", isOn: $service.settings.languageCorrection)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .padding(.vertical, 12)
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Preferred languages")
+                        .font(.system(size: 12, weight: .medium))
+                    HStack(spacing: 8) {
+                        TextField("Automatic, en-US, fr-FR", text: $languages)
+                            .textFieldStyle(.plain)
+                            .padding(.horizontal, 8)
+                            .frame(height: 28)
+                            .background(Color.primary.opacity(0.06))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .onSubmit(applyLanguages)
+                        Button("Apply", action: applyLanguages)
+                            .controlSize(.small)
+                    }
+                    Text("Leave empty to detect languages automatically.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 12)
+            }
+            .font(.system(size: 12))
+            .utilitySectionCard()
+        }
     }
 
     private var isExtracting: Bool {

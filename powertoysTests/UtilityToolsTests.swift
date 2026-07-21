@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import XCTest
 @testable import powertoys
 
@@ -80,5 +81,16 @@ final class UtilityToolsTests: XCTestCase {
     func testGlobalShortcutKeysCoverAlphabetWithoutDuplicateCodes() {
         XCTAssertEqual(GlobalShortcutKey.allCases.map(\.title), Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init))
         XCTAssertEqual(Set(GlobalShortcutKey.allCases.map(\.keyCode)).count, 26)
+    }
+
+    func testDefaultGlobalShortcuts() {
+        let textExtractor = GlobalShortcutAction.textExtractor.defaultShortcut
+        XCTAssertEqual(textExtractor.keyCode, UInt32(kVK_ANSI_2))
+        XCTAssertEqual(textExtractor.carbonModifiers, UInt32(shiftKey | cmdKey))
+        XCTAssertEqual(textExtractor.display, "⇧⌘2")
+
+        let colorPicker = GlobalShortcutAction.colorPicker.defaultShortcut
+        XCTAssertEqual(colorPicker.carbonModifiers, UInt32(controlKey | optionKey | cmdKey))
+        XCTAssertEqual(colorPicker.display, "⌃⌥⌘C")
     }
 }

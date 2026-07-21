@@ -12,7 +12,7 @@ direct user correction or verified result changes a status.
 | Done | Move the tool title and primary pick action into one compact top row. | `CompactTitlebar` contains the text-only title and `Pick Color`. | None. |
 | Verify | Keep titlebar buttons compact, slightly rounded, and visually separate. | Shared actions are separate 24pt controls with the titlebar-only 6pt radius; only `Pick Color` has accent fill. | Compare the fresh-open, hover, disabled, and focused states in the normal build. |
 | Done | Remove the titlebar bottom border, app icon, and Clear action. | The shared titlebar has no separator or app icon; destructive clearing lives in Settings. | None. |
-| Done | Move shortcut controls into a proper settings page. | Settings contains the enable toggle, fixed modifiers, key picker, and explanatory text. | None. |
+| Done | Move shortcut controls into a proper settings page. | Settings contains the enable toggle, a click-to-record `ShortcutRecorderField` that captures any modifier-plus-key combination, and explanatory text. | None. |
 | Done | Show only Settings content while Settings is open, with no top body margin. | History and Projects tabs render only outside Settings; the settings body has no top padding. | None. |
 | Done | Left-align `Enable Pick Color shortcut` and place `Clear All` below it. | Both controls use leading alignment; clearing has scope text and confirmation. | None. |
 | Done | Add Projects creation, selection, project-owned picks, persistence, and export. | `ColorPickerService` owns projects and selected destination; `ColorPickerTests` covers ownership and persistence; each named project exports CSS. | None. |

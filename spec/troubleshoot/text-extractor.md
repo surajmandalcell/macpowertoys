@@ -19,8 +19,10 @@
 - **Cause:** Setup, status, and history were combined instead of using explicit
   page and empty states.
 - **Invariant:** History is the default body. Show "Select text anywhere" only
-  when history is empty. Recognition options replace home content on the
-  settings page. Do not show Ready.
+  when history is empty. The settings page replaces home content and owns both
+  the global shortcut controls (enable toggle plus a click-to-record shortcut
+  field, default ⇧⌘2) and the recognition options. The titlebar holds only the
+  title and `Extract Text`; no shortcut menu lives there. Do not show Ready.
 - **Check:** Open with empty and populated history, then enter and exit settings.
 
 ## Selection Feedback

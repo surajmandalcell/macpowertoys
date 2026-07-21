@@ -323,27 +323,17 @@ struct ColorHistoryView: View {
 
                     Divider()
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Keyboard shortcut")
-                            .font(.system(size: 12, weight: .medium))
-                        HStack {
-                            Text("Modifiers")
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Keyboard shortcut")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Works anywhere while MacPowerToys is running.")
+                                .font(.system(size: 10))
                                 .foregroundStyle(.secondary)
-                            Spacer()
-                            Text("Control + Option + Command")
                         }
-                        Picker("Key", selection: Binding(
-                            get: { shortcuts.key(for: .colorPicker) },
-                            set: { shortcuts.setKey($0, for: .colorPicker) }
-                        )) {
-                            ForEach(GlobalShortcutKey.allCases) { key in
-                                Text(key.title).tag(key)
-                            }
-                        }
-                        .disabled(!shortcuts.isEnabled(.colorPicker))
-                        Text("Works anywhere while MacPowerToys is running")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                        Spacer()
+                        ShortcutRecorderField(action: .colorPicker)
+                            .disabled(!shortcuts.isEnabled(.colorPicker))
                     }
                     .font(.system(size: 12))
                     .padding(.top, ColorPickerLayout.settingsControlSpacing)
