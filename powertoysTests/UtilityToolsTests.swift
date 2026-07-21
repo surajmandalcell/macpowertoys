@@ -83,6 +83,14 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(Set(GlobalShortcutKey.allCases.map(\.keyCode)).count, 26)
     }
 
+    func testFixedSizeWindowRestoreKeepsPositionNotSavedSize() {
+        let saved = NSRect(x: 100, y: 300, width: 480, height: 600)
+        let restored = WindowStateManager.positionOnlyFrame(saved: saved, currentSize: NSSize(width: 480, height: 320))
+        XCTAssertEqual(restored.minX, 100)
+        XCTAssertEqual(restored.maxY, saved.maxY)
+        XCTAssertEqual(restored.size, NSSize(width: 480, height: 320))
+    }
+
     func testDefaultGlobalShortcuts() {
         let textExtractor = GlobalShortcutAction.textExtractor.defaultShortcut
         XCTAssertEqual(textExtractor.keyCode, UInt32(kVK_ANSI_2))

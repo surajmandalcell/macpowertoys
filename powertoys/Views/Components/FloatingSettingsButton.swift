@@ -12,7 +12,7 @@ struct FloatingSettingsButton: View {
                 .font(.system(size: 12, weight: .medium))
                 .frame(width: 24, height: 24)
                 .background(background)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(Circle())
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

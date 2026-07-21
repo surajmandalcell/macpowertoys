@@ -62,10 +62,26 @@ final class WindowStateManager {
         "text-extractor"
     ]
 
+    nonisolated private static let fixedSizeIdentifiers: Set<String> = [
+        "awake",
+        "color-picker",
+        "text-extractor",
+        "ruler"
+    ]
+
     nonisolated static func storageIdentifier(for identifier: String) -> String? {
         knownWindowIdentifiers.first { knownIdentifier in
             identifier == knownIdentifier || identifier.hasPrefix("\(knownIdentifier)-")
         }
+    }
+
+    nonisolated static func positionOnlyFrame(saved: NSRect, currentSize: NSSize) -> NSRect {
+        NSRect(
+            x: saved.minX,
+            y: saved.maxY - currentSize.height,
+            width: currentSize.width,
+            height: currentSize.height
+        )
     }
 
     func saveState(for window: NSWindow) {
@@ -101,6 +117,10 @@ final class WindowStateManager {
         }
 
         var frame = NSRect(x: state.x, y: state.y, width: state.width, height: state.height)
+
+        if Self.fixedSizeIdentifiers.contains(storageIdentifier) {
+            frame = Self.positionOnlyFrame(saved: frame, currentSize: window.frame.size)
+        }
 
         if let savedScreenIdentifier = state.screenIdentifier,
            let savedScreenOriginX = state.screenOriginX,
