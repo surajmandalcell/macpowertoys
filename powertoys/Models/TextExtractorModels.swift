@@ -8,7 +8,7 @@ enum TextRecognitionSpeed: String, CaseIterable, Codable, Identifiable, Sendable
 }
 
 struct TextExtractorSettings: Codable, Equatable, Sendable {
-    var speed: TextRecognitionSpeed = .accurate
+    var speed: TextRecognitionSpeed = .fast
     var languageCorrection = true
     var preferredLanguages: [String] = []
 }

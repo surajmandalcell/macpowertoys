@@ -17,10 +17,19 @@ final class TextExtractorService {
     private let historyKey = "text-extractor.history.v1"
     private let maximumHistoryCount = 50
     private let defaults: UserDefaults
+    private let pasteboard: NSPasteboard
+    private let playCompletionCue: () -> Void
     private var selector: TextRegionSelector?
+    private var shareableContentTask: Task<SCShareableContent, Error>?
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        pasteboard: NSPasteboard = .general,
+        playCompletionCue: @escaping () -> Void = { NSSound(named: "Tink")?.play() }
+    ) {
         self.defaults = defaults
+        self.pasteboard = pasteboard
+        self.playCompletionCue = playCompletionCue
         settings = defaults.data(forKey: settingsKey)
             .flatMap { try? JSONDecoder().decode(TextExtractorSettings.self, from: $0) }
             ?? TextExtractorSettings()
@@ -37,6 +46,9 @@ final class TextExtractorService {
     func begin() {
         guard requestPermissionIfNeeded() else { return }
         state = .selecting
+        shareableContentTask = Task {
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        }
         let selector = TextRegionSelector()
         self.selector = selector
         selector.begin { [weak self] selection, screen in
@@ -45,6 +57,8 @@ final class TextExtractorService {
             Task { await self.captureAndRecognize(selection: selection, screen: screen) }
         } cancellation: { [weak self] in
             self?.selector = nil
+            self?.shareableContentTask?.cancel()
+            self?.shareableContentTask = nil
             self?.state = .idle
         }
     }
@@ -59,9 +73,17 @@ final class TextExtractorService {
     }
 
     func copy(_ extraction: TextExtraction) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(extraction.text, forType: .string)
+        pasteboard.clearContents()
+        pasteboard.setString(extraction.text, forType: .string)
         state = .copied(extraction.text)
+    }
+
+    func finishRecognition(_ text: String) {
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        record(text)
+        state = .copied(text)
+        playCompletionCue()
     }
 
     func remove(_ id: UUID) {
@@ -96,7 +118,13 @@ final class TextExtractorService {
     private func captureAndRecognize(selection: CGRect, screen: NSScreen) async {
         state = .recognizing
         do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            let content: SCShareableContent
+            if let task = shareableContentTask {
+                shareableContentTask = nil
+                content = try await task.value
+            } else {
+                content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            }
             guard let displayID = screen.displayID,
                   let display = content.displays.first(where: { $0.displayID == displayID })
             else { throw ExtractorError.displayUnavailable }
@@ -120,10 +148,7 @@ final class TextExtractorService {
                 state = .failed("No text was found. The clipboard was not changed.")
                 return
             }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-            record(text)
-            state = .copied(text)
+            finishRecognition(text)
         } catch {
             state = .failed(error.localizedDescription)
             ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))

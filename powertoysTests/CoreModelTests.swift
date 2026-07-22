@@ -6,7 +6,7 @@ final class CoreModelTests: XCTestCase {
     func testTextExtractorSettingsAndRecognitionTitles() {
         XCTAssertEqual(TextRecognitionSpeed.allCases.map(\.title), ["Accurate", "Fast"])
         let settings = TextExtractorSettings()
-        XCTAssertEqual(settings.speed, .accurate)
+        XCTAssertEqual(settings.speed, .fast)
         XCTAssertTrue(settings.languageCorrection)
         XCTAssertTrue(settings.preferredLanguages.isEmpty)
     }
@@ -36,6 +36,28 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(restored.history.count, 50)
         XCTAssertEqual(restored.history.first?.text, "Item 50")
         XCTAssertEqual(restored.history.last?.text, "Item 1")
+    }
+
+    func testRecognitionCopiesOnlyTextBeforePlayingCompletionCue() {
+        let suiteName = "TextExtractorCompletionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name(suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            pasteboard.clearContents()
+        }
+        var cueText: String?
+        let service = TextExtractorService(defaults: defaults, pasteboard: pasteboard) {
+            cueText = pasteboard.string(forType: .string)
+        }
+
+        service.finishRecognition("Recognized text")
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "Recognized text")
+        XCTAssertNil(pasteboard.data(forType: .tiff))
+        XCTAssertEqual(cueText, "Recognized text")
+        XCTAssertEqual(service.history.map(\.text), ["Recognized text"])
+        XCTAssertEqual(service.state, .copied("Recognized text"))
     }
 
     func testLongTextExtractionNeedsExpandedView() {
