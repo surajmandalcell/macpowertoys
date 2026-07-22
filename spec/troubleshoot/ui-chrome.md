@@ -66,18 +66,17 @@
 
 - **Symptom:** Every compact applet has a 32pt material strip below its fixed
   root, leaving a bottom-right floating control 40pt above the window edge.
-- **Cause:** SwiftUI grows a hidden-titlebar window to the fixed root height plus
-  its 32pt native safe area after the root accessor has laid out. Because the
-  root ignores the top safe area, the surplus appears below it. A one-shot clamp
-  scheduled from accessor layout runs before this delayed window resize.
-- **Invariant:** Compact applets observe window resize notifications and
-  asynchronously clamp full-size-content windows to the accessor height while
-  preserving the top edge. Keep the full-size-content guard so ordinary titled
-  windows cannot enter a repeated shrink cycle.
-- **Check:** Run the delayed-resize regression test, then accessibility-measure
-  the installed Awake, Color Picker, Text Extractor, and Ruler window heights.
-  On Color Picker and Text Extractor, the 24pt settings button must remain 8pt
-  from the bottom and right edges on both home and settings pages.
+- **Cause:** SwiftUI composites a hidden-titlebar window with the native 32pt
+  titled-frame height below its fixed root. Because the root ignores the top
+  safe area, the surplus appears below it. `NSWindow.frame` and Accessibility
+  can report only the root height, so clamping that logical frame does not move
+  the visible bottom edge.
+- **Invariant:** Position bottom overlays through the composited surplus using
+  the native titled-frame height from `NSWindow.frameRect`, rather than trusting
+  the logical window frame or repeatedly resizing the window.
+- **Check:** Screenshot the installed window itself, not only its Accessibility
+  bounds. On Color Picker and Text Extractor, the 24pt settings button must be
+  8pt from the visible material's bottom and right edges on both pages.
 
 ## Body Gutters and Floating Controls
 
@@ -117,17 +116,22 @@
 
 ## Global Shortcut Recording
 
-- **Symptom:** Recording Command-Shift-3 appears to produce `⇧⌘#`, making a
-  requested physical-key shortcut look incorrect or unusable.
-- **Cause:** `charactersIgnoringModifiers` preserves Shift for number-row keys,
-  so the recorder used the shifted character instead of the physical key label.
+- **Symptom:** Recording Command-Shift-3 appears as `⇧⌘#`, or displays correctly
+  but macOS takes the screenshot and the app action never runs.
+- **Cause:** `charactersIgnoringModifiers` preserves Shift for number-row keys.
+  Separately, macOS reserves Command-Shift-3 through its screenshot service, so
+  a normal Carbon hotkey cannot reliably override it.
 - **Invariant:** Every custom shortcut flow uses `ShortcutRecorderField`, which
   normalizes number-row key codes to `0` through `9` before persisting and
   displaying the shortcut. Color Picker defaults to `⇧⌘3`; Text Extractor
-  defaults to `⇧⌘2`.
+  defaults to `⇧⌘2`. Reserved screenshot chords use a suppressing session event
+  tap. When Accessibility permission is missing, show an explicit access action
+  beside the recorder instead of silently accepting a nonfunctional shortcut.
 - **Check:** Feed the shared recorder a Command-Shift key event whose characters
   contain the shifted symbol and confirm its shortcut retains the physical
-  number label. Then record shortcuts in both applet settings pages.
+  number label. Then record shortcuts in both applet settings pages and invoke
+  Command-Shift-3 from another app. Color Picker must open without taking a
+  screenshot.
 
 ## Awake Window Controls
 

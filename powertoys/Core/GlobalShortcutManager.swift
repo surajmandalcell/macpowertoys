@@ -1,3 +1,4 @@
+import ApplicationServices
 import Carbon.HIToolbox
 import Foundation
 import Observation
@@ -54,6 +55,21 @@ struct GlobalShortcut: Equatable {
         if carbonModifiers & UInt32(cmdKey) != 0 { symbols += "⌘" }
         return symbols + keyLabel
     }
+
+    var overridesSystemScreenshotShortcut: Bool {
+        let screenshotKeys = [kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_5].map(UInt32.init)
+        return screenshotKeys.contains(keyCode)
+            && carbonModifiers == UInt32(shiftKey | cmdKey)
+    }
+
+    func matches(keyCode: UInt32, flags: CGEventFlags) -> Bool {
+        var modifiers: UInt32 = 0
+        if flags.contains(.maskControl) { modifiers |= UInt32(controlKey) }
+        if flags.contains(.maskAlternate) { modifiers |= UInt32(optionKey) }
+        if flags.contains(.maskShift) { modifiers |= UInt32(shiftKey) }
+        if flags.contains(.maskCommand) { modifiers |= UInt32(cmdKey) }
+        return self.keyCode == keyCode && carbonModifiers == modifiers
+    }
 }
 
 enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
@@ -98,6 +114,8 @@ final class GlobalShortcutManager {
 
     private var eventHandler: EventHandlerRef?
     private var hotKeys: [UInt32: EventHotKeyRef] = [:]
+    private var reservedShortcutTap: CFMachPort?
+    private var reservedShortcutTapSource: CFRunLoopSource?
     private var shortcuts: [GlobalShortcutAction: GlobalShortcut]
     private var enabledActions: Set<GlobalShortcutAction>
 
@@ -122,6 +140,7 @@ final class GlobalShortcutManager {
         register(id: 1, keyCode: UInt32(kVK_ANSI_R), modifiers: legacyModifiers)
         register(id: 2, keyCode: UInt32(kVK_ANSI_A), modifiers: legacyModifiers)
         for action in enabledActions { register(action) }
+        refreshReservedShortcutTap()
     }
 
     private static func storedShortcut(for action: GlobalShortcutAction) -> GlobalShortcut {
@@ -162,6 +181,7 @@ final class GlobalShortcutManager {
             unregister(id: action.rawValue)
             register(action)
         }
+        refreshReservedShortcutTap()
     }
 
     func setEnabled(_ enabled: Bool, for action: GlobalShortcutAction) {
@@ -174,6 +194,21 @@ final class GlobalShortcutManager {
             unregister(id: action.rawValue)
         }
         UserDefaults.standard.set(enabled, forKey: "shortcut.\(action.defaultsName).enabled")
+        refreshReservedShortcutTap()
+    }
+
+    func needsAccessibilityPermission(for action: GlobalShortcutAction) -> Bool {
+        isEnabled(action)
+            && shortcut(for: action).overridesSystemScreenshotShortcut
+            && reservedShortcutTap == nil
+    }
+
+    func requestAccessibilityPermission() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.refreshReservedShortcutTap()
+        }
     }
 
     func shutdown() {
@@ -181,6 +216,7 @@ final class GlobalShortcutManager {
         hotKeys.removeAll()
         if let eventHandler { RemoveEventHandler(eventHandler) }
         eventHandler = nil
+        stopReservedShortcutTap()
     }
 
     private func register(_ action: GlobalShortcutAction) {
@@ -205,6 +241,45 @@ final class GlobalShortcutManager {
     private func unregister(id: UInt32) {
         guard let reference = hotKeys.removeValue(forKey: id) else { return }
         _ = UnregisterEventHotKey(reference)
+    }
+
+    private func refreshReservedShortcutTap() {
+        stopReservedShortcutTap()
+        let needsTap = enabledActions.contains {
+            shortcut(for: $0).overridesSystemScreenshotShortcut
+        }
+        guard needsTap else { return }
+        let mask = CGEventMask(1) << CGEventType.keyDown.rawValue
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: Self.handleReservedShortcutEvent,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else { return }
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        reservedShortcutTap = tap
+        reservedShortcutTapSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func stopReservedShortcutTap() {
+        if let source = reservedShortcutTapSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        }
+        if let tap = reservedShortcutTap { CFMachPortInvalidate(tap) }
+        reservedShortcutTapSource = nil
+        reservedShortcutTap = nil
+    }
+
+    private func reservedAction(keyCode: UInt32, flags: CGEventFlags) -> GlobalShortcutAction? {
+        enabledActions.first {
+            let shortcut = shortcut(for: $0)
+            return shortcut.overridesSystemScreenshotShortcut
+                && shortcut.matches(keyCode: keyCode, flags: flags)
+        }
     }
 
     private func run(id: UInt32) {
@@ -233,5 +308,18 @@ final class GlobalShortcutManager {
         let id = hotKeyID.id
         Task { @MainActor in manager.run(id: id) }
         return noErr
+    }
+
+    nonisolated private static let handleReservedShortcutEvent: CGEventTapCallBack = {
+        _, type, event, userData in
+        guard type == .keyDown, let userData else { return Unmanaged.passUnretained(event) }
+        let manager = Unmanaged<GlobalShortcutManager>.fromOpaque(userData).takeUnretainedValue()
+        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
+        let action = MainActor.assumeIsolated {
+            manager.reservedAction(keyCode: keyCode, flags: event.flags)
+        }
+        guard let action else { return Unmanaged.passUnretained(event) }
+        Task { @MainActor in manager.run(id: action.rawValue) }
+        return nil
     }
 }

@@ -96,3 +96,25 @@ struct ShortcutRecorderField: View {
         return characters
     }
 }
+
+struct ShortcutPermissionNotice: View {
+    let action: GlobalShortcutAction
+    @State private var shortcuts = GlobalShortcutManager.shared
+
+    var body: some View {
+        if shortcuts.needsAccessibilityPermission(for: action) {
+            HStack(spacing: 8) {
+                Text("macOS reserves this screenshot shortcut. Accessibility access lets MacPowerToys override it.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Allow Access…") { shortcuts.requestAccessibilityPermission() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+                    .focusEffectDisabled()
+            }
+            .padding(.top, 8)
+        }
+    }
+}

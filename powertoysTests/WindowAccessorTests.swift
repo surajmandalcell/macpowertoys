@@ -105,46 +105,7 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertTrue(window.isMovable)
     }
 
-    func testCompactAppletClampsDelayedWindowResizeToContentHeight() {
-        let contentHeight: CGFloat = 300
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: contentHeight),
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        Self.retainedWindows.append(window)
-        window.contentView = NSHostingView(
-            rootView: Color.clear
-                .frame(width: 400, height: contentHeight)
-                .background(WindowAccessor(identifier: "text-extractor"))
-        )
-        window.contentView?.layoutSubtreeIfNeeded()
-        XCTAssertTrue(waitUntil {
-            window.identifier?.rawValue == "text-extractor"
-        })
-
-        var oversizedFrame = window.frame
-        oversizedFrame.origin.y -= 32
-        oversizedFrame.size.height += 32
-        let topEdge = oversizedFrame.maxY
-        window.setFrame(oversizedFrame, display: false)
-        XCTAssertTrue(waitUntil {
-            abs(window.frame.height - contentHeight) <= 0.5
-        })
-
-        XCTAssertEqual(window.frame.height, contentHeight, accuracy: 0.5)
-        XCTAssertEqual(window.frame.maxY, topEdge, accuracy: 0.5)
-    }
-
-    private func waitUntil(
-        timeout: TimeInterval = 2,
-        condition: () -> Bool
-    ) -> Bool {
-        let deadline = Date(timeIntervalSinceNow: timeout)
-        while !condition(), Date() < deadline {
-            RunLoop.main.run(until: min(deadline, Date(timeIntervalSinceNow: 0.01)))
-        }
-        return condition()
+    func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
+        XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
     }
 }
