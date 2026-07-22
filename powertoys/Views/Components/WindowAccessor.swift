@@ -36,11 +36,21 @@ private class WindowAccessorView: NSView {
     init(windowIdentifier: String) {
         self.windowIdentifier = windowIdentifier
         super.init(frame: .zero)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidBecomeKey(_:)),
+            name: NSWindow.didBecomeKeyNotification,
+            object: nil
+        )
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidMoveToWindow() {
@@ -79,6 +89,14 @@ private class WindowAccessorView: NSView {
             guard let self, let window else { return }
             alignCompactTrafficLights(in: window)
         }
+    }
+
+    @objc private func windowDidBecomeKey(_ notification: Notification) {
+        guard let notifiedWindow = notification.object as? NSWindow,
+              notifiedWindow === window,
+              Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
+        else { return }
+        scheduleCompactTrafficLightAlignment(in: notifiedWindow)
     }
 
     private func alignCompactTrafficLights(in window: NSWindow) {
