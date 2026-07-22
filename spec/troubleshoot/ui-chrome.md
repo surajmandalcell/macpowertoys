@@ -115,6 +115,20 @@
 - **Check:** Enter settings from every home page, confirm home navigation is
   absent, then toggle back and confirm home state returns.
 
+## Global Shortcut Recording
+
+- **Symptom:** Recording Command-Shift-3 appears to produce `⇧⌘#`, making a
+  requested physical-key shortcut look incorrect or unusable.
+- **Cause:** `charactersIgnoringModifiers` preserves Shift for number-row keys,
+  so the recorder used the shifted character instead of the physical key label.
+- **Invariant:** Every custom shortcut flow uses `ShortcutRecorderField`, which
+  normalizes number-row key codes to `0` through `9` before persisting and
+  displaying the shortcut. Color Picker defaults to `⇧⌘3`; Text Extractor
+  defaults to `⇧⌘2`.
+- **Check:** Feed the shared recorder a Command-Shift key event whose characters
+  contain the shifted symbol and confirm its shortcut retains the physical
+  number label. Then record shortcuts in both applet settings pages.
+
 ## Awake Window Controls
 
 - **Symptom:** The Awake window can be enlarged, or `Keep Display On` cannot be

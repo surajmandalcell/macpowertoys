@@ -71,9 +71,9 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
         switch self {
         case .colorPicker:
             GlobalShortcut(
-                keyCode: UInt32(kVK_ANSI_C),
-                carbonModifiers: UInt32(controlKey | optionKey | cmdKey),
-                keyLabel: "C"
+                keyCode: UInt32(kVK_ANSI_3),
+                carbonModifiers: UInt32(shiftKey | cmdKey),
+                keyLabel: "3"
             )
         case .textExtractor:
             GlobalShortcut(

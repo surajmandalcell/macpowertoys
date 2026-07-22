@@ -98,7 +98,29 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(textExtractor.display, "⇧⌘2")
 
         let colorPicker = GlobalShortcutAction.colorPicker.defaultShortcut
-        XCTAssertEqual(colorPicker.carbonModifiers, UInt32(controlKey | optionKey | cmdKey))
-        XCTAssertEqual(colorPicker.display, "⌃⌥⌘C")
+        XCTAssertEqual(colorPicker.keyCode, UInt32(kVK_ANSI_3))
+        XCTAssertEqual(colorPicker.carbonModifiers, UInt32(shiftKey | cmdKey))
+        XCTAssertEqual(colorPicker.display, "⇧⌘3")
+    }
+
+    func testShortcutRecorderUsesPhysicalNumberKeyLabelWithShift() throws {
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command, .shift],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "#",
+            charactersIgnoringModifiers: "#",
+            isARepeat: false,
+            keyCode: UInt16(kVK_ANSI_3)
+        ))
+
+        let shortcut = try XCTUnwrap(ShortcutRecorderField.shortcut(from: event))
+        XCTAssertEqual(shortcut.keyCode, UInt32(kVK_ANSI_3))
+        XCTAssertEqual(shortcut.carbonModifiers, UInt32(shiftKey | cmdKey))
+        XCTAssertEqual(shortcut.keyLabel, "3")
+        XCTAssertEqual(shortcut.display, "⇧⌘3")
     }
 }
