@@ -24,7 +24,7 @@ final class RulerManagerTests: XCTestCase {
         let vertical = try XCTUnwrap(manager.rulers.first { $0.orientation == .vertical })
         XCTAssertEqual(horizontal.height, RulerGeometry.thickness)
         XCTAssertEqual(vertical.width, RulerGeometry.thickness)
-        XCTAssertEqual(vertical.frame.maxX, horizontal.frame.minX, accuracy: 0.001)
+        XCTAssertEqual(horizontal.frame.minX - vertical.frame.maxX, RulerGeometry.groupGap, accuracy: 0.001)
         XCTAssertEqual(vertical.frame.maxY, horizontal.frame.maxY, accuracy: 0.001)
         XCTAssertFalse(vertical.frame.intersects(horizontal.frame))
         let screen = try XCTUnwrap(NSScreen.screens.first { $0.displayID == horizontal.screenID })
@@ -83,7 +83,7 @@ final class RulerManagerTests: XCTestCase {
         let resizedVertical = try XCTUnwrap(manager.rulers.first { $0.orientation == .vertical })
         let screen = try XCTUnwrap(NSScreen.screens.first { $0.displayID == horizontal.screenID })
         XCTAssertEqual(resizedVertical.height, screen.visibleFrame.height * 0.3, accuracy: 0.001)
-        XCTAssertEqual(resizedVertical.frame.maxX, horizontal.frame.minX, accuracy: 0.001)
+        XCTAssertEqual(horizontal.frame.minX - resizedVertical.frame.maxX, RulerGeometry.groupGap, accuracy: 0.001)
         XCTAssertEqual(resizedVertical.frame.maxY, horizontal.frame.maxY, accuracy: 0.001)
         XCTAssertFalse(resizedVertical.frame.intersects(horizontal.frame))
     }
