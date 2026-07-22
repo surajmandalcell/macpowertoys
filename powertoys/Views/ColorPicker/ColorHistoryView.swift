@@ -79,6 +79,7 @@ struct ColorHistoryView: View {
                 }
                 .accessibilityIdentifier("color-picker.settings")
                 .padding([.trailing, .bottom], UtilityLayout.floatingButtonEdgeInset)
+                .offset(y: UtilityLayout.hiddenTitlebarBottomSurplus)
             }
         }
         .frame(
@@ -337,6 +338,8 @@ struct ColorHistoryView: View {
                     }
                     .font(.system(size: 12))
                     .padding(.top, ColorPickerLayout.settingsControlSpacing)
+
+                    ShortcutPermissionNotice(action: .colorPicker)
                 }
                 .padding(14)
                 .background(Color.primary.opacity(0.05))

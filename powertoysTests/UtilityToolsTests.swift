@@ -101,6 +101,16 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(colorPicker.keyCode, UInt32(kVK_ANSI_3))
         XCTAssertEqual(colorPicker.carbonModifiers, UInt32(shiftKey | cmdKey))
         XCTAssertEqual(colorPicker.display, "⇧⌘3")
+        XCTAssertTrue(colorPicker.overridesSystemScreenshotShortcut)
+        XCTAssertTrue(colorPicker.matches(
+            keyCode: UInt32(kVK_ANSI_3),
+            flags: [.maskCommand, .maskShift]
+        ))
+        XCTAssertFalse(colorPicker.matches(
+            keyCode: UInt32(kVK_ANSI_3),
+            flags: [.maskCommand, .maskShift, .maskControl]
+        ))
+        XCTAssertFalse(textExtractor.overridesSystemScreenshotShortcut)
     }
 
     func testShortcutRecorderUsesPhysicalNumberKeyLabelWithShift() throws {

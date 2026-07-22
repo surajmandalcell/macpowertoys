@@ -47,6 +47,7 @@ struct TextExtractorView: View {
                 }
                 .accessibilityIdentifier("text-extractor.settings")
                 .padding([.trailing, .bottom], UtilityLayout.floatingButtonEdgeInset)
+                .offset(y: UtilityLayout.hiddenTitlebarBottomSurplus)
             }
         }
         .frame(
@@ -212,6 +213,8 @@ struct TextExtractorView: View {
                         .disabled(!shortcuts.isEnabled(.textExtractor))
                 }
                 .padding(.top, 12)
+
+                ShortcutPermissionNotice(action: .textExtractor)
             }
             .font(.system(size: 12))
             .utilitySectionCard()
