@@ -13,6 +13,18 @@
 - **Check:** Unit-check single, double, and right-click routing, then exercise
   all three in the latest normal signed build.
 
+## Menu-Bar Popover Rhythm
+
+- **Symptom:** Status dots, labels, transfer progress, and actions shift between
+  rows or sit too close to neighboring items.
+- **Cause:** Each tray section used independent icon widths, row heights, and
+  spacing values, so mixed content had no shared alignment columns.
+- **Invariant:** Use an 18pt leading icon column, at least 24pt for compact
+  status/history rows, 8pt between peer controls, and align transfer progress
+  with its text column. Keep Pause/Resume on the active transfer row.
+- **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
+  leading labels and trailing actions must remain aligned without crowding.
+
 ## Window Space Restoration
 
 - **Symptom:** A reopened utility returns to its saved frame and display but not
