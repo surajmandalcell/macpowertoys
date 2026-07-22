@@ -35,6 +35,19 @@
 - **Check:** Start extraction, move across multiple apps, cancel with Escape,
   and confirm the normal pointer returns.
 
+## Recognition Latency And Completion
+
+- **Symptom:** Nothing appears to happen after region selection, the clipboard
+  briefly contains captured pixels, or successful OCR has no completion cue.
+- **Cause:** Display discovery and accurate recognition were both paid after the
+  drag ended, while completion side effects had no single ordered seam.
+- **Invariant:** Start ScreenCaptureKit display discovery during selection,
+  default new settings to fast recognition, and change the pasteboard only once
+  recognition has non-empty text. Put only that string on the pasteboard, then
+  play the native completion cue.
+- **Check:** Extract known text and confirm the pasteboard contains only the
+  string, the cue follows the copy, and failure/cancellation leave it unchanged.
+
 ## History and Detail
 
 - **Symptom:** Large recognized text is cramped, timestamps expose seconds, or
