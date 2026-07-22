@@ -534,8 +534,10 @@ fixed 420 / 480 / 560 wide; 250–600 high
 - Inside the 40pt titlebar, center a 28pt wrapper made from a 24pt row plus one
   4pt top inset. This places every 24pt item at y=10…34 with midpoint y=22.
   Do not place the row itself at y=4 and never pad the title separately.
-- Move native close and minimize controls 6pt down to midpoint y=22. Hide zoom.
-  Start the title at x=60 so it reclaims zoom's former space.
+- Move native close and minimize controls 6pt down to midpoint y=22. Reapply
+  that absolute baseline after delayed native layout and whenever the window
+  becomes key, because AppKit may restore its 16pt default centerline. Hide
+  zoom. Start the title at x=60 so it reclaims zoom's former space.
 - Give the title and action container the same 24pt height. The title truncates
   before actions; actions never wrap or shrink. The action container ends 20pt
   from the window edge, actions have 8pt between them, and the flexible spacer

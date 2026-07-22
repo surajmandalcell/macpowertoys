@@ -33,21 +33,26 @@
 
 ## Compact Titlebar Vertical Alignment
 
-- **Symptom:** Compact titlebar items sit too high, the traffic lights feel
-  cramped, the app name appears independently padded, the green zoom control
-  remains, or an applet can be resized.
+- **Symptom:** Compact titlebar items sit too high, traffic lights initially
+  align but later jump 6pt upward, the app name appears independently padded,
+  the green zoom control remains, or an applet can be resized.
 - **Cause:** The title used its intrinsic text height while actions used 24pt
-  frames inside a taller row, or traffic lights followed a different offset.
+  frames inside a taller row. Separately, AppKit can restore its native 16pt
+  traffic-light centerline after the two startup alignment passes.
 - **Invariant:** Use one 40pt titlebar. Apply one 4pt top inset to the complete
   row and no vertical padding to individual row items. Give the title and
   action container equal 24pt frames. They share a 22pt centerline. Move close
   and minimize controls 6pt down to that centerline, hide zoom, and remove the
   resizable window style for every compact applet. Give each applet an explicit
   fixed root frame and use SwiftUI content-size window resizability. Reapply the
-  traffic-light offset after delayed layout; never stack relative offsets.
+  traffic-light offset after delayed layout and whenever the window becomes
+  key; never stack relative offsets.
 - **Check:** Compare accessibility frame midpoints for the close button, title,
-  and actions in every compact applet. They stay within 1pt of window-top +
-  22pt. Confirm only close and minimize are visible and manual resizing fails.
+  and actions in every compact applet before and after switching focus. They
+  stay within 1pt of window-top + 22pt. In the unit seam, restore the native
+  16pt centerline after startup, post the key-window transition, and confirm the
+  22pt centerline is restored. Confirm only close and minimize are visible and
+  manual resizing fails.
 
 ## Compact Titlebar Initial Focus
 

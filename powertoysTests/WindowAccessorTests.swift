@@ -11,7 +11,7 @@ final class WindowAccessorTests: XCTestCase {
         for identifier in ["ruler", "awake", "color-picker", "text-extractor"] {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
@@ -42,6 +42,25 @@ final class WindowAccessorTests: XCTestCase {
             XCTAssertEqual(
                 adjustedMinimizeButtonY,
                 adjustedCloseButtonY,
+                accuracy: 0.5,
+                identifier
+            )
+            let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
+            let closeButtonSuperview = try XCTUnwrap(closeButton.superview)
+            let closeButtonCenter = closeButtonSuperview.convert(
+                NSPoint(x: closeButton.frame.midX, y: closeButton.frame.midY),
+                to: window.contentView
+            )
+            let expectedCenterline = (
+                UtilityLayout.compactTitlebarHeight + UtilityLayout.compactTitlebarTopInset
+            ) / 2
+            let contentView = try XCTUnwrap(window.contentView)
+            let closeButtonTopGap = contentView.isFlipped
+                ? closeButtonCenter.y
+                : contentView.bounds.maxY - closeButtonCenter.y
+            XCTAssertEqual(
+                closeButtonTopGap,
+                expectedCenterline,
                 accuracy: 0.5,
                 identifier
             )
@@ -76,8 +95,21 @@ final class WindowAccessorTests: XCTestCase {
                 accuracy: 0.5,
                 identifier
             )
+
+            for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
+                guard let button = window.standardWindowButton(buttonType) else { continue }
+                button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: initialCloseButtonY))
+            }
+            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+
+            XCTAssertEqual(
+                try XCTUnwrap(window.standardWindowButton(.closeButton)?.frame.origin.y),
+                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
+                accuracy: 0.5,
+                "Late native titlebar layout must be corrected when \(identifier) becomes key"
+            )
             let firstResponder = try XCTUnwrap(window.firstResponder as? NSView)
-            let contentView = try XCTUnwrap(window.contentView)
             XCTAssertTrue(
                 firstResponder === contentView || firstResponder.isDescendant(of: contentView),
                 identifier
