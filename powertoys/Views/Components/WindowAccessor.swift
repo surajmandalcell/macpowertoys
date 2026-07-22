@@ -49,10 +49,23 @@ private class WindowAccessorView: NSView {
         window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
         let isCompactApplet = Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
         if restoredWindow !== window {
+            if let restoredWindow {
+                NotificationCenter.default.removeObserver(
+                    self,
+                    name: NSWindow.didResizeNotification,
+                    object: restoredWindow
+                )
+            }
             WindowStateManager.shared.restoreState(for: window)
             restoredWindow = window
             compactTrafficLightBaselineY = nil
             if isCompactApplet {
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(windowDidResize),
+                    name: NSWindow.didResizeNotification,
+                    object: window
+                )
                 scheduleCompactTrafficLightAlignment(in: window)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
                     guard let self, let window else { return }
@@ -86,6 +99,10 @@ private class WindowAccessorView: NSView {
         DispatchQueue.main.async { [weak self] in
             self?.clampWindowHeightToContent()
         }
+    }
+
+    @objc private func windowDidResize() {
+        scheduleWindowHeightClamp()
     }
 
     private func clampWindowHeightToContent() {

@@ -62,6 +62,23 @@
   interaction and after changing window focus, confirm no titlebar outline is
   visible. Tab to each control and confirm keyboard activation still works.
 
+## Compact Applet Window Height
+
+- **Symptom:** Every compact applet has a 32pt material strip below its fixed
+  root, leaving a bottom-right floating control 40pt above the window edge.
+- **Cause:** SwiftUI grows a hidden-titlebar window to the fixed root height plus
+  its 32pt native safe area after the root accessor has laid out. Because the
+  root ignores the top safe area, the surplus appears below it. A one-shot clamp
+  scheduled from accessor layout runs before this delayed window resize.
+- **Invariant:** Compact applets observe window resize notifications and
+  asynchronously clamp full-size-content windows to the accessor height while
+  preserving the top edge. Keep the full-size-content guard so ordinary titled
+  windows cannot enter a repeated shrink cycle.
+- **Check:** Run the delayed-resize regression test, then accessibility-measure
+  the installed Awake, Color Picker, Text Extractor, and Ruler window heights.
+  On Color Picker and Text Extractor, the 24pt settings button must remain 8pt
+  from the bottom and right edges on both home and settings pages.
+
 ## Body Gutters and Floating Controls
 
 - **Symptom:** Tabs, cards, fields, or a floating control start on different

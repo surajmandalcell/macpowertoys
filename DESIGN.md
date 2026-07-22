@@ -493,11 +493,11 @@ legible: 420pt for short data, 480pt for text/history, or 560pt for dense contro
 rows. Total window height stays between 250pt and 600pt. If useful content does
 not fit at 560×600 with scrolling, use a full workspace.
 
-These widths and heights are SwiftUI content sizes, not captured `NSWindow`
-frame sizes. Current screenshot captures add 32pt to the declared content
-height. For example, Awake declares 560×500 content and its reference PNG is
-560×532. Browser references must render the outer frame at the screenshot size
-while keeping the internal 500pt content contract intact.
+These widths and heights are both the declared SwiftUI root size and the compact
+applet's outer `NSWindow` frame size. `WindowAccessor` removes the hidden native
+titlebar's delayed 32pt safe-area surplus while preserving the window's top edge.
+For example, Awake declares and renders at 560×500. Browser references must use
+that same outer frame size.
 
 Existing applets are concrete references, not new families:
 
