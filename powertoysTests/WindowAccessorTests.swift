@@ -120,16 +120,31 @@ final class WindowAccessorTests: XCTestCase {
                 .background(WindowAccessor(identifier: "text-extractor"))
         )
         window.contentView?.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        XCTAssertTrue(waitUntil {
+            window.identifier?.rawValue == "text-extractor"
+        })
 
         var oversizedFrame = window.frame
         oversizedFrame.origin.y -= 32
         oversizedFrame.size.height += 32
         let topEdge = oversizedFrame.maxY
         window.setFrame(oversizedFrame, display: false)
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        XCTAssertTrue(waitUntil {
+            abs(window.frame.height - contentHeight) <= 0.5
+        })
 
         XCTAssertEqual(window.frame.height, contentHeight, accuracy: 0.5)
         XCTAssertEqual(window.frame.maxY, topEdge, accuracy: 0.5)
+    }
+
+    private func waitUntil(
+        timeout: TimeInterval = 2,
+        condition: () -> Bool
+    ) -> Bool {
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        while !condition(), Date() < deadline {
+            RunLoop.main.run(until: min(deadline, Date(timeIntervalSinceNow: 0.01)))
+        }
+        return condition()
     }
 }
