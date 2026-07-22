@@ -56,7 +56,7 @@ final class WindowAccessorTests: XCTestCase {
                 }
                 button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: initialCloseButtonY))
             }
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.3))
 
             let reappliedCloseButtonY = try XCTUnwrap(
                 window.standardWindowButton(.closeButton)?.frame.origin.y
@@ -103,5 +103,33 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(window.identifier?.rawValue, "main")
         XCTAssertFalse(window.isMovableByWindowBackground)
         XCTAssertTrue(window.isMovable)
+    }
+
+    func testCompactAppletClampsDelayedWindowResizeToContentHeight() {
+        let contentHeight: CGFloat = 300
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: contentHeight),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        Self.retainedWindows.append(window)
+        window.contentView = NSHostingView(
+            rootView: Color.clear
+                .frame(width: 400, height: contentHeight)
+                .background(WindowAccessor(identifier: "text-extractor"))
+        )
+        window.contentView?.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+
+        var oversizedFrame = window.frame
+        oversizedFrame.origin.y -= 32
+        oversizedFrame.size.height += 32
+        let topEdge = oversizedFrame.maxY
+        window.setFrame(oversizedFrame, display: false)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+
+        XCTAssertEqual(window.frame.height, contentHeight, accuracy: 0.5)
+        XCTAssertEqual(window.frame.maxY, topEdge, accuracy: 0.5)
     }
 }
