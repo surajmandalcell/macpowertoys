@@ -6,7 +6,7 @@ import Observation
 @MainActor
 final class RulerManager {
     static let shared = RulerManager()
-    private static let layoutVersion = 3
+    private static let layoutVersion = 4
 
     private(set) var rulers: [RulerState] = []
     private(set) var measurements: [RulerMeasurement] = []
@@ -63,7 +63,8 @@ final class RulerManager {
 
     func restore() {
         normalizeGroupedPairs()
-        for state in rulers where state.isVisible { show(state.id) }
+        for state in rulers where state.isVisible { show(state.id, persistChanges: false) }
+        persist()
     }
 
     func openSettings() {
@@ -78,8 +79,9 @@ final class RulerManager {
         normalizeGroupedPairs()
         let visibleIDs = rulers.filter(\.isVisible).map(\.id)
         let ids = visibleIDs.isEmpty ? rulers.map(\.id) : visibleIDs
-        ids.forEach(show)
+        ids.forEach { show($0, persistChanges: false) }
         if let id = ids.first { focus(id) }
+        persist()
     }
 
     func create(_ orientation: RulerOrientation) {
@@ -90,9 +92,9 @@ final class RulerManager {
         var state = RulerState(orientation: orientation, frame: CGRect(origin: origin, size: size), screenID: screen?.displayID)
         state.frame = clamped(state.frame, to: screen)
         rulers.append(state)
-        persist()
-        show(state.id)
+        show(state.id, persistChanges: false)
         focus(state.id)
+        persist()
     }
 
     func createPair() {
@@ -101,11 +103,11 @@ final class RulerManager {
         let horizontalSize = defaultSize(for: .horizontal, in: visible)
         let verticalSize = defaultSize(for: .vertical, in: visible)
         let horizontalOrigin = CGPoint(
-            x: visible.midX - (horizontalSize.width - verticalSize.width) / 2,
+            x: visible.midX - (horizontalSize.width - verticalSize.width - RulerGeometry.groupGap) / 2,
             y: visible.midY - horizontalSize.height + verticalSize.height / 2
         )
         let verticalOrigin = CGPoint(
-            x: horizontalOrigin.x - verticalSize.width,
+            x: horizontalOrigin.x - verticalSize.width - RulerGeometry.groupGap,
             y: horizontalOrigin.y - verticalSize.height + horizontalSize.height
         )
         let groupID = UUID()
@@ -124,13 +126,13 @@ final class RulerManager {
         horizontal.frame = clamped(horizontal.frame, to: screen)
         vertical.frame = clamped(vertical.frame, to: screen)
         rulers.append(contentsOf: [horizontal, vertical])
-        persist()
-        show(horizontal.id)
-        show(vertical.id)
+        show(horizontal.id, persistChanges: false)
+        show(vertical.id, persistChanges: false)
         focus(horizontal.id)
+        persist()
     }
 
-    func show(_ id: UUID) {
+    func show(_ id: UUID, persistChanges: Bool = true) {
         guard let index = rulers.firstIndex(where: { $0.id == id }) else { return }
         rulers[index].isVisible = true
         let requestedScreen = rulers[index].screenID.flatMap { savedID in
@@ -144,7 +146,7 @@ final class RulerManager {
         panels[id] = panel
         panel.apply(state: state, style: style)
         panel.orderFrontRegardless()
-        persist()
+        if persistChanges { persist() }
     }
 
     func hide(_ id: UUID) {
@@ -411,7 +413,7 @@ final class RulerManager {
                 vertical.size.height = max(vertical.height, defaultSize(for: .vertical, in: visible).height)
             }
             vertical.origin = CGPoint(
-                x: horizontal.minX - RulerGeometry.thickness,
+                x: horizontal.minX - RulerGeometry.thickness - RulerGeometry.groupGap,
                 y: horizontal.maxY - vertical.height
             )
 

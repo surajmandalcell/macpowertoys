@@ -20,6 +20,7 @@ final class RulerOverlayPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        animationBehavior = .none
         contentView = rulerView
         apply(state: state, style: manager.style)
     }
