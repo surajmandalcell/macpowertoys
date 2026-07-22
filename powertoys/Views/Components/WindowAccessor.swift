@@ -67,7 +67,37 @@ private class WindowAccessorView: NSView {
         if isCompactApplet {
             window.styleMask.remove(.resizable)
             window.standardWindowButton(.zoomButton)?.isHidden = true
+            scheduleWindowHeightClamp()
         }
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        if Self.compactAppletWindowIdentifiers.contains(windowIdentifier) {
+            scheduleWindowHeightClamp()
+        }
+    }
+
+    // SwiftUI sizes a hidden-titlebar window to the root view plus the native
+    // titlebar height, but the compact root ignores the top safe area, which
+    // strands that extra height as a dead strip under the body. Clamp the
+    // window frame back to the root view's height, keeping the top edge fixed.
+    private func scheduleWindowHeightClamp() {
+        DispatchQueue.main.async { [weak self] in
+            self?.clampWindowHeightToContent()
+        }
+    }
+
+    private func clampWindowHeightToContent() {
+        guard let window, window.styleMask.contains(.fullSizeContentView) else { return }
+        let rootHeight = frame.height
+        guard rootHeight > 0 else { return }
+        let excess = window.frame.height - rootHeight
+        guard excess > 0.5 else { return }
+        var target = window.frame
+        target.origin.y += excess
+        target.size.height = rootHeight
+        window.setFrame(target, display: true)
     }
 
     private func scheduleCompactTrafficLightAlignment(in window: NSWindow) {
