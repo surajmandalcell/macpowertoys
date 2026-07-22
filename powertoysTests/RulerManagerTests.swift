@@ -69,6 +69,24 @@ final class RulerManagerTests: XCTestCase {
         XCTAssertTrue(manager.rulers.allSatisfy(\.isVisible))
     }
 
+    func testOpenToolShowsOnlyOneDefaultGroupedPair() {
+        let manager = RulerManager.shared
+        manager.removeAll()
+        defer { manager.removeAll() }
+
+        manager.createPair()
+        manager.create(.horizontal)
+        manager.openTool()
+
+        let visible = manager.rulers.filter(\.isVisible)
+        XCTAssertEqual(visible.count, 2)
+        XCTAssertEqual(
+            visible.map(\.orientation.rawValue).sorted(),
+            [RulerOrientation.horizontal.rawValue, RulerOrientation.vertical.rawValue]
+        )
+        XCTAssertEqual(Set(visible.compactMap(\.groupID)).count, 1)
+    }
+
     func testGroupedPairStaysAFullSizedNonOverlappingL() throws {
         let manager = RulerManager.shared
         manager.removeAll()

@@ -76,11 +76,33 @@ final class RulerManager {
             createPair()
             return
         }
+
+        let pairIDs: [UUID]
+        if let groupedPair = groupedPairIDs() {
+            pairIDs = groupedPair
+        } else if let horizontalIndex = rulers.firstIndex(where: { $0.orientation == .horizontal }),
+                  let verticalIndex = rulers.firstIndex(where: { $0.orientation == .vertical }) {
+            let groupID = UUID()
+            rulers[horizontalIndex].groupID = groupID
+            rulers[verticalIndex].groupID = groupID
+            pairIDs = [rulers[horizontalIndex].id, rulers[verticalIndex].id]
+        } else {
+            for index in rulers.indices {
+                rulers[index].isVisible = false
+                panels[rulers[index].id]?.orderOut(nil)
+            }
+            createPair()
+            return
+        }
+
+        let visibleIDs = Set(pairIDs)
+        for index in rulers.indices {
+            rulers[index].isVisible = visibleIDs.contains(rulers[index].id)
+            if !rulers[index].isVisible { panels[rulers[index].id]?.orderOut(nil) }
+        }
         normalizeGroupedPairs()
-        let visibleIDs = rulers.filter(\.isVisible).map(\.id)
-        let ids = visibleIDs.isEmpty ? rulers.map(\.id) : visibleIDs
-        ids.forEach { show($0, persistChanges: false) }
-        if let id = ids.first { focus(id) }
+        pairIDs.forEach { show($0, persistChanges: false) }
+        if let id = pairIDs.first { focus(id) }
         persist()
     }
 
@@ -434,6 +456,18 @@ final class RulerManager {
             panels[rulers[horizontalIndex].id]?.setFrame(horizontal, display: false)
             panels[rulers[verticalIndex].id]?.setFrame(vertical, display: false)
         }
+    }
+
+    private func groupedPairIDs() -> [UUID]? {
+        for groupID in Set(rulers.compactMap(\.groupID)) {
+            let grouped = rulers.filter { $0.groupID == groupID }
+            guard grouped.count == 2,
+                  let horizontal = grouped.first(where: { $0.orientation == .horizontal }),
+                  let vertical = grouped.first(where: { $0.orientation == .vertical })
+            else { continue }
+            return [horizontal.id, vertical.id]
+        }
+        return nil
     }
 
     private func focus(_ id: UUID) {

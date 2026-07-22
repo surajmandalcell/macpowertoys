@@ -24,12 +24,12 @@ struct RulerControlView: View {
         .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
         .onAppear {
-            manager.restore()
+            manager.openTool()
             calibrationText = manager.style.calibration(for: NSScreen.main).formatted(.number.precision(.fractionLength(2)))
         }
         .onReceive(NotificationCenter.default.publisher(for: .toolActionRequested)) { note in
             guard let action = note.object as? ToolActionID, action == .rulerSettings else { return }
-            manager.restore()
+            manager.openTool()
         }
     }
 
