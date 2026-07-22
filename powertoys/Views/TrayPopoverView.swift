@@ -22,9 +22,9 @@ struct TrayPopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             TrayTabStrip(tools: trayTools, selected: tabSelection)
-                .padding(.horizontal, 10)
-                .padding(.top, 10)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
 
             Divider()
 
@@ -81,7 +81,7 @@ struct TrayPopoverView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 8) {
             TrayFooterButton(title: "Open MacPowerToys", systemImage: "macwindow") {
                 openWindow(id: "main")
                 NSApplication.shared.activate(ignoringOtherApps: true)
@@ -93,8 +93,8 @@ struct TrayPopoverView: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
         .background(Color.primary.opacity(0.03))
     }
 }
@@ -104,9 +104,12 @@ private struct AwakeTrayTab: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                Circle().fill(service.isActive ? Color.green : Color.secondary).frame(width: 7, height: 7)
+                Circle()
+                    .fill(service.isActive ? Color.green : Color.secondary)
+                    .frame(width: 7, height: 7)
+                    .frame(width: 18)
                 Text(service.statusText).font(.system(size: 11)).monospacedDigit().lineLimit(1)
                 Spacer()
                 Button("Open") {
@@ -115,7 +118,8 @@ private struct AwakeTrayTab: View {
                 }
                 .buttonStyle(.borderless)
             }
-            HStack(spacing: 6) {
+            .frame(minHeight: 24)
+            HStack(spacing: 8) {
                 Button("Off") { service.setMode(.passive) }
                 Button("Indefinite") { service.setMode(.indefinite) }
                 Button("30 min") { service.setMode(.timed, duration: 1800) }
@@ -131,7 +135,7 @@ private struct AwakeTrayTab: View {
             .controlSize(.small)
             .disabled(service.configuration.mode == .passive)
         }
-        .padding(12)
+        .padding(14)
     }
 }
 
@@ -144,11 +148,12 @@ private struct TrayTabStrip: View {
     private let maxTabWidth: CGFloat = 150
     private let minTabWidth: CGFloat = 30
     private let labelThreshold: CGFloat = 84
+    private let tabSpacing: CGFloat = 8
 
     var body: some View {
         GeometryReader { geo in
             let count = max(1, tools.count)
-            let perTab = min(maxTabWidth, max(minTabWidth, (geo.size.width - CGFloat(count - 1) * 4) / CGFloat(count)))
+            let perTab = min(maxTabWidth, max(minTabWidth, (geo.size.width - CGFloat(count - 1) * tabSpacing) / CGFloat(count)))
             let overflow = CGFloat(count) * minTabWidth > geo.size.width
 
             Group {
@@ -165,7 +170,7 @@ private struct TrayTabStrip: View {
     }
 
     private func strip(perTab: CGFloat) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: tabSpacing) {
             ForEach(tools, id: \.id) { tool in
                 TrayTabItem(
                     tool: tool,
@@ -262,11 +267,12 @@ private struct RSyncTrayTab: View {
     }
 
     private var statusRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             if manager.daemonIsHealthy {
                 Circle()
                     .fill(Color.green)
                     .frame(width: 6, height: 6)
+                    .frame(width: 18, height: 18)
             } else {
                 TrayRetryButton {
                     Task { await manager.start() }
@@ -285,6 +291,7 @@ private struct RSyncTrayTab: View {
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
         }
+        .frame(minHeight: 24)
     }
 
     private var engineOffState: some View {
@@ -310,10 +317,11 @@ private struct RSyncTrayTab: View {
                     .foregroundStyle(.secondary)
 
                 ForEach(recentRecords) { record in
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Image(systemName: record.state.icon)
                             .font(.system(size: 10))
                             .foregroundStyle(record.state.tint)
+                            .frame(width: 18)
 
                         Text("\(record.sourceDisplay) → \(record.destinationDisplay)")
                             .font(.system(size: 11))
@@ -327,14 +335,14 @@ private struct RSyncTrayTab: View {
                             .foregroundStyle(.tertiary)
                             .monospacedDigit()
                     }
-                    .padding(.vertical, 2)
+                    .frame(minHeight: 24)
                 }
             }
         }
     }
 
     private var activeTransfers: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             ForEach(manager.activeJobs.prefix(8)) { job in
                 TrayTransferRow(job: job)
             }
@@ -380,13 +388,15 @@ private struct TrayRetryButton: View {
 
 private struct TrayTransferRow: View {
     let job: TransferJob
+    @State private var manager = RcloneJobManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: job.operation.icon)
                     .font(.system(size: 10))
                     .foregroundStyle(Color.accentColor)
+                    .frame(width: 18)
 
                 Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
                     .font(.system(size: 11))
@@ -395,12 +405,23 @@ private struct TrayTransferRow: View {
 
                 Spacer(minLength: 4)
 
-                Text(RcloneFormat.speed(job.stats.speed))
+                Text(job.state == .paused ? "Paused" : RcloneFormat.speed(job.stats.speed))
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(job.state == .paused ? Color.orange : Color.secondary)
                     .monospacedDigit()
                     .contentTransition(.numericText())
+
+                if job.canPause {
+                    transferControl(title: "Pause transfer", systemImage: "pause.fill") {
+                        manager.pause(job)
+                    }
+                } else if job.canResume {
+                    transferControl(title: "Resume transfer", systemImage: "play.fill") {
+                        manager.resume(job)
+                    }
+                }
             }
+            .frame(minHeight: 22)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -413,9 +434,10 @@ private struct TrayTransferRow: View {
                 }
             }
             .frame(height: 4)
+            .padding(.leading, 26)
 
             ForEach(job.stats.transferring.prefix(3)) { file in
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Text(file.name)
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
@@ -430,9 +452,23 @@ private struct TrayTransferRow: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 }
-                .padding(.leading, 16)
+                .padding(.leading, 26)
             }
         }
+    }
+
+    private func transferControl(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 9, weight: .semibold))
+                .frame(width: 20, height: 20)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .help(title)
+        .accessibilityLabel(title)
     }
 }
 
