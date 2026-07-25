@@ -69,9 +69,10 @@
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",
     "@types/node": "22.15.3",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9.22.0",
     "prettier": "^3.5.3",
-    "typescript": "^5.8.3"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "scripts": {
     "build": "ray build -e dist",
