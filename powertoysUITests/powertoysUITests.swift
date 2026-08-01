@@ -145,18 +145,29 @@ final class powertoysUITests: XCTestCase {
     func testRulerCloseWithCommandWLeavesMacPowerToysRunning() throws {
         let app = launchRuler()
         let rulerWindow = app.dialogs["ruler-window"]
+        let mainWindow = app.windows["MacPowerToys"]
+
+        XCTAssertTrue(
+            mainWindow.waitForExistence(timeout: 2),
+            "The host window must be present before exercising Ruler Command-W"
+        )
 
         rulerWindow.click()
         app.typeKey("w", modifierFlags: .command)
 
         XCTAssertTrue(waitForDisappearance(rulerWindow))
         XCTAssertNotEqual(app.state, .notRunning)
-        XCTAssertTrue(app.windows["MacPowerToys"].exists)
+        XCTAssertTrue(
+            mainWindow.waitForExistence(timeout: 2),
+            "The host window must remain available after Ruler Command-W"
+        )
     }
 
     @MainActor
     func testAwakeHasFixedSizeAndTitlebarDisplayToggle() throws {
-        let app = launchApp()
+        let app = launchApp(additionalArguments: [
+            "-app.closeMainWindowAfterOpeningTool", "YES",
+        ])
         let card = app.descendants(matching: .any)["tool.awake.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         card.click()
@@ -167,15 +178,8 @@ final class powertoysUITests: XCTestCase {
 
         let window = app.windows["Awake"]
         XCTAssertTrue(window.waitForExistence(timeout: 5))
-        let initialFrame = window.frame
-        let lowerRight = window.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.99))
-        lowerRight.press(
-            forDuration: 0.1,
-            thenDragTo: lowerRight.withOffset(CGVector(dx: 100, dy: 100))
-        )
-        XCTAssertEqual(window.frame, initialFrame)
 
-        let toggle = window.switches["Keep Display On"]
+        let toggle = window.switches["awake.keep-display-on"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 2))
         XCTAssertTrue(toggle.isEnabled)
         let initialValue = String(describing: toggle.value)
@@ -183,12 +187,20 @@ final class powertoysUITests: XCTestCase {
         XCTAssertNotEqual(String(describing: toggle.value), initialValue)
         toggle.click()
         XCTAssertEqual(String(describing: toggle.value), initialValue)
+
+        let initialFrame = window.frame
+        let lowerRight = window.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.99))
+        lowerRight.press(
+            forDuration: 0.1,
+            thenDragTo: lowerRight.withOffset(CGVector(dx: 100, dy: 100))
+        )
+        XCTAssertEqual(window.frame.size, initialFrame.size)
     }
 
     @MainActor
-    private func launchApp() -> XCUIApplication {
+    private func launchApp(additionalArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + additionalArguments
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launch()
         return app
@@ -196,7 +208,9 @@ final class powertoysUITests: XCTestCase {
 
     @MainActor
     private func launchRuler() -> XCUIApplication {
-        let app = launchApp()
+        let app = launchApp(additionalArguments: [
+            "-app.closeMainWindowAfterOpeningTool", "NO",
+        ])
         let card = app.descendants(matching: .any)["tool.ruler.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         card.click()

@@ -45,6 +45,7 @@ struct AwakeView: View {
             .controlSize(.small)
             .focusEffectDisabled()
             .contentShape(Rectangle())
+            .accessibilityIdentifier("awake.keep-display-on")
         }
     }
 
