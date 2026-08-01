@@ -3534,6 +3534,26 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertTrue(appDelegate.rulerManager.activeController === second)
     }
 
+    func testCommandNCreatesAndActivatesManagedRuler() {
+        let appDelegate = AppDelegate()
+        let first = appDelegate.rulerManager.createRuler()
+        defer {
+            for controller in appDelegate.rulerManager.controllers {
+                controller.hide()
+            }
+        }
+
+        XCTAssertTrue(
+            appDelegate.performRulerHotkey(
+                keyCode: kVK_ANSI_N,
+                modifierFlags: .command,
+                sender: first
+            )
+        )
+        XCTAssertEqual(appDelegate.rulerManager.controllers.count, 2)
+        XCTAssertFalse(appDelegate.rulerManager.activeController === first)
+    }
+
     func testManagedWingHotkeysAffectOnlyActiveRuler() {
         let appDelegate = AppDelegate()
         let first = appDelegate.rulerManager.createRuler()

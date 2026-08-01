@@ -1594,7 +1594,7 @@ extension RulerController {
         guard !isRulerInteractionSuspended,
               rulerWindow.isKeyWindow else { return event }
 
-        if let appDelegate = NSApp.delegate as? AppDelegate,
+        if let appDelegate = AppDelegate.current,
            appDelegate.performRulerHotkey(
                keyCode: Int(event.keyCode),
                modifierFlags: keyboardModifiers,

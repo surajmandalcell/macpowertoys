@@ -153,6 +153,6 @@ final class RulerMouseInteractionState {
     }
 
     private var appDelegate: AppDelegate? {
-        return NSApp.delegate as? AppDelegate
+        return AppDelegate.current
     }
 }

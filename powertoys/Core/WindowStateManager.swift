@@ -56,7 +56,6 @@ final class WindowStateManager {
         "cc-history",
         "rclone",
         "logs",
-        "ruler",
         "awake",
         "color-picker",
         "text-extractor"
@@ -65,8 +64,7 @@ final class WindowStateManager {
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
         "awake",
         "color-picker",
-        "text-extractor",
-        "ruler"
+        "text-extractor"
     ]
 
     nonisolated static func storageIdentifier(for identifier: String) -> String? {

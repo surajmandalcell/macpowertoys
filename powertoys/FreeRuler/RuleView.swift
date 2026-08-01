@@ -28,7 +28,7 @@ func rulerContextMenu(for view: NSView) -> NSMenu {
         keyEquivalent: ""
     )
     item.identifier = rulerSettingsContextMenuItemIdentifier
-    item.target = NSApp.delegate
+    item.target = AppDelegate.current
     menu.addItem(item)
     return menu
 }

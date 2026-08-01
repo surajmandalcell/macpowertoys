@@ -97,7 +97,28 @@ extension AppDelegate {
             name: NSWindow.didResignKeyNotification,
             object: nil
         )
+        freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            return self?.handleFreeRulerWindowKeyDown(event) ?? event
+        }
         installFreeRulerMenus()
+    }
+
+    private func handleFreeRulerWindowKeyDown(_ event: NSEvent) -> NSEvent? {
+        guard Self.isFreeRulerWindowIdentifier(NSApp.keyWindow?.identifier?.rawValue),
+              Int(event.keyCode) == kVK_ANSI_Comma else { return event }
+
+        let modifiers = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .subtracting(.capsLock)
+        switch modifiers {
+        case .command:
+            openRulerSettings(self)
+        case [.option, .command]:
+            openPreferences(self)
+        default:
+            return event
+        }
+        return nil
     }
 
     @objc private func handleFreeRulerToolAction(_ notification: Notification) {
@@ -848,6 +869,8 @@ extension AppDelegate {
 
         if keyboardModifiers == .command {
             switch keyCode {
+            case kVK_ANSI_N:
+                newRuler(sender)
             case kVK_ANSI_Grave:
                 cycleRulers(sender)
             default:
