@@ -103,12 +103,11 @@ extension AppDelegate {
             name: NSApplication.didUpdateNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(freeRulerMenuDidRemoveItem(_:)),
-            name: NSMenu.didRemoveItemNotification,
-            object: nil
-        )
+        freeRulerMainMenuObservation = NSApp.observe(\.mainMenu, options: .new) { [weak self] app, _ in
+            DispatchQueue.main.async {
+                self?.repairFreeRulerMenuContextIfNeeded(for: app.keyWindow)
+            }
+        }
         freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             return self?.handleFreeRulerWindowKeyDown(event) ?? event
         }
@@ -160,25 +159,6 @@ extension AppDelegate {
 
     @objc private func freeRulerApplicationDidUpdate(_ notification: Notification) {
         repairFreeRulerMenuContextIfNeeded(for: NSApp.keyWindow)
-    }
-
-    @objc private func freeRulerMenuDidRemoveItem(_ notification: Notification) {
-        guard let changedMenu = notification.object as? NSMenu else { return }
-        let mainMenu = NSApp.mainMenu
-        let applicationMenu = mainMenu?.items.first?.submenu
-        guard changedMenu === mainMenu || changedMenu === applicationMenu,
-              Self.isFreeRulerWindowIdentifier(NSApp.keyWindow?.identifier?.rawValue),
-              !freeRulerMenuRepairIsScheduled else { return }
-        let menusNeedRepair = freeRulerMenuRoots.contains(where: { $0.menu !== mainMenu })
-            || freeRulerDefaultsMenuItem?.menu !== applicationMenu
-        guard menusNeedRepair else { return }
-
-        freeRulerMenuRepairIsScheduled = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            freeRulerMenuRepairIsScheduled = false
-            repairFreeRulerMenuContextIfNeeded(for: NSApp.keyWindow)
-        }
     }
 
     func freeRulerMenuTitle(id: String, fallback: String) -> String {
