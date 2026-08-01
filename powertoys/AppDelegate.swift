@@ -27,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var freeRulerMenuRoots: [NSMenuItem] = []
     var freeRulerDefaultsMenuItem: NSMenuItem?
     var freeRulerHostMenuItemStates: [FreeRulerMenuItemState] = []
+    var freeRulerMenuRepairIsScheduled = false
     lazy var rulerManager: RulerManager = {
         let manager = RulerManager()
         manager.onActiveControllerChanged = { [weak self] controller in
