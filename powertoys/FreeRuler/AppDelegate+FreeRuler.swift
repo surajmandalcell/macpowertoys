@@ -97,6 +97,12 @@ extension AppDelegate {
             name: NSWindow.didResignKeyNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(freeRulerApplicationDidUpdate(_:)),
+            name: NSApplication.didUpdateNotification,
+            object: nil
+        )
         freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             return self?.handleFreeRulerWindowKeyDown(event) ?? event
         }
@@ -144,6 +150,10 @@ extension AppDelegate {
         DispatchQueue.main.async { [weak self] in
             self?.updateFreeRulerMenuContext(for: NSApp.keyWindow)
         }
+    }
+
+    @objc private func freeRulerApplicationDidUpdate(_ notification: Notification) {
+        repairFreeRulerMenuContextIfNeeded(for: NSApp.keyWindow)
     }
 
     func freeRulerMenuTitle(id: String, fallback: String) -> String {
@@ -293,7 +303,6 @@ extension AppDelegate {
         let isRulerContext = Self.isFreeRulerWindowIdentifier(window?.identifier?.rawValue)
         if isRulerContext {
             applyFreeRulerMenuContext()
-            scheduleFreeRulerMenuReattachment()
         } else {
             detachFreeRulerMenus()
             restoreHostMenuItemsAfterFreeRuler()
@@ -316,13 +325,14 @@ extension AppDelegate {
         freeRulerDefaultsMenuItem?.isHidden = false
     }
 
-    private func scheduleFreeRulerMenuReattachment() {
-        for delay in [0.0, 0.1] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard Self.isFreeRulerWindowIdentifier(NSApp.keyWindow?.identifier?.rawValue) else { return }
-                self?.applyFreeRulerMenuContext()
-            }
-        }
+    func repairFreeRulerMenuContextIfNeeded(for window: NSWindow?) {
+        guard Self.isFreeRulerWindowIdentifier(window?.identifier?.rawValue) else { return }
+        let mainMenu = NSApp.mainMenu
+        let applicationMenu = mainMenu?.items.first?.submenu
+        let menusNeedRepair = freeRulerMenuRoots.contains(where: { $0.menu !== mainMenu })
+            || freeRulerDefaultsMenuItem?.menu !== applicationMenu
+        guard menusNeedRepair else { return }
+        applyFreeRulerMenuContext()
     }
 
     private func installFreeRulerMenus() {
