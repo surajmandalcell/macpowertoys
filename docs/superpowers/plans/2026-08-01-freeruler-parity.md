@@ -4,7 +4,7 @@
 
 **Goal:** Replace the custom MacPowerToys Ruler implementation with the ruler behavior, visuals, settings, persistence, and commands from FreeRuler commit `d38ca4f673f16c51485940e63eeee68babfbfeed`.
 
-**Architecture:** Vendor FreeRuler's AppKit ruler core and settings resources directly. Keep its geometry and behavior files byte-identical to the pinned upstream commit. Adapt only the standalone `AppDelegate` responsibilities, XIB module names, and product branding needed to run inside MacPowerToys. Remove the current SwiftUI Ruler scene and all custom Ruler models, guides, measurement capture, calibration, history, and copy formats. Continue to launch the Ruler on demand through the existing MacPowerToys launcher, deep link, Raycast command, and App Intent.
+**Architecture:** Keep FreeRuler's performance-sensitive AppKit drawing, geometry, input, and settings behavior in a contained `powertoys/FreeRuler` module. Mold every host-owned seam to MacPowerToys conventions: the existing `AppDelegate`, `ToolActionRouter`, notification routing, on-demand initialization, file-system-synchronized target layout, window identifiers, checkpoint commits, and test targets. Adapt only the standalone lifecycle, XIB module names, and product branding needed to run inside MacPowerToys. Remove the current SwiftUI Ruler scene and all custom Ruler models, guides, measurement capture, calibration, history, and copy formats. Continue to launch the Ruler on demand through the existing MacPowerToys launcher, deep link, Raycast command, and App Intent.
 
 **Tech Stack:** Swift 5, AppKit, SwiftUI host shell, XIB resources, XCTest, XCUITest, Xcode 26.2+, macOS 26.2+.
 
@@ -40,6 +40,9 @@
   - FreeRuler's standalone app icon, Sparkle updater, app-store rendering code, help book, entitlements, and root MainMenu XIB are not copied.
 - Do not migrate the old `ruler.states.v1`, `ruler.style.v1`, measurement, guide, or calibration values. Leave those unused defaults inert so the replacement does not perform a destructive preferences rewrite.
 - Do not add a dependency. The host already has AppKit, SwiftUI, Foundation, and Carbon.
+- Treat the vendor folder as a narrow parity boundary, not as a second application architecture. Host lifecycle, routing, commands, logging, tests, and installation must use existing MacPowerToys patterns and shared services.
+- Do not wrap the AppKit render path in SwiftUI, add per-frame allocations, create duplicate local event monitors, or run more than FreeRuler's one adaptive mouse-tick timer. Preserve its 60 Hz foreground and 30 Hz background policy and its suspension behavior.
+- Keep ample coverage: the adapted upstream core suite, host routing and menu tests, custom-feature deletion checks, signed UI flows, a deliberate red-green mutation, and live performance and visual comparison are all required gates.
 - Keep the upstream Swift files byte-identical where listed below. Put all host changes in `AppDelegate+FreeRuler.swift`, the existing host files, and the XIB integration edits.
 - Keep upstream's deliberate `NSColor.ignoresAlpha` compatibility code and accept its deprecation warning. Do not modernize vendor behavior during the parity port.
 - Do not use FreeRuler's three PNG snapshot tests as the sole visual gate. On this machine, all three snapshots fail against the pinned upstream source under the current Xcode beta and macOS 27 SDK, while all 125 upstream core tests pass. Use the upstream build on the same machine as the visual oracle.
@@ -713,6 +716,8 @@ close, reopen, persisted geometry, active ruler, and per-ruler settings
 
 The only accepted differences are the Global Constraints host seams. Correct any other difference and rerun affected checks.
 
+During repeated move, resize, unit-cycle, group, settings-open, close, and reopen operations, compare Activity Monitor CPU use and frame smoothness with the same-machine upstream build. Open and close 25 ruler instances, then confirm the process returns to a stable ruler/window count and does not accumulate timers, local event monitors, retained controllers, or continuously growing memory. Record the observed CPU and memory ranges in `spec/ruler-request-list.md`; investigate any sustained regression before continuing.
+
 Also invoke `macpowertoys://open/ruler`, the legacy scheme equivalent, the built Raycast Ruler command, and the Open Ruler App Intent. Each route must raise the existing AppKit rulers instead of opening a SwiftUI scene or creating duplicate restored state. Actual Raycast search registration remains the separate open item already tracked in `spec/ruler-request-list.md`.
 
 - [ ] **Step 5: Capture the real integrated Ruler screenshot**
@@ -764,6 +769,7 @@ Expected: all Ruler checkpoints are on `origin/main`. Do not create a release ta
 - The 15 direct-copy Swift files match the pinned upstream commit byte for byte.
 - The adapted upstream core suite executes 124 tests with zero failures.
 - All host unit tests and five focused signed UI tests pass, or a UI harness bootstrap failure is reported separately with live accessibility evidence.
+- Repeated interaction remains as smooth as the pinned upstream build and does not accumulate rulers, timers, event monitors, controllers, or unbounded memory.
 - The ruler, menus, settings panels, defaults window, shortcuts, persistence, and multi-ruler behavior match a same-machine build of the pinned upstream commit.
 - MacPowerToys does not open a ruler at app startup.
 - The launcher, both deep-link schemes, the built Raycast command, and the App Intent route to the AppKit ruler directly.
