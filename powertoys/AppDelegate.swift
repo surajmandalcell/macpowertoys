@@ -42,6 +42,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         manager.onStateChanged = { [weak self] manager in
             guard let self else { return }
 
+            updateDisplay()
             saveRulerSetState()
             let activeController = manager.activeController
             guard let settingsController = rulerSettingsController,

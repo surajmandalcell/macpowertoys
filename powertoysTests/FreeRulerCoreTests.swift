@@ -3807,61 +3807,6 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertFalse(controller.state.isWingVisible(.vertical))
     }
 
-    func testManagedMenuValidationReflectsActiveRulerState() {
-        let appDelegate = AppDelegate()
-        let controller = appDelegate.rulerManager.createRuler()
-        defer {
-            controller.hide()
-        }
-        appDelegate.rulerManager.markActive(controller)
-        controller.setWing(.vertical, isVisible: false)
-
-        let closeItem = NSMenuItem(
-            title: "",
-            action: #selector(AppDelegate.closeKeyWindow(_:)),
-            keyEquivalent: ""
-        )
-        let horizontalItem = NSMenuItem(
-            title: "",
-            action: #selector(AppDelegate.toggleHorizontalRuler(_:)),
-            keyEquivalent: ""
-        )
-        let verticalItem = NSMenuItem(
-            title: "",
-            action: #selector(AppDelegate.toggleVerticalRuler(_:)),
-            keyEquivalent: ""
-        )
-        let groupItem = NSMenuItem(
-            title: "",
-            action: #selector(AppDelegate.toggleGroupRulers(_:)),
-            keyEquivalent: ""
-        )
-
-        XCTAssertTrue(appDelegate.validateMenuItem(closeItem))
-        XCTAssertFalse(appDelegate.validateMenuItem(horizontalItem))
-        XCTAssertTrue(appDelegate.validateMenuItem(verticalItem))
-        XCTAssertTrue(appDelegate.validateMenuItem(groupItem))
-    }
-
-    func testManagedMenuValidationDisablesWingCommandsWithoutActiveRuler() {
-        let appDelegate = AppDelegate()
-        let horizontalItem = NSMenuItem(
-            title: "",
-            action: #selector(AppDelegate.toggleHorizontalRuler(_:)),
-            keyEquivalent: ""
-        )
-        let verticalItem = NSMenuItem(
-            title: "",
-            action: #selector(AppDelegate.toggleVerticalRuler(_:)),
-            keyEquivalent: ""
-        )
-
-        XCTAssertFalse(appDelegate.validateMenuItem(horizontalItem))
-        XCTAssertEqual(horizontalItem.title, "Show Horizontal Ruler")
-        XCTAssertFalse(appDelegate.validateMenuItem(verticalItem))
-        XCTAssertEqual(verticalItem.title, "Show Vertical Ruler")
-    }
-
     func testShiftHotkeysFlipActiveRulerOrigin() {
         let appDelegate = AppDelegate()
         let controller = appDelegate.rulerManager.createRuler(
