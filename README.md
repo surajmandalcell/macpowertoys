@@ -39,7 +39,7 @@
 
 | | Tool | What it does |
 |:--:|---|---|
-| <img src="powertoys/Assets.xcassets/RulerLogo.imageset/icon.svg" width="30" alt=""> | **Ruler** | Measure layouts with paired rulers, guides, calibrated units, and region capture. |
+| <img src="powertoys/Assets.xcassets/RulerLogo.imageset/icon.svg" width="30" alt=""> | **Ruler** | Measure the screen with movable, resizable rulers in pixels, millimeters, or inches. |
 | <img src="powertoys/Assets.xcassets/AwakeLogo.imageset/icon.svg" width="30" alt=""> | **Awake** | Keep the Mac or display awake by duration, end time, or running process. |
 | <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.svg" width="30" alt=""> | **Color Picker** | Sample the screen, copy developer formats, and search local color history. |
 | <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.svg" width="30" alt=""> | **Text Extractor** | Select any screen region and copy text with on-device Apple Vision. |
@@ -58,7 +58,7 @@
   <tr>
     <td width="50%" valign="top">
       <img src="docs/screenshots/ruler.png" width="100%" alt="Ruler controls on a dark desktop"><br>
-      <sub><b>Ruler</b> · calibrated units, guides, and paired overlays</sub>
+      <sub><b>Ruler</b> · multiple rulers, precise units, grouping, and per-ruler settings</sub>
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/awake.png" width="100%" alt="Awake controls on a dark desktop"><br>
