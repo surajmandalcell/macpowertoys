@@ -24,10 +24,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var freeRulerRoutingDidInstall = false
     var freeRulerObservers: [NSKeyValueObservation] = []
     var freeRulerKeyMonitor: Any?
-    var freeRulerMenuRoots: [NSMenuItem] = []
-    var freeRulerDefaultsMenuItem: NSMenuItem?
-    var freeRulerHostMenuItemStates: [FreeRulerMenuItemState] = []
-    var freeRulerMainMenuObservation: NSKeyValueObservation?
     lazy var rulerManager: RulerManager = {
         let manager = RulerManager()
         manager.onActiveControllerChanged = { [weak self] controller in
@@ -66,14 +62,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         foregroundInterval: foregroundTimerInterval,
         backgroundInterval: backgroundTimerInterval
     )
-    var pixelsMenuItem: NSMenuItem?
-    var millimetersMenuItem: NSMenuItem?
-    var inchesMenuItem: NSMenuItem?
-    var cycleUnitsMenuItem: NSMenuItem?
-    var floatRulersMenuItem: NSMenuItem?
-    var groupRulersMenuItem: NSMenuItem?
-    var rulerShadowMenuItem: NSMenuItem?
-    var alignRulersMenuItem: NSMenuItem?
     var preferencesController: PreferencesController?
     var rulerSettingsController: RulerSettingsController?
     let hotkeyBezel = HotkeyBezel()

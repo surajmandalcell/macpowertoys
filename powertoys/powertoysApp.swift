@@ -63,6 +63,7 @@ struct MacPowerToysApp: App {
         .defaultLaunchBehavior(.presented)
         .commands {
             AppCommands()
+            FreeRulerCommands()
             CommandMenu("Navigation") {
                 Button("All Tools") { NotificationCenter.default.post(name: .navigateToCategory, object: ToolCategory.all) }
                     .keyboardShortcut("1", modifiers: .command)
