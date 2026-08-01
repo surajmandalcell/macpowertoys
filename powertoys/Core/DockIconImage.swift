@@ -17,7 +17,7 @@ enum DockIconImage {
         guard assetName != "AppIcon" else { return nil }
 
         let appearance = requestedAppearance ?? NSApp.effectiveAppearance
-        let appearanceName = appearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
+        let appearanceName = resolvedAppearanceName(for: appearance)
         let key = CacheKey(assetName: assetName, appearanceName: appearanceName)
         if let image = cache[key] { return image }
         guard let source = NSImage(named: assetName) else { return nil }
@@ -46,5 +46,9 @@ enum DockIconImage {
         }
         image.isTemplate = source.isTemplate
         return image
+    }
+
+    static func resolvedAppearanceName(for appearance: NSAppearance) -> NSAppearance.Name {
+        appearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
     }
 }

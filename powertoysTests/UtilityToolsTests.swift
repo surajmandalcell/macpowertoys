@@ -53,14 +53,26 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
     }
 
-    func testDockIconUpdatesOnlyWhenTheOpticalAssetChanges() {
+    func testDockIconUpdatesWhenTheOpticalAssetOrAppearanceChanges() {
         let delegate = AppDelegate()
+        let light = NSAppearance(named: .aqua)!
+        let dark = NSAppearance(named: .darkAqua)!
 
-        XCTAssertNil(delegate.dockIconAssetToApply(for: "main"))
-        XCTAssertEqual(delegate.dockIconAssetToApply(for: "ruler-window"), "RulerLogo")
-        XCTAssertNil(delegate.dockIconAssetToApply(for: "ruler-settings-window"))
-        XCTAssertEqual(delegate.dockIconAssetToApply(for: "main"), "AppIcon")
-        XCTAssertNil(delegate.dockIconAssetToApply(for: nil))
+        XCTAssertNil(delegate.dockIconAssetToApply(for: "main", appearance: light))
+        XCTAssertEqual(
+            delegate.dockIconAssetToApply(for: "ruler-window", appearance: light),
+            "RulerLogo"
+        )
+        XCTAssertNil(
+            delegate.dockIconAssetToApply(for: "ruler-settings-window", appearance: light)
+        )
+        XCTAssertEqual(
+            delegate.dockIconAssetToApply(for: "ruler-window", appearance: dark),
+            "RulerLogo"
+        )
+        XCTAssertNil(delegate.dockIconAssetToApply(for: "ruler-window", appearance: dark))
+        XCTAssertEqual(delegate.dockIconAssetToApply(for: "main", appearance: dark), "AppIcon")
+        XCTAssertNil(delegate.dockIconAssetToApply(for: nil, appearance: light))
     }
 
     func testColorFormatting() {
