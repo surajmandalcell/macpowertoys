@@ -31,11 +31,11 @@
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <customView id="RSV-content">
-            <rect key="frame" x="0.0" y="0.0" width="380" height="420"/>
+            <rect key="frame" x="0.0" y="0.0" width="380" height="434"/>
             <autoresizingMask key="autoresizingMask"/>
             <subviews>
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-measurement-heading">
-                    <rect key="frame" x="-2" y="408" width="86" height="12"/>
+                    <rect key="frame" x="-2" y="422" width="86" height="12"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" title="MEASUREMENT" id="RSV-measurement-heading-cell">
                         <font key="font" name=".AppleSystemUIFontMedium" size="10"/>
                         <color key="textColor" name="secondaryLabelColor" catalog="System" colorSpace="catalog"/>
@@ -43,7 +43,7 @@
                     </textFieldCell>
                 </textField>
                 <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-measurement-card" customClass="UtilitySectionCardView" customModule="powertoys" customModuleProvider="target">
-                    <rect key="frame" x="0.0" y="314" width="380" height="86"/>
+                    <rect key="frame" x="0.0" y="328" width="380" height="86"/>
                     <subviews>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-unit-label">
                             <rect key="frame" x="12" y="53" width="27" height="15"/>
@@ -124,7 +124,7 @@
                     </constraints>
                 </customView>
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-appearance-heading">
-                    <rect key="frame" x="-2" y="286" width="74" height="12"/>
+                    <rect key="frame" x="-2" y="300" width="74" height="12"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" title="APPEARANCE" id="RSV-appearance-heading-cell">
                         <font key="font" name=".AppleSystemUIFontMedium" size="10"/>
                         <color key="textColor" name="secondaryLabelColor" catalog="System" colorSpace="catalog"/>
@@ -132,7 +132,7 @@
                     </textFieldCell>
                 </textField>
                 <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-appearance-card" customClass="UtilitySectionCardView" customModule="powertoys" customModuleProvider="target">
-                    <rect key="frame" x="0.0" y="106" width="380" height="172"/>
+                    <rect key="frame" x="0.0" y="120" width="380" height="172"/>
                     <subviews>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-color-label">
                             <rect key="frame" x="12" y="135" width="66" height="15"/>
@@ -230,7 +230,7 @@
                     </constraints>
                 </customView>
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-heading">
-                    <rect key="frame" x="-2" y="78" width="49" height="12"/>
+                    <rect key="frame" x="-2" y="92" width="49" height="12"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" title="WINDOW" id="RSV-window-heading-cell">
                         <font key="font" name=".AppleSystemUIFontMedium" size="10"/>
                         <color key="textColor" name="secondaryLabelColor" catalog="System" colorSpace="catalog"/>
@@ -238,17 +238,17 @@
                     </textFieldCell>
                 </textField>
                 <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-card" customClass="UtilitySectionCardView" customModule="powertoys" customModuleProvider="target">
-                    <rect key="frame" x="0.0" y="0.0" width="380" height="70"/>
+                    <rect key="frame" x="0.0" y="0.0" width="380" height="84"/>
                     <subviews>
                         <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-float-checkbox">
-                            <rect key="frame" x="14" y="32" width="218" height="24"/>
+                            <rect key="frame" x="14" y="46" width="218" height="24"/>
                             <buttonCell key="cell" type="check" title="Float ruler above other applications" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="RSV-float-cell">
                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                 <font key="font" name=".AppleSystemUIFont" size="12"/>
                             </buttonCell>
                         </button>
                         <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-shadow-checkbox">
-                            <rect key="frame" x="14" y="0.0" width="124" height="24"/>
+                            <rect key="frame" x="14" y="14" width="124" height="24"/>
                             <buttonCell key="cell" type="check" title="Show ruler shadow" bezelStyle="regularSquare" imagePosition="left" inset="2" id="RSV-shadow-cell">
                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                 <font key="font" name=".AppleSystemUIFont" size="12"/>
@@ -263,24 +263,28 @@
                         <constraint firstItem="RSV-shadow-checkbox" firstAttribute="top" secondItem="RSV-float-checkbox" secondAttribute="bottom" constant="8" id="RSV-shadow-top"/>
                         <constraint firstItem="RSV-shadow-checkbox" firstAttribute="height" constant="24" id="RSV-shadow-height"/>
                         <constraint firstAttribute="bottom" secondItem="RSV-shadow-checkbox" secondAttribute="bottom" constant="14" id="RSV-shadow-bottom"/>
+                        <constraint firstAttribute="height" constant="84" id="RSV-window-card-height"/>
                     </constraints>
                 </customView>
             </subviews>
             <constraints>
                 <constraint firstItem="RSV-measurement-heading" firstAttribute="leading" secondItem="RSV-content" secondAttribute="leading" id="RSV-measurement-heading-leading"/>
                 <constraint firstItem="RSV-measurement-heading" firstAttribute="top" secondItem="RSV-content" secondAttribute="top" id="RSV-measurement-heading-top"/>
+                <constraint firstItem="RSV-measurement-heading" firstAttribute="height" constant="12" id="RSV-measurement-heading-height"/>
                 <constraint firstItem="RSV-measurement-card" firstAttribute="top" secondItem="RSV-measurement-heading" secondAttribute="bottom" constant="8" id="RSV-measurement-card-top"/>
                 <constraint firstItem="RSV-measurement-card" firstAttribute="leading" secondItem="RSV-content" secondAttribute="leading" id="RSV-measurement-card-leading"/>
                 <constraint firstAttribute="trailing" secondItem="RSV-measurement-card" secondAttribute="trailing" id="RSV-measurement-card-trailing"/>
                 <constraint firstItem="RSV-measurement-card" firstAttribute="height" constant="86" id="RSV-measurement-card-height"/>
                 <constraint firstItem="RSV-appearance-heading" firstAttribute="top" secondItem="RSV-measurement-card" secondAttribute="bottom" constant="16" id="RSV-appearance-heading-top"/>
                 <constraint firstItem="RSV-appearance-heading" firstAttribute="leading" secondItem="RSV-content" secondAttribute="leading" id="RSV-appearance-heading-leading"/>
+                <constraint firstItem="RSV-appearance-heading" firstAttribute="height" constant="12" id="RSV-appearance-heading-height"/>
                 <constraint firstItem="RSV-appearance-card" firstAttribute="top" secondItem="RSV-appearance-heading" secondAttribute="bottom" constant="8" id="RSV-appearance-card-top"/>
                 <constraint firstItem="RSV-appearance-card" firstAttribute="leading" secondItem="RSV-content" secondAttribute="leading" id="RSV-appearance-card-leading"/>
                 <constraint firstAttribute="trailing" secondItem="RSV-appearance-card" secondAttribute="trailing" id="RSV-appearance-card-trailing"/>
                 <constraint firstItem="RSV-appearance-card" firstAttribute="height" constant="172" id="RSV-appearance-card-height"/>
                 <constraint firstItem="RSV-window-heading" firstAttribute="top" secondItem="RSV-appearance-card" secondAttribute="bottom" constant="16" id="RSV-window-heading-top"/>
                 <constraint firstItem="RSV-window-heading" firstAttribute="leading" secondItem="RSV-content" secondAttribute="leading" id="RSV-window-heading-leading"/>
+                <constraint firstItem="RSV-window-heading" firstAttribute="height" constant="12" id="RSV-window-heading-height"/>
                 <constraint firstItem="RSV-window-card" firstAttribute="top" secondItem="RSV-window-heading" secondAttribute="bottom" constant="8" id="RSV-window-card-top"/>
                 <constraint firstItem="RSV-window-card" firstAttribute="leading" secondItem="RSV-content" secondAttribute="leading" id="RSV-window-card-leading"/>
                 <constraint firstAttribute="trailing" secondItem="RSV-window-card" secondAttribute="trailing" id="RSV-window-card-trailing"/>

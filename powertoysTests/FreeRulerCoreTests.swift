@@ -934,7 +934,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControlsUseUtilitySectionsAndAlignedRows() throws {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 420))
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 434))
         controlsView.configureForRulerSettings()
 
         controlsView.update(
@@ -967,11 +967,22 @@ final class RulerCoreTests: XCTestCase {
         let appearanceCard = try XCTUnwrap(cards.dropFirst().first)
         let windowCard = try XCTUnwrap(cards.dropFirst(2).first)
 
+        let headingHeight = headings.reduce(CGFloat.zero) { $0 + $1.frame.height }
+        let cardHeight = cards.reduce(CGFloat.zero) { $0 + $1.frame.height }
+        let requiredHeight = headingHeight + cardHeight + (3 * 8) + (2 * 16)
+        XCTAssertEqual(headingHeight, 36, accuracy: 0.5)
+        XCTAssertEqual(cards.map(\.frame.height), [86, 172, 84])
+        XCTAssertEqual(requiredHeight, 434, accuracy: 0.5)
+        XCTAssertEqual(controlsView.contentView.bounds.height, requiredHeight, accuracy: 0.5)
+
         XCTAssertEqual(measurementHeading.frame.minY - measurementCard.frame.maxY, 8, accuracy: 0.5)
         XCTAssertEqual(appearanceHeading.frame.minY - appearanceCard.frame.maxY, 8, accuracy: 0.5)
         XCTAssertEqual(windowHeading.frame.minY - windowCard.frame.maxY, 8, accuracy: 0.5)
         XCTAssertEqual(measurementCard.frame.minY - appearanceHeading.frame.maxY, 16, accuracy: 0.5)
         XCTAssertEqual(appearanceCard.frame.minY - windowHeading.frame.maxY, 16, accuracy: 0.5)
+        XCTAssertEqual(windowCard.bounds.maxY - controlsView.floatRulersCheckbox.frame.maxY, 14, accuracy: 0.5)
+        XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minY - controlsView.rulerShadowCheckbox.frame.maxY, 8, accuracy: 0.5)
+        XCTAssertEqual(controlsView.rulerShadowCheckbox.frame.minY, 14, accuracy: 0.5)
 
         XCTAssertEqual(controlsView.unitLabel.alignmentRect(forFrame: controlsView.unitLabel.frame).minX, 14, accuracy: 0.5)
         XCTAssertEqual(measurementCard.bounds.maxX - controlsView.unitSegmentedControl.frame.maxX, 14, accuracy: 0.5)
@@ -1011,7 +1022,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControlsDoNotIntersectAcrossSupportedLocalizations() {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 420))
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 434))
         controlsView.configureForRulerSettings()
 
         let localizations = [
@@ -1065,6 +1076,31 @@ final class RulerCoreTests: XCTestCase {
         for control in interactiveControls {
             XCTAssertGreaterThanOrEqual(control.frame.width, 24)
             XCTAssertGreaterThanOrEqual(control.frame.height, 24)
+        }
+    }
+
+    func testRulerSettingsSectionHeadingsHaveGermanAndJapaneseLocalizations() throws {
+        let expectedHeadings = [
+            "de": ["MESSUNG", "DARSTELLUNG", "FENSTER"],
+            "ja": ["測定", "外観", "ウインドウ"],
+        ]
+        let keys = [
+            "RSV-measurement-heading-cell.title",
+            "RSV-appearance-heading-cell.title",
+            "RSV-window-heading-cell.title",
+        ]
+
+        for (localization, expected) in expectedHeadings {
+            let url = try XCTUnwrap(
+                Bundle.main.url(
+                    forResource: "RulerSettingsControlsView",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                )
+            )
+            let strings = try XCTUnwrap(NSDictionary(contentsOf: url) as? [String: String])
+            XCTAssertEqual(keys.compactMap { strings[$0] }, expected)
         }
     }
 
@@ -1144,12 +1180,15 @@ final class RulerCoreTests: XCTestCase {
         ] {
             window.contentView?.layoutSubtreeIfNeeded()
             XCTAssertEqual(window.frame.width, 420, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.height, 514, accuracy: 0.5)
             XCTAssertFalse(window.styleMask.contains(.resizable))
             XCTAssertFalse(window.isOpaque)
             XCTAssertEqual(window.backgroundColor, .clear)
             XCTAssertTrue(window.titlebarAppearsTransparent)
             XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.maxY - controlsView.frame.maxY, 16, accuracy: 0.5)
+            XCTAssertEqual(controlsView.frame.height, 434, accuracy: 0.5)
             XCTAssertTrue(
                 rulerSettingsDescendants(in: window.contentView!)
                     .contains { NSStringFromClass(type(of: $0)).hasSuffix("UtilityMaterialView") }
