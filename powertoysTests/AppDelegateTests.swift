@@ -181,6 +181,70 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testFreeRulerMenuContextSurvivesSwiftUIMainMenuRebuild() {
+        func makeHostMenu() -> (
+            main: NSMenu,
+            application: NSMenu,
+            settings: NSMenuItem,
+            newItem: NSMenuItem,
+            close: NSMenuItem
+        ) {
+            let main = NSMenu()
+            let applicationRoot = NSMenuItem(title: "App", action: nil, keyEquivalent: "")
+            let application = NSMenu(title: "App")
+            let settings = NSMenuItem(title: "Settings…", action: nil, keyEquivalent: ",")
+            settings.keyEquivalentModifierMask = .command
+            application.addItem(settings)
+            applicationRoot.submenu = application
+            main.addItem(applicationRoot)
+
+            let fileRoot = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
+            let file = NSMenu(title: "File")
+            let newItem = NSMenuItem(title: "New Transfer", action: nil, keyEquivalent: "n")
+            newItem.keyEquivalentModifierMask = .command
+            let close = NSMenuItem(
+                title: "Close",
+                action: #selector(NSWindow.performClose(_:)),
+                keyEquivalent: "w"
+            )
+            close.keyEquivalentModifierMask = .command
+            file.addItem(newItem)
+            file.addItem(close)
+            fileRoot.submenu = file
+            main.addItem(fileRoot)
+            return (main, application, settings, newItem, close)
+        }
+
+        let originalMainMenu = NSApp.mainMenu
+        let delegate = AppDelegate()
+        let rulerWindow = NSWindow()
+        rulerWindow.identifier = NSUserInterfaceItemIdentifier("ruler-window")
+        defer {
+            delegate.updateFreeRulerMenuContext(for: nil)
+            NSApp.mainMenu = originalMainMenu
+        }
+
+        let first = makeHostMenu()
+        NSApp.mainMenu = first.main
+        delegate.freeRulerMenuRoots = delegate.makeFreeRulerMenuRoots()
+        delegate.freeRulerDefaultsMenuItem = delegate.makeFreeRulerDefaultsMenuItem()
+        delegate.updateFreeRulerMenuContext(for: rulerWindow)
+
+        let rebuilt = makeHostMenu()
+        NSApp.mainMenu = rebuilt.main
+        delegate.updateFreeRulerMenuContext(for: rulerWindow)
+
+        XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { $0.menu === rebuilt.main })
+        XCTAssertTrue(delegate.freeRulerDefaultsMenuItem?.menu === rebuilt.application)
+        XCTAssertEqual(rebuilt.settings.keyEquivalent, "")
+        XCTAssertEqual(rebuilt.newItem.keyEquivalent, "")
+        XCTAssertEqual(rebuilt.close.action, #selector(AppDelegate.closeKeyWindow(_:)))
+        XCTAssertEqual(first.settings.keyEquivalent, ",")
+        XCTAssertEqual(first.newItem.keyEquivalent, "n")
+        XCTAssertEqual(first.close.action, #selector(NSWindow.performClose(_:)))
+    }
+
+    @MainActor
     func testDoubleClickCancelsDelayedSingleClick() async throws {
         let coordinator = StatusItemClickCoordinator(delay: 0.01)
         var singleClicks = 0

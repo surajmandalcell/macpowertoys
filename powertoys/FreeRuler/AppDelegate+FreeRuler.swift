@@ -292,14 +292,37 @@ extension AppDelegate {
     func updateFreeRulerMenuContext(for window: NSWindow?) {
         let isRulerContext = Self.isFreeRulerWindowIdentifier(window?.identifier?.rawValue)
         if isRulerContext {
-            routeHostMenuItemsToFreeRuler()
-            attachFreeRulerMenus()
+            applyFreeRulerMenuContext()
+            scheduleFreeRulerMenuReattachment()
         } else {
             detachFreeRulerMenus()
             restoreHostMenuItemsAfterFreeRuler()
         }
         freeRulerMenuRoots.forEach { $0.isHidden = !isRulerContext }
         freeRulerDefaultsMenuItem?.isHidden = !isRulerContext
+    }
+
+    private func applyFreeRulerMenuContext() {
+        let mainMenu = NSApp.mainMenu
+        let applicationMenu = mainMenu?.items.first?.submenu
+        let menuWasRebuilt = freeRulerMenuRoots.contains { $0.menu !== mainMenu }
+            || freeRulerDefaultsMenuItem?.menu !== applicationMenu
+        if menuWasRebuilt {
+            restoreHostMenuItemsAfterFreeRuler()
+        }
+        routeHostMenuItemsToFreeRuler()
+        attachFreeRulerMenus()
+        freeRulerMenuRoots.forEach { $0.isHidden = false }
+        freeRulerDefaultsMenuItem?.isHidden = false
+    }
+
+    private func scheduleFreeRulerMenuReattachment() {
+        for delay in [0.0, 0.1] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard Self.isFreeRulerWindowIdentifier(NSApp.keyWindow?.identifier?.rawValue) else { return }
+                self?.applyFreeRulerMenuContext()
+            }
+        }
     }
 
     private func installFreeRulerMenus() {
@@ -316,7 +339,10 @@ extension AppDelegate {
     private func attachFreeRulerMenus() {
         guard let mainMenu = NSApp.mainMenu else { return }
 
-        if freeRulerMenuRoots.first?.menu == nil {
+        if freeRulerMenuRoots.contains(where: { $0.menu !== mainMenu }) {
+            for root in freeRulerMenuRoots {
+                root.menu?.removeItem(root)
+            }
             let closeMenuIndex = mainMenu.items.firstIndex {
                 freeRulerMenuItems(in: $0.submenu).contains { item in
                     item.keyEquivalent == "w" && item.keyEquivalentModifierMask == .command
@@ -328,8 +354,9 @@ extension AppDelegate {
         }
 
         guard let defaultsItem = freeRulerDefaultsMenuItem,
-              defaultsItem.menu == nil,
               let applicationMenu = mainMenu.items.first?.submenu else { return }
+        guard defaultsItem.menu !== applicationMenu else { return }
+        defaultsItem.menu?.removeItem(defaultsItem)
         let settingsIndex = applicationMenu.items.firstIndex { $0.title == "Settings…" }
         applicationMenu.insertItem(
             defaultsItem,

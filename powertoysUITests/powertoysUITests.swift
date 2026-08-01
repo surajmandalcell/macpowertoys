@@ -38,6 +38,12 @@ final class powertoysUITests: XCTestCase {
         XCTAssertFalse(app.windows["ruler"].exists, "The removed SwiftUI Ruler scene must stay absent")
         XCTAssertEqual(horizontalRuler.frame.height, 40, accuracy: 1)
         XCTAssertEqual(verticalRuler.frame.width, 40, accuracy: 1)
+        for title in ["Ruler", "Unit", "Options"] {
+            XCTAssertTrue(
+                app.menuBars.menuBarItems[title].waitForExistence(timeout: 2),
+                "Missing FreeRuler menu: \(title)"
+            )
+        }
     }
 
     @MainActor
