@@ -46,7 +46,6 @@ final class AppInitializer {
         _ = SettingsManager.shared
         await MarketplaceManager.shared.restore()
         SettingsSyncManager.shared.startIfEnabled()
-        _ = RulerManager.shared
         _ = AwakeService.shared
         _ = ColorPickerService.shared
         _ = TextExtractorService.shared

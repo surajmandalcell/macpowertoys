@@ -1,0 +1,9 @@
+
+/* Class = "NSWindow"; title = "Free Ruler Settings"; ObjectID = "F0z-JX-Cv5"; */
+"F0z-JX-Cv5.title" = "Viivaimen oletusasetukset";
+
+/* Class = "NSTextFieldCell"; title = "Default settings for new rulers"; ObjectID = "PREF-defaults-header-cell"; */
+"PREF-defaults-header-cell.title" = "Uusien viivainten oletusasetukset";
+
+/* Class = "NSButtonCell"; title = "Reset to factory defaults"; ObjectID = "PREF-factory-cell"; */
+"PREF-factory-cell.title" = "Palauta tehdasasetukset";

@@ -1,0 +1,9 @@
+
+/* Class = "NSWindow"; title = "Free Ruler Settings"; ObjectID = "F0z-JX-Cv5"; */
+"F0z-JX-Cv5.title" = "标尺默认设置";
+
+/* Class = "NSTextFieldCell"; title = "Default settings for new rulers"; ObjectID = "PREF-defaults-header-cell"; */
+"PREF-defaults-header-cell.title" = "新尺子的默认设置";
+
+/* Class = "NSButtonCell"; title = "Reset to factory defaults"; ObjectID = "PREF-factory-cell"; */
+"PREF-factory-cell.title" = "恢复出厂默认设置";

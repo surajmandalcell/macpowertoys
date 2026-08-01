@@ -13,20 +13,6 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
     }
 
-    func testRulerTicksRespectDirection() {
-        let forward = RulerGeometry.ticks(length: 100, pointsPerUnit: 1, reversed: false)
-        let reverse = RulerGeometry.ticks(length: 100, pointsPerUnit: 1, reversed: true)
-        XCTAssertEqual(forward.first?.position, 0)
-        XCTAssertEqual(reverse.first?.position, 100)
-        XCTAssertEqual(forward.count, reverse.count)
-    }
-
-    func testRulerCopyFormats() {
-        let frame = CGRect(x: 10, y: 20, width: 300, height: 200)
-        XCTAssertEqual(RulerCopyFormat.css.render(frame: frame), "width: 300px; height: 200px;")
-        XCTAssertEqual(RulerCopyFormat.cgRect.render(frame: frame), "CGRect(x: 10, y: 20, width: 300, height: 200)")
-    }
-
     func testColorFormatting() {
         let sample = ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1)
         XCTAssertEqual(sample.string(.hex), "#FF8000")
@@ -36,44 +22,13 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertFalse(sample.matches(ColorSample(red: 0, green: 0.5, blue: 0, alpha: 1)))
     }
 
-    func testJoinedRulerStartsWithBothArms() {
-        let ruler = RulerState(orientation: .joined, frame: CGRect(x: 0, y: 0, width: 400, height: 300), screenID: nil)
-        XCTAssertTrue(ruler.showsHorizontalArm)
-        XCTAssertTrue(ruler.showsVerticalArm)
-    }
-
-    func testOlderRulerPayloadsReceiveNewDefaults() throws {
-        let stateData = Data(#"{"id":"00000000-0000-0000-0000-000000000001","orientation":"joined","x":1,"y":2,"width":300,"height":200,"isVisible":true}"#.utf8)
-        let state = try JSONDecoder().decode(RulerState.self, from: stateData)
-        XCTAssertTrue(state.showsHorizontalArm)
-        XCTAssertTrue(state.showsVerticalArm)
-
-        let styleData = Data(#"{"unit":"px","zeroCorner":"topLeft","opacity":1,"red":1,"green":1,"blue":1,"floats":true,"hasShadow":true,"calibration":1}"#.utf8)
-        let style = try JSONDecoder().decode(RulerStyle.self, from: styleData)
-        XCTAssertTrue(style.displayCalibrations.isEmpty)
-        XCTAssertEqual(style.backgroundOpacity, 1)
-        XCTAssertEqual(style.defaultSizeFraction, 0.3)
-
-        let defaultStyleData = Data(#"{"opacity":0.94}"#.utf8)
-        let migratedDefault = try JSONDecoder().decode(RulerStyle.self, from: defaultStyleData)
-        XCTAssertEqual(migratedDefault.backgroundOpacity, 0.75)
-    }
-
-    func testNewRulerStyleUsesReadableUnitsAndScreenRelativeDefaults() {
-        XCTAssertEqual(RulerUnit.allCases.map(\.title), [
-            "Points (pt)", "Pixels (px)", "Millimeters (mm)", "Inches (in)"
-        ])
-        XCTAssertEqual(RulerStyle().backgroundOpacity, 0.75)
-        XCTAssertEqual(RulerStyle().defaultSizeFraction, 0.3)
-    }
-
     func testAwakeDurationFormatting() {
         XCTAssertEqual(AwakeService.duration(65), "01:05")
         XCTAssertEqual(AwakeService.duration(3661), "1:01:01")
     }
 
     func testActionIDsMapToTools() {
-        XCTAssertEqual(ToolActionID.rulerNewJoined.toolID, "ruler")
+        XCTAssertEqual(ToolActionID.rulerOpen.toolID, "ruler")
         XCTAssertEqual(ToolActionID.colorPickerCopyLast.toolID, "color-picker")
         XCTAssertEqual(ToolActionID.textExtractorCapture.toolID, "text-extractor")
     }
