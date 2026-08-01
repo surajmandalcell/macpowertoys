@@ -5,10 +5,6 @@ import SwiftUI
 enum ToolActionID: String, CaseIterable, Codable, Sendable {
     case rulerOpen = "ruler.open"
     case rulerSettings = "ruler.settings"
-    case rulerNewHorizontal = "ruler.new-horizontal"
-    case rulerNewVertical = "ruler.new-vertical"
-    case rulerNewJoined = "ruler.new-joined"
-    case rulerMeasure = "ruler.measure"
     case awakeOpen = "awake.open"
     case awakeToggle = "awake.toggle"
     case awakeIndefinite = "awake.indefinite"
@@ -26,7 +22,7 @@ enum ToolActionID: String, CaseIterable, Codable, Sendable {
 
     var opensWindow: Bool {
         switch self {
-        case .rulerSettings, .awakeOpen, .colorPickerHistory, .textExtractorOpen:
+        case .awakeOpen, .colorPickerHistory, .textExtractorOpen:
             true
         default:
             false
@@ -75,6 +71,12 @@ final class ToolActionRouter {
 
     func open(toolID: String) {
         let resolved = Self.windowAliases[toolID] ?? toolID
+        if resolved == "ruler" {
+            execute(ToolActionRequest(action: .rulerOpen))
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
             guard let openWindowAction else {
                 if pendingToolOpens.last != resolved { pendingToolOpens.append(resolved) }
@@ -130,7 +132,7 @@ final class ToolActionRouter {
     }
 
     nonisolated static func windowIdentifier(_ identifier: String?, matches toolID: String) -> Bool {
-        guard let identifier else { return false }
+        guard toolID != "ruler", let identifier else { return false }
         return identifier == toolID || identifier.hasPrefix("\(toolID)-")
     }
 

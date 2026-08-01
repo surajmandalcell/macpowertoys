@@ -137,7 +137,6 @@ final class GlobalShortcutManager {
             &eventHandler
         )
         let legacyModifiers = UInt32(controlKey | optionKey | cmdKey)
-        register(id: 1, keyCode: UInt32(kVK_ANSI_R), modifiers: legacyModifiers)
         register(id: 2, keyCode: UInt32(kVK_ANSI_A), modifiers: legacyModifiers)
         for action in enabledActions { register(action) }
         refreshReservedShortcutTap()
@@ -284,7 +283,6 @@ final class GlobalShortcutManager {
 
     private func run(id: UInt32) {
         let action: ToolActionID? = switch id {
-        case 1: .rulerNewHorizontal
         case 2: .awakeToggle
         default: GlobalShortcutAction(rawValue: id)?.toolAction
         }

@@ -20,7 +20,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var ownsInstance = true
 
     var freeRulerDidInitialize = false
+    var freeRulerRoutingDidInstall = false
     var freeRulerObservers: [NSKeyValueObservation] = []
+    var freeRulerMenuRoots: [NSMenuItem] = []
+    var freeRulerDefaultsMenuItem: NSMenuItem?
+    var freeRulerHostMenuItemStates: [FreeRulerMenuItemState] = []
     lazy var rulerManager: RulerManager = {
         let manager = RulerManager()
         manager.onActiveControllerChanged = { [weak self] controller in
@@ -76,7 +80,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "cc-history": "ClaudeHistoryLogo",
         "rclone": "CloudSyncLogo",
         "logs": "LogsLogo",
-        "ruler": "RulerLogo",
+        "ruler-window": "RulerLogo",
+        "ruler-settings-window": "RulerLogo",
+        "preferences-window": "RulerLogo",
+        "ruler-color-panel": "RulerLogo",
         "awake": "AwakeLogo",
         "color-picker": "ColorPickerLogo",
         "text-extractor": "TextExtractorLogo"
@@ -94,6 +101,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+
+        installFreeRulerRouting()
 
         NotificationCenter.default.addObserver(
             self,
@@ -185,6 +194,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
         updateDockIcon(for: window.identifier?.rawValue)
+        updateFreeRulerMenuContext(for: window)
     }
 
     static func dockIconAsset(for windowIdentifier: String?) -> String {

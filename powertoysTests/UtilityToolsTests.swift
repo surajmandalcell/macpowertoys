@@ -5,7 +5,10 @@ import XCTest
 @MainActor
 final class UtilityToolsTests: XCTestCase {
     func testDockIconMatchesActiveToolWindow() {
-        XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler"), "RulerLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-window"), "RulerLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-settings-window"), "RulerLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "preferences-window"), "RulerLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-color-panel"), "RulerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "awake-AppWindow-1"), "AwakeLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "color-picker"), "ColorPickerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "text-extractor"), "TextExtractorLogo")

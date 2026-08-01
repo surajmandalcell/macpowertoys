@@ -160,20 +160,20 @@ struct LogsTool: Tool {
 struct RulerTool: Tool {
     let id = "ruler"
     let name = "Ruler"
-    let description = "Measure layouts across displays with floating rulers, guides, calibrated units, and developer-friendly copy formats."
+    let description = "Measure the screen with movable, resizable rulers in pixels, millimeters, or inches."
     let icon = "ruler"
     let logoAsset = "RulerLogo"
     let category = ToolCategory.dev
 
     let manual = [
         ToolManualSection(title: "Rulers", points: [
-            "Create horizontal, vertical, or joined rulers and keep as many visible as you need.",
-            "Drag the body to move a ruler. Drag its highlighted end or corner to resize it.",
-            "Choose points, backing pixels, millimeters, or inches without confusing Retina points with pixels."
+            "Drag a ruler to move it and drag an end or corner to resize it.",
+            "Press ⌘N for another ruler. Use H or V to show or hide a wing, and ⌘` to cycle rulers.",
+            "Use U for units, F for floating, S for shadow, G for grouping, and O to align at the pointer."
         ]),
-        ToolManualSection(title: "Developer Copy", points: [
-            "Copy dimensions as plain text, CSS, SwiftUI, CGRect, or JSON.",
-            "Use the cursor marker, zero-corner controls, aspect presets, and measurement pins for repeatable checks."
+        ToolManualSection(title: "Settings", points: [
+            "Press ⌘, to edit the active ruler. Press ⌥⌘, to edit defaults for new rulers.",
+            "Choose color, foreground and background opacity, dimensions, float, and shadow."
         ])
     ]
 

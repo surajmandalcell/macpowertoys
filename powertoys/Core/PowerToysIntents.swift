@@ -45,7 +45,7 @@ enum PowerToolTarget: String, AppEnum {
 
 struct OpenRulerIntent: AppIntent {
     static let title: LocalizedStringResource = "Ruler"
-    static let description = IntentDescription("Opens the MacPowerToys Ruler controls.")
+    static let description = IntentDescription("Opens the MacPowerToys screen rulers.")
     static let openAppWhenRun = true
     @MainActor func perform() async throws -> some IntentResult {
         ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
