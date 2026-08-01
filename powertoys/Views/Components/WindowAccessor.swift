@@ -22,7 +22,7 @@ struct WindowAccessor: NSViewRepresentable {
 
 private class WindowAccessorView: NSView {
     private static let compactAppletWindowIdentifiers = Set([
-        "ruler", "awake", "color-picker", "text-extractor"
+        "awake", "color-picker", "text-extractor"
     ])
 
     let windowIdentifier: String
@@ -96,6 +96,7 @@ private class WindowAccessorView: NSView {
               notifiedWindow === window,
               Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
         else { return }
+        alignCompactTrafficLights(in: notifiedWindow)
         scheduleCompactTrafficLightAlignment(in: notifiedWindow)
     }
 

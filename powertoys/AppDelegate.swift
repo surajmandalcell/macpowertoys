@@ -8,6 +8,7 @@ import AppKit
 import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    static weak var current: AppDelegate?
     static let statusItemEventMask: NSEvent.EventTypeMask = [
         .leftMouseDown,
         .rightMouseDown
@@ -22,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var freeRulerDidInitialize = false
     var freeRulerRoutingDidInstall = false
     var freeRulerObservers: [NSKeyValueObservation] = []
+    var freeRulerKeyMonitor: Any?
     var freeRulerMenuRoots: [NSMenuItem] = []
     var freeRulerDefaultsMenuItem: NSMenuItem?
     var freeRulerHostMenuItemStates: [FreeRulerMenuItemState] = []
@@ -74,6 +76,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var preferencesController: PreferencesController?
     var rulerSettingsController: RulerSettingsController?
     let hotkeyBezel = HotkeyBezel()
+
+    override init() {
+        super.init()
+        Self.current = self
+    }
 
     private static let dockIconAssets = [
         "main": "AppIcon",

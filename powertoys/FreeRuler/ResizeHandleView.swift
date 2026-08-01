@@ -492,7 +492,7 @@ final class ResizeHandleView: NSView {
 
 #if !SNAPSHOT_GENERATOR
     private var appDelegate: AppDelegate? {
-        return NSApp.delegate as? AppDelegate
+        return AppDelegate.current
     }
 #endif
 

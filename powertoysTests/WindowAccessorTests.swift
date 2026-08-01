@@ -8,7 +8,7 @@ final class WindowAccessorTests: XCTestCase {
     private static var retainedWindows: [NSWindow] = []
 
     func testCompactAppletWindowsUseFixedAlignedChrome() throws {
-        for identifier in ["ruler", "awake", "color-picker", "text-extractor"] {
+        for identifier in ["awake", "color-picker", "text-extractor"] {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -24,6 +24,7 @@ final class WindowAccessorTests: XCTestCase {
                 rootView: WindowAccessor(identifier: identifier)
             )
             window.contentView?.layoutSubtreeIfNeeded()
+            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
 
             let adjustedCloseButtonY = try XCTUnwrap(
