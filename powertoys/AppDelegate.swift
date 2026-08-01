@@ -19,6 +19,58 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     )
     private var ownsInstance = true
 
+    var freeRulerDidInitialize = false
+    var freeRulerObservers: [NSKeyValueObservation] = []
+    lazy var rulerManager: RulerManager = {
+        let manager = RulerManager()
+        manager.onActiveControllerChanged = { [weak self] controller in
+            guard let self else { return }
+
+            updateDisplay()
+            guard let settingsController = rulerSettingsController,
+                  settingsController.window?.isVisible == true else { return }
+
+            if let controller {
+                settingsController.show(attachedTo: controller, sender: self)
+            } else {
+                settingsController.close()
+            }
+        }
+        manager.onStateChanged = { [weak self] manager in
+            guard let self else { return }
+
+            saveRulerSetState()
+            let activeController = manager.activeController
+            guard let settingsController = rulerSettingsController,
+                  settingsController.currentRulerController === activeController,
+                  settingsController.window?.isVisible == true else { return }
+
+            settingsController.updateView()
+        }
+        return manager
+    }()
+    var timer: Timer?
+    var timerInterval: TimeInterval?
+    let mouseTickDrawingSuppressedOwners = NSHashTable<AnyObject>.weakObjects()
+    let foregroundTimerInterval: TimeInterval = 1 / 60
+    let backgroundTimerInterval: TimeInterval = 1 / 30
+    let rulerCursorController = RulerCursorController()
+    lazy var mouseTickTimerPolicy = MouseTickTimerPolicy(
+        foregroundInterval: foregroundTimerInterval,
+        backgroundInterval: backgroundTimerInterval
+    )
+    var pixelsMenuItem: NSMenuItem?
+    var millimetersMenuItem: NSMenuItem?
+    var inchesMenuItem: NSMenuItem?
+    var cycleUnitsMenuItem: NSMenuItem?
+    var floatRulersMenuItem: NSMenuItem?
+    var groupRulersMenuItem: NSMenuItem?
+    var rulerShadowMenuItem: NSMenuItem?
+    var alignRulersMenuItem: NSMenuItem?
+    var preferencesController: PreferencesController?
+    var rulerSettingsController: RulerSettingsController?
+    let hotkeyBezel = HotkeyBezel()
+
     private static let dockIconAssets = [
         "main": "AppIcon",
         "cc-history": "ClaudeHistoryLogo",
@@ -166,7 +218,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        updateFreeRulerForApplicationActivation(true)
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        updateFreeRulerForApplicationActivation(false)
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        prepareFreeRulerForTermination()
         AwakeService.shared.shutdown()
         GlobalShortcutManager.shared.shutdown()
         Task { @MainActor in

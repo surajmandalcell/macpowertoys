@@ -101,19 +101,6 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["logs"]))
         .restorationBehavior(.disabled)
 
-        Window("Ruler Settings", id: "ruler") {
-            RulerControlView()
-                .background(WindowAccessor(identifier: "ruler"))
-        }
-        .defaultSize(
-            width: RulerSettingsLayout.windowWidth,
-            height: RulerSettingsLayout.windowHeight
-        )
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["ruler"]))
-        .restorationBehavior(.disabled)
-
         Window("Awake", id: "awake") {
             AwakeView()
                 .background(WindowAccessor(identifier: "awake"))

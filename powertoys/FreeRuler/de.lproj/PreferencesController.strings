@@ -1,0 +1,9 @@
+
+/* Class = "NSWindow"; title = "Free Ruler Settings"; ObjectID = "F0z-JX-Cv5"; */
+"F0z-JX-Cv5.title" = "Lineal-Standardeinstellungen";
+
+/* Class = "NSTextFieldCell"; title = "Default settings for new rulers"; ObjectID = "PREF-defaults-header-cell"; */
+"PREF-defaults-header-cell.title" = "Standardeinstellungen für neue Lineale";
+
+/* Class = "NSButtonCell"; title = "Reset to factory defaults"; ObjectID = "PREF-factory-cell"; */
+"PREF-factory-cell.title" = "Auf Werkseinstellungen zurücksetzen";

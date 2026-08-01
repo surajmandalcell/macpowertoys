@@ -183,6 +183,12 @@ final class TextExtractorService {
     }
 }
 
+extension NSScreen {
+    var displayID: UInt32? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
+}
+
 private enum ExtractorError: LocalizedError {
     case displayUnavailable
     var errorDescription: String? { "The selected display is no longer available." }
