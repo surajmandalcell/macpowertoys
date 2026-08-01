@@ -16,6 +16,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItemClickMonitor: Any?
     private var currentDockIconAssetName = "AppIcon"
+    private var currentDockIconAppearanceName: NSAppearance.Name?
+    private var dockIconAppearanceObservation: NSKeyValueObservation?
     private let statusItemClickCoordinator = StatusItemClickCoordinator(
         delay: NSEvent.doubleClickInterval
     )
@@ -101,6 +103,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         installFreeRulerRouting()
+        dockIconAppearanceObservation = NSApp.observe(
+            \.effectiveAppearance,
+            options: [.new]
+        ) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                self?.refreshDockIcon(for: NSApp.effectiveAppearance)
+            }
+        }
 
         NotificationCenter.default.addObserver(
             self,
@@ -200,18 +210,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return dockIconAssets.first { windowIdentifier.hasPrefix($0.key) }?.value ?? "AppIcon"
     }
 
-    func dockIconAssetToApply(for windowIdentifier: String?) -> String? {
+    func dockIconAssetToApply(
+        for windowIdentifier: String?,
+        appearance: NSAppearance = NSApp.effectiveAppearance
+    ) -> String? {
         let nextAssetName = Self.dockIconAsset(for: windowIdentifier)
-        guard nextAssetName != currentDockIconAssetName else { return nil }
+        return dockIconAssetToApply(named: nextAssetName, appearance: appearance)
+    }
+
+    private func dockIconAssetToApply(
+        named nextAssetName: String,
+        appearance: NSAppearance
+    ) -> String? {
+        let nextAppearanceName = nextAssetName == "AppIcon"
+            ? nil
+            : DockIconImage.resolvedAppearanceName(for: appearance)
+        guard nextAssetName != currentDockIconAssetName
+            || nextAppearanceName != currentDockIconAppearanceName else { return nil }
 
         currentDockIconAssetName = nextAssetName
+        currentDockIconAppearanceName = nextAppearanceName
         return nextAssetName
     }
 
     private func updateDockIcon(for windowIdentifier: String?) {
-        guard let assetName = dockIconAssetToApply(for: windowIdentifier) else { return }
+        let appearance = NSApp.effectiveAppearance
+        guard let assetName = dockIconAssetToApply(
+            for: windowIdentifier,
+            appearance: appearance
+        ) else { return }
 
-        NSApp.applicationIconImage = DockIconImage.image(named: assetName)
+        NSApp.applicationIconImage = DockIconImage.image(
+            named: assetName,
+            appearance: appearance
+        )
+    }
+
+    private func refreshDockIcon(for appearance: NSAppearance) {
+        guard let assetName = dockIconAssetToApply(
+            named: currentDockIconAssetName,
+            appearance: appearance
+        ) else { return }
+
+        NSApp.applicationIconImage = DockIconImage.image(
+            named: assetName,
+            appearance: appearance
+        )
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
