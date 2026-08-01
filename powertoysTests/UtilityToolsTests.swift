@@ -4,6 +4,43 @@ import XCTest
 
 @MainActor
 final class UtilityToolsTests: XCTestCase {
+    func testDockIconInsetsFullCanvasToOpticalBounds() throws {
+        let fixture = NSImage(size: NSSize(width: 512, height: 512), flipped: false) { bounds in
+            NSColor.white.setFill()
+            bounds.fill()
+            return true
+        }
+
+        let image = DockIconImage.inset(fixture, appearance: NSAppearance(named: .aqua)!)
+
+        XCTAssertEqual(try alphaBounds(of: image), NSRect(x: 58, y: 58, width: 396, height: 396))
+    }
+
+    func testEveryAlternateDockIconUsesOpticalBounds() throws {
+        let assetNames = [
+            "ClaudeHistoryLogo",
+            "CloudSyncLogo",
+            "LogsLogo",
+            "RulerLogo",
+            "AwakeLogo",
+            "ColorPickerLogo",
+            "TextExtractorLogo"
+        ]
+
+        for assetName in assetNames {
+            let image = try XCTUnwrap(DockIconImage.image(named: assetName))
+            XCTAssertEqual(
+                try alphaBounds(of: image),
+                NSRect(x: 58, y: 58, width: 396, height: 396),
+                assetName
+            )
+        }
+    }
+
+    func testAppIconUsesSystemResetPath() {
+        XCTAssertNil(DockIconImage.image(named: "AppIcon"))
+    }
+
     func testDockIconMatchesActiveToolWindow() {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-window"), "RulerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-settings-window"), "RulerLogo")
@@ -90,5 +127,47 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(shortcut.carbonModifiers, UInt32(shiftKey | cmdKey))
         XCTAssertEqual(shortcut.keyLabel, "3")
         XCTAssertEqual(shortcut.display, "⇧⌘3")
+    }
+
+    private func alphaBounds(of image: NSImage) throws -> NSRect {
+        let width = Int(image.size.width)
+        let height = Int(image.size.height)
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        bitmap.size = image.size
+
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        NSColor.clear.setFill()
+        NSRect(origin: .zero, size: image.size).fill()
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+        for y in 0..<height {
+            for x in 0..<width where bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0 > 0 {
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+            }
+        }
+
+        return maxX >= minX
+            ? NSRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+            : .zero
     }
 }
