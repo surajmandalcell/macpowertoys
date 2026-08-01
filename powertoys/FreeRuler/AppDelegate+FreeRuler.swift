@@ -153,7 +153,10 @@ extension AppDelegate {
     }
 
     @objc private func freeRulerApplicationDidUpdate(_ notification: Notification) {
-        repairFreeRulerMenuContextIfNeeded(for: NSApp.keyWindow)
+        guard Self.isFreeRulerWindowIdentifier(NSApp.keyWindow?.identifier?.rawValue) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.repairFreeRulerMenuContextIfNeeded(for: NSApp.keyWindow)
+        }
     }
 
     func freeRulerMenuTitle(id: String, fallback: String) -> String {
