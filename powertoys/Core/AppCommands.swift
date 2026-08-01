@@ -27,11 +27,6 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Utilities") {
-            Button("New Horizontal Ruler") {
-                ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerNewHorizontal))
-            }
-            .keyboardShortcut("r", modifiers: [.command, .option, .control])
-
             Button("Toggle Awake") {
                 ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeToggle))
             }
