@@ -57,6 +57,25 @@
   and confirm the body fills the window with the settings button 8pt from the
   bottom-right corner.
 
+## Dock Icon Optical Sizing
+
+- **Symptom:** Awake, Color Picker, Text Extractor, Ruler, Logs, Cloud Sync, or
+  Claude History appears materially larger than MacPowerToys when its applet
+  window becomes key, or the Dock icon is regenerated during every focus event.
+- **Cause:** Applet artwork filled the complete 512pt asset canvas while the
+  base icon's visible body occupied about 396pt. Assigning each source image
+  directly to `NSApp.applicationIconImage` therefore ignored optical sizing.
+- **Invariant:** Keep the base `AppIcon` on AppKit's native reset path. Render
+  applet assets once per asset and appearance in a centered 396/512 optical
+  inset, observe the application's effective appearance, and skip
+  application-icon assignment only when both the requested asset and appearance
+  have not changed. The base icon remains an Icon Composer asset so macOS
+  supplies its current material, depth, and appearance treatment.
+- **Check:** Unit-test the 396/512 inset geometry, cache identity, window-to-icon
+  mapping, and unchanged-asset suppression. In the installed signed build,
+  compare the base and every applet in the Dock in light and dark appearances;
+  their perceived body size should match without focus-time redraw churn.
+
 References: Apple's
 [SwiftUI suppressed launch behavior](https://developer.apple.com/documentation/swiftui/scenelaunchbehavior/suppressed)
 and

@@ -44,3 +44,23 @@
 - **Check:** Launch MacPowerToys with no restored windows, confirm no
   `ruler-window` exists, then open tool ID `ruler` and confirm one
   `ruler-window` with both ruler views appears.
+
+## Command-W Closes The Ruler Once
+
+- **Symptom:** Command-W closes the ruler and then also closes the MacPowerToys
+  host window, or feels delayed while a ruler is active.
+- **Cause:** A local-event-monitor adapter used
+  `handler(event) ?? event`. The ruler handler intentionally returned `nil` to
+  consume Command-W, but the nil-coalescing expression resurrected the same
+  event. AppKit then dispatched it again after the ruler had closed, with the
+  host window newly key.
+- **Invariant:** The monitor returns the handler result verbatim while its
+  delegate exists; `nil` means consumed. If the delegate has deallocated, it
+  returns the original event. Exact Command-W closes the captured ruler
+  synchronously, while additional modifiers pass through. Native command state
+  publishes only when its rendered value changes during ruler interaction.
+- **Check:** Unit-test the installed monitor closure, not only its downstream
+  handler: exact Command-W returns nil, extra-modifier Command-W returns the
+  identical event, the key-window transition leaves the host open, and a
+  deallocated delegate returns the event. In the signed UI build, confirm the
+  ruler disappears while MacPowerToys remains running with its host window.

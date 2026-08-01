@@ -16,8 +16,8 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Support multiple independent rulers. | The upstream `RulerManager` is preserved; the signed UI flow proves Command-N creates and activates a second ruler and Command-grave cycles rulers. | None. |
 | Done | Match grouped and ungrouped ruler behavior. | Upstream grouping, stack order, grouped dragging, and persistence tests are preserved; the signed UI flow proves `G` toggles grouping without changing ruler count. | Exercise grouped dragging in the final installed build. |
 | Done | Match FreeRuler persistence. | The upstream versioned ruler-set state, active-ruler restoration, per-ruler settings, defaults copying, frame autosave, and corrupt-data fallback tests are preserved. | Verify close/reopen state in the final installed build. |
-| Done | Match FreeRuler commands and shortcuts. | Host menus reproduce Ruler, Unit, and Options commands; core and signed UI coverage exercise `H`, `V`, `U`, `G`, Command-N, Command-grave, Command-comma, and Command-W routing. | Complete the full installed shortcut matrix. |
-| Done | Preserve the attached per-ruler Settings behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD panel uses three token-based sections and trailing secondary/primary actions. Core coverage preserves attachment, anchoring, suspension, controls, reset/defaults, color, opacity, dimensions, float, shadow, accessibility, and localization-safe layout. | Complete the signed appearance matrix below. |
+| Done | Match FreeRuler commands and shortcuts. | Host menus reproduce Ruler, Unit, and Options commands; core and signed UI coverage exercise `H`, `V`, `U`, `G`, Command-N, Command-grave, Command-comma, and Command-W routing. Exact Command-W is consumed once by the native local monitor, closes the focused ruler synchronously, and leaves the host window running. | Complete the full installed shortcut matrix. |
+| Done | Preserve the attached per-ruler Settings behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD panel follows the same section-heading, inset-card, row, typography, and spacing system as Awake, Text Extractor, and Color Picker. Its Measurement, Appearance, and Window sections use trailing secondary/primary actions. Core coverage preserves attachment, anchoring, suspension, controls, reset/defaults, color, opacity, dimensions, float, shadow, accessibility, and localization-safe layout. | Complete the signed appearance matrix below. |
 | Done | Preserve Ruler Defaults behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD window removes the duplicate headline and border, and keeps factory reset as one quiet destructive action. Core coverage preserves live default edits, persistence, and factory reset. | Complete the signed appearance matrix below. |
 | Done | Match the FreeRuler color panel. | The upstream color-well behavior, zero-corner anchoring, and alpha-disabled color panel are preserved with focused tests. | Exercise it in the final installed build. |
 | Done | Preserve FreeRuler localizations. | The upstream `Localizable.xcstrings` catalog is vendored intact and compiled into MacPowerToys. | None. |
@@ -46,14 +46,22 @@ Update this list whenever Ruler requirements or verification results change.
 - Integrated core: 124 adapted upstream product tests plus one host Command-N
   integration test pass (125 total). A temporary 40pt → 41pt mutation was
   detected by four geometry/layout tests and then restored.
-- Settings core: all 127 Ruler tests pass. The layout checks cover 420pt fixed
+- Settings core: all 126 Ruler tests pass. The layout checks cover 420pt fixed
   windows, utility section rhythm, card geometry, 12pt row typography,
   accessibility relationships, complete key order, 24pt minimum controls, and
-  collision-free English, German, and Japanese labels.
+  collision-free English, German, and Japanese labels. All five localized
+  controls XIBs compile and contain the three translated section headings.
 - XIB validation: Ruler Settings, Ruler Defaults, and their shared controls all
   compile with `ibtool`.
-- Host unit suite: 374 tests pass with zero failures.
-- Signed host UI suite: all five focused Ruler flows pass.
+- Host unit suite: 383 tests pass with zero failures or runtime warnings.
+- Signed host UI suite: all 11 methods pass across 22 configured executions,
+  including the focused Ruler flows and the exact Command-W host-survival case.
+  Xcode 27 reports one launch-time Security performance diagnostic per fresh UI
+  test process immediately after its missing DetachedSignatures lookup; it
+  occurs before tool interaction and is not on the Ruler close path.
+- Command-W dispatch: direct native-handler measurements complete in 4-16ms
+  after the first cold invocation. The monitor adapter preserves a handled
+  handler's `nil` result, so AppKit cannot redispatch the same event to the host.
 - Signed same-machine visual comparison: pending final installed-build check.
 - Performance and 25-window lifecycle check: pending final installed-build
   check; record observed CPU and memory ranges here before handoff.
