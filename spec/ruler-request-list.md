@@ -8,8 +8,8 @@ Update this list whenever Ruler requirements or verification results change.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Done | Replace the custom MacPowerToys Ruler with FreeRuler as-is while fitting the host architecture. | The pinned MIT source, nibs, localization catalog, and notices are vendored under `powertoys/FreeRuler`; MacPowerToys only adapts host ownership, launch, routing, and branding. | None. |
-| Done | Match FreeRuler geometry and visual styling. | Eleven direct-copy Swift files remain byte-identical; the other four differ only by the host-delegate lookup. The adapted core suite asserts the 40pt L shape, ticks, labels, colors, zero corners, handles, opacity, shadow, and window layout. | Complete the signed same-machine visual comparison below. |
+| Done | Replace the custom MacPowerToys Ruler with FreeRuler while fitting the host architecture. | The pinned MIT source, localization catalog, and notices are vendored under `powertoys/FreeRuler`; MacPowerToys adapts host ownership, launch, routing, branding, and settings-window chrome. | None. |
+| Done | Match FreeRuler overlay geometry and visual styling. | Eleven direct-copy Swift files remain byte-identical; the other four differ only by the host-delegate lookup. The adapted core suite asserts the 40pt L shape, ticks, labels, colors, zero corners, handles, opacity, shadow, and overlay layout. | Complete the signed same-machine overlay comparison below. |
 | Done | Match pixel, millimeter, and inch units. | Core coverage checks tick scales and labels; the signed UI flow cycles `px` → `mm` → `in` → `px`. | None. |
 | Done | Match moving and keyboard nudging. | The pinned ruler controller owns drag and arrow/Shift-arrow movement; its interaction tests are preserved. | Exercise both paths in the final installed build. |
 | Done | Match end and corner resizing. | The upstream resize handle and cursor implementations are direct copies apart from the host-delegate lookup, with focused geometry and drag tests. | Exercise both paths in the final installed build. |
@@ -17,8 +17,8 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Match grouped and ungrouped ruler behavior. | Upstream grouping, stack order, grouped dragging, and persistence tests are preserved; the signed UI flow proves `G` toggles grouping without changing ruler count. | Exercise grouped dragging in the final installed build. |
 | Done | Match FreeRuler persistence. | The upstream versioned ruler-set state, active-ruler restoration, per-ruler settings, defaults copying, frame autosave, and corrupt-data fallback tests are preserved. | Verify close/reopen state in the final installed build. |
 | Done | Match FreeRuler commands and shortcuts. | Host menus reproduce Ruler, Unit, and Options commands; core and signed UI coverage exercise `H`, `V`, `U`, `G`, Command-N, Command-grave, Command-comma, and Command-W routing. | Complete the full installed shortcut matrix. |
-| Done | Match the attached per-ruler Settings panel. | The upstream settings controller and nib are preserved; core coverage checks anchoring, suspension, controls, reset/defaults, color, opacity, dimensions, float, and shadow. Signed UI coverage opens it with Command-comma. | Complete the signed visual comparison. |
-| Done | Match the separate Ruler Defaults window. | The upstream preferences controller and nib are preserved; core coverage checks edits and factory reset. Signed UI coverage opens it with Option-Command-comma. | Complete the signed visual comparison. |
+| Done | Preserve the attached per-ruler Settings behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD panel uses three token-based sections and trailing secondary/primary actions. Core coverage preserves attachment, anchoring, suspension, controls, reset/defaults, color, opacity, dimensions, float, shadow, accessibility, and localization-safe layout. | Complete the signed appearance matrix below. |
+| Done | Preserve Ruler Defaults behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD window removes the duplicate headline and border, and keeps factory reset as one quiet destructive action. Core coverage preserves live default edits, persistence, and factory reset. | Complete the signed appearance matrix below. |
 | Done | Match the FreeRuler color panel. | The upstream color-well behavior, zero-corner anchoring, and alpha-disabled color panel are preserved with focused tests. | Exercise it in the final installed build. |
 | Done | Preserve FreeRuler localizations. | The upstream `Localizable.xcstrings` catalog is vendored intact and compiled into MacPowerToys. | None. |
 | Done | Launch on demand through MacPowerToys without a SwiftUI Ruler scene. | `ToolActionRouter` opens or raises the AppKit ruler manager. Signed UI coverage proves startup creates no ruler and launcher activation creates one `ruler-window` with both wings. | Verify every external route in the final installed build. |
@@ -46,6 +46,12 @@ Update this list whenever Ruler requirements or verification results change.
 - Integrated core: 124 adapted upstream product tests plus one host Command-N
   integration test pass (125 total). A temporary 40pt → 41pt mutation was
   detected by four geometry/layout tests and then restored.
+- Settings core: all 127 Ruler tests pass. The layout checks cover 420pt fixed
+  windows, utility section rhythm, card geometry, 12pt row typography,
+  accessibility relationships, complete key order, 24pt minimum controls, and
+  collision-free English, German, and Japanese labels.
+- XIB validation: Ruler Settings, Ruler Defaults, and their shared controls all
+  compile with `ibtool`.
 - Host unit suite: 374 tests pass with zero failures.
 - Signed host UI suite: all five focused Ruler flows pass.
 - Signed same-machine visual comparison: pending final installed-build check.

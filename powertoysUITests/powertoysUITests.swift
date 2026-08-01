@@ -88,6 +88,21 @@ final class powertoysUITests: XCTestCase {
         XCTAssertTrue(app.colorWells["ruler-settings-color-well"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.sliders["ruler-settings-foreground-opacity-slider"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.sliders["ruler-settings-background-opacity-slider"].waitForExistence(timeout: 2))
+        XCTAssertEqual(rulerSettings.frame.width, 420, accuracy: 1)
+        let resetDefaults = app.buttons["reset-ruler-settings-to-default-button"]
+        let saveDefaults = app.buttons["save-ruler-settings-as-default-button"]
+        XCTAssertTrue(resetDefaults.waitForExistence(timeout: 2))
+        XCTAssertTrue(saveDefaults.waitForExistence(timeout: 2))
+        XCTAssertGreaterThanOrEqual(resetDefaults.frame.height, 24)
+        XCTAssertGreaterThanOrEqual(saveDefaults.frame.height, 24)
+
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(waitForDisappearance(rulerSettings))
+        XCTAssertTrue(app.dialogs["ruler-window"].exists)
+
+        app.otherElements["horizontal-ruler-view"].click()
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(waitForVisibleFrame(rulerSettings))
 
         app.typeKey(",", modifierFlags: [.option, .command])
         let rulerDefaults = app.windows["preferences-window"]
@@ -95,6 +110,10 @@ final class powertoysUITests: XCTestCase {
         XCTAssertTrue(app.colorWells["ruler-color-well"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.sliders["ruler-foreground-opacity-slider"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.sliders["ruler-background-opacity-slider"].waitForExistence(timeout: 2))
+        XCTAssertEqual(rulerDefaults.frame.width, 420, accuracy: 1)
+        let factoryReset = app.buttons["reset-factory-defaults-button"]
+        XCTAssertTrue(factoryReset.waitForExistence(timeout: 2))
+        XCTAssertGreaterThanOrEqual(factoryReset.frame.height, 24)
     }
 
     @MainActor

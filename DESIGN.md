@@ -299,12 +299,14 @@ surface is FreeRuler's borderless 40pt AppKit L-shaped overlay, with movable and
 resizable horizontal and vertical wings. It has no `CompactTitlebar`, traffic
 lights, launcher material, fixed 560×600 scene, or in-window settings page.
 
-FreeRuler owns multiple ruler windows, the attached per-ruler Settings panel,
-the separate Defaults window, color panel, units, grouping, opacity, float,
-shadow, keyboard commands, and persistence. MacPowerToys owns only discovery,
-on-demand launch, routing, and orange launcher/dock identity. Preserve the
-pinned FreeRuler visual and interaction behavior; do not restyle its overlays or
-native controls with MacPowerToys compact-applet tokens.
+FreeRuler owns multiple ruler windows, settings behavior, the color panel,
+units, grouping, opacity, float, shadow, keyboard commands, and persistence.
+MacPowerToys owns discovery, on-demand launch, routing, orange identity, and the
+visual chrome for Ruler Settings and Ruler Defaults. Preserve the pinned
+FreeRuler overlay visuals and interaction behavior. Style both settings windows
+with the shared utility material, gutters, section rhythm, cards, and action
+hierarchy. They retain native transparent titlebars and never use
+`CompactTitlebar` or overlay chrome.
 
 ### Main Launcher
 
