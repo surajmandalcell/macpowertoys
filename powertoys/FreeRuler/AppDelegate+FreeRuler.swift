@@ -145,7 +145,7 @@ extension AppDelegate {
 
     func updateFreeRulerMenuContext(for window: NSWindow?) {
         let isRulerContext = Self.isFreeRulerWindowIdentifier(window?.identifier?.rawValue)
-        FreeRulerCommandContext.shared.isActive = isRulerContext
+        FreeRulerCommandContext.shared.update(isActive: isRulerContext)
     }
 }
 
@@ -251,19 +251,20 @@ extension AppDelegate {
 
     func updateDisplay() {
         let activeController = rulerManager.activeController
-        let commandContext = FreeRulerCommandContext.shared
-        commandContext.hasRuler = activeController != nil
-        commandContext.horizontalVisible = activeController?.state.isWingVisible(.horizontal) ?? false
-        commandContext.verticalVisible = activeController?.state.isWingVisible(.vertical) ?? false
-        updateUnitMenu()
-        updateFloatRulersMenuItem()
-        updateGroupRulersMenuItem()
-        updateRulerShadowMenuItem()
+        let settings = activeRulerSettings
+        FreeRulerCommandContext.shared.update(.init(
+            hasRuler: activeController != nil,
+            horizontalVisible: activeController?.state.isWingVisible(.horizontal) ?? false,
+            verticalVisible: activeController?.state.isWingVisible(.vertical) ?? false,
+            unit: settings.unit,
+            floatRulers: settings.floatRulers,
+            rulerShadow: settings.rulerShadow,
+            groupRulers: prefs.groupRulers
+        ))
     }
 
     func updateUnitMenu() {
-        let unit = activeRulerSettings.unit
-        FreeRulerCommandContext.shared.unit = unit
+        updateDisplay()
     }
 
     func redrawRulers() {
@@ -277,15 +278,15 @@ extension AppDelegate {
     }
 
     func updateFloatRulersMenuItem() {
-        FreeRulerCommandContext.shared.floatRulers = activeRulerSettings.floatRulers
+        updateDisplay()
     }
 
     func updateGroupRulersMenuItem() {
-        FreeRulerCommandContext.shared.groupRulers = prefs.groupRulers
+        updateDisplay()
     }
 
     func updateRulerShadowMenuItem() {
-        FreeRulerCommandContext.shared.rulerShadow = activeRulerSettings.rulerShadow
+        updateDisplay()
     }
 
     private var activeRulerSettings: RulerSettings {

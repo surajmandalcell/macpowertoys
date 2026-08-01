@@ -14,18 +14,40 @@ extension Notification.Name {
 
 @MainActor
 final class FreeRulerCommandContext: ObservableObject {
+    struct Snapshot: Equatable {
+        var hasRuler = false
+        var horizontalVisible = false
+        var verticalVisible = false
+        var unit: Unit = .pixels
+        var floatRulers = true
+        var rulerShadow = false
+        var groupRulers = false
+    }
+
     static let shared = FreeRulerCommandContext()
 
-    @Published var isActive = false
-    @Published var hasRuler = false
-    @Published var horizontalVisible = false
-    @Published var verticalVisible = false
-    @Published var unit: Unit = .pixels
-    @Published var floatRulers = true
-    @Published var rulerShadow = false
-    @Published var groupRulers = false
+    @Published private var snapshot = Snapshot()
+    @Published private(set) var isActive = false
+
+    var hasRuler: Bool { snapshot.hasRuler }
+    var horizontalVisible: Bool { snapshot.horizontalVisible }
+    var verticalVisible: Bool { snapshot.verticalVisible }
+    var unit: Unit { snapshot.unit }
+    var floatRulers: Bool { snapshot.floatRulers }
+    var rulerShadow: Bool { snapshot.rulerShadow }
+    var groupRulers: Bool { snapshot.groupRulers }
 
     var showsHostCommands: Bool { !isActive }
+
+    func update(_ snapshot: Snapshot) {
+        guard self.snapshot != snapshot else { return }
+        self.snapshot = snapshot
+    }
+
+    func update(isActive: Bool) {
+        guard self.isActive != isActive else { return }
+        self.isActive = isActive
+    }
 }
 
 struct FreeRulerCommandShortcut: Equatable {
