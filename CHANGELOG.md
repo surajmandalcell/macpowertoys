@@ -2,6 +2,12 @@
 
 Notable changes are documented here. The project follows semantic versioning after its first stable release.
 
+## [Unreleased]
+
+### Changed
+
+- Replaced the custom Ruler with the behavior and settings from pinned FreeRuler commit `d38ca4f673f16c51485940e63eeee68babfbfeed` under its MIT license.
+
 ## [1.7.1] - 2026-07-15
 
 ### Changed

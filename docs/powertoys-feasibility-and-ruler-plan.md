@@ -1,5 +1,11 @@
 # macOS PowerToys feasibility and ruler direction
 
+> [!IMPORTANT]
+> The Ruler implementation section is superseded by the pinned FreeRuler parity
+> plan in `docs/superpowers/plans/2026-08-01-freeruler-parity.md`. The current
+> product intentionally removes the earlier custom SwiftUI ruler, guides,
+> calibration, measurement capture, and developer copy features.
+
 Research date: 2026-07-13
 
 ## Executive answer

@@ -49,8 +49,8 @@
 - **Cause:** `WindowStateManager.restoreState` applied the complete saved
   frame, including a stale height, to windows whose height is content-driven.
   SwiftUI centers the fixed-size content in the taller window.
-- **Invariant:** Fixed-size applet windows (`awake`, `color-picker`,
-  `text-extractor`, `ruler`) restore position only: keep the saved top-left
+- **Invariant:** Fixed-size applet windows (`awake`, `color-picker`, and
+  `text-extractor`) restore position only: keep the saved top-left
   edge and the window's current content-driven size. Never restore a saved
   width or height onto a content-sized applet.
 - **Check:** Save an applet frame, change its expected content height, reopen,

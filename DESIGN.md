@@ -279,7 +279,7 @@ over them. Compact applets draw their own titlebar inside the window. Never use
 `.unifiedCompact`, native toolbar action grouping, `NavigationSplitView`,
 `NavigationView`, or manually configured native titlebar content.
 
-Each tool opens in its own single-instance `Window` scene with
+Each SwiftUI-owned tool opens in its own single-instance `Window` scene with
 `tabbingMode = .disallowed`. Tools never auto-open at launch unless their own
 start-at-launch setting is enabled. Reopening an existing tool raises that
 window instead of creating a duplicate.
@@ -291,6 +291,20 @@ compact applet, the 40pt titlebar background and title drag while its actions do
 not. Double-click delegates to the person's macOS titlebar preference. A fixed
 applet cannot zoom, so the system may minimize it when configured or otherwise
 leave it unchanged. Never implement custom double-click behavior.
+
+### Ruler AppKit Overlay Exception
+
+Ruler intentionally sits outside the three SwiftUI window families. Its working
+surface is FreeRuler's borderless 40pt AppKit L-shaped overlay, with movable and
+resizable horizontal and vertical wings. It has no `CompactTitlebar`, traffic
+lights, launcher material, fixed 560×600 scene, or in-window settings page.
+
+FreeRuler owns multiple ruler windows, the attached per-ruler Settings panel,
+the separate Defaults window, color panel, units, grouping, opacity, float,
+shadow, keyboard commands, and persistence. MacPowerToys owns only discovery,
+on-demand launch, routing, and orange launcher/dock identity. Preserve the
+pinned FreeRuler visual and interaction behavior; do not restyle its overlays or
+native controls with MacPowerToys compact-applet tokens.
 
 ### Main Launcher
 
@@ -370,7 +384,7 @@ tool's product brief.
 | Claude History | Developer / workspace | Browse every Claude Code conversation on this Mac - live, searchable, and bookmarkable. |
 | Cloud Sync | Files / workspace | Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules. |
 | Logs | System / workspace | View application logs and diagnostics. |
-| Ruler | Developer / applet | Measure layouts across displays with floating rulers, guides, calibrated units, and developer-friendly copy formats. |
+| Ruler | Developer / AppKit overlay | Measure the screen with movable, resizable rulers in pixels, millimeters, or inches. |
 | Awake | System / applet | Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings. |
 | Color Picker | Developer / applet | Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values. |
 | Text Extractor | Text / applet | Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition. |
@@ -484,7 +498,7 @@ what happened and the next available action.
 ### Compact Applet
 
 A compact applet is a fixed, single-column tool for one immediate purpose, such
-as Awake, Color Picker, Text Extractor, or Ruler controls. It has no sidebar and
+as Awake, Color Picker, or Text Extractor. It has no sidebar and
 no second navigation rail. The person cannot resize it, though the app may
 animate between explicitly bounded content heights as its state changes.
 
@@ -506,7 +520,6 @@ Existing applets are concrete references, not new families:
 | Awake | 560×500 | Small `Keep Display On` switch | Status, Mode, then Quick Times and Process |
 | Color Picker | 420 wide, 250–460 high | `Pick Color` primary action | History / Projects tabs; 12pt gutter |
 | Text Extractor | 480 wide, 270–462 high | Shortcut menu + `Extract Text` primary action | History |
-| Ruler | 560×600 | Unit/menu controls + `Measure Region` primary action | Measurement and guide settings |
 
 These examples define shell composition and action ownership. A future applet's
 domain requirements still define its labels, data, fields, and states; do not
@@ -544,8 +557,8 @@ fixed 420 / 480 / 560 wide; 250–600 high
   between title and actions never falls below 12pt. If localization makes the
   row too wide, move the least important action into the body.
 - Titlebar actions are persistent page-level actions only. Color Picker's
-  `Pick Color`, Text Extractor's `Extract Text`, and Ruler's `Measure Region`
-  belong there. Awake keeps a small native `Keep Display On` switch there; its
+  `Pick Color` and Text Extractor's `Extract Text` belong there. Awake keeps a
+  small native `Keep Display On` switch there; its
   mode-specific Start or Stop actions stay in the body. Settings never belongs
   in the titlebar.
 - Each action is visually discrete and flat. Only the primary action may use an

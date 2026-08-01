@@ -63,7 +63,7 @@
 - **Invariant:** Every compact applet initially focuses its invisible window
   accessor. Every titlebar button, menu, and switch disables its focus effect
   without disabling keyboard interaction.
-- **Check:** Fresh-open Awake, Text Extractor, Ruler, and Color Picker. Before
+- **Check:** Fresh-open Awake, Text Extractor, and Color Picker. Before
   interaction and after changing window focus, confirm no titlebar outline is
   visible. Tab to each control and confirm keyboard activation still works.
 
