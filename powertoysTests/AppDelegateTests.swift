@@ -181,7 +181,7 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
-    func testFreeRulerMenuContextSurvivesSwiftUIMainMenuRebuild() {
+    func testFreeRulerApplicationUpdateRepairsSwiftUIMainMenuRebuild() {
         func makeHostMenu() -> (
             main: NSMenu,
             application: NSMenu,
@@ -232,7 +232,7 @@ final class AppDelegateTests: XCTestCase {
 
         let rebuilt = makeHostMenu()
         NSApp.mainMenu = rebuilt.main
-        delegate.updateFreeRulerMenuContext(for: rulerWindow)
+        delegate.repairFreeRulerMenuContextIfNeeded(for: rulerWindow)
 
         XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { $0.menu === rebuilt.main })
         XCTAssertTrue(delegate.freeRulerDefaultsMenuItem?.menu === rebuilt.application)
