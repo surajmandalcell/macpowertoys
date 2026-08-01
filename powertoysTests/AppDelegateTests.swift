@@ -1,5 +1,6 @@
 import XCTest
 import Carbon.HIToolbox
+import Combine
 import SwiftUI
 @testable import powertoys
 
@@ -33,14 +34,16 @@ final class AppDelegateTests: XCTestCase {
             [.flipHorizontal, .flipVertical, .floatRuler, .rulerShadow, .groupRulers, .alignAtMouse, .resetPosition]
         )
 
-        let context = FreeRulerCommandContext.shared
-        context.hasRuler = true
-        context.horizontalVisible = true
-        context.verticalVisible = false
-        context.unit = .inches
-        context.floatRulers = false
-        context.rulerShadow = true
-        context.groupRulers = false
+        let context = FreeRulerCommandContext()
+        context.update(.init(
+            hasRuler: true,
+            horizontalVisible: true,
+            verticalVisible: false,
+            unit: .inches,
+            floatRulers: false,
+            rulerShadow: true,
+            groupRulers: false
+        ))
 
         let commands: [(FreeRulerCommand, String, Selector, FreeRulerCommandShortcut?)] = [
             (.newRuler, "New Ruler", #selector(AppDelegate.newRuler(_:)), .init("n", modifiers: .command)),
@@ -159,6 +162,48 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertEqual(context.unit, .inches)
         XCTAssertFalse(context.floatRulers)
         XCTAssertTrue(context.rulerShadow)
+    }
+
+    @MainActor
+    func testCommandContextPublishesOnlyWhenRenderedStateChanges() {
+        let context = FreeRulerCommandContext()
+        var updateCount = 0
+        let observation = context.objectWillChange.sink { updateCount += 1 }
+
+        context.update(.init())
+        context.update(.init())
+        context.update(isActive: false)
+        context.update(isActive: false)
+        XCTAssertEqual(updateCount, 0)
+
+        let changedSnapshot = FreeRulerCommandContext.Snapshot(
+            hasRuler: true,
+            horizontalVisible: true,
+            verticalVisible: false,
+            unit: .inches,
+            floatRulers: false,
+            rulerShadow: true,
+            groupRulers: true
+        )
+        context.update(changedSnapshot)
+
+        XCTAssertEqual(updateCount, 1)
+        XCTAssertTrue(context.hasRuler)
+        XCTAssertTrue(context.horizontalVisible)
+        XCTAssertFalse(context.verticalVisible)
+        XCTAssertEqual(context.unit, .inches)
+        XCTAssertFalse(context.floatRulers)
+        XCTAssertTrue(context.rulerShadow)
+        XCTAssertTrue(context.groupRulers)
+
+        context.update(changedSnapshot)
+        XCTAssertEqual(updateCount, 1)
+        context.update(isActive: true)
+        XCTAssertEqual(updateCount, 2)
+        context.update(isActive: true)
+        XCTAssertEqual(updateCount, 2)
+
+        withExtendedLifetime(observation) {}
     }
 
     @MainActor
