@@ -98,20 +98,23 @@ extension AppDelegate {
         _ event: NSEvent,
         keyWindow: NSWindow? = NSApp.keyWindow
     ) -> NSEvent? {
-        guard Self.isFreeRulerWindowIdentifier(keyWindow?.identifier?.rawValue) else {
-            return event
-        }
-
+        let isRulerWindow = Self.isFreeRulerWindowIdentifier(keyWindow?.identifier?.rawValue)
         let modifiers = event.modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .subtracting(.capsLock)
+        let isTransitionClose = Int(event.keyCode) == kVK_ANSI_W
+            && modifiers == .command
+            && FreeRulerCommandContext.shared.isActive
+            && rulerManager.hasRulers
+        guard isRulerWindow || isTransitionClose else { return event }
+
         switch (Int(event.keyCode), modifiers) {
         case (kVK_ANSI_Comma, .command):
             openRulerSettings(self)
         case (kVK_ANSI_Comma, [.option, .command]):
             openPreferences(self)
         case (kVK_ANSI_W, .command):
-            closeKeyWindow(self, keyWindow: keyWindow)
+            closeKeyWindow(self, keyWindow: isRulerWindow ? keyWindow : nil)
         default:
             return event
         }
