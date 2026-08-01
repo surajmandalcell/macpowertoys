@@ -15,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     ]
 
     private var statusItemClickMonitor: Any?
+    private var currentDockIconAssetName = "AppIcon"
     private let statusItemClickCoordinator = StatusItemClickCoordinator(
         delay: NSEvent.doubleClickInterval
     )
@@ -199,10 +200,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return dockIconAssets.first { windowIdentifier.hasPrefix($0.key) }?.value ?? "AppIcon"
     }
 
+    func dockIconAssetToApply(for windowIdentifier: String?) -> String? {
+        let nextAssetName = Self.dockIconAsset(for: windowIdentifier)
+        guard nextAssetName != currentDockIconAssetName else { return nil }
+
+        currentDockIconAssetName = nextAssetName
+        return nextAssetName
+    }
+
     private func updateDockIcon(for windowIdentifier: String?) {
-        NSApp.applicationIconImage = DockIconImage.image(
-            named: Self.dockIconAsset(for: windowIdentifier)
-        )
+        guard let assetName = dockIconAssetToApply(for: windowIdentifier) else { return }
+
+        NSApp.applicationIconImage = DockIconImage.image(named: assetName)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

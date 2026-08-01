@@ -53,6 +53,16 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
     }
 
+    func testDockIconUpdatesOnlyWhenTheOpticalAssetChanges() {
+        let delegate = AppDelegate()
+
+        XCTAssertNil(delegate.dockIconAssetToApply(for: "main"))
+        XCTAssertEqual(delegate.dockIconAssetToApply(for: "ruler-window"), "RulerLogo")
+        XCTAssertNil(delegate.dockIconAssetToApply(for: "ruler-settings-window"))
+        XCTAssertEqual(delegate.dockIconAssetToApply(for: "main"), "AppIcon")
+        XCTAssertNil(delegate.dockIconAssetToApply(for: nil))
+    }
+
     func testColorFormatting() {
         let sample = ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1)
         XCTAssertEqual(sample.string(.hex), "#FF8000")
