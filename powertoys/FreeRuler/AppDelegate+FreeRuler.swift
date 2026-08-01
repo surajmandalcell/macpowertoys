@@ -56,14 +56,6 @@ final class UITestSupport {
     func writeCursorState(_ value: String) {}
 }
 
-struct FreeRulerMenuItemState {
-    let item: NSMenuItem
-    let target: AnyObject?
-    let action: Selector?
-    let keyEquivalent: String
-    let keyEquivalentModifierMask: NSEvent.ModifierFlags
-}
-
 extension AppDelegate {
     static func isFreeRulerWindowIdentifier(_ identifier: String?) -> Bool {
         guard let identifier else { return false }
@@ -97,35 +89,29 @@ extension AppDelegate {
             name: NSWindow.didResignKeyNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(freeRulerApplicationDidUpdate(_:)),
-            name: NSApplication.didUpdateNotification,
-            object: nil
-        )
-        freeRulerMainMenuObservation = NSApp.observe(\.mainMenu, options: .new) { [weak self] app, _ in
-            DispatchQueue.main.async {
-                self?.repairFreeRulerMenuContextIfNeeded(for: app.keyWindow)
-            }
-        }
         freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             return self?.handleFreeRulerWindowKeyDown(event) ?? event
         }
-        installFreeRulerMenus()
     }
 
-    private func handleFreeRulerWindowKeyDown(_ event: NSEvent) -> NSEvent? {
-        guard Self.isFreeRulerWindowIdentifier(NSApp.keyWindow?.identifier?.rawValue),
-              Int(event.keyCode) == kVK_ANSI_Comma else { return event }
+    func handleFreeRulerWindowKeyDown(
+        _ event: NSEvent,
+        keyWindow: NSWindow? = NSApp.keyWindow
+    ) -> NSEvent? {
+        guard Self.isFreeRulerWindowIdentifier(keyWindow?.identifier?.rawValue) else {
+            return event
+        }
 
         let modifiers = event.modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .subtracting(.capsLock)
-        switch modifiers {
-        case .command:
+        switch (Int(event.keyCode), modifiers) {
+        case (kVK_ANSI_Comma, .command):
             openRulerSettings(self)
-        case [.option, .command]:
+        case (kVK_ANSI_Comma, [.option, .command]):
             openPreferences(self)
+        case (kVK_ANSI_W, .command):
+            closeKeyWindow(self, keyWindow: keyWindow)
         default:
             return event
         }
@@ -157,318 +143,14 @@ extension AppDelegate {
         }
     }
 
-    @objc private func freeRulerApplicationDidUpdate(_ notification: Notification) {
-        repairFreeRulerMenuContextIfNeeded(for: NSApp.keyWindow)
-    }
-
-    func freeRulerMenuTitle(id: String, fallback: String) -> String {
-        Bundle.main.localizedString(
-            forKey: "\(id).title",
-            value: fallback,
-            table: "MainMenu"
-        )
-    }
-
-    func makeFreeRulerMenuRoots() -> [NSMenuItem] {
-        let rulerRoot = freeRulerMenuRoot(id: "dMs-cI-mzQ", fallback: "Ruler")
-        let rulerMenu = rulerRoot.submenu!
-        rulerMenu.addItem(freeRulerMenuItem(
-            id: "rWt-KM-qSf",
-            fallback: "New Ruler",
-            action: #selector(newRuler(_:)),
-            keyEquivalent: "n",
-            modifiers: .command
-        ))
-        rulerMenu.addItem(.separator())
-        rulerMenu.addItem(freeRulerMenuItem(
-            id: "fLB-gk-0Jy",
-            fallback: "Hide Horizontal Ruler",
-            action: #selector(toggleHorizontalRuler(_:)),
-            keyEquivalent: "h"
-        ))
-        rulerMenu.addItem(freeRulerMenuItem(
-            id: "NgD-7h-fjO",
-            fallback: "Hide Vertical Ruler",
-            action: #selector(toggleVerticalRuler(_:)),
-            keyEquivalent: "v"
-        ))
-        rulerMenu.addItem(.separator())
-        rulerMenu.addItem(freeRulerMenuItem(
-            id: "rSt-Tg-232",
-            fallback: "Ruler Settings…",
-            action: #selector(openRulerSettings(_:)),
-            keyEquivalent: ",",
-            modifiers: .command
-        ))
-
-        let unitRoot = freeRulerMenuRoot(id: "iDP-2z-irv", fallback: "Unit")
-        let unitMenu = unitRoot.submenu!
-        pixelsMenuItem = freeRulerMenuItem(
-            id: "pYR-Ba-kKi",
-            fallback: "Pixels",
-            action: #selector(setUnitPixels(_:))
-        )
-        millimetersMenuItem = freeRulerMenuItem(
-            id: "B6Y-Hi-AkN",
-            fallback: "Millimeters",
-            action: #selector(setUnitMillimetres(_:))
-        )
-        inchesMenuItem = freeRulerMenuItem(
-            id: "lt1-Hj-2TR",
-            fallback: "Inches",
-            action: #selector(setUnitInches(_:))
-        )
-        cycleUnitsMenuItem = freeRulerMenuItem(
-            id: "2nm-aL-kZd",
-            fallback: "Cycle Units",
-            action: #selector(cycleUnits(_:)),
-            keyEquivalent: "u"
-        )
-        unitMenu.addItem(pixelsMenuItem!)
-        unitMenu.addItem(millimetersMenuItem!)
-        unitMenu.addItem(inchesMenuItem!)
-        unitMenu.addItem(.separator())
-        unitMenu.addItem(cycleUnitsMenuItem!)
-
-        let optionsRoot = freeRulerMenuRoot(id: "H8h-7b-M4v", fallback: "Options")
-        let optionsMenu = optionsRoot.submenu!
-        let flipItem = freeRulerMenuItem(id: "TkR-03-X6l", fallback: "Flip")
-        let flipMenu = NSMenu(title: flipItem.title)
-        flipMenu.addItem(freeRulerMenuItem(
-            id: "GZl-Zd-Ad4",
-            fallback: "Flip Horizontal",
-            action: #selector(flipHorizontalRuler(_:)),
-            keyEquivalent: "h",
-            modifiers: .shift
-        ))
-        flipMenu.addItem(freeRulerMenuItem(
-            id: "IQD-xF-keq",
-            fallback: "Flip Vertical",
-            action: #selector(flipVerticalRuler(_:)),
-            keyEquivalent: "v",
-            modifiers: .shift
-        ))
-        flipItem.submenu = flipMenu
-        optionsMenu.addItem(flipItem)
-
-        floatRulersMenuItem = freeRulerMenuItem(
-            id: "GDK-AC-uC8",
-            fallback: "Float Ruler",
-            action: #selector(toggleFloatRulers(_:)),
-            keyEquivalent: "f"
-        )
-        rulerShadowMenuItem = freeRulerMenuItem(
-            id: "a8D-hN-A59",
-            fallback: "Show Ruler Shadow",
-            action: #selector(toggleRulerShadow(_:)),
-            keyEquivalent: "s"
-        )
-        optionsMenu.addItem(floatRulersMenuItem!)
-        optionsMenu.addItem(rulerShadowMenuItem!)
-        optionsMenu.addItem(.separator())
-
-        groupRulersMenuItem = freeRulerMenuItem(
-            id: "7Ga-Fb-LLc",
-            fallback: "Group Rulers",
-            action: #selector(toggleGroupRulers(_:)),
-            keyEquivalent: "g"
-        )
-        alignRulersMenuItem = freeRulerMenuItem(
-            id: "iKV-uW-hwy",
-            fallback: "Align Ruler at Mouse Location",
-            action: #selector(alignRulersAtMouseLocation(_:)),
-            keyEquivalent: "o"
-        )
-        optionsMenu.addItem(groupRulersMenuItem!)
-        optionsMenu.addItem(alignRulersMenuItem!)
-        optionsMenu.addItem(freeRulerMenuItem(
-            id: "6ph-5N-O9R",
-            fallback: "Reset Ruler Position",
-            action: #selector(resetRulerPositions(_:)),
-            keyEquivalent: "r",
-            modifiers: .command
-        ))
-
-        return [rulerRoot, unitRoot, optionsRoot]
-    }
-
-    func makeFreeRulerDefaultsMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(
-            title: "Ruler Defaults…",
-            action: #selector(openPreferences(_:)),
-            keyEquivalent: ","
-        )
-        item.identifier = NSUserInterfaceItemIdentifier("BOF-NM-1cW")
-        item.keyEquivalentModifierMask = [.option, .command]
-        item.target = self
-        return item
-    }
-
     func updateFreeRulerMenuContext(for window: NSWindow?) {
         let isRulerContext = Self.isFreeRulerWindowIdentifier(window?.identifier?.rawValue)
-        if isRulerContext {
-            applyFreeRulerMenuContext()
-        } else {
-            detachFreeRulerMenus()
-            restoreHostMenuItemsAfterFreeRuler()
-        }
-        freeRulerMenuRoots.forEach { $0.isHidden = !isRulerContext }
-        freeRulerDefaultsMenuItem?.isHidden = !isRulerContext
-    }
-
-    private func applyFreeRulerMenuContext() {
-        let mainMenu = NSApp.mainMenu
-        let applicationMenu = mainMenu?.items.first?.submenu
-        let menuWasRebuilt = freeRulerMenuRoots.contains { $0.menu !== mainMenu }
-            || freeRulerDefaultsMenuItem?.menu !== applicationMenu
-        if menuWasRebuilt {
-            restoreHostMenuItemsAfterFreeRuler()
-        }
-        routeHostMenuItemsToFreeRuler()
-        attachFreeRulerMenus()
-        freeRulerMenuRoots.forEach { $0.isHidden = false }
-        freeRulerDefaultsMenuItem?.isHidden = false
-    }
-
-    func repairFreeRulerMenuContextIfNeeded(for window: NSWindow?) {
-        guard Self.isFreeRulerWindowIdentifier(window?.identifier?.rawValue) else { return }
-        let mainMenu = NSApp.mainMenu
-        let applicationMenu = mainMenu?.items.first?.submenu
-        let menusNeedRepair = freeRulerMenuRoots.contains(where: { $0.menu !== mainMenu })
-            || freeRulerDefaultsMenuItem?.menu !== applicationMenu
-        guard menusNeedRepair else { return }
-        applyFreeRulerMenuContext()
-    }
-
-    private func installFreeRulerMenus() {
-        guard freeRulerMenuRoots.isEmpty, NSApp.mainMenu != nil else { return }
-
-        freeRulerMenuRoots = makeFreeRulerMenuRoots()
-        freeRulerMenuRoots.forEach { $0.isHidden = true }
-        let defaultsItem = makeFreeRulerDefaultsMenuItem()
-        defaultsItem.isHidden = true
-        freeRulerDefaultsMenuItem = defaultsItem
-        updateFreeRulerMenuContext(for: NSApp.keyWindow)
-    }
-
-    private func attachFreeRulerMenus() {
-        guard let mainMenu = NSApp.mainMenu else { return }
-
-        if freeRulerMenuRoots.contains(where: { $0.menu !== mainMenu }) {
-            for root in freeRulerMenuRoots {
-                root.menu?.removeItem(root)
-            }
-            let closeMenuIndex = mainMenu.items.firstIndex {
-                freeRulerMenuItems(in: $0.submenu).contains { item in
-                    item.keyEquivalent == "w" && item.keyEquivalentModifierMask == .command
-                }
-            } ?? max(0, mainMenu.items.count - 1)
-            for (offset, root) in freeRulerMenuRoots.enumerated() {
-                mainMenu.insertItem(root, at: closeMenuIndex + offset)
-            }
-        }
-
-        guard let defaultsItem = freeRulerDefaultsMenuItem,
-              let applicationMenu = mainMenu.items.first?.submenu else { return }
-        guard defaultsItem.menu !== applicationMenu else { return }
-        defaultsItem.menu?.removeItem(defaultsItem)
-        let settingsIndex = applicationMenu.items.firstIndex { $0.title == "Settings…" }
-        applicationMenu.insertItem(
-            defaultsItem,
-            at: settingsIndex.map { $0 + 1 } ?? applicationMenu.items.count
-        )
-    }
-
-    private func detachFreeRulerMenus() {
-        for root in freeRulerMenuRoots {
-            root.menu?.removeItem(root)
-        }
-        if let defaultsItem = freeRulerDefaultsMenuItem {
-            defaultsItem.menu?.removeItem(defaultsItem)
-        }
-    }
-
-    private func freeRulerMenuRoot(id: String, fallback: String) -> NSMenuItem {
-        let title = freeRulerMenuTitle(id: id, fallback: fallback)
-        let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        root.identifier = NSUserInterfaceItemIdentifier(id)
-        root.submenu = NSMenu(title: title)
-        return root
-    }
-
-    private func freeRulerMenuItem(
-        id: String,
-        fallback: String,
-        action: Selector? = nil,
-        keyEquivalent: String = "",
-        modifiers: NSEvent.ModifierFlags = []
-    ) -> NSMenuItem {
-        let item = NSMenuItem(
-            title: freeRulerMenuTitle(id: id, fallback: fallback),
-            action: action,
-            keyEquivalent: keyEquivalent
-        )
-        item.identifier = NSUserInterfaceItemIdentifier(id)
-        item.keyEquivalentModifierMask = modifiers
-        item.target = self
-        return item
-    }
-
-    private func routeHostMenuItemsToFreeRuler() {
-        guard freeRulerHostMenuItemStates.isEmpty, let mainMenu = NSApp.mainMenu else { return }
-
-        let rulerItems = Set(
-            freeRulerMenuRoots.flatMap { freeRulerMenuItems(in: $0.submenu) }
-                .map(ObjectIdentifier.init)
-        )
-        for item in freeRulerMenuItems(in: mainMenu) where !rulerItems.contains(ObjectIdentifier(item)) {
-            let isHostSettings = item.title == "Settings…"
-                && item.keyEquivalent == ","
-                && item.keyEquivalentModifierMask == .command
-            let isNewTransfer = item.title == "New Transfer"
-                && item.keyEquivalent == "n"
-                && item.keyEquivalentModifierMask == .command
-            let isClose = item.keyEquivalent == "w"
-                && item.keyEquivalentModifierMask == .command
-            guard isHostSettings || isNewTransfer || isClose else { continue }
-
-            freeRulerHostMenuItemStates.append(FreeRulerMenuItemState(
-                item: item,
-                target: item.target,
-                action: item.action,
-                keyEquivalent: item.keyEquivalent,
-                keyEquivalentModifierMask: item.keyEquivalentModifierMask
-            ))
-            if isClose {
-                item.target = self
-                item.action = #selector(closeKeyWindow(_:))
-            } else {
-                item.keyEquivalent = ""
-            }
-        }
-    }
-
-    private func restoreHostMenuItemsAfterFreeRuler() {
-        for state in freeRulerHostMenuItemStates {
-            state.item.target = state.target
-            state.item.action = state.action
-            state.item.keyEquivalent = state.keyEquivalent
-            state.item.keyEquivalentModifierMask = state.keyEquivalentModifierMask
-        }
-        freeRulerHostMenuItemStates.removeAll()
-    }
-
-    private func freeRulerMenuItems(in menu: NSMenu?) -> [NSMenuItem] {
-        guard let menu else { return [] }
-        return menu.items.flatMap { item in
-            [item] + freeRulerMenuItems(in: item.submenu)
-        }
+        FreeRulerCommandContext.shared.isActive = isRulerContext
     }
 }
 
 extension AppDelegate {
     func openFreeRuler() {
-        installFreeRulerMenus()
         if !freeRulerDidInitialize {
             if AppRuntime.isUITesting {
                 resetFreeRulerPreferences()
@@ -568,6 +250,11 @@ extension AppDelegate {
     }
 
     func updateDisplay() {
+        let activeController = rulerManager.activeController
+        let commandContext = FreeRulerCommandContext.shared
+        commandContext.hasRuler = activeController != nil
+        commandContext.horizontalVisible = activeController?.state.isWingVisible(.horizontal) ?? false
+        commandContext.verticalVisible = activeController?.state.isWingVisible(.vertical) ?? false
         updateUnitMenu()
         updateFloatRulersMenuItem()
         updateGroupRulersMenuItem()
@@ -576,9 +263,7 @@ extension AppDelegate {
 
     func updateUnitMenu() {
         let unit = activeRulerSettings.unit
-        pixelsMenuItem?.state      = unit == .pixels ? .on : .off
-        millimetersMenuItem?.state = unit == .millimeters ? .on : .off
-        inchesMenuItem?.state      = unit == .inches ? .on : .off
+        FreeRulerCommandContext.shared.unit = unit
     }
 
     func redrawRulers() {
@@ -592,15 +277,15 @@ extension AppDelegate {
     }
 
     func updateFloatRulersMenuItem() {
-        floatRulersMenuItem?.state = activeRulerSettings.floatRulers ? .on : .off
+        FreeRulerCommandContext.shared.floatRulers = activeRulerSettings.floatRulers
     }
 
     func updateGroupRulersMenuItem() {
-        groupRulersMenuItem?.state = prefs.groupRulers ? .on : .off
+        FreeRulerCommandContext.shared.groupRulers = prefs.groupRulers
     }
 
     func updateRulerShadowMenuItem() {
-        rulerShadowMenuItem?.state = activeRulerSettings.rulerShadow ? .on : .off
+        FreeRulerCommandContext.shared.rulerShadow = activeRulerSettings.rulerShadow
     }
 
     private var activeRulerSettings: RulerSettings {
@@ -806,20 +491,25 @@ extension AppDelegate {
     }
 
     @IBAction func closeKeyWindow(_ sender: Any) {
-        if let controller = rulerManager.controller(containing: NSApp.keyWindow) {
+        closeKeyWindow(sender, keyWindow: NSApp.keyWindow)
+    }
+
+    private func closeKeyWindow(_ sender: Any, keyWindow: NSWindow?) {
+        if let controller = rulerManager.controller(containing: keyWindow) {
             rulerManager.close(controller)
             updateMouseTickTimer()
             return
         }
 
-        if rulerManager.hasRulers,
-           NSApp.keyWindow == nil,
+        if FreeRulerCommandContext.shared.isActive,
+           rulerManager.hasRulers,
+           keyWindow == nil,
            rulerManager.closeActiveRuler() {
             updateMouseTickTimer()
             return
         }
 
-        NSApp.keyWindow?.performClose(sender)
+        keyWindow?.performClose(sender)
     }
 
     @IBAction func alignRulersAtMouseLocation(_ sender: Any) {

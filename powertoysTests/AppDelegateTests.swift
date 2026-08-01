@@ -1,12 +1,9 @@
 import XCTest
+import Carbon.HIToolbox
+import SwiftUI
 @testable import powertoys
 
 final class AppDelegateTests: XCTestCase {
-    private func menuItems(in menu: NSMenu?) -> [NSMenuItem] {
-        guard let menu else { return [] }
-        return menu.items.flatMap { [$0] + menuItems(in: $0.submenu) }
-    }
-
     func testStatusItemInterceptsLeftAndRightClicks() {
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.rightMouseDown))
@@ -28,62 +25,54 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
-    func testFreeRulerMenusMatchUpstreamCommands() throws {
-        let delegate = AppDelegate()
-        let roots = delegate.makeFreeRulerMenuRoots()
+    func testFreeRulerNativeCommandsMatchPinnedCommandSet() {
+        XCTAssertEqual(FreeRulerCommand.rulerMenu, [.newRuler, .horizontalWing, .verticalWing, .rulerSettings])
+        XCTAssertEqual(FreeRulerCommand.unitMenu, [.pixels, .millimeters, .inches, .cycleUnits])
         XCTAssertEqual(
-            roots.compactMap { $0.identifier?.rawValue },
-            ["dMs-cI-mzQ", "iDP-2z-irv", "H8h-7b-M4v"]
-        )
-        XCTAssertEqual(
-            roots[0].submenu?.items.map { $0.isSeparatorItem ? "-" : $0.identifier?.rawValue ?? "" },
-            ["rWt-KM-qSf", "-", "fLB-gk-0Jy", "NgD-7h-fjO", "-", "rSt-Tg-232"]
-        )
-        XCTAssertEqual(
-            roots[1].submenu?.items.map { $0.isSeparatorItem ? "-" : $0.identifier?.rawValue ?? "" },
-            ["pYR-Ba-kKi", "B6Y-Hi-AkN", "lt1-Hj-2TR", "-", "2nm-aL-kZd"]
-        )
-        XCTAssertEqual(
-            roots[2].submenu?.items.map { $0.isSeparatorItem ? "-" : $0.identifier?.rawValue ?? "" },
-            ["TkR-03-X6l", "GDK-AC-uC8", "a8D-hN-A59", "-", "7Ga-Fb-LLc", "iKV-uW-hwy", "6ph-5N-O9R"]
+            FreeRulerCommand.optionsMenu,
+            [.flipHorizontal, .flipVertical, .floatRuler, .rulerShadow, .groupRulers, .alignAtMouse, .resetPosition]
         )
 
-        let items = menuItems(in: roots[0].submenu)
-            + menuItems(in: roots[1].submenu)
-            + menuItems(in: roots[2].submenu)
-        let commands: [(String, String, NSEvent.ModifierFlags, Selector)] = [
-            ("rWt-KM-qSf", "n", .command, #selector(AppDelegate.newRuler(_:))),
-            ("fLB-gk-0Jy", "h", [], #selector(AppDelegate.toggleHorizontalRuler(_:))),
-            ("NgD-7h-fjO", "v", [], #selector(AppDelegate.toggleVerticalRuler(_:))),
-            ("rSt-Tg-232", ",", .command, #selector(AppDelegate.openRulerSettings(_:))),
-            ("2nm-aL-kZd", "u", [], #selector(AppDelegate.cycleUnits(_:))),
-            ("GZl-Zd-Ad4", "h", .shift, #selector(AppDelegate.flipHorizontalRuler(_:))),
-            ("IQD-xF-keq", "v", .shift, #selector(AppDelegate.flipVerticalRuler(_:))),
-            ("GDK-AC-uC8", "f", [], #selector(AppDelegate.toggleFloatRulers(_:))),
-            ("a8D-hN-A59", "s", [], #selector(AppDelegate.toggleRulerShadow(_:))),
-            ("7Ga-Fb-LLc", "g", [], #selector(AppDelegate.toggleGroupRulers(_:))),
-            ("iKV-uW-hwy", "o", [], #selector(AppDelegate.alignRulersAtMouseLocation(_:))),
-            ("6ph-5N-O9R", "r", .command, #selector(AppDelegate.resetRulerPositions(_:))),
+        let context = FreeRulerCommandContext.shared
+        context.hasRuler = true
+        context.horizontalVisible = true
+        context.verticalVisible = false
+        context.unit = .inches
+        context.floatRulers = false
+        context.rulerShadow = true
+        context.groupRulers = false
+
+        let commands: [(FreeRulerCommand, String, Selector, FreeRulerCommandShortcut?)] = [
+            (.newRuler, "New Ruler", #selector(AppDelegate.newRuler(_:)), .init("n", modifiers: .command)),
+            (.horizontalWing, "Hide Horizontal Ruler", #selector(AppDelegate.toggleHorizontalRuler(_:)), .init("h")),
+            (.verticalWing, "Show Vertical Ruler", #selector(AppDelegate.toggleVerticalRuler(_:)), .init("v")),
+            (.rulerSettings, "Ruler Settings…", #selector(AppDelegate.openRulerSettings(_:)), .init(",", modifiers: .command)),
+            (.pixels, "Pixels", #selector(AppDelegate.setUnitPixels(_:)), nil),
+            (.millimeters, "Millimeters", #selector(AppDelegate.setUnitMillimetres(_:)), nil),
+            (.inches, "Inches", #selector(AppDelegate.setUnitInches(_:)), nil),
+            (.cycleUnits, "Cycle Units", #selector(AppDelegate.cycleUnits(_:)), .init("u")),
+            (.flipHorizontal, "Flip Horizontal", #selector(AppDelegate.flipHorizontalRuler(_:)), .init("h", modifiers: .shift)),
+            (.flipVertical, "Flip Vertical", #selector(AppDelegate.flipVerticalRuler(_:)), .init("v", modifiers: .shift)),
+            (.floatRuler, "Float Ruler", #selector(AppDelegate.toggleFloatRulers(_:)), .init("f")),
+            (.rulerShadow, "Show Ruler Shadow", #selector(AppDelegate.toggleRulerShadow(_:)), .init("s")),
+            (.groupRulers, "Group Rulers", #selector(AppDelegate.toggleGroupRulers(_:)), .init("g")),
+            (.alignAtMouse, "Align Ruler at Mouse Location", #selector(AppDelegate.alignRulersAtMouseLocation(_:)), .init("o")),
+            (.resetPosition, "Reset Ruler Position", #selector(AppDelegate.resetRulerPositions(_:)), .init("r", modifiers: .command)),
         ]
-        for (identifier, key, modifiers, action) in commands {
-            let item = try XCTUnwrap(items.first { $0.identifier?.rawValue == identifier })
-            XCTAssertEqual(item.keyEquivalent, key, identifier)
-            XCTAssertEqual(item.keyEquivalentModifierMask, modifiers, identifier)
-            XCTAssertEqual(item.action, action, identifier)
-            XCTAssertTrue(item.target === delegate, identifier)
+        for (command, title, action, shortcut) in commands {
+            XCTAssertEqual(command.title(in: context), title)
+            XCTAssertEqual(command.action, action)
+            XCTAssertEqual(command.shortcut, shortcut)
         }
-    }
 
-    @MainActor
-    func testFreeRulerDefaultsCommandUsesOptionCommandComma() {
-        let delegate = AppDelegate()
-        let item = delegate.makeFreeRulerDefaultsMenuItem()
-
-        XCTAssertEqual(item.title, "Ruler Defaults…")
-        XCTAssertEqual(item.keyEquivalent, ",")
-        XCTAssertEqual(item.keyEquivalentModifierMask, [.option, .command])
-        XCTAssertEqual(item.action, #selector(AppDelegate.openPreferences(_:)))
-        XCTAssertTrue(item.target === delegate)
+        XCTAssertEqual(FreeRulerCommand.horizontalWing.title(in: context), "Hide Horizontal Ruler")
+        XCTAssertFalse(FreeRulerCommand.horizontalWing.isEnabled(in: context))
+        XCTAssertEqual(FreeRulerCommand.verticalWing.title(in: context), "Show Vertical Ruler")
+        XCTAssertTrue(FreeRulerCommand.verticalWing.isEnabled(in: context))
+        XCTAssertEqual(FreeRulerCommand.inches.selection(in: context), true)
+        XCTAssertEqual(FreeRulerCommand.floatRuler.selection(in: context), false)
+        XCTAssertEqual(FreeRulerCommand.rulerShadow.selection(in: context), true)
+        XCTAssertEqual(FreeRulerCommand.groupRulers.selection(in: context), false)
     }
 
     func testFreeRulerWindowIdentifierMatcherIsExact() {
@@ -101,147 +90,93 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
-    func testFreeRulerMenuContextTemporarilyRoutesAndRestoresHostCommands() {
+    func testFreeRulerContextPublishesStateWithoutMutatingMainMenu() {
         let originalMainMenu = NSApp.mainMenu
         let mainMenu = NSMenu()
+        let sentinel = NSMenuItem(title: "Host", action: nil, keyEquivalent: "")
+        mainMenu.addItem(sentinel)
         NSApp.mainMenu = mainMenu
         defer { NSApp.mainMenu = originalMainMenu }
 
-        let applicationRoot = NSMenuItem(title: "App", action: nil, keyEquivalent: "")
-        let applicationMenu = NSMenu(title: "App")
-        let settings = NSMenuItem(
-            title: "Settings…",
-            action: #selector(AppDelegate.openMainWindowFromStatusItem),
-            keyEquivalent: ","
-        )
-        settings.keyEquivalentModifierMask = .command
-        applicationMenu.addItem(settings)
-        applicationRoot.submenu = applicationMenu
-        mainMenu.addItem(applicationRoot)
-
-        let fileRoot = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
-        let fileMenu = NSMenu(title: "File")
-        let newTransfer = NSMenuItem(
-            title: "New Transfer",
-            action: #selector(AppDelegate.quitFromStatusItem),
-            keyEquivalent: "n"
-        )
-        newTransfer.keyEquivalentModifierMask = .command
-        let close = NSMenuItem(
-            title: "Close",
-            action: #selector(NSWindow.performClose(_:)),
-            keyEquivalent: "w"
-        )
-        close.keyEquivalentModifierMask = .command
-        fileMenu.addItem(newTransfer)
-        fileMenu.addItem(close)
-        fileRoot.submenu = fileMenu
-        mainMenu.addItem(fileRoot)
+        let oldGroupRulers = prefs.groupRulers
+        prefs.groupRulers = true
+        defer { prefs.groupRulers = oldGroupRulers }
 
         let delegate = AppDelegate()
-        delegate.freeRulerMenuRoots = delegate.makeFreeRulerMenuRoots()
-        delegate.freeRulerDefaultsMenuItem = delegate.makeFreeRulerDefaultsMenuItem()
+        let controller = delegate.rulerManager.createRuler(
+            defaults: RulerSettings(unit: .inches, floatRulers: false, rulerShadow: true),
+            screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
+        )
+        controller.setWing(.vertical, isVisible: false)
+        delegate.updateDisplay()
 
         let rulerWindow = NSWindow()
         rulerWindow.identifier = NSUserInterfaceItemIdentifier("ruler-window")
         delegate.updateFreeRulerMenuContext(for: rulerWindow)
 
-        XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { !$0.isHidden })
-        XCTAssertFalse(delegate.freeRulerDefaultsMenuItem!.isHidden)
-        XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { $0.menu === mainMenu })
-        XCTAssertTrue(delegate.freeRulerDefaultsMenuItem!.menu === applicationMenu)
-        XCTAssertEqual(delegate.freeRulerMenuRoots[0].submenu?.items[0].keyEquivalent, "n")
-        XCTAssertEqual(delegate.freeRulerMenuRoots[0].submenu?.items[5].keyEquivalent, ",")
-        XCTAssertEqual(settings.keyEquivalent, "")
-        XCTAssertEqual(newTransfer.keyEquivalent, "")
-        XCTAssertEqual(close.action, #selector(AppDelegate.closeKeyWindow(_:)))
-        XCTAssertTrue(close.target === delegate)
-        XCTAssertEqual(
-            Set(delegate.freeRulerHostMenuItemStates.map(\.keyEquivalent)),
-            [",", "n", "w"]
-        )
+        let context = FreeRulerCommandContext.shared
+        XCTAssertTrue(context.isActive)
+        XCTAssertTrue(context.hasRuler)
+        XCTAssertTrue(context.horizontalVisible)
+        XCTAssertFalse(context.verticalVisible)
+        XCTAssertEqual(context.unit, .inches)
+        XCTAssertFalse(context.floatRulers)
+        XCTAssertTrue(context.rulerShadow)
+        XCTAssertTrue(context.groupRulers)
+        XCTAssertFalse(context.showsHostCommands)
+        XCTAssertTrue(NSApp.mainMenu === mainMenu)
+        XCTAssertTrue(mainMenu.items.first === sentinel)
 
         let awakeWindow = NSWindow()
         awakeWindow.identifier = NSUserInterfaceItemIdentifier("awake")
         delegate.updateFreeRulerMenuContext(for: awakeWindow)
 
-        XCTAssertTrue(delegate.freeRulerHostMenuItemStates.isEmpty)
-        XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { $0.isHidden })
-        XCTAssertTrue(delegate.freeRulerDefaultsMenuItem!.isHidden)
-        XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { $0.menu == nil })
-        XCTAssertNil(delegate.freeRulerDefaultsMenuItem!.menu)
-        XCTAssertEqual(settings.keyEquivalent, ",")
-        XCTAssertEqual(settings.keyEquivalentModifierMask, .command)
-        XCTAssertEqual(settings.action, #selector(AppDelegate.openMainWindowFromStatusItem))
-        XCTAssertEqual(newTransfer.keyEquivalent, "n")
-        XCTAssertEqual(newTransfer.keyEquivalentModifierMask, .command)
-        XCTAssertEqual(newTransfer.action, #selector(AppDelegate.quitFromStatusItem))
-        XCTAssertEqual(close.action, #selector(NSWindow.performClose(_:)))
-        XCTAssertNil(close.target)
+        XCTAssertFalse(context.isActive)
+        XCTAssertTrue(context.showsHostCommands)
+        XCTAssertTrue(NSApp.mainMenu === mainMenu)
+        XCTAssertTrue(mainMenu.items.first === sentinel)
     }
 
     @MainActor
-    func testFreeRulerApplicationUpdateRepairsSwiftUIMainMenuRebuild() {
-        func makeHostMenu() -> (
-            main: NSMenu,
-            application: NSMenu,
-            settings: NSMenuItem,
-            newItem: NSMenuItem,
-            close: NSMenuItem
-        ) {
-            let main = NSMenu()
-            let applicationRoot = NSMenuItem(title: "App", action: nil, keyEquivalent: "")
-            let application = NSMenu(title: "App")
-            let settings = NSMenuItem(title: "Settings…", action: nil, keyEquivalent: ",")
-            settings.keyEquivalentModifierMask = .command
-            application.addItem(settings)
-            applicationRoot.submenu = application
-            main.addItem(applicationRoot)
-
-            let fileRoot = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
-            let file = NSMenu(title: "File")
-            let newItem = NSMenuItem(title: "New Transfer", action: nil, keyEquivalent: "n")
-            newItem.keyEquivalentModifierMask = .command
-            let close = NSMenuItem(
-                title: "Close",
-                action: #selector(NSWindow.performClose(_:)),
-                keyEquivalent: "w"
-            )
-            close.keyEquivalentModifierMask = .command
-            file.addItem(newItem)
-            file.addItem(close)
-            fileRoot.submenu = file
-            main.addItem(fileRoot)
-            return (main, application, settings, newItem, close)
-        }
-
-        let originalMainMenu = NSApp.mainMenu
+    func testExactCommandWClosesActiveRulerOnFirstDispatch() throws {
         let delegate = AppDelegate()
-        let rulerWindow = NSWindow()
-        rulerWindow.identifier = NSUserInterfaceItemIdentifier("ruler-window")
-        defer {
-            delegate.updateFreeRulerMenuContext(for: nil)
-            NSApp.mainMenu = originalMainMenu
-        }
+        let controller = delegate.rulerManager.createRuler(
+            screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
+        )
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: .command,
+            timestamp: 0,
+            windowNumber: controller.rulerWindow.windowNumber,
+            context: nil,
+            characters: "w",
+            charactersIgnoringModifiers: "w",
+            isARepeat: false,
+            keyCode: UInt16(kVK_ANSI_W)
+        ))
+        let unrelatedEvent = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.option, .command],
+            timestamp: 0,
+            windowNumber: controller.rulerWindow.windowNumber,
+            context: nil,
+            characters: "w",
+            charactersIgnoringModifiers: "w",
+            isARepeat: false,
+            keyCode: UInt16(kVK_ANSI_W)
+        ))
 
-        let first = makeHostMenu()
-        NSApp.mainMenu = first.main
-        delegate.freeRulerMenuRoots = delegate.makeFreeRulerMenuRoots()
-        delegate.freeRulerDefaultsMenuItem = delegate.makeFreeRulerDefaultsMenuItem()
-        delegate.updateFreeRulerMenuContext(for: rulerWindow)
-
-        let rebuilt = makeHostMenu()
-        NSApp.mainMenu = rebuilt.main
-        delegate.repairFreeRulerMenuContextIfNeeded(for: rulerWindow)
-
-        XCTAssertTrue(delegate.freeRulerMenuRoots.allSatisfy { $0.menu === rebuilt.main })
-        XCTAssertTrue(delegate.freeRulerDefaultsMenuItem?.menu === rebuilt.application)
-        XCTAssertEqual(rebuilt.settings.keyEquivalent, "")
-        XCTAssertEqual(rebuilt.newItem.keyEquivalent, "")
-        XCTAssertEqual(rebuilt.close.action, #selector(AppDelegate.closeKeyWindow(_:)))
-        XCTAssertEqual(first.settings.keyEquivalent, ",")
-        XCTAssertEqual(first.newItem.keyEquivalent, "n")
-        XCTAssertEqual(first.close.action, #selector(NSWindow.performClose(_:)))
+        XCTAssertTrue(
+            delegate.handleFreeRulerWindowKeyDown(
+                unrelatedEvent,
+                keyWindow: controller.rulerWindow
+            ) === unrelatedEvent
+        )
+        XCTAssertEqual(delegate.rulerManager.controllers.count, 1)
+        XCTAssertNil(delegate.handleFreeRulerWindowKeyDown(event, keyWindow: controller.rulerWindow))
+        XCTAssertTrue(delegate.rulerManager.controllers.isEmpty)
     }
 
     @MainActor
