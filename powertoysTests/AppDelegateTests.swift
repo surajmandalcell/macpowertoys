@@ -249,6 +249,43 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testHostKeyWindowCommandWClosesRulerOnlyDuringActiveRulerTransition() throws {
+        let delegate = AppDelegate()
+        let hostWindow = NSWindow()
+        hostWindow.identifier = NSUserInterfaceItemIdentifier("main")
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: .command,
+            timestamp: 0,
+            windowNumber: hostWindow.windowNumber,
+            context: nil,
+            characters: "w",
+            charactersIgnoringModifiers: "w",
+            isARepeat: false,
+            keyCode: UInt16(kVK_ANSI_W)
+        ))
+
+        let context = FreeRulerCommandContext.shared
+        context.update(isActive: true)
+        defer { context.update(isActive: false) }
+        delegate.rulerManager.createRuler(
+            screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
+        )
+
+        XCTAssertNil(delegate.handleFreeRulerWindowKeyDown(event, keyWindow: hostWindow))
+        XCTAssertTrue(delegate.rulerManager.controllers.isEmpty)
+
+        delegate.rulerManager.createRuler(
+            screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
+        )
+        context.update(isActive: false)
+
+        XCTAssertTrue(delegate.handleFreeRulerWindowKeyDown(event, keyWindow: hostWindow) === event)
+        XCTAssertEqual(delegate.rulerManager.controllers.count, 1)
+    }
+
+    @MainActor
     func testDoubleClickCancelsDelayedSingleClick() async throws {
         let coordinator = StatusItemClickCoordinator(delay: 0.01)
         var singleClicks = 0
