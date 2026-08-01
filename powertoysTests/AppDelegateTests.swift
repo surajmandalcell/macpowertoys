@@ -138,6 +138,30 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testActiveRulerSettingsChangesRefreshNativeCommandState() {
+        let delegate = AppDelegate()
+        let controller = delegate.rulerManager.createRuler(
+            defaults: RulerSettings(unit: .pixels, floatRulers: true, rulerShadow: false),
+            screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
+        )
+        let context = FreeRulerCommandContext.shared
+
+        XCTAssertEqual(context.unit, .pixels)
+        XCTAssertTrue(context.floatRulers)
+        XCTAssertFalse(context.rulerShadow)
+
+        controller.updateSettings { settings in
+            settings.unit = .inches
+            settings.floatRulers = false
+            settings.rulerShadow = true
+        }
+
+        XCTAssertEqual(context.unit, .inches)
+        XCTAssertFalse(context.floatRulers)
+        XCTAssertTrue(context.rulerShadow)
+    }
+
+    @MainActor
     func testExactCommandWClosesActiveRulerOnFirstDispatch() throws {
         let delegate = AppDelegate()
         let controller = delegate.rulerManager.createRuler(

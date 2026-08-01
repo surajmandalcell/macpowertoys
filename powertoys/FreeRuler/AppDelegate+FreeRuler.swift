@@ -681,53 +681,6 @@ extension AppDelegate {
 
 }
 
-extension AppDelegate: NSMenuItemValidation {
-
-    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        switch menuItem.action {
-        case #selector(newRuler(_:)):
-            return true
-        case #selector(openRulerSettings(_:)):
-            return rulerManager.activeController != nil
-        case #selector(closeKeyWindow(_:)):
-            return rulerManager.activeController != nil || NSApp.keyWindow?.isVisible == true
-        case #selector(toggleGroupRulers(_:)):
-            return true
-        case #selector(toggleHorizontalRuler(_:)):
-            if let controller = rulerManager.activeController {
-                let isVisible = controller.state.isWingVisible(.horizontal)
-                menuItem.title = isVisible
-                    ? NSLocalizedString("Hide Horizontal Ruler", comment: "Menu item title to hide the horizontal ruler")
-                    : NSLocalizedString("Show Horizontal Ruler", comment: "Menu item title to show the horizontal ruler")
-                return !isVisible || controller.state.isWingVisible(.vertical)
-            }
-
-            menuItem.title = NSLocalizedString(
-                "Show Horizontal Ruler",
-                comment: "Menu item title to show the horizontal ruler"
-            )
-            return false
-        case #selector(toggleVerticalRuler(_:)):
-            if let controller = rulerManager.activeController {
-                let isVisible = controller.state.isWingVisible(.vertical)
-                menuItem.title = isVisible
-                    ? NSLocalizedString("Hide Vertical Ruler", comment: "Menu item title to hide the vertical ruler")
-                    : NSLocalizedString("Show Vertical Ruler", comment: "Menu item title to show the vertical ruler")
-                return !isVisible || controller.state.isWingVisible(.horizontal)
-            }
-
-            menuItem.title = NSLocalizedString(
-                "Show Vertical Ruler",
-                comment: "Menu item title to show the vertical ruler"
-            )
-            return false
-        default:
-            return true
-        }
-    }
-
-}
-
 // MARK: - Timer
 extension AppDelegate {
 
