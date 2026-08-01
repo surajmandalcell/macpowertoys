@@ -19,3 +19,12 @@
 
 /* Class = "NSTextFieldCell"; title = "Unit"; ObjectID = "RSV-unit-cell"; */
 "RSV-unit-cell.title" = "单位";
+
+/* Class = "NSTextFieldCell"; title = "MEASUREMENT"; ObjectID = "RSV-measurement-heading-cell"; */
+"RSV-measurement-heading-cell.title" = "测量";
+
+/* Class = "NSTextFieldCell"; title = "APPEARANCE"; ObjectID = "RSV-appearance-heading-cell"; */
+"RSV-appearance-heading-cell.title" = "外观";
+
+/* Class = "NSTextFieldCell"; title = "WINDOW"; ObjectID = "RSV-window-heading-cell"; */
+"RSV-window-heading-cell.title" = "窗口";

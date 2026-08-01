@@ -17,10 +17,10 @@
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <window title="Ruler Defaults" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" releasedWhenClosed="NO" frameAutosaveName="preferencesWindow" animationBehavior="default" titlebarAppearsTransparent="YES" id="F0z-JX-Cv5">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
-            <rect key="contentRect" x="602" y="400" width="420" height="500"/>
+            <rect key="contentRect" x="602" y="400" width="420" height="514"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1512" height="944"/>
             <customView key="contentView" id="PREF-content" customClass="UtilityMaterialView" customModule="powertoys" customModuleProvider="target">
-                <rect key="frame" x="0.0" y="0.0" width="420" height="500"/>
+                <rect key="frame" x="0.0" y="0.0" width="420" height="514"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
                     <textField hidden="YES" focusRingType="none" translatesAutoresizingMaskIntoConstraints="YES" id="PREF-defaults-header">
@@ -32,7 +32,7 @@
                         </textFieldCell>
                     </textField>
                     <customView translatesAutoresizingMaskIntoConstraints="NO" id="PREF-controls" customClass="RulerSettingsControlsView" customModule="powertoys" customModuleProvider="target">
-                        <rect key="frame" x="20" y="64" width="380" height="420"/>
+                        <rect key="frame" x="20" y="64" width="380" height="434"/>
                     </customView>
                     <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="PREF-factory-button">
                         <rect key="frame" x="20" y="20" width="175" height="28"/>
@@ -49,7 +49,7 @@
                     <constraint firstItem="PREF-controls" firstAttribute="leading" secondItem="PREF-content" secondAttribute="leading" constant="20" id="PREF-controls-leading"/>
                     <constraint firstItem="PREF-controls" firstAttribute="top" secondItem="PREF-content" secondAttribute="top" constant="16" id="PREF-controls-top"/>
                     <constraint firstAttribute="trailing" secondItem="PREF-controls" secondAttribute="trailing" constant="20" id="PREF-controls-trailing"/>
-                    <constraint firstItem="PREF-controls" firstAttribute="height" constant="420" id="PREF-controls-height"/>
+                    <constraint firstItem="PREF-controls" firstAttribute="height" constant="434" id="PREF-controls-height"/>
                     <constraint firstItem="PREF-factory-button" firstAttribute="top" secondItem="PREF-controls" secondAttribute="bottom" constant="16" id="PREF-button-below-controls"/>
                     <constraint firstItem="PREF-factory-button" firstAttribute="leading" secondItem="PREF-content" secondAttribute="leading" constant="20" id="PREF-button-leading"/>
                     <constraint firstItem="PREF-factory-button" firstAttribute="height" constant="28" id="PREF-button-height"/>
