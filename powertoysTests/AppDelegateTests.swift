@@ -236,15 +236,15 @@ final class AppDelegateTests: XCTestCase {
             isARepeat: false,
             keyCode: UInt16(kVK_ANSI_W)
         ))
+        let monitorHandler = delegate.makeFreeRulerKeyMonitorHandler {
+            controller.rulerWindow
+        }
 
         XCTAssertTrue(
-            delegate.handleFreeRulerWindowKeyDown(
-                unrelatedEvent,
-                keyWindow: controller.rulerWindow
-            ) === unrelatedEvent
+            monitorHandler(unrelatedEvent) === unrelatedEvent
         )
         XCTAssertEqual(delegate.rulerManager.controllers.count, 1)
-        XCTAssertNil(delegate.handleFreeRulerWindowKeyDown(event, keyWindow: controller.rulerWindow))
+        XCTAssertNil(monitorHandler(event))
         XCTAssertTrue(delegate.rulerManager.controllers.isEmpty)
     }
 
@@ -272,8 +272,11 @@ final class AppDelegateTests: XCTestCase {
         delegate.rulerManager.createRuler(
             screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
         )
+        let monitorHandler = delegate.makeFreeRulerKeyMonitorHandler {
+            hostWindow
+        }
 
-        XCTAssertNil(delegate.handleFreeRulerWindowKeyDown(event, keyWindow: hostWindow))
+        XCTAssertNil(monitorHandler(event))
         XCTAssertTrue(delegate.rulerManager.controllers.isEmpty)
 
         delegate.rulerManager.createRuler(
@@ -281,8 +284,33 @@ final class AppDelegateTests: XCTestCase {
         )
         context.update(isActive: false)
 
-        XCTAssertTrue(delegate.handleFreeRulerWindowKeyDown(event, keyWindow: hostWindow) === event)
+        XCTAssertTrue(monitorHandler(event) === event)
         XCTAssertEqual(delegate.rulerManager.controllers.count, 1)
+    }
+
+    @MainActor
+    func testFreeRulerKeyMonitorReturnsEventAfterDelegateDeallocation() throws {
+        var delegate: AppDelegate? = AppDelegate()
+        let monitorHandler = try XCTUnwrap(delegate).makeFreeRulerKeyMonitorHandler {
+            nil
+        }
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: .command,
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "w",
+            charactersIgnoringModifiers: "w",
+            isARepeat: false,
+            keyCode: UInt16(kVK_ANSI_W)
+        ))
+
+        delegate = nil
+
+        XCTAssertNil(AppDelegate.current)
+        XCTAssertTrue(monitorHandler(event) === event)
     }
 
     @MainActor

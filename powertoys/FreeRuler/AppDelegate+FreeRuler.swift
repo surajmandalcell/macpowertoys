@@ -89,8 +89,21 @@ extension AppDelegate {
             name: NSWindow.didResignKeyNotification,
             object: nil
         )
-        freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            return self?.handleFreeRulerWindowKeyDown(event) ?? event
+        freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: .keyDown,
+            handler: makeFreeRulerKeyMonitorHandler()
+        )
+    }
+
+    func makeFreeRulerKeyMonitorHandler(
+        keyWindowProvider: @escaping () -> NSWindow? = { NSApp.keyWindow }
+    ) -> (NSEvent) -> NSEvent? {
+        { [weak self] event in
+            guard let self else { return event }
+            return self.handleFreeRulerWindowKeyDown(
+                event,
+                keyWindow: keyWindowProvider()
+            )
         }
     }
 
