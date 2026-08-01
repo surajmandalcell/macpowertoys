@@ -15,48 +15,30 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <window title="Ruler Defaults" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" releasedWhenClosed="NO" frameAutosaveName="preferencesWindow" animationBehavior="default" id="F0z-JX-Cv5">
+        <window title="Ruler Defaults" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" releasedWhenClosed="NO" frameAutosaveName="preferencesWindow" animationBehavior="default" titlebarAppearsTransparent="YES" id="F0z-JX-Cv5">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
-            <rect key="contentRect" x="602" y="400" width="360" height="415"/>
+            <rect key="contentRect" x="602" y="400" width="420" height="500"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1512" height="944"/>
-            <view key="contentView" id="se5-gp-TjO">
-                <rect key="frame" x="0.0" y="0.0" width="360" height="415"/>
+            <customView key="contentView" id="PREF-content" customClass="UtilityMaterialView" customModule="powertoys" customModuleProvider="target">
+                <rect key="frame" x="0.0" y="0.0" width="420" height="500"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="PREF-defaults-header">
-                        <rect key="frame" x="22" y="387" width="290" height="16"/>
+                    <textField hidden="YES" focusRingType="none" translatesAutoresizingMaskIntoConstraints="YES" id="PREF-defaults-header">
+                        <rect key="frame" x="0.0" y="0.0" width="0.0" height="0.0"/>
                         <textFieldCell key="cell" lineBreakMode="clipping" title="Default settings for new rulers" id="PREF-defaults-header-cell">
                             <font key="font" textStyle="headline" name=".SFNS-Bold"/>
                             <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
-                    <box borderType="line" titlePosition="noTitle" translatesAutoresizingMaskIntoConstraints="NO" id="PREF-defaults-box">
-                        <rect key="frame" x="9" y="56" width="342" height="321"/>
-                        <view key="contentView" id="PREF-defaults-box-content">
-                            <rect key="frame" x="4" y="5" width="334" height="313"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                            <subviews>
-                                <customView translatesAutoresizingMaskIntoConstraints="NO" id="PREF-controls" customClass="RulerSettingsControlsView" customModule="powertoys" customModuleProvider="target">
-                                    <rect key="frame" x="0.0" y="0.0" width="334" height="313"/>
-                                </customView>
-                            </subviews>
-                            <constraints>
-                                <constraint firstItem="PREF-controls" firstAttribute="top" secondItem="PREF-defaults-box-content" secondAttribute="top" id="2PU-zO-13P"/>
-                                <constraint firstItem="PREF-controls" firstAttribute="leading" secondItem="PREF-defaults-box-content" secondAttribute="leading" id="E1g-HQ-LBp"/>
-                                <constraint firstAttribute="bottom" secondItem="PREF-controls" secondAttribute="bottom" id="SZc-2t-9lg"/>
-                                <constraint firstAttribute="trailing" secondItem="PREF-controls" secondAttribute="trailing" id="xvK-u5-loF"/>
-                            </constraints>
-                        </view>
-                        <constraints>
-                            <constraint firstAttribute="height" constant="315" id="yon-lf-kxx"/>
-                        </constraints>
-                    </box>
+                    <customView translatesAutoresizingMaskIntoConstraints="NO" id="PREF-controls" customClass="RulerSettingsControlsView" customModule="powertoys" customModuleProvider="target">
+                        <rect key="frame" x="20" y="64" width="380" height="420"/>
+                    </customView>
                     <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="PREF-factory-button">
-                        <rect key="frame" x="11" y="11" width="183" height="32"/>
-                        <buttonCell key="cell" type="push" title="Reset to factory defaults" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="PREF-factory-cell">
+                        <rect key="frame" x="20" y="20" width="175" height="28"/>
+                        <buttonCell key="cell" type="push" title="Reset to Factory Defaults" bezelStyle="inline" alignment="left" imageScaling="proportionallyDown" inset="2" id="PREF-factory-cell">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
+                            <font key="font" name=".AppleSystemUIFont" size="12"/>
                         </buttonCell>
                         <connections>
                             <action selector="resetToFactoryDefaults:" target="-2" id="PREF-factory-action"/>
@@ -64,16 +46,16 @@
                     </button>
                 </subviews>
                 <constraints>
-                    <constraint firstItem="PREF-defaults-box" firstAttribute="top" secondItem="PREF-defaults-header" secondAttribute="bottom" constant="12" id="PREF-box-below-header"/>
-                    <constraint firstItem="PREF-defaults-box" firstAttribute="leading" secondItem="se5-gp-TjO" secondAttribute="leading" constant="12" id="PREF-box-leading"/>
-                    <constraint firstAttribute="trailing" secondItem="PREF-defaults-box" secondAttribute="trailing" constant="12" id="PREF-box-trailing"/>
-                    <constraint firstAttribute="bottom" secondItem="PREF-factory-button" secondAttribute="bottom" constant="18" id="PREF-button-bottom"/>
-                    <constraint firstItem="PREF-factory-button" firstAttribute="leading" secondItem="se5-gp-TjO" secondAttribute="leading" constant="18" id="PREF-button-leading"/>
-                    <constraint firstItem="PREF-defaults-header" firstAttribute="leading" secondItem="se5-gp-TjO" secondAttribute="leading" constant="24" id="PREF-header-leading"/>
-                    <constraint firstItem="PREF-defaults-header" firstAttribute="top" secondItem="se5-gp-TjO" secondAttribute="top" constant="12" id="PREF-header-top"/>
-                    <constraint firstAttribute="trailing" secondItem="PREF-defaults-header" secondAttribute="trailing" constant="50" id="PREF-header-trailing"/>
+                    <constraint firstItem="PREF-controls" firstAttribute="leading" secondItem="PREF-content" secondAttribute="leading" constant="20" id="PREF-controls-leading"/>
+                    <constraint firstItem="PREF-controls" firstAttribute="top" secondItem="PREF-content" secondAttribute="top" constant="16" id="PREF-controls-top"/>
+                    <constraint firstAttribute="trailing" secondItem="PREF-controls" secondAttribute="trailing" constant="20" id="PREF-controls-trailing"/>
+                    <constraint firstItem="PREF-controls" firstAttribute="height" constant="420" id="PREF-controls-height"/>
+                    <constraint firstItem="PREF-factory-button" firstAttribute="top" secondItem="PREF-controls" secondAttribute="bottom" constant="16" id="PREF-button-below-controls"/>
+                    <constraint firstItem="PREF-factory-button" firstAttribute="leading" secondItem="PREF-content" secondAttribute="leading" constant="20" id="PREF-button-leading"/>
+                    <constraint firstItem="PREF-factory-button" firstAttribute="height" constant="28" id="PREF-button-height"/>
+                    <constraint firstAttribute="bottom" secondItem="PREF-factory-button" secondAttribute="bottom" constant="20" id="PREF-button-bottom"/>
                 </constraints>
-            </view>
+            </customView>
             <connections>
                 <outlet property="delegate" destination="-2" id="0bl-1N-AYu"/>
             </connections>

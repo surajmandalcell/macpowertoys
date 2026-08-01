@@ -933,8 +933,8 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(controlsView.selectedVerticalLength, 2.75 * NSScreen.defaultDpi, accuracy: 0.0001)
     }
 
-    func testRulerSettingsControlsLayoutUsesSharedInsetsAndAlignedRows() {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 315, height: 320))
+    func testRulerSettingsControlsUseUtilitySectionsAndAlignedRows() throws {
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 420))
         controlsView.configureForRulerSettings()
 
         controlsView.update(
@@ -950,57 +950,122 @@ final class RulerCoreTests: XCTestCase {
         controlsView.layoutSubtreeIfNeeded()
         controlsView.contentView.layoutSubtreeIfNeeded()
 
-        let leftAlignedControls: [NSView] = [
+        let descendants = rulerSettingsDescendants(in: controlsView.contentView)
+        let headings = descendants
+            .compactMap { $0 as? NSTextField }
+            .filter { ["MEASUREMENT", "APPEARANCE", "WINDOW"].contains($0.stringValue) }
+        let cards = descendants
+            .filter { NSStringFromClass(type(of: $0)).hasSuffix("UtilitySectionCardView") }
+            .sorted { $0.frame.maxY > $1.frame.maxY }
+
+        XCTAssertEqual(headings.count, 3)
+        XCTAssertEqual(cards.count, 3)
+        let measurementHeading = try XCTUnwrap(headings.first { $0.stringValue == "MEASUREMENT" })
+        let appearanceHeading = try XCTUnwrap(headings.first { $0.stringValue == "APPEARANCE" })
+        let windowHeading = try XCTUnwrap(headings.first { $0.stringValue == "WINDOW" })
+        let measurementCard = try XCTUnwrap(cards.first)
+        let appearanceCard = try XCTUnwrap(cards.dropFirst().first)
+        let windowCard = try XCTUnwrap(cards.dropFirst(2).first)
+
+        XCTAssertEqual(measurementHeading.frame.minY - measurementCard.frame.maxY, 8, accuracy: 0.5)
+        XCTAssertEqual(appearanceHeading.frame.minY - appearanceCard.frame.maxY, 8, accuracy: 0.5)
+        XCTAssertEqual(windowHeading.frame.minY - windowCard.frame.maxY, 8, accuracy: 0.5)
+        XCTAssertEqual(measurementCard.frame.minY - appearanceHeading.frame.maxY, 16, accuracy: 0.5)
+        XCTAssertEqual(appearanceCard.frame.minY - windowHeading.frame.maxY, 16, accuracy: 0.5)
+
+        XCTAssertEqual(controlsView.unitLabel.alignmentRect(forFrame: controlsView.unitLabel.frame).minX, 14, accuracy: 0.5)
+        XCTAssertEqual(measurementCard.bounds.maxX - controlsView.unitSegmentedControl.frame.maxX, 14, accuracy: 0.5)
+        XCTAssertEqual(controlsView.rulerColorLabel.alignmentRect(forFrame: controlsView.rulerColorLabel.frame).minX, 14, accuracy: 0.5)
+        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.rulerColorWell.frame.maxX, 14, accuracy: 0.5)
+        XCTAssertEqual(controlsView.foregroundOpacitySlider.frame.minX, 14, accuracy: 0.5)
+        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.foregroundOpacitySlider.frame.maxX, 14, accuracy: 0.5)
+        XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minX, 14, accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(measurementCard.layer).cornerRadius, 10, accuracy: 0.5)
+
+        let rowLabels: [NSTextField] = [
             controlsView.unitLabel,
             controlsView.dimensionsLabel,
             controlsView.rulerColorLabel,
             controlsView.foregroundOpacityTitleLabel,
-            controlsView.foregroundOpacitySlider,
-            controlsView.backgroundOpacityTitleLabel,
-            controlsView.backgroundOpacitySlider,
-            controlsView.floatRulersCheckbox,
-            controlsView.rulerShadowCheckbox,
-        ]
-        let rightAlignedControls: [NSView] = [
-            controlsView.unitSegmentedControl,
-            controlsView.dimensionHeightField,
-            controlsView.rulerColorWell,
             controlsView.foregroundOpacityLabel,
-            controlsView.foregroundOpacitySlider,
+            controlsView.backgroundOpacityTitleLabel,
             controlsView.backgroundOpacityLabel,
-            controlsView.backgroundOpacitySlider,
         ]
-        func alignmentRect(_ view: NSView) -> NSRect {
-            return view.alignmentRect(forFrame: view.frame)
+        for label in rowLabels {
+            XCTAssertEqual(try XCTUnwrap(label.font).pointSize, 12, accuracy: 0.1)
         }
+        XCTAssertEqual(try XCTUnwrap(controlsView.unitSegmentedControl.font).pointSize, 12, accuracy: 0.1)
+        XCTAssertEqual(try XCTUnwrap(controlsView.dimensionWidthField.font).pointSize, 12, accuracy: 0.1)
+        XCTAssertEqual(try XCTUnwrap(controlsView.floatRulersCheckbox.font).pointSize, 12, accuracy: 0.1)
+
         func firstBaselineY(_ view: NSView) -> CGFloat {
             return view.frame.maxY - view.firstBaselineOffsetFromTop
         }
 
-        let expectedInset: CGFloat = 15
-        let baselineAccuracy: CGFloat = 1
-        let expectedLeftInset = controlsView.contentView.bounds.minX + expectedInset
-        let expectedRightEdge = controlsView.contentView.bounds.maxX - expectedInset
-        let unitTopInset = controlsView.contentView.bounds.maxY
-            - alignmentRect(controlsView.unitSegmentedControl).maxY
-        let unitToDimensionsSpacing = alignmentRect(controlsView.unitSegmentedControl).minY
-            - alignmentRect(controlsView.dimensionHeightField).maxY
+        XCTAssertEqual(firstBaselineY(controlsView.unitLabel), firstBaselineY(controlsView.unitSegmentedControl), accuracy: 1)
+        XCTAssertEqual(firstBaselineY(controlsView.dimensionsLabel), firstBaselineY(controlsView.dimensionWidthField), accuracy: 1)
+        XCTAssertEqual(firstBaselineY(controlsView.dimensionWidthField), firstBaselineY(controlsView.dimensionsSeparatorLabel), accuracy: 1)
+        XCTAssertEqual(firstBaselineY(controlsView.dimensionsSeparatorLabel), firstBaselineY(controlsView.dimensionHeightField), accuracy: 1)
+        XCTAssertEqual(firstBaselineY(controlsView.foregroundOpacityTitleLabel), firstBaselineY(controlsView.foregroundOpacityLabel), accuracy: 1)
+        XCTAssertEqual(firstBaselineY(controlsView.backgroundOpacityTitleLabel), firstBaselineY(controlsView.backgroundOpacityLabel), accuracy: 1)
+    }
 
-        XCTAssertEqual(unitTopInset, expectedInset, accuracy: 0.5)
-        for control in leftAlignedControls {
-            XCTAssertEqual(alignmentRect(control).minX, expectedLeftInset, accuracy: 0.5)
+    func testRulerSettingsControlsDoNotIntersectAcrossSupportedLocalizations() {
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 420))
+        controlsView.configureForRulerSettings()
+
+        let localizations = [
+            ["Unit", "Dimensions", "Ruler Color", "Foreground Opacity", "Background Opacity", "Float ruler above other applications", "Show ruler shadow"],
+            ["Einheit", "Abmessungen", "Linealfarbe", "Deckkraft im Vordergrund", "Deckkraft im Hintergrund", "Lineal über anderen Programmen schweben lassen", "Linealschatten anzeigen"],
+            ["単位", "寸法", "定規の色", "前景の不透明度", "背景の不透明度", "定規を常に手前に表示", "定規の影を表示"],
+        ]
+
+        for titles in localizations {
+            controlsView.unitLabel.stringValue = titles[0]
+            controlsView.dimensionsLabel.stringValue = titles[1]
+            controlsView.rulerColorLabel.stringValue = titles[2]
+            controlsView.foregroundOpacityTitleLabel.stringValue = titles[3]
+            controlsView.backgroundOpacityTitleLabel.stringValue = titles[4]
+            controlsView.floatRulersCheckbox.title = titles[5]
+            controlsView.rulerShadowCheckbox.title = titles[6]
+            controlsView.layoutSubtreeIfNeeded()
+            controlsView.contentView.layoutSubtreeIfNeeded()
+
+            let nonIntersectingRows: [[NSView]] = [
+                [controlsView.unitLabel, controlsView.unitSegmentedControl],
+                [controlsView.dimensionsLabel, controlsView.dimensionWidthField, controlsView.dimensionsSeparatorLabel, controlsView.dimensionHeightField],
+                [controlsView.rulerColorLabel, controlsView.resetRulerColorButton, controlsView.rulerColorWell],
+                [controlsView.foregroundOpacityTitleLabel, controlsView.foregroundOpacityLabel],
+                [controlsView.backgroundOpacityTitleLabel, controlsView.backgroundOpacityLabel],
+                [controlsView.floatRulersCheckbox, controlsView.rulerShadowCheckbox],
+            ]
+            for row in nonIntersectingRows {
+                for firstIndex in row.indices {
+                    for secondIndex in row.indices where secondIndex > firstIndex {
+                        XCTAssertFalse(
+                            row[firstIndex].frame.intersects(row[secondIndex].frame),
+                            "\(titles) overlap \(row[firstIndex]) and \(row[secondIndex])"
+                        )
+                    }
+                }
+            }
         }
-        for control in rightAlignedControls {
-            XCTAssertEqual(alignmentRect(control).maxX, expectedRightEdge, accuracy: 0.5)
+
+        let interactiveControls: [NSView] = [
+            controlsView.unitSegmentedControl,
+            controlsView.dimensionWidthField,
+            controlsView.dimensionHeightField,
+            controlsView.resetRulerColorButton,
+            controlsView.rulerColorWell,
+            controlsView.foregroundOpacitySlider,
+            controlsView.backgroundOpacitySlider,
+            controlsView.floatRulersCheckbox,
+            controlsView.rulerShadowCheckbox,
+        ]
+        for control in interactiveControls {
+            XCTAssertGreaterThanOrEqual(control.frame.width, 24)
+            XCTAssertGreaterThanOrEqual(control.frame.height, 24)
         }
-        XCTAssertEqual(unitToDimensionsSpacing, expectedInset, accuracy: 0.5)
-        XCTAssertEqual(firstBaselineY(controlsView.unitLabel), firstBaselineY(controlsView.unitSegmentedControl), accuracy: baselineAccuracy)
-        XCTAssertEqual(firstBaselineY(controlsView.dimensionsLabel), firstBaselineY(controlsView.dimensionWidthField), accuracy: baselineAccuracy)
-        XCTAssertEqual(firstBaselineY(controlsView.dimensionWidthField), firstBaselineY(controlsView.dimensionsSeparatorLabel), accuracy: baselineAccuracy)
-        XCTAssertEqual(firstBaselineY(controlsView.dimensionsSeparatorLabel), firstBaselineY(controlsView.dimensionHeightField), accuracy: baselineAccuracy)
-        XCTAssertEqual(alignmentRect(controlsView.rulerColorLabel).midY, alignmentRect(controlsView.rulerColorWell).midY, accuracy: 0.5)
-        XCTAssertEqual(firstBaselineY(controlsView.foregroundOpacityTitleLabel), firstBaselineY(controlsView.foregroundOpacityLabel), accuracy: baselineAccuracy)
-        XCTAssertEqual(firstBaselineY(controlsView.backgroundOpacityTitleLabel), firstBaselineY(controlsView.backgroundOpacityLabel), accuracy: baselineAccuracy)
     }
 
     func testRulerSettingsControlsKeyViewLoopFollowsVisibleControls() {
@@ -1040,6 +1105,74 @@ final class RulerCoreTests: XCTestCase {
 
         XCTAssertTrue(controlsView.rulerColorWell.nextKeyView === controlsView.resetRulerColorButton)
         XCTAssertTrue(controlsView.resetRulerColorButton.nextKeyView === controlsView.foregroundOpacitySlider)
+
+        XCTAssertTrue((controlsView.unitSegmentedControl.accessibilityTitleUIElement() as? NSView) === controlsView.unitLabel)
+        XCTAssertTrue((controlsView.dimensionWidthField.accessibilityTitleUIElement() as? NSView) === controlsView.dimensionsLabel)
+        XCTAssertTrue((controlsView.dimensionHeightField.accessibilityTitleUIElement() as? NSView) === controlsView.dimensionsLabel)
+        XCTAssertTrue((controlsView.rulerColorWell.accessibilityTitleUIElement() as? NSView) === controlsView.rulerColorLabel)
+        XCTAssertTrue((controlsView.foregroundOpacitySlider.accessibilityTitleUIElement() as? NSView) === controlsView.foregroundOpacityTitleLabel)
+        XCTAssertTrue((controlsView.backgroundOpacitySlider.accessibilityTitleUIElement() as? NSView) === controlsView.backgroundOpacityTitleLabel)
+        XCTAssertEqual(controlsView.unitSegmentedControl.identifier?.rawValue, "ruler-settings-unit-segmented-control")
+        XCTAssertEqual(controlsView.rulerColorWell.identifier?.rawValue, "ruler-settings-color-well")
+        XCTAssertEqual(controlsView.floatRulersCheckbox.identifier?.rawValue, "ruler-settings-float-rulers-checkbox")
+    }
+
+    func testRulerSettingsWindowsUseFixedUtilityChromeAndActionHierarchy() throws {
+        let rulerController = RulerController(
+            state: RulerInstanceState(
+                settings: RulerSettings(),
+                layout: RulerLayoutState(
+                    zeroPoint: NSPoint(x: 240, y: 320),
+                    horizontalLength: 260,
+                    verticalLength: 180
+                )
+            )
+        )
+        let settingsController = RulerSettingsController(rulerController: rulerController)
+        let preferencesController = PreferencesController()
+        defer {
+            settingsController.close()
+            preferencesController.close()
+            rulerController.hide()
+        }
+
+        let settingsWindow = try XCTUnwrap(settingsController.window)
+        let preferencesWindow = try XCTUnwrap(preferencesController.window)
+        for (window, controlsView) in [
+            (settingsWindow, settingsController.settingsControlsView!),
+            (preferencesWindow, preferencesController.settingsControlsView!),
+        ] {
+            window.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(window.frame.width, 420, accuracy: 0.5)
+            XCTAssertFalse(window.styleMask.contains(.resizable))
+            XCTAssertFalse(window.isOpaque)
+            XCTAssertEqual(window.backgroundColor, .clear)
+            XCTAssertTrue(window.titlebarAppearsTransparent)
+            XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)
+            XCTAssertTrue(
+                rulerSettingsDescendants(in: window.contentView!)
+                    .contains { NSStringFromClass(type(of: $0)).hasSuffix("UtilityMaterialView") }
+                    || NSStringFromClass(type(of: window.contentView!)).hasSuffix("UtilityMaterialView")
+            )
+        }
+
+        XCTAssertEqual(settingsController.resetDefaultsButton.frame.height, 28, accuracy: 0.5)
+        XCTAssertEqual(settingsController.setDefaultsButton.frame.height, 28, accuracy: 0.5)
+        XCTAssertEqual(settingsController.setDefaultsButton.keyEquivalent, "\r")
+        XCTAssertTrue(settingsController.rulerShadowCheckbox.nextKeyView === settingsController.resetDefaultsButton)
+        XCTAssertTrue(settingsController.resetDefaultsButton.nextKeyView === settingsController.setDefaultsButton)
+        XCTAssertTrue(settingsController.setDefaultsButton.nextKeyView === settingsController.unitSegmentedControl)
+        XCTAssertTrue(preferencesController.resetFactoryDefaultsButton.isBordered == false)
+        XCTAssertEqual(preferencesController.resetFactoryDefaultsButton.contentTintColor, .systemRed)
+        XCTAssertTrue(preferencesController.rulerShadowCheckbox.nextKeyView === preferencesController.resetFactoryDefaultsButton)
+        XCTAssertTrue(preferencesController.resetFactoryDefaultsButton.nextKeyView === preferencesController.unitSegmentedControl)
+
+        for window in [settingsWindow, preferencesWindow] {
+            let materialView = try XCTUnwrap(window.contentView as? NSVisualEffectView)
+            XCTAssertEqual(materialView.material, .hudWindow)
+            XCTAssertEqual(materialView.state, .active)
+        }
     }
 
     func testRulerSettingsControllerPresentsAsAttachedSheetOnRulerWindow() {
@@ -4083,6 +4216,10 @@ private func oneWingRulerWindow(
 
 private func resizeHandle(in rule: RuleView) -> ResizeHandleView? {
     return rule.subviews.first { $0 is ResizeHandleView } as? ResizeHandleView
+}
+
+private func rulerSettingsDescendants(in view: NSView) -> [NSView] {
+    return view.subviews + view.subviews.flatMap(rulerSettingsDescendants)
 }
 
 private func pointInsideEmptyRulerWindowCorner(

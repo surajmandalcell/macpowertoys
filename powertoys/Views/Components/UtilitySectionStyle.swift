@@ -23,6 +23,52 @@ enum UtilityLayout {
     static let cardRadius: CGFloat = 10
 }
 
+final class UtilityMaterialView: NSVisualEffectView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configureMaterial()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configureMaterial()
+    }
+
+    private func configureMaterial() {
+        material = .hudWindow
+        blendingMode = .behindWindow
+        state = .active
+    }
+}
+
+final class UtilitySectionCardView: NSView {
+    override var wantsUpdateLayer: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        updateLayer()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        updateLayer()
+    }
+
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.05).cgColor
+            layer?.cornerRadius = UtilityLayout.cardRadius
+        }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+}
+
 extension View {
     func utilitySectionHeader() -> some View {
         font(.system(size: 10, weight: .medium))

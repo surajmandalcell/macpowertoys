@@ -465,6 +465,13 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         rulerShadowCheckbox.target = self
         rulerShadowCheckbox.action = #selector(setRulerShadow(_:))
 
+        unitSegmentedControl.setAccessibilityTitleUIElement(unitLabel)
+        dimensionWidthField.setAccessibilityTitleUIElement(dimensionsLabel)
+        dimensionHeightField.setAccessibilityTitleUIElement(dimensionsLabel)
+        rulerColorWell.setAccessibilityTitleUIElement(rulerColorLabel)
+        foregroundOpacitySlider.setAccessibilityTitleUIElement(foregroundOpacityTitleLabel)
+        backgroundOpacitySlider.setAccessibilityTitleUIElement(backgroundOpacityTitleLabel)
+
         configureKeyViewLoop()
     }
 
@@ -665,12 +672,17 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         window?.identifier = NSUserInterfaceItemIdentifier("preferences-window")
         window?.setAccessibilityIdentifier("preferences-window")
         window?.isMovableByWindowBackground = true
+        window?.backgroundColor = .clear
+        window?.isOpaque = false
+        window?.titlebarAppearsTransparent = true
         configureOpaqueColorPicking()
         settingsControlsView.delegate = self
         settingsControlsView.configureForPreferences()
         window?.initialFirstResponder = unitSegmentedControl
         resetFactoryDefaultsButton.identifier = NSUserInterfaceItemIdentifier("reset-factory-defaults-button")
         resetFactoryDefaultsButton.setAccessibilityIdentifier("reset-factory-defaults-button")
+        resetFactoryDefaultsButton.isBordered = false
+        resetFactoryDefaultsButton.contentTintColor = .systemRed
 
         subscribeToPrefs()
         subscribeToColorPanel()
@@ -779,6 +791,8 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
             floatRulers: prefs.floatRulers,
             rulerShadow: prefs.rulerShadow
         )
+        rulerShadowCheckbox.nextKeyView = resetFactoryDefaultsButton
+        resetFactoryDefaultsButton.nextKeyView = unitSegmentedControl
     }
 
     func updateUnitSegmentedControl() {
@@ -980,6 +994,9 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.setAccessibilityIdentifier("ruler-settings-window")
         window?.isMovableByWindowBackground = true
         window?.isReleasedWhenClosed = false
+        window?.backgroundColor = .clear
+        window?.isOpaque = false
+        window?.titlebarAppearsTransparent = true
         window?.initialFirstResponder = unitSegmentedControl
         configureFloatingPanelWindow()
         settingsControlsView.delegate = self
@@ -993,6 +1010,8 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         resetDefaultsButton.setAccessibilityIdentifier("reset-ruler-settings-to-default-button")
         setDefaultsButton.identifier = NSUserInterfaceItemIdentifier("save-ruler-settings-as-default-button")
         setDefaultsButton.setAccessibilityIdentifier("save-ruler-settings-as-default-button")
+        setDefaultsButton.keyEquivalent = "\r"
+        setDefaultsButton.keyEquivalentModifierMask = []
         subscribeToColorPanel()
         updateView()
     }
@@ -1165,6 +1184,9 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
             rulerShadow: currentSettings?.rulerShadow ?? Prefs.defaultRulerShadow,
             isEnabled: hasRuler
         )
+        rulerShadowCheckbox.nextKeyView = resetDefaultsButton
+        resetDefaultsButton.nextKeyView = setDefaultsButton
+        setDefaultsButton.nextKeyView = unitSegmentedControl
         resetDefaultsButton.isEnabled = hasRuler
         setDefaultsButton.isEnabled = hasRuler
         repositionAttachedWindowsIfNeeded()
