@@ -199,8 +199,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateDockIcon(for windowIdentifier: String?) {
-        guard let icon = NSImage(named: Self.dockIconAsset(for: windowIdentifier)) else { return }
-        NSApp.applicationIconImage = icon
+        NSApp.applicationIconImage = DockIconImage.image(
+            named: Self.dockIconAsset(for: windowIdentifier)
+        )
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
