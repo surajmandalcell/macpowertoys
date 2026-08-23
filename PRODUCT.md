@@ -31,8 +31,9 @@ tool keeps its own window, workflow, state, and resource lifetime.
 - Text Extractor starts from its existing global shortcut or its window.
 - Input Devices controls external mice and built-in or external trackpads as
   distinct hardware classes.
-- Mole supports quick cleanup, guided cleanup, and analysis-only use. Settings
-  choose the default, while the other modes remain one or two actions away.
+- System Care supports quick cleanup, guided cleanup, and analysis-only use.
+  Settings choose the default, while the other modes remain one or two actions
+  away. Mole CLI is an attributed optional engine, not the product name.
 - Power Stats shows detailed monitoring only while its window is open. Its
   optional menu-bar summary uses a lightweight configurable interval.
 
@@ -45,8 +46,8 @@ tool keeps its own window, workflow, state, and resource lifetime.
 - Input Devices includes independent mouse and trackpad controls for scrolling
   direction, horizontal scrolling, and smooth scrolling where public macOS APIs
   permit reliable behavior.
-- Mole uses a large MacPowerToys workspace with storage drill-down visuals and
-  explicit safety before destructive work.
+- System Care uses a large MacPowerToys workspace with storage drill-down
+  visuals and explicit safety before destructive work.
 - Power Stats may place individual metrics or one grouped summary in the menu
   bar. Detailed sampling stops when its window closes.
 - Use public APIs, request only required permissions, and keep CPU, memory,
@@ -57,7 +58,7 @@ tool keeps its own window, workflow, state, and resource lifetime.
 ## Brand Commitments
 
 - Product name: MacPowerToys.
-- Tool names: Text Extractor, Ruler, Input Devices, Mole, and Power Stats.
+- Tool names: Text Extractor, Ruler, Input Devices, System Care, and Power Stats.
 - Follow `DESIGN.md` and the current native SwiftUI and AppKit surfaces.
 - Use `/Users/surajmandal/dev/_clone/vorssaint-utils` as a read-only code and
   documentation reference.
