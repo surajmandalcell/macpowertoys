@@ -137,6 +137,7 @@ struct LogsWindowView: View {
         HStack(spacing: 0) {
             sidebar
             content
+                .utilityContentTransition(value: selectedSource)
         }
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "logs"))
@@ -246,7 +247,7 @@ struct LogsWindowView: View {
     private var internalContent: some View {
         VStack(spacing: 0) {
             contentHeader(title: "Internal Logs", detail: "\(filteredLogs.count) entries")
-            Divider()
+            QuietDivider()
             SelectableLogTextView(
                 lines: filteredLogs.reversed().map { RenderedLogLine($0) },
                 fontSize: CGFloat(logsFontSize),
@@ -282,7 +283,7 @@ struct LogsWindowView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
 
-            Divider()
+            QuietDivider()
 
             if let error = systemLogs.errorMessage {
                 VStack(spacing: 10) {
@@ -346,7 +347,7 @@ private struct LogsSettingsSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
 
-            Divider()
+            QuietDivider()
             LogsSettingsView()
         }
         .frame(width: 420, height: 240)

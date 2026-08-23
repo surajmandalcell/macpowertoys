@@ -36,7 +36,7 @@ struct ToolAboutView: View {
                 .padding(.bottom, 12)
                 .accessibilityIdentifier("tool.\(tool.id).page")
 
-                Divider()
+                QuietDivider()
 
                 Group {
                     switch page {
@@ -47,6 +47,7 @@ struct ToolAboutView: View {
                         manualSection(for: tool)
                     }
                 }
+                .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {

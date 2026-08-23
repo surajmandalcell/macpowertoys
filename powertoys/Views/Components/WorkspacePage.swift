@@ -34,12 +34,14 @@ struct WorkspacePage<Content: View, Actions: View>: View {
 
                 Spacer(minLength: 12)
                 actions
+                    .controlSize(.small)
+                    .frame(minHeight: UtilityLayout.workspaceActionHeight, alignment: .center)
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
             .padding(.vertical, 7)
             .frame(minHeight: UtilityLayout.workspaceTitlebarHeight)
 
-            Divider()
+            QuietDivider()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
