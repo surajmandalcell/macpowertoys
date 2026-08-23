@@ -39,10 +39,10 @@
 **Files:**
 - Modify only product-copy files outside the excluded design task.
 
-- [ ] Scan user-facing Swift strings for contractions, em dashes, British spelling, and sentence-length limits.
-- [ ] Fix confirmed violations without changing product behavior.
-- [ ] Repeat the scan and run `git diff --check`.
-- [ ] Commit the copy checkpoint.
+- [x] Scan user-facing Swift strings for contractions, em dashes, British spelling, and sentence-length limits.
+- [x] Fix confirmed violations without changing product behavior.
+- [x] Repeat the scan and run `git diff --check`.
+- [x] Commit the copy checkpoint.
 
 ### Task 3: Raycast discovery
 

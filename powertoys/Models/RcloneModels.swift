@@ -946,12 +946,12 @@ enum RcloneFormat {
     }
 
     static func speed(_ bytesPerSecond: Double) -> String {
-        guard bytesPerSecond > 0 else { return "—" }
+        guard bytesPerSecond > 0 else { return "Not available" }
         return bytes(Int64(bytesPerSecond)) + "/s"
     }
 
     static func eta(_ seconds: Double?) -> String {
-        guard let seconds, seconds.isFinite, seconds > 0 else { return "—" }
+        guard let seconds, seconds.isFinite, seconds > 0 else { return "Not available" }
         let total = Int(seconds)
         let h = total / 3600
         let m = (total % 3600) / 60
@@ -963,7 +963,7 @@ enum RcloneFormat {
     }
 
     static func duration(_ seconds: TimeInterval?) -> String {
-        guard let seconds, seconds > 0 else { return "—" }
+        guard let seconds, seconds > 0 else { return "Not available" }
         return eta(seconds)
     }
 }

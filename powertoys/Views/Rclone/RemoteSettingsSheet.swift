@@ -36,7 +36,7 @@ struct RemoteSettingsSheet: View {
                 } header: {
                     Text("Overrides")
                 } footer: {
-                    Text("0 inherits the app-wide value. Overrides apply when a transfer starts — pause and resume a running transfer to apply changes. Bandwidth limit stays global — it throttles the whole engine.")
+                    Text("0 uses the app-wide value. Overrides apply when a transfer starts. Pause a running transfer. Resume it to apply changes. The bandwidth limit applies to the full engine.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }

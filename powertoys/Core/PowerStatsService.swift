@@ -397,11 +397,11 @@ private final class PowerStatsMenuController: NSObject {
     private func value(for metric: PowerMenuMetric, sample: PowerStatsSample?) -> String {
         switch metric {
         case .cpu:
-            sample?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "—"
+            sample?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting"
         case .memory:
-            sample?.memoryUsage.map { "\(Int($0.rounded()))%" } ?? "—"
+            sample?.memoryUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting"
         case .network:
-            sample?.networkDownload.map { "↓\(Self.rate($0))" } ?? "↓—"
+            sample?.networkDownload.map { "↓\(Self.rate($0))" } ?? "↓Waiting"
         }
     }
 

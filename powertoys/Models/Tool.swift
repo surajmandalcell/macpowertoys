@@ -62,7 +62,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 struct CCHistoryTool: Tool {
     let id = "cc-history"
     let name = "AI History"
-    let description = "Browse every Claude Code conversation on this Mac — live, searchable, and bookmarkable."
+    let description = "Browse every Claude Code conversation on this Mac. Search and bookmark each conversation."
     let icon = "text.bubble"
     let logoAsset = "ClaudeHistoryLogo"
     let category = ToolCategory.dev
@@ -117,10 +117,10 @@ struct RcloneTool: Tool {
         ]),
         ToolManualSection(title: "Activity & Details", points: [
             "Every finished transfer is recorded in Activity with sizes and timing.",
-            "Click ⓘ on any transfer for its full details — paths, ignore rules, speed, attempts, and errors."
+            "Select ⓘ on a transfer to view paths, ignore rules, speed, attempts, and errors."
         ]),
         ToolManualSection(title: "Ignore Rules & Limits", points: [
-            "Open Settings from the sidebar (⌘,) to edit ignore patterns — one glob per line, applied to every transfer.",
+            "Open Settings from the sidebar (⌘,) to edit ignore patterns. Add one glob per line. MacPowerToys applies each pattern to every transfer.",
             "System junk like .DS_Store, .fseventsd, and System Volume Information is ignored by default.",
             "Parallel transfers, bandwidth limits, and retry counts live on the same page."
         ])

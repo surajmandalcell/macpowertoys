@@ -255,7 +255,7 @@ struct RemoteBrowserView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(.green)
-                    Text("Transfer queued — see Transfers")
+                    Text("Transfer queued. View it in Transfers.")
                         .font(.system(size: 11))
                 }
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -455,7 +455,7 @@ private struct RemoteEntryRow: View {
     }
 
     private var modTimeText: String {
-        guard let modTime = entry.modTime else { return "—" }
+        guard let modTime = entry.modTime else { return "Not available" }
         return Self.relativeFormatter.localizedString(for: modTime, relativeTo: Date())
     }
 }

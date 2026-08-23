@@ -105,25 +105,25 @@ struct PowerStatsWindowView: View {
             metricCard(
                 icon: "memorychip",
                 title: "Memory",
-                value: service.snapshot?.memoryUsage.percent ?? "—",
+                value: service.snapshot?.memoryUsage.percent ?? "Not available",
                 detail: memoryDetail
             )
             metricCard(
                 icon: "internaldrive",
                 title: "Disk",
-                value: service.snapshot?.diskUsage.percent ?? "—",
+                value: service.snapshot?.diskUsage.percent ?? "Not available",
                 detail: diskDetail
             )
             metricCard(
                 icon: "arrow.down.circle",
                 title: "Network",
                 value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…",
-                detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")"
+                detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "not available")"
             )
             metricCard(
                 icon: "thermometer.medium",
                 title: "Thermal",
-                value: service.snapshot?.thermalState ?? "—",
+                value: service.snapshot?.thermalState ?? "Not available",
                 detail: "System pressure"
             )
             metricCard(
@@ -157,7 +157,7 @@ struct PowerStatsWindowView: View {
             HStack {
                 Text(title).font(.system(size: 12, weight: .medium))
                 Spacer()
-                Text(values.last.map { formatter($0) + suffix } ?? "—")
+                Text(values.last.map { formatter($0) + suffix } ?? "Not available")
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
             }
             StatsSparkline(values: values)
@@ -174,7 +174,7 @@ struct PowerStatsWindowView: View {
             HStack(spacing: 12) {
                 metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "Priming…", detail: "User + system + nice")
                 metricCard(icon: "chart.bar", title: "Load Average", value: loadAverage, detail: "1, 5, and 15 minute run queue")
-                metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "—", detail: "System thermal pressure")
+                metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System thermal pressure")
             }
             chartCard(title: "CPU Usage", suffix: "%", values: service.history.compactMap(\.cpuUsage))
         }
@@ -183,9 +183,9 @@ struct PowerStatsWindowView: View {
     private var memoryPage: some View {
         WorkspacePage("Memory", subtitle: "Physical and compressed memory") {
             HStack(spacing: 12) {
-                metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "—", detail: memoryDetail)
-                metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "—", detail: "Installed unified memory")
-                metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "—", detail: "Used physical memory")
+                metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "Not available", detail: memoryDetail)
+                metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "Not available", detail: "Installed unified memory")
+                metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "Not available", detail: "Used physical memory")
             }
             chartCard(title: "Memory Utilization", suffix: "%", values: service.history.compactMap(\.memoryUsage))
         }
@@ -196,7 +196,7 @@ struct PowerStatsWindowView: View {
             HStack(spacing: 12) {
                 metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
-                metricCard(icon: "internaldrive", title: "Disk Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "—", detail: diskDetail)
+                metricCard(icon: "internaldrive", title: "Disk Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "Not available", detail: diskDetail)
             }
             HStack(spacing: 12) {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
@@ -271,7 +271,7 @@ struct PowerStatsWindowView: View {
     private var loadAverage: String {
         service.snapshot?.loadAverage.map {
             [$0.0, $0.1, $0.2].map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · ")
-        } ?? "—"
+        } ?? "Not available"
     }
 
     private var memoryDetail: String {
@@ -341,7 +341,7 @@ private struct StatsSparkline: View {
 }
 
 private extension Optional where Wrapped == Double {
-    var percent: String { map { "\(Int($0.rounded()))%" } ?? "—" }
+    var percent: String { map { "\(Int($0.rounded()))%" } ?? "Not available" }
 }
 
 private extension Int64 {

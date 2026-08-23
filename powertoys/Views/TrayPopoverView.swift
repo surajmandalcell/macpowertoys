@@ -307,7 +307,7 @@ private struct RSyncTrayTab: View {
     }
 
     private var engineOffState: some View {
-        Text("Engine is not running — hit retry to start it.")
+        Text("The engine is not running. Select Retry to start it.")
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
