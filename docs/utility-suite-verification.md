@@ -58,7 +58,7 @@ Use this checklist only when no Cloud Sync transfer is active. Never install or 
 ## Regression and release
 
 - Confirm MacPowerToys does not auto-open tool windows on normal launch.
-- Exercise Claude History, Cloud Sync, Logs, menu bar, window restoration, and app quit.
+- Exercise AI History, Cloud Sync, Logs, menu bar, window restoration, and app quit.
 - Verify VoiceOver labels, keyboard navigation, light/dark mode, increased contrast,
   and reduced transparency.
 - Install the signed Release build only when no transfer is active, then repeat the

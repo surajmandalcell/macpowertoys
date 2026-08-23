@@ -22,8 +22,8 @@
     },
     {
       "name": "claude-history",
-      "title": "Claude History",
-      "description": "Open Claude History",
+      "title": "AI History",
+      "description": "Open AI History",
       "mode": "no-view"
     },
     {

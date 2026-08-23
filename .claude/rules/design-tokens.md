@@ -40,7 +40,15 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 ### Selection States
 - Light selection: `Color.accentColor.opacity(0.1)`
 - Strong selection: `Color.accentColor.opacity(0.2)`
-- Only use 0.1 or 0.2 - no other values
+- Sidebar selection: native emphasized/unemphasized selected-content colors;
+  selected icon and label use the same native selected-content foreground
+- Only use 0.1 or 0.2 outside the native sidebar and solid tray-tab exceptions
+
+### Settings Alignment
+- Settings containers default to leading alignment
+- Full-width settings rows place the label leading and control trailing
+- Grid forms use one shared leading control column
+- Center only explicit empty states and deliberate hero compositions
 
 ### Backgrounds
 - Content area: `Color(nsColor: .windowBackgroundColor)`

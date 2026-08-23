@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -12,7 +12,7 @@ colors:
   focus-ring-on-accent: "colors.on-accent"
   disabled-opacity: 0.38
   selection-light: "Color.accentColor.opacity(0.1)"
-  sidebar-selection: "Color.accentColor.opacity(0.1)"
+  sidebar-selection: "native selected-content background; emphasized while key, unemphasized while inactive"
   selection-strong: "Color.accentColor"
   selection-strong-text: "opaque black or white, chosen for >=4.5:1 contrast"
   card: "Color.primary.opacity(0.03)"           # grids, subtle depth
@@ -76,7 +76,7 @@ windows:
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
   sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
-  sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: primary }
+  sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: native-selected-content-text }
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
   tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: colors.selection-strong }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
@@ -420,7 +420,7 @@ tool's product brief.
 
 | Tool | Category / family | Card description |
 |---|---|---|
-| Claude History | Developer / workspace | Browse every Claude Code conversation on this Mac - live, searchable, and bookmarkable. |
+| AI History | Developer / workspace | Browse every Claude Code conversation on this Mac - live, searchable, and bookmarkable. |
 | Cloud Sync | Files / workspace | Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules. |
 | Logs | System / workspace | View application logs and diagnostics. |
 | Ruler | Developer / AppKit overlay | Measure the screen with movable, resizable rulers in pixels, millimeters, or inches. |
@@ -434,7 +434,7 @@ tool's product brief.
 ### Full Workspace
 
 A full workspace is a resizable environment for sustained work such as Cloud
-Sync, Claude History, or Logs. Its sidebar owns tool-level navigation; its
+Sync, AI History, or Logs. Its sidebar owns tool-level navigation; its
 content pane owns the selected destination. It uses native close, minimize, and
 zoom traffic lights over the sidebar and never draws a compact titlebar.
 
@@ -493,6 +493,11 @@ content at least 640 wide; height at least 600; resizable
 - Content uses one 20pt leading gutter unless a dense list uses a documented
   16pt row gutter. Headers, tabs, fields, cards, and rows within that container
   share the chosen edge.
+- Settings cards use leading-aligned stacks. Every settings row spans the card:
+  its label leads and its control trails, or every control starts on one shared
+  leading grid column. Never let an intrinsic-width toggle, picker, or option
+  group center itself. Center alignment is reserved for explicit empty states
+  and deliberately composed hero content.
 - Pane and top-strip hairlines are permitted where material changes do not
   provide enough separation. Workspace cards use opacity depth without custom
   shadows; the launcher hover exception does not apply here.
@@ -509,7 +514,7 @@ Existing workspaces fix the reference choices that general ranges leave open:
 |---|---|---|---|
 | Logs | 900×600 / 220pt | Search; level filters; Settings | Selectable dense log stream |
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, remotes, Settings | Transfer rows, remote browser, or activity ledger |
-| Claude History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
+| AI History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
 
 A new workspace's product brief chooses destinations and data, then follows the
 closest content pattern: homogeneous operational items use dense rows; grouped
@@ -685,8 +690,10 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   padding, 6pt radius, 12pt search icon, and 13pt text. Use the family-defined
   placeholder.
 - **Sidebar row** - 28pt high at standard text size, 16pt icon, 8pt internal
-  horizontal inset and gap, 8pt radius, 13pt text, hover 0.06, and accent 0.1
-  selected background with primary text and an accent icon.
+  horizontal inset and gap, 8pt radius, 13pt text, and hover 0.06. Selection
+  uses the native emphasized selected-content background while the window is
+  key and the native unemphasized selection while inactive. Icon and label use
+  the same matching native selected-content foreground; never tint only one.
 - **Sidebar primary action** - at least 28pt high, 12pt horizontal inset, 8pt
   radius, accent fill, contrast-aware 13pt medium label, and one 13pt semantic
   icon.
@@ -763,7 +770,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Tool | Light appearance | Dark appearance | Decision |
 |---|---|---|---|
 | Cloud Sync | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
-| Claude History | Midnight | Chosen Color | Preserve the terracotta message echo in dark mode |
+| AI History | Midnight | Chosen Color | Preserve the terracotta message echo in dark mode |
 | Logs | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
 | Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
 | Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
@@ -801,7 +808,7 @@ palette or reuse another tool's semantic hue.
   physical cutout. Never use one for a catchlight or decorative control.
 - New Chosen Color icons use warm off-white `#F7F5F0` and charcoal `#23272E`,
   never pure white or black. The Chosen Color palette table is the binding
-  legacy exception: Cloud Sync, Claude History, and Logs retain their listed
+  legacy exception: Cloud Sync, AI History, and Logs retain their listed
   `#FFFFFF` foregrounds. Neutral Midnight/Porcelain assets always use their own
   closed glyph tokens rather than either white.
 - No decorative outline, gloss, blur, rim light, or soft drop shadow. A gradient
@@ -837,7 +844,7 @@ glyph behind the foreground:
 Compound glyphs must behave as one silhouette. Put all echo pieces inside one
 `<g>` with one shared fill or stroke. When a Chosen Color legacy icon uses a
 translucent semantic echo, apply `opacity` to the group, never to overlapping
-children. This prevents darker seams where parts overlap. Claude History is the
+children. This prevents darker seams where parts overlap. AI History is the
 reference: the rounded message body and bottom pointer share one terracotta
 shadow group, so the pointer never looks like a second shadow.
 
@@ -850,7 +857,7 @@ has been changed.
 | Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
 | Cloud Sync | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
-| Claude History | `#1C1D22` | `#FFFFFF` at `.92` | `#D97757` message echo at `.30` |
+| AI History | `#1C1D22` | `#FFFFFF` at `.92` | `#D97757` message echo at `.30` |
 | Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
@@ -952,9 +959,9 @@ same metaphor because macOS controls their tint.
 - **Never** use `onTapGesture` on containers holding selectable text — use
   `Button`; logs and content text must stay selectable.
 - **Never** put hover opacities other than 0.06 (0.1 for filled), pressed
-  opacities other than 0.1 (0.18 for filled), selection
-  other than accent 0.1, solid accent tray-tab selection, or the explicit Tab
-  Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
+  opacities other than 0.1 (0.18 for filled), selection other than accent 0.1,
+  native sidebar selection, solid accent tray-tab selection, or the explicit
+  Tab Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
 - **Never** use capsule buttons, UI gradients, or baked icon effects. Capsules
   remain valid only for progress tracks and documented state or count badges.
 - **Never** add a second alignment gutter inside one container.
@@ -978,9 +985,9 @@ same metaphor because macOS controls their tint.
   hover adds 0.06 primary to an unfilled control or 0.1 to a filled control;
   press adds 0.1 primary to an unfilled control or 0.18 to a filled control;
   disabled applies 0.38 opacity and ignores hover/press; selected uses the
-  assigned 0.1 accent layer or solid accent tray-tab role, except for Tab Pill's
-  explicit primary 0.06 surface; focus uses the native system ring except for
-  the compact replacement ring.
+  assigned 0.1 accent layer, native sidebar selection, or solid accent tray-tab
+  role, except for Tab Pill's explicit primary 0.06 surface; focus uses the
+  native system ring except for the compact replacement ring.
 - A dense control may be visibly 24pt, but its complete rectangular hit region
   must not be smaller. Never make an icon itself the only clickable pixels.
 - Every icon-only control has an accessibility label and help text. Traversal

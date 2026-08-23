@@ -6,7 +6,7 @@ MacPowerToys has no first-party analytics, advertising SDK, or telemetry service
 
 MacPowerToys stores settings, utility history, logs, transfer state, and indexes under the user's macOS Application Support and Preferences locations. Text Extractor processes the selected screenshot with Apple Vision on the Mac. Color Picker stores sampled colors locally.
 
-Claude History reads local Claude Code JSONL files and builds a local cache for browsing and search. Export occurs only when the user requests it.
+AI History reads local Claude Code JSONL files and builds a local cache for browsing and search. Export occurs only when the user requests it.
 
 ## Network access
 

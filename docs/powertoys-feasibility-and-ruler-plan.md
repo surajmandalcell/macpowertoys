@@ -173,7 +173,7 @@ the arbitrary number of borderless overlay windows needed by the ruler.
 | 3. Joined rulers | Horizontal, vertical, and joined modes; group/ungroup; four zero corners | Joining preserves the visible origin; arms can hide independently | 2-3 days |
 | 4. Units and displays | Points/backing pixels, physical units, calibration, rotated and mixed-scale displays | Correct results on 1x/2x displays; estimated physical units are disclosed; no ruler restores off-screen | 2-3 days |
 | 5. Product finish | Settings, shortcuts, context menus, persistence, icon, manual, accessibility labels | All core operations work without privacy prompts; keyboard-only workflow is complete | 2-3 days |
-| 6. Verification | Unit/UI tests, multi-monitor manual matrix, release notes, version bump and local install | Tests pass; no regressions to Claude History or RSync; release build is signed and installed | 1-2 days |
+| 6. Verification | Unit/UI tests, multi-monitor manual matrix, release notes, version bump and local install | Tests pass; no regressions to AI History or RSync; release build is signed and installed | 1-2 days |
 
 Expected total for a polished Free Ruler-class first release: **10-16 engineering
 days**. A rough prototype could appear in 3-5 days, but shipping it at PowerToys'

@@ -7,12 +7,26 @@
 - **Cause:** New workspaces copied local 22pt scroll-body headers and custom
   card controls instead of the shared compact workspace shell.
 - **Invariant:** Use 220pt simple, 240pt data, or 260pt conversation sidebars.
-  Use 28pt full-width rows with a quiet accent selection. Use the shared 40pt
+  Use 28pt full-width rows with native emphasized or unemphasized selection;
+  the selected icon and text share one native foreground. Use the shared 40pt
   page strip, 13pt destination title, optional 11pt subtitle, 12pt body inset,
   native controls, related multi-column rows, and one accent primary action.
-- **Check:** Inspect launcher, Logs, Cloud Sync, Claude History, Input Devices,
+- **Check:** Inspect launcher, Logs, Cloud Sync, AI History, Input Devices,
   System Care, and Power Stats at default and minimum widths. No workspace has
-  a 22pt body title, a second 32pt top gap, or a solid-blue sidebar selection.
+  a 22pt body title, a second 32pt top gap, or mismatched selected icon and text.
+
+## Settings Row Alignment
+
+- **Symptom:** Toggles, pickers, and option groups float in the middle of a card
+  or start on different horizontal edges from one row to the next.
+- **Cause:** Intrinsic-width controls were placed in a centered stack or grid
+  cells retained their default alignment.
+- **Invariant:** Settings stacks align leading. A labeled settings row spans the
+  card with its control trailing, or every control starts on one shared leading
+  grid column. Center only deliberate empty states and hero compositions.
+- **Check:** Inspect every settings card and workspace form at default and
+  minimum widths. Labels share a leading edge, controls share their row or
+  control-column edge, and no compact control floats at the card midpoint.
 
 ## Product Copy Boundary
 
@@ -143,7 +157,7 @@
   `.thinScrollIndicators()`. Native scroll views call
   `configureThinScrollIndicators()`. Hidden indicators need no modifier.
 - **Check:** Inventory every scrolling source with `rg`, then exercise long
-  content in Claude History, Cloud Sync trees, settings forms, and editors.
+  content in AI History, Cloud Sync trees, settings forms, and editors.
   Visible indicators autohide, overlay content, and use mini control size.
 
 ## Settings Page Replacement

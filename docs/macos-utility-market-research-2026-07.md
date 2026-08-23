@@ -21,7 +21,7 @@ The winning product sentence is therefore closer to **"the place you drop anythi
 Two adjacent bets fit the codebase unusually well:
 
 - **Mac Setup Vault:** snapshot a Mac's Homebrew packages, installed apps, selected app preferences, dotfiles, and PowerToys configuration; diff versions; then encrypt and sync the snapshot to any rclone remote. Homebrew already provides declarative `Brewfile` dump and restore, Apple Migration Assistant is all-or-nothing compared with this selective workflow, and rclone already supplies provider breadth and client-side encryption. ([Homebrew Bundle](https://docs.brew.sh/Brew-Bundle-and-Brewfile), [Apple Migration Assistant](https://support.apple.com/en-gb/guide/mac-help/mchla14c784b/mac), [rclone crypt](https://rclone.org/crypt/))
-- **Agent Time Machine:** expand Claude History into a local recovery tool for Claude Code, Codex, and Gemini sessions. Generic browsing is crowded, so the wedge should be repairing stale or corrupt indexes, finding sessions that disappeared from official pickers, showing storage hogs, safely archiving/compressing logs, and connecting a session to its file changes and commits. Codex issue reports document missing sessions despite intact SQLite/JSONL data and individual logs growing to hundreds of megabytes or gigabytes. ([missing Codex history](https://github.com/openai/codex/issues/20340), [large Codex logs](https://github.com/openai/codex/issues/24948))
+- **Agent Time Machine:** expand AI History into a local recovery tool for Claude Code, Codex, and Gemini sessions. Generic browsing is crowded, so the wedge should be repairing stale or corrupt indexes, finding sessions that disappeared from official pickers, showing storage hogs, safely archiving/compressing logs, and connecting a session to its file changes and commits. Codex issue reports document missing sessions despite intact SQLite/JSONL data and individual logs growing to hundreds of megabytes or gigabytes. ([missing Codex history](https://github.com/openai/codex/issues/20340), [large Codex logs](https://github.com/openai/codex/issues/24948))
 
 ## Ranked feature bets
 
@@ -66,7 +66,7 @@ The current rclone module is the unfair advantage: snapshots can target Google D
 
 ### 3. Agent Time Machine + Repair
 
-The existing Claude History module solves a real problem, but plain browsing is no longer enough. Claulog provides a free native Claude browser with search, cost tracking, and resume. Agent Sessions covers Claude, Codex, Cursor, OpenCode, Copilot CLI, and other agents with unified search, images, quota tracking, resume, saved-session recovery, and a live cockpit; its repository reached roughly 700 stars within months. ([Claulog](https://claulog.com/), [Agent Sessions](https://github.com/jazzyalex/agent-sessions))
+The existing AI History module solves a real problem, but plain browsing is no longer enough. Claulog provides a free native Claude browser with search, cost tracking, and resume. Agent Sessions covers Claude, Codex, Cursor, OpenCode, Copilot CLI, and other agents with unified search, images, quota tracking, resume, saved-session recovery, and a live cockpit; its repository reached roughly 700 stars within months. ([Claulog](https://claulog.com/), [Agent Sessions](https://github.com/jazzyalex/agent-sessions))
 
 Build the missing safety and provenance layer:
 

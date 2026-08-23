@@ -44,7 +44,7 @@
 | <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.svg" width="30" alt=""> | **Color Picker** | Sample the screen, copy developer formats, and search local color history. |
 | <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.svg" width="30" alt=""> | **Text Extractor** | Select any screen region and copy text with on-device Apple Vision. |
 | <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="30" alt=""> | **Cloud Sync** | Plan and run copy, move, mirror, and two-way rclone transfers. |
-| <img src="powertoys/Assets.xcassets/ClaudeHistoryLogo.imageset/icon.svg" width="30" alt=""> | **Claude History** | Search, bookmark, and export local Claude Code conversations. |
+| <img src="powertoys/Assets.xcassets/ClaudeHistoryLogo.imageset/icon.svg" width="30" alt=""> | **AI History** | Search, bookmark, and export local Claude Code conversations. |
 | <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="30" alt=""> | **Logs** | Search and filter MacPowerToys diagnostics. |
 
 ## Designed for the Mac

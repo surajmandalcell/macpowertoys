@@ -3,7 +3,6 @@ import SwiftUI
 private enum InputDevicesPage: String, CaseIterable, Identifiable {
     case devices = "Devices"
     case scrolling = "Scrolling"
-    case appearance = "Appearance"
     case about = "About"
 
     var id: String { rawValue }
@@ -11,7 +10,6 @@ private enum InputDevicesPage: String, CaseIterable, Identifiable {
         switch self {
         case .devices: "computermouse"
         case .scrolling: "scroll"
-        case .appearance: "paintpalette"
         case .about: "info.circle"
         }
     }
@@ -57,7 +55,6 @@ struct InputDevicesWindowView: View {
         switch page {
         case .devices: devicesPage
         case .scrolling: scrollingPage
-        case .appearance: appearancePage
         case .about: ToolAboutView(toolId: "input-devices")
         }
     }
@@ -250,31 +247,6 @@ struct InputDevicesWindowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var appearancePage: some View {
-        WorkspacePage("Appearance", subtitle: "App icon") {
-            HStack(spacing: 14) {
-                Image(manager.settings.iconAsset)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 56, height: 56)
-
-                Picker("Input Devices icon", selection: setting(
-                    get: { $0.iconAsset },
-                    set: { $0.iconAsset = $1 }
-                )) {
-                    Text("Signal").tag("InputDevicesLogoA")
-                    Text("Orbit").tag("InputDevicesLogoB")
-                    Text("Precision").tag("InputDevicesLogoC")
-                }
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(width: 240)
-
-                Spacer()
-            }
-        }
     }
 
     private func setting<Value>(

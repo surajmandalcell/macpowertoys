@@ -97,7 +97,7 @@
 ## Dock Icon Optical Sizing
 
 - **Symptom:** Awake, Color Picker, Text Extractor, Ruler, Logs, Cloud Sync, or
-  Claude History appears materially larger than MacPowerToys when its applet
+  AI History appears materially larger than MacPowerToys when its applet
   window becomes key, or the Dock icon is regenerated during every focus event.
 - **Cause:** Applet artwork filled the complete 512pt asset canvas while the
   base icon's visible body occupied about 396pt. Assigning each source image

@@ -76,7 +76,7 @@ struct MacPowerToysApp: App {
             }
         }
 
-        Window("Claude History", id: "cc-history") {
+        Window("AI History", id: "cc-history") {
             CCHistoryWindowView()
         }
         .modelContainer(modelContainer)

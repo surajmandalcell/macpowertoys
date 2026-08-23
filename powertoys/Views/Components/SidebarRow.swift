@@ -13,25 +13,28 @@ struct SidebarRow: View {
     let action: () -> Void
 
     @State private var isHovering = false
+    @Environment(\.controlActiveState) private var controlActiveState
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if let logoAsset, !logoAsset.isEmpty {
                     Image(logoAsset)
+                        .renderingMode(isSelected ? .template : .original)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
+                        .foregroundStyle(foregroundColor)
                         .frame(width: 16, height: 16)
                 } else {
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                        .foregroundStyle(foregroundColor)
                         .frame(width: 16, height: 16)
                 }
 
                 Text(title)
                     .font(.system(size: 13, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(foregroundColor)
 
                 Spacer()
             }
@@ -48,9 +51,20 @@ struct SidebarRow: View {
     }
 
     private var backgroundColor: Color {
-        if isSelected { return Color.accentColor.opacity(0.1) }
+        if isSelected {
+            return Color(nsColor: controlActiveState == .inactive
+                ? .unemphasizedSelectedContentBackgroundColor
+                : .selectedContentBackgroundColor)
+        }
         if isHovering { return Color.primary.opacity(0.06) }
         return .clear
+    }
+
+    private var foregroundColor: Color {
+        guard isSelected else { return .primary }
+        return Color(nsColor: controlActiveState == .inactive
+            ? .unemphasizedSelectedTextColor
+            : .alternateSelectedControlTextColor)
     }
 }
 

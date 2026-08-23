@@ -34,7 +34,6 @@ struct InputDevicesSettings: Codable, Equatable {
     var eventOverride = InputEventOverride.automatic
     var mouse = InputScrollProfile(smooth: true)
     var trackpad = InputScrollProfile()
-    var iconAsset = "InputDevicesLogoA"
 }
 
 struct InputScrollResult: Equatable {
@@ -156,16 +155,12 @@ final class InputDevicesManager {
 
     func update(_ change: (inout InputDevicesSettings) -> Void) {
         let wasEnabled = settings.scrollControlEnabled
-        let previousIcon = settings.iconAsset
         change(&settings)
         if let data = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
         if wasEnabled != settings.scrollControlEnabled {
             applyInterceptionState()
-        }
-        if previousIcon != settings.iconAsset {
-            AppDelegate.current?.refreshDockIconForKeyWindow()
         }
     }
 

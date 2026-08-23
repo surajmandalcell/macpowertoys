@@ -57,11 +57,11 @@ enum ToolCategory: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - Claude History Tool
+// MARK: - AI History Tool
 
 struct CCHistoryTool: Tool {
     let id = "cc-history"
-    let name = "Claude History"
+    let name = "AI History"
     let description = "Browse every Claude Code conversation on this Mac — live, searchable, and bookmarkable."
     let icon = "text.bubble"
     let logoAsset = "ClaudeHistoryLogo"
@@ -257,13 +257,7 @@ struct InputDevicesTool: Tool {
     let name = "Input Devices"
     let description = "Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing."
     let icon = "computermouse"
-    var logoAsset: String {
-        guard let data = UserDefaults.standard.data(forKey: "inputDevices.settings"),
-              let settings = try? JSONDecoder().decode(InputDevicesSettings.self, from: data) else {
-            return "InputDevicesLogoA"
-        }
-        return settings.iconAsset
-    }
+    let logoAsset = "InputDevicesLogoA"
     let category = ToolCategory.system
 
     let manual = [
