@@ -17,6 +17,7 @@ colors:
   selection-strong-text: "opaque black or white, chosen for >=4.5:1 contrast"
   card: "Color.primary.opacity(0.03)"           # grids, subtle depth
   card-detail: "Color.primary.opacity(0.05)"    # detail/log views, softer contrast
+  separator: "native separator at 0.35 opacity; 0.55 with increased contrast"
   content-background: "Color(nsColor: .windowBackgroundColor)"
   text-subdued: "Color.primary.opacity(0.75)"
   text-preview: "Color.secondary.opacity(0.6)"
@@ -76,10 +77,12 @@ windows:
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
   sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
-  sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: native-selected-content-text }
+  sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: native-selected-content-text, selected-custom-artwork: original-colors }
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
   tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: colors.selection-strong }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
+  workspace-action: { min-height: 24, control-size: small }
+  structural-divider: { opacity: 0.35, increased-contrast-opacity: 0.55 }
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
   section-card: { radius: 10, bg: colors.card-detail, padding: spacing.card-padding }
   progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
@@ -180,8 +183,9 @@ hex lives only in icon assets. This keeps light and dark mode free.
   reaches at least 4.5:1 contrast against the resolved accent. The inset focus
   ring uses that same contrast-aware color and reaches at least 3:1 against the
   fill. Never assume white is readable on a person-selected accent.
-- Selection-light is accent at 0.1 for selected content rows, inline choices,
-  and sidebar navigation. Sidebar text stays primary and its icon uses accent.
+- Selection-light is accent at 0.1 for selected content rows and inline choices.
+  Sidebar navigation uses the native selected background and foreground.
+  Branded sidebar artwork keeps its original colors in every selection state.
   Selection-strong is reserved for tray tabs. Tab pills are the quiet
   exception: their persistent selected surface is primary 0.06 with ordinary
   primary text, not an accent layer, accent text, or underline.
@@ -483,6 +487,8 @@ content at least 640 wide; height at least 600; resizable
   action row; never wrap, clip, or shrink them. The body starts immediately
   after the strip. At standard size, a 12pt body inset places its first row or
   card near the sidebar search's y=52 line.
+- Top-strip actions use native small controls with a shared 24pt minimum visible
+  height. Menus and adjacent buttons share one vertical centerline.
 - The top strip contains destination context on the left and only global page
   actions on the right. Actions remain flat and separate. Normal workspace
   controls use the 4pt/6pt radius roles; the titlebar-only radius exception does
@@ -499,8 +505,10 @@ content at least 640 wide; height at least 600; resizable
   group center itself. Center alignment is reserved for explicit empty states
   and deliberately composed hero content.
 - Pane and top-strip hairlines are permitted where material changes do not
-  provide enough separation. Workspace cards use opacity depth without custom
-  shadows; the launcher hover exception does not apply here.
+  provide enough separation. Visual hairlines use the shared quiet divider at
+  0.35 opacity, or 0.55 with Increased Contrast. Native command-menu and context-
+  menu separators keep the system appearance. Workspace cards use opacity depth
+  without custom shadows; the launcher hover exception does not apply here.
 - On narrow resize, preserve the sidebar and primary content, then remove an
   optional inspector. Never transform the workspace into compact applet chrome.
 - Settings remain inside the tool window. They replace the content destination,

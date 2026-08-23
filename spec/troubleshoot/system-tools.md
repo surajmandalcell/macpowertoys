@@ -28,8 +28,11 @@
   to Trash. Use Mole JSON for read-only data. Run privileged or interactive Mole
   commands in a visible Terminal. Never bundle Mole or collect sudo input. Keep
   Scan as the primary visible action on Overview and Cleanup before results.
+  Keep one work-status surface in the bottom content inset on every System Care
+  page. Keep top-strip menus and buttons at the shared 24pt action height.
 - **Check:** Reject a cleanup target outside the allowed roots. Preview each
-  destructive Mole action before opening its command in Terminal.
+  destructive Mole action before opening its command in Terminal. Start a scan
+  from each page and confirm the status stays at the bottom of the pane.
 
 ## Power Stats
 

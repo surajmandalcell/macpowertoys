@@ -7,6 +7,8 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify the cross-app sidebar icon, divider, action-alignment, bottom-status,
+  and motion corrections in the latest normal installed build.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 

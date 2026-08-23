@@ -8,12 +8,49 @@
   card controls instead of the shared compact workspace shell.
 - **Invariant:** Use 220pt simple, 240pt data, or 260pt conversation sidebars.
   Use 28pt full-width rows with native emphasized or unemphasized selection;
-  the selected icon and text share one native foreground. Use the shared 40pt
-  page strip, 13pt destination title, optional 11pt subtitle, 12pt body inset,
-  native controls, related multi-column rows, and one accent primary action.
+  labels and SF Symbols use the native selected foreground, while branded icon
+  artwork keeps its original colors. Use the shared 40pt page strip, 13pt
+  destination title, optional 11pt subtitle, 12pt body inset, native controls,
+  related multi-column rows, and one accent primary action.
 - **Check:** Inspect launcher, Logs, Cloud Sync, AI History, Input Devices,
   System Care, and Power Stats at default and minimum widths. No workspace has
   a 22pt body title, a second 32pt top gap, or mismatched selected icon and text.
+
+## Workspace Actions And Bottom Status
+
+- **Symptom:** A menu and adjacent button have different visible heights or
+  baselines, or a work-status card floats above a large empty area.
+- **Cause:** Controls relied on different intrinsic sizes, or a status card was
+  appended to scroll content instead of anchored to the content pane.
+- **Invariant:** Give every workspace top-strip action the native small control
+  size and a shared 24pt minimum height. Put pane-wide work status in one bottom
+  safe-area inset. Do not repeat it inside page scroll content.
+- **Check:** Inspect every workspace top strip at minimum and default widths.
+  Menus and buttons share one centerline. Start System Care work on every page
+  and confirm the status stays at the bottom without unused space below it.
+
+## Quiet Structural Separators
+
+- **Symptom:** Hairlines divide the interface more strongly than the content.
+- **Cause:** Visual `Divider` views used the full native separator strength.
+- **Invariant:** Route visual pane, card, row, tab, header, and sheet hairlines
+  through `QuietDivider`. Use 0.35 opacity normally and 0.55 with Increased
+  Contrast. Keep command-menu and context-menu dividers native.
+- **Check:** Search every SwiftUI view for `Divider()`. Only the shared divider
+  implementation and native menu or command separators can remain.
+
+## Layout Motion
+
+- **Symptom:** Pages, result sets, status surfaces, or window-height changes
+  snap, or Reduce Motion still permits a fade or numeric transition.
+- **Cause:** Layout state changed without the shared motion policy, or a local
+  animation bypassed the accessibility environment.
+- **Invariant:** Use a 0.16-second ease-in-out transition only for layout or
+  content changes. Apply the root motion policy to every window and menu-bar
+  panel. Reduce Motion makes all state changes immediate.
+- **Check:** Change pages and load results in every app family. Repeat with
+  Reduce Motion enabled. Normal mode uses short crossfades. Reduce Motion uses
+  no movement, fade, pulse, or numeric animation.
 
 ## Settings Row Alignment
 

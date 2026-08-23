@@ -17,7 +17,10 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Simple sidebar: 220pt; data sidebar: 240pt; conversation sidebar: 260pt
 - Sidebar row: 28pt minimum, 16pt icon, 8pt horizontal inset and gap
 - Workspace page strip: 40pt with 13pt title and optional 11pt subtitle
+- Workspace actions: native small controls with a shared 24pt minimum height
 - Workspace body: 12pt top inset; never add a second 32pt top gap
+- Structural dividers: 0.35 opacity, or 0.55 with Increased Contrast; keep
+  command-menu and context-menu separators native
 
 ### Compact Tool Chrome
 - Titlebar: 40pt high, no bottom border or separator
@@ -41,7 +44,8 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Light selection: `Color.accentColor.opacity(0.1)`
 - Strong selection: `Color.accentColor.opacity(0.2)`
 - Sidebar selection: native emphasized/unemphasized selected-content colors;
-  selected icon and label use the same native selected-content foreground
+  labels and SF Symbols use the native selected-content foreground; branded
+  artwork keeps its original colors
 - Only use 0.1 or 0.2 outside the native sidebar and solid tray-tab exceptions
 
 ### Settings Alignment
