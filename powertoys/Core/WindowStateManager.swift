@@ -14,6 +14,7 @@ final class WindowStateManager {
 
     private let userDefaultsPrefix = "windowState"
     private var observers: [NSObjectProtocol] = []
+    private let restoredWindows = NSHashTable<NSWindow>.weakObjects()
 
     private init() {
         setupObservers()
@@ -87,6 +88,7 @@ final class WindowStateManager {
 
     func saveState(for window: NSWindow) {
         guard !AppRuntime.isUITesting else { return }
+        guard restoredWindows.contains(window) else { return }
         guard let identifier = window.identifier?.rawValue,
               let storageIdentifier = Self.storageIdentifier(for: identifier) else { return }
 
@@ -111,6 +113,7 @@ final class WindowStateManager {
         guard !AppRuntime.isUITesting else { return }
         guard let identifier = window.identifier?.rawValue,
               let storageIdentifier = Self.storageIdentifier(for: identifier) else { return }
+        defer { restoredWindows.add(window) }
 
         guard let data = UserDefaults.standard.data(forKey: key(for: storageIdentifier)),
               let state = try? JSONDecoder().decode(WindowState.self, from: data) else {
