@@ -60,25 +60,25 @@ struct ToolAboutView: View {
         HStack(spacing: 14) {
             ToolIconView(tool: tool, size: 48)
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(tool.name)
-                    .font(.system(size: 22, weight: .semibold))
-                    .lineLimit(1)
-                    .layoutPriority(2)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(tool.name)
+                        .font(.system(size: 22, weight: .semibold))
+                        .lineLimit(1)
+                        .layoutPriority(1)
 
-                Text(tool.category.rawValue)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
-
+                    Text(tool.category.rawValue)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
                 Text(tool.description)
                     .font(.system(size: 12))
                     .foregroundStyle(Color.primary.opacity(0.75))
                     .lineLimit(1)
                     .textSelection(.enabled)
             }
-
-            Spacer(minLength: 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 10) {
                 Toggle(isOn: enabledBinding(for: tool.id)) { EmptyView() }
@@ -102,6 +102,7 @@ struct ToolAboutView: View {
                 .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
                 .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
