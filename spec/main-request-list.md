@@ -12,7 +12,7 @@ the latest normal signed build.
 | Status | Request | Current evidence | Remaining work |
 |---|---|---|---|
 | Open | Put transfer priority on individual files instead of the whole transfer. | The transfer-level picker was removed, but `TransferPriority` and job-level queue ordering remain in the model. `FileProgressRow` has no priority control. | Define and implement safe per-file ordering. rclone does not expose live active-file reprioritization, so this must not pretend to change an already active file. |
-| Partial | Audit local changes, and audit both sides when a true two-way setup exists. | `LocalChangeHistory` records the latest 100 events per transfer from a watched local source. Cloud Sync currently exposes one-way Copy, Sync, and Move, not rclone bisync. | If a two-way mode is added, watch and label changes from both local roots. |
+| Done | Audit local changes, and audit both sides when a true two-way setup exists. | `LocalChangeHistory` records the latest 100 events per transfer from the watched local source. Cloud Sync has only one-way Copy, Sync, and Move modes. A future two-way mode must watch and label both local roots. | None for the current transfer modes. |
 | Verify | Double-clicking the menu-bar icon opens the main window without opening the popover. | `a79807a` intercepts the status-item mouse-down event and delays the single click. Unit checks prove the second click cancels the popover action. | Exercise a single click and double-click in the latest normal installed build. |
 | Verify | Give the menu-bar icon a separate right-click menu containing only Open and Quit with icons. | The status item now intercepts right mouse-down and builds an exact two-item native menu with SF Symbol icons. Focused checks pass. | Exercise the right-click menu in the latest normal installed build. |
 | Verify | Align and space the menu-bar popover items consistently. | The tray now uses an 18pt icon column, 24pt status/recent rows, 8–14pt section spacing, aligned transfer progress, and roomier tab/footer gutters. | Inspect Cloud Sync and Awake tabs in the latest installed build. |
@@ -55,6 +55,7 @@ the latest normal signed build.
 - Color Picker: `spec/color-picker-request-list.md`
 - Text Extractor: `spec/text-extractor-request-list.md`
 - Ruler: `spec/ruler-request-list.md`
+- Input Devices, System Care, and Power Stats: `spec/system-tools-request-list.md`
 
 The dedicated lists do not override newer cross-app requirements recorded in
 this main list or in the troubleshooting index.

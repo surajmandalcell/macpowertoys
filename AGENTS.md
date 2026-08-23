@@ -8,6 +8,7 @@ SwiftUI macOS utility app with pluggable tools.
 @.codex/rules/window-experience.md
 @spec/ruler-request-list.md
 @spec/color-picker-request-list.md
+@spec/system-tools-request-list.md
 @DESIGN.md
 @.claude/rules/code-style.md
 @.claude/rules/architecture.md
@@ -27,3 +28,8 @@ requirements or verification results change.
 
 Keep `spec/ruler-request-list.md` current when Ruler requirements or
 verification results change.
+
+Keep `spec/system-tools-request-list.md` current when Input Devices, System
+Care, or Power Stats requirements or verification results change.
+
+Keep `goals.md` current when a request list adds or closes current work.
