@@ -285,7 +285,7 @@ private struct EndpointCard: View {
                 Image(systemName: "terminal")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
-                Text(config.fs.isEmpty ? "—" : config.fs)
+                Text(config.fs.isEmpty ? "Not selected" : config.fs)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(config.isValid ? .secondary : .tertiary)
                     .lineLimit(1)

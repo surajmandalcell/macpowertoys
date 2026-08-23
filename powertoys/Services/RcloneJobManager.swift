@@ -496,7 +496,7 @@ final class RcloneJobManager {
             return
         }
         guard !remotes.contains(where: { $0.name == name }) else {
-            authState = .failed("A remote named “\(name)” already exists.")
+            authState = .failed("A remote named \"\(name)\" already exists.")
             return
         }
         let generation = UUID()
@@ -744,7 +744,7 @@ final class RcloneJobManager {
         let prefix = remote.pathPrefix
         let inUse = jobs.contains { !$0.state.isTerminal && ($0.sourceFs.hasPrefix(prefix) || $0.destinationFs.hasPrefix(prefix)) }
         guard !inUse else {
-            errorBanner = "“\(remote.name)” is used by an active transfer. Cancel it first."
+            errorBanner = "An active transfer uses \"\(remote.name)\". Cancel the transfer first."
             return
         }
 
@@ -755,7 +755,7 @@ final class RcloneJobManager {
                 await refreshRemotes()
                 LogManager.shared.info("Removed remote '\(remote.name)'", source: "RcloneJobManager")
             } catch {
-                errorBanner = "Could not remove remote “\(remote.name)”."
+                errorBanner = "Unable to remove remote \"\(remote.name)\"."
             }
         }
     }
@@ -1020,7 +1020,7 @@ final class RcloneJobManager {
         for job in jobs where job.canPause && Self.jobUsesVolume(job, volumePath) {
             pause(job)
             job.autoPausedVolume = volumePath
-            job.errorMessage = "Drive disconnected — will resume when “\(volumeName)” reconnects."
+            job.errorMessage = "Drive \"\(volumeName)\" disconnected. MacPowerToys will resume the transfer when the drive reconnects."
             LogManager.shared.warning("Auto-paused (drive disconnected): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
         }
         persistJobsSoon()
@@ -1109,13 +1109,13 @@ final class RcloneJobManager {
             let name = (volume as NSString).lastPathComponent
             if job.canPause { pause(job) }
             job.autoPausedVolume = volume
-            job.errorMessage = "Drive disconnected — will resume when “\(name)” reconnects."
+            job.errorMessage = "Drive \"\(name)\" disconnected. MacPowerToys will resume the transfer when the drive reconnects."
             LogManager.shared.warning("Auto-paused (drive offline): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
         case .wrongDrive(let volume):
             let name = (volume as NSString).lastPathComponent
             if job.canPause { pause(job) }
             job.autoPausedVolume = volume
-            job.errorMessage = "A different drive is mounted at “\(name)” — reconnect the original drive to resume."
+            job.errorMessage = "A different drive is mounted as \"\(name)\". Reconnect the original drive to resume the transfer."
             LogManager.shared.warning("Auto-paused (wrong drive at \(volume)): \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
         }
         persistJobsSoon()
@@ -1213,7 +1213,7 @@ final class RcloneJobManager {
     private func recoverFromDaemonLoss() {
         guard !daemonRecoveryInFlight else { return }
         daemonRecoveryInFlight = true
-        LogManager.shared.error("rclone daemon stopped unexpectedly — restarting engine", source: "RcloneJobManager")
+        LogManager.shared.error("The rclone daemon stopped unexpectedly. MacPowerToys is restarting the transfer engine.", source: "RcloneJobManager")
         for job in jobs where job.state == .running {
             job.commitAttemptProgress()
             job.rcJobId = nil
@@ -1578,7 +1578,7 @@ final class RcloneJobManager {
                     job.refreshDisplayEta()
                     persistJobsSoon()
                     LogManager.shared.info(
-                        "Recalculated \(job.sourceDisplay): \(RcloneFormat.bytes(latestStats.totalBytes)) and \(latestStats.totalTransfers) files remain; plan increased by \(RcloneFormat.bytes(added.bytes)) and \(added.files) files",
+                        "MacPowerToys recalculated \(job.sourceDisplay). \(RcloneFormat.bytes(latestStats.totalBytes)) and \(latestStats.totalTransfers) files remain. The plan increased by \(RcloneFormat.bytes(added.bytes)) and \(added.files) files.",
                         source: "RcloneJobManager"
                     )
                     completedScan = true
@@ -1636,7 +1636,7 @@ final class RcloneJobManager {
             if !RcloneDefaults.parsePatterns(raw).contains(name) {
                 defaults.set(raw.trimmingCharacters(in: .whitespacesAndNewlines) + "\n" + name, forKey: RcloneDefaults.ignorePatternsKey)
             }
-            LogManager.shared.info("Added “\(name)” to the global ignore list", source: "RcloneJobManager")
+            LogManager.shared.info("Added \"\(name)\" to the global ignore list.", source: "RcloneJobManager")
         }
         LogManager.shared.info("Ignoring \(rule) on \(job.sourceDisplay)", source: "RcloneJobManager")
         persistJobsSoon()

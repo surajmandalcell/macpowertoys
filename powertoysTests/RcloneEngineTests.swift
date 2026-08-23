@@ -66,7 +66,7 @@ final class RcloneEngineTests: XCTestCase {
         addTeardownBlock { await manager.shutdown() }
 
         let healthy = await waitFor(15) { manager.daemonIsHealthy }
-        XCTAssertTrue(healthy, "daemon should become healthy — status: \(manager.daemonStatusText)")
+        XCTAssertTrue(healthy, "The daemon should become healthy. Status: \(manager.daemonStatusText)")
 
         manager.createTransfer(
             operation: .copy,
@@ -78,7 +78,7 @@ final class RcloneEngineTests: XCTestCase {
         )
 
         let completed = await waitFor(30) { manager.jobs.first?.state == .completed }
-        XCTAssertTrue(completed, "copy should complete — state: \(String(describing: manager.jobs.first?.state)), error: \(manager.jobs.first?.errorMessage ?? "nil")")
+        XCTAssertTrue(completed, "The copy should complete. State: \(String(describing: manager.jobs.first?.state)). Error: \(manager.jobs.first?.errorMessage ?? "nil")")
 
         XCTAssertTrue(fm.fileExists(atPath: dst.appendingPathComponent("keep/a.txt").path), "kept file should be copied")
         XCTAssertFalse(fm.fileExists(atPath: dst.appendingPathComponent("node_modules/b.txt").path), "node_modules/** should be excluded")
@@ -121,7 +121,7 @@ final class RcloneEngineTests: XCTestCase {
         )
 
         let completed = await waitFor(20) { manager.jobs.first?.state == .completed }
-        XCTAssertTrue(completed, "file transfer should complete — \(manager.jobs.first?.errorMessage ?? "")")
+        XCTAssertTrue(completed, "The file transfer should complete. \(manager.jobs.first?.errorMessage ?? "")")
         XCTAssertTrue(fm.fileExists(atPath: dst.appendingPathComponent("solo.txt").path))
     }
 
@@ -134,7 +134,7 @@ final class RcloneEngineTests: XCTestCase {
         addTeardownBlock { await manager.shutdown() }
 
         let healthy = await waitFor(15) { manager.daemonIsHealthy }
-        XCTAssertTrue(healthy, "daemon should become healthy — status: \(manager.daemonStatusText)")
+        XCTAssertTrue(healthy, "The daemon should become healthy. Status: \(manager.daemonStatusText)")
 
         manager.createTransfer(
             operation: .copy,
@@ -146,7 +146,7 @@ final class RcloneEngineTests: XCTestCase {
         )
 
         let failed = await waitFor(15) { manager.jobs.first?.state == .failed }
-        XCTAssertTrue(failed, "unknown remote should fail — state: \(String(describing: manager.jobs.first?.state))")
+        XCTAssertTrue(failed, "The unknown remote should fail. State: \(String(describing: manager.jobs.first?.state))")
         XCTAssertEqual(manager.jobs.first?.attempt, 0, "a permanent config error must not consume the retry budget")
     }
 }

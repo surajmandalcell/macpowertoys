@@ -265,7 +265,7 @@ private struct AboutSettingsTab: View {
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
 
-                        Link("rclone MIT licence", destination: URL(string: "https://rclone.org/licence/")!)
+                        Link("rclone MIT license", destination: URL(string: "https://rclone.org/licence/")!)
                             .font(.system(size: 11))
                     }
                     .utilitySectionCard()

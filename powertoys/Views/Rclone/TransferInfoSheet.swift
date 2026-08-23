@@ -199,7 +199,7 @@ struct TransferInfoSheet: View {
                                       isOn: settingBinding(job, \.compareChecksums))
                     }
 
-                    Text("Changes apply to queued work immediately. A running transfer restarts after a short delay; completed files are skipped, while the active file may restart if its cloud backend cannot resume it.")
+                    Text("Changes apply to queued work immediately. A running transfer restarts after a short delay. Completed files stay complete. The active file can restart if its cloud backend cannot resume it.")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
@@ -399,8 +399,8 @@ struct TransferInfoSheet: View {
     @ViewBuilder
     private var timingRows: some View {
         row("Created", value: Self.dateFormatter.string(from: details.createdAt))
-        row("Started", value: details.startedAt.map(Self.dateFormatter.string(from:)) ?? "—")
-        row("Finished", value: details.finishedAt.map(Self.dateFormatter.string(from:)) ?? "—")
+        row("Started", value: details.startedAt.map(Self.dateFormatter.string(from:)) ?? "Not started")
+        row("Finished", value: details.finishedAt.map(Self.dateFormatter.string(from:)) ?? "Not finished")
         row("Duration", value: RcloneFormat.duration(duration))
     }
 

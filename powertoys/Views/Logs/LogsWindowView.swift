@@ -289,7 +289,7 @@ struct LogsWindowView: View {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 28))
                         .foregroundStyle(.secondary)
-                    Text("System logs couldn’t be read")
+                    Text("Unable to read system logs")
                         .font(.system(size: 13, weight: .medium))
                     Text(error)
                         .font(.system(size: 11))

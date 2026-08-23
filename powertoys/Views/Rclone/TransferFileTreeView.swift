@@ -516,7 +516,7 @@ struct TransferFileTreeView: View {
         if !currentPatterns.contains(pattern) {
             patternsText = patternsText + "\n" + pattern
         }
-        showToast("Added '\(pattern)' to ignore patterns — applies to new and retried transfers")
+        showToast("Added '\(pattern)' to ignore patterns. It applies to new and retried transfers.")
     }
 
     private func showToast(_ message: String) {

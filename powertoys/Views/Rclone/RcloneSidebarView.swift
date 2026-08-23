@@ -376,15 +376,15 @@ private struct RemoteRow: View {
             CleanupRemoteSheet(remote: remote, startPath: "")
         }
         .confirmationDialog(
-            "Remove “\(remote.displayName)”?",
+            "Remove \"\(remote.displayName)\"?",
             isPresented: $isConfirmingRemoval
         ) {
-            Button("Remove", role: .destructive) {
+            Button("Remove remote", role: .destructive) {
                 manager.removeRemote(remote)
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Removing only deletes it from rclone's config — no files are touched.")
+            Text("Remove deletes this remote from the rclone configuration. It does not delete files.")
         }
     }
 
