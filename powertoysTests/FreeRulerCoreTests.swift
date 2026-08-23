@@ -1174,6 +1174,8 @@ final class RulerCoreTests: XCTestCase {
 
         let settingsWindow = try XCTUnwrap(settingsController.window)
         let preferencesWindow = try XCTUnwrap(preferencesController.window)
+        XCTAssertEqual(settingsWindow.frameAutosaveName, "rulerSettingsWindow")
+        XCTAssertEqual(preferencesWindow.frameAutosaveName, "preferencesWindow")
         for (window, controlsView) in [
             (settingsWindow, settingsController.settingsControlsView!),
             (preferencesWindow, preferencesController.settingsControlsView!),
@@ -1184,7 +1186,7 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertFalse(window.styleMask.contains(.resizable))
             XCTAssertFalse(window.isOpaque)
             XCTAssertEqual(window.backgroundColor, .clear)
-            XCTAssertTrue(window.titlebarAppearsTransparent)
+            XCTAssertFalse(window.titlebarAppearsTransparent)
             XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxY - controlsView.frame.maxY, 16, accuracy: 0.5)
