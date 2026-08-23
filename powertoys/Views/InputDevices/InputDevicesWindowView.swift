@@ -198,7 +198,11 @@ struct InputDevicesWindowView: View {
             .background(Color.primary.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            HStack(alignment: .top, spacing: 12) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 300), spacing: 12)],
+                alignment: .leading,
+                spacing: 12
+            ) {
                 profileCard(title: "Mouse", icon: "computermouse", profile: \.mouse, supportsSmoothing: true)
                 profileCard(title: "Trackpad", icon: "rectangle.and.hand.point.up.left", profile: \.trackpad, supportsSmoothing: false)
             }
