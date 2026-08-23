@@ -5,7 +5,7 @@ final class ToolRegistryTests: XCTestCase {
     func testRegistryContainsEveryShippedToolWindow() {
         XCTAssertEqual(
             Set(ToolRegistry.builtInTools.map(\.id)),
-            Set(["cc-history", "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices"])
+            Set(["cc-history", "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices", "system-care"])
         )
     }
 

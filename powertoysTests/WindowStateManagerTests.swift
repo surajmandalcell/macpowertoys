@@ -5,7 +5,7 @@ final class WindowStateManagerTests: XCTestCase {
     func testWindowInstancesShareStableStorageIdentifiers() {
         for identifier in [
             "main", "cc-history", "rclone", "logs", "awake",
-            "color-picker", "text-extractor", "input-devices"
+            "color-picker", "text-extractor", "input-devices", "system-care"
         ] {
             XCTAssertEqual(
                 WindowStateManager.storageIdentifier(for: "\(identifier)-AppWindow-2"),

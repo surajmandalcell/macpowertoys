@@ -281,6 +281,32 @@ struct InputDevicesTool: Tool {
     static let shared = InputDevicesTool()
 }
 
+// MARK: - System Care Tool
+
+struct SystemCareTool: Tool {
+    let id = "system-care"
+    let name = "System Care"
+    let description = "Understand storage, preview safe cleanup, remove apps, and access advanced Mole maintenance without hidden privilege prompts."
+    let icon = "sparkles"
+    let logoAsset = "SystemCareLogo"
+    let category = ToolCategory.system
+
+    let manual = [
+        ToolManualSection(title: "Storage and Cleanup", points: [
+            "Choose a folder in Storage to see its largest contents and drill into any directory.",
+            "Quick Cleanup scans supported rebuildable data. Guided Cleanup lets you choose categories. Analysis Only cannot clean.",
+            "Review every selected item before moving it to macOS Trash."
+        ]),
+        ToolManualSection(title: "Mole CLI", points: [
+            "Mole CLI is an optional attributed external dependency and is not bundled with MacPowerToys.",
+            "Structured analysis and history appear natively. Interactive or privileged operations open in Terminal.",
+            "MacPowerToys never collects a sudo password."
+        ])
+    ]
+
+    static let shared = SystemCareTool()
+}
+
 // MARK: - Marketplace Tool
 
 struct MarketplaceTool: Tool {
@@ -309,7 +335,8 @@ struct ToolRegistry {
         AwakeTool.shared,
         ColorPickerTool.shared,
         TextExtractorTool.shared,
-        InputDevicesTool.shared
+        InputDevicesTool.shared,
+        SystemCareTool.shared
     ]
 
     static var allTools: [any Tool] {
