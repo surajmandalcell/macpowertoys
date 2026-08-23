@@ -1,6 +1,6 @@
 # PowerToys goals
 
-Reviewed against current source on 2026-08-23.
+Reviewed against current source on 2026-08-24.
 
 This file is the goals index. Each request list contains the detailed status,
 evidence, and remaining work.
@@ -9,8 +9,6 @@ evidence, and remaining work.
 
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
-- Verify the cross-app sidebar icon, divider, action-alignment, bottom-status,
-  and motion corrections in the latest normal installed build.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 

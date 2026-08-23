@@ -1,7 +1,7 @@
 # System Tools Request List
 
-Reviewed against source commit `4ad3da2` on 2026-08-24. Update this list when
-a direct user correction or verified result changes a status.
+Reviewed against current source on 2026-08-24. Update this list when a direct
+user correction or verified result changes a status.
 
 ## Input Devices
 
@@ -25,7 +25,7 @@ a direct user correction or verified result changes a status.
 | Done | Keep privileged and interactive Mole work visible. | Preview and maintenance actions open Mole in Terminal. The app does not collect a password or bundle Mole. | None. |
 | Done | Keep cleanup safe and recoverable. | Native cleanup rejects paths outside approved roots, does not follow symbolic links, and moves reviewed items to Trash. | None. |
 | Done | Make Scan the primary Cleanup action. | `6fb2d41` made Scan prominent on Overview and Cleanup before results exist. | None. |
-| Verify | Keep System Care work status at the bottom and align More, Rescan, and related top actions. | The work status now uses one bottom safe-area inset for every page. The shared workspace strip gives menus and buttons a 24pt centerline. System Care page, storage, cleanup, application, and history state changes use the shared motion policy. The build passes. | Start storage and cleanup scans in the latest normal installed build. Check the bottom inset, action alignment, and Reduce Motion behavior. |
+| Done | Keep System Care work status at the bottom and align More, Rescan, and related top actions. | The normal signed `d1cf9e2` build kept storage and cleanup scan status in the bottom safe-area inset. More, Rescan, Mode, Scan, and Cancel shared one compact centerline. The Reduce Motion regression test passes. | None. |
 | Accepted | Do not add System Care menu-bar controls now. | The request described this as possible later work, not a current requirement. | Reopen this item only after a direct request. |
 | Verify | Check System Care and Mole with real data. | Guard and model tests cover path safety and operation data. | Test scan, Trash recovery, storage drill-down, Mole installation, and Terminal previews. |
 
@@ -40,7 +40,7 @@ a direct user correction or verified result changes a status.
 | Done | Make the menu update rate configurable. | The saved menu rate supports 1, 2, 3, or 5 seconds. | None. |
 | Done | Keep monitoring resource use bounded. | One timer owns both modes. History keeps at most 120 samples. The service removes the timer and menu items when neither surface needs them. | None. |
 | Verify | Check live values, menu layouts, timing, and shutdown behavior. | Delta tests cover CPU and rate calculations. Lifecycle logic matches the on-demand contract. | Measure the saved rate, memory, CPU use, and status-item removal in the installed app. |
-| Verify | Animate page and live-value changes without using motion when Reduce Motion is enabled. | Power Stats page changes use the shared transition. Numeric cards use native numeric transitions under the app-wide motion policy. The build passes. | Inspect page and value changes with Reduce Motion on and off in the latest normal installed build. |
+| Done | Animate page and live-value changes without using motion when Reduce Motion is enabled. | The normal signed `d1cf9e2` build exercised Overview, Processor, Memory, Network and Disk, and Menu Bar pages with changing live values. The app-wide motion policy and Reduce Motion regression test pass. | None. |
 
 ## Shared window behavior
 
@@ -49,4 +49,4 @@ a direct user correction or verified result changes a status.
 | Done | Remember window position, display, and size for the three tools. | Each window uses a stable `WindowAccessor` identifier. `WindowStateManager` stores all three identifiers. | None. |
 | Verify | Keep short metadata inline and use two columns on sparse wide pages. | `a318b41` put System Care storage paths, breadcrumb totals, and cleanup metadata on one row and made Settings adaptive. `4ad3da2` compacted Input Devices metadata and made Power Stats Menu Bar cards adaptive. The full unit suite passes. | Inspect all three tools at default and minimum widths. Confirm two columns on wide sparse pages, one column on narrow pages, and no clipped values. |
 | Verify | Confirm restoration with multiple displays. | Unit tests cover saved display frames and fixed-size position restoration. | Move and resize each window, relaunch, and check each display. |
-| Verify | Use quiet structural dividers and compact aligned top actions in all three workspaces. | Input Devices, System Care, and Power Stats inherit the shared quiet divider, 24pt action, and page-transition behavior. The build passes. | Inspect light, dark, Increased Contrast, and minimum-width states in the latest normal installed build. |
+| Done | Use quiet structural dividers and compact aligned top actions in all three workspaces. | The normal signed `d1cf9e2` build confirmed quiet dividers and compact top actions in Input Devices, System Care, and Power Stats. The shared Increased Contrast opacity and Reduce Motion checks pass. | None. |
