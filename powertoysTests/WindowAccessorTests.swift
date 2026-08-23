@@ -138,6 +138,50 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertTrue(window.isMovable)
     }
 
+    func testWorkspaceTrafficLightsUseBalancedSharedChrome() throws {
+        for identifier in [
+            "main", "cc-history", "rclone", "logs", "input-devices",
+            "system-care", "power-stats"
+        ] {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            Self.retainedWindows.append(window)
+            let initialY = try XCTUnwrap(window.standardWindowButton(.closeButton)?.frame.origin.y)
+            window.contentView = NSHostingView(rootView: WindowAccessor(identifier: identifier))
+            window.contentView?.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+
+            let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
+            let buttonSuperview = try XCTUnwrap(closeButton.superview)
+            let center = buttonSuperview.convert(
+                NSPoint(x: closeButton.frame.midX, y: closeButton.frame.midY),
+                to: window.contentView
+            )
+            let contentView = try XCTUnwrap(window.contentView)
+            let topGap = contentView.isFlipped ? center.y : contentView.bounds.maxY - center.y
+            XCTAssertEqual(topGap, UtilityLayout.workspaceTitlebarHeight / 2, accuracy: 0.5, identifier)
+
+            for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+                XCTAssertEqual(
+                    try XCTUnwrap(window.standardWindowButton(type)?.frame.origin.y),
+                    initialY - UtilityLayout.workspaceTrafficLightVerticalOffset,
+                    accuracy: 0.5,
+                    identifier
+                )
+            }
+            let zoomButton = try XCTUnwrap(window.standardWindowButton(.zoomButton))
+            XCTAssertGreaterThanOrEqual(
+                UtilityLayout.workspaceTitleLeadingInset - zoomButton.frame.maxX,
+                20,
+                identifier
+            )
+        }
+    }
+
     func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
         XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
     }
