@@ -16,27 +16,27 @@ struct SidebarRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 if let logoAsset, !logoAsset.isEmpty {
                     Image(logoAsset)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 16, height: 16)
                 } else {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(isSelected ? .white : .primary)
-                        .frame(width: 20, height: 20)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                        .frame(width: 16, height: 16)
                 }
 
                 Text(title)
                     .font(.system(size: 13, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? .white : .primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 8)
+            .frame(minHeight: UtilityLayout.sidebarRowHeight)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
@@ -44,12 +44,11 @@ struct SidebarRow: View {
             )
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
 
     private var backgroundColor: Color {
-        if isSelected { return .accentColor }
+        if isSelected { return Color.accentColor.opacity(0.1) }
         if isHovering { return Color.primary.opacity(0.06) }
         return .clear
     }
@@ -64,11 +63,11 @@ struct SidebarExternalRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.primary)
-                    .frame(width: 20, height: 20)
+                    .frame(width: 16, height: 16)
 
                 Text(title)
                     .font(.system(size: 13))
@@ -80,8 +79,8 @@ struct SidebarExternalRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 8)
+            .frame(minHeight: UtilityLayout.sidebarRowHeight)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
@@ -89,7 +88,6 @@ struct SidebarExternalRow: View {
             )
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
 }

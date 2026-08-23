@@ -183,6 +183,14 @@ final class WindowAccessorTests: XCTestCase {
         }
     }
 
+    func testWorkspaceDensityUsesCompactSharedMetrics() {
+        XCTAssertEqual(UtilityLayout.compactSidebarWidth, 220)
+        XCTAssertEqual(UtilityLayout.dataSidebarWidth, 240)
+        XCTAssertEqual(UtilityLayout.conversationSidebarWidth, 260)
+        XCTAssertEqual(UtilityLayout.sidebarRowHeight, 28)
+        XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 40)
+    }
+
     func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
         XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
     }

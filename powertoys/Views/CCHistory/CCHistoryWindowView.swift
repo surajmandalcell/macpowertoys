@@ -13,7 +13,7 @@ struct CCHistoryWindowView: View {
     var body: some View {
         HStack(spacing: 0) {
             CCHistorySidebarView(openSettings: { showSettingsPage = true })
-                .frame(width: 280)
+                .frame(width: UtilityLayout.conversationSidebarWidth)
 
             Group {
                 if showSettingsPage {

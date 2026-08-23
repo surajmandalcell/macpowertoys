@@ -11,7 +11,7 @@ struct HomeView: View {
     var body: some View {
         HStack(spacing: 0) {
             ToolSidebarView(selectedTool: $selectedTool)
-                .frame(width: 220)
+                .frame(width: UtilityLayout.compactSidebarWidth)
 
             ZStack(alignment: .topLeading) {
                 contentView

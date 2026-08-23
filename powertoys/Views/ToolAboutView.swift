@@ -31,8 +31,9 @@ struct ToolAboutView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .frame(width: 220)
-                .padding(.bottom, 16)
+                .controlSize(.small)
+                .frame(width: 190)
+                .padding(.bottom, 12)
                 .accessibilityIdentifier("tool.\(tool.id).page")
 
                 Divider()
@@ -55,63 +56,51 @@ struct ToolAboutView: View {
     }
 
     private func header(for tool: any Tool) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 16) {
-                ToolIconView(tool: tool, size: 64)
+        HStack(spacing: 14) {
+            ToolIconView(tool: tool, size: 48)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(tool.name)
-                        .font(.system(size: 22, weight: .semibold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(tool.name)
+                    .font(.system(size: 22, weight: .semibold))
 
-                    Text(tool.category.rawValue)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.primary.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
+                Text(tool.category.rawValue)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 10) {
-                    Toggle("Enabled", isOn: enabledBinding(for: tool.id))
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .disabled(settings.isToolTransitioning(tool.id))
-                        .accessibilityIdentifier("tool.\(tool.id).enabled")
-
-                    Button {
-                        ToolActionRouter.shared.open(toolID: tool.id)
-                        if closeMainWindowAfterOpeningTool {
-                            dismissWindow(id: "main")
-                        }
-                    } label: {
-                        Text("Open \(tool.name)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 7)
-                            .background(Color.accentColor)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .accessibilityIdentifier("tool.\(tool.id).launch")
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                    .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
-                    .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
-                }
+                Text(tool.description)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.primary.opacity(0.75))
+                    .lineLimit(2)
+                    .textSelection(.enabled)
             }
 
-            Text(tool.description)
-                .font(.system(size: 13))
-                .foregroundStyle(Color.primary.opacity(0.75))
-                .lineSpacing(4)
-                .textSelection(.enabled)
+            Spacer(minLength: 12)
+
+            HStack(spacing: 10) {
+                Toggle(isOn: enabledBinding(for: tool.id)) { EmptyView() }
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .disabled(settings.isToolTransitioning(tool.id))
+                    .accessibilityLabel("Enable \(tool.name)")
+                    .accessibilityIdentifier("tool.\(tool.id).enabled")
+
+                Button("Open") {
+                    ToolActionRouter.shared.open(toolID: tool.id)
+                    if closeMainWindowAfterOpeningTool {
+                        dismissWindow(id: "main")
+                    }
+                }
+                .accessibilityLabel("Open \(tool.name)")
+                .accessibilityIdentifier("tool.\(tool.id).launch")
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
+                .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
+            }
         }
         .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
+        .padding(.vertical, 16)
     }
 
     private func enabledBinding(for toolID: String) -> Binding<Bool> {

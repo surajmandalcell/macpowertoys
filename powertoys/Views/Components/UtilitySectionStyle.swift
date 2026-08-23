@@ -3,6 +3,10 @@ import SwiftUI
 
 enum UtilityLayout {
     static let horizontalInset: CGFloat = 20
+    static let compactSidebarWidth: CGFloat = 220
+    static let dataSidebarWidth: CGFloat = 240
+    static let conversationSidebarWidth: CGFloat = 260
+    static let sidebarRowHeight: CGFloat = 28
     static let workspaceTitlebarHeight: CGFloat = 40
     static let workspaceTitleLeadingInset: CGFloat = 92
     static let workspaceTrafficLightVerticalOffset: CGFloat = 4
