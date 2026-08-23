@@ -93,8 +93,9 @@
   bandwidth limit before the transfer starts.
 - **Check:** Confirm the main window reports one active transfer before opening
   the menu-bar Cloud Sync tab. After the check, cancel or finish the transfer,
-  remove only its record, restore the prior bandwidth setting, and move all
-  disposable data to Trash.
+  remove only its record, restore the prior bandwidth and feature settings,
+  confirm that no transfer or checker is active, and move all disposable data
+  to Trash.
 
 Reference: rclone documents both the optional
 [`Copy` feature](https://rclone.org/overview/#optional-features) and the
