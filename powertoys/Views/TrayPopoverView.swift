@@ -82,7 +82,7 @@ struct TrayPopoverView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            TrayFooterButton(title: "Open MacPowerToys", systemImage: "macwindow") {
+            TrayFooterButton(title: "Open MacPowerToys", systemImage: AppDelegate.openMainWindowSymbol) {
                 openWindow(id: "main")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
@@ -135,7 +135,8 @@ private struct AwakeTrayTab: View {
             .controlSize(.small)
             .disabled(service.configuration.mode == .passive)
         }
-        .padding(14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 }
 

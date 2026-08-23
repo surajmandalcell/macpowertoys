@@ -8,6 +8,7 @@ final class AppDelegateTests: XCTestCase {
     func testStatusItemInterceptsLeftAndRightClicks() {
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.rightMouseDown))
+        XCTAssertEqual(AppDelegate.openMainWindowSymbol, "arrow.up.forward.square")
     }
 
     @MainActor
