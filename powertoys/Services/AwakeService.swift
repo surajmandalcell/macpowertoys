@@ -38,7 +38,9 @@ final class AwakeService {
                 self.handle(action, parameters: parameters)
             }
         }
-        applyConfiguration()
+        if SettingsManager.shared.isToolEnabled("awake") {
+            applyConfiguration()
+        }
     }
 
     func setMode(_ mode: AwakeMode, duration: TimeInterval? = nil, until date: Date? = nil) {
@@ -82,6 +84,10 @@ final class AwakeService {
         timer?.invalidate()
         timer = nil
         releaseAssertion()
+    }
+
+    func resume() {
+        applyConfiguration()
     }
 
     private func applyConfiguration() {

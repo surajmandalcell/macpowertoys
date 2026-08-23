@@ -4,7 +4,12 @@
 //
 
 import Foundation
+import AppKit
 import SwiftUI
+
+extension Notification.Name {
+    static let toolEnablementChanged = Notification.Name("toolEnablementChanged")
+}
 
 @Observable
 @MainActor
@@ -13,8 +18,12 @@ final class SettingsManager {
 
     private let defaults = UserDefaults.standard
     private let prefix = "powertoys"
+    private(set) var disabledToolIDs: Set<String>
+    private(set) var transitioningToolIDs: Set<String> = []
 
-    private init() {}
+    private init() {
+        disabledToolIDs = Set(UserDefaults.standard.stringArray(forKey: "powertoys.disabledTools") ?? [])
+    }
 
     private func key(_ name: String, tool: String? = nil) -> String {
         if let tool {
@@ -86,6 +95,56 @@ final class SettingsManager {
         guard let data = try? JSONEncoder().encode(value) else { return }
         setData(name, tool: tool, value: data)
     }
+
+    func isToolEnabled(_ toolID: String) -> Bool {
+        !disabledToolIDs.contains(toolID)
+    }
+
+    func isToolTransitioning(_ toolID: String) -> Bool {
+        transitioningToolIDs.contains(toolID)
+    }
+
+    func setToolEnabled(_ enabled: Bool, for toolID: String) {
+        guard enabled != isToolEnabled(toolID) else { return }
+        if enabled {
+            disabledToolIDs.remove(toolID)
+        } else {
+            disabledToolIDs.insert(toolID)
+        }
+        defaults.set(disabledToolIDs.sorted(), forKey: "powertoys.disabledTools")
+
+        guard !AppRuntime.isRunningTests else { return }
+        NotificationCenter.default.post(
+            name: .toolEnablementChanged,
+            object: toolID,
+            userInfo: ["enabled": enabled]
+        )
+        applyLifecycle(enabled: enabled, toolID: toolID)
+    }
+
+    private func applyLifecycle(enabled: Bool, toolID: String) {
+        switch toolID {
+        case "awake":
+            enabled ? AwakeService.shared.resume() : AwakeService.shared.shutdown()
+        case "rclone":
+            transitioningToolIDs.insert(toolID)
+            Task {
+                if enabled {
+                    let hasOpenWindow = NSApp.windows.contains {
+                        ToolActionRouter.windowIdentifier($0.identifier?.rawValue, matches: toolID)
+                    }
+                    if hasOpenWindow || UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") {
+                        await RcloneJobManager.shared.start()
+                    }
+                } else {
+                    await RcloneJobManager.shared.shutdown()
+                }
+                transitioningToolIDs.remove(toolID)
+            }
+        default:
+            break
+        }
+    }
 }
 
 // MARK: - App Settings Keys
@@ -96,10 +155,6 @@ extension SettingsManager {
         set { set("theme", value: newValue) }
     }
 
-    var enabledTools: [String] {
-        get { get("enabledTools", default: [String]()) }
-        set { set("enabledTools", value: newValue) }
-    }
 }
 
 // MARK: - Tool Settings Convenience

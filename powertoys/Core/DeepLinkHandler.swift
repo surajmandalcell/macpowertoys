@@ -58,7 +58,8 @@ final class DeepLinkHandler {
             ToolActionRouter.shared.execute(ToolActionRequest(action: action))
         }
 
-        if args.contains("--awake") || args.contains("--time-limit") || args.contains("--expire-at") {
+        if SettingsManager.shared.isToolEnabled("awake")
+            && (args.contains("--awake") || args.contains("--time-limit") || args.contains("--expire-at")) {
             let displayOn = value(after: "--display-on", in: args).flatMap(Bool.init) ?? false
             AwakeService.shared.setKeepDisplayOn(displayOn)
             if let seconds = value(after: "--time-limit", in: args).flatMap(TimeInterval.init) {

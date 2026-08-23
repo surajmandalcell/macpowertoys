@@ -71,6 +71,10 @@ final class ToolActionRouter {
 
     func open(toolID: String) {
         let resolved = Self.windowAliases[toolID] ?? toolID
+        guard resolved == "main" || SettingsManager.shared.isToolEnabled(resolved) else {
+            LogManager.shared.info("Ignored disabled tool: \(resolved)", source: "ToolActionRouter")
+            return
+        }
         if resolved == "ruler" {
             execute(ToolActionRequest(action: .rulerOpen))
             NSApp.activate(ignoringOtherApps: true)
@@ -101,6 +105,13 @@ final class ToolActionRouter {
     }
 
     func execute(_ request: ToolActionRequest) {
+        guard SettingsManager.shared.isToolEnabled(request.action.toolID) else {
+            LogManager.shared.info(
+                "Ignored action for disabled tool: \(request.action.rawValue)",
+                source: "ToolActionRouter"
+            )
+            return
+        }
         guard openWindowAction != nil else {
             if pending.last != request { pending.append(request) }
             return

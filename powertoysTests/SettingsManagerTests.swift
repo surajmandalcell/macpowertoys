@@ -59,10 +59,10 @@ final class SettingsManagerTests: XCTestCase {
         XCTAssertNil(manager.getCodable(name, type: Payload.self))
     }
 
-    func testThemeAndEnabledToolsConveniencePropertiesRoundTrip() {
+    func testThemeAndToolEnablementRoundTrip() {
         let defaults = UserDefaults.standard
         let themeKey = "powertoys.theme"
-        let toolsKey = "powertoys.enabledTools"
+        let toolsKey = "powertoys.disabledTools"
         let savedTheme = defaults.object(forKey: themeKey)
         let savedTools = defaults.object(forKey: toolsKey)
         defer {
@@ -73,12 +73,15 @@ final class SettingsManagerTests: XCTestCase {
         defaults.removeObject(forKey: themeKey)
         defaults.removeObject(forKey: toolsKey)
         XCTAssertEqual(SettingsManager.shared.theme, "system")
-        XCTAssertEqual(SettingsManager.shared.enabledTools, [])
+        SettingsManager.shared.setToolEnabled(true, for: "test-toggle")
+        XCTAssertTrue(SettingsManager.shared.isToolEnabled("test-toggle"))
 
         SettingsManager.shared.theme = "dark"
-        SettingsManager.shared.enabledTools = ["ruler", "awake"]
+        SettingsManager.shared.setToolEnabled(false, for: "test-toggle")
         XCTAssertEqual(SettingsManager.shared.theme, "dark")
-        XCTAssertEqual(SettingsManager.shared.enabledTools, ["ruler", "awake"])
+        XCTAssertFalse(SettingsManager.shared.isToolEnabled("test-toggle"))
+        XCTAssertTrue((defaults.stringArray(forKey: toolsKey) ?? []).contains("test-toggle"))
+        SettingsManager.shared.setToolEnabled(true, for: "test-toggle")
     }
 
     private func uniqueName() -> String {

@@ -57,7 +57,9 @@ struct RcloneWindowView: View {
         .task {
             manager.modelContext = modelContext
             restoreUIState()
-            await manager.start()
+            if SettingsManager.shared.isToolEnabled("rclone") {
+                await manager.start()
+            }
         }
         .onChange(of: content) {
             switch content {
