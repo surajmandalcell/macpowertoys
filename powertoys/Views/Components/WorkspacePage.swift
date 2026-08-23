@@ -21,14 +21,16 @@ struct WorkspacePage<Content: View, Actions: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(title)
                         .font(.system(size: 13, weight: .medium))
+                        .fixedSize(horizontal: true, vertical: false)
                     if let subtitle {
                         Text(subtitle)
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                 }
 

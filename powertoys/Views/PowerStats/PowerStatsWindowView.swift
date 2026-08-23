@@ -212,60 +212,70 @@ struct PowerStatsWindowView: View {
 
     private var menuBarPage: some View {
         WorkspacePage("Menu Bar", subtitle: "Optional lightweight status") {
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
-                GridRow {
-                    Text("Show in menu bar")
-                    Toggle("Show in menu bar", isOn: menuSetting(
-                        get: { $0.enabled },
-                        set: { $0.enabled = $1 }
-                    ))
-                    .labelsHidden()
-                    .gridColumnAlignment(.leading)
-                }
-
-                GridRow {
-                    Text("Layout")
-                    Picker("Layout", selection: menuSetting(
-                        get: { $0.mode },
-                        set: { $0.mode = $1 }
-                    )) {
-                        ForEach(PowerMenuMode.allCases) { Text($0.title).tag($0) }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 12)], alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("DISPLAY").utilitySectionHeader()
+                    HStack {
+                        Text("Show in menu bar")
+                        Spacer()
+                        Toggle("Show in menu bar", isOn: menuSetting(
+                            get: { $0.enabled },
+                            set: { $0.enabled = $1 }
+                        ))
+                        .labelsHidden()
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 160, alignment: .leading)
-                }
 
-                GridRow {
-                    Text("Update every")
-                    Picker("Update every", selection: menuSetting(
-                        get: { $0.interval },
-                        set: { $0.interval = $1 }
-                    )) {
-                        Text("1 second").tag(1.0)
-                        Text("2 seconds").tag(2.0)
-                        Text("3 seconds").tag(3.0)
-                        Text("5 seconds").tag(5.0)
+                    HStack {
+                        Text("Layout")
+                        Spacer()
+                        Picker("Layout", selection: menuSetting(
+                            get: { $0.mode },
+                            set: { $0.mode = $1 }
+                        )) {
+                            ForEach(PowerMenuMode.allCases) { Text($0.title).tag($0) }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 160, alignment: .leading)
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 160, alignment: .leading)
-                }
 
-                GridRow {
-                    Text("Metrics")
-                    HStack(spacing: 16) {
+                    HStack {
+                        Text("Update every")
+                        Spacer()
+                        Picker("Update every", selection: menuSetting(
+                            get: { $0.interval },
+                            set: { $0.interval = $1 }
+                        )) {
+                            Text("1 second").tag(1.0)
+                            Text("2 seconds").tag(2.0)
+                            Text("3 seconds").tag(3.0)
+                            Text("5 seconds").tag(5.0)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 160, alignment: .leading)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background(Color.primary.opacity(0.03))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("METRICS").utilitySectionHeader()
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 10) {
                         ForEach(PowerMenuMetric.allCases) { metric in
                             Toggle(metric.title, isOn: metricBinding(metric)).toggleStyle(.checkbox)
                         }
                     }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background(Color.primary.opacity(0.03))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .font(.system(size: 12))
             .controlSize(.small)
-            .padding(14)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 

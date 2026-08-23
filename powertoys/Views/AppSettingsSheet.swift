@@ -282,7 +282,7 @@ private struct AboutSettingsTab: View {
         HStack(spacing: 12) {
             appIcon
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("MacPowerToys")
                     .font(.system(size: 13, weight: .semibold))
                 Text("Version \(appVersion)")
