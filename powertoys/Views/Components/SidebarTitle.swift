@@ -11,8 +11,8 @@ struct SidebarTitle: View {
     var body: some View {
         Text(text)
             .font(.system(size: 13, weight: .medium))
-            .padding(.leading, 84)
-            .padding(.top, 8)
+            .frame(height: UtilityLayout.workspaceTitlebarHeight)
+            .padding(.leading, UtilityLayout.workspaceTitleLeadingInset)
     }
 }
 

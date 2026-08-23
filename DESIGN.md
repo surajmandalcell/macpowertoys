@@ -62,7 +62,7 @@ spacing:
   card-padding: 14  # inner padding of section cards
   section-gap: 16
   section-label-gap: 8
-  sidebar-title-leading: 84   # clears traffic lights
+  sidebar-title-leading: 92   # 24pt after the zoom traffic light
   compact-title-leading: 60   # reclaims the hidden zoom position
   compact-titlebar-top: 4     # applied once to the complete row
   content-top: 52   # content aligns with sidebar search bar top
@@ -210,7 +210,8 @@ dense-list gutter, a 12pt sidebar gutter, or Color Picker's 12pt body gutter.
 Never invent an in-between alignment point. Align a tab strip's leading pill
 boundary to the gutter, never to the pill's inset text.
 
-- Sidebar titles: `.padding(.leading, 84)` to clear traffic lights, `.top, 8`.
+- Sidebar titles: center inside a 40pt top strip and start 92pt from the window
+  edge, leaving at least 20pt after the zoom traffic light.
 - Search field container: `.top, 52` / `.horizontal, 12` / inner `.padding(8)`.
 - Launcher content and a workspace's first body surface align near the sidebar
   search top at y=52. Workspace top strips themselves hug y=0. Compact bodies
@@ -339,8 +340,8 @@ Canonical anatomy:
   current screenshot is 780×732 because the captured `NSWindow` frame adds
   32pt above that content size. Never shrink the content to force the outer
   capture to 780×700. Do not resize, collapse, or add an inspector.
-- The sidebar title is `MacPowerToys`, 84pt from the leading window edge and
-  8pt from the top. It is the only app title.
+- The sidebar title is `MacPowerToys`, centered in the 40pt top strip and 92pt
+  from the leading window edge. It is the only app title.
 - The custom search field uses 12pt sidebar insets and starts at y=52. It is at
   least 32pt high, uses `Search` as its placeholder, and filters registered tool
   names and search keywords while preserving registry category order. Never

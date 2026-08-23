@@ -1,5 +1,18 @@
 # UI Chrome Troubleshooting
 
+## Workspace Traffic-Light Spacing
+
+- **Symptom:** Workspace traffic lights sit off-center in the top strip or run
+  directly into the sidebar title.
+- **Cause:** AppKit kept its native 32pt titlebar centerline while the sidebar
+  used a 40pt visual strip and a title inset sized only to clear the buttons.
+- **Invariant:** Center all three workspace traffic lights at 20pt in the 40pt
+  strip. Start the sidebar title 92pt from the leading window edge, leaving at
+  least 20pt after the zoom button. Reapply the offset when the window becomes
+  key and never move the native horizontal button positions.
+- **Check:** In every workspace, compare the top and bottom traffic-light gaps
+  and the gap before the title. Unit-check all workspace window identifiers.
+
 ## Applet Settings Placement
 
 - **Symptom:** A compact applet wastes titlebar space on a settings gear or
