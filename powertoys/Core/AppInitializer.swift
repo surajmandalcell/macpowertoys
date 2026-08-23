@@ -50,6 +50,9 @@ final class AppInitializer {
         _ = ColorPickerService.shared
         _ = TextExtractorService.shared
         _ = GlobalShortcutManager.shared
+        if SettingsManager.shared.isToolEnabled("input-devices") {
+            InputDevicesManager.shared.refresh()
+        }
 
         applyStoredTheme()
 

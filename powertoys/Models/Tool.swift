@@ -250,6 +250,37 @@ struct TextExtractorTool: Tool {
     static let shared = TextExtractorTool()
 }
 
+// MARK: - Input Devices Tool
+
+struct InputDevicesTool: Tool {
+    let id = "input-devices"
+    let name = "Input Devices"
+    let description = "Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing."
+    let icon = "computermouse"
+    var logoAsset: String {
+        guard let data = UserDefaults.standard.data(forKey: "inputDevices.settings"),
+              let settings = try? JSONDecoder().decode(InputDevicesSettings.self, from: data) else {
+            return "InputDevicesLogoA"
+        }
+        return settings.iconAsset
+    }
+    let category = ToolCategory.system
+
+    let manual = [
+        ToolManualSection(title: "Profiles", points: [
+            "Mouse-like wheel events and precise trackpad events have separate controls.",
+            "Reverse either axis, change speed, disable horizontal motion, or smooth coarse mouse-wheel steps.",
+            "Automatic classification uses macOS event precision because public scroll events do not expose a physical device identifier."
+        ]),
+        ToolManualSection(title: "Permission", points: [
+            "Enable Input Control and grant Accessibility permission when macOS asks.",
+            "Input Devices changes only scroll events. It does not record keys, clicks, or pointer movement."
+        ])
+    ]
+
+    static let shared = InputDevicesTool()
+}
+
 // MARK: - Marketplace Tool
 
 struct MarketplaceTool: Tool {
@@ -277,7 +308,8 @@ struct ToolRegistry {
         RulerTool.shared,
         AwakeTool.shared,
         ColorPickerTool.shared,
-        TextExtractorTool.shared
+        TextExtractorTool.shared,
+        InputDevicesTool.shared
     ]
 
     static var allTools: [any Tool] {

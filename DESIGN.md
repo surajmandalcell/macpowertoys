@@ -33,6 +33,7 @@ colors:
   icon-awake: "#F5B71E"
   icon-color-picker: "#23272E"
   icon-text-extractor: "#2155B0"
+  icon-input-devices: "#315B7D"
 typography:
   launcher-detail-title: { size: 22, weight: semibold, relative-to: title2 }
   title: { size: 13, weight: medium, relative-to: body }
@@ -403,6 +404,7 @@ tool's product brief.
 | Awake | System / applet | Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings. |
 | Color Picker | Developer / applet | Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values. |
 | Text Extractor | Text / applet | Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition. |
+| Input Devices | System / workspace | Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 
 ### Full Workspace
 
@@ -739,6 +741,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
 | Color Picker | Chosen Color | Chosen Color | Colored samples are semantic and fixed |
 | Text Extractor | Chosen Color | Chosen Color | Yellow OCR lens identity is fixed |
+| Input Devices | Chosen Color | Chosen Color | The user-selected Signal, Orbit, or Precision identity is fixed |
 
 The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
@@ -823,6 +826,7 @@ has been changed.
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
 | Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
+| Input Devices | `#315B7D`, `#663F70`, or `#1F6C65` | `#F7F5F0` | User-selectable input-device glyph |
 
 New Chosen Color tools should receive their own semantic hue unless a documented
 product decision deliberately links them to an existing color. Neutral
