@@ -99,6 +99,14 @@ final class AwakeService {
             configuration.expiresAt = Date().addingTimeInterval(max(1, configuration.intervalSeconds))
         }
 
+        if configuration.mode == .timed,
+           let timedDeadline,
+           ContinuousClock.now >= timedDeadline {
+            configuration.mode = .passive
+            configuration.expiresAt = nil
+            self.timedDeadline = nil
+        }
+
         if configuration.mode == .until, let expiry = configuration.expiresAt, expiry <= Date() {
             configuration.mode = .passive
             configuration.expiresAt = nil

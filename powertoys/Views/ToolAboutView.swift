@@ -1,15 +1,19 @@
-//
-//  ToolAboutView.swift
-//  powertoys
-//
-
 import SwiftUI
+
+private enum ToolDetailPage: String, CaseIterable, Identifiable {
+    case settings = "Settings"
+    case guide = "How to Use"
+
+    var id: String { rawValue }
+}
 
 struct ToolAboutView: View {
     let toolId: String
 
     @Environment(\.dismissWindow) private var dismissWindow
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
+    @State private var settings = SettingsManager.shared
+    @State private var page = ToolDetailPage.settings
 
     private var tool: (any Tool)? {
         ToolRegistry.tool(for: toolId)
@@ -17,21 +21,32 @@ struct ToolAboutView: View {
 
     var body: some View {
         if let tool {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
-                    header(for: tool)
+            VStack(spacing: 0) {
+                header(for: tool)
 
-                    Text(tool.description)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.primary.opacity(0.75))
-                        .lineSpacing(4)
-                        .textSelection(.enabled)
-
-                    manualSection(for: tool)
+                Picker("Tool page", selection: $page) {
+                    ForEach(ToolDetailPage.allCases) { page in
+                        Text(page.rawValue).tag(page)
+                    }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 220)
+                .padding(.bottom, 16)
+                .accessibilityIdentifier("tool.\(tool.id).page")
+
+                Divider()
+
+                Group {
+                    switch page {
+                    case .settings:
+                        ToolSettingsContent(toolID: tool.id)
+                            .disabled(!settings.isToolEnabled(tool.id))
+                    case .guide:
+                        manualSection(for: tool)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
             EmptyStateView(icon: "questionmark.circle", message: "Unknown tool")
@@ -40,53 +55,81 @@ struct ToolAboutView: View {
     }
 
     private func header(for tool: any Tool) -> some View {
-        HStack(spacing: 16) {
-            ToolIconView(tool: tool, size: 72)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                ToolIconView(tool: tool, size: 64)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(tool.name)
-                    .font(.system(size: 22, weight: .semibold))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(tool.name)
+                        .font(.system(size: 22, weight: .semibold))
 
-                Text(tool.category.rawValue)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-
-            Spacer()
-
-            Button {
-                ToolActionRouter.shared.open(toolID: tool.id)
-                if closeMainWindowAfterOpeningTool {
-                    dismissWindow(id: "main")
+                    Text(tool.category.rawValue)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.primary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
-            } label: {
-                Text("Open \(tool.name)")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 7)
-                    .background(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 10) {
+                    Toggle("Enabled", isOn: enabledBinding(for: tool.id))
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .disabled(settings.isToolTransitioning(tool.id))
+                        .accessibilityIdentifier("tool.\(tool.id).enabled")
+
+                    Button {
+                        ToolActionRouter.shared.open(toolID: tool.id)
+                        if closeMainWindowAfterOpeningTool {
+                            dismissWindow(id: "main")
+                        }
+                    } label: {
+                        Text("Open \(tool.name)")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 7)
+                            .background(Color.accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .accessibilityIdentifier("tool.\(tool.id).launch")
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
+                    .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
+                }
             }
-            .accessibilityIdentifier("tool.\(tool.id).launch")
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
+
+            Text(tool.description)
+                .font(.system(size: 13))
+                .foregroundStyle(Color.primary.opacity(0.75))
+                .lineSpacing(4)
+                .textSelection(.enabled)
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
+    }
+
+    private func enabledBinding(for toolID: String) -> Binding<Bool> {
+        Binding(
+            get: { settings.isToolEnabled(toolID) },
+            set: { settings.setToolEnabled($0, for: toolID) }
+        )
     }
 
     private func manualSection(for tool: any Tool) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("How to use".uppercased())
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-
-            ForEach(tool.manual) { section in
-                manualCard(section)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(tool.manual) { section in
+                    manualCard(section)
+                }
             }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -113,6 +156,64 @@ struct ToolAboutView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct ToolSettingsContent: View {
+    let toolID: String
+
+    @ViewBuilder
+    var body: some View {
+        switch toolID {
+        case "cc-history":
+            CCHistorySettingsPage(showsHeader: false)
+        case "rclone":
+            RcloneSettingsPage(showsHeader: false)
+        case "ruler":
+            RulerLauncherSettingsView()
+        case "awake":
+            ScrollView(showsIndicators: false) {
+                AwakeSettingsView()
+                    .padding(24)
+            }
+        case "color-picker":
+            ColorPickerSettingsView()
+        case "text-extractor":
+            TextExtractorSettingsView()
+        case "logs":
+            LogsSettingsView()
+        default:
+            EmptyStateView(icon: "slider.horizontal.3", message: "No settings available")
+        }
+    }
+}
+
+private struct RulerLauncherSettingsView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("RULER SETTINGS").utilitySectionHeader()
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Ruler settings stay in the native panels used by the Ruler window.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    Button("Open Ruler Settings") {
+                        ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
+                    }
+                    Button("Open Defaults") {
+                        AppDelegate.current?.openPreferences(self)
+                    }
+                }
+                .controlSize(.small)
+            }
+            .utilitySectionCard()
+
+            Spacer()
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

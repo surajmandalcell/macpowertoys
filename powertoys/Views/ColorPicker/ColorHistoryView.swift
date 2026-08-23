@@ -17,12 +17,10 @@ enum ColorPickerLayout {
 
 struct ColorHistoryView: View {
     @State private var service = ColorPickerService.shared
-    @State private var shortcuts = GlobalShortcutManager.shared
     @State private var page = ColorPickerPage.history
     @State private var search = ""
     @State private var isCreatingProject = false
     @State private var newProjectName = ""
-    @State private var isConfirmingClearAll = false
     @FocusState private var isProjectNameFocused: Bool
 
     private var samples: [ColorSample] {
@@ -96,12 +94,6 @@ struct ColorHistoryView: View {
             Button("OK") { service.exportError = nil }
         } message: {
             Text(service.exportError ?? "The project could not be written.")
-        }
-        .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
-            Button("Clear All", role: .destructive) { service.clearAll() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This removes every saved color from History and all projects. Projects are kept.")
         }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("color-picker") == true else { return }
@@ -294,6 +286,16 @@ struct ColorHistoryView: View {
     }
 
     private var settings: some View {
+        ColorPickerSettingsView()
+    }
+}
+
+struct ColorPickerSettingsView: View {
+    @State private var service = ColorPickerService.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
+    @State private var isConfirmingClearAll = false
+
+    var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("GLOBAL SHORTCUT").utilitySectionHeader()
@@ -349,6 +351,12 @@ struct ColorHistoryView: View {
             .padding(.bottom, UtilityLayout.floatingButtonContentInset)
         }
         .thinScrollIndicators()
+        .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
+            Button("Clear All", role: .destructive) { service.clearAll() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes every saved color from History and all projects. Projects are kept.")
+        }
     }
 }
 

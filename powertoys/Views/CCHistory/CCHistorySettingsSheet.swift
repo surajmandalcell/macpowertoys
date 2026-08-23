@@ -7,27 +7,35 @@ import SwiftUI
 
 struct CCHistorySettingsPage: View {
     let onDone: () -> Void
+    let showsHeader: Bool
     @AppStorage("tool.cc-history.startAtLaunch") private var startAtLaunch = false
+
+    init(onDone: @escaping () -> Void = {}, showsHeader: Bool = true) {
+        self.onDone = onDone
+        self.showsHeader = showsHeader
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Settings")
-                    .font(.system(size: 13, weight: .medium))
-                Spacer()
-                Button(action: onDone) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(.secondary)
+            if showsHeader {
+                HStack {
+                    Text("Settings")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Button(action: onDone) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 52)
-            .padding(.bottom, 12)
+                .padding(.horizontal, 20)
+                .padding(.top, 52)
+                .padding(.bottom, 12)
 
-            Divider()
+                Divider()
+            }
 
             Form {
                 Section {

@@ -1,27 +1,136 @@
-//
-//  LogsWindowView.swift
-//  powertoys
-//
-
-import SwiftUI
 import AppKit
+import OSLog
+import SwiftUI
+
+private enum LogsSource: String, CaseIterable, Identifiable {
+    case internalLogs = "Internal Logs"
+    case systemIssues = "System Issues"
+
+    var id: String { rawValue }
+    var icon: String {
+        switch self {
+        case .internalLogs: "app.badge.checkmark"
+        case .systemIssues: "desktopcomputer.trianglebadge.exclamationmark"
+        }
+    }
+}
+
+enum SystemLogRange: TimeInterval, CaseIterable, Identifiable, Sendable {
+    case oneHour = 3600
+    case sixHours = 21600
+    case oneDay = 86400
+
+    var id: TimeInterval { rawValue }
+    var title: String {
+        switch self {
+        case .oneHour: "Last Hour"
+        case .sixHours: "Last 6 Hours"
+        case .oneDay: "Last 24 Hours"
+        }
+    }
+}
+
+struct SystemLogLine: Identifiable, Sendable {
+    enum Level: String, Sendable {
+        case error = "E"
+        case fault = "F"
+    }
+
+    let id: UUID
+    let timestamp: Date
+    let level: Level
+    let source: String
+    let message: String
+}
+
+@Observable
+@MainActor
+final class SystemLogReader {
+    nonisolated static let maximumEntries = 500
+
+    private(set) var entries: [SystemLogLine] = []
+    private(set) var isLoading = false
+    private(set) var errorMessage: String?
+    private var loadTask: Task<Void, Never>?
+
+    func refresh(range: SystemLogRange) {
+        loadTask?.cancel()
+        isLoading = true
+        errorMessage = nil
+        loadTask = Task { [weak self] in
+            do {
+                let entries = try await Task.detached(priority: .utility) {
+                    try Self.readEntries(range: range)
+                }.value
+                guard !Task.isCancelled else { return }
+                self?.entries = entries
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.errorMessage = error.localizedDescription
+            }
+            self?.isLoading = false
+        }
+    }
+
+    func cancel() {
+        loadTask?.cancel()
+        loadTask = nil
+        isLoading = false
+    }
+
+    nonisolated private static func readEntries(range: SystemLogRange) throws -> [SystemLogLine] {
+        let store = try OSLogStore(scope: .system)
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-range.rawValue)
+        let predicate = NSPredicate(format: "messageType == error OR messageType == fault")
+        let sequence = try store.getEntries(
+            with: [.reverse],
+            at: store.position(date: now),
+            matching: predicate
+        )
+        var result: [SystemLogLine] = []
+        result.reserveCapacity(maximumEntries)
+
+        for case let entry as OSLogEntryLog in sequence {
+            try Task.checkCancellation()
+            guard entry.date >= cutoff else { break }
+            let level: SystemLogLine.Level = entry.level == .fault ? .fault : .error
+            let detail = [entry.subsystem, entry.category]
+                .filter { !$0.isEmpty }
+                .joined(separator: "/")
+            result.append(SystemLogLine(
+                id: UUID(),
+                timestamp: entry.date,
+                level: level,
+                source: detail.isEmpty ? entry.process : "\(entry.process) · \(detail)",
+                message: entry.composedMessage
+            ))
+            if result.count == maximumEntries { break }
+        }
+        return result
+    }
+}
 
 struct LogsWindowView: View {
+    @State private var selectedSource = LogsSource.internalLogs
     @State private var selectedLevels: Set<LogLevel> = Set(LogLevel.allCases)
+    @State private var systemRange = SystemLogRange.oneHour
+    @State private var systemLogs = SystemLogReader()
     @State private var searchText = ""
     @State private var showSettings = false
-    @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
+    @AppStorage("logs.fontSize") private var logsFontSize = 11
 
     private var filteredLogs: [LogEntryData] {
         LogManager.shared.logs.filter { entry in
             guard selectedLevels.contains(entry.level) else { return false }
-            if !searchText.isEmpty {
-                let searchLower = searchText.lowercased()
-                return entry.message.lowercased().contains(searchLower) ||
-                       entry.source.lowercased().contains(searchLower)
-            }
-            return true
+            return matchesSearch(source: entry.source, message: entry.message)
         }
+    }
+
+    private var filteredSystemLogs: [SystemLogLine] {
+        systemLogs.entries.filter { matchesSearch(source: $0.source, message: $0.message) }
     }
 
     var body: some View {
@@ -31,6 +140,15 @@ struct LogsWindowView: View {
         }
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "logs"))
+        .onChange(of: selectedSource) {
+            if selectedSource == .systemIssues && systemLogs.entries.isEmpty {
+                systemLogs.refresh(range: systemRange)
+            }
+        }
+        .onChange(of: systemRange) {
+            if selectedSource == .systemIssues { systemLogs.refresh(range: systemRange) }
+        }
+        .onDisappear { systemLogs.cancel() }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("logs") == true else { return }
             showSettings = true
@@ -55,24 +173,42 @@ struct LogsWindowView: View {
                 .padding(.bottom, 12)
 
             VStack(alignment: .leading, spacing: 4) {
-                SidebarSectionHeader(title: "Filter by Level")
+                SidebarSectionHeader(title: "Sources")
                     .padding(.horizontal, 4)
 
-                ForEach(LogLevel.allCases, id: \.self) { level in
-                    LogLevelFilterRow(
-                        level: level,
-                        isSelected: selectedLevels.contains(level),
-                        count: LogManager.shared.logs.filter { $0.level == level }.count
+                ForEach(LogsSource.allCases) { source in
+                    SidebarRow(
+                        icon: source.icon,
+                        title: source.rawValue,
+                        isSelected: selectedSource == source
                     ) {
-                        if selectedLevels.contains(level) {
-                            selectedLevels.remove(level)
-                        } else {
-                            selectedLevels.insert(level)
+                        selectedSource = source
+                    }
+                    .accessibilityIdentifier("logs.source.\(source.id)")
+                }
+            }
+
+            if selectedSource == .internalLogs {
+                VStack(alignment: .leading, spacing: 4) {
+                    SidebarSectionHeader(title: "Internal Levels")
+                        .padding(.horizontal, 4)
+
+                    ForEach(LogLevel.allCases, id: \.self) { level in
+                        LogLevelFilterRow(
+                            level: level,
+                            isSelected: selectedLevels.contains(level),
+                            count: LogManager.shared.logs.filter { $0.level == level }.count
+                        ) {
+                            if selectedLevels.contains(level) {
+                                selectedLevels.remove(level)
+                            } else {
+                                selectedLevels.insert(level)
+                            }
                         }
                     }
                 }
+                .padding(.top, 12)
             }
-            .padding(.bottom, 12)
 
             Spacer()
 
@@ -80,41 +216,123 @@ struct LogsWindowView: View {
                 SidebarActionRow(icon: "gearshape", title: "Settings") {
                     showSettings = true
                 }
-                SidebarActionRow(icon: "trash", title: "Clear Logs") {
-                    LogManager.shared.clearMemoryLogs()
+                if selectedSource == .internalLogs {
+                    SidebarActionRow(icon: "trash", title: "Clear Internal Logs") {
+                        LogManager.shared.clearMemoryLogs()
+                    }
+                } else {
+                    SidebarActionRow(icon: "arrow.clockwise", title: "Refresh System Issues") {
+                        systemLogs.refresh(range: systemRange)
+                    }
                 }
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
         }
-        .frame(width: 220)
+        .frame(width: 240)
         .background(VisualEffectBackground())
     }
 
+    @ViewBuilder
     private var content: some View {
+        switch selectedSource {
+        case .internalLogs:
+            internalContent
+        case .systemIssues:
+            systemContent
+        }
+    }
+
+    private var internalContent: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("\(filteredLogs.count) logs")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-
+            contentHeader(title: "Internal Logs", detail: "\(filteredLogs.count) entries")
             Divider()
-
-            LogTextView(logs: filteredLogs.reversed(), fontSize: CGFloat(logsFontSize))
+            SelectableLogTextView(
+                lines: filteredLogs.reversed().map { RenderedLogLine($0) },
+                fontSize: CGFloat(logsFontSize),
+                emptyMessage: "No internal logs to display"
+            )
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
-}
 
-// MARK: - Settings Sheet
+    private var systemContent: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("System Issues")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("macOS errors and faults · read on demand · up to \(SystemLogReader.maximumEntries)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if systemLogs.isLoading { ProgressView().controlSize(.small) }
+                Picker("Time Range", selection: $systemRange) {
+                    ForEach(SystemLogRange.allCases) { range in
+                        Text(range.title).tag(range)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 120)
+                Button("Refresh") { systemLogs.refresh(range: systemRange) }
+                    .controlSize(.small)
+                    .disabled(systemLogs.isLoading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+
+            Divider()
+
+            if let error = systemLogs.errorMessage {
+                VStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.secondary)
+                    Text("System logs couldn’t be read")
+                        .font(.system(size: 13, weight: .medium))
+                    Text(error)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .textSelection(.enabled)
+                    Button("Try Again") { systemLogs.refresh(range: systemRange) }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(24)
+            } else if systemLogs.isLoading && systemLogs.entries.isEmpty {
+                ProgressView("Reading system issues…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                SelectableLogTextView(
+                    lines: filteredSystemLogs.map { RenderedLogLine($0) },
+                    fontSize: CGFloat(logsFontSize),
+                    emptyMessage: "No system errors or faults in \(systemRange.title.lowercased())"
+                )
+            }
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func contentHeader(title: String, detail: String) -> some View {
+        HStack {
+            Text(title).font(.system(size: 13, weight: .semibold))
+            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private func matchesSearch(source: String, message: String) -> Bool {
+        guard !searchText.isEmpty else { return true }
+        return source.localizedCaseInsensitiveContains(searchText)
+            || message.localizedCaseInsensitiveContains(searchText)
+    }
+}
 
 private struct LogsSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("logs.fontSize") private var logsFontSize: Int = 11
 
     var body: some View {
         VStack(spacing: 0) {
@@ -129,38 +347,79 @@ private struct LogsSettingsSheet: View {
             .padding(.vertical, 14)
 
             Divider()
-
-            Form {
-                Section {
-                    Picker("Font Size", selection: $logsFontSize) {
-                        Text("Small").tag(10)
-                        Text("Medium").tag(11)
-                        Text("Default").tag(12)
-                        Text("Large").tag(14)
-                    }
-                } header: {
-                    Text("Appearance")
-                }
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .thinScrollIndicators()
+            LogsSettingsView()
         }
         .frame(width: 420, height: 240)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
-// MARK: - NSTextView Wrapper for Drag Selection
+struct LogsSettingsView: View {
+    @AppStorage("logs.fontSize") private var logsFontSize = 11
 
-private struct LogTextView: NSViewRepresentable {
-    let logs: [LogEntryData]
+    var body: some View {
+        Form {
+            Section {
+                Picker("Font Size", selection: $logsFontSize) {
+                    Text("Small").tag(10)
+                    Text("Medium").tag(11)
+                    Text("Default").tag(12)
+                    Text("Large").tag(14)
+                }
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Text("System Issues are read from macOS only when requested and are never saved by MacPowerToys.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .thinScrollIndicators()
+    }
+}
+
+private struct RenderedLogLine {
+    let timestamp: Date
+    let level: String
+    let source: String
+    let message: String
+    let color: NSColor
+
+    init(_ entry: LogEntryData) {
+        timestamp = entry.timestamp
+        level = entry.level.name.prefix(1).uppercased()
+        source = entry.source
+        message = entry.message
+        color = switch entry.level {
+        case .error: NSColor.systemRed.withAlphaComponent(0.85)
+        case .warning: NSColor.systemOrange.withAlphaComponent(0.85)
+        case .info: .secondaryLabelColor
+        case .debug: .tertiaryLabelColor
+        }
+    }
+
+    init(_ entry: SystemLogLine) {
+        timestamp = entry.timestamp
+        level = entry.level.rawValue
+        source = entry.source
+        message = entry.message
+        color = entry.level == .fault
+            ? NSColor.systemRed.withAlphaComponent(0.9)
+            : NSColor.systemOrange.withAlphaComponent(0.9)
+    }
+}
+
+private struct SelectableLogTextView: NSViewRepresentable {
+    let lines: [RenderedLogLine]
     let fontSize: CGFloat
+    let emptyMessage: String
 
     private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
-        return f
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
     }()
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -178,66 +437,40 @@ private struct LogTextView: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 12, height: 8)
         textView.isRichText = true
         textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
-
         scrollView.documentView = textView
         return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
-        textView.textStorage?.setAttributedString(buildAttributedString())
+        textView.textStorage?.setAttributedString(attributedString())
     }
 
-    private func buildAttributedString() -> NSAttributedString {
+    private func attributedString() -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let monoFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-
-        for (index, entry) in logs.enumerated() {
-            if index > 0 {
-                result.append(NSAttributedString(string: "\n"))
-            }
-
-            let timeStr = Self.timeFormatter.string(from: entry.timestamp)
-            let levelStr = entry.level.name.prefix(1).uppercased()
-            let line = "[\(timeStr)] [\(levelStr)] \(entry.source): \(entry.message)"
-
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: monoFont,
-                .foregroundColor: colorForLevel(entry.level)
-            ]
-
-            result.append(NSAttributedString(string: line, attributes: attrs))
+        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        for (index, line) in lines.enumerated() {
+            if index > 0 { result.append(NSAttributedString(string: "\n")) }
+            let time = Self.timeFormatter.string(from: line.timestamp)
+            result.append(NSAttributedString(
+                string: "[\(time)] [\(line.level)] \(line.source): \(line.message)",
+                attributes: [.font: font, .foregroundColor: line.color]
+            ))
         }
-
         if result.length == 0 {
-            let emptyFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            let emptyAttrs: [NSAttributedString.Key: Any] = [
-                .font: emptyFont,
-                .foregroundColor: NSColor.tertiaryLabelColor
-            ]
-            result.append(NSAttributedString(string: "No logs to display", attributes: emptyAttrs))
+            result.append(NSAttributedString(
+                string: emptyMessage,
+                attributes: [.font: font, .foregroundColor: NSColor.tertiaryLabelColor]
+            ))
         }
-
         return result
     }
-
-    private func colorForLevel(_ level: LogLevel) -> NSColor {
-        switch level {
-        case .error: return NSColor.systemRed.withAlphaComponent(0.85)
-        case .warning: return NSColor.systemOrange.withAlphaComponent(0.85)
-        case .info: return .secondaryLabelColor
-        case .debug: return .tertiaryLabelColor
-        }
-    }
 }
-
-// MARK: - Sidebar Action Row
 
 private struct SidebarActionRow: View {
     let icon: String
     let title: String
     let action: () -> Void
-
     @State private var isHovered = false
 
     var body: some View {
@@ -247,10 +480,7 @@ private struct SidebarActionRow: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 20, height: 20)
-
-                Text(title)
-                    .font(.system(size: 13))
-
+                Text(title).font(.system(size: 13))
                 Spacer()
             }
             .padding(.horizontal, 10)
@@ -267,14 +497,11 @@ private struct SidebarActionRow: View {
     }
 }
 
-// MARK: - Log Level Filter Row
-
 private struct LogLevelFilterRow: View {
     let level: LogLevel
     let isSelected: Bool
     let count: Int
     let action: () -> Void
-
     @State private var isHovered = false
 
     var body: some View {
@@ -283,16 +510,11 @@ private struct LogLevelFilterRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.6))
                     .font(.system(size: 14))
-
                 Image(systemName: level.icon)
                     .foregroundStyle(.secondary)
                     .font(.system(size: 12))
-
-                Text(level.name)
-                    .font(.system(size: 13))
-
+                Text(level.name).font(.system(size: 13))
                 Spacer()
-
                 Text("\(count)")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)

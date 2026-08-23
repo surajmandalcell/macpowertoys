@@ -26,6 +26,31 @@
 - **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
   leading labels and trailing actions must remain aligned without crowding.
 
+## Shared Tool Enablement
+
+- **Symptom:** A disabled tool still opens from a shortcut or deep link, starts
+  at launch, or remains in the menu-bar tab strip.
+- **Cause:** Availability was stored or checked independently by each surface.
+- **Invariant:** `SettingsManager` owns the one disabled-ID set; missing IDs are
+  enabled. Cards and detail pages write that state, while routing, shortcuts,
+  launch restoration, background services, and tray tabs all read it. Disabled
+  tools remain selectable in the launcher only so they can be re-enabled.
+- **Check:** Disable every built-in tool once from All Tools and once from its
+  detail page. Confirm Open, global shortcuts, deep links, CLI/start-at-launch,
+  Awake assertions, Cloud Sync engine work, and tray presence all follow the
+  same state; then re-enable from the detail page.
+
+## Launcher Settings Reuse
+
+- **Symptom:** Clicking a launcher tool shows help only, or its settings differ
+  from the tool window and require duplicate maintenance.
+- **Cause:** The launcher owned a separate detail implementation.
+- **Invariant:** Detail pages open on Settings and embed the same settings view
+  used by the tool window, with How to Use as the adjacent page. Ruler reopens
+  its existing AppKit panels instead of cloning them in SwiftUI.
+- **Check:** Change one setting from each launcher detail, reopen its tool
+  window, and confirm the same value and control surface are present.
+
 ## Window Space Restoration
 
 - **Symptom:** A reopened utility returns to its saved frame and display but not

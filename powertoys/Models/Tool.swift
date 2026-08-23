@@ -134,20 +134,22 @@ struct RcloneTool: Tool {
 struct LogsTool: Tool {
     let id = "logs"
     let name = "Logs"
-    let description = "View application logs and diagnostics."
+    let description = "Inspect MacPowerToys activity and recent macOS errors and faults in clearly separated views."
     let icon = "doc.text.magnifyingglass"
     let logoAsset = "LogsLogo"
     let category = ToolCategory.system
 
     let manual: [ToolManualSection] = [
         ToolManualSection(title: "Reading Logs", points: [
-            "Every tool reports here — errors, warnings, info, and debug messages.",
-            "Filter by level in the sidebar, or search across messages and sources.",
+            "Internal Logs contains MacPowerToys errors, warnings, info, and debug messages.",
+            "System Issues reads recent macOS errors and faults on demand without saving them in the app.",
+            "Choose a source in the sidebar, then filter internal levels or search messages and sources.",
             "Log text is fully selectable for copying into bug reports."
         ]),
         ToolManualSection(title: "Housekeeping", points: [
-            "Logs are kept for two days, then pruned automatically.",
-            "Clear Logs empties the in-memory view.",
+            "Internal logs are kept for two days, then pruned automatically.",
+            "Clear Internal Logs empties the app's in-memory view.",
+            "System Issues keeps at most 500 rows in memory and fetches them again when requested.",
             "Press ⌘, inside the window to change the log font size."
         ])
     ]

@@ -263,9 +263,11 @@ Choose the family with this decision order:
    simultaneous panes.
 
 Do not hybridize them. A compact applet never gains a sidebar; a full workspace
-never gains `CompactTitlebar`; the launcher never hosts a tool's working UI. If
-a proposed tool does not fit, simplify its task or choose the next larger
-family instead of combining chrome from two families.
+never gains `CompactTitlebar`; the launcher never hosts a tool's history,
+workspace, or live operational surface. The launcher may embed the exact shared
+settings view used by the tool so configuration has one implementation. If a
+proposed tool does not fit, simplify its task or choose the next larger family
+instead of combining chrome from two families.
 
 | Family | Purpose | Size | Navigation | Title owner |
 |---|---|---|---|---|
@@ -311,9 +313,9 @@ hierarchy. They retain native transparent titlebars and never use
 ### Main Launcher
 
 The launcher is a catalog, not a dashboard. It helps a person find a tool,
-understand it, and open its own single-instance window. The launcher closes
-after opening a tool. It never displays a tool's operational controls, running
-metrics, or workspace content.
+configure it, understand it, and open its own single-instance window. The
+launcher closes after opening a tool. It may reuse tool settings controls, but
+never displays running metrics, history, or workspace content.
 
 Canonical anatomy:
 
@@ -352,19 +354,30 @@ Canonical anatomy:
 - `All Tools` content begins at y=52. It uses 24pt horizontal and bottom
   padding, an adaptive two-column grid with 220pt minimum columns, and 16pt
   row/column gaps.
-- A launcher tool card is at least 110pt high at default text sizes, with 12pt outer
+- A launcher tool card is at least 128pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
   name; 10pt uppercase category; two lines of 12pt secondary description; and
-  an 11pt `Open` button aligned bottom-trailing. Rest is 0.03. Hover is 0.06
+  a labeled mini `Enabled` switch bottom-leading; and an 11pt `Open` button
+  bottom-trailing. Rest is 0.03. Hover is 0.06
   with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,
   radius 8, y offset 2. `Open` rests on primary 0.06 with secondary text, then
   becomes solid accent with white text while hovered. Accessibility text may
   expand the complete grid row, never only one card in that row.
-- Clicking a card selects its detail page. Clicking `Open` opens the tool.
-  These are separate actions and must remain separately accessible.
-- A tool detail page uses a 24pt gutter, 72pt named tool icon, the one allowed
-  22pt semibold detail title, category, description, `Open <Tool>`, and
-  12pt-radius “How to use” cards. Do not use the 22pt title elsewhere.
+- Clicking a card selects its detail page. Clicking `Open` opens the tool, and
+  its labeled `Enabled` switch changes availability without selecting or
+  opening it. These actions must remain separately accessible. A disabled card
+  stays selectable so the tool can be re-enabled, while `Open` is disabled.
+- A tool detail page uses a 24pt gutter, 64pt named tool icon, the one allowed
+  22pt semibold detail title, category, description, a trailing labeled
+  `Enabled` switch above `Open <Tool>`, and a segmented `Settings` / `How to
+  Use` choice. It opens on Settings and renders the same settings view as the
+  tool window; Ruler links to its existing AppKit Settings and Defaults panels.
+  How to Use keeps 12pt-radius instruction cards. Do not use the 22pt title
+  elsewhere.
+- Enablement has one persistent source. Every tool is enabled by default. A
+  disabled tool is absent from the menu-bar tab strip, cannot be launched by
+  cards, shortcuts, deep links, CLI routes, or start-at-launch, and releases
+  background power/transfer work where applicable.
 - Launcher cards communicate identity and discovery, not live status. Show a
   badge only for a compatibility, permission, or availability state that
   changes whether the tool can open.

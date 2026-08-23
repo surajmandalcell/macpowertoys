@@ -1,8 +1,3 @@
-//
-//  AllToolsGridView.swift
-//  powertoys
-//
-
 import SwiftUI
 
 struct AllToolsGridView: View {
@@ -38,39 +33,61 @@ struct ToolCard: View {
     let selectAction: () -> Void
     let openAction: () -> Void
 
+    @State private var settings = SettingsManager.shared
     @State private var isHovering = false
     @State private var isOpenHovering = false
 
+    private var isEnabled: Bool { settings.isToolEnabled(tool.id) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                ToolIconView(tool: tool, size: 36)
+            Button(action: selectAction) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .center, spacing: 12) {
+                        ToolIconView(tool: tool, size: 36)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(tool.name)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(tool.name)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
 
-                    Text(tool.category.rawValue)
-                        .font(.system(size: 10, weight: .medium))
-                        .textCase(.uppercase)
-                        .foregroundStyle(.tertiary)
+                            Text(tool.category.rawValue)
+                                .font(.system(size: 10, weight: .medium))
+                                .textCase(.uppercase)
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+
+                    Text(tool.description)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                Spacer(minLength: 0)
+                .contentShape(Rectangle())
             }
-
-            Text(tool.description)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .accessibilityIdentifier("tool.\(tool.id).card")
 
             Spacer(minLength: 0)
 
-            HStack {
+            HStack(spacing: 10) {
+                Toggle("Enabled", isOn: Binding(
+                    get: { isEnabled },
+                    set: { settings.setToolEnabled($0, for: tool.id) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .font(.system(size: 11))
+                .disabled(settings.isToolTransitioning(tool.id))
+                .accessibilityIdentifier("tool.\(tool.id).quick-toggle")
+
                 Spacer()
+
                 Button(action: openAction) {
                     Text("Open")
                         .font(.system(size: 11, weight: .medium))
@@ -83,13 +100,13 @@ struct ToolCard: View {
                 .accessibilityIdentifier("tool.\(tool.id).open")
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
+                .disabled(!isEnabled || settings.isToolTransitioning(tool.id))
                 .onHover { isOpenHovering = $0 }
             }
         }
         .padding(12)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("tool.\(tool.id).card")
-        .frame(minHeight: 110)
+        .frame(minHeight: 128)
         .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -98,10 +115,6 @@ struct ToolCard: View {
         )
         .shadow(color: .black.opacity(isHovering ? 0.12 : 0), radius: 8, y: 2)
         .animation(.easeInOut(duration: 0.15), value: isHovering)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectAction()
-        }
         .onHover { isHovering = $0 }
     }
 }

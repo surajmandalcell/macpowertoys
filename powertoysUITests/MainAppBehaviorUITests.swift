@@ -26,6 +26,19 @@ final class MainAppBehaviorUITests: XCTestCase {
     }
 
     @MainActor
+    func testToolCardsAndDetailsExposeSharedSettingsAndEnablement() throws {
+        let app = launchApp()
+        let quickToggle = app.descendants(matching: .any)["tool.logs.quick-toggle"]
+        XCTAssertTrue(quickToggle.waitForExistence(timeout: 5))
+
+        app.descendants(matching: .any)["tool.logs.card"].click()
+
+        XCTAssertTrue(app.descendants(matching: .any)["tool.logs.enabled"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["tool.logs.page"].exists)
+        XCTAssertTrue(app.staticTexts["Appearance"].exists)
+    }
+
+    @MainActor
     private func openLogs(in app: XCUIApplication) {
         let card = app.descendants(matching: .any)["tool.logs.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))

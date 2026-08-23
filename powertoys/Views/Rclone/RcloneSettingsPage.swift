@@ -6,12 +6,15 @@
 import SwiftUI
 
 struct RcloneSettingsPage: View {
+    var showsHeader = true
     @AppStorage("tool.rclone.startAtLaunch") private var startAtLaunch = false
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+            if showsHeader {
+                header
+                Divider()
+            }
 
             Form {
                 Section {
