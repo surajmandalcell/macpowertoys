@@ -39,11 +39,11 @@ struct CCHistorySettingsPage: View {
 
             Form {
                 Section {
-                    Toggle("Start Claude History at launch", isOn: $startAtLaunch)
+                    Toggle("Start AI History at launch", isOn: $startAtLaunch)
                 } header: {
                     Text("General")
                 } footer: {
-                    Text("Opens Claude History automatically when MacPowerToys launches.")
+                    Text("Opens AI History automatically when MacPowerToys launches.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -88,7 +88,7 @@ struct CCHistorySettings: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will force Claude History to re-read all conversation files on next load.")
+            Text("This will force AI History to re-read all conversation files on next load.")
         }
         .onAppear {
             Task { await updateCacheStats() }

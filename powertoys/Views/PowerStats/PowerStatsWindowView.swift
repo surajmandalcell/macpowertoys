@@ -215,6 +215,7 @@ struct PowerStatsWindowView: View {
                         set: { $0.enabled = $1 }
                     ))
                     .labelsHidden()
+                    .gridColumnAlignment(.leading)
                 }
 
                 GridRow {
@@ -227,7 +228,7 @@ struct PowerStatsWindowView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
-                    .frame(width: 160)
+                    .frame(width: 160, alignment: .leading)
                 }
 
                 GridRow {
@@ -243,7 +244,7 @@ struct PowerStatsWindowView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
-                    .frame(width: 160)
+                    .frame(width: 160, alignment: .leading)
                 }
 
                 GridRow {

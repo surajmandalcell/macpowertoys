@@ -21,7 +21,7 @@ enum PowerToolTarget: String, AppEnum {
     static let caseDisplayRepresentations: [PowerToolTarget: DisplayRepresentation] = [
         .home: "MacPowerToys",
         .rsync: "Cloud Sync",
-        .claudeHistory: "Claude History",
+        .claudeHistory: "AI History",
         .logs: "Logs",
         .ruler: "Ruler",
         .awake: "Awake",
@@ -115,8 +115,8 @@ struct OpenRSyncIntent: AppIntent {
 }
 
 struct OpenClaudeHistoryIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Claude History"
-    static let description = IntentDescription("Opens the Claude History conversation browser.")
+    static let title: LocalizedStringResource = "Open AI History"
+    static let description = IntentDescription("Opens the AI History conversation browser.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -144,8 +144,8 @@ struct PowerToysShortcuts: AppShortcutsProvider {
         )
         AppShortcut(
             intent: OpenClaudeHistoryIntent(),
-            phrases: ["Open Claude History in \(.applicationName)", "Browse conversations in \(.applicationName)"],
-            shortTitle: "Claude History",
+            phrases: ["Open AI History in \(.applicationName)", "Browse conversations in \(.applicationName)"],
+            shortTitle: "AI History",
             systemImageName: "text.bubble"
         )
         AppShortcut(

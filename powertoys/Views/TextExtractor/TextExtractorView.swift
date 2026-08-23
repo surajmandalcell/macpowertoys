@@ -252,7 +252,7 @@ struct TextExtractorSettingsView: View {
     private var recognitionSettings: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("RECOGNITION OPTIONS").utilitySectionHeader()
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Recognition quality")
@@ -274,17 +274,31 @@ struct TextExtractorSettingsView: View {
 
                 Divider()
 
-                Toggle("Use language correction", isOn: $service.settings.languageCorrection)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .padding(.vertical, 12)
+                HStack {
+                    Text("Use language correction")
+                    Spacer()
+                    Toggle("Use language correction", isOn: $service.settings.languageCorrection)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .accessibilityLabel("Use language correction")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
 
                 Divider()
 
-                Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .padding(.vertical, 12)
+                HStack {
+                    Text("Detect QR codes and barcodes")
+                    Spacer()
+                    Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .accessibilityLabel("Detect QR codes and barcodes")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
 
                 Divider()
 

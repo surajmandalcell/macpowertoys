@@ -24,7 +24,8 @@ final class UtilityToolsTests: XCTestCase {
             "RulerLogo",
             "AwakeLogo",
             "ColorPickerLogo",
-            "TextExtractorLogo"
+            "TextExtractorLogo",
+            "InputDevicesLogoA"
         ]
 
         for assetName in assetNames {
@@ -42,17 +43,6 @@ final class UtilityToolsTests: XCTestCase {
     }
 
     func testDockIconMatchesActiveToolWindow() throws {
-        let defaults = UserDefaults.standard
-        let key = "inputDevices.settings"
-        let previous = defaults.data(forKey: key)
-        defer {
-            if let previous { defaults.set(previous, forKey: key) }
-            else { defaults.removeObject(forKey: key) }
-        }
-        var inputSettings = InputDevicesSettings()
-        inputSettings.iconAsset = "InputDevicesLogoC"
-        defaults.set(try JSONEncoder().encode(inputSettings), forKey: key)
-
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-window"), "RulerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "ruler-settings-window"), "RulerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "preferences-window"), "RulerLogo")
@@ -60,7 +50,7 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "awake-AppWindow-1"), "AwakeLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "color-picker"), "ColorPickerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "text-extractor"), "TextExtractorLogo")
-        XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoC")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoA")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-care"), "SystemCareLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "power-stats"), "PowerStatsLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
