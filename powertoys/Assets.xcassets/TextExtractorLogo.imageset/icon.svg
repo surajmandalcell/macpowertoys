@@ -13,9 +13,11 @@
             stroke-width="70" stroke-linecap="round"/>
       <circle cx="270" cy="266" r="151" fill="#000"/>
     </g>
-    <path d="M337.56 362.48 454.12 528.95" fill="none" stroke="#FAF6EA"
-          stroke-width="70" stroke-linecap="round"/>
-    <circle cx="270" cy="266" r="151" fill="#FAF6EA"/>
+    <g opacity=".88">
+      <path d="M337.56 362.48 454.12 528.95" fill="none" stroke="#FAF6EA"
+            stroke-width="70" stroke-linecap="round"/>
+      <circle cx="270" cy="266" r="151" fill="#FAF6EA"/>
+    </g>
     <circle cx="270" cy="266" r="124" fill="#94B0DE"/>
   </g>
 </svg>

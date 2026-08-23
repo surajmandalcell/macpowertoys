@@ -32,7 +32,7 @@ colors:
   icon-ruler: "#F04E23"
   icon-awake: "#F5B71E"
   icon-color-picker: "#23272E"
-  icon-text-extractor: "#F5B71E"
+  icon-text-extractor: "#2155B0"
 typography:
   launcher-detail-title: { size: 22, weight: semibold, relative-to: title2 }
   title: { size: 13, weight: medium, relative-to: body }
@@ -809,7 +809,7 @@ has been changed.
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
-| Text Extractor | `#F5B71E` | `#23272E`, `#F7F5F0` | Three descending handwritten lines |
+| Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
 
 New Chosen Color tools should receive their own semantic hue unless a documented
 product decision deliberately links them to an existing color. Neutral

@@ -8,6 +8,7 @@ import AppKit
 import Darwin
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    static let openMainWindowSymbol = "arrow.up.forward.square"
     static weak var current: AppDelegate?
     static let statusItemEventMask: NSEvent.EventTypeMask = [
         .leftMouseDown,
@@ -153,7 +154,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.autoenablesItems = false
         menu.addItem(statusItemMenuItem(
             title: "Open MacPowerToys",
-            symbol: "macwindow",
+            symbol: Self.openMainWindowSymbol,
             action: #selector(openMainWindowFromStatusItem)
         ))
         menu.addItem(statusItemMenuItem(
