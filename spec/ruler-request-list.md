@@ -56,7 +56,7 @@ Update this list whenever Ruler requirements or verification results change.
   and autosave names for both Settings and Defaults.
 - XIB validation: Ruler Settings, Ruler Defaults, and their shared controls all
   compile with `ibtool`.
-- Host unit suite: 383 tests pass with zero failures or runtime warnings.
+- Host unit suite: 395 tests pass with zero failures or skipped tests.
 - Signed host UI suite: all 11 methods pass across 22 configured executions,
   including the focused Ruler flows and the exact Command-W host-survival case.
   Xcode 27 reports one launch-time Security performance diagnostic per fresh UI
@@ -65,6 +65,9 @@ Update this list whenever Ruler requirements or verification results change.
 - Command-W dispatch: direct native-handler measurements complete in 4-16ms
   after the first cold invocation. The monitor adapter preserves a handled
   handler's `nil` result, so AppKit cannot redispatch the same event to the host.
+- Installed build: the normal signed build on 2026-08-23 showed an opaque native
+  Ruler Settings title bar. Command-W closed Settings, then Ruler, while the main
+  app stayed open.
 - Signed same-machine visual comparison: pending final installed-build check.
 - Performance and 25-window lifecycle check: pending final installed-build
   check; record observed CPU and memory ranges here before handoff.

@@ -92,9 +92,9 @@
 **Files:**
 - Modify request-list status files only for checks that pass.
 
-- [ ] Confirm that Cloud Sync has no active transfer.
-- [ ] Run the affected tests, then the full unit target.
-- [ ] Build the clean committed source in a task-specific DerivedData folder.
-- [ ] Install the signed build only when its source commit equals `HEAD`.
-- [ ] Complete safe live checks that do not require private user data.
-- [ ] Update verified statuses and commit the final record.
+- [x] Confirm that Cloud Sync has no active transfer.
+- [x] Run the affected tests, then the full unit target.
+- [x] Build the clean committed source in a task-specific DerivedData folder.
+- [x] Install the signed build only when its source commit equals `HEAD`.
+- [x] Complete safe live checks that do not require private user data.
+- [x] Update verified statuses and commit the final record.

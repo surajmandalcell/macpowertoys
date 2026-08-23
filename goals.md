@@ -8,7 +8,6 @@ evidence, and remaining work.
 ## Current work
 
 - Complete the live checks in the request lists.
-- Install and verify the final clean build.
 - Complete the public release checklist only after product work is complete.
 
 ## Request lists
