@@ -79,3 +79,23 @@
   clear, install and relaunch the final verified build before handoff.
 - **Check:** Confirm no active transfer, install the final Release product, and
   confirm the installed process is running.
+
+## Cloud Sync Pause Test Ends Before Interaction
+
+- **Symptom:** A disposable local transfer finishes before the menu-bar Pause
+  control can be used, even when the engine reports a low bandwidth limit.
+- **Cause:** The rclone local backend can use its optional server-side Copy
+  feature. That path can clone or copy the file without streaming bytes through
+  the bandwidth limiter. A cross-volume destination does not disable the Copy
+  feature.
+- **Invariant:** Test Pause and Resume with a disposable source and destination
+  pair that cannot use server-side Copy. Confirm the engine applied the intended
+  bandwidth limit before the transfer starts.
+- **Check:** Confirm the main window reports one active transfer before opening
+  the menu-bar Cloud Sync tab. After the check, cancel or finish the transfer,
+  remove only its record, restore the prior bandwidth setting, and move all
+  disposable data to Trash.
+
+Reference: rclone documents both the optional
+[`Copy` feature](https://rclone.org/overview/#optional-features) and the
+[`--disable copy` control](https://rclone.org/docs/#disable-string).
