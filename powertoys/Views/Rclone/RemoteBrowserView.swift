@@ -32,7 +32,7 @@ struct RemoteBrowserView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
             contentArea
         }
         .background(Color(nsColor: .windowBackgroundColor))

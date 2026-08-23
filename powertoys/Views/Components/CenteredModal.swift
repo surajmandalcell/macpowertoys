@@ -47,7 +47,7 @@ struct CenteredModal<Content: View>: View {
                 }
                 .padding(16)
 
-                Divider()
+                QuietDivider()
 
                 content()
             }

@@ -45,6 +45,7 @@ struct MacPowerToysApp: App {
     var body: some Scene {
         Window("MacPowerToys", id: "main") {
             MainWindowView()
+                .utilityMotionPolicy()
                 .task {
                     DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                     guard !AppRuntime.isRunningTests else { return }
@@ -78,6 +79,7 @@ struct MacPowerToysApp: App {
 
         Window("AI History", id: "cc-history") {
             CCHistoryWindowView()
+                .utilityMotionPolicy()
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 1200, height: 800)
@@ -87,6 +89,7 @@ struct MacPowerToysApp: App {
 
         Window("Cloud Sync", id: "rclone") {
             RcloneWindowView()
+                .utilityMotionPolicy()
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 1000, height: 720)
@@ -96,6 +99,7 @@ struct MacPowerToysApp: App {
 
         Window("Logs", id: "logs") {
             LogsWindowView()
+                .utilityMotionPolicy()
         }
         .modelContainer(modelContainer)
         .defaultSize(width: 900, height: 600)
@@ -105,6 +109,7 @@ struct MacPowerToysApp: App {
 
         Window("Awake", id: "awake") {
             AwakeView()
+                .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "awake"))
         }
         .defaultSize(width: AwakeLayout.windowWidth, height: AwakeLayout.windowHeight)
@@ -115,6 +120,7 @@ struct MacPowerToysApp: App {
 
         Window("Color Picker", id: "color-picker") {
             ColorHistoryView()
+                .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "color-picker"))
         }
         .defaultSize(
@@ -128,6 +134,7 @@ struct MacPowerToysApp: App {
 
         Window("Text Extractor", id: "text-extractor") {
             TextExtractorView()
+                .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "text-extractor"))
         }
         .defaultSize(
@@ -141,6 +148,7 @@ struct MacPowerToysApp: App {
 
         Window("Input Devices", id: "input-devices") {
             InputDevicesWindowView()
+                .utilityMotionPolicy()
         }
         .defaultSize(width: 980, height: 700)
         .windowStyle(.hiddenTitleBar)
@@ -149,6 +157,7 @@ struct MacPowerToysApp: App {
 
         Window("System Care", id: "system-care") {
             SystemCareWindowView()
+                .utilityMotionPolicy()
         }
         .defaultSize(width: 1180, height: 780)
         .windowStyle(.hiddenTitleBar)
@@ -157,6 +166,7 @@ struct MacPowerToysApp: App {
 
         Window("Power Stats", id: "power-stats") {
             PowerStatsWindowView()
+                .utilityMotionPolicy()
         }
         .defaultSize(width: 1080, height: 720)
         .windowStyle(.hiddenTitleBar)
@@ -165,6 +175,7 @@ struct MacPowerToysApp: App {
 
         MenuBarExtra(isInserted: trayBinding) {
             TrayPopoverView()
+                .utilityMotionPolicy()
                 .modelContainer(modelContainer)
         } label: {
             Image("MenuBarIcon")

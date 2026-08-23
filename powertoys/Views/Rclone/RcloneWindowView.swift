@@ -6,7 +6,7 @@
 import SwiftUI
 import SwiftData
 
-enum RSyncContent: Equatable {
+enum RSyncContent: Hashable {
     case transfers
     case browse(RcloneRemote)
     case activity
@@ -29,6 +29,7 @@ struct RcloneWindowView: View {
                 .frame(width: UtilityLayout.dataSidebarWidth)
 
             contentArea
+                .utilityContentTransition(value: content)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }

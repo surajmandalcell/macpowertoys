@@ -34,7 +34,7 @@ struct CCHistorySettingsPage: View {
                 .padding(.top, 52)
                 .padding(.bottom, 12)
 
-                Divider()
+                QuietDivider()
             }
 
             Form {

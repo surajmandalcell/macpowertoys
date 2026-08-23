@@ -141,7 +141,7 @@ struct AwakeSettingsView: View {
                     .contentShape(Rectangle())
                     .disabled(hours == 0 && minutes == 0)
                 }
-                Divider()
+                QuietDivider()
                 HStack {
                     TextField("Process ID", text: $processID)
                         .frame(width: 110)

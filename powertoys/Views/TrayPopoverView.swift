@@ -33,7 +33,7 @@ struct TrayPopoverView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 10)
 
-                Divider()
+                QuietDivider()
 
                 ZStack {
                     tabContent
@@ -47,7 +47,7 @@ struct TrayPopoverView: View {
                 .frame(maxWidth: .infinity)
             }
 
-            Divider()
+            QuietDivider()
 
             footer
         }

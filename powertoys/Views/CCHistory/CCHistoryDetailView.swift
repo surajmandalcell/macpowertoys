@@ -52,7 +52,7 @@ struct CCHistoryDetailView: View {
                             hasThinking: hasThinkingContent
                         )
 
-                        Divider()
+                        QuietDivider()
 
                         if projectManager.isLoadingMessages {
                             Spacer()
@@ -129,13 +129,13 @@ struct FilterToolbarView: View {
                 FilterToggle(label: "Claude", isOn: $showAssistant)
                 FilterToggle(label: "System", isOn: $showSystem)
 
-                Divider().frame(height: 20)
+                QuietDivider().frame(height: 20)
 
                 FilterToggle(label: "Tools", isOn: $showToolCalls)
                 FilterToggle(label: "Outputs", isOn: $showToolOutputs)
                 FilterToggle(label: "Thinking", isOn: $showThinking)
 
-                Divider().frame(height: 20)
+                QuietDivider().frame(height: 20)
 
                 FilterToggle(label: "Empty", isOn: $showEmpty)
             }
@@ -187,7 +187,8 @@ struct FilterToolbarView: View {
                             .frame(width: 28, height: 28)
                             .contentShape(Rectangle())
                     }
-                    .menuStyle(.borderlessButton)
+                    .menuStyle(.button)
+                    .buttonStyle(.borderless)
                     .menuIndicator(.hidden)
                 }
             }

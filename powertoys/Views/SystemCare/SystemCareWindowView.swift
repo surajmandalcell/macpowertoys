@@ -40,6 +40,10 @@ struct SystemCareWindowView: View {
         HStack(spacing: 0) {
             sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             content
+                .utilityContentTransition(value: page)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    statusInset
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
@@ -139,7 +143,6 @@ struct SystemCareWindowView: View {
                     detail: "Items stay recoverable in Trash"
                 ) { page = .history }
             }
-            statusBanner
         }
     }
 
@@ -170,7 +173,8 @@ struct SystemCareWindowView: View {
                         Button("Choose Another Folder…") { chooseStorageFolder() }
                         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                     }
-                    .menuStyle(.borderlessButton)
+                    .menuStyle(.button)
+                    .buttonStyle(.borderless)
                     .fixedSize()
                     Button("Rescan") { manager.analyze(url, resetBreadcrumbs: true) }
                         .buttonStyle(.borderedProminent)
@@ -182,69 +186,76 @@ struct SystemCareWindowView: View {
                 }
             }
         ) {
-            if manager.storageURL == nil {
-                ContentUnavailableView(
-                    "Choose a Folder",
-                    systemImage: "chart.pie",
-                    description: Text("Choose a folder to see what uses the most space.")
-                )
-                .frame(maxWidth: .infinity, minHeight: 420)
-            } else {
-                HStack(alignment: .top, spacing: 20) {
-                    StorageRingView(entries: manager.storageEntries) { entry in
-                        if entry.isDirectory { manager.analyze(entry.url) }
-                    }
-                    .frame(width: 330, height: 330)
+            Group {
+                if manager.storageURL == nil {
+                    ContentUnavailableView(
+                        "Choose a Folder",
+                        systemImage: "chart.pie",
+                        description: Text("Choose a folder to see what uses the most space.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 420)
+                } else {
+                    HStack(alignment: .top, spacing: 20) {
+                        StorageRingView(entries: manager.storageEntries) { entry in
+                            if entry.isDirectory { manager.analyze(entry.url) }
+                        }
+                        .frame(width: 330, height: 330)
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        ScrollView(.horizontal) {
-                            HStack(spacing: 4) {
-                                ForEach(manager.storageBreadcrumbs, id: \.path) { url in
-                                    Button(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent) {
-                                        manager.navigateStorage(to: url)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    if url != manager.storageBreadcrumbs.last {
-                                        Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
-                                    }
-                                }
-                            }
-                        }
-                        Text("\(manager.storageTotal.formattedByteCount) · \(manager.storageFileCount.formatted()) entries")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                        Divider()
-                        ScrollView {
-                            LazyVStack(spacing: 2) {
-                                ForEach(manager.storageEntries) { entry in
-                                    Button {
-                                        if entry.isDirectory { manager.analyze(entry.url) }
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: entry.isDirectory ? "folder" : "doc")
-                                                .foregroundStyle(.secondary)
-                                            Text(entry.name).lineLimit(1)
-                                            Spacer()
-                                            Text(entry.size.formattedByteCount)
-                                                .monospacedDigit()
-                                                .foregroundStyle(.secondary)
-                                            if entry.isDirectory { Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 10) {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 4) {
+                                        ForEach(manager.storageBreadcrumbs, id: \.path) { url in
+                                            Button(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent) {
+                                                manager.navigateStorage(to: url)
+                                            }
+                                            .buttonStyle(.borderless)
+                                            if url != manager.storageBreadcrumbs.last {
+                                                Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
+                                            }
                                         }
-                                        .font(.system(size: 12))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 7)
-                                        .contentShape(Rectangle())
                                     }
-                                    .buttonStyle(.plain)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Text("\(manager.storageTotal.formattedByteCount) · \(manager.storageFileCount.formatted()) entries")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize()
+                            }
+                            QuietDivider()
+                            ScrollView {
+                                LazyVStack(spacing: 2) {
+                                    ForEach(manager.storageEntries) { entry in
+                                        Button {
+                                            if entry.isDirectory { manager.analyze(entry.url) }
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: entry.isDirectory ? "folder" : "doc")
+                                                    .foregroundStyle(.secondary)
+                                                Text(entry.name).lineLimit(1)
+                                                Spacer()
+                                                Text(entry.size.formattedByteCount)
+                                                    .monospacedDigit()
+                                                    .foregroundStyle(.secondary)
+                                                if entry.isDirectory { Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
+                                            }
+                                            .font(.system(size: 12))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 7)
+                                            .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
                             }
+                            .frame(minHeight: 280)
                         }
-                        .frame(minHeight: 280)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
                 }
             }
-            statusBanner
+            .utilityContentTransition(value: storageContentKey)
         }
     }
 
@@ -316,12 +327,12 @@ struct SystemCareWindowView: View {
             }
 
             cleanupResults
+                .utilityContentTransition(value: manager.cleanupCandidates.isEmpty)
             if cleanupMode == .analysis {
                 Label("Analysis Only never enables cleanup actions.", systemImage: "lock.shield")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
-            statusBanner
         }
     }
 
@@ -348,9 +359,14 @@ struct SystemCareWindowView: View {
                             )) {
                                 HStack {
                                     Image(systemName: candidate.category.icon).frame(width: 20)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(candidate.name).lineLimit(1)
-                                        Text(candidate.category.title).font(.system(size: 10)).foregroundStyle(.secondary)
+                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                        Text(candidate.name)
+                                            .lineLimit(1)
+                                            .layoutPriority(1)
+                                        Text(candidate.category.title)
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(.secondary)
+                                            .fixedSize()
                                     }
                                     Spacer()
                                     Text(candidate.size.formattedByteCount).monospacedDigit().foregroundStyle(.secondary)
@@ -400,20 +416,23 @@ struct SystemCareWindowView: View {
                 .frame(minWidth: 300)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    if let application = selectedApplication {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: application.url.path))
-                            .resizable().frame(width: 64, height: 64)
-                        Text(application.name).font(.system(size: 18, weight: .semibold))
-                        Text(application.url.path).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
-                        Button("Preview Removal") { manager.openMoleUninstall(application, dryRun: true) }
-                            .disabled(manager.molePath == nil)
-                        Button("Uninstall in Terminal…") { manager.openMoleUninstall(application, dryRun: false) }
-                            .disabled(manager.molePath == nil)
-                        Text("Mole completes removal in Terminal.")
-                            .font(.system(size: 11)).foregroundStyle(.secondary)
-                    } else {
-                        ContentUnavailableView("Select an Application", systemImage: "app.dashed")
+                    Group {
+                        if let application = selectedApplication {
+                            Image(nsImage: NSWorkspace.shared.icon(forFile: application.url.path))
+                                .resizable().frame(width: 64, height: 64)
+                            Text(application.name).font(.system(size: 18, weight: .semibold))
+                            Text(application.url.path).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+                            Button("Preview Removal") { manager.openMoleUninstall(application, dryRun: true) }
+                                .disabled(manager.molePath == nil)
+                            Button("Uninstall in Terminal…") { manager.openMoleUninstall(application, dryRun: false) }
+                                .disabled(manager.molePath == nil)
+                            Text("Mole completes removal in Terminal.")
+                                .font(.system(size: 11)).foregroundStyle(.secondary)
+                        } else {
+                            ContentUnavailableView("Select an Application", systemImage: "app.dashed")
+                        }
                     }
+                    .utilityContentTransition(value: selectedApplication?.id)
                     Spacer()
                 }
                 .padding(16)
@@ -477,7 +496,6 @@ struct SystemCareWindowView: View {
                 Link("Official Mole Project", destination: URL(string: "https://github.com/tw93/Mole")!)
                 Spacer()
             }
-            statusBanner
         }
     }
 
@@ -491,65 +509,70 @@ struct SystemCareWindowView: View {
                     .disabled(manager.molePath == nil)
             }
         ) {
-            if manager.history.isEmpty {
-                ContentUnavailableView(
-                    manager.molePath == nil ? "Mole Is Not Installed" : "No Mole History",
-                    systemImage: "clock.arrow.circlepath"
-                )
-                .frame(maxWidth: .infinity, minHeight: 380)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(manager.history) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title).font(.system(size: 12, weight: .medium))
-                                Text(item.detail).font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
+            Group {
+                if manager.history.isEmpty {
+                    ContentUnavailableView(
+                        manager.molePath == nil ? "Mole Is Not Installed" : "No Mole History",
+                        systemImage: "clock.arrow.circlepath"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 380)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 8) {
+                            ForEach(manager.history) { item in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.title).font(.system(size: 12, weight: .medium))
+                                    Text(item.detail).font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.primary.opacity(0.03))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.primary.opacity(0.03))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
                     }
                 }
             }
-            statusBanner
+            .utilityContentTransition(value: manager.history.isEmpty)
         }
     }
 
     private var settingsPage: some View {
         WorkspacePage("Settings", subtitle: "Defaults and safety") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("DEFAULT CLEANUP MODE").utilitySectionHeader()
-                Picker("Default mode", selection: Binding(
-                    get: { cleanupMode },
-                    set: {
-                        cleanupMode = $0
-                        UserDefaults.standard.set($0.rawValue, forKey: "systemCare.defaultMode")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 12)], alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("DEFAULT CLEANUP MODE").utilitySectionHeader()
+                    Picker("Default mode", selection: Binding(
+                        get: { cleanupMode },
+                        set: {
+                            cleanupMode = $0
+                            UserDefaults.standard.set($0.rawValue, forKey: "systemCare.defaultMode")
+                        }
+                    )) {
+                        ForEach(SystemCareMode.allCases) { Text($0.rawValue).tag($0) }
                     }
-                )) {
-                    ForEach(SystemCareMode.allCases) { Text($0.rawValue).tag($0) }
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    Text("Quick scans all supported categories. Guided lets you choose. Analysis Only cannot clean.")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(maxWidth: 300)
-                Text("Quick scans all supported categories. Guided lets you choose. Analysis Only cannot clean.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            .padding(14)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background(Color.primary.opacity(0.03))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("SAFETY").utilitySectionHeader()
-                Label("Native cleanup moves items to macOS Trash", systemImage: "trash")
-                Label("Symlinks are not followed while calculating size", systemImage: "link.badge.plus")
-                Label("Mole privilege prompts stay in a visible terminal", systemImage: "lock.shield")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("SAFETY").utilitySectionHeader()
+                    Label("Native cleanup moves items to macOS Trash", systemImage: "trash")
+                    Label("Symlinks are not followed while calculating size", systemImage: "link.badge.plus")
+                    Label("Mole privilege prompts stay in a visible terminal", systemImage: "lock.shield")
+                }
+                .font(.system(size: 12))
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background(Color.primary.opacity(0.03))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .font(.system(size: 12))
-            .padding(14)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
@@ -569,6 +592,26 @@ struct SystemCareWindowView: View {
             .background(Color.primary.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
+    }
+
+    private var statusInset: some View {
+        Group {
+            if isShowingStatus {
+                statusBanner
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.bottom, 12)
+                    .transition(.opacity)
+            }
+        }
+        .utilityAnimation(value: isShowingStatus)
+    }
+
+    private var isShowingStatus: Bool {
+        manager.isWorking || manager.errorMessage != nil
+    }
+
+    private var storageContentKey: String {
+        "\(manager.storageURL?.path ?? "none")|\(manager.storageTotal)|\(manager.storageFileCount)"
     }
 
     private func chooseStorageFolder() {

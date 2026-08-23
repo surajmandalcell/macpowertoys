@@ -27,7 +27,7 @@ struct RcloneTransferListView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
 
             if let banner = manager.errorBanner {
                 errorBanner(banner)

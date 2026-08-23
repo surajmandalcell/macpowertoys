@@ -189,9 +189,20 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(UtilityLayout.conversationSidebarWidth, 260)
         XCTAssertEqual(UtilityLayout.sidebarRowHeight, 28)
         XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 40)
+        XCTAssertEqual(UtilityLayout.workspaceActionHeight, 24)
+        XCTAssertLessThan(UtilityLayout.separatorOpacity, 0.5)
+        XCTAssertGreaterThan(
+            UtilityLayout.increasedContrastSeparatorOpacity,
+            UtilityLayout.separatorOpacity
+        )
     }
 
     func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
         XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
+    }
+
+    func testUtilityMotionStopsWhenReduceMotionIsEnabled() {
+        XCTAssertNotNil(UtilityMotion.animation(reduceMotion: false))
+        XCTAssertNil(UtilityMotion.animation(reduceMotion: true))
     }
 }

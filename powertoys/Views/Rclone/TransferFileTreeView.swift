@@ -57,7 +57,7 @@ struct TransferFileTreeView: View {
     var body: some View {
         VStack(spacing: 0) {
             controls
-            Divider()
+            QuietDivider()
             content
         }
         .overlay(alignment: .bottom) { toastView }
@@ -288,11 +288,11 @@ struct TransferFileTreeView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                    Divider()
+                    QuietDivider()
                 }
                 HStack(spacing: 0) {
                     statusColumn(title: "NOT UPLOADED", status: .pending, tint: .orange)
-                    Divider()
+                    QuietDivider()
                     statusColumn(title: "UPLOADED", status: .uploaded, tint: .green)
                 }
             }
@@ -310,7 +310,7 @@ struct TransferFileTreeView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            Divider()
+            QuietDivider()
 
             if entries.isEmpty {
                 Text(status == .uploaded ? "Nothing uploaded yet" : "Everything is uploaded")

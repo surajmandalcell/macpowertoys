@@ -13,7 +13,7 @@ struct RcloneSettingsPage: View {
         VStack(spacing: 0) {
             if showsHeader {
                 header
-                Divider()
+                QuietDivider()
             }
 
             Form {
