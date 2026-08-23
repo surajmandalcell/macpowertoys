@@ -49,11 +49,11 @@
 **Files:**
 - Modify: `spec/ruler-request-list.md` only after successful verification.
 
-- [ ] Run the Raycast extension build.
-- [ ] Register the existing extension with Raycast.
-- [ ] Confirm that Raycast finds Ruler.
-- [ ] Update the request status only after the live check.
-- [ ] Commit the verification checkpoint.
+- [x] Run the Raycast extension build.
+- [x] Register the existing extension with Raycast.
+- [x] Confirm that Raycast finds Ruler.
+- [x] Update the request status only after the live check.
+- [x] Commit the verification checkpoint.
 
 ### Task 4: Conditional Cloud Sync backlog
 

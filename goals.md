@@ -1,6 +1,6 @@
 # PowerToys goals
 
-Reviewed against source commit `3e504d3` on 2026-08-23.
+Reviewed against current source on 2026-08-23.
 
 This file is the goals index. Each request list contains the detailed status,
 evidence, and remaining work.
@@ -9,7 +9,6 @@ evidence, and remaining work.
 
 - Complete the live checks in the request lists.
 - Add safe per-file transfer ordering without changing an active file.
-- Prove Ruler discovery in Raycast.
 - Install and verify the final clean build.
 - Complete the public release checklist only after product work is complete.
 

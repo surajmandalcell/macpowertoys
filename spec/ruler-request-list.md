@@ -24,7 +24,7 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Launch on demand through MacPowerToys without a SwiftUI Ruler scene. | `ToolActionRouter` opens or raises the AppKit ruler manager. Signed UI coverage proves startup creates no ruler and launcher activation creates one `ruler-window` with both wings. | Verify every external route in the final installed build. |
 | Done | Show Ruler settings from its launcher detail without duplicating the native implementation. | The launcher Settings page routes to the existing active-ruler Settings panel and Ruler Defaults window owned by FreeRuler. | Verify both buttons in the final installed build. |
 | Verify | Keep Ruler focused so shortcuts do not reach the previously focused app. | Ruler activation makes its borderless AppKit window key and the signed UI suite successfully drives ruler-local shortcuts. | Prove focus ownership from another foreground app in the installed build. |
-| Open | Make `Ruler` appear when searching in Raycast. | `raycast/package.json` and `raycast/src/ruler.ts` define the command, but installed Raycast search registration remains separate from source parity. | Install or register the extension and prove Raycast search discovery. |
+| Done | Make `Ruler` appear when searching in Raycast. | The Raycast extension builds successfully. A live search on 2026-08-23 showed `Ruler` from MacPowerToys as the first result after the development process stopped. | None. |
 
 ## Superseded custom behavior
 
