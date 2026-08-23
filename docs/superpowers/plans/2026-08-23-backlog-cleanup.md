@@ -58,14 +58,16 @@
 ### Task 4: Conditional Cloud Sync backlog
 
 **Files:**
+- Modify: `powertoys/Models/RcloneModels.swift`
+- Modify: `powertoysTests/RcloneModelTests.swift`
 - Modify: `spec/cloud-sync-request-list.md`
 - Modify: `spec/main-request-list.md`
 
-- [ ] Verify which providers expose stable folder links through the current rclone API.
-- [ ] Close or retain the provider-link item from that evidence.
-- [ ] Mark two-way auditing as conditional because Cloud Sync has no two-way mode.
-- [ ] Run focused Cloud Sync tests when source changes are necessary.
-- [ ] Commit the backlog checkpoint.
+- [x] Verify which providers expose stable folder links through the current rclone API.
+- [x] Close or retain the provider-link item from that evidence.
+- [x] Mark two-way auditing as conditional because Cloud Sync has no two-way mode.
+- [x] Run focused Cloud Sync tests when source changes are necessary.
+- [x] Commit the backlog checkpoint.
 
 ### Task 5: Final build and installed verification
 
