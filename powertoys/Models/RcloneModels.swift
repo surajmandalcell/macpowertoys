@@ -177,15 +177,26 @@ struct RcloneRemote: Identifiable, Hashable, Sendable {
     }
 
     var websiteName: String? {
-        type == "drive" ? "Google Drive" : nil
+        switch type {
+        case "drive": "Google Drive"
+        case "box": "Box"
+        default: nil
+        }
     }
 
     func websiteFolderURL(id: String?) -> URL? {
-        guard type == "drive" else { return nil }
-        guard let id, !id.isEmpty else {
-            return URL(string: "https://drive.google.com/drive/my-drive")
+        switch type {
+        case "drive":
+            guard let id, !id.isEmpty else {
+                return URL(string: "https://drive.google.com/drive/my-drive")
+            }
+            return URL(string: "https://drive.google.com/drive/folders/")?.appendingPathComponent(id)
+        case "box":
+            let folderID = id.flatMap { $0.isEmpty ? nil : $0 } ?? "0"
+            return URL(string: "https://app.box.com/folder/")?.appendingPathComponent(folderID)
+        default:
+            return nil
         }
-        return URL(string: "https://drive.google.com/drive/folders/")?.appendingPathComponent(id)
     }
 }
 
