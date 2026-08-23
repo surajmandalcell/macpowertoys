@@ -38,8 +38,10 @@ struct WorkspacePage<Content: View, Actions: View>: View {
                 HStack(spacing: 8) {
                     actions
                 }
-                    .controlSize(.small)
-                    .frame(height: UtilityLayout.workspaceActionHeight, alignment: .center)
+                .controlSize(.small)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(height: UtilityLayout.workspaceActionHeight, alignment: .center)
+                .layoutPriority(1)
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
             .padding(.vertical, 7)
