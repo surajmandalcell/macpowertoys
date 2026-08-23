@@ -139,6 +139,14 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["text-extractor"]))
         .restorationBehavior(.disabled)
 
+        Window("Input Devices", id: "input-devices") {
+            InputDevicesWindowView()
+        }
+        .defaultSize(width: 980, height: 700)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["input-devices"]))
+        .restorationBehavior(.disabled)
+
         MenuBarExtra(isInserted: trayBinding) {
             TrayPopoverView()
                 .modelContainer(modelContainer)

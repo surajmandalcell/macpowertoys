@@ -58,7 +58,8 @@ final class WindowStateManager {
         "logs",
         "awake",
         "color-picker",
-        "text-extractor"
+        "text-extractor",
+        "input-devices"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
@@ -153,7 +154,7 @@ final class WindowStateManager {
         return CFUUIDCreateString(nil, uuid) as String
     }
 
-    private static func clamped(_ frame: NSRect, to visibleFrame: NSRect) -> NSRect {
+    nonisolated static func clamped(_ frame: NSRect, to visibleFrame: NSRect) -> NSRect {
         var result = frame
         result.size.width = min(result.width, visibleFrame.width)
         result.size.height = min(result.height, visibleFrame.height)
