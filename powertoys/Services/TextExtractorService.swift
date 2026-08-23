@@ -25,7 +25,9 @@ final class TextExtractorService {
     init(
         defaults: UserDefaults = .standard,
         pasteboard: NSPasteboard = .general,
-        playCompletionCue: @escaping () -> Void = { NSSound(named: "Tink")?.play() }
+        playCompletionCue: @escaping () -> Void = {
+            NSSound(contentsOfFile: "/System/Library/Sounds/Tink.aiff", byReference: true)?.play()
+        }
     ) {
         self.defaults = defaults
         self.pasteboard = pasteboard
