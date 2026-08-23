@@ -35,6 +35,7 @@ colors:
   icon-text-extractor: "#2155B0"
   icon-input-devices: "#315B7D"
   icon-system-care: "#385A4B"
+  icon-power-stats: "#303B60"
 typography:
   launcher-detail-title: { size: 22, weight: semibold, relative-to: title2 }
   title: { size: 13, weight: medium, relative-to: body }
@@ -407,6 +408,7 @@ tool's product brief.
 | Text Extractor | Text / applet | Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition. |
 | Input Devices | System / workspace | Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 | System Care | System / workspace | Understand storage, preview safe cleanup, remove apps, and access advanced Mole maintenance without hidden privilege prompts. |
+| Power Stats | System / workspace | Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary. |
 
 ### Full Workspace
 
@@ -745,6 +747,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Text Extractor | Chosen Color | Chosen Color | Yellow OCR lens identity is fixed |
 | Input Devices | Chosen Color | Chosen Color | The user-selected Signal, Orbit, or Precision identity is fixed |
 | System Care | Chosen Color | Chosen Color | Green care identity and storage segments are fixed |
+| Power Stats | Chosen Color | Chosen Color | Midnight-blue gauge identity is fixed |
 
 The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
@@ -831,6 +834,7 @@ has been changed.
 | Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
 | Input Devices | `#315B7D`, `#663F70`, or `#1F6C65` | `#F7F5F0` | User-selectable input-device glyph |
 | System Care | `#385A4B` | `#D9E5D8` | Amber and powder-blue storage segments |
+| Power Stats | `#303B60` | `#DDE3F2` | Amber gauge hub and periwinkle arc |
 
 New Chosen Color tools should receive their own semantic hue unless a documented
 product decision deliberately links them to an existing color. Neutral

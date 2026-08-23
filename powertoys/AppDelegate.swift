@@ -89,7 +89,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "color-picker": "ColorPickerLogo",
         "text-extractor": "TextExtractorLogo",
         "input-devices": "InputDevicesLogoA",
-        "system-care": "SystemCareLogo"
+        "system-care": "SystemCareLogo",
+        "power-stats": "PowerStatsLogo"
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {

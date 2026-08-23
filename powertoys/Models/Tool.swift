@@ -307,6 +307,31 @@ struct SystemCareTool: Tool {
     static let shared = SystemCareTool()
 }
 
+// MARK: - Power Stats Tool
+
+struct PowerStatsTool: Tool {
+    let id = "power-stats"
+    let name = "Power Stats"
+    let description = "Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary."
+    let icon = "gauge.with.dots.needle.50percent"
+    let logoAsset = "PowerStatsLogo"
+    let category = ToolCategory.system
+
+    let manual = [
+        ToolManualSection(title: "Detailed Monitoring", points: [
+            "Open Power Stats to start the one-second detailed sampler and bounded two-minute history.",
+            "Closing the window stops disk, battery, thermal, load, and history collection.",
+            "All displayed metrics use documented public macOS APIs."
+        ]),
+        ToolManualSection(title: "Menu Bar", points: [
+            "Enable a grouped summary or individual CPU, memory, and network items.",
+            "Choose a 1, 2, 3, or 5 second interval. Disabling the menu item stops its timer completely."
+        ])
+    ]
+
+    static let shared = PowerStatsTool()
+}
+
 // MARK: - Marketplace Tool
 
 struct MarketplaceTool: Tool {
@@ -336,7 +361,8 @@ struct ToolRegistry {
         ColorPickerTool.shared,
         TextExtractorTool.shared,
         InputDevicesTool.shared,
-        SystemCareTool.shared
+        SystemCareTool.shared,
+        PowerStatsTool.shared
     ]
 
     static var allTools: [any Tool] {
