@@ -260,12 +260,13 @@ struct LogsWindowView: View {
     private var systemContent: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("System Issues")
                         .font(.system(size: 13, weight: .semibold))
                     Text("macOS errors and faults · read on demand · up to \(SystemLogReader.maximumEntries)")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 if systemLogs.isLoading { ProgressView().controlSize(.small) }

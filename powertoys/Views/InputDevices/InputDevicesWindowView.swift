@@ -97,13 +97,15 @@ struct InputDevicesWindowView: View {
                     .frame(width: 30, height: 30)
                     .background(Color.primary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(device.name)
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
+                        .layoutPriority(1)
                     Text(device.kind.rawValue)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                        .fixedSize()
                 }
                 Spacer(minLength: 0)
             }

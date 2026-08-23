@@ -306,32 +306,37 @@ private struct SessionRow: View {
             } label: {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(session.displayTitle)
-                            .font(.system(size: 12))
-                            .foregroundStyle(isSelected ? .white : .primary.opacity(0.75))
-                            .lineLimit(1)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(session.displayTitle)
+                                .font(.system(size: 12))
+                                .foregroundStyle(isSelected ? .white : .primary.opacity(0.75))
+                                .lineLimit(1)
+                                .layoutPriority(1)
+
+                            Spacer(minLength: 0)
+
+                            if let timestamp = session.timestamp {
+                                Text(formattedTimestamp(for: timestamp))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
+                                    .fixedSize()
+                            }
+                            if session.messageCount > 0 {
+                                Text("\(session.messageCount) msgs")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
+                                    .fixedSize()
+                            }
+                            if isActive {
+                                PulsingDot()
+                            }
+                        }
 
                         if let preview = contentPreview {
                             Text(preview)
                                 .font(.system(size: 10))
                                 .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary.opacity(0.6))
                                 .lineLimit(1)
-                        }
-
-                        HStack(spacing: 6) {
-                            if let timestamp = session.timestamp {
-                                Text(formattedTimestamp(for: timestamp))
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
-                            }
-                            if session.messageCount > 0 {
-                                Text("\(session.messageCount) msgs")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
-                            }
-                            if isActive {
-                                PulsingDot()
-                            }
                         }
                     }
 

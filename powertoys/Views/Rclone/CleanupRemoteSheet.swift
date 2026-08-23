@@ -80,9 +80,10 @@ struct CleanupRemoteSheet: View {
                         .fill(Color.accentColor.opacity(0.1))
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("Clean Up by Ignore Rules")
                     .font(.system(size: 15, weight: .semibold))
+                    .fixedSize()
                 Text(scope)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.secondary)

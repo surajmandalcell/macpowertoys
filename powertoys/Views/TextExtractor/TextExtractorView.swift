@@ -6,7 +6,7 @@ enum TextExtractorLayout {
     static let maximumWindowHeight: CGFloat = 422
     static let settingsHeight: CGFloat = 440
     static let maximumVisibleItems = 4
-    static let historyRowHeight: CGFloat = 64
+    static let historyRowHeight: CGFloat = 48
 }
 
 struct TextExtractorView: View {
@@ -438,14 +438,17 @@ private struct TextExtractionRow: View {
     }
 
     private var summary: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(extraction.text)
                 .font(.system(size: 12))
                 .lineLimit(1)
                 .multilineTextAlignment(.leading)
+                .layoutPriority(1)
+            Spacer(minLength: 0)
             Text(extraction.relativeTimestamp())
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
+                .fixedSize()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -460,12 +463,13 @@ private struct TextExtractionDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             CompactTitlebar(clearsTrafficLights: false) {
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("Extracted Text")
                         .font(.system(size: 13, weight: .medium))
                     Text(extraction.relativeTimestamp())
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
+                        .fixedSize()
                 }
             } actions: {
                 HStack(spacing: 6) {

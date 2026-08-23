@@ -60,18 +60,21 @@ struct ToolAboutView: View {
         HStack(spacing: 14) {
             ToolIconView(tool: tool, size: 48)
 
-            VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(tool.name)
                     .font(.system(size: 22, weight: .semibold))
+                    .lineLimit(1)
+                    .layoutPriority(2)
 
                 Text(tool.category.rawValue)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                    .fixedSize()
 
                 Text(tool.description)
                     .font(.system(size: 12))
                     .foregroundStyle(Color.primary.opacity(0.75))
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .textSelection(.enabled)
             }
 

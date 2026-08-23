@@ -10,7 +10,7 @@ enum ColorPickerLayout {
     static let historyRowHeight: CGFloat = 56
     static let projectsBaseHeight: CGFloat = 230
     static let maximumVisibleProjects = 4
-    static let projectRowHeight: CGFloat = 48
+    static let projectRowHeight: CGFloat = 34
     static let newProjectHeight: CGFloat = 40
     static let settingsControlSpacing: CGFloat = 12
 }
@@ -256,11 +256,15 @@ struct ColorHistoryView: View {
                 HStack(spacing: 10) {
                     Image(systemName: isSelected ? "folder.fill" : "folder")
                         .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(name).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(name)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                            .layoutPriority(1)
                         Text("\(count) \(count == 1 ? "color" : "colors")")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
+                            .fixedSize()
                     }
                     Spacer()
                     if isSelected {
@@ -270,7 +274,7 @@ struct ColorHistoryView: View {
                     }
                 }
                 .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, minHeight: 42)
+                .frame(maxWidth: .infinity, minHeight: UtilityLayout.sidebarRowHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -468,15 +472,17 @@ private struct ColorSampleRow: View {
                 .fill(Color(nsColor: sample.color))
                 .frame(width: 32, height: 32)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.1)))
-            VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(sample.string(service.defaultFormat))
                     .font(.system(size: 12, design: .monospaced))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
+                    .layoutPriority(1)
                 Text(sample.createdAt.formatted(Self.relativeDateStyle))
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
+                    .fixedSize()
             }
             Spacer(minLength: 4)
             Menu {
