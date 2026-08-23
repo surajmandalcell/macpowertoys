@@ -7,23 +7,21 @@ enum AwakeLayout {
 
 struct AwakeView: View {
     @State private var service = AwakeService.shared
-    @State private var hours = 0
-    @State private var minutes = 30
-    @State private var expiration = Date().addingTimeInterval(3600)
-    @State private var processID = ""
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            CompactTitlebar {
+                CompactTitlebarTitle(title: "Awake")
+                    .fontWeight(.bold)
+            } actions: {
+                displayToggle
+            }
+
             ScrollView {
-                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
-                    status
-                    modes
-                    options
-                }
-                .padding(.horizontal, UtilityLayout.horizontalInset)
-                .padding(.top, UtilityLayout.contentTopInset)
-                .padding(.bottom, UtilityLayout.contentBottomInset)
+                AwakeSettingsView(showsDisplayToggle: false)
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.top, UtilityLayout.contentTopInset)
+                    .padding(.bottom, UtilityLayout.contentBottomInset)
             }
             .thinScrollIndicators()
         }
@@ -32,20 +30,47 @@ struct AwakeView: View {
         .utilityWindowBackground()
     }
 
-    private var header: some View {
-        CompactTitlebar {
-            CompactTitlebarTitle(title: "Awake")
-                .fontWeight(.bold)
-        } actions: {
+    private var displayToggle: some View {
+        Toggle("Keep Display On", isOn: Binding(
+            get: { service.configuration.keepDisplayOn },
+            set: service.setKeepDisplayOn
+        ))
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        .focusEffectDisabled()
+        .contentShape(Rectangle())
+        .accessibilityIdentifier("awake.keep-display-on")
+    }
+}
+
+struct AwakeSettingsView: View {
+    var showsDisplayToggle = true
+
+    @State private var service = AwakeService.shared
+    @State private var hours = 0
+    @State private var minutes = 30
+    @State private var expiration = Date().addingTimeInterval(3600)
+    @State private var processID = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+            if showsDisplayToggle { displayOption }
+            status
+            modes
+            options
+        }
+    }
+
+    private var displayOption: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("DISPLAY").utilitySectionHeader()
             Toggle("Keep Display On", isOn: Binding(
                 get: { service.configuration.keepDisplayOn },
                 set: service.setKeepDisplayOn
             ))
             .toggleStyle(.switch)
             .controlSize(.small)
-            .focusEffectDisabled()
-            .contentShape(Rectangle())
-            .accessibilityIdentifier("awake.keep-display-on")
+            .utilitySectionCard()
         }
     }
 

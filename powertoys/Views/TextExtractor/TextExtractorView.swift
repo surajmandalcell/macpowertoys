@@ -11,8 +11,6 @@ enum TextExtractorLayout {
 
 struct TextExtractorView: View {
     @State private var service = TextExtractorService.shared
-    @State private var shortcuts = GlobalShortcutManager.shared
-    @State private var languages = ""
     @State private var page = TextExtractorPage.history
     @State private var selectedExtraction: TextExtraction?
 
@@ -59,9 +57,6 @@ struct TextExtractorView: View {
         .animation(.easeInOut(duration: 0.16), value: windowHeight)
         .sheet(item: $selectedExtraction) { extraction in
             TextExtractionDetailView(extraction: extraction)
-        }
-        .onAppear {
-            languages = service.settings.preferredLanguages.joined(separator: ", ")
         }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("text-extractor") == true else { return }
@@ -172,6 +167,28 @@ struct TextExtractorView: View {
     }
 
     private var settings: some View {
+        TextExtractorSettingsView()
+    }
+
+    private var isExtracting: Bool {
+        switch service.state {
+        case .selecting, .recognizing: true
+        default: false
+        }
+    }
+
+    private func openPrivacySettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
+        NSWorkspace.shared.open(url)
+    }
+}
+
+struct TextExtractorSettingsView: View {
+    @State private var service = TextExtractorService.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
+    @State private var languages = ""
+
+    var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 shortcutSettings
@@ -182,6 +199,9 @@ struct TextExtractorView: View {
             .padding(.bottom, UtilityLayout.floatingButtonContentInset)
         }
         .thinScrollIndicators()
+        .onAppear {
+            languages = service.settings.preferredLanguages.joined(separator: ", ")
+        }
     }
 
     private var shortcutSettings: some View {
@@ -278,13 +298,6 @@ struct TextExtractorView: View {
         }
     }
 
-    private var isExtracting: Bool {
-        switch service.state {
-        case .selecting, .recognizing: true
-        default: false
-        }
-    }
-
     private func applyLanguages() {
         service.settings.preferredLanguages = languages
             .split(separator: ",")
@@ -292,10 +305,6 @@ struct TextExtractorView: View {
             .filter { !$0.isEmpty }
     }
 
-    private func openPrivacySettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
-        NSWorkspace.shared.open(url)
-    }
 }
 
 private enum TextExtractorPage {
