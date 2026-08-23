@@ -1217,13 +1217,12 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
             parentWindow.removeChildWindow(colorPanel)
         }
 
-        position(colorPanel, attachedTo: settingsWindow)
-
         if colorPanel.parent == nil {
             settingsWindow.addChildWindow(colorPanel, ordered: .above)
         }
 
         colorPanel.orderFront(colorWell)
+        position(colorPanel, attachedTo: settingsWindow)
     }
 
     private func position(_ colorPanel: NSColorPanel, attachedTo settingsWindow: NSWindow) {
