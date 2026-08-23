@@ -153,6 +153,7 @@ final class WindowAccessorTests: XCTestCase {
             let initialY = try XCTUnwrap(window.standardWindowButton(.closeButton)?.frame.origin.y)
             window.contentView = NSHostingView(rootView: WindowAccessor(identifier: identifier))
             window.contentView?.layoutSubtreeIfNeeded()
+            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
 
             let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
