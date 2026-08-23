@@ -50,7 +50,8 @@ struct MacPowerToysApp: App {
                     guard !AppRuntime.isRunningTests else { return }
                     await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
                     DeepLinkHandler.shared.handleCLIArguments()
-                    for id in ["cc-history"] where UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
+                    for id in ["cc-history"] where SettingsManager.shared.isToolEnabled(id)
+                        && UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
                         openWindow(id: id)
                     }
                 }

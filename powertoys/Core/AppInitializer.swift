@@ -46,7 +46,7 @@ final class AppInitializer {
         _ = SettingsManager.shared
         await MarketplaceManager.shared.restore()
         SettingsSyncManager.shared.startIfEnabled()
-        _ = AwakeService.shared
+        if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
         _ = ColorPickerService.shared
         _ = TextExtractorService.shared
         _ = GlobalShortcutManager.shared
@@ -55,7 +55,7 @@ final class AppInitializer {
 
         let hasContinuousJobs = await RcloneJobManager.hasPersistedContinuousJobs()
         let shouldStartRclone = UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") || hasContinuousJobs
-        if shouldStartRclone {
+        if shouldStartRclone && SettingsManager.shared.isToolEnabled("rclone") {
             Task { await RcloneJobManager.shared.start() }
         }
 

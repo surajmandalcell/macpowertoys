@@ -7,7 +7,6 @@ import SwiftUI
 
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
-    @Environment(\.openWindow) private var openWindow
     @State private var searchText = ""
 
     var body: some View {
@@ -47,8 +46,7 @@ struct ToolSidebarView: View {
 
             VStack(spacing: 4) {
                 SidebarExternalRow(icon: "doc.text.magnifyingglass", title: "Logs") {
-                    openWindow(id: "logs")
-                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    ToolActionRouter.shared.open(toolID: "logs")
                 }
 
                 SidebarRow(icon: "gearshape", title: "Settings", isSelected: false) {

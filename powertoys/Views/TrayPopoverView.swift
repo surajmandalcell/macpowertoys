@@ -10,10 +10,13 @@ struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab") private var selectedTab = "rclone"
     @Environment(\.openWindow) private var openWindow
     @State private var slideForward = true
+    @State private var settings = SettingsManager.shared
 
     private var trayTools: [any Tool] {
-        ToolRegistry.allTools.filter { $0.hasTrayTab }
+        ToolRegistry.allTools.filter { $0.hasTrayTab && settings.isToolEnabled($0.id) }
     }
+
+    private var trayToolIDs: [String] { trayTools.map(\.id) }
 
     private var maxPopoverHeight: CGFloat {
         (NSScreen.main?.visibleFrame.height ?? 900) * 0.7
@@ -21,23 +24,28 @@ struct TrayPopoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TrayTabStrip(tools: trayTools, selected: tabSelection)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 10)
+            if trayTools.isEmpty {
+                EmptyStateView(icon: "switch.2", message: "No enabled tray tools")
+                    .frame(height: 160)
+            } else {
+                TrayTabStrip(tools: trayTools, selected: tabSelection)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
+                    .padding(.bottom, 10)
 
-            Divider()
+                Divider()
 
-            ZStack {
-                tabContent
-                    .id(selectedTab)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: slideForward ? .trailing : .leading),
-                        removal: .move(edge: slideForward ? .leading : .trailing)
-                    ))
-            }
+                ZStack {
+                    tabContent
+                        .id(selectedTab)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: slideForward ? .trailing : .leading),
+                            removal: .move(edge: slideForward ? .leading : .trailing)
+                        ))
+                }
                 .clipped()
                 .frame(maxWidth: .infinity)
+            }
 
             Divider()
 
@@ -45,10 +53,13 @@ struct TrayPopoverView: View {
         }
         .frame(width: 340)
         .frame(maxHeight: maxPopoverHeight)
-        .onAppear {
-            if !trayTools.contains(where: { $0.id == selectedTab }), let first = trayTools.first {
-                selectedTab = first.id
-            }
+        .onAppear(perform: normalizeSelection)
+        .onChange(of: trayToolIDs) { normalizeSelection() }
+    }
+
+    private func normalizeSelection() {
+        if !trayTools.contains(where: { $0.id == selectedTab }), let first = trayTools.first {
+            selectedTab = first.id
         }
     }
 
