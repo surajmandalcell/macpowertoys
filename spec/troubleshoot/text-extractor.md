@@ -48,6 +48,36 @@
 - **Check:** Extract known text and confirm the pasteboard contains only the
   string, the cue follows the copy, and failure/cancellation leave it unchanged.
 
+## Recognition Recovery And Codes
+
+- **Symptom:** A shortcut capture appears to do nothing, a saved language tag
+  breaks later recognition, or a QR code is returned as noisy OCR text.
+- **Cause:** Empty results stayed in an invisible service state, Vision received
+  unsupported language identifiers unchanged, and only text recognition ran.
+- **Invariant:** Capture failures open Text Extractor with a visible error while
+  leaving the clipboard unchanged. Unsupported saved languages fall back to
+  automatic detection. Fast OCR retries once with Accurate only after an empty
+  result. QR codes and barcodes are detected by default and URL results expose
+  an Open action; the setting remains optional and preserves older settings.
+- **Check:** Run `CoreModelTests`, including the generated high-contrast text and
+  QR fixtures. Select text and a QR code from another display, then confirm the
+  copied result, history row, Open action, and failure banner.
+
+## Selection Capture Isolation
+
+- **Symptom:** The dim selection overlay appears in the captured image, content
+  inside MacPowerToys cannot be extracted, or rapid shortcut presses stack
+  selectors.
+- **Cause:** The entire host application was excluded to hide its selector,
+  and capture sessions were not guarded at the shared service entry point.
+- **Invariant:** Selector panels opt out of screen sharing themselves while the
+  display capture includes all applications. Only one selection or recognition
+  session may run at once. The selector on the display containing the pointer
+  owns keyboard focus, including Escape.
+- **Check:** Extract content inside and outside MacPowerToys on each attached
+  display, press the shortcut repeatedly, cancel with Escape, and confirm one
+  selector, an undimmed capture, and restored pointer behavior.
+
 ## History and Detail
 
 - **Symptom:** Large recognized text is cramped, timestamps expose seconds, or

@@ -11,6 +11,31 @@ struct TextExtractorSettings: Codable, Equatable, Sendable {
     var speed: TextRecognitionSpeed = .fast
     var languageCorrection = true
     var preferredLanguages: [String] = []
+    var detectCodes = true
+
+    init(
+        speed: TextRecognitionSpeed = .fast,
+        languageCorrection: Bool = true,
+        preferredLanguages: [String] = [],
+        detectCodes: Bool = true
+    ) {
+        self.speed = speed
+        self.languageCorrection = languageCorrection
+        self.preferredLanguages = preferredLanguages
+        self.detectCodes = detectCodes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case speed, languageCorrection, preferredLanguages, detectCodes
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        speed = try values.decodeIfPresent(TextRecognitionSpeed.self, forKey: .speed) ?? .fast
+        languageCorrection = try values.decodeIfPresent(Bool.self, forKey: .languageCorrection) ?? true
+        preferredLanguages = try values.decodeIfPresent([String].self, forKey: .preferredLanguages) ?? []
+        detectCodes = try values.decodeIfPresent(Bool.self, forKey: .detectCodes) ?? true
+    }
 }
 
 struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
@@ -26,6 +51,14 @@ struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
 
     var needsExpandedView: Bool {
         text.count > 180 || text.filter(\.isNewline).count > 3
+    }
+
+    var openableURL: URL? {
+        guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
+              ["http", "https"].contains(url.scheme?.lowercased()),
+              url.host != nil
+        else { return nil }
+        return url
     }
 
     func relativeTimestamp(at now: Date = Date()) -> String {

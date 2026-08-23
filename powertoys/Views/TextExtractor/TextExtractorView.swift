@@ -154,13 +154,21 @@ struct TextExtractorView: View {
                 tint: .accentColor
             )
         case .failed(let message):
-            TextExtractorStatusBanner(
-                icon: "exclamationmark.triangle",
-                message: message,
-                tint: .red,
-                actionTitle: "Privacy Settings",
-                action: openPrivacySettings
-            )
+            if message.contains("Privacy & Security") {
+                TextExtractorStatusBanner(
+                    icon: "exclamationmark.triangle",
+                    message: message,
+                    tint: .red,
+                    actionTitle: "Privacy Settings",
+                    action: openPrivacySettings
+                )
+            } else {
+                TextExtractorStatusBanner(
+                    icon: "exclamationmark.triangle",
+                    message: message,
+                    tint: .red
+                )
+            }
         default:
             EmptyView()
         }
@@ -273,6 +281,13 @@ struct TextExtractorSettingsView: View {
 
                 Divider()
 
+                Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .padding(.vertical, 12)
+
+                Divider()
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Preferred languages")
                         .font(.system(size: 12, weight: .medium))
@@ -364,6 +379,13 @@ private struct TextExtractionRow: View {
                 Image(systemName: "doc.on.doc").frame(width: 24, height: 24)
             }
             .help("Copy text")
+
+            if let url = extraction.openableURL {
+                Button { NSWorkspace.shared.open(url) } label: {
+                    Image(systemName: "arrow.up.right.square").frame(width: 24, height: 24)
+                }
+                .help("Open link")
+            }
 
             if extraction.needsExpandedView {
                 Button(action: onOpen) {
