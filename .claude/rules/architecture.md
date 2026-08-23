@@ -36,7 +36,7 @@
 - Keep interactive elements (buttons) separate from content
 - Text logs/content must always be fully selectable
 
-# UI Styling (CRITICAL - Avoid Default/Native Ugliness)
+# UI Styling (CRITICAL - Compact Native Controls)
 
 ## Window & Titlebar
 - Use `.windowStyle(.hiddenTitleBar)` for window chrome. Every compact tool uses
@@ -86,7 +86,9 @@ HStack(spacing: 6) {
 ## Buttons & Controls
 - Use `.buttonStyle(.plain)` with custom hover states for sidebar/navigation items
 - Add `.contentShape(Rectangle())` to make entire row clickable, not just text
-- Custom backgrounds with `RoundedRectangle` and accent colors
+- Use native bordered buttons, toggles, menus, pickers, sliders, and checkboxes
+- Keep related controls on one row or in columns when labels remain clear
+- Reserve accent fill for the current primary action
 
 ## Lists & Grids
 - Prefer `LazyVGrid` over `List` for tool grids - more control over styling

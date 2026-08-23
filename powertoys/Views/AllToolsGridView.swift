@@ -35,7 +35,6 @@ struct ToolCard: View {
 
     @State private var settings = SettingsManager.shared
     @State private var isHovering = false
-    @State private var isOpenHovering = false
 
     private var isEnabled: Bool { settings.isToolEnabled(tool.id) }
 
@@ -70,43 +69,34 @@ struct ToolCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .focusEffectDisabled()
             .accessibilityIdentifier("tool.\(tool.id).card")
 
             Spacer(minLength: 0)
 
             HStack(spacing: 10) {
-                Toggle("Enabled", isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { isEnabled },
                     set: { settings.setToolEnabled($0, for: tool.id) }
-                ))
+                )) { EmptyView() }
+                .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.mini)
-                .font(.system(size: 11))
                 .disabled(settings.isToolTransitioning(tool.id))
+                .accessibilityLabel("Enable \(tool.name)")
                 .accessibilityIdentifier("tool.\(tool.id).quick-toggle")
 
                 Spacer()
 
-                Button(action: openAction) {
-                    Text("Open")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isOpenHovering ? .white : .secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(isOpenHovering ? Color.accentColor : Color.primary.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
+                Button("Open", action: openAction)
                 .accessibilityIdentifier("tool.\(tool.id).open")
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
+                .buttonStyle(.bordered)
+                .controlSize(.small)
                 .disabled(!isEnabled || settings.isToolTransitioning(tool.id))
-                .onHover { isOpenHovering = $0 }
             }
         }
         .padding(12)
         .accessibilityElement(children: .contain)
-        .frame(minHeight: 128)
+        .frame(minHeight: 110)
         .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(

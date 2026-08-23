@@ -13,6 +13,12 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Top padding: `.padding(.top, 52)` - aligns with sidebar search bar top
 - Content and search bar start at the same vertical position
 
+### Workspace Density
+- Simple sidebar: 220pt; data sidebar: 240pt; conversation sidebar: 260pt
+- Sidebar row: 28pt minimum, 16pt icon, 8pt horizontal inset and gap
+- Workspace page strip: 40pt with 13pt title and optional 11pt subtitle
+- Workspace body: 12pt top inset; never add a second 32pt top gap
+
 ### Compact Tool Chrome
 - Titlebar: 40pt high, no bottom border or separator
 - Complete row: one 4pt top inset; never pad row items separately

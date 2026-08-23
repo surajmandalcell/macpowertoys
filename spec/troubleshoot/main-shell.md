@@ -1,5 +1,16 @@
 # Main Shell Troubleshooting
 
+## Compact Tool Enablement
+
+- **Symptom:** Tool cards or detail pages spend one row on an `Enabled` label
+  and another on an oversized custom Open button.
+- **Cause:** Enablement and launch were styled as separate form sections instead
+  of related actions for one tool.
+- **Invariant:** Put the unlabeled native switch and native small Open button in
+  one row. Keep an accessible enable label and keep disabled launch behavior.
+- **Check:** Inspect every launcher card and tool detail. No visible `Enabled`
+  label remains, both controls share one row, and Accessibility names the tool.
+
 ## Menu-Bar Click Arbitration
 
 - **Symptom:** Double-clicking the menu-bar icon opens and closes the popover

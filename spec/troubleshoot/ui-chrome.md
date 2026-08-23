@@ -1,5 +1,29 @@
 # UI Chrome Troubleshooting
 
+## Compact Workspace Hierarchy
+
+- **Symptom:** Workspace sidebars, selected rows, page headings, buttons, and
+  option cards look like oversized web controls and hide the primary action.
+- **Cause:** New workspaces copied local 22pt scroll-body headers and custom
+  card controls instead of the shared compact workspace shell.
+- **Invariant:** Use 220pt simple, 240pt data, or 260pt conversation sidebars.
+  Use 28pt full-width rows with a quiet accent selection. Use the shared 40pt
+  page strip, 13pt destination title, optional 11pt subtitle, 12pt body inset,
+  native controls, related multi-column rows, and one accent primary action.
+- **Check:** Inspect launcher, Logs, Cloud Sync, Claude History, Input Devices,
+  System Care, and Power Stats at default and minimum widths. No workspace has
+  a 22pt body title, a second 32pt top gap, or a solid-blue sidebar selection.
+
+## Product Copy Boundary
+
+- **Symptom:** A task screen shows implementation tradeoffs, API limits,
+  research notes, or text copied from a design conversation.
+- **Cause:** Engineering rationale was used as persistent interface help.
+- **Invariant:** Task screens show names, values, state, and recovery actions.
+  Put a technical limit in About only when it changes a person's decision.
+- **Check:** Search visible strings for rationale terms such as `public API`,
+  `does not expose`, `not bundled`, `intentionally`, and `never captures`.
+
 ## Workspace Traffic-Light Spacing
 
 - **Symptom:** Workspace traffic lights sit off-center in the top strip or run

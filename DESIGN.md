@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -12,6 +12,7 @@ colors:
   focus-ring-on-accent: "colors.on-accent"
   disabled-opacity: 0.38
   selection-light: "Color.accentColor.opacity(0.1)"
+  sidebar-selection: "Color.accentColor.opacity(0.1)"
   selection-strong: "Color.accentColor"
   selection-strong-text: "opaque black or white, chosen for >=4.5:1 contrast"
   card: "Color.primary.opacity(0.03)"           # grids, subtle depth
@@ -70,12 +71,12 @@ spacing:
   floating-control-edge: 8
 windows:
   launcher: { content-width: 780, content-height: 700, sidebar-width: 220, card-min-height: 110, resizable: false }
-  workspace: { min-content-width: 640, min-height: 600, sidebar-min: 220, sidebar-max: 280, resizable: true }
+  workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
   sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
-  sidebar-row: { min-height: 34, radius: 8, icon: 20, inset-x: 10, gap: 10, selected-bg: colors.selection-strong, selected-text: colors.selection-strong-text }
+  sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: primary }
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
   tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: colors.selection-strong }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
@@ -138,6 +139,26 @@ Custom appearance is limited to the titlebar, material shells, sidebar rows,
 search surfaces, tab pills, named cards, badges, and the exact shared patterns
 defined here.
 
+## Interaction Hierarchy
+
+Apply the relevant [Laws of UX](https://lawsofux.com/) to every new and existing
+surface. Familiar native controls satisfy Jakob's Law. Compact full-row targets
+satisfy Fitts's Law without mobile-sized chrome. Proximity and common region
+group related controls. Hick's Law limits visible choices. The Von Restorff
+effect reserves accent emphasis for the current primary action.
+
+- Show one primary action per state. Put it in the stable top strip or the
+  action row nearest its result.
+- Put related controls on one row or in multiple columns while labels remain
+  clear. Do not spend one full row on each small toggle, picker, or button.
+- Use native bordered buttons, switches, checkboxes, menus, and segmented
+  controls. Do not redraw them as large web-style rectangles or option cards.
+- Use cards only for entities, results, or a group that must read as one unit.
+  Use open rows for ordinary settings and actions.
+- Keep product copy task-specific. Do not expose implementation tradeoffs,
+  research notes, API limits, or design conversations in a task screen. Put a
+  limit in About only when it changes a decision the person makes.
+
 A browser artifact passes only after comparison beside the appropriate current
 screenshot. Raw wireframes, default component-gallery examples, and generic
 dashboard mockups are not fidelity evidence.
@@ -159,9 +180,9 @@ hex lives only in icon assets. This keeps light and dark mode free.
   reaches at least 4.5:1 contrast against the resolved accent. The inset focus
   ring uses that same contrast-aware color and reaches at least 3:1 against the
   fill. Never assume white is readable on a person-selected accent.
-- Selection-light is accent at 0.1 for selected content rows and inline choices.
-  Selection-strong is the solid system accent for sidebar navigation, with
-  contrast-aware black or white text and symbols. Tab pills are the quiet
+- Selection-light is accent at 0.1 for selected content rows, inline choices,
+  and sidebar navigation. Sidebar text stays primary and its icon uses accent.
+  Selection-strong is reserved for tray tabs. Tab pills are the quiet
   exception: their persistent selected surface is primary 0.06 with ordinary
   primary text, not an accent layer, accent text, or underline.
 - Keyboard focus uses the system focus effect except for the repaired compact
@@ -348,8 +369,8 @@ Canonical anatomy:
   invent family filters such as “Quick tools” or “Workspaces”; family is not
   catalog taxonomy.
 - Navigation is `All Tools`, then the registry's uppercase category headers and
-  tool rows with a 34pt minimum and 4pt stack spacing. Rows use a 20pt icon,
-  10pt internal leading/trailing inset, and 8pt radius. Each header starts after
+  tool rows with a 28pt minimum and 4pt stack spacing. Rows use a 16pt icon,
+  8pt internal leading/trailing inset, and 8pt radius. Each header starts after
   16pt and leaves 4pt before its first row. The footer has the same rows, 12pt
   outer inset and bottom padding, and contains Logs, Settings, and Exit. The
   material transition is the pane boundary; do not add a vertical divider.
@@ -358,22 +379,21 @@ Canonical anatomy:
 - `All Tools` content begins at y=52. It uses 24pt horizontal and bottom
   padding, an adaptive two-column grid with 220pt minimum columns, and 16pt
   row/column gaps.
-- A launcher tool card is at least 128pt high at default text sizes, with 12pt outer
+- A launcher tool card is at least 110pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
   name; 10pt uppercase category; two lines of 12pt secondary description; and
-  a labeled mini `Enabled` switch bottom-leading; and an 11pt `Open` button
-  bottom-trailing. Rest is 0.03. Hover is 0.06
+  an unlabeled mini enable switch bottom-leading; and a native small `Open`
+  button bottom-trailing. Rest is 0.03. Hover is 0.06
   with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,
-  radius 8, y offset 2. `Open` rests on primary 0.06 with secondary text, then
-  becomes solid accent with white text while hovered. Accessibility text may
+  radius 8, y offset 2. Accessibility text may
   expand the complete grid row, never only one card in that row.
 - Clicking a card selects its detail page. Clicking `Open` opens the tool, and
-  its labeled `Enabled` switch changes availability without selecting or
+  its unlabeled enable switch changes availability without selecting or
   opening it. These actions must remain separately accessible. A disabled card
   stays selectable so the tool can be re-enabled, while `Open` is disabled.
-- A tool detail page uses a 24pt gutter, 64pt named tool icon, the one allowed
-  22pt semibold detail title, category, description, a trailing labeled
-  `Enabled` switch above `Open <Tool>`, and a segmented `Settings` / `How to
+- A tool detail page uses a 24pt gutter, 48pt named tool icon, the one allowed
+  22pt semibold detail title, category, description, a trailing unlabeled
+  enable switch beside a native small `Open` button, and a segmented `Settings` / `How to
   Use` choice. It opens on Settings and renders the same settings view as the
   tool window; Ruler links to its existing AppKit Settings and Defaults panels.
   How to Use keeps 12pt-radius instruction cards. Do not use the 22pt title
@@ -422,7 +442,7 @@ Canonical anatomy:
 
 ```text
 content at least 640 wide; height at least 600; resizable
-┌──── sidebar 220–280 ────┬──────── flexible content ────────┐
+┌──── sidebar 220–260 ────┬──────── flexible content ────────┐
 │ traffic lights  title   │ 40pt top strip                  │
 │ search/action at y=52   ├─────────────────────────────────┤
 │ destinations            │ body; first surface near y=52  │
@@ -434,16 +454,16 @@ content at least 640 wide; height at least 600; resizable
 - Use 900×600 for a simple list workspace, 1000×720 for the standard case, and
   1200×800 for a detail-heavy workspace. The person may resize it down to the
   chosen sidebar width plus 640pt of content, never below 600pt high.
-- Choose one fixed sidebar width from 220–280pt based on label and hierarchy
-  density. It does not resize with the window and never collapses into an
-  overlay. Title position matches the launcher.
+- Choose 220pt for a simple workspace, 240pt for data navigation, or 260pt for
+  conversation navigation. It does not resize with the window and never
+  collapses into an overlay. Title position matches the launcher.
 - The sidebar's primary control starts at y=52 with 12pt horizontal insets. Use
   the custom 32pt sidebar search when the navigation itself is searchable. Use a
   full-width primary workflow action there when creation is the main entry
   point. That action is at least 34pt high with 12pt internal horizontal
   padding, 8pt radius, contrast-aware label/icon, accent fill, and the filled
   interaction treatment. Never stack both controls at the top.
-- Sidebar navigation groups use rows with a 34pt minimum and 2pt between rows.
+- Sidebar navigation groups use full-width 28pt rows and 2pt between rows.
   A new section starts after 16pt, its 10pt uppercase header has 4pt bottom
   spacing, and the final scroll group has 20pt bottom padding. Settings uses the
   same row minimum and sits 12pt from the sidebar bottom.
@@ -467,6 +487,9 @@ content at least 640 wide; height at least 600; resizable
   actions on the right. Actions remain flat and separate. Normal workspace
   controls use the 4pt/6pt radius roles; the titlebar-only radius exception does
   not apply.
+- The top strip uses a 13pt medium destination title and optional 11pt
+  subtitle. The 22pt launcher detail title never appears in a workspace body.
+  Body content starts 12pt below the strip. Do not add a second 32pt top gap.
 - Content uses one 20pt leading gutter unless a dense list uses a documented
   16pt row gutter. Headers, tabs, fields, cards, and rows within that container
   share the chosen edge.
@@ -485,8 +508,8 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | Workspace | Default / sidebar | y=52 control and navigation | Primary content |
 |---|---|---|---|
 | Logs | 900×600 / 220pt | Search; level filters; Settings | Selectable dense log stream |
-| Cloud Sync | 1000×720 / 264pt | `New Transfer`; filters, Activity, remotes, Settings | Transfer rows, remote browser, or activity ledger |
-| Claude History | 1200×800 / 280pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
+| Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, remotes, Settings | Transfer rows, remote browser, or activity ledger |
+| Claude History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
 
 A new workspace's product brief chooses destinations and data, then follows the
 closest content pattern: homogeneous operational items use dense rows; grouped
@@ -661,10 +684,10 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 - **Sidebar search** - at least 32pt high with 12pt outer inset, 8pt inner
   padding, 6pt radius, 12pt search icon, and 13pt text. Use the family-defined
   placeholder.
-- **Sidebar row** - at least 34pt high, 20pt icon, 10pt internal horizontal
-  inset and gap, 8pt radius, 13pt text, hover 0.06, and solid accent selected
-  background with contrast-aware black or white text and symbols.
-- **Sidebar primary action** - at least 34pt high, 12pt horizontal inset, 8pt
+- **Sidebar row** - 28pt high at standard text size, 16pt icon, 8pt internal
+  horizontal inset and gap, 8pt radius, 13pt text, hover 0.06, and accent 0.1
+  selected background with primary text and an accent icon.
+- **Sidebar primary action** - at least 28pt high, 12pt horizontal inset, 8pt
   radius, accent fill, contrast-aware 13pt medium label, and one 13pt semantic
   icon.
 - **Compact titlebar control** — 24pt high, 6pt radius, hover 0.06, and no
@@ -930,7 +953,7 @@ same metaphor because macOS controls their tint.
   `Button`; logs and content text must stay selectable.
 - **Never** put hover opacities other than 0.06 (0.1 for filled), pressed
   opacities other than 0.1 (0.18 for filled), selection
-  other than accent 0.1, solid accent sidebar selection, or the explicit Tab
+  other than accent 0.1, solid accent tray-tab selection, or the explicit Tab
   Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
 - **Never** use capsule buttons, UI gradients, or baked icon effects. Capsules
   remain valid only for progress tracks and documented state or count badges.
@@ -955,7 +978,7 @@ same metaphor because macOS controls their tint.
   hover adds 0.06 primary to an unfilled control or 0.1 to a filled control;
   press adds 0.1 primary to an unfilled control or 0.18 to a filled control;
   disabled applies 0.38 opacity and ignores hover/press; selected uses the
-  assigned 0.1 accent layer or solid accent sidebar role, except for Tab Pill's
+  assigned 0.1 accent layer or solid accent tray-tab role, except for Tab Pill's
   explicit primary 0.06 surface; focus uses the native system ring except for
   the compact replacement ring.
 - A dense control may be visibly 24pt, but its complete rectangular hit region

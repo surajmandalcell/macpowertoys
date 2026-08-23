@@ -26,7 +26,7 @@ struct RcloneWindowView: View {
 
         HStack(spacing: 0) {
             RcloneSidebarView(content: $content, showAddRemote: $showAddRemote)
-                .frame(width: 264)
+                .frame(width: UtilityLayout.dataSidebarWidth)
 
             contentArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
