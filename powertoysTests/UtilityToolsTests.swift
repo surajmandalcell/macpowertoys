@@ -49,6 +49,8 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "awake-AppWindow-1"), "AwakeLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "color-picker"), "ColorPickerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "text-extractor"), "TextExtractorLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoA")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-care"), "SystemCareLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
     }

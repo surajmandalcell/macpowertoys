@@ -147,6 +147,14 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["input-devices"]))
         .restorationBehavior(.disabled)
 
+        Window("System Care", id: "system-care") {
+            SystemCareWindowView()
+        }
+        .defaultSize(width: 1180, height: 780)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["system-care"]))
+        .restorationBehavior(.disabled)
+
         MenuBarExtra(isInserted: trayBinding) {
             TrayPopoverView()
                 .modelContainer(modelContainer)
