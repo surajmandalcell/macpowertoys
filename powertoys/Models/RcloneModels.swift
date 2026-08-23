@@ -469,6 +469,10 @@ final class TransferJob: Identifiable {
         state == .paused
     }
 
+    var effectivePriority: TransferPriority {
+        kind == .file ? priority : .normal
+    }
+
     var duration: TimeInterval? {
         guard let startedAt else { return nil }
         return (finishedAt ?? Date()).timeIntervalSince(startedAt)
@@ -736,7 +740,7 @@ extension TransferJob {
             networkBaselineBytes: networkBaselineBytes,
             continuousSync: continuousSync ? true : nil,
             transferOrder: transferOrder == .default ? nil : transferOrder.rawValue,
-            priority: priority == .normal ? nil : priority.rawValue,
+            priority: kind == .file && priority != .normal ? priority.rawValue : nil,
             isExpanded: isExpanded ? true : nil,
             updateOlderOnly: updateOlderOnly ? true : nil,
             ignoreExisting: ignoreExisting ? true : nil,
@@ -781,7 +785,9 @@ extension TransferJob {
         networkBaselineBytes = snapshot.networkBaselineBytes ?? 0
         continuousSync = snapshot.continuousSync ?? false
         transferOrder = snapshot.transferOrder.flatMap(TransferOrder.init(rawValue:)) ?? .default
-        priority = snapshot.priority.flatMap(TransferPriority.init(rawValue:)) ?? .normal
+        priority = kind == .file
+            ? snapshot.priority.flatMap(TransferPriority.init(rawValue:)) ?? .normal
+            : .normal
         isExpanded = snapshot.isExpanded ?? false
         updateOlderOnly = snapshot.updateOlderOnly ?? false
         ignoreExisting = snapshot.ignoreExisting ?? false
