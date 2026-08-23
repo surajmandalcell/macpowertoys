@@ -1,10 +1,11 @@
 # Color Picker Request List
 
-Reviewed against the current app source on 2026-07-22. Update this list when a
+Reviewed against the current app source on 2026-08-24. Update this list when a
 direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep project counts and color timestamps on their related row. | `4ad3da2` puts each project count beside its name and each timestamp beside its color value. It also reduces the project row to the shared compact height. The full unit suite passes. | Inspect long project names and color values at the fixed window width. Confirm that primary text truncates before the count or time clips. |
 | Superseded | Keep a settings cog at the top-right beside `Pick Color`. | The newer cross-app chrome requirement reserves compact titlebars for app names and primary actions; Color Picker uses the shared bottom-right `FloatingSettingsButton` for its full settings page. | Keep settings out of the compact titlebar. |
 | Verify | Remove lag while the native color sampler is active. | `5b3d174` rejects overlapping sampler sessions and reuses the row date formatter. Its unit check passes. | Measure the normal installed app during an active pick. |
 | Done | Prevent transient or persistent titlebar focus outlines. | Shared titlebar controls suppress focus effects, and Color Picker routes initial focus to its invisible window accessor like every compact applet. Fresh-open and cross-window focus checks in the normal signed `98f35f6` build showed no outline. | None. |

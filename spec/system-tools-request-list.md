@@ -1,6 +1,6 @@
 # System Tools Request List
 
-Reviewed against source commit `3e504d3` on 2026-08-23. Update this list when
+Reviewed against source commit `4ad3da2` on 2026-08-24. Update this list when
 a direct user correction or verified result changes a status.
 
 ## Input Devices
@@ -47,5 +47,6 @@ a direct user correction or verified result changes a status.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Done | Remember window position, display, and size for the three tools. | Each window uses a stable `WindowAccessor` identifier. `WindowStateManager` stores all three identifiers. | None. |
+| Verify | Keep short metadata inline and use two columns on sparse wide pages. | `a318b41` put System Care storage paths, breadcrumb totals, and cleanup metadata on one row and made Settings adaptive. `4ad3da2` compacted Input Devices metadata and made Power Stats Menu Bar cards adaptive. The full unit suite passes. | Inspect all three tools at default and minimum widths. Confirm two columns on wide sparse pages, one column on narrow pages, and no clipped values. |
 | Verify | Confirm restoration with multiple displays. | Unit tests cover saved display frames and fixed-size position restoration. | Move and resize each window, relaunch, and check each display. |
 | Verify | Use quiet structural dividers and compact aligned top actions in all three workspaces. | Input Devices, System Care, and Power Stats inherit the shared quiet divider, 24pt action, and page-transition behavior. The build passes. | Inspect light, dark, Increased Contrast, and minimum-width states in the latest normal installed build. |

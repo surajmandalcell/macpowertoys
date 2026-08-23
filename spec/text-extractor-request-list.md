@@ -1,10 +1,11 @@
 # Text Extractor Request List
 
-Reviewed against the current app source on 2026-07-14. Update this list when a
+Reviewed against the current app source on 2026-08-24. Update this list when a
 direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep extraction times on the related text row and reduce row height. | `4ad3da2` puts history times at the trailing edge, puts the detail time beside its title, and reduces history rows from 64pt to 48pt. The full unit suite passes. | Inspect short and long recognized text in the latest normal installed build. Confirm that text truncates before time clips. |
 | Done | Create 20 visually different handwritten-loupe icon options in `tmp/textextractor.html`. | The page defines and renders exactly 20 named color and material variants. | None. |
 | Done | Use the selected "Cobalt 051" icon in the app. | `TextExtractorLogo.imageset/icon.svg` uses the approved low-right loupe, empty powder-blue lens, and muted sand wave hierarchy on cobalt. | None. |
 | Verify | Fix Text Extractor so region selection, OCR, and automatic clipboard copy work. | `05acf1c` made the overlay panel key, first-responder, and first-click capable. The current service captures with ScreenCaptureKit, recognizes with Vision, records history, and copies to the pasteboard. | Prove selection, recognition, clipboard copy, permission failure, and cancellation end-to-end in the normal installed app. |

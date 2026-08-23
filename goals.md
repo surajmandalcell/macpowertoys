@@ -7,6 +7,8 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify compact inline metadata and adaptive two-column pages in the latest
+  normal installed build at default and minimum widths.
 - Verify the cross-app sidebar icon, divider, action-alignment, bottom-status,
   and motion corrections in the latest normal installed build.
 - Complete the live checks in the request lists.

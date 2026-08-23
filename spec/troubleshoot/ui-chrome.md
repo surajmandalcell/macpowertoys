@@ -29,6 +29,23 @@
   Menus and buttons share one centerline. Start System Care work on every page
   and confirm the status stays at the bottom without unused space below it.
 
+## Inline Metadata And Sparse Pages
+
+- **Symptom:** A short category, path, count, kind, time, or total consumes a
+  second row, while independent cards occupy one narrow column in a wide pane.
+- **Cause:** Every secondary value used a vertical stack, and card groups used
+  a fixed single-column layout.
+- **Invariant:** Put short related title and metadata pairs in a first-baseline
+  row with a 6pt to 8pt gap. Give the primary text truncation priority and keep
+  the short secondary value fixed. Use a trailing spacer when the value belongs
+  at the far edge. Use an adaptive grid with a 320pt minimum for independent
+  cards. Keep help text, errors, previews, commands, and long paths on their own
+  lines.
+- **Check:** Audit every leading stack with 0pt to 4pt spacing. Inspect launcher
+  details, page strips, devices, projects, history, sources, storage rows, and
+  sparse settings at default and minimum widths. Wide panes use two columns
+  where useful. Narrow panes use one column without clipping.
+
 ## Quiet Structural Separators
 
 - **Symptom:** Hairlines divide the interface more strongly than the content.

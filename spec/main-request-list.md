@@ -1,6 +1,6 @@
 # Main Task Request List
 
-Reviewed against current source and Git history on 2026-08-23. This list covers
+Reviewed against current source and Git history on 2026-08-24. This list covers
 requests made in the original main task. Dedicated applet tasks own their own
 lists where noted below.
 
@@ -11,6 +11,7 @@ the latest normal signed build.
 
 | Status | Request | Current evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep short related metadata on one row and use multiple columns on sparse wide pages. | `a318b41` compacted System Care storage rows and made Settings adaptive. `4ad3da2` applied the same row rule to shared page strips, launcher details, device and history rows, Color Picker, Text Extractor, marketplace sources, cleanup, and Power Stats. The full unit suite passes. | Inspect default and minimum widths in the latest normal installed build. Confirm that wide sparse pages use two columns, narrow pages fall back to one, and long text remains readable. |
 | Verify | Keep branded sidebar icons in their original colors when selected. | `SidebarRow` now keeps custom artwork in original rendering mode. SF Symbols and labels still use the native selected foreground. The build passes. | Inspect every selected branded launcher row in the latest normal installed build. |
 | Verify | Reduce structural divider strength everywhere without changing native menu separators. | All visual SwiftUI dividers route through the contrast-aware shared quiet divider. Command-menu and context-menu dividers remain native. The source inventory and build pass. | Inspect light, dark, and Increased Contrast appearances in the latest normal installed build. |
 | Verify | Keep workspace actions compact and aligned, and add restrained motion across apps. | `WorkspacePage` gives actions one 24pt centerline. Deprecated borderless menu styles are removed. Every window applies the Reduce Motion policy, and launcher, workspace, applet, settings, result, and sheet page changes use short shared transitions. | Inspect default and minimum sizes with Reduce Motion on and off in the latest normal installed build. |
