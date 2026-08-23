@@ -60,8 +60,8 @@ tool keeps its own window, workflow, state, and resource lifetime.
 - Product name: MacPowerToys.
 - Tool names: Text Extractor, Ruler, Input Devices, System Care, and Power Stats.
 - Follow `DESIGN.md` and the current native SwiftUI and AppKit surfaces.
-- Use `/Users/surajmandal/dev/_clone/vorssaint-utils` as a read-only code and
-  documentation reference.
+- Use the `vorssaint-utils` workspace root as a read-only code and documentation
+  reference.
 
 ## Evidence on Hand
 
