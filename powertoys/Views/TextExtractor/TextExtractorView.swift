@@ -32,10 +32,13 @@ struct TextExtractorView: View {
         VStack(spacing: 0) {
             titlebar
             ZStack(alignment: .bottomTrailing) {
-                switch page {
-                case .history: history
-                case .settings: settings
+                Group {
+                    switch page {
+                    case .history: history
+                    case .settings: settings
+                    }
                 }
+                .utilityContentTransition(value: page)
 
                 FloatingSettingsButton(
                     isActive: page == .settings,
@@ -54,7 +57,7 @@ struct TextExtractorView: View {
         )
         .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
-        .animation(.easeInOut(duration: 0.16), value: windowHeight)
+        .utilityAnimation(value: windowHeight)
         .sheet(item: $selectedExtraction) { extraction in
             TextExtractionDetailView(extraction: extraction)
         }
@@ -98,23 +101,27 @@ struct TextExtractorView: View {
             .frame(height: 40)
 
             statusBanner
+                .utilityContentTransition(value: statusKey)
 
-            if service.history.isEmpty {
-                capturePrompt
-            } else {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 6) {
-                        ForEach(service.history) { extraction in
-                            TextExtractionRow(extraction: extraction) {
-                                selectedExtraction = extraction
+            Group {
+                if service.history.isEmpty {
+                    capturePrompt
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 6) {
+                            ForEach(service.history) { extraction in
+                                TextExtractionRow(extraction: extraction) {
+                                    selectedExtraction = extraction
+                                }
                             }
                         }
+                        .padding(.horizontal, UtilityLayout.horizontalInset)
+                        .padding(.bottom, UtilityLayout.floatingButtonContentInset)
                     }
-                    .padding(.horizontal, UtilityLayout.horizontalInset)
-                    .padding(.bottom, UtilityLayout.floatingButtonContentInset)
+                    .thinScrollIndicators()
                 }
-                .thinScrollIndicators()
             }
+            .utilityContentTransition(value: service.history.isEmpty)
         }
     }
 
@@ -185,6 +192,14 @@ struct TextExtractorView: View {
         }
     }
 
+    private var statusKey: String {
+        switch service.state {
+        case .recognizing: "recognizing"
+        case .failed(let message): "failed|\(message)"
+        default: "idle"
+        }
+    }
+
     private func openPrivacySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
         NSWorkspace.shared.open(url)
@@ -226,7 +241,7 @@ struct TextExtractorSettingsView: View {
                 .contentShape(Rectangle())
                 .padding(.bottom, 12)
 
-                Divider()
+                QuietDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -272,7 +287,7 @@ struct TextExtractorSettingsView: View {
                 }
                 .padding(.bottom, 12)
 
-                Divider()
+                QuietDivider()
 
                 HStack {
                     Text("Use language correction")
@@ -286,7 +301,7 @@ struct TextExtractorSettingsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
 
-                Divider()
+                QuietDivider()
 
                 HStack {
                     Text("Detect QR codes and barcodes")
@@ -300,7 +315,7 @@ struct TextExtractorSettingsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
 
-                Divider()
+                QuietDivider()
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Preferred languages")

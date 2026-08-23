@@ -24,6 +24,7 @@ struct InputDevicesWindowView: View {
             sidebar
                 .frame(width: UtilityLayout.compactSidebarWidth)
             content
+                .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
@@ -68,20 +69,23 @@ struct InputDevicesWindowView: View {
                     .controlSize(.small)
             }
         ) {
-            if manager.devices.isEmpty {
-                ContentUnavailableView(
-                    "No Pointing Devices Found",
-                    systemImage: "computermouse",
-                    description: Text("Connect a mouse or trackpad, then refresh.")
-                )
-                .frame(maxWidth: .infinity, minHeight: 260)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 310), spacing: 12)], spacing: 12) {
-                    ForEach(manager.devices) { device in
-                        deviceCard(device)
+            Group {
+                if manager.devices.isEmpty {
+                    ContentUnavailableView(
+                        "No Pointing Devices Found",
+                        systemImage: "computermouse",
+                        description: Text("Connect a mouse or trackpad, then refresh.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 310), spacing: 12)], spacing: 12) {
+                        ForEach(manager.devices) { device in
+                            deviceCard(device)
+                        }
                     }
                 }
             }
+            .utilityContentTransition(value: manager.devices.isEmpty)
         }
     }
 
@@ -104,7 +108,7 @@ struct InputDevicesWindowView: View {
                 Spacer(minLength: 0)
             }
 
-            Divider()
+            QuietDivider()
             technicalRow("Connection", device.isBuiltIn ? "\(device.transport) · Built in" : device.transport)
             if let manufacturer = device.manufacturer, !manufacturer.isEmpty {
                 technicalRow("Maker", manufacturer)

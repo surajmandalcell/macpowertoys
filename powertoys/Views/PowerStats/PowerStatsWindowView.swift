@@ -29,6 +29,7 @@ struct PowerStatsWindowView: View {
         HStack(spacing: 0) {
             sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             content
+                .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
@@ -138,7 +139,11 @@ struct PowerStatsWindowView: View {
     private func metricCard(icon: String, title: String, value: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: icon).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 22, weight: .semibold)).monospacedDigit().contentTransition(.numericText())
+            Text(value)
+                .font(.system(size: 22, weight: .semibold))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .utilityAnimation(value: value)
             Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
         }
         .padding(14)

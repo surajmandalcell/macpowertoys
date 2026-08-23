@@ -24,7 +24,7 @@ struct CleanupRemoteSheet: View {
 
     private static let displayCap = 5000
 
-    private enum Phase: Equatable {
+    private enum Phase: Hashable {
         case scanning
         case empty
         case review
@@ -52,15 +52,17 @@ struct CleanupRemoteSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
             content
+                .utilityContentTransition(value: phase)
             if phase == .review {
-                Divider()
+                QuietDivider()
                 footer
             }
         }
         .frame(width: 560, height: 560)
         .background(Color(nsColor: .windowBackgroundColor))
+        .utilityAnimation(value: phase == .review)
         .onAppear(perform: startScan)
         .onDisappear { scanTask?.cancel() }
     }
@@ -194,7 +196,7 @@ struct CleanupRemoteSheet: View {
     private var reviewList: some View {
         VStack(spacing: 0) {
             selectionHeader
-            Divider()
+            QuietDivider()
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     if let truncatedFrom {

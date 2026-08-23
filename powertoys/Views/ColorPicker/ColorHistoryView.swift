@@ -60,13 +60,16 @@ struct ColorHistoryView: View {
                 VStack(spacing: 0) {
                     if page != .settings {
                         tabBar
-                        Divider()
+                        QuietDivider()
                     }
-                    switch page {
-                    case .history: history
-                    case .projects: projects
-                    case .settings: settings
+                    Group {
+                        switch page {
+                        case .history: history
+                        case .projects: projects
+                        case .settings: settings
+                        }
                     }
+                    .utilityContentTransition(value: page)
                 }
 
                 FloatingSettingsButton(
@@ -86,7 +89,7 @@ struct ColorHistoryView: View {
         )
         .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
-        .animation(.easeInOut(duration: 0.16), value: windowHeight)
+        .utilityAnimation(value: windowHeight)
         .alert("Could Not Export Project", isPresented: Binding(
             get: { service.exportError != nil },
             set: { if !$0 { service.exportError = nil } }
@@ -324,7 +327,7 @@ struct ColorPickerSettingsView: View {
                     .accessibilityIdentifier("color-picker.clear-all")
                     .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
 
-                    Divider()
+                    QuietDivider()
 
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -483,7 +486,8 @@ private struct ColorSampleRow: View {
             } label: {
                 Image(systemName: "doc.on.doc").frame(width: 24, height: 24)
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .buttonStyle(.borderless)
             .contentShape(Rectangle())
             .help("Copy as")
             Button { service.togglePin(sample.id) } label: {

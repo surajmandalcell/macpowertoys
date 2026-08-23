@@ -31,7 +31,7 @@ struct AppSettingsSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             tabStrip
-            Divider()
+            QuietDivider()
 
             Group {
                 switch selectedTab {
@@ -43,6 +43,7 @@ struct AppSettingsSheet: View {
                     AboutSettingsTab()
                 }
             }
+            .utilityContentTransition(value: selectedTab)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(width: Self.sheetSize.width, height: Self.sheetSize.height)
