@@ -307,7 +307,7 @@ MacPowerToys owns discovery, on-demand launch, routing, orange identity, and the
 visual chrome for Ruler Settings and Ruler Defaults. Preserve the pinned
 FreeRuler overlay visuals and interaction behavior. Style both settings windows
 with the shared utility material, gutters, section rhythm, cards, and action
-hierarchy. They retain native transparent titlebars and never use
+hierarchy. They retain normal visible native titlebars and never use
 `CompactTitlebar` or overlay chrome.
 
 ### Main Launcher

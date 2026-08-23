@@ -15,7 +15,7 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Match end and corner resizing. | The upstream resize handle and cursor implementations are direct copies apart from the host-delegate lookup, with focused geometry and drag tests. | Exercise both paths in the final installed build. |
 | Done | Support multiple independent rulers. | The upstream `RulerManager` is preserved; the signed UI flow proves Command-N creates and activates a second ruler and Command-grave cycles rulers. | None. |
 | Done | Match grouped and ungrouped ruler behavior. | Upstream grouping, stack order, grouped dragging, and persistence tests are preserved; the signed UI flow proves `G` toggles grouping without changing ruler count. | Exercise grouped dragging in the final installed build. |
-| Done | Match FreeRuler persistence. | The upstream versioned ruler-set state, active-ruler restoration, per-ruler settings, defaults copying, frame autosave, and corrupt-data fallback tests are preserved. | Verify close/reopen state in the final installed build. |
+| Done | Match FreeRuler persistence. | The upstream versioned ruler-set state, active-ruler restoration, per-ruler settings, defaults copying, frame autosave, and corrupt-data fallback tests are preserved. Ruler Settings and Ruler Defaults now keep their standalone positions and use their ruler's persisted display when attached. | Verify close/reopen state across attached displays in the final installed build. |
 | Done | Match FreeRuler commands and shortcuts. | Host menus reproduce Ruler, Unit, and Options commands; core and signed UI coverage exercise `H`, `V`, `U`, `G`, Command-N, Command-grave, Command-comma, and Command-W routing. Exact Command-W is consumed once by the native local monitor, closes the focused ruler synchronously, and leaves the host window running. | Complete the full installed shortcut matrix. |
 | Done | Preserve the attached per-ruler Settings behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD panel follows the same section-heading, inset-card, row, typography, and spacing system as Awake, Text Extractor, and Color Picker. Its Measurement, Appearance, and Window sections use trailing secondary/primary actions. Core coverage preserves attachment, anchoring, suspension, controls, reset/defaults, color, opacity, dimensions, float, shadow, accessibility, and localization-safe layout. | Complete the signed appearance matrix below. |
 | Done | Preserve Ruler Defaults behavior and align its chrome with MacPowerToys. | The fixed 420pt active-HUD window removes the duplicate headline and border, and keeps factory reset as one quiet destructive action. Core coverage preserves live default edits, persistence, and factory reset. | Complete the signed appearance matrix below. |
@@ -52,6 +52,8 @@ Update this list whenever Ruler requirements or verification results change.
   accessibility relationships, complete key order, 24pt minimum controls, and
   collision-free English, German, and Japanese labels. All five localized
   controls XIBs compile and contain the three translated section headings.
+- The focused ruler chrome regression test passes with visible native titlebars
+  and autosave names for both Settings and Defaults.
 - XIB validation: Ruler Settings, Ruler Defaults, and their shared controls all
   compile with `ibtool`.
 - Host unit suite: 383 tests pass with zero failures or runtime warnings.

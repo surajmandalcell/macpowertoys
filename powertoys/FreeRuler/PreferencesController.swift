@@ -674,7 +674,7 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         window?.isMovableByWindowBackground = true
         window?.backgroundColor = .clear
         window?.isOpaque = false
-        window?.titlebarAppearsTransparent = true
+        window?.titlebarAppearsTransparent = false
         configureOpaqueColorPicking()
         settingsControlsView.delegate = self
         settingsControlsView.configureForPreferences()
@@ -703,7 +703,6 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         configureOpaqueColorPicking()
         window?.makeKeyAndOrderFront(sender)
         window?.makeFirstResponder(unitSegmentedControl)
-        window?.center()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -996,7 +995,7 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.isReleasedWhenClosed = false
         window?.backgroundColor = .clear
         window?.isOpaque = false
-        window?.titlebarAppearsTransparent = true
+        window?.titlebarAppearsTransparent = false
         window?.initialFirstResponder = unitSegmentedControl
         configureFloatingPanelWindow()
         settingsControlsView.delegate = self
@@ -1029,7 +1028,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         updateView()
         window?.makeKeyAndOrderFront(sender)
         window?.makeFirstResponder(unitSegmentedControl)
-        window?.center()
         updateRulerInteractionSuspension()
     }
 
