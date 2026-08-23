@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import IOKit
 import IOKit.hid
 
 enum InputEventOverride: String, Codable, CaseIterable, Identifiable {
@@ -96,6 +97,14 @@ struct InputDeviceDescriptor: Identifiable, Equatable {
     let pollingRateHz: Double?
     let buttonCount: Int?
     let maxInputReportSize: Int?
+    let systemTrackingSpeed: Double?
+
+    nonisolated static func kind(name: String, usagePage: Int, usage: Int) -> Kind? {
+        guard usagePage == kHIDPage_GenericDesktop,
+              usage == kHIDUsage_GD_Mouse || usage == kHIDUsage_GD_Pointer else { return nil }
+        let normalizedName = name.lowercased()
+        return normalizedName.contains("trackpad") || normalizedName.contains("touchpad") ? .trackpad : .mouse
+    }
 
     nonisolated static func fixedPointResolution(_ rawValue: Int?) -> Double? {
         guard let rawValue, rawValue > 0 else { return nil }
@@ -308,23 +317,13 @@ final class InputDevicesManager {
     nonisolated private static func connectedDevices() -> [InputDeviceDescriptor] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         IOHIDManagerSetDeviceMatching(manager, nil)
-        guard IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess,
-              let values = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else { return [] }
-        defer { IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone)) }
+        guard let values = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else { return [] }
 
         return values.compactMap { device in
             let name = property(kIOHIDProductKey, on: device) as? String ?? "Pointing Device"
             let usagePage = (property(kIOHIDPrimaryUsagePageKey, on: device) as? NSNumber)?.intValue ?? 0
             let usage = (property(kIOHIDPrimaryUsageKey, on: device) as? NSNumber)?.intValue ?? 0
-            let normalizedName = name.lowercased()
-            let kind: InputDeviceDescriptor.Kind
-            if normalizedName.contains("trackpad") || normalizedName.contains("touchpad") {
-                kind = .trackpad
-            } else if usagePage == kHIDPage_GenericDesktop && (usage == kHIDUsage_GD_Mouse || usage == kHIDUsage_GD_Pointer) {
-                kind = .mouse
-            } else {
-                return nil
-            }
+            guard let kind = InputDeviceDescriptor.kind(name: name, usagePage: usagePage, usage: usage) else { return nil }
             let vendor = (property(kIOHIDVendorIDKey, on: device) as? NSNumber)?.intValue ?? 0
             let product = (property(kIOHIDProductIDKey, on: device) as? NSNumber)?.intValue ?? 0
             let location = (property(kIOHIDLocationIDKey, on: device) as? NSNumber)?.intValue ?? 0
@@ -344,13 +343,19 @@ final class InputDevicesManager {
                 serialNumber: property(kIOHIDSerialNumberKey, on: device) as? String,
                 pointerResolutionDPI: InputDeviceDescriptor.fixedPointResolution(
                     (property("HIDPointerResolution", on: device) as? NSNumber)?.intValue
+                        ?? (registryProperty("HIDPointerResolution", on: device) as? NSNumber)?.intValue
                 ),
                 pollingRateHz: InputDeviceDescriptor.pollingRate(
-                    pointerRate: (property("HIDPointerReportRate", on: device) as? NSNumber)?.intValue,
+                    pointerRate: (property("HIDPointerReportRate", on: device) as? NSNumber)?.intValue
+                        ?? (registryProperty("HIDPointerReportRate", on: device) as? NSNumber)?.intValue,
                     reportIntervalMicroseconds: reportInterval
                 ),
-                buttonCount: (property("HIDPointerButtonCount", on: device) as? NSNumber)?.intValue,
-                maxInputReportSize: (property(kIOHIDMaxInputReportSizeKey, on: device) as? NSNumber)?.intValue
+                buttonCount: (property("HIDPointerButtonCount", on: device) as? NSNumber)?.intValue
+                    ?? (registryProperty("HIDPointerButtonCount", on: device) as? NSNumber)?.intValue,
+                maxInputReportSize: (property(kIOHIDMaxInputReportSizeKey, on: device) as? NSNumber)?.intValue,
+                systemTrackingSpeed: (UserDefaults.standard.object(
+                    forKey: kind == .mouse ? "com.apple.mouse.scaling" : "com.apple.trackpad.scaling"
+                ) as? NSNumber)?.doubleValue
             )
         }
         .sorted { ($0.kind.rawValue, $0.name) < ($1.kind.rawValue, $1.name) }
@@ -358,5 +363,15 @@ final class InputDevicesManager {
 
     nonisolated private static func property(_ key: String, on device: IOHIDDevice) -> Any? {
         IOHIDDeviceGetProperty(device, key as CFString)
+    }
+
+    nonisolated private static func registryProperty(_ key: String, on device: IOHIDDevice) -> Any? {
+        IORegistryEntrySearchCFProperty(
+            IOHIDDeviceGetService(device),
+            kIOServicePlane,
+            key as CFString,
+            kCFAllocatorDefault,
+            IOOptionBits(kIORegistryIterateRecursively)
+        )
     }
 }

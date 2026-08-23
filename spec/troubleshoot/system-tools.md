@@ -9,9 +9,12 @@
 - **Invariant:** Keep independent mouse-like and trackpad-like profiles. Classify
   precise events as trackpad-like and coarse events as mouse-like unless the
   user selects an override. Stop the event tap when the tool is disabled. Show
-  each detected device's type, transport, IDs, app speed, and available HID
-  resolution, polling, button, firmware, location, report, and serial values.
-  Do not show the event-classification implementation note in the task body.
+  each detected device's type, transport, IDs, tracking and scroll speeds, and
+  available HID resolution, polling, button, firmware, location, report, and
+  serial values.
+  Enumerate without requiring an open HID event stream, and collapse composite
+  keyboard/trackpad services to their pointing interface. Do not show the
+  event-classification implementation note in the task body.
 - **Check:** Apply different reverse settings to both profiles, send precise and
   coarse scroll events, then disable the tool and confirm events pass unchanged.
 
