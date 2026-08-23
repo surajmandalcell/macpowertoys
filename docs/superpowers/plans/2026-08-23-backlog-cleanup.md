@@ -69,7 +69,25 @@
 - [x] Run focused Cloud Sync tests when source changes are necessary.
 - [x] Commit the backlog checkpoint.
 
-### Task 5: Final build and installed verification
+### Task 5: Individual file priority
+
+**Files:**
+- Modify: `powertoys/Models/RcloneModels.swift`
+- Modify: `powertoys/Services/RcloneJobManager.swift`
+- Modify: `powertoys/Views/Rclone/RcloneJobRowView.swift`
+- Modify: `powertoysTests/CloudSyncStateTests.swift`
+- Modify: `powertoysTests/RcloneModelTests.swift`
+- Modify: `spec/main-request-list.md`
+
+- [x] Confirm the supported rclone ordering boundary.
+- [x] Limit queue priority to exact file jobs.
+- [x] Keep directory jobs at normal priority.
+- [x] Add a compact native priority menu to file job rows.
+- [x] Keep a running file in its current job when priority changes.
+- [x] Run focused queue and model tests.
+- [x] Commit the priority checkpoint.
+
+### Task 6: Final build and installed verification
 
 **Files:**
 - Modify request-list status files only for checks that pass.

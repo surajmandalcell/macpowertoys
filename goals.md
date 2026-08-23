@@ -8,7 +8,6 @@ evidence, and remaining work.
 ## Current work
 
 - Complete the live checks in the request lists.
-- Add safe per-file transfer ordering without changing an active file.
 - Install and verify the final clean build.
 - Complete the public release checklist only after product work is complete.
 

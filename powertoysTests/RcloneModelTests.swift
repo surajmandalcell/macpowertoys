@@ -259,7 +259,7 @@ final class RcloneModelTests: XCTestCase {
     }
 
     func testTransferJobSnapshotRoundTripsAllUserControlledOptions() {
-        let job = makeJob()
+        let job = makeJob(kind: .file)
         job.state = .paused
         job.transferOrder = .largestFirst
         job.priority = .urgent
@@ -350,9 +350,10 @@ final class RcloneModelTests: XCTestCase {
         XCTAssertEqual(RcloneFormat.duration(65), "1m 5s")
     }
 
-    private func makeJob() -> TransferJob {
+    private func makeJob(kind: TransferKind = .directory) -> TransferJob {
         TransferJob(
             operation: .copy,
+            kind: kind,
             sourceFs: "/source",
             destinationFs: "remote:backup",
             sourceDisplay: "source",

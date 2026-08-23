@@ -18,8 +18,8 @@ final class CloudSyncStateTests: XCTestCase {
         }
     }
 
-    func testSnapshotPersistsPriorityAndExpandedState() {
-        let job = makeJob(createdAt: Date(timeIntervalSince1970: 10))
+    func testSnapshotPersistsIndividualFilePriorityAndExpandedState() {
+        let job = makeJob(kind: .file, createdAt: Date(timeIntervalSince1970: 10))
         job.priority = .high
         job.isExpanded = true
 
@@ -44,16 +44,32 @@ final class CloudSyncStateTests: XCTestCase {
         XCTAssertFalse(restored.isExpanded)
     }
 
-    func testQueuedJobsSortByPriorityThenCreationTime() {
-        let oldNormal = makeJob(createdAt: Date(timeIntervalSince1970: 1))
-        let newerUrgent = makeJob(createdAt: Date(timeIntervalSince1970: 3))
+    func testQueuedIndividualFilesSortByPriorityThenCreationTime() {
+        let oldNormal = makeJob(kind: .file, createdAt: Date(timeIntervalSince1970: 1))
+        let newerUrgent = makeJob(kind: .file, createdAt: Date(timeIntervalSince1970: 3))
         newerUrgent.priority = .urgent
-        let olderUrgent = makeJob(createdAt: Date(timeIntervalSince1970: 2))
+        let olderUrgent = makeJob(kind: .file, createdAt: Date(timeIntervalSince1970: 2))
         olderUrgent.priority = .urgent
+        let directory = makeJob(createdAt: Date(timeIntervalSince1970: 4))
+        directory.priority = .urgent
 
-        let ordered = RcloneJobManager.orderedReadyJobs([newerUrgent, oldNormal, olderUrgent])
+        let ordered = RcloneJobManager.orderedReadyJobs([directory, newerUrgent, oldNormal, olderUrgent])
 
-        XCTAssertEqual(ordered.map(\.id), [olderUrgent.id, newerUrgent.id, oldNormal.id])
+        XCTAssertEqual(ordered.map(\.id), [olderUrgent.id, newerUrgent.id, oldNormal.id, directory.id])
+        XCTAssertNil(directory.snapshot.priority)
+        XCTAssertEqual(TransferJob(snapshot: directory.snapshot).priority, .normal)
+    }
+
+    func testManagerRejectsPriorityForDirectoryJobs() {
+        let manager = RcloneJobManager()
+        let directory = makeJob(createdAt: Date(timeIntervalSince1970: 1))
+        let file = makeJob(kind: .file, createdAt: Date(timeIntervalSince1970: 2))
+
+        manager.setPriority(.urgent, for: directory)
+        manager.setPriority(.high, for: file)
+
+        XCTAssertEqual(directory.priority, .normal)
+        XCTAssertEqual(file.priority, .high)
     }
 
     func testInterruptedSnapshotPreservesCompletedProgressForResume() {
@@ -117,9 +133,10 @@ final class CloudSyncStateTests: XCTestCase {
         XCTAssertFalse(IgnoreMatcher.matches(path: "Sources/main.swift", name: "main.swift", isDir: false, pattern: "*.tmp"))
     }
 
-    private func makeJob(createdAt: Date) -> TransferJob {
+    private func makeJob(kind: TransferKind = .directory, createdAt: Date) -> TransferJob {
         TransferJob(
             operation: .copy,
+            kind: kind,
             sourceFs: "/source",
             destinationFs: "remote:backup",
             sourceDisplay: "source",

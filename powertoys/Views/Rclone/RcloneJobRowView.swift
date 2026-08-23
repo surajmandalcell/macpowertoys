@@ -205,6 +205,10 @@ struct TransferJobRow: View {
                     .monospacedDigit()
             }
 
+            if job.kind == .file {
+                priorityMenu
+            }
+
             controls
 
             if hasTransferringFiles || job.isExpanded {
@@ -243,6 +247,42 @@ struct TransferJobRow: View {
     }
 
     // MARK: Controls
+
+    private var priorityMenu: some View {
+        Menu {
+            ForEach(TransferPriority.allCases.reversed(), id: \.self) { priority in
+                Button {
+                    manager.setPriority(priority, for: job)
+                } label: {
+                    if job.priority == priority {
+                        Label(priority.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(priority.displayName)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: job.priority.icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(job.priority == .normal ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .focusEffectDisabled()
+        .help(priorityHelp)
+        .accessibilityLabel("File priority")
+        .accessibilityValue(job.priority.displayName)
+    }
+
+    private var priorityHelp: String {
+        if job.state == .running {
+            return "Priority: \(job.priority.displayName). The running file continues. The new priority applies if the file enters the queue again."
+        }
+        return "Priority: \(job.priority.displayName). Higher-priority files start first."
+    }
 
     private var controls: some View {
         HStack(spacing: 6) {

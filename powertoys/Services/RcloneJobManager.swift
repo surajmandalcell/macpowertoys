@@ -969,6 +969,13 @@ final class RcloneJobManager {
         persistJobsSoon()
     }
 
+    func setPriority(_ priority: TransferPriority, for job: TransferJob) {
+        guard job.kind == .file, job.priority != priority else { return }
+        job.priority = priority
+        persistJobsSoon()
+        LogManager.shared.info("Set file priority to \(priority.displayName): \(job.sourceDisplay)", source: "RcloneJobManager")
+    }
+
     var isGloballyPaused = false
 
     func pauseAll() {
@@ -1391,7 +1398,9 @@ final class RcloneJobManager {
                 job.state == .queued || (job.state == .retrying && (job.nextRetryAt ?? now) <= now)
             }
             .sorted {
-                if $0.priority != $1.priority { return $0.priority.rawValue > $1.priority.rawValue }
+                if $0.effectivePriority != $1.effectivePriority {
+                    return $0.effectivePriority.rawValue > $1.effectivePriority.rawValue
+                }
                 return $0.createdAt < $1.createdAt
             }
     }
