@@ -38,7 +38,7 @@ struct SystemCareWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar.frame(width: 250)
+            sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -99,7 +99,20 @@ struct SystemCareWindowView: View {
     }
 
     private var overviewPage: some View {
-        pageView(title: "System Care", subtitle: "Storage insight and safe cleanup, with optional Mole CLI integration") {
+        WorkspacePage(
+            "Overview",
+            subtitle: "Storage and cleanup",
+            actions: {
+                Button("Scan for Cleanup", systemImage: "sparkles") {
+                    page = .cleanup
+                    manager.scanCleanup(categories: effectiveCategories)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(manager.isWorking)
+                .accessibilityIdentifier("system-care.overview.scan")
+            }
+        ) {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 12)], spacing: 12) {
                 overviewCard(
                     icon: "chart.pie",
@@ -117,13 +130,13 @@ struct SystemCareWindowView: View {
                     icon: "terminal",
                     title: "Mole CLI",
                     value: manager.moleVersion.map { "Version \($0)" } ?? "Not installed",
-                    detail: "Attributed external engine for advanced maintenance"
+                    detail: "Advanced maintenance tools"
                 ) { page = .mole }
                 overviewCard(
                     icon: "arrow.counterclockwise",
                     title: "Last Cleanup",
                     value: manager.lastRecoveredBytes == 0 ? "No cleanup this session" : manager.lastRecoveredBytes.formattedByteCount,
-                    detail: "Native cleanup always uses macOS Trash"
+                    detail: "Items stay recoverable in Trash"
                 ) { page = .history }
             }
             statusBanner
@@ -132,13 +145,14 @@ struct SystemCareWindowView: View {
 
     private func overviewCard(icon: String, title: String, value: String, detail: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: icon).font(.system(size: 20)).foregroundStyle(.secondary)
-                Text(title).font(.system(size: 13, weight: .medium))
+            VStack(alignment: .leading, spacing: 7) {
+                Label(title, systemImage: icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
                 Text(value).font(.system(size: 18, weight: .semibold)).lineLimit(1)
                 Text(detail).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
             .padding(14)
             .background(Color.primary.opacity(0.03))
             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -147,27 +161,32 @@ struct SystemCareWindowView: View {
     }
 
     private var storagePage: some View {
-        pageView(title: "Storage", subtitle: manager.storageURL?.path ?? "Choose a folder to begin") {
-            HStack {
-                Button("Choose Folder…") { chooseStorageFolder() }
+        WorkspacePage(
+            "Storage",
+            subtitle: manager.storageURL?.path ?? "Choose a folder to begin",
+            actions: {
                 if let url = manager.storageURL {
+                    Menu("More", systemImage: "ellipsis.circle") {
+                        Button("Choose Another Folder…") { chooseStorageFolder() }
+                        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                     Button("Rescan") { manager.analyze(url, resetBreadcrumbs: true) }
-                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                }
-                Spacer()
-                if manager.molePath != nil {
-                    Label("Mole analyzer", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                 } else {
-                    Label("Native analyzer", systemImage: "folder.badge.gearshape")
-                        .foregroundStyle(.secondary)
+                    Button("Choose Folder…") { chooseStorageFolder() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                 }
             }
-
+        ) {
             if manager.storageURL == nil {
                 ContentUnavailableView(
                     "Choose a Folder",
                     systemImage: "chart.pie",
-                    description: Text("Analysis runs only while this window is open.")
+                    description: Text("Choose a folder to see what uses the most space.")
                 )
                 .frame(maxWidth: .infinity, minHeight: 420)
             } else {
@@ -230,13 +249,35 @@ struct SystemCareWindowView: View {
     }
 
     private var cleanupPage: some View {
-        pageView(title: "Cleanup", subtitle: "Scan first, review every selection, then use Trash") {
-            Picker("Cleanup mode", selection: $cleanupMode) {
-                ForEach(SystemCareMode.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 460)
+        WorkspacePage(
+            "Cleanup",
+            subtitle: "Review items before moving them to Trash",
+            actions: {
+                Picker("Mode", selection: $cleanupMode) {
+                    ForEach(SystemCareMode.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(width: 150)
 
+                if manager.cleanupCandidates.isEmpty {
+                    Button("Scan") {
+                        manager.scanCleanup(categories: effectiveCategories)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(manager.isWorking)
+                    .accessibilityIdentifier("system-care.cleanup.scan")
+                } else {
+                    Button("Rescan") {
+                        manager.scanCleanup(categories: effectiveCategories)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(manager.isWorking)
+                }
+            }
+        ) {
             if cleanupMode == .guided {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10)], spacing: 10) {
                     ForEach(SystemCareCategoryID.allCases) { category in
@@ -254,25 +295,24 @@ struct SystemCareWindowView: View {
                 }
             }
 
-            HStack {
-                Button("Scan") {
-                    manager.scanCleanup(categories: effectiveCategories)
+            if !manager.cleanupCandidates.isEmpty {
+                HStack {
+                    Button("Select All") {
+                        manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: true) }
+                    }
+                    Button("Select None") {
+                        manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: false) }
+                    }
+                    Spacer()
+                    Text("\(manager.selectedCandidateIDs.count) selected · \(manager.selectedSize.formattedByteCount)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Button("Move to Trash") { showingTrashConfirmation = true }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(manager.selectedCandidateIDs.isEmpty || cleanupMode == .analysis)
                 }
-                .keyboardShortcut(.defaultAction)
-                Button("Select All") {
-                    manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: true) }
-                }
-                .disabled(manager.cleanupCandidates.isEmpty)
-                Button("Select None") {
-                    manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: false) }
-                }
-                .disabled(manager.cleanupCandidates.isEmpty)
-                Spacer()
-                Text("\(manager.selectedCandidateIDs.count) selected · \(manager.selectedSize.formattedByteCount)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Button("Move to Trash") { showingTrashConfirmation = true }
-                    .disabled(manager.selectedCandidateIDs.isEmpty || cleanupMode == .analysis)
+                .controlSize(.small)
             }
 
             cleanupResults
@@ -331,7 +371,7 @@ struct SystemCareWindowView: View {
     }
 
     private var applicationsPage: some View {
-        pageView(title: "Applications", subtitle: "Preview app removal with Mole, then finish in a visible terminal") {
+        WorkspacePage("Applications", subtitle: "Review installed applications") {
             SearchField(text: $appSearch, placeholder: "Search applications…")
                 .frame(maxWidth: 420)
             if manager.molePath == nil {
@@ -369,7 +409,7 @@ struct SystemCareWindowView: View {
                             .disabled(manager.molePath == nil)
                         Button("Uninstall in Terminal…") { manager.openMoleUninstall(application, dryRun: false) }
                             .disabled(manager.molePath == nil)
-                        Text("Mole sends uninstallable items to Trash by default. Passwords and final confirmation stay in Terminal.")
+                        Text("Mole completes removal in Terminal.")
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     } else {
                         ContentUnavailableView("Select an Application", systemImage: "app.dashed")
@@ -393,21 +433,25 @@ struct SystemCareWindowView: View {
     }
 
     private var molePage: some View {
-        pageView(title: "Mole CLI", subtitle: "Optional external engine · GNU GPLv3 · not bundled with MacPowerToys") {
-            HStack {
-                Label(
-                    manager.moleVersion.map { "Mole \($0) is installed" } ?? "Mole is not installed",
-                    systemImage: manager.molePath == nil ? "terminal.fill" : "checkmark.circle.fill"
-                )
-                .foregroundStyle(manager.molePath == nil ? Color.secondary : Color.green)
-                Spacer()
+        WorkspacePage(
+            "Mole CLI",
+            subtitle: "Optional advanced maintenance engine",
+            actions: {
                 Button(manager.molePath == nil ? "Install with Homebrew…" : "Check for Update…") {
                     showingInstallConfirmation = true
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
+        ) {
+            Label(
+                manager.moleVersion.map { "Mole \($0) is installed" } ?? "Mole is not installed",
+                systemImage: manager.molePath == nil ? "terminal.fill" : "checkmark.circle.fill"
+            )
+            .foregroundStyle(manager.molePath == nil ? Color.secondary : Color.green)
             .padding(14)
             .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], spacing: 12) {
                 ForEach(MoleOperation.allCases) { operation in
@@ -433,19 +477,20 @@ struct SystemCareWindowView: View {
                 Link("Official Mole Project", destination: URL(string: "https://github.com/tw93/Mole")!)
                 Spacer()
             }
-            Text("Interactive and privileged Mole operations intentionally open in Terminal. MacPowerToys never captures a sudo password or scrapes Mole's terminal UI.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
             statusBanner
         }
     }
 
     private var historyPage: some View {
-        pageView(title: "History", subtitle: "Recent operations reported by Mole CLI") {
-            HStack {
-                Button("Refresh") { manager.loadHistory() }.disabled(manager.molePath == nil)
-                Spacer()
+        WorkspacePage(
+            "History",
+            subtitle: "Recent Mole operations",
+            actions: {
+                Button("Refresh", systemImage: "arrow.clockwise") { manager.loadHistory() }
+                    .controlSize(.small)
+                    .disabled(manager.molePath == nil)
             }
+        ) {
             if manager.history.isEmpty {
                 ContentUnavailableView(
                     manager.molePath == nil ? "Mole Is Not Installed" : "No Mole History",
@@ -473,7 +518,7 @@ struct SystemCareWindowView: View {
     }
 
     private var settingsPage: some View {
-        pageView(title: "Settings", subtitle: "Defaults and safety") {
+        WorkspacePage("Settings", subtitle: "Defaults and safety") {
             VStack(alignment: .leading, spacing: 12) {
                 Text("DEFAULT CLEANUP MODE").utilitySectionHeader()
                 Picker("Default mode", selection: Binding(
@@ -485,6 +530,8 @@ struct SystemCareWindowView: View {
                 )) {
                     ForEach(SystemCareMode.allCases) { Text($0.rawValue).tag($0) }
                 }
+                .pickerStyle(.menu)
+                .controlSize(.small)
                 .frame(maxWidth: 300)
                 Text("Quick scans all supported categories. Guided lets you choose. Analysis Only cannot clean.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -522,26 +569,6 @@ struct SystemCareWindowView: View {
             .background(Color.primary.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-    }
-
-    private func pageView<Content: View>(
-        title: String,
-        subtitle: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 22, weight: .semibold))
-                    Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)
-                }
-                content()
-            }
-            .padding(20)
-            .padding(.top, 32)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .thinScrollIndicators()
     }
 
     private func chooseStorageFolder() {

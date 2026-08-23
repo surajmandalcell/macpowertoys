@@ -270,7 +270,7 @@ struct InputDevicesTool: Tool {
         ToolManualSection(title: "Profiles", points: [
             "Mouse-like wheel events and precise trackpad events have separate controls.",
             "Reverse either axis, change speed, disable horizontal motion, or smooth coarse mouse-wheel steps.",
-            "Automatic classification uses macOS event precision because public scroll events do not expose a physical device identifier."
+            "Auto selects the matching profile for wheel or precision scrolling."
         ]),
         ToolManualSection(title: "Permission", points: [
             "Enable Input Control and grant Accessibility permission when macOS asks.",
@@ -286,7 +286,7 @@ struct InputDevicesTool: Tool {
 struct SystemCareTool: Tool {
     let id = "system-care"
     let name = "System Care"
-    let description = "Understand storage, preview safe cleanup, remove apps, and access advanced Mole maintenance without hidden privilege prompts."
+    let description = "Understand storage, preview safe cleanup, remove apps, and use advanced Mole maintenance."
     let icon = "sparkles"
     let logoAsset = "SystemCareLogo"
     let category = ToolCategory.system
@@ -298,9 +298,9 @@ struct SystemCareTool: Tool {
             "Review every selected item before moving it to macOS Trash."
         ]),
         ToolManualSection(title: "Mole CLI", points: [
-            "Mole CLI is an optional attributed external dependency and is not bundled with MacPowerToys.",
-            "Structured analysis and history appear natively. Interactive or privileged operations open in Terminal.",
-            "MacPowerToys never collects a sudo password."
+            "Install or update Mole from the Mole CLI page with Homebrew.",
+            "Preview each maintenance operation before opening it in Terminal.",
+            "Mole uses Terminal when macOS needs administrator approval."
         ])
     ]
 
@@ -319,9 +319,9 @@ struct PowerStatsTool: Tool {
 
     let manual = [
         ToolManualSection(title: "Detailed Monitoring", points: [
-            "Open Power Stats to start the one-second detailed sampler and bounded two-minute history.",
-            "Closing the window stops disk, battery, thermal, load, and history collection.",
-            "All displayed metrics use documented public macOS APIs."
+            "Open Power Stats to view CPU, memory, disk, network, battery, and thermal state.",
+            "Charts show the last two minutes of activity.",
+            "Closing the window stops detailed updates."
         ]),
         ToolManualSection(title: "Menu Bar", points: [
             "Enable a grouped summary or individual CPU, memory, and network items.",

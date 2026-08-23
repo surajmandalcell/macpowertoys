@@ -8,7 +8,10 @@
   the event tap outlived the tool state.
 - **Invariant:** Keep independent mouse-like and trackpad-like profiles. Classify
   precise events as trackpad-like and coarse events as mouse-like unless the
-  user selects an override. Stop the event tap when the tool is disabled.
+  user selects an override. Stop the event tap when the tool is disabled. Show
+  each detected device's type, transport, IDs, app speed, and available HID
+  resolution, polling, button, firmware, location, report, and serial values.
+  Do not show the event-classification implementation note in the task body.
 - **Check:** Apply different reverse settings to both profiles, send precise and
   coarse scroll events, then disable the tool and confirm events pass unchanged.
 
@@ -20,7 +23,8 @@
   treated as structured app output.
 - **Invariant:** Never follow cleanup symlinks. Move only reviewed, guarded paths
   to Trash. Use Mole JSON for read-only data. Run privileged or interactive Mole
-  commands in a visible Terminal. Never bundle Mole or collect sudo input.
+  commands in a visible Terminal. Never bundle Mole or collect sudo input. Keep
+  Scan as the primary visible action on Overview and Cleanup before results.
 - **Check:** Reject a cleanup target outside the allowed roots. Preview each
   destructive Mole action before opening its command in Terminal.
 

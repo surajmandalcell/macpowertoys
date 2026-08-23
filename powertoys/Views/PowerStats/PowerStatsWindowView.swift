@@ -27,7 +27,7 @@ struct PowerStatsWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar.frame(width: 240)
+            sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -76,7 +76,7 @@ struct PowerStatsWindowView: View {
     }
 
     private var overviewPage: some View {
-        pageView(title: "Power Stats", subtitle: "Live detail while this window is open") {
+        WorkspacePage("Overview", subtitle: "Live while this window is open") {
             metricGrid
             VStack(alignment: .leading, spacing: 10) {
                 Text("LAST TWO MINUTES").utilitySectionHeader()
@@ -124,7 +124,7 @@ struct PowerStatsWindowView: View {
                 icon: "thermometer.medium",
                 title: "Thermal",
                 value: service.snapshot?.thermalState ?? "—",
-                detail: "Public macOS thermal state"
+                detail: "System pressure"
             )
             metricCard(
                 icon: "battery.75percent",
@@ -142,7 +142,7 @@ struct PowerStatsWindowView: View {
             Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -161,7 +161,7 @@ struct PowerStatsWindowView: View {
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
             }
             StatsSparkline(values: values)
-                .frame(height: 100)
+                .frame(height: 80)
         }
         .padding(14)
         .frame(maxWidth: .infinity)
@@ -170,30 +170,29 @@ struct PowerStatsWindowView: View {
     }
 
     private var processorPage: some View {
-        pageView(title: "Processor", subtitle: "Aggregate public Mach host counters") {
+        WorkspacePage("Processor", subtitle: "System load and pressure") {
             HStack(spacing: 12) {
                 metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "Priming…", detail: "User + system + nice")
                 metricCard(icon: "chart.bar", title: "Load Average", value: loadAverage, detail: "1, 5, and 15 minute run queue")
                 metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "—", detail: "System thermal pressure")
             }
             chartCard(title: "CPU Usage", suffix: "%", values: service.history.compactMap(\.cpuUsage))
-            unavailableNote("Per-process and GPU polling are omitted from the one-second sampler because macOS has no stable low-cost public aggregate GPU API.")
         }
     }
 
     private var memoryPage: some View {
-        pageView(title: "Memory", subtitle: "Active, inactive, wired, and compressed host pages") {
+        WorkspacePage("Memory", subtitle: "Physical and compressed memory") {
             HStack(spacing: 12) {
                 metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "—", detail: memoryDetail)
                 metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "—", detail: "Installed unified memory")
-                metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "—", detail: "Free memory alone is not a health score")
+                metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "—", detail: "Used physical memory")
             }
             chartCard(title: "Memory Utilization", suffix: "%", values: service.history.compactMap(\.memoryUsage))
         }
     }
 
     private var networkPage: some View {
-        pageView(title: "Network & Disk", subtitle: "Delta network counters and local startup-volume capacity") {
+        WorkspacePage("Network & Disk", subtitle: "Current rates and startup disk use") {
             HStack(spacing: 12) {
                 metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
@@ -203,63 +202,65 @@ struct PowerStatsWindowView: View {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
                 chartCard(title: "Upload", suffix: "/s", values: service.history.compactMap(\.networkUpload), formatter: Self.rate)
             }
-            unavailableNote("Disk throughput, fan speed, and sensor temperatures are not shown without a stable public macOS source.")
         }
     }
 
     private var menuBarPage: some View {
-        pageView(title: "Menu Bar", subtitle: "A separate lightweight sampler only when you enable it") {
-            VStack(alignment: .leading, spacing: 14) {
-                Toggle("Show Power Stats in the menu bar", isOn: menuSetting(
-                    get: { $0.enabled },
-                    set: { $0.enabled = $1 }
-                ))
-                .font(.system(size: 13, weight: .medium))
-
-                Picker("Layout", selection: menuSetting(
-                    get: { $0.mode },
-                    set: { $0.mode = $1 }
-                )) {
-                    ForEach(PowerMenuMode.allCases) { Text($0.title).tag($0) }
+        WorkspacePage("Menu Bar", subtitle: "Optional lightweight status") {
+            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
+                GridRow {
+                    Text("Show in menu bar")
+                    Toggle("Show in menu bar", isOn: menuSetting(
+                        get: { $0.enabled },
+                        set: { $0.enabled = $1 }
+                    ))
+                    .labelsHidden()
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 320)
 
-                Picker("Update every", selection: menuSetting(
-                    get: { $0.interval },
-                    set: { $0.interval = $1 }
-                )) {
-                    Text("1 second").tag(1.0)
-                    Text("2 seconds").tag(2.0)
-                    Text("3 seconds").tag(3.0)
-                    Text("5 seconds").tag(5.0)
+                GridRow {
+                    Text("Layout")
+                    Picker("Layout", selection: menuSetting(
+                        get: { $0.mode },
+                        set: { $0.mode = $1 }
+                    )) {
+                        ForEach(PowerMenuMode.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 160)
                 }
-                .frame(maxWidth: 260)
 
-                Text("METRICS").utilitySectionHeader()
-                HStack(spacing: 18) {
-                    ForEach(PowerMenuMetric.allCases) { metric in
-                        Toggle(metric.title, isOn: metricBinding(metric)).toggleStyle(.checkbox)
+                GridRow {
+                    Text("Update every")
+                    Picker("Update every", selection: menuSetting(
+                        get: { $0.interval },
+                        set: { $0.interval = $1 }
+                    )) {
+                        Text("1 second").tag(1.0)
+                        Text("2 seconds").tag(2.0)
+                        Text("3 seconds").tag(3.0)
+                        Text("5 seconds").tag(5.0)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 160)
+                }
+
+                GridRow {
+                    Text("Metrics")
+                    HStack(spacing: 16) {
+                        ForEach(PowerMenuMetric.allCases) { metric in
+                            Toggle(metric.title, isOn: metricBinding(metric)).toggleStyle(.checkbox)
+                        }
                     }
                 }
             }
+            .font(.system(size: 12))
+            .controlSize(.small)
             .padding(14)
             .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            Text("Grouped uses one status item. Individual creates one item per selected metric. The menu sampler never collects disk, battery, thermal, process, or history data.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
-        }
-    }
-
-    private func unavailableNote(_ text: String) -> some View {
-        Label(text, systemImage: "info.circle")
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.03))
             .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
     }
 
     private var loadDetail: String {
@@ -285,26 +286,6 @@ struct PowerStatsWindowView: View {
     private var batteryDetail: String {
         guard service.snapshot?.batteryPercent != nil else { return "No internal battery detected" }
         return service.snapshot?.batteryCharging == true ? "Connected to power" : "On battery"
-    }
-
-    private func pageView<Content: View>(
-        title: String,
-        subtitle: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 22, weight: .semibold))
-                    Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                content()
-            }
-            .padding(20)
-            .padding(.top, 32)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .thinScrollIndicators()
     }
 
     private func menuSetting<Value>(
