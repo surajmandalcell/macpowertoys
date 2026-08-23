@@ -18,4 +18,20 @@ final class InputDevicesTests: XCTestCase {
             InputScrollResult(vertical: 1.5, horizontal: -1, shouldSmooth: false)
         )
     }
+
+    func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
+        XCTAssertEqual(InputDeviceDescriptor.fixedPointResolution(26_214_400), 400)
+        XCTAssertEqual(InputDeviceDescriptor.fixedPointResolution(800), 800)
+        XCTAssertNil(InputDeviceDescriptor.fixedPointResolution(0))
+
+        XCTAssertEqual(
+            InputDeviceDescriptor.pollingRate(pointerRate: 120, reportIntervalMicroseconds: 8_000),
+            120
+        )
+        XCTAssertEqual(
+            InputDeviceDescriptor.pollingRate(pointerRate: nil, reportIntervalMicroseconds: 8_000),
+            125
+        )
+        XCTAssertNil(InputDeviceDescriptor.pollingRate(pointerRate: nil, reportIntervalMicroseconds: nil))
+    }
 }

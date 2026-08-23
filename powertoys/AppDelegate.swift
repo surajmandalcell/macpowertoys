@@ -88,7 +88,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "awake": "AwakeLogo",
         "color-picker": "ColorPickerLogo",
         "text-extractor": "TextExtractorLogo",
-        "input-devices": "InputDevicesLogoA",
         "system-care": "SystemCareLogo",
         "power-stats": "PowerStatsLogo"
     ]
@@ -211,7 +210,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func dockIconAsset(for windowIdentifier: String?) -> String {
         guard let windowIdentifier else { return "AppIcon" }
+        if windowIdentifier.hasPrefix("input-devices") {
+            return InputDevicesTool.shared.logoAsset
+        }
         return dockIconAssets.first { windowIdentifier.hasPrefix($0.key) }?.value ?? "AppIcon"
+    }
+
+    @MainActor
+    func refreshDockIconForKeyWindow() {
+        updateDockIcon(for: NSApp.keyWindow?.identifier?.rawValue)
     }
 
     func dockIconAssetToApply(
