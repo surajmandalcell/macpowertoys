@@ -27,7 +27,7 @@ user correction or verified result changes a status.
 | Done | Make Scan the primary Cleanup action. | `6fb2d41` made Scan prominent on Overview and Cleanup before results exist. | None. |
 | Done | Keep System Care work status at the bottom and align More, Rescan, and related top actions. | `1666d71` anchors the animated status banner to the bottom. `6247587` preserves the native width and centered 24-point height of every workspace action. The normal signed builds confirmed the bottom banner with a large external-drive scan and confirmed complete Scan, Rescan, More, Refresh, and Mole update controls at the compact limit. | None. |
 | Accepted | Do not add System Care menu-bar controls now. | The request described this as possible later work, not a current requirement. | Reopen this item only after a direct request. |
-| Verify | Check System Care and Mole with real data. | Guard and model tests cover path safety and operation data. | Test scan, Trash recovery, storage drill-down, Mole installation, and Terminal previews. |
+| Done | Check System Care and Mole with real data. | The normal signed `631facd` build scanned 100 real cleanup candidates and moved only a controlled cache marker to Trash; Finder restored the exact marker with Put Back. A 361 MB project scan drilled into `docs`, updated its path, count, size, and breadcrumb, then returned to the root. System Care detected Mole 1.52.0. Deep Cleanup and MacPowerToys removal previews each generated and completed the exact `mo … --dry-run` command in Terminal without running a destructive maintenance command. | None. |
 
 ## Power Stats
 
