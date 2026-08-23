@@ -434,7 +434,7 @@ struct TransferFileTreeView: View {
                         childrenCache[entry.path] = Self.sorted(try await manager.listDirectory(fs: sourceFs, path: entry.path))
                     } catch {
                         expanded.remove(entry.path)
-                        showToast("Couldn't open '\(entry.name)': \(error.localizedDescription)")
+                        showToast("Could not open '\(entry.name)': \(error.localizedDescription)")
                     }
                     loadingPaths.remove(entry.path)
                 }
