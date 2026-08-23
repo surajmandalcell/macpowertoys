@@ -20,6 +20,15 @@ final class InputDevicesTests: XCTestCase {
     }
 
     func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
+        XCTAssertEqual(
+            InputDeviceDescriptor.kind(name: "Apple Internal Keyboard / Trackpad", usagePage: 1, usage: 2),
+            .trackpad
+        )
+        XCTAssertNil(
+            InputDeviceDescriptor.kind(name: "Apple Internal Keyboard / Trackpad", usagePage: 1, usage: 6)
+        )
+        XCTAssertEqual(InputDeviceDescriptor.kind(name: "USB Receiver", usagePage: 1, usage: 2), .mouse)
+
         XCTAssertEqual(InputDeviceDescriptor.fixedPointResolution(26_214_400), 400)
         XCTAssertEqual(InputDeviceDescriptor.fixedPointResolution(800), 800)
         XCTAssertNil(InputDeviceDescriptor.fixedPointResolution(0))

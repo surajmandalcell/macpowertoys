@@ -112,7 +112,10 @@ struct InputDevicesWindowView: View {
             if let manufacturer = device.manufacturer, !manufacturer.isEmpty {
                 technicalRow("Maker", manufacturer)
             }
-            technicalRow("App speed", profile(for: device).speed.formatted(.number.precision(.fractionLength(2))) + "×")
+            if let speed = device.systemTrackingSpeed {
+                technicalRow("Tracking", speed.formatted(.number.precision(.fractionLength(2))))
+            }
+            technicalRow("Scroll speed", profile(for: device).speed.formatted(.number.precision(.fractionLength(2))) + "×")
             if let resolution = device.pointerResolutionDPI {
                 technicalRow("Resolution", resolution.formatted(.number.precision(.fractionLength(0))) + " dpi")
             }
