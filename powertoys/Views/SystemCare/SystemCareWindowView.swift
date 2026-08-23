@@ -40,11 +40,11 @@ struct SystemCareWindowView: View {
         HStack(spacing: 0) {
             sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .utilityContentTransition(value: page)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     statusInset
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
@@ -174,7 +174,8 @@ struct SystemCareWindowView: View {
                         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                     }
                     .menuStyle(.button)
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.bordered)
+                    .frame(height: UtilityLayout.workspaceActionHeight)
                     .fixedSize()
                     Button("Rescan") { manager.analyze(url, resetBreadcrumbs: true) }
                         .buttonStyle(.borderedProminent)
@@ -600,7 +601,7 @@ struct SystemCareWindowView: View {
                 statusBanner
                     .padding(.horizontal, UtilityLayout.horizontalInset)
                     .padding(.bottom, 12)
-                    .transition(.opacity)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .utilityAnimation(value: isShowingStatus)
