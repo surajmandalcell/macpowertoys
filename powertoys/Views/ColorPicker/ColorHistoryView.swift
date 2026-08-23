@@ -87,7 +87,7 @@ struct ColorHistoryView: View {
         .ignoresSafeArea(.container, edges: .top)
         .utilityWindowBackground()
         .animation(.easeInOut(duration: 0.16), value: windowHeight)
-        .alert("Couldn’t Export Project", isPresented: Binding(
+        .alert("Could Not Export Project", isPresented: Binding(
             get: { service.exportError != nil },
             set: { if !$0 { service.exportError = nil } }
         )) {
