@@ -86,6 +86,27 @@ struct InputDeviceDescriptor: Identifiable, Equatable {
     let kind: Kind
     let transport: String
     let isBuiltIn: Bool
+    let manufacturer: String?
+    let vendorID: Int
+    let productID: Int
+    let versionNumber: Int?
+    let locationID: Int
+    let serialNumber: String?
+    let pointerResolutionDPI: Double?
+    let pollingRateHz: Double?
+    let buttonCount: Int?
+    let maxInputReportSize: Int?
+
+    nonisolated static func fixedPointResolution(_ rawValue: Int?) -> Double? {
+        guard let rawValue, rawValue > 0 else { return nil }
+        return rawValue >= 65_536 ? Double(rawValue) / 65_536 : Double(rawValue)
+    }
+
+    nonisolated static func pollingRate(pointerRate: Int?, reportIntervalMicroseconds: Int?) -> Double? {
+        if let pointerRate, pointerRate > 0 { return Double(pointerRate) }
+        guard let interval = reportIntervalMicroseconds, interval > 0 else { return nil }
+        return 1_000_000 / Double(interval)
+    }
 }
 
 @Observable
@@ -126,12 +147,16 @@ final class InputDevicesManager {
 
     func update(_ change: (inout InputDevicesSettings) -> Void) {
         let wasEnabled = settings.scrollControlEnabled
+        let previousIcon = settings.iconAsset
         change(&settings)
         if let data = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
         if wasEnabled != settings.scrollControlEnabled {
             applyInterceptionState()
+        }
+        if previousIcon != settings.iconAsset {
+            AppDelegate.current?.refreshDockIconForKeyWindow()
         }
     }
 
@@ -303,12 +328,29 @@ final class InputDevicesManager {
             let vendor = (property(kIOHIDVendorIDKey, on: device) as? NSNumber)?.intValue ?? 0
             let product = (property(kIOHIDProductIDKey, on: device) as? NSNumber)?.intValue ?? 0
             let location = (property(kIOHIDLocationIDKey, on: device) as? NSNumber)?.intValue ?? 0
+            let version = (property(kIOHIDVersionNumberKey, on: device) as? NSNumber)?.intValue
+            let reportInterval = (property(kIOHIDReportIntervalKey, on: device) as? NSNumber)?.intValue
             return InputDeviceDescriptor(
                 id: "\(vendor)-\(product)-\(location)-\(name)",
                 name: name,
                 kind: kind,
                 transport: property(kIOHIDTransportKey, on: device) as? String ?? "Unknown connection",
-                isBuiltIn: (property(kIOHIDBuiltInKey, on: device) as? NSNumber)?.boolValue ?? false
+                isBuiltIn: (property(kIOHIDBuiltInKey, on: device) as? NSNumber)?.boolValue ?? false,
+                manufacturer: property(kIOHIDManufacturerKey, on: device) as? String,
+                vendorID: vendor,
+                productID: product,
+                versionNumber: version.flatMap { $0 > 0 ? $0 : nil },
+                locationID: location,
+                serialNumber: property(kIOHIDSerialNumberKey, on: device) as? String,
+                pointerResolutionDPI: InputDeviceDescriptor.fixedPointResolution(
+                    (property("HIDPointerResolution", on: device) as? NSNumber)?.intValue
+                ),
+                pollingRateHz: InputDeviceDescriptor.pollingRate(
+                    pointerRate: (property("HIDPointerReportRate", on: device) as? NSNumber)?.intValue,
+                    reportIntervalMicroseconds: reportInterval
+                ),
+                buttonCount: (property("HIDPointerButtonCount", on: device) as? NSNumber)?.intValue,
+                maxInputReportSize: (property(kIOHIDMaxInputReportSizeKey, on: device) as? NSNumber)?.intValue
             )
         }
         .sorted { ($0.kind.rawValue, $0.name) < ($1.kind.rawValue, $1.name) }

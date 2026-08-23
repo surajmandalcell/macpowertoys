@@ -24,7 +24,7 @@ struct InputDevicesWindowView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-                .frame(width: 240)
+                .frame(width: UtilityLayout.compactSidebarWidth)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -63,7 +63,14 @@ struct InputDevicesWindowView: View {
     }
 
     private var devicesPage: some View {
-        workspacePage(title: "Devices", subtitle: "Connected mice and trackpads detected by macOS") {
+        WorkspacePage(
+            "Devices",
+            subtitle: "\(manager.devices.count) connected",
+            actions: {
+                Button("Refresh", systemImage: "arrow.clockwise") { manager.refresh() }
+                    .controlSize(.small)
+            }
+        ) {
             if manager.devices.isEmpty {
                 ContentUnavailableView(
                     "No Pointing Devices Found",
@@ -72,55 +79,90 @@ struct InputDevicesWindowView: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: 260)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 310), spacing: 12)], spacing: 12) {
                     ForEach(manager.devices) { device in
                         deviceCard(device)
                     }
                 }
             }
-
-            HStack {
-                Text("Scroll events do not expose a physical device identifier. Automatic mode uses macOS continuous-event metadata to keep mouse and trackpad profiles separate.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Refresh") { manager.refresh() }
-            }
-            .padding(14)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
     private func deviceCard(_ device: InputDeviceDescriptor) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: device.kind.icon)
-                .font(.system(size: 22))
-                .frame(width: 38, height: 38)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(device.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
-                Text("\(device.kind.rawValue) · \(device.isBuiltIn ? "Built in" : device.transport)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: device.kind.icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .frame(width: 30, height: 30)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(device.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
+                    Text(device.kind.rawValue)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+
+            Divider()
+            technicalRow("Connection", device.isBuiltIn ? "\(device.transport) · Built in" : device.transport)
+            if let manufacturer = device.manufacturer, !manufacturer.isEmpty {
+                technicalRow("Maker", manufacturer)
+            }
+            technicalRow("App speed", profile(for: device).speed.formatted(.number.precision(.fractionLength(2))) + "×")
+            if let resolution = device.pointerResolutionDPI {
+                technicalRow("Resolution", resolution.formatted(.number.precision(.fractionLength(0))) + " dpi")
+            }
+            if let rate = device.pollingRateHz {
+                technicalRow("Polling", rate.formatted(.number.precision(.fractionLength(0))) + " Hz")
+            }
+            if let count = device.buttonCount, count > 0 {
+                technicalRow("Buttons", count.formatted())
+            }
+            technicalRow("Device ID", String(format: "%04X:%04X", device.vendorID, device.productID), monospaced: true)
+            if device.locationID > 0 {
+                technicalRow("Location", String(format: "0x%08X", device.locationID), monospaced: true)
+            }
+            if let version = device.versionNumber {
+                technicalRow("Firmware", String(format: "0x%04X", version), monospaced: true)
+            }
+            if let bytes = device.maxInputReportSize, bytes > 0 {
+                technicalRow("Input report", "\(bytes) bytes")
+            }
+            if let serial = device.serialNumber, !serial.isEmpty {
+                technicalRow("Serial", serial, monospaced: true)
+            }
         }
         .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private var scrollingPage: some View {
-        workspacePage(title: "Scrolling", subtitle: "Independent mouse-like and trackpad-like behavior") {
-            VStack(alignment: .leading, spacing: 12) {
-                Toggle("Enable Input Control", isOn: setting(
-                    get: { $0.scrollControlEnabled },
-                    set: { $0.scrollControlEnabled = $1 }
-                ))
-                .font(.system(size: 13, weight: .medium))
+    private func technicalRow(_ label: String, _ value: String, monospaced: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(label)
+                .foregroundStyle(.secondary)
+                .frame(width: 82, alignment: .leading)
+            Text(value)
+                .font(monospaced ? .system(size: 11, design: .monospaced) : .system(size: 11))
+                .textSelection(.enabled)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: 11))
+    }
 
+    private func profile(for device: InputDeviceDescriptor) -> InputScrollProfile {
+        device.kind == .mouse ? manager.settings.mouse : manager.settings.trackpad
+    }
+
+    private var scrollingPage: some View {
+        WorkspacePage("Scrolling", subtitle: "Mouse and trackpad profiles") {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Label(
                         manager.interceptionActive ? "Scroll control is active" : "Scroll control is inactive",
@@ -128,6 +170,11 @@ struct InputDevicesWindowView: View {
                     )
                     .foregroundStyle(manager.interceptionActive ? .green : .secondary)
                     Spacer()
+                    Toggle("Input control", isOn: setting(
+                        get: { $0.scrollControlEnabled },
+                        set: { $0.scrollControlEnabled = $1 }
+                    ))
+                    .font(.system(size: 12, weight: .medium))
                     if !manager.permissionGranted {
                         Button("Grant Permission") { manager.requestPermission() }
                         Button("Open Privacy Settings") { manager.openPrivacySettings() }
@@ -143,16 +190,18 @@ struct InputDevicesWindowView: View {
             }
             .padding(14)
             .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
             HStack(alignment: .top, spacing: 12) {
                 profileCard(title: "Mouse", icon: "computermouse", profile: \.mouse, supportsSmoothing: true)
                 profileCard(title: "Trackpad", icon: "rectangle.and.hand.point.up.left", profile: \.trackpad, supportsSmoothing: false)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("EVENT CLASSIFICATION").utilitySectionHeader()
-                Picker("Treat scroll events as", selection: setting(
+            HStack(spacing: 12) {
+                Text("Scroll device")
+                    .font(.system(size: 12))
+                Spacer()
+                Picker("Scroll device", selection: setting(
                     get: { $0.eventOverride },
                     set: { $0.eventOverride = $1 }
                 )) {
@@ -160,14 +209,11 @@ struct InputDevicesWindowView: View {
                         Text(option.title).tag(option)
                     }
                 }
-                .pickerStyle(.radioGroup)
-                Text("Automatic is recommended: precise continuous events use the trackpad profile; coarse wheel events use the mouse profile.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(width: 160)
             }
-            .padding(14)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
@@ -177,18 +223,16 @@ struct InputDevicesWindowView: View {
         profile keyPath: WritableKeyPath<InputDevicesSettings, InputScrollProfile>,
         supportsSmoothing: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon).font(.system(size: 13, weight: .medium))
-            Toggle("Use this profile", isOn: profileSetting(keyPath, \.enabled))
-            Toggle("Reverse vertical", isOn: profileSetting(keyPath, \.reverseVertical))
-            Toggle("Reverse horizontal", isOn: profileSetting(keyPath, \.reverseHorizontal))
-            Toggle("Allow horizontal scrolling", isOn: profileSetting(keyPath, \.horizontalEnabled))
-            if supportsSmoothing {
-                Toggle("Smooth wheel steps", isOn: profileSetting(keyPath, \.smooth))
-            } else {
-                Text("Trackpad events already use macOS precision scrolling.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
+                Toggle("Use profile", isOn: profileSetting(keyPath, \.enabled))
+                Toggle("Reverse vertical", isOn: profileSetting(keyPath, \.reverseVertical))
+                Toggle("Reverse horizontal", isOn: profileSetting(keyPath, \.reverseHorizontal))
+                Toggle("Horizontal scroll", isOn: profileSetting(keyPath, \.horizontalEnabled))
+                if supportsSmoothing {
+                    Toggle("Smooth wheel", isOn: profileSetting(keyPath, \.smooth))
+                }
             }
             HStack {
                 Text("Speed")
@@ -206,54 +250,28 @@ struct InputDevicesWindowView: View {
     }
 
     private var appearancePage: some View {
-        workspacePage(title: "Appearance", subtitle: "Choose the Input Devices icon") {
-            HStack(spacing: 16) {
-                iconChoice(asset: "InputDevicesLogoA", name: "Signal")
-                iconChoice(asset: "InputDevicesLogoB", name: "Orbit")
-                iconChoice(asset: "InputDevicesLogoC", name: "Precision")
+        WorkspacePage("Appearance", subtitle: "App icon") {
+            HStack(spacing: 14) {
+                Image(manager.settings.iconAsset)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 56, height: 56)
+
+                Picker("Input Devices icon", selection: setting(
+                    get: { $0.iconAsset },
+                    set: { $0.iconAsset = $1 }
+                )) {
+                    Text("Signal").tag("InputDevicesLogoA")
+                    Text("Orbit").tag("InputDevicesLogoB")
+                    Text("Precision").tag("InputDevicesLogoC")
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(width: 240)
+
                 Spacer()
             }
-            Text("The selected icon is used in the launcher the next time it refreshes.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
         }
-    }
-
-    private func iconChoice(asset: String, name: String) -> some View {
-        Button {
-            manager.update { $0.iconAsset = asset }
-        } label: {
-            VStack(spacing: 8) {
-                Image(asset).resizable().scaledToFit().frame(width: 72, height: 72)
-                Text(name).font(.system(size: 12, weight: .medium))
-                Image(systemName: manager.settings.iconAsset == asset ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(manager.settings.iconAsset == asset ? Color.accentColor : .secondary)
-            }
-            .padding(14)
-            .background(Color.primary.opacity(manager.settings.iconAsset == asset ? 0.06 : 0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func workspacePage<Content: View>(
-        title: String,
-        subtitle: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 22, weight: .semibold))
-                    Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                content()
-            }
-            .padding(20)
-            .padding(.top, 32)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .thinScrollIndicators()
     }
 
     private func setting<Value>(
