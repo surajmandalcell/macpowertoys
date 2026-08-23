@@ -44,6 +44,7 @@ final class TextExtractorService {
     }
 
     func begin() {
+        guard state != .selecting, state != .recognizing else { return }
         guard requestPermissionIfNeeded() else { return }
         state = .selecting
         shareableContentTask = Task {
@@ -121,7 +122,11 @@ final class TextExtractorService {
             let content: SCShareableContent
             if let task = shareableContentTask {
                 shareableContentTask = nil
-                content = try await task.value
+                do {
+                    content = try await task.value
+                } catch {
+                    content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                }
             } else {
                 content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             }
@@ -129,8 +134,7 @@ final class TextExtractorService {
                   let display = content.displays.first(where: { $0.displayID == displayID })
             else { throw ExtractorError.displayUnavailable }
 
-            let ownApp = content.applications.filter { $0.bundleIdentifier == Bundle.main.bundleIdentifier }
-            let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+            let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
             let localRect = CGRect(
                 x: selection.minX - screen.frame.minX,
                 y: screen.frame.maxY - selection.maxY,
@@ -145,33 +149,53 @@ final class TextExtractorService {
             let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
             let text = try await recognize(image)
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                state = .failed("No text was found. The clipboard was not changed.")
+                fail("No text was found. The clipboard was not changed.")
                 return
             }
             finishRecognition(text)
         } catch {
-            state = .failed(error.localizedDescription)
-            ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
+            fail(error.localizedDescription)
         }
     }
 
-    private func recognize(_ image: CGImage) async throws -> String {
+    func recognize(_ image: CGImage) async throws -> String {
         let settings = settings
         return try await Task.detached(priority: .userInitiated) {
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = settings.speed == .accurate ? .accurate : .fast
-            request.usesLanguageCorrection = settings.languageCorrection
-            request.automaticallyDetectsLanguage = settings.preferredLanguages.isEmpty
-            if !settings.preferredLanguages.isEmpty { request.recognitionLanguages = settings.preferredLanguages }
-            let handler = VNImageRequestHandler(cgImage: image, options: [:])
-            try handler.perform([request])
-            let observations = (request.results ?? []).sorted { left, right in
-                let verticalDifference = abs(left.boundingBox.midY - right.boundingBox.midY)
-                if verticalDifference > 0.025 { return left.boundingBox.midY > right.boundingBox.midY }
-                return left.boundingBox.minX < right.boundingBox.minX
+            func recognize(level: VNRequestTextRecognitionLevel) throws -> String {
+                let request = VNRecognizeTextRequest()
+                request.recognitionLevel = level
+                request.usesLanguageCorrection = settings.languageCorrection
+                let supported = (try? request.supportedRecognitionLanguages()) ?? []
+                let languages = settings.preferredLanguages.filter(supported.contains)
+                request.automaticallyDetectsLanguage = languages.isEmpty
+                if !languages.isEmpty { request.recognitionLanguages = languages }
+                let handler = VNImageRequestHandler(cgImage: image, options: [:])
+                let codeRequest = settings.detectCodes ? VNDetectBarcodesRequest() : nil
+                var requests: [VNRequest] = [request]
+                if let codeRequest { requests.append(codeRequest) }
+                try handler.perform(requests)
+                if let payload = codeRequest?.results?.compactMap(\.payloadStringValue).first,
+                   !payload.isEmpty {
+                    return payload
+                }
+                let observations = (request.results ?? []).sorted { left, right in
+                    let verticalDifference = abs(left.boundingBox.midY - right.boundingBox.midY)
+                    if verticalDifference > 0.025 { return left.boundingBox.midY > right.boundingBox.midY }
+                    return left.boundingBox.minX < right.boundingBox.minX
+                }
+                return observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
             }
-            return observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
+
+            let level: VNRequestTextRecognitionLevel = settings.speed == .accurate ? .accurate : .fast
+            let result = try recognize(level: level)
+            guard result.isEmpty, level == .fast else { return result }
+            return try recognize(level: .accurate)
         }.value
+    }
+
+    private func fail(_ message: String) {
+        state = .failed(message)
+        ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
     }
 
     private func saveSettings() {
@@ -208,6 +232,7 @@ private final class TextRegionSelector {
             panel.level = .screenSaver
             panel.backgroundColor = .clear
             panel.isOpaque = false
+            panel.sharingType = .none
             panel.hasShadow = false
             panel.acceptsMouseMovedEvents = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -215,10 +240,13 @@ private final class TextRegionSelector {
                 let global = rect.offsetBy(dx: screen.frame.minX, dy: screen.frame.minY)
                 self?.finish(global, screen: screen)
             } cancellation: { [weak self] in self?.cancel() }
-            panel.makeKeyAndOrderFront(nil)
+            panel.orderFront(nil)
             panel.makeFirstResponder(panel.contentView)
             return panel
         }
+        let pointer = NSEvent.mouseLocation
+        let activeIndex = NSScreen.screens.firstIndex { $0.frame.contains(pointer) } ?? 0
+        if panels.indices.contains(activeIndex) { panels[activeIndex].makeKey() }
         NSApp.activate(ignoringOtherApps: true)
     }
 

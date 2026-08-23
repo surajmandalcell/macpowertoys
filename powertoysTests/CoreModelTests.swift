@@ -1,4 +1,5 @@
 import XCTest
+import CoreImage
 @testable import powertoys
 
 @MainActor
@@ -9,6 +10,13 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(settings.speed, .fast)
         XCTAssertTrue(settings.languageCorrection)
         XCTAssertTrue(settings.preferredLanguages.isEmpty)
+        XCTAssertTrue(settings.detectCodes)
+
+        let legacy = Data(#"{"speed":"accurate","languageCorrection":false,"preferredLanguages":["fr-FR"]}"#.utf8)
+        let migrated = try? JSONDecoder().decode(TextExtractorSettings.self, from: legacy)
+        XCTAssertEqual(migrated?.speed, .accurate)
+        XCTAssertEqual(migrated?.preferredLanguages, ["fr-FR"])
+        XCTAssertEqual(migrated?.detectCodes, true)
     }
 
     func testTextExtractorPersistsAndMaintainsHistory() {
@@ -17,6 +25,7 @@ final class CoreModelTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let service = TextExtractorService(defaults: defaults)
+        service.settings.detectCodes = false
         let firstDate = Date(timeIntervalSince1970: 100)
         service.record("First", createdAt: firstDate)
         service.record("Second", createdAt: Date(timeIntervalSince1970: 200))
@@ -24,6 +33,7 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(service.history.map(\.text), ["Second", "First"])
 
         let restored = TextExtractorService(defaults: defaults)
+        XCTAssertFalse(restored.settings.detectCodes)
         XCTAssertEqual(restored.history, service.history)
         restored.remove(restored.history[0].id)
         XCTAssertEqual(restored.history.map(\.text), ["First"])
@@ -60,10 +70,54 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(service.state, .copied("Recognized text"))
     }
 
+    func testTextRecognitionFallsBackFromUnsupportedLanguages() async throws {
+        let suiteName = "TextExtractorVisionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let size = NSSize(width: 760, height: 180)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        ("PowerToys 42" as NSString).draw(
+            at: NSPoint(x: 28, y: 42),
+            withAttributes: [
+                .font: NSFont.systemFont(ofSize: 72, weight: .bold),
+                .foregroundColor: NSColor.black,
+            ]
+        )
+        image.unlockFocus()
+
+        let service = TextExtractorService(defaults: defaults)
+        service.settings.preferredLanguages = ["xx-unsupported"]
+        let cgImage = try XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
+
+        let text = try await service.recognize(cgImage)
+
+        XCTAssertTrue(text.replacingOccurrences(of: " ", with: "").contains("PowerToys42"))
+    }
+
+    func testTextRecognitionReadsQRCodePayload() async throws {
+        let payload = "https://example.com/powertoys"
+        let filter = try XCTUnwrap(CIFilter(name: "CIQRCodeGenerator"))
+        filter.setValue(Data(payload.utf8), forKey: "inputMessage")
+        let output = try XCTUnwrap(filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 12, y: 12)))
+        let image = try XCTUnwrap(CIContext().createCGImage(output, from: output.extent))
+
+        let service = TextExtractorService()
+        let recognized = try await service.recognize(image)
+
+        XCTAssertEqual(recognized, payload)
+    }
+
     func testLongTextExtractionNeedsExpandedView() {
         XCTAssertFalse(TextExtraction(text: "Short text").needsExpandedView)
         XCTAssertTrue(TextExtraction(text: String(repeating: "A", count: 181)).needsExpandedView)
         XCTAssertTrue(TextExtraction(text: "One\nTwo\nThree\nFour\nFive").needsExpandedView)
+        XCTAssertEqual(TextExtraction(text: " https://example.com/path ").openableURL?.absoluteString, "https://example.com/path")
+        XCTAssertNil(TextExtraction(text: "file:///tmp/private").openableURL)
+        XCTAssertNil(TextExtraction(text: "https://").openableURL)
     }
 
     func testTextExtractionRelativeTimestampOmitsSeconds() {
