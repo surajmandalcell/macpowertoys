@@ -190,7 +190,8 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(UtilityLayout.sidebarRowHeight, 28)
         XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 40)
         XCTAssertEqual(UtilityLayout.workspaceActionHeight, 24)
-        XCTAssertLessThan(UtilityLayout.separatorOpacity, 0.5)
+        XCTAssertEqual(UtilityLayout.separatorOpacity, 0.22)
+        XCTAssertEqual(UtilityLayout.increasedContrastSeparatorOpacity, 0.44)
         XCTAssertGreaterThan(
             UtilityLayout.increasedContrastSeparatorOpacity,
             UtilityLayout.separatorOpacity

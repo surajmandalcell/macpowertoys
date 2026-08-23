@@ -29,8 +29,8 @@ enum UtilityLayout {
     static let sectionSpacing: CGFloat = 16
     static let cardPadding: CGFloat = 14
     static let cardRadius: CGFloat = 10
-    static let separatorOpacity: Double = 0.35
-    static let increasedContrastSeparatorOpacity: Double = 0.55
+    static let separatorOpacity: Double = 0.22
+    static let increasedContrastSeparatorOpacity: Double = 0.44
 }
 
 enum UtilityMotion {

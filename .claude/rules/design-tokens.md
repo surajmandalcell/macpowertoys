@@ -17,9 +17,9 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Simple sidebar: 220pt; data sidebar: 240pt; conversation sidebar: 260pt
 - Sidebar row: 28pt minimum, 16pt icon, 8pt horizontal inset and gap
 - Workspace page strip: 40pt with 13pt title and optional 11pt subtitle
-- Workspace actions: native small controls with a shared 24pt minimum height
+- Workspace actions: native small controls in one centered 24pt row
 - Workspace body: 12pt top inset; never add a second 32pt top gap
-- Structural dividers: 0.35 opacity, or 0.55 with Increased Contrast; keep
+- Structural dividers: 0.22 opacity, or 0.44 with Increased Contrast; keep
   command-menu and context-menu separators native
 
 ### Compact Tool Chrome

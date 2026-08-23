@@ -38,6 +38,36 @@ final class UtilityToolsTests: XCTestCase {
         }
     }
 
+    func testLogsArtworkKeepsDarkGroundInDarkAppearance() throws {
+        let image = try XCTUnwrap(NSImage(named: "LogsLogo"))
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 512,
+            pixelsHigh: 512,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        bitmap.size = NSSize(width: 512, height: 512)
+
+        NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
+            NSGraphicsContext.saveGraphicsState()
+            defer { NSGraphicsContext.restoreGraphicsState() }
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+            image.draw(in: NSRect(x: 0, y: 0, width: 512, height: 512))
+        }
+
+        let ground = try XCTUnwrap(bitmap.colorAt(x: 256, y: 64)?.usingColorSpace(.deviceRGB))
+        let luminance = 0.2126 * ground.redComponent
+            + 0.7152 * ground.greenComponent
+            + 0.0722 * ground.blueComponent
+        XCTAssertLessThan(luminance, 0.35)
+    }
+
     func testAppIconUsesSystemResetPath() {
         XCTAssertNil(DockIconImage.image(named: "AppIcon"))
     }

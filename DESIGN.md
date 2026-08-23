@@ -17,7 +17,7 @@ colors:
   selection-strong-text: "opaque black or white, chosen for >=4.5:1 contrast"
   card: "Color.primary.opacity(0.03)"           # grids, subtle depth
   card-detail: "Color.primary.opacity(0.05)"    # detail/log views, softer contrast
-  separator: "native separator at 0.35 opacity; 0.55 with increased contrast"
+  separator: "native separator at 0.22 opacity; 0.44 with increased contrast"
   content-background: "Color(nsColor: .windowBackgroundColor)"
   text-subdued: "Color.primary.opacity(0.75)"
   text-preview: "Color.secondary.opacity(0.6)"
@@ -81,8 +81,8 @@ components:
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
   tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: colors.selection-strong }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
-  workspace-action: { min-height: 24, control-size: small }
-  structural-divider: { opacity: 0.35, increased-contrast-opacity: 0.55 }
+  workspace-action: { height: 24, control-size: small }
+  structural-divider: { opacity: 0.22, increased-contrast-opacity: 0.44 }
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
   section-card: { radius: 10, bg: colors.card-detail, padding: spacing.card-padding }
   progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
@@ -506,7 +506,7 @@ content at least 640 wide; height at least 600; resizable
   and deliberately composed hero content.
 - Pane and top-strip hairlines are permitted where material changes do not
   provide enough separation. Visual hairlines use the shared quiet divider at
-  0.35 opacity, or 0.55 with Increased Contrast. Native command-menu and context-
+  0.22 opacity, or 0.44 with Increased Contrast. Native command-menu and context-
   menu separators keep the system appearance. Workspace cards use opacity depth
   without custom shadows; the launcher hover exception does not apply here.
 - On narrow resize, preserve the sidebar and primary content, then remove an

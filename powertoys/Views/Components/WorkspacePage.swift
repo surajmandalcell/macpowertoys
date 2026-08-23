@@ -35,9 +35,11 @@ struct WorkspacePage<Content: View, Actions: View>: View {
                 }
 
                 Spacer(minLength: 12)
-                actions
+                HStack(spacing: 8) {
+                    actions
+                }
                     .controlSize(.small)
-                    .frame(minHeight: UtilityLayout.workspaceActionHeight, alignment: .center)
+                    .frame(height: UtilityLayout.workspaceActionHeight, alignment: .center)
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
             .padding(.vertical, 7)
