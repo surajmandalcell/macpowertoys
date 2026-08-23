@@ -173,12 +173,10 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["power-stats"]))
         .restorationBehavior(.disabled)
 
-        MenuBarExtra(isInserted: trayBinding) {
+        MenuBarExtra("MacPowerToys", image: "MenuBarIcon", isInserted: trayBinding) {
             TrayPopoverView()
                 .utilityMotionPolicy()
                 .modelContainer(modelContainer)
-        } label: {
-            Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
     }
