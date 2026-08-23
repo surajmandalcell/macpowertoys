@@ -126,6 +126,10 @@ final class SettingsManager {
         switch toolID {
         case "awake":
             enabled ? AwakeService.shared.resume() : AwakeService.shared.shutdown()
+        case "input-devices":
+            enabled ? InputDevicesManager.shared.refresh() : InputDevicesManager.shared.stop()
+        case "power-stats":
+            PowerStatsService.shared.setToolEnabled(enabled)
         case "rclone":
             transitioningToolIDs.insert(toolID)
             Task {

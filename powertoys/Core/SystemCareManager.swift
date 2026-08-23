@@ -47,7 +47,6 @@ nonisolated struct CleanupCandidate: Identifiable, Hashable, Sendable {
     let allowedRoot: URL
     let category: SystemCareCategoryID
     let size: Int64
-    let modified: Date?
 
     var id: String { url.path }
     var name: String { url.lastPathComponent }
@@ -356,7 +355,7 @@ final class SystemCareManager {
             }
             guard let children = try? FileManager.default.contentsOfDirectory(
                 at: root,
-                includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+                includingPropertiesForKeys: nil,
                 options: [.skipsHiddenFiles]
             ) else { continue }
 
@@ -366,13 +365,11 @@ final class SystemCareManager {
                     let extensions = Set(["dmg", "pkg", "mpkg", "iso", "xip"])
                     guard extensions.contains(url.pathExtension.lowercased()) else { continue }
                 }
-                let values = try? url.resourceValues(forKeys: [.contentModificationDateKey])
                 result.append(CleanupCandidate(
                     url: url,
                     allowedRoot: root,
                     category: category,
-                    size: try allocatedSize(of: url),
-                    modified: values?.contentModificationDate
+                    size: try allocatedSize(of: url)
                 ))
             }
         }

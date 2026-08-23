@@ -60,7 +60,8 @@ final class WindowStateManager {
         "color-picker",
         "text-extractor",
         "input-devices",
-        "system-care"
+        "system-care",
+        "power-stats"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
