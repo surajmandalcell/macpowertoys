@@ -99,16 +99,46 @@ final class CoreModelTests: XCTestCase {
     }
 
     func testTextRecognitionReadsQRCodePayload() async throws {
+        let suiteName = "TextExtractorQRCodeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         let payload = "https://example.com/powertoys"
         let filter = try XCTUnwrap(CIFilter(name: "CIQRCodeGenerator"))
         filter.setValue(Data(payload.utf8), forKey: "inputMessage")
         let output = try XCTUnwrap(filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 12, y: 12)))
         let image = try XCTUnwrap(CIContext().createCGImage(output, from: output.extent))
 
-        let service = TextExtractorService()
+        let service = TextExtractorService(defaults: defaults)
         let recognized = try await service.recognize(image)
 
         XCTAssertEqual(recognized, payload)
+    }
+
+    func testTextRecognitionNormalizesScreenCaptureImages() throws {
+        let size = NSSize(width: 180, height: 60)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        image.unlockFocus()
+        let source = try XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
+
+        let normalized = try XCTUnwrap(TextExtractorService.normalizedImageForRecognition(source))
+
+        XCTAssertEqual(normalized.width, source.width)
+        XCTAssertEqual(normalized.height, source.height)
+        XCTAssertEqual(normalized.bitsPerComponent, 8)
+        XCTAssertEqual(normalized.bitsPerPixel, 32)
+        XCTAssertEqual(normalized.colorSpace?.name, CGColorSpace.sRGB)
+    }
+
+    func testTextExtractorCaptureRectIsIntegralAndClampedToItsDisplay() {
+        let screen = CGRect(x: 100, y: 200, width: 800, height: 600)
+        let selection = CGRect(x: 98.4, y: 788.2, width: 24.7, height: 18.1)
+
+        let rect = TextExtractorService.captureRect(selection: selection, screenFrame: screen)
+
+        XCTAssertEqual(rect, CGRect(x: 0, y: 0, width: 24, height: 12))
     }
 
     func testLongTextExtractionNeedsExpandedView() {

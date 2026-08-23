@@ -135,17 +135,16 @@ final class TextExtractorService {
             else { throw ExtractorError.displayUnavailable }
 
             let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
-            let localRect = CGRect(
-                x: selection.minX - screen.frame.minX,
-                y: screen.frame.maxY - selection.maxY,
-                width: selection.width,
-                height: selection.height
-            )
+            let localRect = Self.captureRect(selection: selection, screenFrame: screen.frame)
+            guard localRect.width >= 3, localRect.height >= 3 else {
+                throw ExtractorError.invalidSelection
+            }
             let configuration = SCStreamConfiguration()
             configuration.sourceRect = localRect
-            configuration.width = Int(selection.width * screen.backingScaleFactor)
-            configuration.height = Int(selection.height * screen.backingScaleFactor)
+            configuration.width = max(1, Int((localRect.width * screen.backingScaleFactor).rounded()))
+            configuration.height = max(1, Int((localRect.height * screen.backingScaleFactor).rounded()))
             configuration.showsCursor = false
+            configuration.colorSpaceName = CGColorSpace.sRGB
             let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
             let text = try await recognize(image)
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -161,6 +160,20 @@ final class TextExtractorService {
     func recognize(_ image: CGImage) async throws -> String {
         let settings = settings
         return try await Task.detached(priority: .userInitiated) {
+            if settings.detectCodes {
+                let request = VNDetectBarcodesRequest()
+                let handler = VNImageRequestHandler(cgImage: image, options: [:])
+                try? handler.perform([request])
+                if let payload = request.results?.compactMap(\.payloadStringValue).first,
+                   !payload.isEmpty {
+                    return payload
+                }
+            }
+
+            guard let image = Self.normalizedImageForRecognition(image) else {
+                throw ExtractorError.imageNormalizationFailed
+            }
+
             func recognize(level: VNRequestTextRecognitionLevel) throws -> String {
                 let request = VNRecognizeTextRequest()
                 request.recognitionLevel = level
@@ -170,14 +183,7 @@ final class TextExtractorService {
                 request.automaticallyDetectsLanguage = languages.isEmpty
                 if !languages.isEmpty { request.recognitionLanguages = languages }
                 let handler = VNImageRequestHandler(cgImage: image, options: [:])
-                let codeRequest = settings.detectCodes ? VNDetectBarcodesRequest() : nil
-                var requests: [VNRequest] = [request]
-                if let codeRequest { requests.append(codeRequest) }
-                try handler.perform(requests)
-                if let payload = codeRequest?.results?.compactMap(\.payloadStringValue).first,
-                   !payload.isEmpty {
-                    return payload
-                }
+                try handler.perform([request])
                 let observations = (request.results ?? []).sorted { left, right in
                     let verticalDifference = abs(left.boundingBox.midY - right.boundingBox.midY)
                     if verticalDifference > 0.025 { return left.boundingBox.midY > right.boundingBox.midY }
@@ -187,10 +193,42 @@ final class TextExtractorService {
             }
 
             let level: VNRequestTextRecognitionLevel = settings.speed == .accurate ? .accurate : .fast
-            let result = try recognize(level: level)
-            guard result.isEmpty, level == .fast else { return result }
+            do {
+                let result = try recognize(level: level)
+                guard result.isEmpty, level == .fast else { return result }
+            } catch where level == .accurate {
+                throw error
+            }
             return try recognize(level: .accurate)
         }.value
+    }
+
+    nonisolated static func captureRect(selection: CGRect, screenFrame: CGRect) -> CGRect {
+        let local = CGRect(
+            x: selection.minX - screenFrame.minX,
+            y: screenFrame.maxY - selection.maxY,
+            width: selection.width,
+            height: selection.height
+        )
+        return local.intersection(CGRect(origin: .zero, size: screenFrame.size)).integral
+    }
+
+    nonisolated static func normalizedImageForRecognition(_ image: CGImage) -> CGImage? {
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(
+                data: nil,
+                width: image.width,
+                height: image.height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              )
+        else { return nil }
+        context.setBlendMode(.copy)
+        context.interpolationQuality = .none
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        return context.makeImage()
     }
 
     private func fail(_ message: String) {
@@ -215,7 +253,16 @@ extension NSScreen {
 
 private enum ExtractorError: LocalizedError {
     case displayUnavailable
-    var errorDescription: String? { "The selected display is no longer available." }
+    case invalidSelection
+    case imageNormalizationFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .displayUnavailable: "The selected display is no longer available."
+        case .invalidSelection: "Select a larger region and try again."
+        case .imageNormalizationFailed: "The selected image could not be prepared for recognition."
+        }
+    }
 }
 
 @MainActor
