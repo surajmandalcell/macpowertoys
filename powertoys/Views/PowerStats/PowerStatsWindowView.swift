@@ -81,7 +81,7 @@ struct PowerStatsWindowView: View {
             metricGrid
             VStack(alignment: .leading, spacing: 10) {
                 Text("LAST TWO MINUTES").utilitySectionHeader()
-                HStack(spacing: 12) {
+                LazyVGrid(columns: metricColumns, spacing: 12) {
                     chartCard(title: "CPU", suffix: "%", values: service.history.compactMap(\.cpuUsage))
                     chartCard(title: "Memory", suffix: "%", values: service.history.compactMap(\.memoryUsage))
                     chartCard(
@@ -95,8 +95,16 @@ struct PowerStatsWindowView: View {
         }
     }
 
+    private var metricColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 200), spacing: 12)]
+    }
+
+    private var chartColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 320), spacing: 12)]
+    }
+
     private var metricGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: metricColumns, spacing: 12) {
             metricCard(
                 icon: "cpu",
                 title: "CPU",
@@ -176,7 +184,7 @@ struct PowerStatsWindowView: View {
 
     private var processorPage: some View {
         WorkspacePage("Processor", subtitle: "System load and pressure") {
-            HStack(spacing: 12) {
+            LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "Priming…", detail: "User + system + nice")
                 metricCard(icon: "chart.bar", title: "Load Average", value: loadAverage, detail: "1, 5, and 15 minute run queue")
                 metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System thermal pressure")
@@ -187,7 +195,7 @@ struct PowerStatsWindowView: View {
 
     private var memoryPage: some View {
         WorkspacePage("Memory", subtitle: "Physical and compressed memory") {
-            HStack(spacing: 12) {
+            LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "Not available", detail: memoryDetail)
                 metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "Not available", detail: "Installed unified memory")
                 metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "Not available", detail: "Used physical memory")
@@ -198,12 +206,12 @@ struct PowerStatsWindowView: View {
 
     private var networkPage: some View {
         WorkspacePage("Network & Disk", subtitle: "Current rates and startup disk use") {
-            HStack(spacing: 12) {
+            LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "internaldrive", title: "Disk Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "Not available", detail: diskDetail)
             }
-            HStack(spacing: 12) {
+            LazyVGrid(columns: chartColumns, spacing: 12) {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
                 chartCard(title: "Upload", suffix: "/s", values: service.history.compactMap(\.networkUpload), formatter: Self.rate)
             }
