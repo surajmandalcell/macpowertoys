@@ -62,20 +62,23 @@ struct TransferInfoSheet: View {
         VStack(spacing: 0) {
             header
             tabBar
-            Divider()
-            switch visibleTab {
-            case .overview:
-                overviewContent
-            case .files:
-                TransferFileTreeView(sourceFs: details.sourceFs, destinationFs: details.destinationFs)
-                    .padding(.top, 12)
-            case .changes:
-                if let job {
-                    TransferChangesTab(jobID: job.id)
+            QuietDivider()
+            Group {
+                switch visibleTab {
+                case .overview:
+                    overviewContent
+                case .files:
+                    TransferFileTreeView(sourceFs: details.sourceFs, destinationFs: details.destinationFs)
+                        .padding(.top, 12)
+                case .changes:
+                    if let job {
+                        TransferChangesTab(jobID: job.id)
+                    }
+                case .settings:
+                    settingsContent
                 }
-            case .settings:
-                settingsContent
             }
+            .utilityContentTransition(value: visibleTab)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(width: 640, height: 620)

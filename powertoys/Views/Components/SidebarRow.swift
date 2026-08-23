@@ -20,10 +20,9 @@ struct SidebarRow: View {
             HStack(spacing: 8) {
                 if let logoAsset, !logoAsset.isEmpty {
                     Image(logoAsset)
-                        .renderingMode(isSelected ? .template : .original)
+                        .renderingMode(.original)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .foregroundStyle(foregroundColor)
                         .frame(width: 16, height: 16)
                 } else {
                     Image(systemName: icon)

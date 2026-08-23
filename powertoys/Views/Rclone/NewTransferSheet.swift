@@ -30,7 +30,7 @@ struct NewTransferSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
@@ -46,7 +46,7 @@ struct NewTransferSheet: View {
                 .padding(20)
             }
 
-            Divider()
+            QuietDivider()
             footer
         }
         .frame(width: 560, height: 540)
@@ -348,7 +348,8 @@ private struct EndpointCard: View {
                             .fill(Color.primary.opacity(0.06))
                     )
                 }
-                .menuStyle(.borderlessButton)
+                .menuStyle(.button)
+                .buttonStyle(.borderless)
                 .menuIndicator(.hidden)
 
                 TextField("Path within remote (optional)", text: $config.remotePath)

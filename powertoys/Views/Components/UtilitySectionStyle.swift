@@ -8,6 +8,7 @@ enum UtilityLayout {
     static let conversationSidebarWidth: CGFloat = 260
     static let sidebarRowHeight: CGFloat = 28
     static let workspaceTitlebarHeight: CGFloat = 40
+    static let workspaceActionHeight: CGFloat = 24
     static let workspaceTitleLeadingInset: CGFloat = 92
     static let workspaceTrafficLightVerticalOffset: CGFloat = 4
     static let compactTitlebarHeight: CGFloat = 40
@@ -28,6 +29,32 @@ enum UtilityLayout {
     static let sectionSpacing: CGFloat = 16
     static let cardPadding: CGFloat = 14
     static let cardRadius: CGFloat = 10
+    static let separatorOpacity: Double = 0.35
+    static let increasedContrastSeparatorOpacity: Double = 0.55
+}
+
+enum UtilityMotion {
+    static let standardDuration = 0.16
+
+    static func animation(
+        reduceMotion: Bool,
+        duration: Double = standardDuration
+    ) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: duration)
+    }
+}
+
+struct QuietDivider: View {
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Divider()
+            .opacity(
+                contrast == .increased
+                    ? UtilityLayout.increasedContrastSeparatorOpacity
+                    : UtilityLayout.separatorOpacity
+            )
+    }
 }
 
 final class UtilityMaterialView: NSVisualEffectView {
@@ -98,6 +125,60 @@ extension View {
 
     func thinScrollIndicators() -> some View {
         background(ThinScrollIndicatorConfigurator())
+    }
+
+    func utilityAnimation<Value: Equatable>(
+        value: Value,
+        duration: Double = UtilityMotion.standardDuration
+    ) -> some View {
+        modifier(UtilityAnimationModifier(value: value, duration: duration))
+    }
+
+    func utilityContentTransition<Value: Hashable>(value: Value) -> some View {
+        modifier(UtilityContentTransitionModifier(value: value))
+    }
+
+    func utilityMotionPolicy() -> some View {
+        modifier(UtilityMotionPolicyModifier())
+    }
+}
+
+private struct UtilityMotionPolicyModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.transaction { transaction in
+            guard reduceMotion else { return }
+            transaction.animation = nil
+            transaction.disablesAnimations = true
+        }
+    }
+}
+
+private struct UtilityAnimationModifier<Value: Equatable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let value: Value
+    let duration: Double
+
+    func body(content: Content) -> some View {
+        content.animation(
+            UtilityMotion.animation(reduceMotion: reduceMotion, duration: duration),
+            value: value
+        )
+    }
+}
+
+private struct UtilityContentTransitionModifier<Value: Hashable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let value: Value
+
+    func body(content: Content) -> some View {
+        content
+            .id(value)
+            .transition(reduceMotion ? .identity : .opacity)
+            .animation(UtilityMotion.animation(reduceMotion: reduceMotion), value: value)
     }
 }
 

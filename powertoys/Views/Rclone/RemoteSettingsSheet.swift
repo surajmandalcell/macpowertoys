@@ -27,7 +27,7 @@ struct RemoteSettingsSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
 
             Form {
                 Section {

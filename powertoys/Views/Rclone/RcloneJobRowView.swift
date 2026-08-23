@@ -268,7 +268,8 @@ struct TransferJobRow: View {
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
         .menuIndicator(.hidden)
         .fixedSize()
         .focusEffectDisabled()
@@ -378,7 +379,7 @@ struct TransferJobRow: View {
     private var perFileSection: some View {
         if job.isExpanded {
             VStack(alignment: .leading, spacing: 6) {
-                Divider()
+                QuietDivider()
                 if job.stats.transferring.isEmpty {
                     Text("No files transferring")
                         .font(.system(size: 11))

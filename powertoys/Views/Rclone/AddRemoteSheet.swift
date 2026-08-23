@@ -67,7 +67,7 @@ struct AddRemoteSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
 
             Group {
                 switch manager.authState {
@@ -86,7 +86,7 @@ struct AddRemoteSheet: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.easeInOut(duration: 0.2), value: manager.authState)
 
-            Divider()
+            QuietDivider()
             footer
         }
         .frame(width: 520, height: 620)
@@ -510,7 +510,7 @@ private struct ProviderDropdown: View {
         VStack(spacing: 0) {
             SearchField(text: $searchText, placeholder: "Search connectors…")
                 .padding(8)
-            Divider()
+            QuietDivider()
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: CGFloat(providers.count) * Self.rowHeight > Self.maximumListHeight) {
                     LazyVStack(spacing: 0) {

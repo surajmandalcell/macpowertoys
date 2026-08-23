@@ -29,7 +29,7 @@ struct ActivityView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            QuietDivider()
 
             if records.isEmpty {
                 emptyState

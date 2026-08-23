@@ -15,6 +15,7 @@ struct HomeView: View {
 
             ZStack(alignment: .topLeading) {
                 contentView
+                    .utilityContentTransition(value: selectedTool)
                     .padding(.top, 52)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
