@@ -5,6 +5,7 @@ SwiftUI macOS utility app with pluggable tools.
 ## Rules
 @spec/troubleshoot/troubleshoot.md
 @.codex/rules/vorssaint-utils-reference.md
+@.codex/rules/window-experience.md
 @spec/ruler-request-list.md
 @spec/color-picker-request-list.md
 @DESIGN.md
