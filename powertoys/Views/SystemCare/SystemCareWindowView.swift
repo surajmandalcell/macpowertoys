@@ -196,11 +196,16 @@ struct SystemCareWindowView: View {
                     )
                     .frame(maxWidth: .infinity, minHeight: 420)
                 } else {
-                    HStack(alignment: .top, spacing: 20) {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 360), spacing: 20, alignment: .top)],
+                        alignment: .leading,
+                        spacing: 20
+                    ) {
                         StorageRingView(entries: manager.storageEntries) { entry in
                             if entry.isDirectory { manager.analyze(entry.url) }
                         }
-                        .frame(width: 330, height: 330)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 330)
 
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 10) {
@@ -252,7 +257,7 @@ struct SystemCareWindowView: View {
                             }
                             .frame(minHeight: 280)
                         }
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 330, alignment: .topLeading)
                     }
                 }
             }
@@ -395,7 +400,11 @@ struct SystemCareWindowView: View {
                 Label("Install Mole CLI to preview or uninstall applications.", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
             }
-            HStack(alignment: .top, spacing: 16) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 360), spacing: 16, alignment: .top)],
+                alignment: .leading,
+                spacing: 16
+            ) {
                 ScrollView {
                     LazyVStack(spacing: 2) {
                         ForEach(filteredApplications) { application in
@@ -414,7 +423,7 @@ struct SystemCareWindowView: View {
                         }
                     }
                 }
-                .frame(minWidth: 300)
+                .frame(maxWidth: .infinity, minHeight: 430)
 
                 VStack(alignment: .leading, spacing: 12) {
                     Group {
@@ -437,12 +446,10 @@ struct SystemCareWindowView: View {
                     Spacer()
                 }
                 .padding(16)
-                .frame(width: 330)
-                .frame(maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: 430, alignment: .topLeading)
                 .background(Color.primary.opacity(0.03))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .frame(minHeight: 430)
         }
     }
 
