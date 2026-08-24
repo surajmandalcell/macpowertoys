@@ -68,14 +68,3 @@
 - **Check:** Close the window with the menu disabled and confirm sampling stops.
   Enable the menu, confirm its saved cadence, then disable it and confirm all
   System Monitor status items disappear.
-
-## System Tool Icon Corners
-
-- **Symptom:** A system-tool icon has sharp corners even though its ground uses
-  a rounded square.
-- **Cause:** Foreground artwork bleeds outside the rounded ground without a
-  matching SVG clip path.
-- **Invariant:** Clip the complete SVG tile to the same 112pt corner radius as
-  its 512pt ground. Do not rely on the ground shape to clip later artwork.
-- **Check:** Render every tool icon and confirm all four canvas corners remain
-  transparent at launcher, sidebar, and Dock sizes.

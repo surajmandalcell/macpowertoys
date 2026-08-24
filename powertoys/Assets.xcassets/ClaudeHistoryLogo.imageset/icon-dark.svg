@@ -1,11 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="115" fill="#1C1D22"/>
-  <g fill="#D97757" opacity=".3">
-    <rect x="146" y="168" width="280" height="206" rx="64"/>
-    <path d="M226 356v54c0 12 14 17 22 9l72-63z"/>
-  </g>
-  <g fill="#FFFFFF" opacity=".92">
-    <rect x="106" y="128" width="280" height="206" rx="64"/>
-    <path d="M186 316v54c0 12 14 17 22 9l72-63z"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#1C1D22"/>
+    <g fill="#D97757" opacity=".3">
+      <rect x="146" y="168" width="280" height="206" rx="64"/>
+      <path d="M226 356v54c0 12 14 17 22 9l72-63z"/>
+    </g>
+    <g fill="#FFFFFF" opacity=".92">
+      <rect x="106" y="128" width="280" height="206" rx="64"/>
+      <path d="M186 316v54c0 12 14 17 22 9l72-63z"/>
+    </g>
   </g>
 </svg>

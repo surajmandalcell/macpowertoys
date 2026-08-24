@@ -1,9 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="115" fill="#1C1D22"/>
-  <path d="M83 350a92 92 0 0 0 92 92h231a77 77 0 0 0 27.3-149
-           61 61 0 0 0-77.2-79 108 108 0 0 0-210.4 48A92 92 0 0 0 83 350z"
-        fill="#5B8DEF" opacity=".3"/>
-  <path d="M43 310a92 92 0 0 0 92 92h231a77 77 0 0 0 27.3-149
-           61 61 0 0 0-77.2-79 108 108 0 0 0-210.4 48A92 92 0 0 0 43 310z"
-        fill="#FFFFFF" opacity=".92"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#1C1D22"/>
+    <path d="M83 350a92 92 0 0 0 92 92h231a77 77 0 0 0 27.3-149
+             61 61 0 0 0-77.2-79 108 108 0 0 0-210.4 48A92 92 0 0 0 83 350z"
+          fill="#5B8DEF" opacity=".3"/>
+    <path d="M43 310a92 92 0 0 0 92 92h231a77 77 0 0 0 27.3-149
+             61 61 0 0 0-77.2-79 108 108 0 0 0-210.4 48A92 92 0 0 0 43 310z"
+          fill="#FFFFFF" opacity=".92"/>
+  </g>
 </svg>

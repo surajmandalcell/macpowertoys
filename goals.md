@@ -22,8 +22,8 @@ evidence, and remaining work.
 - Verify the darker menu-bar popover, equal tab-group edges, shorter body gap,
   added body-bottom space, footer rhythm, and native single-click in the latest
   normal signed installed build.
-- Verify rounded System Monitor icon corners and the 18pt by 6pt launcher-detail
-  tab inset in the latest normal installed build.
+- Verify the shared rounded tile template for every active tool icon and the
+  18pt by 6pt launcher-detail tab inset in the latest normal installed build.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 

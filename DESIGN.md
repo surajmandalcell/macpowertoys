@@ -814,10 +814,14 @@ palette or reuse another tool's semantic hue.
 
 ### Construction
 
-- Work in a `512 × 512` SVG view box.
-- Use a full-canvas rounded square with `rx="112"` as the ground.
-- Clip the complete tile artwork to that same `rx="112"` rounded square. A
-  bleeding glyph or band must never replace a rounded corner with a sharp one.
+- Every active tool-icon appearance uses the same outer SVG template. This rule
+  applies to every tool and to every light and dark variant without exception.
+- Use a `512 × 512` SVG view box and a full-canvas tile.
+- Define `clipPath id="tile"` with a `512 × 512` rectangle and `rx="112"`.
+  Wrap the ground and all artwork in `<g clip-path="url(#tile)">`.
+- Do not use a local corner radius or rely on the ground shape to clip later
+  artwork. A bleeding glyph or band must never replace a rounded corner with a
+  sharp one.
 - Let the glyph occupy 60–72% of the tile width. Structural elements may bleed
   through the tile edge so the subject feels large instead of sticker-like.
 - Build one literal metaphor from the fewest recognizable shapes. Prefer broad

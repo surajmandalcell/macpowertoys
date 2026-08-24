@@ -1,5 +1,19 @@
 # UI Chrome Troubleshooting
 
+## Tool Icon Tile Template
+
+- **Symptom:** One tool icon has sharper corners, different cutoffs, or a
+  different tile silhouette from the other tool icons.
+- **Cause:** One SVG appearance bypassed the shared outer tile template or used
+  its own corner radius.
+- **Invariant:** Every active light and dark tool-icon SVG uses a `512 × 512`
+  view box, a full-canvas `clipPath id="tile"` rectangle with `rx="112"`, and a
+  group that clips the ground and all artwork to that path. This rule applies to
+  every tool. No tool or appearance is a special case.
+- **Check:** Enumerate every active named tool-logo asset and every SVG in each
+  asset. The source-template test and transparent-corner render test must pass.
+  Inspect the launcher, sidebar, and Dock at normal and small sizes.
+
 ## Compact Workspace Hierarchy
 
 - **Symptom:** Workspace sidebars, selected rows, page headings, buttons, and
