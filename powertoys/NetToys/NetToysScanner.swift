@@ -508,6 +508,17 @@ nonisolated enum ARPTable {
 }
 
 nonisolated enum NetToysScanExport {
+    private struct SavedResults: Codable {
+        let version: Int
+        let results: [NetToysScanResult]
+    }
+
+    static func savedResults(_ results: [NetToysScanResult]) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(SavedResults(version: 1, results: results))
+    }
+
     static func csv(_ results: [NetToysScanResult]) -> String {
         let rows = results.map { result in
             [
@@ -586,5 +597,31 @@ nonisolated enum NetToysScanExport {
 
     private static func sqlQuote(_ value: String) -> String {
         "'\(value.replacingOccurrences(of: "'", with: "''"))'"
+    }
+}
+
+nonisolated enum NetToysScanImport {
+    enum ImportError: LocalizedError {
+        case unsupportedVersion(Int)
+        case empty
+
+        var errorDescription: String? {
+            switch self {
+            case .unsupportedVersion(let version): "Unsupported NetToys results version: \(version)"
+            case .empty: "The NetToys results file is empty."
+            }
+        }
+    }
+
+    private struct SavedResults: Codable {
+        let version: Int
+        let results: [NetToysScanResult]
+    }
+
+    static func savedResults(_ data: Data) throws -> [NetToysScanResult] {
+        let value = try JSONDecoder().decode(SavedResults.self, from: data)
+        guard value.version == 1 else { throw ImportError.unsupportedVersion(value.version) }
+        guard !value.results.isEmpty else { throw ImportError.empty }
+        return value.results
     }
 }

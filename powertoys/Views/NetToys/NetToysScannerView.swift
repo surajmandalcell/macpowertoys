@@ -12,6 +12,7 @@ enum NetToysResultFilter: String, CaseIterable, Identifiable {
 }
 
 enum NetToysExportFormat: String, CaseIterable, Identifiable {
+    case savedResults = "NetToys Results"
     case csv = "CSV"
     case text = "Text"
     case xml = "XML"
@@ -22,6 +23,7 @@ enum NetToysExportFormat: String, CaseIterable, Identifiable {
 
     var fileExtension: String {
         switch self {
+        case .savedResults: "nettoys"
         case .csv: "csv"
         case .text, .ipPorts: "txt"
         case .xml: "xml"
@@ -165,19 +167,41 @@ final class NetToysScannerViewModel {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "NetToys Scan.\(format.fileExtension)"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        let output: String
-        switch format {
-        case .csv: output = NetToysScanExport.csv(rows)
-        case .text: output = NetToysScanExport.text(rows)
-        case .xml: output = NetToysScanExport.xml(rows)
-        case .ipPorts: output = NetToysScanExport.ipPorts(rows)
-        case .sql: output = NetToysScanExport.sql(rows)
-        }
         do {
-            try output.write(to: url, atomically: true, encoding: .utf8)
+            switch format {
+            case .savedResults:
+                try NetToysScanExport.savedResults(rows).write(to: url, options: .atomic)
+            case .csv:
+                try NetToysScanExport.csv(rows).write(to: url, atomically: true, encoding: .utf8)
+            case .text:
+                try NetToysScanExport.text(rows).write(to: url, atomically: true, encoding: .utf8)
+            case .xml:
+                try NetToysScanExport.xml(rows).write(to: url, atomically: true, encoding: .utf8)
+            case .ipPorts:
+                try NetToysScanExport.ipPorts(rows).write(to: url, atomically: true, encoding: .utf8)
+            case .sql:
+                try NetToysScanExport.sql(rows).write(to: url, atomically: true, encoding: .utf8)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func loadResults() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "nettoys") ?? .data]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            results = try NetToysScanImport.savedResults(Data(contentsOf: url))
+            lastDuration = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func removeResults(ids: Set<String>) {
+        results.removeAll { ids.contains($0.id) }
     }
 
     func toggleFavoriteTarget() {
@@ -300,6 +324,7 @@ struct NetToysScannerView: View {
                 }
                 Button("Random Addresses…") { showRandomTargets = true }
                 Button("Import Target List…") { model.importTargets() }
+                Button("Load Saved Results…") { model.loadResults() }
                 Divider()
                 Button(model.favoriteTargets.contains(model.targetInput)
                     ? "Remove Current Favorite"
@@ -347,6 +372,18 @@ struct NetToysScannerView: View {
                 .frame(maxWidth: 320)
 
             Spacer()
+
+            Menu("More") {
+                Button("Next Alive Host") { selectNext(where: \.isReachable) }
+                Button("Next Down Host") { selectNext { !$0.isReachable } }
+                Button("Next Host With Open Ports") { selectNext { !$0.openPorts.isEmpty } }
+                Divider()
+                Button("Delete Selected", role: .destructive) {
+                    model.removeResults(ids: selection)
+                    selection.removeAll()
+                }
+                .disabled(selection.isEmpty)
+            }
 
             Button("Copy IP") {
                 NSPasteboard.general.clearContents()
@@ -440,6 +477,10 @@ struct NetToysScannerView: View {
                 model.start(targets: model.results.filter { selected.contains($0.id) }.map(\.address))
             }
             .disabled(model.isScanning)
+            Button("Delete", role: .destructive) {
+                model.removeResults(ids: selected)
+                selection.subtract(selected)
+            }
         } primaryAction: { selected in
             detailResult = model.results.first { selected.contains($0.id) }
         }
@@ -485,6 +526,14 @@ struct NetToysScannerView: View {
             components.port = Int(port)
         }
         if let url = components.url { NSWorkspace.shared.open(url) }
+    }
+
+    private func selectNext(where predicate: (NetToysScanResult) -> Bool) {
+        let matches = sortedResults.filter(predicate)
+        guard !matches.isEmpty else { return }
+        let current = selection.first.flatMap { id in matches.firstIndex { $0.id == id } }
+        let next = matches[(current.map { ($0 + 1) % matches.count }) ?? 0]
+        selection = [next.id]
     }
 }
 

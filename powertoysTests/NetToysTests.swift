@@ -458,5 +458,6 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(NetToysScanExport.sql([result]).contains("dev<&amp;''\".local") == false)
         XCTAssertTrue(NetToysScanExport.sql([result]).contains("dev<&''\".local"))
         XCTAssertEqual(NetToysScanExport.ipPorts([result]), "10.0.0.2:22")
+        XCTAssertEqual(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([result])), [result])
     }
 }
