@@ -62,7 +62,7 @@ final class WindowStateManager {
         "text-extractor",
         "input-devices",
         "system-care",
-        "power-stats"
+        "system-monitor"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
@@ -115,7 +115,8 @@ final class WindowStateManager {
               let storageIdentifier = Self.storageIdentifier(for: identifier) else { return }
         defer { restoredWindows.add(window) }
 
-        guard let data = UserDefaults.standard.data(forKey: key(for: storageIdentifier)),
+        let data = Self.storedStateData(for: storageIdentifier, in: .standard)
+        guard let data,
               let state = try? JSONDecoder().decode(WindowState.self, from: data) else {
             return
         }
@@ -146,6 +147,14 @@ final class WindowStateManager {
         if sufficientlyVisible {
             window.setFrame(frame, display: false)
         }
+    }
+
+    static func storedStateData(for storageIdentifier: String, in defaults: UserDefaults) -> Data? {
+        let key: (String) -> String = { "windowState.\($0)" }
+        return defaults.data(forKey: key(storageIdentifier))
+            ?? (storageIdentifier == "system-monitor"
+                ? defaults.data(forKey: key("power-stats"))
+                : nil)
     }
 
     private static func screenIdentifier(for screen: NSScreen) -> String? {

@@ -3,7 +3,7 @@ import Darwin
 import Foundation
 import IOKit.ps
 
-nonisolated enum PowerMenuMode: String, Codable, CaseIterable, Identifiable {
+nonisolated enum SystemMonitorMenuMode: String, Codable, CaseIterable, Identifiable {
     case grouped
     case direct
 
@@ -11,7 +11,7 @@ nonisolated enum PowerMenuMode: String, Codable, CaseIterable, Identifiable {
     var title: String { self == .grouped ? "Grouped" : "Individual" }
 }
 
-nonisolated enum PowerMenuMetric: String, Codable, CaseIterable, Identifiable, Hashable {
+nonisolated enum SystemMonitorMenuMetric: String, Codable, CaseIterable, Identifiable, Hashable {
     case cpu
     case memory
     case network
@@ -33,14 +33,14 @@ nonisolated enum PowerMenuMetric: String, Codable, CaseIterable, Identifiable, H
     }
 }
 
-nonisolated struct PowerStatsMenuSettings: Codable, Equatable {
+nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
     var enabled = false
-    var mode = PowerMenuMode.grouped
+    var mode = SystemMonitorMenuMode.grouped
     var interval = 2.0
-    var metrics: Set<PowerMenuMetric> = [.cpu, .memory]
+    var metrics: Set<SystemMonitorMenuMetric> = [.cpu, .memory]
 }
 
-nonisolated struct PowerStatsSample: Identifiable, Sendable {
+nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let id = UUID()
     let timestamp: Date
     let cpuUsage: Double?
@@ -66,7 +66,7 @@ nonisolated struct PowerStatsSample: Identifiable, Sendable {
     }
 }
 
-nonisolated enum PowerStatsDelta {
+nonisolated enum SystemMonitorDelta {
     static func cpuUsage(previous: (total: UInt64, idle: UInt64), current: (total: UInt64, idle: UInt64)) -> Double? {
         guard current.total >= previous.total, current.idle >= previous.idle else { return nil }
         let total = current.total - previous.total
@@ -81,36 +81,36 @@ nonisolated enum PowerStatsDelta {
     }
 }
 
-nonisolated private struct PowerRawSample {
+nonisolated private struct SystemMonitorRawSample {
     let timestamp: Date
     let cpu: (total: UInt64, idle: UInt64)?
     let network: (received: UInt64, sent: UInt64)?
 }
 
-nonisolated private final class PowerStatsSampler: @unchecked Sendable {
-    private var previous: PowerRawSample?
+nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
+    private var previous: SystemMonitorRawSample?
 
     func reset() {
         previous = nil
     }
 
-    func sample(detailed: Bool, metrics: Set<PowerMenuMetric>) -> PowerStatsSample {
+    func sample(detailed: Bool, metrics: Set<SystemMonitorMenuMetric>) -> SystemMonitorSample {
         let now = Date()
         let needsCPU = detailed || metrics.contains(.cpu)
         let needsMemory = detailed || metrics.contains(.memory)
         let needsNetwork = detailed || metrics.contains(.network)
         let cpu = needsCPU ? Self.cpuCounters() : nil
         let network = needsNetwork ? Self.networkCounters() : nil
-        let raw = PowerRawSample(timestamp: now, cpu: cpu, network: network)
+        let raw = SystemMonitorRawSample(timestamp: now, cpu: cpu, network: network)
         let elapsed = previous.map { now.timeIntervalSince($0.timestamp) } ?? 0
         let cpuUsage = previous?.cpu.flatMap { prior in
-            cpu.flatMap { PowerStatsDelta.cpuUsage(previous: prior, current: $0) }
+            cpu.flatMap { SystemMonitorDelta.cpuUsage(previous: prior, current: $0) }
         }
         let download = previous?.network.flatMap { prior in
-            network.flatMap { PowerStatsDelta.rate(previous: prior.received, current: $0.received, seconds: elapsed) }
+            network.flatMap { SystemMonitorDelta.rate(previous: prior.received, current: $0.received, seconds: elapsed) }
         }
         let upload = previous?.network.flatMap { prior in
-            network.flatMap { PowerStatsDelta.rate(previous: prior.sent, current: $0.sent, seconds: elapsed) }
+            network.flatMap { SystemMonitorDelta.rate(previous: prior.sent, current: $0.sent, seconds: elapsed) }
         }
         previous = raw
 
@@ -120,7 +120,7 @@ nonisolated private final class PowerStatsSampler: @unchecked Sendable {
         var loads = [Double](repeating: 0, count: 3)
         let loadCount = detailed ? getloadavg(&loads, 3) : 0
 
-        return PowerStatsSample(
+        return SystemMonitorSample(
             timestamp: now,
             cpuUsage: cpuUsage,
             memoryUsed: memory?.used,
@@ -230,32 +230,34 @@ nonisolated private final class PowerStatsSampler: @unchecked Sendable {
 
 @Observable
 @MainActor
-final class PowerStatsService {
-    static let shared = PowerStatsService()
+final class SystemMonitorService {
+    static let shared = SystemMonitorService()
 
-    private static let settingsKey = "powerStats.menuSettings"
+    static let settingsKey = "systemMonitor.menuSettings"
+    static let legacySettingsKey = "powerStats.menuSettings"
     nonisolated static let maximumHistoryCount = 120
 
-    private(set) var snapshot: PowerStatsSample?
-    private(set) var history: [PowerStatsSample] = []
+    private(set) var snapshot: SystemMonitorSample?
+    private(set) var history: [SystemMonitorSample] = []
     private(set) var detailedActive = false
-    private(set) var menuSettings: PowerStatsMenuSettings
+    private(set) var menuSettings: SystemMonitorMenuSettings
 
-    private let sampler = PowerStatsSampler()
-    private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.power-stats", qos: .utility)
-    private let menuController = PowerStatsMenuController()
+    private let sampler = SystemMonitorSampler()
+    private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.system-monitor", qos: .utility)
+    private let menuController = SystemMonitorMenuController()
     private var timer: DispatchSourceTimer?
     private var toolEnabled = true
     private var generation = 0
     private var lastMenuUpdate: Date?
 
     private init() {
-        if let data = UserDefaults.standard.data(forKey: Self.settingsKey),
-           let decoded = try? JSONDecoder().decode(PowerStatsMenuSettings.self, from: data) {
-            menuSettings = decoded
-        } else {
-            menuSettings = PowerStatsMenuSettings()
-        }
+        menuSettings = Self.storedMenuSettings(in: .standard)
+    }
+
+    static func storedMenuSettings(in defaults: UserDefaults) -> SystemMonitorMenuSettings {
+        let data = defaults.data(forKey: settingsKey) ?? defaults.data(forKey: legacySettingsKey)
+        return data.flatMap { try? JSONDecoder().decode(SystemMonitorMenuSettings.self, from: $0) }
+            ?? SystemMonitorMenuSettings()
     }
 
     deinit {
@@ -263,7 +265,7 @@ final class PowerStatsService {
     }
 
     func startFromStoredSettings() {
-        toolEnabled = SettingsManager.shared.isToolEnabled("power-stats")
+        toolEnabled = SettingsManager.shared.isToolEnabled("system-monitor")
         reconfigure()
     }
 
@@ -277,7 +279,7 @@ final class PowerStatsService {
         reconfigure()
     }
 
-    func updateMenuSettings(_ change: (inout PowerStatsMenuSettings) -> Void) {
+    func updateMenuSettings(_ change: (inout SystemMonitorMenuSettings) -> Void) {
         change(&menuSettings)
         if menuSettings.metrics.isEmpty { menuSettings.metrics = [.cpu] }
         if let data = try? JSONEncoder().encode(menuSettings) {
@@ -297,7 +299,7 @@ final class PowerStatsService {
         generation += 1
         lastMenuUpdate = nil
         let menuActive = toolEnabled && menuSettings.enabled
-        menuController.configure(settings: menuActive ? menuSettings : PowerStatsMenuSettings())
+        menuController.configure(settings: menuActive ? menuSettings : SystemMonitorMenuSettings())
         guard toolEnabled && (detailedActive || menuActive) else { return }
 
         let interval = detailedActive ? 1.0 : menuSettings.interval
@@ -321,7 +323,7 @@ final class PowerStatsService {
         source.resume()
     }
 
-    private func receive(_ sample: PowerStatsSample, detailed: Bool, generation: Int) {
+    private func receive(_ sample: SystemMonitorSample, detailed: Bool, generation: Int) {
         guard generation == self.generation else { return }
         snapshot = sample
         if detailed {
@@ -345,11 +347,11 @@ final class PowerStatsService {
 }
 
 @MainActor
-private final class PowerStatsMenuController: NSObject {
+private final class SystemMonitorMenuController: NSObject {
     private var statusItems: [String: NSStatusItem] = [:]
-    private var settings = PowerStatsMenuSettings()
+    private var settings = SystemMonitorMenuSettings()
 
-    func configure(settings: PowerStatsMenuSettings) {
+    func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
         statusItems.removeAll()
@@ -357,7 +359,7 @@ private final class PowerStatsMenuController: NSObject {
         guard settings.enabled else { return }
 
         if settings.mode == .grouped {
-            statusItems["group"] = makeStatusItem(symbol: "gauge.with.dots.needle.50percent")
+            statusItems["group"] = makeStatusItem(symbol: "chart.xyaxis.line")
         } else {
             for metric in settings.metrics.sorted(by: { $0.rawValue < $1.rawValue }) {
                 statusItems[metric.rawValue] = makeStatusItem(symbol: metric.symbol)
@@ -366,7 +368,7 @@ private final class PowerStatsMenuController: NSObject {
         update(sample: nil)
     }
 
-    func update(sample: PowerStatsSample?) {
+    func update(sample: SystemMonitorSample?) {
         guard settings.enabled else { return }
         if settings.mode == .grouped {
             statusItems["group"]?.button?.title = settings.metrics
@@ -382,19 +384,19 @@ private final class PowerStatsMenuController: NSObject {
 
     private func makeStatusItem(symbol: String) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Power Stats")
+        item.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "System Monitor")
         item.button?.target = self
-        item.button?.action = #selector(openPowerStats)
+        item.button?.action = #selector(openSystemMonitor)
         item.button?.sendAction(on: [.leftMouseUp])
-        item.button?.toolTip = "Open Power Stats"
+        item.button?.toolTip = "Open System Monitor"
         return item
     }
 
-    private func label(for metric: PowerMenuMetric, sample: PowerStatsSample?) -> String {
+    private func label(for metric: SystemMonitorMenuMetric, sample: SystemMonitorSample?) -> String {
         "\(metric.title) \(value(for: metric, sample: sample))"
     }
 
-    private func value(for metric: PowerMenuMetric, sample: PowerStatsSample?) -> String {
+    private func value(for metric: SystemMonitorMenuMetric, sample: SystemMonitorSample?) -> String {
         switch metric {
         case .cpu:
             sample?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting"
@@ -409,7 +411,7 @@ private final class PowerStatsMenuController: NSObject {
         ByteCountFormatter.string(fromByteCount: Int64(max(bytes, 0)), countStyle: .file) + "/s"
     }
 
-    @objc private func openPowerStats() {
-        ToolActionRouter.shared.open(toolID: "power-stats")
+    @objc private func openSystemMonitor() {
+        ToolActionRouter.shared.open(toolID: "system-monitor")
     }
 }

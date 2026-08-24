@@ -54,7 +54,7 @@ final class AppInitializer {
         if SettingsManager.shared.isToolEnabled("input-devices") {
             InputDevicesManager.shared.refresh()
         }
-        PowerStatsService.shared.startFromStoredSettings()
+        SystemMonitorService.shared.startFromStoredSettings()
 
         applyStoredTheme()
 

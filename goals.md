@@ -31,7 +31,7 @@ evidence, and remaining work.
 - [Color Picker](spec/color-picker-request-list.md)
 - [Text Extractor](spec/text-extractor-request-list.md)
 - [Ruler](spec/ruler-request-list.md)
-- [Input Devices, System Care, Power Stats, and NetToys](spec/system-tools-request-list.md)
+- [Input Devices, System Care, System Monitor, and NetToys](spec/system-tools-request-list.md)
 
 ## Status rules
 

@@ -22,7 +22,14 @@ final class SettingsManager {
     private(set) var transitioningToolIDs: Set<String> = []
 
     private init() {
-        disabledToolIDs = Set(UserDefaults.standard.stringArray(forKey: "powertoys.disabledTools") ?? [])
+        disabledToolIDs = Set(
+            (UserDefaults.standard.stringArray(forKey: "powertoys.disabledTools") ?? [])
+                .map(Self.migratedDisabledToolID)
+        )
+    }
+
+    nonisolated static func migratedDisabledToolID(_ toolID: String) -> String {
+        toolID == "power-stats" ? "system-monitor" : toolID
     }
 
     private func key(_ name: String, tool: String? = nil) -> String {
@@ -128,8 +135,8 @@ final class SettingsManager {
             enabled ? AwakeService.shared.resume() : AwakeService.shared.shutdown()
         case "input-devices":
             enabled ? InputDevicesManager.shared.refresh() : InputDevicesManager.shared.stop()
-        case "power-stats":
-            PowerStatsService.shared.setToolEnabled(enabled)
+        case "system-monitor":
+            SystemMonitorService.shared.setToolEnabled(enabled)
         case "rclone":
             transitioningToolIDs.insert(toolID)
             Task {

@@ -84,6 +84,11 @@ final class SettingsManagerTests: XCTestCase {
         SettingsManager.shared.setToolEnabled(true, for: "test-toggle")
     }
 
+    func testLegacyMonitorIDMigratesToCurrentID() {
+        XCTAssertEqual(SettingsManager.migratedDisabledToolID("power-stats"), "system-monitor")
+        XCTAssertEqual(SettingsManager.migratedDisabledToolID("system-care"), "system-care")
+    }
+
     private func uniqueName() -> String {
         let name = "test.\(UUID().uuidString)"
         names.append(name)

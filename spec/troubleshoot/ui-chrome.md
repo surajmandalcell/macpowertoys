@@ -13,7 +13,7 @@
   destination title, optional 11pt subtitle, 12pt body inset, native controls,
   related multi-column rows, and one accent primary action.
 - **Check:** Inspect launcher, Logs, Cloud Sync, AI History, Input Devices,
-  System Care, and Power Stats at default and minimum widths. No workspace has
+  System Care, and System Monitor at default and minimum widths. No workspace has
   a 22pt body title, a second 32pt top gap, or mismatched selected icon and text.
 
 ## Workspace Actions And Bottom Status
@@ -113,7 +113,7 @@
 - **Cause:** A workspace chose local width or padding literals instead of its
   shared sidebar family and layout metrics.
 - **Invariant:** Launcher, Logs, and Input Devices use the 220pt compact family;
-  Cloud Sync, System Care, and Power Stats use the 240pt data family; AI History
+  Cloud Sync, System Care, and System Monitor use the 240pt data family; AI History
   uses the 260pt conversation family. Navigation groups have 12pt horizontal
   pane padding. All workspace titles and first controls use the shared 84pt and
   44pt edges.

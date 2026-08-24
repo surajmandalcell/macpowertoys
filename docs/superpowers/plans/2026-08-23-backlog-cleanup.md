@@ -28,7 +28,7 @@
 - Modify: `spec/cloud-sync-request-list.md`
 
 - [x] Add a root index that links to each detailed request list.
-- [x] Add a request list for Input Devices, System Care, and Power Stats.
+- [x] Add a request list for Input Devices, System Care, and System Monitor.
 - [x] Correct statuses that describe a future condition as current unfinished work.
 - [x] Record only verified source and test evidence.
 - [x] Run the status-count audit and `git diff --check`.

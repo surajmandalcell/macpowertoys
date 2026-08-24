@@ -27,6 +27,12 @@ final class ToolActionRouterTests: XCTestCase {
         XCTAssertEqual(ToolActionRouter.request(from: url)?.action, .colorPickerCopyLast)
     }
 
+    @MainActor
+    func testLegacyMonitorWindowIDResolvesToCurrentID() {
+        XCTAssertEqual(ToolActionRouter.resolvedWindowID("power-stats"), "system-monitor")
+        XCTAssertEqual(ToolActionRouter.resolvedWindowID("system-monitor"), "system-monitor")
+    }
+
     func testParsesRulerSettingsWithoutTreatingItAsASwiftUIWindow() throws {
         let url = try XCTUnwrap(URL(string: "macpowertoys://run/ruler.settings?flag&source=test"))
         let request = try XCTUnwrap(ToolActionRouter.request(from: url))

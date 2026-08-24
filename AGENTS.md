@@ -30,6 +30,6 @@ Keep `spec/ruler-request-list.md` current when Ruler requirements or
 verification results change.
 
 Keep `spec/system-tools-request-list.md` current when Input Devices, System
-Care, or Power Stats requirements or verification results change.
+Care, or System Monitor requirements or verification results change.
 
 Keep `goals.md` current when a request list adds or closes current work.

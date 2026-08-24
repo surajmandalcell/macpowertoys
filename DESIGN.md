@@ -36,8 +36,8 @@ colors:
   icon-color-picker: "#23272E"
   icon-text-extractor: "#2155B0"
   icon-input-devices: "#315B7D"
-  icon-system-care: "#385A4B"
-  icon-power-stats: "#303B60"
+  icon-system-care: "#17181B"
+  icon-system-monitor: "#303B60"
 typography:
   launcher-detail-title: { size: 17, weight: medium, relative-to: headline }
   title: { size: 13, weight: medium, relative-to: body }
@@ -440,7 +440,7 @@ tool's product brief.
 | Text Extractor | Text / applet | Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition. |
 | Input Devices | System / workspace | Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 | System Care | System / workspace | Understand storage, preview safe cleanup, remove apps, and access advanced Mole maintenance without hidden privilege prompts. |
-| Power Stats | System / workspace | Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary. |
+| System Monitor | System / workspace | Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary. |
 
 ### Full Workspace
 
@@ -532,7 +532,7 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | AI History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
-| Power Stats | 1080×720 / 240pt | Metric destinations and menu settings | Live charts and metric grids |
+| System Monitor | 1080×720 / 240pt | Metric destinations and menu settings | Live charts and metric grids |
 
 A new workspace's product brief chooses destinations and data, then follows the
 closest content pattern: homogeneous operational items use dense rows; grouped
@@ -794,9 +794,9 @@ variant weakens the deliberate temperature and contrast difference.
 | Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
 | Color Picker | Chosen Color | Chosen Color | Colored samples are semantic and fixed |
 | Text Extractor | Chosen Color | Chosen Color | Yellow OCR lens identity is fixed |
-| Input Devices | Chosen Color | Chosen Color | The user-selected Signal, Orbit, or Precision identity is fixed |
-| System Care | Chosen Color | Chosen Color | Green care identity and storage segments are fixed |
-| Power Stats | Chosen Color | Chosen Color | Midnight-blue gauge identity is fixed |
+| Input Devices | Chosen Color | Chosen Color | Blue detailed-mouse identity is fixed |
+| System Care | Chosen Color | Chosen Color | S11-08 centered disk-and-eraser identity is fixed |
+| System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
 
 The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
@@ -882,9 +882,9 @@ has been changed.
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
 | Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
-| Input Devices | `#315B7D`, `#663F70`, or `#1F6C65` | `#F7F5F0` | User-selectable input-device glyph |
-| System Care | `#385A4B` | `#D9E5D8` | Amber and powder-blue storage segments |
-| Power Stats | `#303B60` | `#DDE3F2` | Amber gauge hub and periwinkle arc |
+| Input Devices | `#315B7D` | `#F7F5F0` | Powder-blue wheel, DPI key, and mouse controls |
+| System Care | `#17181B` | `#F3F3F1` | S11-08 gray disk and centered eraser |
+| System Monitor | `#303B60` | `#DDE3F2` | Periwinkle metric bars and amber activity sample |
 
 New Chosen Color tools should receive their own semantic hue unless a documented
 product decision deliberately links them to an existing color. Neutral

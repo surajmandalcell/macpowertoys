@@ -171,13 +171,13 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["system-care"]))
         .restorationBehavior(.disabled)
 
-        Window("Power Stats", id: "power-stats") {
-            PowerStatsWindowView()
+        Window("System Monitor", id: "system-monitor") {
+            SystemMonitorWindowView()
                 .utilityMotionPolicy()
         }
         .defaultSize(width: 1080, height: 720)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["power-stats"]))
+        .handlesExternalEvents(matching: Set(["system-monitor"]))
         .restorationBehavior(.disabled)
 
         MenuBarExtra("MacPowerToys", image: "MenuBarIcon", isInserted: trayBinding) {

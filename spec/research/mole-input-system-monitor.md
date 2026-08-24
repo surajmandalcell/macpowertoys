@@ -1,4 +1,4 @@
-# Mole, Input Devices, and Power Stats research
+# Mole, Input Devices, and System Monitor research
 
 Research date: 2026-08-23
 
@@ -14,7 +14,7 @@ headers as primary sources.
 2. **Do not promise exact per-device scroll policies in the first Input Devices release.**
    Public APIs can enumerate exact HID devices and can modify global scroll events, but the
    mutable event does not expose a documented general mouse or trackpad device identifier.
-3. **Build Power Stats from cumulative native counters.** Use one sampler, delta-based
+3. **Build System Monitor from cumulative native counters.** Use one sampler, delta-based
    rates, and a minimal menu-bar mode. Start detailed collectors only while the main window
    is visible.
 
@@ -173,7 +173,7 @@ the system prompt, show live permission status and an Open System Settings actio
 the feature safely disabled after denial or revocation. Never request these permissions at
 first launch merely to populate the settings UI.
 
-## Power Stats
+## System Monitor
 
 ### Public metric sources
 
@@ -216,4 +216,4 @@ scope. Do not make undocumented SMC/private frameworks a core dependency.
   to catch resource growth during long menu-bar runs.
 
 This architecture keeps the configurable live menu useful while honoring the requirement
-that detailed monitoring exists only when the main Power Stats window is open.
+that detailed monitoring exists only when the main System Monitor window is open.

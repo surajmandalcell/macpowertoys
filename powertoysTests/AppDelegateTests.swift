@@ -17,7 +17,7 @@ final class AppDelegateTests: XCTestCase {
     func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
         for toolID in [
             "main", "cc-history", "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "power-stats",
+            "text-extractor", "input-devices", "system-care", "system-monitor",
         ] {
             let url = URL(string: "macpowertoys://open/\(toolID)")!
             XCTAssertFalse(AppDelegate.requiresManualURLRouting(url), toolID)

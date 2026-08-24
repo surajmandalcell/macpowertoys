@@ -34,7 +34,7 @@ tool keeps its own window, workflow, state, and resource lifetime.
 - System Care supports quick cleanup, guided cleanup, and analysis-only use.
   Settings choose the default, while the other modes remain one or two actions
   away. Mole CLI is an attributed optional engine, not the product name.
-- Power Stats shows detailed monitoring only while its window is open. Its
+- System Monitor shows detailed monitoring only while its window is open. Its
   optional menu-bar summary uses a lightweight configurable interval.
 
 ## Capabilities and Constraints
@@ -48,7 +48,7 @@ tool keeps its own window, workflow, state, and resource lifetime.
   permit reliable behavior.
 - System Care uses a large MacPowerToys workspace with storage drill-down
   visuals and explicit safety before destructive work.
-- Power Stats may place individual metrics or one grouped summary in the menu
+- System Monitor may place individual metrics or one grouped summary in the menu
   bar. Detailed sampling stops when its window closes.
 - Use public APIs, request only required permissions, and keep CPU, memory,
   timers, event monitors, and retained data bounded.
@@ -58,7 +58,7 @@ tool keeps its own window, workflow, state, and resource lifetime.
 ## Brand Commitments
 
 - Product name: MacPowerToys.
-- Tool names: Text Extractor, Ruler, Input Devices, System Care, and Power Stats.
+- Tool names: Text Extractor, Ruler, Input Devices, System Care, and System Monitor.
 - Follow `DESIGN.md` and the current native SwiftUI and AppKit surfaces.
 - Use the `vorssaint-utils` workspace root as a read-only code and documentation
   reference.

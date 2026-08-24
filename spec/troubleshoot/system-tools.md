@@ -55,16 +55,16 @@
   destructive Mole action before opening its command in Terminal. Start a scan
   from each page and confirm the status stays at the bottom of the pane.
 
-## Power Stats
+## System Monitor
 
 - **Symptom:** Monitoring continues after the window closes, ignores the menu
   interval, or leaves status items after disablement.
 - **Cause:** Detailed and menu sampling used separate unbounded timers or shared
   one lifecycle without a menu update gate.
 - **Invariant:** Use one sampler and one timer. Collect detailed data only while
-  the Power Stats window is open. When enabled, collect only selected lightweight
+  the System Monitor window is open. When enabled, collect only selected lightweight
   menu metrics at the saved 1, 2, 3, or 5 second rate. Keep at most 120 samples.
   Remove the timer and all status items when neither surface needs them.
 - **Check:** Close the window with the menu disabled and confirm sampling stops.
   Enable the menu, confirm its saved cadence, then disable it and confirm all
-  Power Stats status items disappear.
+  System Monitor status items disappear.
