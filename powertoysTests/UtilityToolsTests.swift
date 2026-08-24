@@ -27,7 +27,8 @@ final class UtilityToolsTests: XCTestCase {
             "TextExtractorLogo",
             "InputDevicesLogoA",
             "SystemCareLogo",
-            "SystemMonitorLogo"
+            "SystemMonitorLogo",
+            "NetToysLogo"
         ]
 
         for assetName in assetNames {
@@ -85,6 +86,7 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoA")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-care"), "SystemCareLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-monitor"), "SystemMonitorLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "nettoys"), "NetToysLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
     }

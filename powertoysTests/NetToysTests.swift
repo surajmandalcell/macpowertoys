@@ -325,4 +325,35 @@ final class NetToysTests: XCTestCase {
         ))
         XCTAssertFalse(NetToysLoginItemManager.hasFreshHeartbeat(nil, now: now))
     }
+
+    func testRandomTargetsStayInsideCIDRWithoutDuplicates() throws {
+        let targets = try IPv4Targets.random(in: "10.20.30.0/24", count: 40)
+        XCTAssertEqual(targets.count, 40)
+        XCTAssertEqual(Set(targets).count, 40)
+        XCTAssertTrue(targets.allSatisfy { address in
+            address.rawValue > IPv4Address("10.20.30.0")!.rawValue
+                && address.rawValue < IPv4Address("10.20.30.255")!.rawValue
+        })
+        XCTAssertThrowsError(try IPv4Targets.random(in: "10.20.30.0/30", count: 3))
+    }
+
+    func testScanArchiveAndExportsPreserveSpecialText() throws {
+        let result = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("10.0.0.2")),
+            isReachable: true,
+            responseMilliseconds: 2,
+            hostname: "dev<&'\".local",
+            macAddress: "aa:bb:cc:dd:ee:ff",
+            vendor: nil,
+            openPorts: [22]
+        )
+        let run = NetToysScanRun(target: "10.0.0.0/24", ports: [22], duration: 1, results: [result])
+        let archive = NetToysScanArchive(runs: Array(repeating: run, count: 4), limit: 3)
+        XCTAssertEqual(archive.runs.count, 3)
+        XCTAssertEqual(try JSONDecoder().decode(NetToysScanArchive.self, from: JSONEncoder().encode(archive)), archive)
+        XCTAssertTrue(NetToysScanExport.xml([result]).contains("dev&lt;&amp;&apos;&quot;.local"))
+        XCTAssertTrue(NetToysScanExport.sql([result]).contains("dev<&amp;''\".local") == false)
+        XCTAssertTrue(NetToysScanExport.sql([result]).contains("dev<&''\".local"))
+        XCTAssertEqual(NetToysScanExport.ipPorts([result]), "10.0.0.2:22")
+    }
 }

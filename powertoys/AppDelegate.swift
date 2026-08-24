@@ -27,7 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let nativeSceneToolIDs: Set<String> = [
         "main", "cc-history", "rclone", "logs", "awake", "color-picker",
-        "text-extractor", "input-devices", "system-care", "system-monitor",
+        "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
     ]
 
     static func requiresManualURLRouting(_ url: URL) -> Bool {
@@ -117,7 +117,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "text-extractor": "TextExtractorLogo",
         "input-devices": "InputDevicesLogoA",
         "system-care": "SystemCareLogo",
-        "system-monitor": "SystemMonitorLogo"
+        "system-monitor": "SystemMonitorLogo",
+        "nettoys": "NetToysLogo"
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {
