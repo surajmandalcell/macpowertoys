@@ -236,6 +236,36 @@
   window, sheet, popover, and sidebar. Confirm no blue rectangular outline and
   confirm that Return or Space still activates each control.
 
+## NetToys Dynamic Form Stability
+
+- **Symptom:** SSH Anchor labels, fields, metadata, and actions move when the
+  helper refreshes, inspection starts, identity mode changes, or status arrives.
+- **Cause:** Dynamic labels replaced complete controls, optional status views
+  appeared and disappeared, and independent `HStack` rows recomputed unrelated
+  widths.
+- **Invariant:** Keep one aligned grid for the anchor form. Reserve widths for
+  helper state, inspection icon, host metadata, anchor status, and actions.
+  Change content inside those slots instead of inserting or removing controls.
+- **Check:** Inspect the default and minimum widths before, during, and after a
+  device inspection. Switch identity modes and wait for helper refreshes. No
+  label, input, status, or action may change its horizontal position.
+
+## NetToys Wi-Fi Identity Permission
+
+- **Symptom:** Network History shows only `interface | gateway` and no Wi-Fi
+  network name.
+- **Cause:** macOS redacts CoreWLAN SSID values until the main app requests and
+  receives Location access while it is active. A background helper cannot show
+  that prompt.
+- **Invariant:** The main app owns the foreground permission request and retries
+  it when the app becomes active. The helper reads SSID through public CoreWLAN
+  and stores it as optional data. Missing permission or Ethernet must stay a
+  valid state and must not create a false network transition.
+- **Check:** Open Network History in the normal signed app, grant Location
+  access, and wait for the next helper sample. Confirm the status file and UI
+  show `SSID | interface | gateway`. Deny access and confirm the UI explains the
+  limitation while gateway and internet history continue.
+
 ## Compact Applet Window Height
 
 - **Symptom:** Every compact applet has a 32pt material strip below its fixed

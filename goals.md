@@ -16,6 +16,9 @@ evidence, and remaining work.
   a physical menu-bar click. All other built-in surfaces passed.
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
+- Verify SSH Anchor at the minimum window width and with a configured anchor.
+- Grant Location access from active Network History, then verify that the signed
+  helper stores and shows `SSID | interface | gateway`.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest
   normal installed build.
 - Verify the darker menu-bar popover, equal tab-group edges, shorter body gap,
