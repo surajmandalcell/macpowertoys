@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     static weak var current: AppDelegate?
     static let statusItemEventMask: NSEvent.EventTypeMask = [
         .leftMouseDown,
+        .leftMouseUp,
         .rightMouseDown
     ]
 
@@ -149,6 +150,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let hitView = event.window?.contentView?.hitTest(event.locationInWindow)
             guard let statusButton = Self.statusItemButton(containing: hitView) else {
                 return event
+            }
+
+            // MenuBarExtra opens on mouse-up. Swallow it while the delayed
+            // mouse-down action waits for a possible second click.
+            if event.type == .leftMouseUp {
+                return nil
             }
 
             if event.type == .rightMouseDown {
