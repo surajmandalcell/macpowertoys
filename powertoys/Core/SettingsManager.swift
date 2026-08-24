@@ -113,20 +113,48 @@ final class SettingsManager {
 
     func setToolEnabled(_ enabled: Bool, for toolID: String) {
         guard enabled != isToolEnabled(toolID) else { return }
+        if toolID == "nettoys", !AppRuntime.isRunningTests {
+            guard !transitioningToolIDs.contains(toolID) else { return }
+            transitioningToolIDs.insert(toolID)
+            Task {
+                let succeeded = await NetToysLoginItemManager.shared.setEnabled(enabled)
+                if succeeded {
+                    persistToolEnabled(enabled, toolID: toolID)
+                    postEnablementChange(enabled, toolID: toolID)
+                }
+                transitioningToolIDs.remove(toolID)
+            }
+            return
+        }
+        persistToolEnabled(enabled, toolID: toolID)
+
+        guard !AppRuntime.isRunningTests else { return }
+        postEnablementChange(enabled, toolID: toolID)
+        applyLifecycle(enabled: enabled, toolID: toolID)
+    }
+
+    func reconcileNetToysLifecycle() async {
+        guard !AppRuntime.isRunningTests else { return }
+        let requested = isToolEnabled("nettoys")
+        let succeeded = await NetToysLoginItemManager.shared.setEnabled(requested)
+        if requested, !succeeded { persistToolEnabled(false, toolID: "nettoys") }
+    }
+
+    private func persistToolEnabled(_ enabled: Bool, toolID: String) {
         if enabled {
             disabledToolIDs.remove(toolID)
         } else {
             disabledToolIDs.insert(toolID)
         }
         defaults.set(disabledToolIDs.sorted(), forKey: "powertoys.disabledTools")
+    }
 
-        guard !AppRuntime.isRunningTests else { return }
+    private func postEnablementChange(_ enabled: Bool, toolID: String) {
         NotificationCenter.default.post(
             name: .toolEnablementChanged,
             object: toolID,
             userInfo: ["enabled": enabled]
         )
-        applyLifecycle(enabled: enabled, toolID: toolID)
     }
 
     private func applyLifecycle(enabled: Bool, toolID: String) {

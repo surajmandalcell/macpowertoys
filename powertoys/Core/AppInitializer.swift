@@ -44,6 +44,7 @@ final class AppInitializer {
         }
 
         _ = SettingsManager.shared
+        await SettingsManager.shared.reconcileNetToysLifecycle()
         await MarketplaceManager.shared.restore()
         SettingsSyncManager.shared.startIfEnabled()
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
