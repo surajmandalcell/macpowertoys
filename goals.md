@@ -8,7 +8,8 @@ evidence, and remaining work.
 ## Current work
 
 - Verify the full-width Awake tray controls in the latest normal signed build.
-- Build and verify NetToys with IP Scanner, SSH Anchor, and Network History.
+- Verify NetToys and its mandatory login helper in the exact installed build.
+- Complete the remaining clean-room Angry IP Scanner parity inventory.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
 - Verify focus appearance and keyboard activation in the menu-bar panels with
