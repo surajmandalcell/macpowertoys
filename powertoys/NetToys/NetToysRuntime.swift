@@ -213,6 +213,7 @@ nonisolated struct NetToysHelperStatus: Codable, Equatable, Sendable {
     let heartbeat: Date
     let anchors: [SSHAnchorStatus]
     var network: NetworkRuntimeSnapshot? = nil
+    var sourceCommit: String? = nil
 }
 
 nonisolated struct NetworkRuntimeSnapshot: Codable, Equatable, Sendable {

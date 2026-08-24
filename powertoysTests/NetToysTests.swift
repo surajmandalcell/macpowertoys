@@ -575,6 +575,26 @@ final class NetToysTests: XCTestCase {
             now: now
         ))
         XCTAssertFalse(NetToysLoginItemManager.hasFreshHeartbeat(nil, now: now))
+        XCTAssertTrue(NetToysLoginItemManager.hasFreshHeartbeat(
+            NetToysHelperStatus(
+                version: 1,
+                heartbeat: now,
+                anchors: [],
+                sourceCommit: "abc123"
+            ),
+            now: now,
+            expectedSourceCommit: "abc123"
+        ))
+        XCTAssertFalse(NetToysLoginItemManager.hasFreshHeartbeat(
+            NetToysHelperStatus(
+                version: 1,
+                heartbeat: now,
+                anchors: [],
+                sourceCommit: "old123"
+            ),
+            now: now,
+            expectedSourceCommit: "new456"
+        ))
     }
 
     func testRandomTargetsStayInsideCIDRWithoutDuplicates() throws {

@@ -20,6 +20,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>MPTSourceCommit</key>
+	<string>$(MPT_SOURCE_COMMIT)</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>SSH Anchor finds a selected device again when its local IP address changes.</string>
 </dict>
