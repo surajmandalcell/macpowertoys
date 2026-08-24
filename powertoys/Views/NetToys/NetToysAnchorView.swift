@@ -272,7 +272,7 @@ struct NetToysAnchorView: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 180)
+                        .frame(width: 180, alignment: .leading)
 
                         Button {
                             model.inspectSelectedDevice()
