@@ -46,6 +46,7 @@ struct SidebarRow: View {
             )
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
 
@@ -101,6 +102,7 @@ struct SidebarExternalRow: View {
             )
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
 }

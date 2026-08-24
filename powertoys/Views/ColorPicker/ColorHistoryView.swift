@@ -494,6 +494,7 @@ private struct ColorSampleRow: View {
             }
             .menuStyle(.button)
             .buttonStyle(.borderless)
+            .focusEffectDisabled()
             .contentShape(Rectangle())
             .help("Copy as")
             Button { service.togglePin(sample.id) } label: {
@@ -508,6 +509,7 @@ private struct ColorSampleRow: View {
             .help("Delete")
         }
         .buttonStyle(.borderless)
+        .focusEffectDisabled()
         .padding(9)
         .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))

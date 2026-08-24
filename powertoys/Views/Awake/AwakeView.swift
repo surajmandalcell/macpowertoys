@@ -174,6 +174,7 @@ struct AwakeSettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .contentShape(Rectangle())
         .frame(minWidth: 180, alignment: .leading)
     }

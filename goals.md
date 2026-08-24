@@ -7,6 +7,8 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify that custom controls never show the large blue focus outline and keep
+  keyboard activation in the latest normal installed build.
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest

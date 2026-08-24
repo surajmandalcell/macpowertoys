@@ -154,6 +154,7 @@ struct FilterToolbarView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
 
                     if hasThinking {
                         Button {
@@ -168,6 +169,7 @@ struct FilterToolbarView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .focusEffectDisabled()
                     }
 
                     Menu {
@@ -189,6 +191,7 @@ struct FilterToolbarView: View {
                     }
                     .menuStyle(.button)
                     .buttonStyle(.borderless)
+                    .focusEffectDisabled()
                     .menuIndicator(.hidden)
                 }
             }
@@ -211,6 +214,7 @@ struct FilterToolbarView: View {
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                 }
             }
             .frame(width: 160)
@@ -243,6 +247,7 @@ struct FilterToggle: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { isHovered = $0 }
     }
 }

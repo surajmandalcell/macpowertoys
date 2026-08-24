@@ -172,6 +172,20 @@
   interaction and after changing window focus, confirm no titlebar outline is
   visible. Tab to each control and confirm keyboard activation still works.
 
+## Custom Control Focus Chrome
+
+- **Symptom:** A custom sidebar row, card, icon action, or borderless menu shows
+  a large blue rectangular outline that does not match its shape.
+- **Cause:** A plain or borderless SwiftUI control kept the default focus effect
+  after it replaced the native control surface.
+- **Invariant:** Every custom plain and borderless button or menu disables only
+  its focus effect. Keep the control focusable, named, and keyboard-operable.
+  Native text fields and standard controls keep their native editing state.
+- **Check:** Search every SwiftUI source for plain and borderless button styles.
+  Each custom control must apply `focusEffectDisabled()`. Tab through every
+  window, sheet, popover, and sidebar. Confirm no blue rectangular outline and
+  confirm that Return or Space still activates each control.
+
 ## Compact Applet Window Height
 
 - **Symptom:** Every compact applet has a 32pt material strip below its fixed
