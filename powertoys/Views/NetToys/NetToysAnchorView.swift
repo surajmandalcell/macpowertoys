@@ -197,6 +197,7 @@ struct NetToysAnchorView: View {
         )
         .foregroundStyle(model.helperIsHealthy ? .green : .secondary)
         .font(.system(size: 11))
+        .frame(minWidth: 92, alignment: .leading)
     }
 
     private var helperCard: some View {
@@ -210,8 +211,13 @@ struct NetToysAnchorView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
+                .layoutPriority(1)
                 Spacer()
-                Picker("Check interval", selection: Binding(
+                Text("Check interval")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                Picker("", selection: Binding(
                     get: { model.configuration.probeInterval },
                     set: { model.setProbeInterval($0) }
                 )) {
@@ -219,8 +225,10 @@ struct NetToysAnchorView: View {
                     Text("2.5 s").tag(TimeInterval(2.5))
                     Text("3 s").tag(TimeInterval(3))
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
-                .frame(width: 94)
+                .frame(minWidth: 72)
+                .fixedSize(horizontal: true, vertical: false)
             }
             .utilitySectionCard()
         }
@@ -229,9 +237,10 @@ struct NetToysAnchorView: View {
     private var addAnchorSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("ADD ANCHOR").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Picker("SSH host", selection: $model.selectedAlias) {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
+                GridRow(alignment: .center) {
+                    rowLabel("SSH host")
+                    Picker("", selection: $model.selectedAlias) {
                         if model.entries.isEmpty {
                             Text("No eligible hosts").tag("")
                         } else {
@@ -240,39 +249,49 @@ struct NetToysAnchorView: View {
                             }
                         }
                     }
-                    .frame(maxWidth: 320)
+                    .labelsHidden()
+                    .frame(minWidth: 160)
 
                     Button {
                         model.inspectSelectedDevice()
                     } label: {
+                        HStack(spacing: 6) {
                         if model.isInspecting {
-                            ProgressView().controlSize(.small)
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .frame(width: 13, height: 13)
                         } else {
-                            Label("Inspect Device", systemImage: "magnifyingglass")
+                                Image(systemName: "magnifyingglass")
+                                    .frame(width: 13, height: 13)
+                            }
+                            Text("Inspect Device")
                         }
                     }
+                    .frame(minWidth: 122)
+                    .fixedSize(horizontal: true, vertical: false)
                     .disabled(model.selectedEntry == nil || model.isInspecting)
 
-                    Spacer()
-
-                    if let entry = model.selectedEntry {
-                        Text("\(entry.hostName)  ·  TCP \(entry.port)")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(selectedHostDescription)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .frame(minWidth: 150, alignment: .trailing)
                 }
 
-                QuietDivider()
-
-                HStack(alignment: .center, spacing: 12) {
-                    Picker("Identity", selection: $model.identityMode) {
+                GridRow(alignment: .center) {
+                    rowLabel("Identity")
+                    Picker("", selection: $model.identityMode) {
                         ForEach(SSHAnchorIdentityMode.allCases) { mode in
                             Text(mode.rawValue).tag(mode)
                         }
                     }
+                    .labelsHidden()
                     .pickerStyle(.segmented)
-                    .frame(width: 250)
+                    .gridCellColumns(3)
+                }
 
+                GridRow(alignment: .center) {
+                    rowLabel("Device")
                     TextField("MAC address", text: $model.deviceMAC)
                         .textFieldStyle(.roundedBorder)
 
@@ -282,16 +301,25 @@ struct NetToysAnchorView: View {
 
                     Button("Add Anchor") { model.addAnchor() }
                         .buttonStyle(.borderedProminent)
+                        .frame(minWidth: 92)
+                        .fixedSize(horizontal: true, vertical: false)
                         .disabled(model.selectedEntry == nil)
                 }
-                .controlSize(.small)
 
-                Text(model.identityMode == .stable
-                    ? "Stable mode requires the same hardware MAC address."
-                    : "Randomized mode uses the hostname and learned MAC evidence loosely when one signal is missing.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                GridRow {
+                    Color.clear.frame(width: 64, height: 1)
+                    Text(model.identityMode == .stable
+                        ? "Match this device by its fixed hardware MAC address."
+                        : "Match loosely by hostname and learned MAC addresses.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .frame(height: 14, alignment: .leading)
+                        .gridCellColumns(3)
+                }
             }
+            .controlSize(.small)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .utilitySectionCard()
         }
     }
@@ -342,11 +370,11 @@ struct NetToysAnchorView: View {
 
             Spacer()
 
-            if let status {
-                Text(status.state.rawValue.capitalized)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
+            Text(status?.state.rawValue.capitalized ?? "Waiting")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(width: 74, alignment: .trailing)
 
             Toggle("", isOn: Binding(
                 get: { anchor.isEnabled },
@@ -361,9 +389,13 @@ struct NetToysAnchorView: View {
                 model.remove(anchor.id)
             } label: {
                 Image(systemName: "trash")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
             .accessibilityLabel("Remove \(anchor.hostAlias)")
+            .help("Remove \(anchor.hostAlias)")
         }
         .padding(.vertical, 2)
     }
@@ -374,6 +406,18 @@ struct NetToysAnchorView: View {
         case .randomizedMAC(let hostname, let macs):
             "Randomized MAC  ·  \(hostname.isEmpty ? "No hostname" : hostname)  ·  \(macs.count) learned MAC"
         }
+    }
+
+    private var selectedHostDescription: String {
+        guard let entry = model.selectedEntry else { return "No host selected" }
+        return "\(entry.hostName)  ·  TCP \(entry.port)"
+    }
+
+    private func rowLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .frame(width: 64, alignment: .trailing)
     }
 
     private func statusSymbol(_ state: SSHAnchorRuntimeState?) -> String {

@@ -35,6 +35,7 @@ private class WindowAccessorView: NSView {
 
     override var acceptsFirstResponder: Bool {
         Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
+            || Self.workspaceWindowIdentifiers.contains(windowIdentifier)
     }
 
     init(windowIdentifier: String) {
@@ -69,7 +70,7 @@ private class WindowAccessorView: NSView {
             if trafficLightVerticalOffset != nil {
                 scheduleTrafficLightAlignment(in: window)
             }
-            if isCompactApplet {
+            if isCompactApplet || Self.workspaceWindowIdentifiers.contains(windowIdentifier) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
                     guard let self, let window else { return }
                     window.makeFirstResponder(self)

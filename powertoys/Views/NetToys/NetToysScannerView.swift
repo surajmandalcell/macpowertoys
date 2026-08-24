@@ -991,6 +991,7 @@ private struct NetToysScannerSettingsView: View {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.borderless)
+                                .focusEffectDisabled()
                                 .accessibilityLabel("Delete \(opener.name) opener")
                             }
                         }

@@ -184,28 +184,36 @@ actor NetToysHelperRuntime {
 
     private func checkNetwork() async {
         guard let route = await DefaultRoute.load() else {
-            recordNetwork(networkID: "disconnected", gateway: .unknown, internet: .unknown)
+            recordNetwork(networkID: "disconnected", ssid: nil, gateway: .unknown, internet: .unknown)
             return
         }
         async let gateway = NetworkProbe.gateway(route.gateway)
         async let internet = NetworkProbe.internet()
-        recordNetwork(networkID: route.networkID, gateway: await gateway, internet: await internet)
+        recordNetwork(
+            networkID: route.networkID,
+            ssid: NetworkSSID.current(interfaceName: route.interfaceName),
+            gateway: await gateway,
+            internet: await internet
+        )
     }
 
     private func recordNetwork(
         networkID: String,
+        ssid: String?,
         gateway: NetworkReachability,
         internet: NetworkReachability
     ) {
         let date = Date()
         networkSnapshot = NetworkRuntimeSnapshot(
             networkID: networkID,
+            ssid: ssid,
             gateway: gateway,
             internet: internet,
             checkedAt: date
         )
         guard let event = historyRecorder.observe(
             networkID: networkID,
+            ssid: ssid,
             gateway: gateway,
             internet: internet,
             at: date

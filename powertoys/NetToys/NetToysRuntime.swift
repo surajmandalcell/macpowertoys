@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+@preconcurrency import CoreWLAN
 
 nonisolated struct LocalIPv4Network: Equatable, Sendable {
     enum NetworkError: LocalizedError {
@@ -218,9 +219,66 @@ nonisolated struct NetToysHelperStatus: Codable, Equatable, Sendable {
 
 nonisolated struct NetworkRuntimeSnapshot: Codable, Equatable, Sendable {
     let networkID: String
+    let ssid: String?
     let gateway: NetworkReachability
     let internet: NetworkReachability
     let checkedAt: Date
+
+    init(
+        networkID: String,
+        ssid: String? = nil,
+        gateway: NetworkReachability,
+        internet: NetworkReachability,
+        checkedAt: Date
+    ) {
+        self.networkID = networkID
+        self.ssid = ssid
+        self.gateway = gateway
+        self.internet = internet
+        self.checkedAt = checkedAt
+    }
+
+    var displayName: String { NetworkIdentity(networkID: networkID, ssid: ssid).displayName }
+}
+
+nonisolated struct NetworkIdentity: Equatable, Sendable {
+    let networkID: String
+    let ssid: String?
+
+    init(networkID: String, ssid: String?) {
+        self.networkID = networkID
+        self.ssid = Self.normalizedSSID(ssid)
+    }
+
+    var interfaceName: String? { components?.0 }
+    var gateway: String? { components?.1 }
+
+    var displayName: String {
+        guard networkID != "disconnected" else { return "Disconnected" }
+        guard let components else { return networkID }
+        return [ssid, components.0, components.1].compactMap { $0 }.joined(separator: " | ")
+    }
+
+    static func normalizedSSID(_ value: String?) -> String? {
+        let value = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value?.isEmpty == false ? value : nil
+    }
+
+    private var components: (String, String)? {
+        let parts = networkID.split(separator: "|", maxSplits: 1).map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
+        guard parts.count == 2 else { return nil }
+        return (parts[0], parts[1])
+    }
+}
+
+nonisolated enum NetworkSSID {
+    static func current(interfaceName: String) -> String? {
+        NetworkIdentity.normalizedSSID(
+            CWWiFiClient.shared().interface(withName: interfaceName)?.ssid()
+        )
+    }
 }
 
 nonisolated struct DefaultRoute: Equatable, Sendable {
