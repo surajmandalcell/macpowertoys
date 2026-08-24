@@ -109,7 +109,39 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
     }
 }
 
+nonisolated enum SSHAnchorRecovery {
+    static func resolve(
+        anchor: SSHAnchorConfiguration,
+        scanResults: [NetToysScanResult]
+    ) -> SSHAnchorConfiguration? {
+        let candidates = scanResults
+            .filter { $0.openPorts.contains(anchor.port) }
+            .map {
+                AnchorCandidate(
+                    ip: $0.address.description,
+                    macAddress: $0.macAddress,
+                    hostname: $0.hostname
+                )
+            }
+        guard let match = AnchorMatcher.match(candidates: candidates, identity: anchor.identity) else { return nil }
+        var recovered = anchor
+        recovered.hostName = match.ip
+        if case .randomizedMAC(let hostname, var learnedMACs) = recovered.identity,
+           let mac = match.macAddress {
+            learnedMACs.insert(AnchorMatcher.normalizedMAC(mac))
+            recovered.identity = .randomizedMAC(hostname: hostname, learnedMACs: learnedMACs)
+        }
+        return recovered
+    }
+}
+
 nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
+    enum ConfigurationError: LocalizedError {
+        case anchorNotFound
+
+        var errorDescription: String? { "The SSH Anchor no longer exists." }
+    }
+
     var probeInterval: TimeInterval
     var anchors: [SSHAnchorConfiguration]
     var recordsNetworkHistory: Bool
@@ -131,6 +163,28 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
             anchors: try values.decode([SSHAnchorConfiguration].self, forKey: .anchors),
             recordsNetworkHistory: try values.decode(Bool.self, forKey: .recordsNetworkHistory)
         )
+    }
+
+    func replacingAnchor(_ anchor: SSHAnchorConfiguration) throws -> Self {
+        guard let index = anchors.firstIndex(where: { $0.id == anchor.id }) else {
+            throw ConfigurationError.anchorNotFound
+        }
+        var copy = self
+        copy.anchors[index] = anchor
+        return copy
+    }
+}
+
+nonisolated struct NetworkHistory: Codable, Equatable, Sendable {
+    var events: [NetworkTransitionEvent]
+
+    init(events: [NetworkTransitionEvent] = [], limit: Int = 500) {
+        self.events = Array(events.suffix(max(1, limit)))
+    }
+
+    mutating func append(_ event: NetworkTransitionEvent, limit: Int = 500) {
+        events.append(event)
+        if events.count > limit { events.removeFirst(events.count - limit) }
     }
 }
 
@@ -158,6 +212,56 @@ nonisolated struct NetToysHelperStatus: Codable, Equatable, Sendable {
     let version: Int
     let heartbeat: Date
     let anchors: [SSHAnchorStatus]
+    var network: NetworkRuntimeSnapshot? = nil
+}
+
+nonisolated struct NetworkRuntimeSnapshot: Codable, Equatable, Sendable {
+    let networkID: String
+    let gateway: NetworkReachability
+    let internet: NetworkReachability
+    let checkedAt: Date
+}
+
+nonisolated struct DefaultRoute: Equatable, Sendable {
+    let interfaceName: String
+    let gateway: String
+
+    var networkID: String { "\(interfaceName)|\(gateway)" }
+
+    static func parse(_ output: String) -> DefaultRoute? {
+        var interfaceName: String?
+        var gateway: String?
+        for line in output.split(whereSeparator: \.isNewline) {
+            let fields = line.split(separator: ":", maxSplits: 1).map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            guard fields.count == 2 else { continue }
+            if fields[0] == "interface" { interfaceName = fields[1] }
+            if fields[0] == "gateway" { gateway = fields[1] }
+        }
+        guard let interfaceName, let gateway, IPv4Address(gateway) != nil else { return nil }
+        return DefaultRoute(interfaceName: interfaceName, gateway: gateway)
+    }
+
+    static func load() async -> DefaultRoute? {
+        await Task.detached(priority: .utility) {
+            let process = Process()
+            let output = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/sbin/route")
+            process.arguments = ["-n", "get", "default"]
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            do {
+                try process.run()
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                guard process.terminationStatus == 0 else { return nil }
+                return parse(String(decoding: data, as: UTF8.self))
+            } catch {
+                return nil
+            }
+        }.value
+    }
 }
 
 nonisolated enum NetToysPaths {
@@ -195,5 +299,17 @@ nonisolated enum NetToysConfigurationStore {
     static func saveStatus(_ status: NetToysHelperStatus) throws {
         try FileManager.default.createDirectory(at: NetToysPaths.directory, withIntermediateDirectories: true)
         try JSONEncoder().encode(status).write(to: NetToysPaths.helperStatus, options: .atomic)
+    }
+
+    static func history() -> NetworkHistory {
+        guard let data = try? Data(contentsOf: NetToysPaths.history),
+              let value = try? JSONDecoder().decode(NetworkHistory.self, from: data)
+        else { return NetworkHistory() }
+        return value
+    }
+
+    static func saveHistory(_ history: NetworkHistory) throws {
+        try FileManager.default.createDirectory(at: NetToysPaths.directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(history).write(to: NetToysPaths.history, options: .atomic)
     }
 }

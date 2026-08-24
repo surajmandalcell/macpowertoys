@@ -437,12 +437,13 @@ nonisolated enum NetworkReachability: String, Codable, Equatable, Sendable {
     case unknown
 }
 
-nonisolated enum NetworkTransitionChange: Equatable, Sendable {
+nonisolated enum NetworkTransitionChange: Codable, Equatable, Sendable {
+    case network(from: String, to: String)
     case gateway(from: NetworkReachability, to: NetworkReachability)
     case internet(from: NetworkReachability, to: NetworkReachability)
 }
 
-nonisolated struct NetworkTransitionEvent: Equatable, Sendable {
+nonisolated struct NetworkTransitionEvent: Codable, Equatable, Sendable {
     let networkID: String
     let date: Date
     let changes: [NetworkTransitionChange]
@@ -458,7 +459,14 @@ nonisolated struct NetworkTransitionRecorder: Sendable {
         at date: Date
     ) -> NetworkTransitionEvent? {
         defer { previous = (networkID, gateway, internet) }
-        guard let previous, previous.networkID == networkID else { return nil }
+        guard let previous else { return nil }
+        if previous.networkID != networkID {
+            return NetworkTransitionEvent(
+                networkID: networkID,
+                date: date,
+                changes: [.network(from: previous.networkID, to: networkID)]
+            )
+        }
         var changes: [NetworkTransitionChange] = []
         if previous.gateway != gateway { changes.append(.gateway(from: previous.gateway, to: gateway)) }
         if previous.internet != internet { changes.append(.internet(from: previous.internet, to: internet)) }
