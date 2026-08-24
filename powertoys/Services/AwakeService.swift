@@ -19,7 +19,7 @@ final class AwakeService {
 
     var isActive: Bool { configuration.mode != .passive && assertionID != 0 }
     var statusText: String {
-        guard configuration.mode != .passive else { return "Using normal Energy settings" }
+        guard configuration.mode != .passive else { return "Awake is off" }
         if let remaining { return "\(configuration.mode.title) · \(Self.duration(remaining)) remaining" }
         return configuration.mode.title
     }

@@ -25,3 +25,26 @@ struct AwakeConfiguration: Codable, Equatable, Sendable {
     var attachedProcessID: Int32?
     var presets: [TimeInterval] = [15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60]
 }
+
+enum AwakeQuickMode: Hashable {
+    case off
+    case indefinite
+    case thirtyMinutes
+    case oneHour
+    case custom
+
+    init(configuration: AwakeConfiguration) {
+        switch configuration.mode {
+        case .passive:
+            self = .off
+        case .indefinite:
+            self = .indefinite
+        case .timed where configuration.intervalSeconds == 1_800:
+            self = .thirtyMinutes
+        case .timed where configuration.intervalSeconds == 3_600:
+            self = .oneHour
+        case .timed, .until:
+            self = .custom
+        }
+    }
+}
