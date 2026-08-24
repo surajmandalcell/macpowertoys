@@ -14,7 +14,6 @@ struct ToolIconView: View {
                 } placeholder: {
                     symbolIcon
                 }
-                .clipShape(RoundedRectangle(cornerRadius: size <= 24 ? 4 : 8))
             } else if tool.logoAsset.isEmpty {
                 symbolIcon
             } else {
@@ -23,7 +22,7 @@ struct ToolIconView: View {
                     .scaledToFit()
             }
         }
-        .frame(width: size, height: size)
+        .toolIconTile(size: size)
     }
 
     private var symbolIcon: some View {
@@ -33,6 +32,12 @@ struct ToolIconView: View {
             .padding(size * 0.22)
             .foregroundStyle(.primary)
             .background(Color.primary.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: size <= 24 ? 4 : 8))
+    }
+}
+
+extension View {
+    func toolIconTile(size: CGFloat) -> some View {
+        frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 112 / 512))
     }
 }

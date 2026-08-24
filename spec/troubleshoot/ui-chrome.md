@@ -4,15 +4,19 @@
 
 - **Symptom:** One tool icon has sharper corners, different cutoffs, or a
   different tile silhouette from the other tool icons.
-- **Cause:** One SVG appearance bypassed the shared outer tile template or used
-  its own corner radius.
+- **Cause:** One SVG appearance bypassed the shared outer tile template, or a
+  rendering path trusted asset clipping instead of applying the shared mask.
+  A stale installed build can preserve the same defect after source changes.
 - **Invariant:** Every active light and dark tool-icon SVG uses a `512 × 512`
   view box, a full-canvas `clipPath id="tile"` rectangle with `rx="112"`, and a
   group that clips the ground and all artwork to that path. This rule applies to
-  every tool. No tool or appearance is a special case.
+  every tool. Every launcher, sidebar, grid, and tray rendering path also uses
+  `toolIconTile(size:)`, with a corner radius of `size × 112 ÷ 512`. No tool,
+  appearance, or rendering path is a special case.
 - **Check:** Enumerate every active named tool-logo asset and every SVG in each
-  asset. The source-template test and transparent-corner render test must pass.
-  Inspect the launcher, sidebar, and Dock at normal and small sizes.
+  asset. The source-template, asset-corner, and shared-renderer tests must pass.
+  Confirm the installed source commit equals `HEAD`, then inspect the launcher,
+  sidebar, tray, and Dock at normal and small sizes.
 
 ## Compact Workspace Hierarchy
 

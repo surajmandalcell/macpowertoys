@@ -23,7 +23,7 @@ struct SidebarRow: View {
                         .renderingMode(.original)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 16, height: 16)
+                        .toolIconTile(size: 16)
                 } else {
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .medium))

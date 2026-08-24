@@ -819,6 +819,8 @@ palette or reuse another tool's semantic hue.
 - Use a `512 × 512` SVG view box and a full-canvas tile.
 - Define `clipPath id="tile"` with a `512 × 512` rectangle and `rx="112"`.
   Wrap the ground and all artwork in `<g clip-path="url(#tile)">`.
+- Every launcher, sidebar, grid, and tray rendering path also applies the shared
+  `toolIconTile(size:)` mask. Its corner radius is `size × 112 ÷ 512`.
 - Do not use a local corner radius or rely on the ground shape to clip later
   artwork. A bleeding glyph or band must never replace a rounded corner with a
   sharp one.
