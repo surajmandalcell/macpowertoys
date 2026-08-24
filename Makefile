@@ -35,6 +35,5 @@ install: install-preflight build
 	@! pgrep -f '^/Applications/MacPowerToys.app/Contents/MacOS/MacPowerToys$$' >/dev/null || (echo "Refusing to replace the running installed MacPowerToys app." && exit 1)
 	rm -rf /Applications/MacPowerToys.app
 	ditto "$(DERIVED_DATA)/Build/Products/Release/MacPowerToys.app" /Applications/MacPowerToys.app
-	open -n /Applications/MacPowerToys.app
 
 .PHONY: build build-for-testing test raycast install install-preflight
