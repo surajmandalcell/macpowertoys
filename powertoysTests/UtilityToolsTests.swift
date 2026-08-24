@@ -1,4 +1,5 @@
 import Carbon.HIToolbox
+import SwiftUI
 import XCTest
 @testable import powertoys
 
@@ -76,6 +77,16 @@ final class UtilityToolsTests: XCTestCase {
                 XCTAssertTrue(source.contains(#"<g clip-path="url(#tile)">"#), iconFile.path)
             }
         }
+    }
+
+    func testSharedToolIconTileRoundsEveryCorner() throws {
+        let renderer = ImageRenderer(content:
+            Color.white.toolIconTile(size: 32)
+        )
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.nsImage)
+
+        XCTAssertTrue(try cornerAlphaValues(of: image).allSatisfy { $0 < 0.01 })
     }
 
     func testLogsArtworkKeepsDarkGroundInDarkAppearance() throws {

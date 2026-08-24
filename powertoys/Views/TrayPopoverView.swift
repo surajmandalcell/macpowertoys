@@ -283,7 +283,6 @@ private struct TrayTabItem: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 ToolIconView(tool: tool, size: 16)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
 
                 if showsLabel {
                     Text(tool.name)
