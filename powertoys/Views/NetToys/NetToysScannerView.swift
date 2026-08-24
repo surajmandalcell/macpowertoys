@@ -606,6 +606,10 @@ struct NetToysScannerView: View {
                 }
                 Button("Scan Statistics…") { showStatistics = true }
                     .disabled(model.results.isEmpty)
+                Button("Add SSH Anchor") {
+                    if let result = selectedRows.first { openSSHAnchor(result) }
+                }
+                .disabled(selectedRows.count != 1)
                 Divider()
                 Button("Copy Selected Details") { copyDetails(selectedRows) }
                     .disabled(selection.isEmpty)
@@ -775,6 +779,7 @@ struct NetToysScannerView: View {
                     annotation.isFavorite.toggle()
                     model.saveAnnotation(annotation, for: result.id)
                 }
+                Button("Add SSH Anchor") { openSSHAnchor(result) }
                 Divider()
                 let openers = model.openers.filter { $0.applies(to: result) }
                 if !openers.isEmpty {
@@ -854,6 +859,17 @@ struct NetToysScannerView: View {
         guard !rows.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(NetToysScanExport.text(rows), forType: .string)
+    }
+
+    private func openSSHAnchor(_ result: NetToysScanResult) {
+        NotificationCenter.default.post(
+            name: .netToysOpenAnchor,
+            object: NetToysAnchorPrefill(
+                address: result.address.description,
+                macAddress: result.macAddress,
+                hostname: result.hostname
+            )
+        )
     }
 
     private func select(offset: Int, where predicate: (NetToysScanResult) -> Bool) {
