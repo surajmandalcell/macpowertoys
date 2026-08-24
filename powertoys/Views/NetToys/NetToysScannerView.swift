@@ -75,8 +75,8 @@ final class NetToysScannerViewModel {
             guard includes else { return false }
             let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !query.isEmpty else { return true }
-            return [result.address.description, result.hostnameTitle, result.macTitle, result.portsTitle]
-                .appending(annotations[result.id]?.comment ?? "")
+            return ([result.address.description, result.hostnameTitle, result.macTitle, result.portsTitle]
+                + [annotations[result.id]?.comment ?? ""])
                 .contains { $0.localizedCaseInsensitiveContains(query) }
         }
     }
@@ -87,7 +87,10 @@ final class NetToysScannerViewModel {
             let targets = try override ?? IPv4Targets.parse(targetInput)
             let ports = try PortList.parse(portInput)
             guard !targets.isEmpty else { throw IPv4Targets.ParseError.invalid(targetInput) }
-            begin(targets: targets, ports: ports)
+            let sourceTarget = override == nil
+                ? targetInput
+                : targets.map(\.description).joined(separator: ", ")
+            begin(targets: targets, ports: ports, sourceTarget: sourceTarget)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -176,7 +179,7 @@ final class NetToysScannerViewModel {
         }
     }
 
-    private func begin(targets: [IPv4Address], ports: [UInt16]) {
+    private func begin(targets: [IPv4Address], ports: [UInt16], sourceTarget: String) {
         errorMessage = nil
         completed = 0
         total = targets.count
@@ -203,7 +206,7 @@ final class NetToysScannerViewModel {
             scanTask = nil
             do {
                 try NetToysScannerStore.record(NetToysScanRun(
-                    target: targets.map(\.description).joined(separator: ", "),
+                    target: sourceTarget,
                     ports: ports,
                     duration: duration,
                     results: values
@@ -213,10 +216,6 @@ final class NetToysScannerViewModel {
             }
         }
     }
-}
-
-private extension Array where Element == String {
-    func appending(_ value: String) -> [String] { self + [value] }
 }
 
 struct NetToysScannerView: View {
