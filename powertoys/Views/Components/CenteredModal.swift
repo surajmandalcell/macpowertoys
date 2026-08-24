@@ -44,6 +44,7 @@ struct CenteredModal<Content: View>: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                 }
                 .padding(16)
 

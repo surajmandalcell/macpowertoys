@@ -71,6 +71,7 @@ struct ToolCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .accessibilityIdentifier("tool.\(tool.id).card")
 
             Spacer(minLength: 0)

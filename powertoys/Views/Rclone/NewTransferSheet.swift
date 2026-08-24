@@ -350,6 +350,7 @@ private struct EndpointCard: View {
                 }
                 .menuStyle(.button)
                 .buttonStyle(.borderless)
+                .focusEffectDisabled()
                 .menuIndicator(.hidden)
 
                 TextField("Path within remote (optional)", text: $config.remotePath)

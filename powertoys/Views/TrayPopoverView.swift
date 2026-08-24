@@ -123,6 +123,7 @@ private struct AwakeTrayTab: View {
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 .buttonStyle(.borderless)
+                .focusEffectDisabled()
             }
             .frame(minHeight: 24)
             Picker("Awake mode", selection: quickMode) {

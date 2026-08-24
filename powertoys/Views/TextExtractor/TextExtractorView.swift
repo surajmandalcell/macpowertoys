@@ -91,6 +91,7 @@ struct TextExtractorView: View {
                 if !service.history.isEmpty {
                     Button("Clear") { service.clearHistory() }
                         .buttonStyle(.plain)
+                        .focusEffectDisabled()
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                         .contentShape(Rectangle())
@@ -374,6 +375,7 @@ private struct TextExtractorStatusBanner: View {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.accentColor)
                     .contentShape(Rectangle())
@@ -430,6 +432,7 @@ private struct TextExtractionRow: View {
             .help("Delete")
         }
         .buttonStyle(.borderless)
+        .focusEffectDisabled()
         .padding(9)
         .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 8))

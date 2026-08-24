@@ -161,6 +161,7 @@ struct SystemCareWindowView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
     }
 
     private var storagePage: some View {
@@ -216,6 +217,7 @@ struct SystemCareWindowView: View {
                                                 manager.navigateStorage(to: url)
                                             }
                                             .buttonStyle(.borderless)
+                                            .focusEffectDisabled()
                                             if url != manager.storageBreadcrumbs.last {
                                                 Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
                                             }
@@ -252,6 +254,7 @@ struct SystemCareWindowView: View {
                                             .contentShape(Rectangle())
                                         }
                                         .buttonStyle(.plain)
+                                        .focusEffectDisabled()
                                     }
                                 }
                             }
@@ -420,6 +423,7 @@ struct SystemCareWindowView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                             .buttonStyle(.plain)
+                            .focusEffectDisabled()
                         }
                     }
                 }
