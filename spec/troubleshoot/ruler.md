@@ -22,9 +22,10 @@
   title.
 - **Cause:** The pinned FreeRuler settings nib was treated as a visual source of
   truth after settings chrome moved to MacPowerToys utility tokens.
-- **Invariant:** Both fixed 420pt windows use active HUD material, normal visible
-  native titlebars backed by `.windowBackgroundColor`, 20pt outer edges, 16pt
-  section gaps, 8pt heading gaps, and
+- **Invariant:** Both fixed 420pt windows use active HUD material through the
+  body and behind their transparent native titlebars; never substitute a generic
+  window-background slab. They use 20pt outer edges, 16pt section gaps, 8pt
+  heading gaps, and
   14pt card insets. Cards use a 10pt radius and dynamic label color at 5%.
   Settings uses trailing secondary and primary actions. Defaults uses one quiet
   destructive action. Both windows keep their autosaved standalone positions;

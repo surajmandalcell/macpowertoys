@@ -3,7 +3,24 @@ import Cocoa
 private let colorPanelOpaqueConfigurationRetryDelays: [TimeInterval] = [0.1, 0.3]
 private let rulerColorPanelIdentifier = NSUserInterfaceItemIdentifier("ruler-color-panel")
 private let rulerColorPanelOpaqueAccessibilityValue = "ruler-color-panel-alpha-hidden"
+private let rulerTitlebarMaterialIdentifier = NSUserInterfaceItemIdentifier("ruler-titlebar-material")
 private weak var activeRulerColorWell: RulerColorWell?
+
+private func configureRulerUtilityWindowChrome(_ window: NSWindow?) {
+    guard let window else { return }
+
+    window.backgroundColor = .clear
+    window.isOpaque = false
+    window.titlebarAppearsTransparent = true
+
+    guard let titlebarView = window.standardWindowButton(.closeButton)?.superview,
+          !titlebarView.subviews.contains(where: { $0.identifier == rulerTitlebarMaterialIdentifier }) else { return }
+
+    let materialView = UtilityMaterialView(frame: titlebarView.bounds)
+    materialView.identifier = rulerTitlebarMaterialIdentifier
+    materialView.autoresizingMask = [.width, .height]
+    titlebarView.addSubview(materialView, positioned: .below, relativeTo: nil)
+}
 
 func configureOpaqueColorPicking() {
     let colorPanel = NSColorPanel.shared
@@ -672,9 +689,7 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         window?.identifier = NSUserInterfaceItemIdentifier("preferences-window")
         window?.setAccessibilityIdentifier("preferences-window")
         window?.isMovableByWindowBackground = true
-        window?.backgroundColor = .windowBackgroundColor
-        window?.isOpaque = false
-        window?.titlebarAppearsTransparent = false
+        configureRulerUtilityWindowChrome(window)
         configureOpaqueColorPicking()
         settingsControlsView.delegate = self
         settingsControlsView.configureForPreferences()
@@ -993,9 +1008,7 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.setAccessibilityIdentifier("ruler-settings-window")
         window?.isMovableByWindowBackground = true
         window?.isReleasedWhenClosed = false
-        window?.backgroundColor = .windowBackgroundColor
-        window?.isOpaque = false
-        window?.titlebarAppearsTransparent = false
+        configureRulerUtilityWindowChrome(window)
         window?.initialFirstResponder = unitSegmentedControl
         configureFloatingPanelWindow()
         settingsControlsView.delegate = self
