@@ -18,48 +18,77 @@
       "name": "macpowertoys",
       "title": "MacPowerToys",
       "description": "Open MacPowerToys",
+      "icon": "extension-icon.png",
       "mode": "no-view"
     },
     {
       "name": "claude-history",
       "title": "AI History",
       "description": "Open AI History",
+      "icon": "ai-history.png",
       "mode": "no-view"
     },
     {
       "name": "cloud-sync",
       "title": "Cloud Sync",
       "description": "Open Cloud Sync",
+      "icon": "cloud-sync.png",
       "mode": "no-view"
     },
     {
       "name": "logs",
       "title": "Logs",
       "description": "Open Logs",
+      "icon": "logs.png",
       "mode": "no-view"
     },
     {
       "name": "ruler",
       "title": "Ruler",
       "description": "Open Ruler",
+      "icon": "ruler.png",
       "mode": "no-view"
     },
     {
       "name": "awake",
       "title": "Awake",
       "description": "Open Awake",
+      "icon": "awake.png",
       "mode": "no-view"
     },
     {
       "name": "color-picker",
       "title": "Color Picker",
       "description": "Open Color Picker",
+      "icon": "color-picker.png",
       "mode": "no-view"
     },
     {
       "name": "text-extractor",
       "title": "Text Extractor",
       "description": "Open Text Extractor",
+      "icon": "text-extractor.png",
+      "mode": "no-view"
+    },
+    {
+      "name": "input-devices",
+      "title": "Input Devices",
+      "description": "Open Input Devices",
+      "icon": "input-devices.png",
+      "mode": "no-view"
+    },
+    {
+      "name": "system-care",
+      "title": "System Care",
+      "description": "Open System Care",
+      "icon": "system-care.png",
+      "mode": "no-view"
+    },
+    {
+      "name": "power-stats",
+      "title": "Power Stats",
+      "description": "Open Power Stats",
+      "icon": "power-stats.png",
       "mode": "no-view"
     }
   ],
