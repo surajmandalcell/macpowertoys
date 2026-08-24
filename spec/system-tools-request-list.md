@@ -3,6 +3,12 @@
 Reviewed against current source on 2026-08-24. Update this list when a direct
 user correction or verified result changes a status.
 
+## NetTools
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Open | Add the missing NetTools network utility to MacPowerToys. | The current registry, scenes, deep-link routes, Raycast commands, tests, and installed app contain no NetTools tool. The reference Vorssaint repository also contains no NetTools implementation. | Approve the feature scope, then add the native tool, window, launcher entry, deep link, Raycast command, icon, saved window state, tests, and installed-build verification. |
+
 ## Input Devices
 
 | Status | Request | Evidence | Remaining work |

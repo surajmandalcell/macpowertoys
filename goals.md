@@ -7,6 +7,8 @@ evidence, and remaining work.
 
 ## Current work
 
+- Define and add the missing NetTools network utility after the user approves
+  its feature scope.
 - Verify the Minimal page header and the flat launcher tool list in the latest
   normal installed build.
 - Verify separate menu bar icons, saved visibility, position restoration, and
@@ -30,7 +32,7 @@ evidence, and remaining work.
 - [Color Picker](spec/color-picker-request-list.md)
 - [Text Extractor](spec/text-extractor-request-list.md)
 - [Ruler](spec/ruler-request-list.md)
-- [Input Devices, System Care, and Power Stats](spec/system-tools-request-list.md)
+- [Input Devices, System Care, Power Stats, and NetTools](spec/system-tools-request-list.md)
 
 ## Status rules
 
