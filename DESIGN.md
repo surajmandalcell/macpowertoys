@@ -70,6 +70,13 @@ spacing:
   content-top: 44   # one 4pt gap below the 40pt top strip
   header-top: 0     # window-top strips hug the top (10pt vertical inset)
   floating-control-edge: 8
+  tray-group-inset: 4
+  tray-group-top: 20
+  tray-group-body-gap: 6
+  tray-body-top: 10
+  tray-body-bottom: 14
+  tray-footer-top: 8
+  tray-footer-bottom: 10
 windows:
   launcher: { content-width: 780, content-height: 700, sidebar-width: 220, card-min-height: 110, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, resizable: true }

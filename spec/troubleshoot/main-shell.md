@@ -34,12 +34,15 @@
 - **Invariant:** Use an 18pt leading icon column, at least 24pt for compact
   status/history rows, 8pt between peer controls, and align transfer progress
   with its text column. Keep Pause/Resume on the active transfer row. Awake
-  uses the same 12pt horizontal and 10pt vertical content insets as Cloud Sync.
-  Give the outlined tab group enough source top inset to remain visibly clear
-  of the system popover edge. Use one accent selection, 4pt between tabs, and
-  no divider below a group that already has its own surface.
+  and Cloud Sync use the same 12pt horizontal, 10pt top, and 14pt bottom body
+  insets. Give the outlined tab group a 20pt top inset and a 6pt body gap. Its
+  4pt inner inset must be equal on every edge, and non-scrolling tabs must use
+  the complete available width. Use one accent selection, 4pt between tabs,
+  and no divider below a group that already has its own surface. Give the
+  footer 8pt top and 10pt bottom insets.
 - **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
   leading labels and trailing actions must remain aligned without crowding.
+  Measure every tab-group edge, both body bottoms, and both footer edges.
 
 ## Shared Tool Enablement
 
