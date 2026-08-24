@@ -1,12 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#315B7D"/>
-  <path d="M256 64c-94 0-146 76-146 190v84c0 80 58 118 146 118s146-38 146-118v-84C402 140 350 64 256 64Z" fill="#F7F5F0" stroke="#17364E" stroke-width="12" stroke-linejoin="round"/>
-  <path d="M256 70v166M118 238h276" fill="none" stroke="#A9C5D8" stroke-width="12" stroke-linecap="round"/>
-  <rect x="226" y="98" width="60" height="112" rx="28" fill="#A9C5D8"/>
-  <rect x="240" y="112" width="32" height="70" rx="16" fill="#8FC3DE"/>
-  <path d="M244 130h24m-24 18h24m-24 18h24" fill="none" stroke="#17364E" stroke-width="6" stroke-linecap="round"/>
-  <rect x="238" y="202" width="36" height="22" rx="11" fill="#8FC3DE"/>
-  <rect x="126" y="274" width="58" height="22" rx="11" fill="#A9C5D8"/>
-  <rect x="126" y="306" width="46" height="20" rx="10" fill="#A9C5D8"/>
-  <path d="M142 352c28 50 76 72 114 72s86-22 114-72" fill="none" stroke="#A9C5D8" stroke-width="14" stroke-linecap="round"/>
+  <defs>
+    <clipPath id="tile">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" rx="112" fill="#1C1D22"/>
+    <path d="M292-22C384 62 354 130 268 184" fill="none" stroke="#5B5D66" stroke-width="44" stroke-linecap="round" transform="translate(-20 18)"/>
+    <rect x="104" y="180" width="264" height="336" rx="132" fill="#5B5D66"/>
+    <path d="M312-8C380 62 346 126 256 186" fill="none" stroke="#F4F4F5" stroke-width="44" stroke-linecap="round"/>
+    <rect x="124" y="162" width="264" height="336" rx="132" fill="#F4F4F5"/>
+    <path d="m228 190 28-28 28 28 12 44h-80Z" fill="#F4F4F5"/>
+    <path d="M256 174v92" fill="none" stroke="#25262B" stroke-width="26" stroke-linecap="round"/>
+    <rect x="236" y="176" width="40" height="88" rx="20" fill="#25262B"/>
+  </g>
 </svg>
