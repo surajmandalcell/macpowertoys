@@ -9,6 +9,8 @@ evidence, and remaining work.
 
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
+- Verify content-sized menu-bar tabs and selected Awake controls in the latest
+  normal installed build.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 

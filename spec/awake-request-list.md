@@ -1,6 +1,6 @@
 # Awake Request List
 
-Reviewed against app source commit `a7bcb12` on 2026-07-14.
+Reviewed against app source commit `ab81a67` on 2026-08-24.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
@@ -14,3 +14,6 @@ Reviewed against app source commit `a7bcb12` on 2026-07-14.
 | Done | Remove the large focus outline shown around `Keep Display On` when Awake opens. | The switch disables the default focus effect, and every compact applet routes initial focus to its invisible window accessor. Fresh-open and cross-window focus checks in the normal signed `98f35f6` build showed no outline. | None. |
 | Done | Remove the titlebar bottom border. | The shared `CompactTitlebar` renders no divider or separator. | None. |
 | Done | Make the Awake app name bold. | Awake applies bold weight to its 13pt compact titlebar title. | None. |
+| Done | Keep the Mac awake after the Awake window closes and release the assertion on Off or timer expiry. | In the normal signed `4eaf7f1` build, `pmset -g assertions` showed the MacPowerToys IOKit assertion after the Awake window closed. Off released it. A controlled two-second session also released it after expiry. [Apple documents](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridledisplaysleep) that `PreventUserIdleDisplaySleep` also prevents idle system sleep while the display stays on. | None for idle sleep. Lid close, Apple menu Sleep, low battery, and thermal emergencies can still force sleep. |
+| Done | Use Vorssaint as a behavior reference without copying its GPL source. | The read-only reference uses IOKit power assertions. MacPowerToys implements the same public macOS behavior independently. Apple documentation and the live assertion checks confirm that the current single required assertion is sufficient in each display mode. | None. |
+| Verify | Make the menu-bar Awake controls compact, selected, and clear about failures. | `ab81a67` replaces four indistinguishable buttons with one native segmented picker, keeps the display preference editable while Awake is off, shows assertion errors, and adds focused quick-mode coverage. It also removes the root popover height expansion while Cloud Sync keeps its internal scroll cap. | Check the Awake and Cloud Sync tabs in the normal signed installed build. Confirm that each tab uses its content height, selection changes visibly, and long Cloud Sync lists still scroll. |
