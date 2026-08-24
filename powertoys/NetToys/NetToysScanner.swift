@@ -221,6 +221,13 @@ nonisolated struct PingProbeResult: Equatable, Sendable {
     let averageMilliseconds: Double?
 }
 
+nonisolated enum NetToysLivenessMethod: String, Codable, CaseIterable, Identifiable, Sendable {
+    case tcp = "TCP ports"
+    case icmpAndTCP = "ICMP and TCP ports"
+
+    var id: String { rawValue }
+}
+
 nonisolated enum PingProbe {
     static func check(
         address: IPv4Address,
@@ -915,6 +922,10 @@ actor NetToysScanner {
         concurrency: Int = 64,
         collectPingDetails: Bool = false,
         pingProbeCount: Int = 2,
+        livenessMethod: NetToysLivenessMethod = .tcp,
+        pingTimeoutMilliseconds: Int = 750,
+        adaptiveTCPTimeout: Bool = false,
+        scanUnresponsiveHosts: Bool = true,
         launchDelayMilliseconds: Int = 0,
         fetchOptions: NetToysFetchOptions = NetToysFetchOptions(),
         progress: (@Sendable (Int, Int) -> Void)? = nil
@@ -925,6 +936,10 @@ actor NetToysScanner {
             concurrency: concurrency,
             collectPingDetails: collectPingDetails,
             pingProbeCount: pingProbeCount,
+            livenessMethod: livenessMethod,
+            pingTimeoutMilliseconds: pingTimeoutMilliseconds,
+            adaptiveTCPTimeout: adaptiveTCPTimeout,
+            scanUnresponsiveHosts: scanUnresponsiveHosts,
             launchDelayMilliseconds: launchDelayMilliseconds,
             fetchOptions: fetchOptions,
             progress: progress
@@ -937,6 +952,10 @@ actor NetToysScanner {
         concurrency: Int = 64,
         collectPingDetails: Bool = false,
         pingProbeCount: Int = 2,
+        livenessMethod: NetToysLivenessMethod = .tcp,
+        pingTimeoutMilliseconds: Int = 750,
+        adaptiveTCPTimeout: Bool = false,
+        scanUnresponsiveHosts: Bool = true,
         launchDelayMilliseconds: Int = 0,
         fetchOptions: NetToysFetchOptions = NetToysFetchOptions(),
         progress: (@Sendable (Int, Int) -> Void)? = nil
@@ -963,6 +982,10 @@ actor NetToysScanner {
                             timeoutMilliseconds: timeoutMilliseconds,
                             collectPingDetails: collectPingDetails,
                             pingProbeCount: pingProbeCount,
+                            livenessMethod: livenessMethod,
+                            pingTimeoutMilliseconds: pingTimeoutMilliseconds,
+                            adaptiveTCPTimeout: adaptiveTCPTimeout,
+                            scanUnresponsiveHosts: scanUnresponsiveHosts,
                             fetchOptions: fetchOptions
                         )
                     }
@@ -1005,37 +1028,47 @@ actor NetToysScanner {
         timeoutMilliseconds: Int,
         collectPingDetails: Bool,
         pingProbeCount: Int,
+        livenessMethod: NetToysLivenessMethod,
+        pingTimeoutMilliseconds: Int,
+        adaptiveTCPTimeout: Bool,
+        scanUnresponsiveHosts: Bool,
         fetchOptions: NetToysFetchOptions
     ) async -> NetToysScanResult {
-        var reachable = false
-        var openPorts: [UInt16] = []
-        var filteredPorts: [UInt16] = []
-        var fastest: Double?
-        for port in ports {
-            if Task.isCancelled { break }
-            let probe = await TCPPortProbe.check(
-                host: address.description,
-                port: port,
-                timeoutMilliseconds: timeoutMilliseconds
-            )
-            if probe.state != .unreachable {
-                reachable = true
-                fastest = min(fastest ?? probe.latencyMilliseconds, probe.latencyMilliseconds)
-            }
-            if probe.state == .open { openPorts.append(port) }
-            if probe.state == .unreachable { filteredPorts.append(port) }
-        }
-        let ping = collectPingDetails
+        let needsPing = collectPingDetails || livenessMethod == .icmpAndTCP || adaptiveTCPTimeout
+        let ping = needsPing
             ? await PingProbe.check(
                 address: address,
                 count: pingProbeCount,
-                timeoutMilliseconds: timeoutMilliseconds
+                timeoutMilliseconds: pingTimeoutMilliseconds
             )
             : nil
-        if let loss = ping?.packetLossPercent, loss < 100 {
-            reachable = true
-            if let latency = ping?.averageMilliseconds {
-                fastest = min(fastest ?? latency, latency)
+        var reachable = pingResponded(ping) && (collectPingDetails || livenessMethod == .icmpAndTCP)
+        var openPorts: [UInt16] = []
+        var filteredPorts: [UInt16] = []
+        var fastest = reachable ? ping?.averageMilliseconds : nil
+        let tcpTimeout = effectiveTCPTimeout(
+            configuredMilliseconds: timeoutMilliseconds,
+            pingAverageMilliseconds: ping?.averageMilliseconds,
+            adaptive: adaptiveTCPTimeout
+        )
+        if shouldScanPorts(
+            ping: ping,
+            livenessMethod: livenessMethod,
+            scanUnresponsiveHosts: scanUnresponsiveHosts
+        ) {
+            for port in ports {
+                if Task.isCancelled { break }
+                let probe = await TCPPortProbe.check(
+                    host: address.description,
+                    port: port,
+                    timeoutMilliseconds: tcpTimeout
+                )
+                if probe.state != .unreachable {
+                    reachable = true
+                    fastest = min(fastest ?? probe.latencyMilliseconds, probe.latencyMilliseconds)
+                }
+                if probe.state == .open { openPorts.append(port) }
+                if probe.state == .unreachable { filteredPorts.append(port) }
             }
         }
         let hostname = reachable ? await HostResolver.reverse(address) : nil
@@ -1043,7 +1076,7 @@ actor NetToysScanner {
             ? await NetToysProtocolFetchers.collect(
                 address: address,
                 openPorts: openPorts,
-                timeoutMilliseconds: timeoutMilliseconds,
+                timeoutMilliseconds: tcpTimeout,
                 options: fetchOptions
             )
             : NetToysProtocolMetadata(httpServer: nil, httpProxy: nil, netBIOSName: nil, customText: nil)
@@ -1067,6 +1100,37 @@ actor NetToysScanner {
 
     nonisolated static func reportedFilteredPorts(_ ports: [UInt16], reachable: Bool) -> [UInt16] {
         reachable ? ports : []
+    }
+
+    nonisolated static func effectiveTCPTimeout(
+        configuredMilliseconds: Int,
+        pingAverageMilliseconds: Double?,
+        adaptive: Bool
+    ) -> Int {
+        let configured = min(max(configuredMilliseconds, 100), 5_000)
+        guard adaptive,
+              let average = pingAverageMilliseconds,
+              average.isFinite,
+              average >= 0
+        else { return configured }
+        return min(configured, max(100, Int(ceil(average * 4))))
+    }
+
+    nonisolated static func shouldScanPorts(
+        ping: PingProbeResult?,
+        livenessMethod: NetToysLivenessMethod,
+        scanUnresponsiveHosts: Bool
+    ) -> Bool {
+        guard livenessMethod == .icmpAndTCP,
+              !scanUnresponsiveHosts,
+              let loss = ping?.packetLossPercent
+        else { return true }
+        return loss < 100
+    }
+
+    private nonisolated static func pingResponded(_ ping: PingProbeResult?) -> Bool {
+        guard let loss = ping?.packetLossPercent else { return false }
+        return loss < 100
     }
 }
 

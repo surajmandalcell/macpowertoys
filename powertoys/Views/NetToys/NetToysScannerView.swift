@@ -62,6 +62,7 @@ extension NetToysScanResult {
 @MainActor
 final class NetToysScannerViewModel {
     private static let preferencesKey = "nettoys.scanner.preferences"
+    private static let livenessPreferencesKey = "nettoys.scanner.liveness-preferences"
     private static let openersKey = "nettoys.scanner.openers"
 
     var targetInput: String
@@ -79,6 +80,10 @@ final class NetToysScannerViewModel {
     var launchDelayMilliseconds = 0
     var collectPingDetails = false
     var pingProbeCount = 2
+    var livenessMethod = NetToysLivenessMethod.tcp
+    var pingTimeoutMilliseconds = 750
+    var adaptiveTCPTimeout = false
+    var scanUnresponsiveHosts = true
     var detectHTTPServer = false
     var detectHTTPProxy = false
     var detectNetBIOS = false
@@ -111,6 +116,13 @@ final class NetToysScannerViewModel {
             customTextRequest = preferences.customTextRequest
             customTextPattern = preferences.customTextPattern
         }
+        if let data = UserDefaults.standard.data(forKey: Self.livenessPreferencesKey),
+           let preferences = try? JSONDecoder().decode(NetToysLivenessPreferences.self, from: data) {
+            livenessMethod = preferences.method
+            pingTimeoutMilliseconds = min(max(preferences.pingTimeoutMilliseconds, 100), 5_000)
+            adaptiveTCPTimeout = preferences.adaptiveTCPTimeout
+            scanUnresponsiveHosts = preferences.scanUnresponsiveHosts
+        }
         if let data = UserDefaults.standard.data(forKey: Self.openersKey),
            let saved = try? JSONDecoder().decode([NetToysOpener].self, from: data),
            saved.count <= 20,
@@ -141,6 +153,15 @@ final class NetToysScannerViewModel {
         )
         if let data = try? JSONEncoder().encode(value) {
             UserDefaults.standard.set(data, forKey: Self.preferencesKey)
+        }
+        let liveness = NetToysLivenessPreferences(
+            method: livenessMethod,
+            pingTimeoutMilliseconds: pingTimeoutMilliseconds,
+            adaptiveTCPTimeout: adaptiveTCPTimeout,
+            scanUnresponsiveHosts: scanUnresponsiveHosts
+        )
+        if let data = try? JSONEncoder().encode(liveness) {
+            UserDefaults.standard.set(data, forKey: Self.livenessPreferencesKey)
         }
     }
 
@@ -217,6 +238,10 @@ final class NetToysScannerViewModel {
                         concurrency: concurrency,
                         collectPingDetails: collectPingDetails,
                         pingProbeCount: pingProbeCount,
+                        livenessMethod: livenessMethod,
+                        pingTimeoutMilliseconds: pingTimeoutMilliseconds,
+                        adaptiveTCPTimeout: adaptiveTCPTimeout,
+                        scanUnresponsiveHosts: scanUnresponsiveHosts,
                         launchDelayMilliseconds: launchDelayMilliseconds,
                         fetchOptions: fetchOptions
                     ) { completed, total in
@@ -408,6 +433,13 @@ nonisolated struct NetToysScannerPreferences: Codable, Equatable, Sendable {
     let customTextPort: Int
     let customTextRequest: String
     let customTextPattern: String
+}
+
+nonisolated struct NetToysLivenessPreferences: Codable, Equatable, Sendable {
+    let method: NetToysLivenessMethod
+    let pingTimeoutMilliseconds: Int
+    let adaptiveTCPTimeout: Bool
+    let scanUnresponsiveHosts: Bool
 }
 
 struct NetToysScannerView: View {
@@ -883,7 +915,7 @@ private struct NetToysScannerSettingsView: View {
                 .font(.title2.weight(.semibold))
 
             Form {
-                Stepper("Timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
+                Stepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
                 Stepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
                 Stepper(
                     "Launch delay: \(model.launchDelayMilliseconds) ms",
@@ -891,9 +923,21 @@ private struct NetToysScannerSettingsView: View {
                     in: 0...100,
                     step: 5
                 )
-                Toggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
-                if model.collectPingDetails {
-                    Stepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
+                Section("Host detection") {
+                    Picker("Liveness", selection: $model.livenessMethod) {
+                        ForEach(NetToysLivenessMethod.allCases) { method in
+                            Text(method.rawValue).tag(method)
+                        }
+                    }
+                    Toggle("Use response-based TCP timeout", isOn: $model.adaptiveTCPTimeout)
+                    if model.livenessMethod == .icmpAndTCP {
+                        Toggle("Scan hosts that do not answer ICMP", isOn: $model.scanUnresponsiveHosts)
+                    }
+                    Toggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
+                    if model.collectPingDetails || model.livenessMethod == .icmpAndTCP || model.adaptiveTCPTimeout {
+                        Stepper("ICMP timeout: \(model.pingTimeoutMilliseconds) ms", value: $model.pingTimeoutMilliseconds, in: 100...5_000, step: 100)
+                        Stepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
+                    }
                 }
 
                 Section("Protocol fetchers") {
