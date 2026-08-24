@@ -174,6 +174,9 @@ struct NetToysHistoryView: View {
                 try? await Task.sleep(for: .seconds(3))
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.requestSSIDAccessIfNeeded()
+        }
         .confirmationDialog("Clear network history?", isPresented: $confirmClear) {
             Button("Clear History", role: .destructive) { model.clear() }
         } message: {
