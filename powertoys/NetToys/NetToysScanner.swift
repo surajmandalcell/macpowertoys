@@ -40,6 +40,112 @@ nonisolated enum PortList {
     }
 }
 
+nonisolated enum NetToysTargetInput: Equatable, Sendable {
+    case addresses([IPv4Address], port: UInt16?)
+    case hostname(String, port: UInt16?)
+
+    enum ParseError: LocalizedError, Equatable {
+        case invalid(String)
+        case unsupportedIPv6(String)
+        case tooMany(Int)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalid(let value): "Invalid scan target: \(value)"
+            case .unsupportedIPv6(let value): "IPv6 scanning is not supported for this target: \(value)"
+            case .tooMany(let limit): "The target contains more than \(limit) addresses."
+            }
+        }
+    }
+
+    static func parse(_ input: String, limit: Int = 65_536) throws -> [Self] {
+        let parts = input.split(whereSeparator: { $0 == "," || $0.isWhitespace })
+        guard !parts.isEmpty else { throw ParseError.invalid(input) }
+        var result: [Self] = []
+        var addressCount = 0
+        for part in parts {
+            let token = String(part)
+            let (target, port) = try splitPort(token)
+            if target.contains(":") { throw ParseError.unsupportedIPv6(token) }
+            if let addresses = try? IPv4Targets.parse(target, limit: max(1, limit - addressCount)) {
+                addressCount += addresses.count
+                guard addressCount <= limit else { throw ParseError.tooMany(limit) }
+                result.append(.addresses(addresses, port: port))
+            } else if isHostname(target) {
+                result.append(.hostname(target, port: port))
+            } else {
+                throw ParseError.invalid(token)
+            }
+        }
+        return result
+    }
+
+    private static func splitPort(_ token: String) throws -> (String, UInt16?) {
+        let colons = token.indices.filter { token[$0] == ":" }
+        guard colons.count <= 1 else { throw ParseError.unsupportedIPv6(token) }
+        guard let separator = colons.first else { return (token, nil) }
+        let target = String(token[..<separator])
+        let value = String(token[token.index(after: separator)...])
+        guard !target.isEmpty, let port = UInt16(value), port > 0 else {
+            throw ParseError.invalid(token)
+        }
+        return (target, port)
+    }
+
+    private static func isHostname(_ value: String) -> Bool {
+        guard !value.isEmpty, value.utf8.count <= 253,
+              !value.contains("/"), !value.contains("-") || value.contains(where: \.isLetter)
+        else { return false }
+        let labels = value.split(separator: ".", omittingEmptySubsequences: true)
+        guard !labels.isEmpty else { return false }
+        return labels.allSatisfy { label in
+            guard label.utf8.count <= 63,
+                  label.first != "-", label.last != "-"
+            else { return false }
+            return label.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+        }
+    }
+}
+
+nonisolated struct NetToysScanTarget: Equatable, Hashable, Sendable {
+    let address: IPv4Address
+    let ports: [UInt16]
+}
+
+nonisolated enum NetToysTargetResolver {
+    static func resolve(
+        _ input: String,
+        defaultPorts: [UInt16],
+        limit: Int = 65_536
+    ) async throws -> [NetToysScanTarget] {
+        let inputs = try NetToysTargetInput.parse(input, limit: limit)
+        var order: [IPv4Address] = []
+        var portsByAddress: [IPv4Address: Set<UInt16>] = [:]
+        for item in inputs {
+            let addresses: [IPv4Address]
+            let port: UInt16?
+            switch item {
+            case .addresses(let values, let value):
+                addresses = values
+                port = value
+            case .hostname(let hostname, let value):
+                addresses = await HostResolver.forward(hostname)
+                port = value
+                guard !addresses.isEmpty else { throw NetToysTargetInput.ParseError.invalid(hostname) }
+            }
+            let selectedPorts = port.map { [$0] } ?? defaultPorts
+            for address in addresses {
+                if portsByAddress[address] == nil { order.append(address) }
+                portsByAddress[address, default: []].formUnion(selectedPorts)
+                guard order.count <= limit else { throw NetToysTargetInput.ParseError.tooMany(limit) }
+            }
+        }
+        return order.map { address in
+            NetToysScanTarget(address: address, ports: portsByAddress[address, default: []].sorted())
+        }
+    }
+}
+
 nonisolated enum TCPPortState: String, Codable, Sendable {
     case open
     case closed
@@ -210,6 +316,20 @@ actor NetToysScanner {
         concurrency: Int = 64,
         progress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> [NetToysScanResult] {
+        await scan(
+            targets: targets.map { NetToysScanTarget(address: $0, ports: ports) },
+            timeoutMilliseconds: timeoutMilliseconds,
+            concurrency: concurrency,
+            progress: progress
+        )
+    }
+
+    func scan(
+        targets: [NetToysScanTarget],
+        timeoutMilliseconds: Int = 750,
+        concurrency: Int = 64,
+        progress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async -> [NetToysScanResult] {
         let maximum = min(max(concurrency, 1), 256)
         var scanned: [NetToysScanResult] = []
         scanned.reserveCapacity(targets.count)
@@ -218,12 +338,12 @@ actor NetToysScanner {
             if Task.isCancelled { break }
             let batch = targets[offset..<min(offset + maximum, targets.count)]
             let results = await withTaskGroup(of: NetToysScanResult?.self) { group in
-                for address in batch {
+                for target in batch {
                     group.addTask {
                         guard !Task.isCancelled else { return nil }
                         return await Self.scanHost(
-                            address,
-                            ports: ports,
+                            target.address,
+                            ports: target.ports,
                             timeoutMilliseconds: timeoutMilliseconds
                         )
                     }
@@ -287,8 +407,35 @@ actor NetToysScanner {
 }
 
 nonisolated enum HostResolver {
+    static func forward(_ hostname: String) async -> [IPv4Address] {
+        await Task.detached(priority: .utility) { forwardSynchronously(hostname) }.value
+    }
+
     static func reverse(_ address: IPv4Address) async -> String? {
         await Task.detached(priority: .utility) { reverseSynchronously(address) }.value
+    }
+
+    private static func forwardSynchronously(_ hostname: String) -> [IPv4Address] {
+        var hints = addrinfo()
+        hints.ai_family = AF_INET
+        hints.ai_socktype = SOCK_STREAM
+        hints.ai_protocol = IPPROTO_TCP
+        var head: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo(hostname, nil, &hints, &head) == 0, let head else { return [] }
+        defer { freeaddrinfo(head) }
+        var result: [IPv4Address] = []
+        var seen = Set<IPv4Address>()
+        var current: UnsafeMutablePointer<addrinfo>? = head
+        while let item = current {
+            if item.pointee.ai_family == AF_INET, let socketAddress = item.pointee.ai_addr {
+                let value = socketAddress.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
+                    IPv4Address(rawValue: UInt32(bigEndian: $0.pointee.sin_addr.s_addr))
+                }
+                if seen.insert(value).inserted { result.append(value) }
+            }
+            current = item.pointee.ai_next
+        }
+        return result.sorted()
     }
 
     private static func reverseSynchronously(_ address: IPv4Address) -> String? {
