@@ -93,11 +93,11 @@
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.102.0"
+    "@raycast/api": "^2.0.5"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",
-    "@types/node": "22.15.3",
+    "@types/node": "^22.19.17",
     "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9.22.0",
     "prettier": "^3.5.3",
