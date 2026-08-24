@@ -92,7 +92,7 @@ HStack(spacing: 6) {
 
 ## Lists & Grids
 - Prefer `LazyVGrid` over `List` for tool grids - more control over styling
-- Hide scroll indicators when appropriate: `ScrollView(showsIndicators: false)`
+- Every scroll surface uses `.thinScrollIndicators()`. Never hide its indicator.
 - Custom card styles with subtle backgrounds and hover effects
 
 ## General

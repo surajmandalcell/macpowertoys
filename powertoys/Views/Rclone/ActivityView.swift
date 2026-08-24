@@ -64,7 +64,7 @@ struct ActivityView: View {
     // MARK: Ledger
 
     private var ledger: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
                 ForEach(dayGroups, id: \.day) { group in
                     dayHeader(group.day)
@@ -76,6 +76,7 @@ struct ActivityView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
         }
+        .thinScrollIndicators()
     }
 
     private func dayHeader(_ day: Date) -> some View {

@@ -23,7 +23,7 @@ struct ToolSidebarView: View {
                 .padding(.top, UtilityLayout.workspaceContentTopInset)
                 .padding(.bottom, 12)
 
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: selectedTool == "all-tools") {
                         selectedTool = "all-tools"
@@ -42,6 +42,7 @@ struct ToolSidebarView: View {
                 }
                 .padding(.horizontal, 12)
             }
+            .thinScrollIndicators()
 
             Spacer(minLength: 0)
 

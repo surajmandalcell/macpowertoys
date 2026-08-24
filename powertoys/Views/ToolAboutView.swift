@@ -115,7 +115,7 @@ struct ToolAboutView: View {
     }
 
     private func manualSection(for tool: any Tool) -> some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(tool.manual) { section in
                     manualCard(section)
@@ -124,6 +124,7 @@ struct ToolAboutView: View {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .thinScrollIndicators()
     }
 
     private func manualCard(_ section: ToolManualSection) -> some View {
@@ -210,10 +211,11 @@ private struct ToolSettingsContent: View {
         case "ruler":
             RulerLauncherSettingsView()
         case "awake":
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 AwakeSettingsView()
                     .padding(24)
             }
+            .thinScrollIndicators()
         case "color-picker":
             ColorPickerSettingsView()
         case "text-extractor":

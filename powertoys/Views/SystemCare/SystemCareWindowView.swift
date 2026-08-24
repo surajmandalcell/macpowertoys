@@ -210,7 +210,7 @@ struct SystemCareWindowView: View {
 
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 10) {
-                                ScrollView(.horizontal, showsIndicators: false) {
+                                ScrollView(.horizontal) {
                                     HStack(spacing: 4) {
                                         ForEach(manager.storageBreadcrumbs, id: \.path) { url in
                                             Button(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent) {
@@ -224,6 +224,7 @@ struct SystemCareWindowView: View {
                                         }
                                     }
                                 }
+                                .thinScrollIndicators()
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Text("\(manager.storageTotal.formattedByteCount) · \(manager.storageFileCount.formatted()) entries")
@@ -258,6 +259,7 @@ struct SystemCareWindowView: View {
                                     }
                                 }
                             }
+                            .thinScrollIndicators()
                             .frame(minHeight: 280)
                         }
                         .frame(maxWidth: .infinity, minHeight: 330, alignment: .topLeading)
@@ -388,6 +390,7 @@ struct SystemCareWindowView: View {
                         }
                     }
                 }
+                .thinScrollIndicators()
                 .frame(minHeight: 280)
                 .background(Color.primary.opacity(0.03))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -427,6 +430,7 @@ struct SystemCareWindowView: View {
                         }
                     }
                 }
+                .thinScrollIndicators()
                 .frame(maxWidth: .infinity, minHeight: 430)
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -543,6 +547,7 @@ struct SystemCareWindowView: View {
                             }
                         }
                     }
+                    .thinScrollIndicators()
                 }
             }
             .utilityContentTransition(value: manager.history.isEmpty)

@@ -198,20 +198,56 @@ private struct ThinScrollIndicatorConfigurator: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? ThinScrollIndicatorView)?.configureEnclosingScrollView()
+        (nsView as? ThinScrollIndicatorView)?.configureScrollIndicators()
     }
 }
 
 private final class ThinScrollIndicatorView: NSView {
+    private weak var configuredScrollView: NSScrollView?
+
     override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
-        configureEnclosingScrollView()
+        configureScrollIndicators()
     }
 
-    func configureEnclosingScrollView() {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        configureScrollIndicators()
+    }
+
+    func configureScrollIndicators() {
         DispatchQueue.main.async { [weak self] in
-            guard let scrollView = self?.enclosingScrollView else { return }
-            scrollView.configureThinScrollIndicators()
+            guard let self else { return }
+            if let configuredScrollView, configuredScrollView.window != nil {
+                configuredScrollView.configureThinScrollIndicators()
+                return
+            }
+            if let scrollView = enclosingScrollView {
+                configuredScrollView = scrollView
+                scrollView.configureThinScrollIndicators()
+                return
+            }
+
+            // SwiftUI hosts a background beside its scroll view, not inside it.
+            var ancestor = superview
+            while let view = ancestor {
+                if let scrollView = view.firstDescendantScrollView {
+                    configuredScrollView = scrollView
+                    scrollView.configureThinScrollIndicators()
+                    return
+                }
+                ancestor = view.superview
+            }
         }
+    }
+}
+
+private extension NSView {
+    var firstDescendantScrollView: NSScrollView? {
+        for view in subviews {
+            if let scrollView = view as? NSScrollView { return scrollView }
+            if let scrollView = view.firstDescendantScrollView { return scrollView }
+        }
+        return nil
     }
 }

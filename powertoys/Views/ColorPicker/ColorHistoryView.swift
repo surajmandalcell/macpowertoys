@@ -161,7 +161,7 @@ struct ColorHistoryView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView(showsIndicators: false) {
+                ScrollView {
                     LazyVStack(spacing: 6) {
                         ForEach(samples) { sample in
                             ColorSampleRow(sample: sample)
@@ -196,7 +196,7 @@ struct ColorHistoryView: View {
             .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
             .padding(.vertical, 10)
 
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 LazyVStack(spacing: 6) {
                     if isCreatingProject { newProjectField }
                     projectRow(id: nil, name: "Unfiled", project: nil)
@@ -303,7 +303,7 @@ struct ColorPickerSettingsView: View {
     @State private var isConfirmingClearAll = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 Text("GLOBAL SHORTCUT").utilitySectionHeader()
                 VStack(alignment: .leading, spacing: 0) {

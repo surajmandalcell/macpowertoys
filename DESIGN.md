@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -738,8 +738,10 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
 - **Progress bar** — 6pt-high capsule, track `primary.opacity(0.08)`, tint by
   state (accent/green/orange/red).
 - **Scroll indicator:** overlay, autohiding, mini control size. Apply
-  `.thinScrollIndicators()` whenever an indicator is visible; never reserve a
-  thick scrollbar track.
+  `.thinScrollIndicators()` to every `ScrollView`, `Form`, `TextEditor`, `List`,
+  and `Table`. Configure every native `NSScrollView` with
+  `configureThinScrollIndicators()`. Never hide an indicator or reserve a thick
+  scrollbar track.
 - **State badge** - 11pt medium text + 10pt icon, 8/4 padding, tint at 0.12 bg,
   and a capsule shape. Lives on cards or rows only, never in sheet headers.
 - **Empty state** — `EmptyStateView(icon:message:)`, centered.

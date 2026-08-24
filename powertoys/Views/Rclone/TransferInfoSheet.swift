@@ -137,7 +137,7 @@ struct TransferInfoSheet: View {
     // MARK: Overview
 
     private var overviewContent: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 section("Route") { routeRows }
                 section("Result") { resultRows }
@@ -148,12 +148,13 @@ struct TransferInfoSheet: View {
             .padding(.top, 14)
             .padding(.bottom, 20)
         }
+        .thinScrollIndicators()
     }
 
     // MARK: Settings
 
     private var settingsContent: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if let job {
                     section("Performance") {
@@ -211,6 +212,7 @@ struct TransferInfoSheet: View {
             .padding(.top, 14)
             .padding(.bottom, 20)
         }
+        .thinScrollIndicators()
     }
 
     private func settingBinding<Value>(_ job: TransferJob, _ keyPath: ReferenceWritableKeyPath<TransferJob, Value>) -> Binding<Value> {
@@ -457,13 +459,14 @@ private struct TransferChangesTab: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView(showsIndicators: false) {
+                ScrollView {
                     LazyVStack(spacing: 6) {
                         ForEach(entries) { entry in
                             changeRow(entry)
                         }
                     }
                 }
+                .thinScrollIndicators()
             }
         }
         .padding(.horizontal, 20)

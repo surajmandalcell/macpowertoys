@@ -252,12 +252,13 @@
   indicator while the rest of the app uses thin overlay scrollbars.
 - **Cause:** A visible `ScrollView`, `Form`, `TextEditor`, or AppKit
   `NSScrollView` bypassed the shared thin-indicator configuration.
-- **Invariant:** Every visible SwiftUI indicator uses
-  `.thinScrollIndicators()`. Native scroll views call
-  `configureThinScrollIndicators()`. Hidden indicators need no modifier.
-- **Check:** Inventory every scrolling source with `rg`, then exercise long
-  content in AI History, Cloud Sync trees, settings forms, and editors.
-  Visible indicators autohide, overlay content, and use mini control size.
+- **Invariant:** Every SwiftUI `ScrollView`, `Form`, `TextEditor`, `List`, and
+  `Table` uses `.thinScrollIndicators()`. Native scroll views call
+  `configureThinScrollIndicators()`. Never hide an indicator.
+- **Check:** Inventory every scrolling source with `rg`. The surface count must
+  equal the shared-modifier count, and `showsIndicators: false` must be absent.
+  Exercise long content in every app family, sheet, editor, and horizontal
+  strip. Indicators autohide, overlay content, and use mini control size.
 
 ## Settings Page Replacement
 
