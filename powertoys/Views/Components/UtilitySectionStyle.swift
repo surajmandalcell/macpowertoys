@@ -185,11 +185,46 @@ private struct UtilityContentTransitionModifier<Value: Hashable>: ViewModifier {
 
 extension NSScrollView {
     func configureThinScrollIndicators() {
+        if hasVerticalScroller, !(verticalScroller is ThinOverlayScroller) {
+            verticalScroller = ThinOverlayScroller()
+        }
+        if hasHorizontalScroller, !(horizontalScroller is ThinOverlayScroller) {
+            horizontalScroller = ThinOverlayScroller()
+        }
         scrollerStyle = .overlay
         autohidesScrollers = true
         verticalScroller?.controlSize = .mini
         horizontalScroller?.controlSize = .mini
     }
+}
+
+final class ThinOverlayScroller: NSScroller {
+    override class var isCompatibleWithOverlayScrollers: Bool { true }
+
+    static func knobThickness(increasedContrast: Bool) -> CGFloat {
+        increasedContrast ? 6 : 4
+    }
+
+    override func drawKnob() {
+        let knob = rect(for: .knob)
+        guard !knob.isEmpty else { return }
+
+        let increasedContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        let thickness = Self.knobThickness(increasedContrast: increasedContrast)
+        let isVertical = bounds.height > bounds.width
+        let thinKnob = isVertical
+            ? NSRect(x: knob.midX - thickness / 2, y: knob.minY, width: thickness, height: knob.height)
+            : NSRect(x: knob.minX, y: knob.midY - thickness / 2, width: knob.width, height: thickness)
+
+        (increasedContrast ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor).setFill()
+        NSBezierPath(
+            roundedRect: thinKnob,
+            xRadius: thickness / 2,
+            yRadius: thickness / 2
+        ).fill()
+    }
+
+    override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
 }
 
 private struct ThinScrollIndicatorConfigurator: NSViewRepresentable {

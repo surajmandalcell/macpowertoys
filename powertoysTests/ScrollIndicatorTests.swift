@@ -16,8 +16,14 @@ final class ScrollIndicatorTests: XCTestCase {
 
         XCTAssertEqual(scrollView.scrollerStyle, .overlay)
         XCTAssertTrue(scrollView.autohidesScrollers)
-        XCTAssertEqual(try XCTUnwrap(scrollView.verticalScroller).controlSize, .mini)
-        XCTAssertEqual(try XCTUnwrap(scrollView.horizontalScroller).controlSize, .mini)
+        let verticalScroller = try XCTUnwrap(scrollView.verticalScroller)
+        let horizontalScroller = try XCTUnwrap(scrollView.horizontalScroller)
+        XCTAssertTrue(verticalScroller is ThinOverlayScroller)
+        XCTAssertTrue(horizontalScroller is ThinOverlayScroller)
+        XCTAssertEqual(verticalScroller.controlSize, .mini)
+        XCTAssertEqual(horizontalScroller.controlSize, .mini)
+        XCTAssertEqual(ThinOverlayScroller.knobThickness(increasedContrast: false), 4)
+        XCTAssertEqual(ThinOverlayScroller.knobThickness(increasedContrast: true), 6)
     }
 
     func testSwiftUIModifierConfiguresItsScrollView() throws {
