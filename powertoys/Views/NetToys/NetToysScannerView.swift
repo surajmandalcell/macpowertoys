@@ -418,6 +418,7 @@ struct NetToysScannerView: View {
     private var columnCustomization: TableColumnCustomization<NetToysScanResult>
     @State private var showSettings = false
     @State private var showRandomTargets = false
+    @State private var showStatistics = false
     @State private var detailResult: NetToysScanResult?
     @State private var openerPreview: NetToysOpenerPreview?
 
@@ -452,6 +453,12 @@ struct NetToysScannerView: View {
         }
         .sheet(isPresented: $showRandomTargets) {
             NetToysRandomTargetsView(model: model)
+        }
+        .sheet(isPresented: $showStatistics) {
+            NetToysStatisticsView(statistics: NetToysScanStatistics(
+                results: model.results,
+                duration: model.lastDuration
+            ))
         }
         .sheet(item: $detailResult) { result in
             NetToysHostDetailsView(model: model, result: result)
@@ -542,10 +549,21 @@ struct NetToysScannerView: View {
             Spacer()
 
             Menu("More") {
-                Button("Next Alive Host") { selectNext(where: \.isReachable) }
-                Button("Next Down Host") { selectNext { !$0.isReachable } }
-                Button("Next Host With Open Ports") { selectNext { !$0.openPorts.isEmpty } }
+                Menu("Go to Result") {
+                    Button("Next Alive Host") { select(offset: 1, where: \.isReachable) }
+                    Button("Previous Alive Host") { select(offset: -1, where: \.isReachable) }
+                    Divider()
+                    Button("Next Down Host") { select(offset: 1) { !$0.isReachable } }
+                    Button("Previous Down Host") { select(offset: -1) { !$0.isReachable } }
+                    Divider()
+                    Button("Next Host With Open Ports") { select(offset: 1) { !$0.openPorts.isEmpty } }
+                    Button("Previous Host With Open Ports") { select(offset: -1) { !$0.openPorts.isEmpty } }
+                }
+                Button("Scan Statistics…") { showStatistics = true }
+                    .disabled(model.results.isEmpty)
                 Divider()
+                Button("Copy Selected Details") { copyDetails(selectedRows) }
+                    .disabled(selection.isEmpty)
                 Button("Delete Selected", role: .destructive) {
                     model.removeResults(ids: selection)
                     selection.removeAll()
@@ -728,6 +746,9 @@ struct NetToysScannerView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(rows.map { $0.address.description }.joined(separator: "\n"), forType: .string)
             }
+            Button("Copy Details") {
+                copyDetails(model.results.filter { selected.contains($0.id) })
+            }
             Button("Rescan") {
                 model.start(targets: model.results.filter { selected.contains($0.id) }.map(\.address))
             }
@@ -784,12 +805,64 @@ struct NetToysScannerView: View {
         }
     }
 
-    private func selectNext(where predicate: (NetToysScanResult) -> Bool) {
+    private func copyDetails(_ rows: [NetToysScanResult]) {
+        guard !rows.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(NetToysScanExport.text(rows), forType: .string)
+    }
+
+    private func select(offset: Int, where predicate: (NetToysScanResult) -> Bool) {
         let matches = sortedResults.filter(predicate)
         guard !matches.isEmpty else { return }
         let current = selection.first.flatMap { id in matches.firstIndex { $0.id == id } }
-        let next = matches[(current.map { ($0 + 1) % matches.count }) ?? 0]
+        let index = current.map { ($0 + offset + matches.count) % matches.count }
+            ?? (offset < 0 ? matches.count - 1 : 0)
+        let next = matches[index]
         selection = [next.id]
+    }
+}
+
+private struct NetToysStatisticsView: View {
+    let statistics: NetToysScanStatistics
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Scan Statistics")
+                .font(.title2.weight(.semibold))
+            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
+                row("Addresses", statistics.addressCount.formatted())
+                row("Reachable", statistics.reachableCount.formatted())
+                row("Down", statistics.downCount.formatted())
+                row("Hosts with open ports", statistics.openPortHostCount.formatted())
+                row("Open ports", statistics.openPortCount.formatted())
+                row("Average response", milliseconds(statistics.averageResponseMilliseconds))
+                row("Fastest response", milliseconds(statistics.fastestResponseMilliseconds))
+                row("Slowest response", milliseconds(statistics.slowestResponseMilliseconds))
+                row("Duration", statistics.duration.map { "\($0.formatted(.number.precision(.fractionLength(1)))) s" } ?? "Not available")
+                row("Scan rate", statistics.addressesPerSecond.map { "\($0.formatted(.number.precision(.fractionLength(1)))) addresses/s" } ?? "Not available")
+            }
+            HStack {
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .controlSize(.small)
+        }
+        .padding(20)
+        .frame(width: 480)
+    }
+
+    @ViewBuilder
+    private func row(_ label: String, _ value: String) -> some View {
+        GridRow {
+            Text(label).foregroundStyle(.secondary)
+            Text(value).monospacedDigit()
+        }
+    }
+
+    private func milliseconds(_ value: Double?) -> String {
+        value.map { "\($0.formatted(.number.precision(.fractionLength(1)))) ms" } ?? "Not available"
     }
 }
 

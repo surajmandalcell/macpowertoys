@@ -702,4 +702,35 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(decoded, customization)
         XCTAssertEqual(decoded[visibility: "nettoys.ttl"], .hidden)
     }
+
+    func testScanStatisticsSummarizeResults() throws {
+        let first = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("10.0.0.1")),
+            isReachable: true,
+            responseMilliseconds: 4,
+            hostname: nil,
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [22, 80]
+        )
+        let second = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("10.0.0.2")),
+            isReachable: false,
+            responseMilliseconds: nil,
+            hostname: nil,
+            macAddress: nil,
+            vendor: nil,
+            openPorts: []
+        )
+
+        let statistics = NetToysScanStatistics(results: [first, second], duration: 0.5)
+
+        XCTAssertEqual(statistics.addressCount, 2)
+        XCTAssertEqual(statistics.reachableCount, 1)
+        XCTAssertEqual(statistics.downCount, 1)
+        XCTAssertEqual(statistics.openPortHostCount, 1)
+        XCTAssertEqual(statistics.openPortCount, 2)
+        XCTAssertEqual(statistics.averageResponseMilliseconds, 4)
+        XCTAssertEqual(statistics.addressesPerSecond, 4)
+    }
 }
