@@ -588,8 +588,9 @@ struct NetToysScannerView: View {
             .pickerStyle(.segmented)
             .frame(width: 220)
 
-            SearchField(text: $model.searchText, placeholder: "Find address, host, MAC, or port")
+            NativeSearchField(text: $model.searchText, placeholder: "Find address, host, MAC, or port")
                 .frame(maxWidth: 320)
+                .frame(height: UtilityLayout.workspaceActionHeight)
 
             Spacer()
 
