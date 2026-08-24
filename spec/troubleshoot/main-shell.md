@@ -44,6 +44,15 @@
   leading labels and trailing actions must remain aligned without crowding.
   Measure every tab-group edge, both body bottoms, and both footer edges.
 
+## Menu-Bar Footer Contrast
+
+- **Symptom:** Open MacPowerToys and Quit look disabled in the menu-bar footer.
+- **Cause:** The footer used the native secondary text style at rest.
+- **Invariant:** Footer actions use the 75% primary text token at rest and full
+  primary text on hover.
+- **Check:** Inspect both footer actions at rest and on hover in light and dark
+  appearances. They remain readable and still gain contrast on hover.
+
 ## Shared Tool Enablement
 
 - **Symptom:** A disabled tool still opens from a shortcut or deep link, starts
