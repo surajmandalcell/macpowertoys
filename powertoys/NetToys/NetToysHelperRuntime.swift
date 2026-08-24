@@ -1,5 +1,63 @@
 import Foundation
 
+nonisolated enum SSHAnchorVerifiedUpdate {
+    enum UpdateError: LocalizedError, Equatable {
+        case candidateProbeFailed
+        case postWriteProbeFailed
+        case rollbackFailed
+
+        var errorDescription: String? {
+            switch self {
+            case .candidateProbeFailed:
+                "The recovered address did not pass its confirmation probe."
+            case .postWriteProbeFailed:
+                "The recovered address stopped responding, so SSH Anchor restored the original address."
+            case .rollbackFailed:
+                "The recovered address failed verification, and SSH Anchor could not restore the original address."
+            }
+        }
+    }
+
+    static func apply(
+        original: SSHAnchorConfiguration,
+        recovered: SSHAnchorConfiguration,
+        configURL: URL,
+        backupDirectory: URL,
+        verify: @escaping @Sendable (String, UInt16) async -> Bool,
+        commit: @escaping @Sendable () throws -> Void
+    ) async throws {
+        guard await verify(recovered.hostName, recovered.port) else {
+            throw UpdateError.candidateProbeFailed
+        }
+        _ = try SSHConfigFileUpdater.update(
+            configURL: configURL,
+            backupDirectory: backupDirectory,
+            hostAlias: original.hostAlias,
+            expectedHostName: original.hostName,
+            newHostName: recovered.hostName
+        )
+        do {
+            guard await verify(recovered.hostName, recovered.port) else {
+                throw UpdateError.postWriteProbeFailed
+            }
+            try commit()
+        } catch {
+            do {
+                _ = try SSHConfigFileUpdater.update(
+                    configURL: configURL,
+                    backupDirectory: backupDirectory,
+                    hostAlias: original.hostAlias,
+                    expectedHostName: recovered.hostName,
+                    newHostName: original.hostName
+                )
+            } catch {
+                throw UpdateError.rollbackFailed
+            }
+            throw error
+        }
+    }
+}
+
 actor NetToysHelperRuntime {
     private let scanner = NetToysScanner()
     private var recoveryFailures: [UUID: Int] = [:]
@@ -81,14 +139,17 @@ actor NetToysHelperRuntime {
             guard let current = latest.anchors.first(where: { $0.id == anchor.id }),
                   current.hostName == anchor.hostName
             else { return status(anchor, .error, "The anchor changed during the scan.") }
-            _ = try SSHConfigFileUpdater.update(
+            let updated = try latest.replacingAnchor(recovered)
+            try await SSHAnchorVerifiedUpdate.apply(
+                original: anchor,
+                recovered: recovered,
                 configURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config"),
                 backupDirectory: NetToysPaths.backups,
-                hostAlias: anchor.hostAlias,
-                expectedHostName: anchor.hostName,
-                newHostName: recovered.hostName
+                verify: { host, port in
+                    await TCPPortProbe.check(host: host, port: port, timeoutMilliseconds: 900).state == .open
+                },
+                commit: { try NetToysConfigurationStore.save(updated) }
             )
-            try NetToysConfigurationStore.save(latest.replacingAnchor(recovered))
             recoveryFailures[anchor.id] = nil
             nextRecovery[anchor.id] = nil
             return status(recovered, .recovered, "Updated only HostName in ~/.ssh/config.")

@@ -4,6 +4,18 @@ import XCTest
 @testable import powertoys
 
 final class NetToysTests: XCTestCase {
+    private actor ProbeAnswers {
+        private var values: [Bool]
+
+        init(_ values: [Bool]) {
+            self.values = values
+        }
+
+        func next() -> Bool {
+            values.isEmpty ? false : values.removeFirst()
+        }
+    }
+
     func testIPv4TargetsParseRangeCIDRAndListWithoutDuplicates() throws {
         XCTAssertEqual(
             try IPv4Targets.parse("192.168.1.3-192.168.1.5").map(\.description),
@@ -128,6 +140,70 @@ final class NetToysTests: XCTestCase {
                 .filter { $0.pathExtension == "backup" }.count,
             1
         )
+    }
+
+    func testSSHAnchorVerifiedUpdateCommitsAfterPreAndPostWriteProbes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let config = root.appendingPathComponent("config")
+        let backup = root.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data("Host jetson\n  HostName 192.168.1.8\n".utf8).write(to: config)
+        let original = SSHAnchorConfiguration(
+            hostAlias: "jetson",
+            hostName: "192.168.1.8",
+            port: 22,
+            identity: .stableMAC("aa:bb:cc:dd:ee:ff")
+        )
+        var recovered = original
+        recovered.hostName = "192.168.1.44"
+        let answers = ProbeAnswers([true, true])
+
+        try await SSHAnchorVerifiedUpdate.apply(
+            original: original,
+            recovered: recovered,
+            configURL: config,
+            backupDirectory: backup,
+            verify: { _, _ in await answers.next() },
+            commit: {}
+        )
+
+        XCTAssertEqual(try Data(contentsOf: config), Data("Host jetson\n  HostName 192.168.1.44\n".utf8))
+    }
+
+    func testSSHAnchorVerifiedUpdateRollsBackWhenPostWriteProbeFails() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let config = root.appendingPathComponent("config")
+        let backup = root.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let originalData = Data("Host jetson\n\tHostName\t192.168.1.8 # untouched\n".utf8)
+        try originalData.write(to: config)
+        let original = SSHAnchorConfiguration(
+            hostAlias: "jetson",
+            hostName: "192.168.1.8",
+            port: 22,
+            identity: .stableMAC("aa:bb:cc:dd:ee:ff")
+        )
+        var recovered = original
+        recovered.hostName = "192.168.1.44"
+        let answers = ProbeAnswers([true, false])
+
+        do {
+            try await SSHAnchorVerifiedUpdate.apply(
+                original: original,
+                recovered: recovered,
+                configURL: config,
+                backupDirectory: backup,
+                verify: { _, _ in await answers.next() },
+                commit: {}
+            )
+            XCTFail("The post-write probe should fail.")
+        } catch {
+            XCTAssertEqual(error as? SSHAnchorVerifiedUpdate.UpdateError, .postWriteProbeFailed)
+        }
+
+        XCTAssertEqual(try Data(contentsOf: config), originalData)
     }
 
     func testPortListParsesRangesAndRejectsInvalidPorts() throws {
