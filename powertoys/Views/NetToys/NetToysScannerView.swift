@@ -504,6 +504,13 @@ struct NetToysScannerView: View {
             model.portInput = run.ports.map(String.init).joined(separator: ", ")
             model.start()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netToysPrefill)) { notification in
+            applyPrefill(DeepLinkHandler.shared.takeNetToysPrefill()
+                ?? notification.object as? NetToysScanPrefill)
+        }
+        .onAppear {
+            applyPrefill(DeepLinkHandler.shared.takeNetToysPrefill())
+        }
         .alert("IP Scanner", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -562,6 +569,12 @@ struct NetToysScannerView: View {
         .controlSize(.small)
         .padding(.horizontal, UtilityLayout.horizontalInset)
         .padding(.vertical, 10)
+    }
+
+    private func applyPrefill(_ prefill: NetToysScanPrefill?) {
+        guard let prefill else { return }
+        model.targetInput = prefill.targets
+        if let ports = prefill.ports { model.portInput = ports }
     }
 
     private var resultControls: some View {

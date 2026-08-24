@@ -7,6 +7,35 @@ import Foundation
 import SwiftUI
 import Darwin
 
+nonisolated struct NetToysScanPrefill: Equatable, Sendable {
+    let targets: String
+    let ports: String?
+
+    static func parse(_ url: URL) -> Self? {
+        guard DeepLinkHandler.isSupportedScheme(url.scheme),
+              url.host == "open",
+              url.pathComponents.first(where: { $0 != "/" }) == "nettoys",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let targetValue = items.first(where: { $0.name == "targets" })?.value
+        else { return nil }
+        let targets = targetValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !targets.isEmpty,
+              targets.utf8.count <= 8_192,
+              (try? NetToysTargetInput.parse(targets)) != nil
+        else { return nil }
+        let ports = items.first(where: { $0.name == "ports" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard ports?.utf8.count ?? 0 <= 4_096,
+              ports.map({ (try? PortList.parse($0)) != nil }) ?? true
+        else { return nil }
+        return Self(targets: targets, ports: ports)
+    }
+}
+
+extension Notification.Name {
+    static let netToysPrefill = Notification.Name("netToysPrefill")
+}
+
 @Observable
 @MainActor
 final class DeepLinkHandler {
@@ -14,6 +43,7 @@ final class DeepLinkHandler {
 
     private var pendingLinks: [URL] = []
     private var openWindowAction: OpenWindowAction?
+    private var pendingNetToysPrefill: NetToysScanPrefill?
 
     private init() {}
 
@@ -103,6 +133,11 @@ final class DeepLinkHandler {
         pendingLinks.removeAll()
     }
 
+    func takeNetToysPrefill() -> NetToysScanPrefill? {
+        defer { pendingNetToysPrefill = nil }
+        return pendingNetToysPrefill
+    }
+
     private func processURL(_ url: URL) {
         if ToolActionRouter.shared.execute(url: url) { return }
 
@@ -110,6 +145,12 @@ final class DeepLinkHandler {
         case "open":
             let pathComponents = url.pathComponents.filter { $0 != "/" }
             if let toolId = pathComponents.first {
+                if toolId == "nettoys", let prefill = NetToysScanPrefill.parse(url) {
+                    pendingNetToysPrefill = prefill
+                    openTool(id: toolId)
+                    NotificationCenter.default.post(name: .netToysPrefill, object: prefill)
+                    return
+                }
                 openTool(id: toolId)
             }
 

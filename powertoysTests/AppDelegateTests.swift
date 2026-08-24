@@ -26,9 +26,25 @@ final class AppDelegateTests: XCTestCase {
         for url in [
             URL(string: "macpowertoys://open/ruler")!,
             URL(string: "macpowertoys://run/awake.toggle")!,
+            URL(string: "macpowertoys://open/nettoys?targets=192.168.1.0%2F24&ports=22%2C443")!,
         ] {
             XCTAssertTrue(AppDelegate.requiresManualURLRouting(url), url.absoluteString)
         }
+    }
+
+    func testNetToysDeepLinkParsesValidatedScanPrefill() {
+        XCTAssertEqual(
+            NetToysScanPrefill.parse(URL(string:
+                "macpowertoys://open/nettoys?targets=jetson.local%2C192.168.1.0%2F24&ports=22%2C80-81"
+            )!),
+            NetToysScanPrefill(targets: "jetson.local,192.168.1.0/24", ports: "22,80-81")
+        )
+        XCTAssertNil(NetToysScanPrefill.parse(URL(string:
+            "macpowertoys://open/nettoys?targets=192.168.1.1&ports=0"
+        )!))
+        XCTAssertNil(NetToysScanPrefill.parse(URL(string:
+            "macpowertoys://open/nettoys?targets=2001%3Adb8%3A%3A1&ports=22"
+        )!))
     }
 
     func testStatusItemInterceptsOnlyRightClick() {
