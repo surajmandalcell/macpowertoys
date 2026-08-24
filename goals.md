@@ -11,8 +11,8 @@ evidence, and remaining work.
   its feature scope.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
-- Verify that custom controls never show the large blue focus outline and keep
-  keyboard activation in the latest normal installed build.
+- Verify focus appearance and keyboard activation in the menu-bar panels with
+  a physical menu-bar click. All other built-in surfaces passed.
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest
