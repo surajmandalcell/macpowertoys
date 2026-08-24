@@ -800,7 +800,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Input Devices | Chosen Color | Chosen Color | Blue detailed-mouse identity is fixed |
 | System Care | Chosen Color | Chosen Color | S11-08 centered disk-and-eraser identity is fixed |
 | System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
-| NetToys | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
+| NetToys | Porcelain | Porcelain | SV02 pixel monitor identity is fixed in both appearances |
 
 The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
