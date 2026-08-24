@@ -95,4 +95,37 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(event?.changes, [.internet(from: .reachable, to: .unreachable)])
         XCTAssertEqual(event?.date, start.addingTimeInterval(60))
     }
+
+    func testSSHConfigFileUpdaterPreservesSymlinkAndPermissions() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let backup = root.appendingPathComponent("backups", isDirectory: true)
+        let config = root.appendingPathComponent("ssh-config")
+        let link = root.appendingPathComponent("config-link")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data("Host jetson\n\tHostName 192.168.1.8\n".utf8).write(to: config)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: config.path)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: config)
+
+        let edit = try SSHConfigFileUpdater.update(
+            configURL: link,
+            backupDirectory: backup,
+            hostAlias: "jetson",
+            expectedHostName: "192.168.1.8",
+            newHostName: "192.168.1.44"
+        )
+
+        XCTAssertEqual(edit.oldValue, "192.168.1.8")
+        XCTAssertEqual(try Data(contentsOf: config), Data("Host jetson\n\tHostName 192.168.1.44\n".utf8))
+        XCTAssertEqual(
+            try FileManager.default.attributesOfItem(atPath: config.path)[.posixPermissions] as? NSNumber,
+            NSNumber(value: 0o600)
+        )
+        XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: link.path), config.path)
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(at: backup, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "backup" }.count,
+            1
+        )
+    }
 }
