@@ -18,8 +18,13 @@ enum NetToysColumn: String, CaseIterable, Identifiable {
     case packetLoss = "Packet Loss"
     case hostname = "Hostname"
     case macAddress = "MAC Address"
+    case macVendor = "MAC Vendor"
     case openPorts = "Open Ports"
     case filteredPorts = "Filtered Ports"
+    case httpServer = "HTTP Server"
+    case httpProxy = "HTTP Proxy"
+    case netBIOS = "NetBIOS"
+    case customText = "Custom Text"
 
     var id: String { rawValue }
 
@@ -53,17 +58,24 @@ extension NetToysScanResult {
     nonisolated var responseTitle: String { responseMilliseconds.map { String(format: "%.1f", $0) } ?? "" }
     nonisolated var hostnameTitle: String { hostname ?? "" }
     nonisolated var macTitle: String { macAddress ?? "" }
+    nonisolated var vendorTitle: String { vendor ?? "" }
     nonisolated var portsTitle: String { openPorts.map(String.init).joined(separator: ", ") }
     nonisolated var filteredPortsTitle: String { filteredPorts?.map(String.init).joined(separator: ", ") ?? "" }
     nonisolated var ttlTitle: String { ttl.map(String.init) ?? "" }
     nonisolated var packetLossTitle: String {
         packetLossPercent.map { String(format: "%.1f", $0) } ?? ""
     }
+    nonisolated var httpServerTitle: String { httpServer ?? "" }
+    nonisolated var httpProxyTitle: String { httpProxy ?? "" }
+    nonisolated var netBIOSTitle: String { netBIOSName ?? "" }
+    nonisolated var customTextTitle: String { customText ?? "" }
 }
 
 @Observable
 @MainActor
 final class NetToysScannerViewModel {
+    private static let preferencesKey = "nettoys.scanner.preferences"
+
     var targetInput: String
     var portInput = "22, 80, 443"
     var results: [NetToysScanResult] = []
@@ -79,6 +91,13 @@ final class NetToysScannerViewModel {
     var launchDelayMilliseconds = 0
     var collectPingDetails = false
     var pingProbeCount = 2
+    var detectHTTPServer = false
+    var detectHTTPProxy = false
+    var detectNetBIOS = false
+    var customTextEnabled = false
+    var customTextPort = 22
+    var customTextRequest = ""
+    var customTextPattern = ""
     var visibleColumns = NetToysColumn.defaults {
         didSet {
             UserDefaults.standard.set(visibleColumns.map(\.rawValue).sorted(), forKey: "nettoys.scanner.columns")
@@ -92,9 +111,46 @@ final class NetToysScannerViewModel {
 
     init() {
         targetInput = LocalIPv4Network.active()?.cidr ?? "192.168.1.0/24"
+        if let data = UserDefaults.standard.data(forKey: Self.preferencesKey),
+           let preferences = try? JSONDecoder().decode(NetToysScannerPreferences.self, from: data) {
+            portInput = preferences.portInput
+            timeoutMilliseconds = min(max(preferences.timeoutMilliseconds, 100), 5_000)
+            concurrency = min(max(preferences.concurrency, 1), 256)
+            launchDelayMilliseconds = min(max(preferences.launchDelayMilliseconds, 0), 100)
+            collectPingDetails = preferences.collectPingDetails
+            pingProbeCount = min(max(preferences.pingProbeCount, 1), 5)
+            detectHTTPServer = preferences.detectHTTPServer
+            detectHTTPProxy = preferences.detectHTTPProxy
+            detectNetBIOS = preferences.detectNetBIOS
+            customTextEnabled = preferences.customTextEnabled
+            customTextPort = min(max(preferences.customTextPort, 1), 65_535)
+            customTextRequest = preferences.customTextRequest
+            customTextPattern = preferences.customTextPattern
+        }
         if let saved = UserDefaults.standard.stringArray(forKey: "nettoys.scanner.columns") {
             let columns = Set(saved.compactMap(NetToysColumn.init(rawValue:)))
             if !columns.isEmpty { visibleColumns = columns }
+        }
+    }
+
+    func savePreferences() {
+        let value = NetToysScannerPreferences(
+            portInput: portInput,
+            timeoutMilliseconds: timeoutMilliseconds,
+            concurrency: concurrency,
+            launchDelayMilliseconds: launchDelayMilliseconds,
+            collectPingDetails: collectPingDetails,
+            pingProbeCount: pingProbeCount,
+            detectHTTPServer: detectHTTPServer,
+            detectHTTPProxy: detectHTTPProxy,
+            detectNetBIOS: detectNetBIOS,
+            customTextEnabled: customTextEnabled,
+            customTextPort: customTextPort,
+            customTextRequest: customTextRequest,
+            customTextPattern: customTextPattern
+        )
+        if let data = try? JSONEncoder().encode(value) {
+            UserDefaults.standard.set(data, forKey: Self.preferencesKey)
         }
     }
 
@@ -109,7 +165,11 @@ final class NetToysScannerViewModel {
             guard includes else { return false }
             let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !query.isEmpty else { return true }
-            return ([result.address.description, result.hostnameTitle, result.macTitle, result.portsTitle]
+            return ([
+                result.address.description, result.hostnameTitle, result.macTitle, result.vendorTitle,
+                result.portsTitle, result.httpServerTitle, result.httpProxyTitle,
+                result.netBIOSTitle, result.customTextTitle
+            ]
                 + [annotations[result.id]?.comment ?? ""])
                 .contains { $0.localizedCaseInsensitiveContains(query) }
         }
@@ -118,7 +178,16 @@ final class NetToysScannerViewModel {
     func start(targets override: [IPv4Address]? = nil) {
         guard !isScanning else { return }
         do {
-            let defaultPorts = try PortList.parse(portInput)
+            var defaultPorts = try PortList.parse(portInput)
+            if customTextEnabled {
+                let probe = NetToysCustomTextProbe(
+                    port: UInt16(customTextPort),
+                    request: customTextRequest,
+                    responsePattern: customTextPattern
+                )
+                try probe.validate()
+                defaultPorts = Array(Set(defaultPorts + [probe.port])).sorted()
+            }
             let sourceTarget = override == nil
                 ? targetInput
                 : override?.map(\.description).joined(separator: ", ") ?? ""
@@ -145,7 +214,8 @@ final class NetToysScannerViewModel {
                         concurrency: concurrency,
                         collectPingDetails: collectPingDetails,
                         pingProbeCount: pingProbeCount,
-                        launchDelayMilliseconds: launchDelayMilliseconds
+                        launchDelayMilliseconds: launchDelayMilliseconds,
+                        fetchOptions: fetchOptions
                     ) { completed, total in
                         Task { @MainActor in
                             self.completed = completed
@@ -174,6 +244,21 @@ final class NetToysScannerViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private var fetchOptions: NetToysFetchOptions {
+        NetToysFetchOptions(
+            detectHTTPServer: detectHTTPServer,
+            detectHTTPProxy: detectHTTPProxy,
+            detectNetBIOS: detectNetBIOS,
+            customTextProbe: customTextEnabled && !customTextPattern.isEmpty
+                ? NetToysCustomTextProbe(
+                    port: UInt16(customTextPort),
+                    request: customTextRequest,
+                    responsePattern: customTextPattern
+                )
+                : nil
+        )
     }
 
     func cancel() {
@@ -281,6 +366,22 @@ final class NetToysScannerViewModel {
         }
     }
 
+}
+
+nonisolated struct NetToysScannerPreferences: Codable, Equatable, Sendable {
+    let portInput: String
+    let timeoutMilliseconds: Int
+    let concurrency: Int
+    let launchDelayMilliseconds: Int
+    let collectPingDetails: Bool
+    let pingProbeCount: Int
+    let detectHTTPServer: Bool
+    let detectHTTPProxy: Bool
+    let detectNetBIOS: Bool
+    let customTextEnabled: Bool
+    let customTextPort: Int
+    let customTextRequest: String
+    let customTextPattern: String
 }
 
 struct NetToysScannerView: View {
@@ -453,66 +554,112 @@ struct NetToysScannerView: View {
             }
             .width(min: 112, ideal: 126)
 
-            if model.visibleColumns.contains(.status) {
-                TableColumn("Status", value: \.statusTitle) { result in
-                    Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
-                        .labelStyle(.titleAndIcon)
-                        .foregroundStyle(result.isReachable ? .green : .secondary)
+            Group {
+                if model.visibleColumns.contains(.status) {
+                    TableColumn("Status", value: \NetToysScanResult.statusTitle) { result in
+                        Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
+                            .labelStyle(.titleAndIcon)
+                            .foregroundStyle(result.isReachable ? .green : .secondary)
+                    }
+                    .width(min: 68, ideal: 76)
                 }
-                .width(min: 68, ideal: 76)
+
+                if model.visibleColumns.contains(.response) {
+                    TableColumn("Response", value: \NetToysScanResult.responseTitle) { result in
+                        Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
+                            .monospacedDigit()
+                    }
+                    .width(min: 76, ideal: 86)
+                }
+
+                if model.visibleColumns.contains(.ttl) {
+                    TableColumn("TTL", value: \NetToysScanResult.ttlTitle) { result in
+                        Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
+                    }
+                    .width(min: 44, ideal: 48)
+                }
+
+                if model.visibleColumns.contains(.packetLoss) {
+                    TableColumn("Loss", value: \NetToysScanResult.packetLossTitle) { result in
+                        Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
+                            .monospacedDigit()
+                    }
+                    .width(min: 58, ideal: 66)
+                }
             }
 
-            if model.visibleColumns.contains(.response) {
-                TableColumn("Response", value: \.responseTitle) { result in
-                    Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
-                        .monospacedDigit()
+            Group {
+                if model.visibleColumns.contains(.hostname) {
+                    TableColumn("Hostname", value: \NetToysScanResult.hostnameTitle) { result in
+                        Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
+                            .lineLimit(1)
+                    }
+                    .width(min: 116, ideal: 154)
                 }
-                .width(min: 76, ideal: 86)
+
+                if model.visibleColumns.contains(.macAddress) {
+                    TableColumn("MAC Address", value: \NetToysScanResult.macTitle) { result in
+                        Text(result.macTitle.isEmpty ? "—" : result.macTitle)
+                            .font(.system(.body, design: .monospaced))
+                    }
+                    .width(min: 130, ideal: 142)
+                }
+
+                if model.visibleColumns.contains(.macVendor) {
+                    TableColumn("MAC Vendor", value: \NetToysScanResult.vendorTitle) { result in
+                        Text(result.vendorTitle.isEmpty ? "—" : result.vendorTitle)
+                            .lineLimit(1)
+                    }
+                    .width(min: 120, ideal: 160)
+                }
+
+                if model.visibleColumns.contains(.netBIOS) {
+                    TableColumn("NetBIOS", value: \NetToysScanResult.netBIOSTitle) { result in
+                        Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
+                            .lineLimit(1)
+                    }
+                    .width(min: 90, ideal: 120)
+                }
             }
 
-            if model.visibleColumns.contains(.ttl) {
-                TableColumn("TTL", value: \.ttlTitle) { result in
-                    Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
+            Group {
+                if model.visibleColumns.contains(.openPorts) {
+                    TableColumn("Open Ports", value: \NetToysScanResult.portsTitle) { result in
+                        Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
+                    }
+                    .width(min: 86, ideal: 106)
                 }
-                .width(min: 44, ideal: 48)
-            }
 
-            if model.visibleColumns.contains(.packetLoss) {
-                TableColumn("Loss", value: \.packetLossTitle) { result in
-                    Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
-                        .monospacedDigit()
+                if model.visibleColumns.contains(.filteredPorts) {
+                    TableColumn("Filtered", value: \NetToysScanResult.filteredPortsTitle) { result in
+                        Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
+                    }
+                    .width(min: 80, ideal: 100)
                 }
-                .width(min: 58, ideal: 66)
-            }
 
-            if model.visibleColumns.contains(.hostname) {
-                TableColumn("Hostname", value: \.hostnameTitle) { result in
-                    Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
-                        .lineLimit(1)
+                if model.visibleColumns.contains(.httpServer) {
+                    TableColumn("HTTP Server", value: \NetToysScanResult.httpServerTitle) { result in
+                        Text(result.httpServerTitle.isEmpty ? "—" : result.httpServerTitle)
+                            .lineLimit(1)
+                    }
+                    .width(min: 110, ideal: 150)
                 }
-                .width(min: 116, ideal: 154)
-            }
 
-            if model.visibleColumns.contains(.macAddress) {
-                TableColumn("MAC Address", value: \.macTitle) { result in
-                    Text(result.macTitle.isEmpty ? "—" : result.macTitle)
-                        .font(.system(.body, design: .monospaced))
+                if model.visibleColumns.contains(.httpProxy) {
+                    TableColumn("HTTP Proxy", value: \NetToysScanResult.httpProxyTitle) { result in
+                        Text(result.httpProxyTitle.isEmpty ? "—" : result.httpProxyTitle)
+                            .lineLimit(1)
+                    }
+                    .width(min: 100, ideal: 140)
                 }
-                .width(min: 130, ideal: 142)
-            }
 
-            if model.visibleColumns.contains(.openPorts) {
-                TableColumn("Open Ports", value: \.portsTitle) { result in
-                    Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
+                if model.visibleColumns.contains(.customText) {
+                    TableColumn("Custom Text", value: \NetToysScanResult.customTextTitle) { result in
+                        Text(result.customTextTitle.isEmpty ? "—" : result.customTextTitle)
+                            .lineLimit(1)
+                    }
+                    .width(min: 110, ideal: 160)
                 }
-                .width(min: 86, ideal: 106)
-            }
-
-            if model.visibleColumns.contains(.filteredPorts) {
-                TableColumn("Filtered", value: \.filteredPortsTitle) { result in
-                    Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
-                }
-                .width(min: 80, ideal: 100)
             }
         }
         .contextMenu(forSelectionType: String.self) { selected in
@@ -627,6 +774,19 @@ private struct NetToysScannerSettingsView: View {
                     Stepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
                 }
 
+                Section("Protocol fetchers") {
+                    Toggle("Detect HTTP servers", isOn: $model.detectHTTPServer)
+                    Toggle("Detect HTTP proxies", isOn: $model.detectHTTPProxy)
+                    Toggle("Read NetBIOS names", isOn: $model.detectNetBIOS)
+                    Toggle("Use custom text probe", isOn: $model.customTextEnabled)
+                    if model.customTextEnabled {
+                        Stepper("Custom port: \(model.customTextPort)", value: $model.customTextPort, in: 1...65_535)
+                        TextField("Request", text: $model.customTextRequest, axis: .vertical)
+                            .lineLimit(2...4)
+                        TextField("Response regular expression", text: $model.customTextPattern)
+                    }
+                }
+
                 Section("Visible columns") {
                     ForEach(NetToysColumn.allCases) { column in
                         Toggle(column.rawValue, isOn: Binding(
@@ -653,6 +813,7 @@ private struct NetToysScannerSettingsView: View {
         }
         .padding(20)
         .frame(width: 430)
+        .onDisappear { model.savePreferences() }
     }
 }
 
@@ -727,6 +888,10 @@ private struct NetToysHostDetailsView: View {
                 detailRow("MAC vendor", result.vendor ?? "Not available")
                 detailRow("Open ports", result.portsTitle.isEmpty ? "None" : result.portsTitle)
                 detailRow("Filtered ports", result.filteredPortsTitle.isEmpty ? "None" : result.filteredPortsTitle)
+                detailRow("HTTP server", result.httpServerTitle.isEmpty ? "Not detected" : result.httpServerTitle)
+                detailRow("HTTP proxy", result.httpProxyTitle.isEmpty ? "Not detected" : result.httpProxyTitle)
+                detailRow("NetBIOS name", result.netBIOSTitle.isEmpty ? "Not detected" : result.netBIOSTitle)
+                detailRow("Custom text", result.customTextTitle.isEmpty ? "No match" : result.customTextTitle)
             }
 
             VStack(alignment: .leading, spacing: 6) {

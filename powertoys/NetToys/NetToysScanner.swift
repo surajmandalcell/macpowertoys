@@ -273,6 +273,378 @@ nonisolated enum PingProbe {
     }
 }
 
+nonisolated struct NetToysCustomTextProbe: Codable, Equatable, Sendable {
+    let port: UInt16
+    let request: String
+    let responsePattern: String
+
+    enum ValidationError: LocalizedError {
+        case invalidPort
+        case requestTooLarge
+        case patternRequired
+        case patternTooLarge
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidPort: "The custom text probe port must be between 1 and 65535."
+            case .requestTooLarge: "The custom text request must be 16 KB or smaller."
+            case .patternRequired: "Enter a response regular expression for the custom text probe."
+            case .patternTooLarge: "The response regular expression must be 1 KB or smaller."
+            }
+        }
+    }
+
+    func validate() throws {
+        guard port > 0 else { throw ValidationError.invalidPort }
+        guard request.utf8.count <= 16_384 else { throw ValidationError.requestTooLarge }
+        guard !responsePattern.isEmpty else { throw ValidationError.patternRequired }
+        guard responsePattern.utf8.count <= 1_024 else { throw ValidationError.patternTooLarge }
+        _ = try NSRegularExpression(pattern: responsePattern)
+    }
+
+    func match(in response: Data) throws -> String? {
+        try validate()
+        let text = String(decoding: response, as: UTF8.self)
+        let expression = try NSRegularExpression(pattern: responsePattern)
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = expression.firstMatch(in: text, range: range),
+              let valueRange = Range(match.range, in: text)
+        else { return nil }
+        return String(text[valueRange])
+    }
+}
+
+nonisolated struct NetToysFetchOptions: Equatable, Sendable {
+    var detectHTTPServer = false
+    var detectHTTPProxy = false
+    var detectNetBIOS = false
+    var customTextProbe: NetToysCustomTextProbe?
+}
+
+nonisolated struct NetToysProtocolMetadata: Sendable {
+    let httpServer: String?
+    let httpProxy: String?
+    let netBIOSName: String?
+    let customText: String?
+}
+
+nonisolated enum TCPTextProbe {
+    static func exchange(
+        address: IPv4Address,
+        port: UInt16,
+        request: Data,
+        timeoutMilliseconds: Int,
+        responseLimit: Int = 16_384
+    ) async -> Data? {
+        await Task.detached(priority: .utility) {
+            exchangeSynchronously(
+                address: address,
+                port: port,
+                request: request,
+                timeoutMilliseconds: timeoutMilliseconds,
+                responseLimit: responseLimit
+            )
+        }.value
+    }
+
+    private static func exchangeSynchronously(
+        address: IPv4Address,
+        port: UInt16,
+        request: Data,
+        timeoutMilliseconds: Int,
+        responseLimit: Int
+    ) -> Data? {
+        guard request.count <= 16_384 else { return nil }
+        let descriptor = socket(AF_INET, SOCK_STREAM, 0)
+        guard descriptor >= 0 else { return nil }
+        defer { close(descriptor) }
+        var noSignal: Int32 = 1
+        _ = setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout.size(ofValue: noSignal)))
+        let flags = fcntl(descriptor, F_GETFL, 0)
+        guard flags >= 0, fcntl(descriptor, F_SETFL, flags | O_NONBLOCK) == 0 else { return nil }
+
+        var socketAddress = sockaddr_in()
+        socketAddress.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        socketAddress.sin_family = sa_family_t(AF_INET)
+        socketAddress.sin_port = port.bigEndian
+        guard inet_pton(AF_INET, address.description, &socketAddress.sin_addr) == 1 else { return nil }
+        let connected = withUnsafePointer(to: &socketAddress) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        if connected != 0 {
+            guard errno == EINPROGRESS,
+                  poll(descriptor, events: Int16(POLLOUT), timeoutMilliseconds: timeoutMilliseconds)
+            else { return nil }
+            var socketError: Int32 = 0
+            var length = socklen_t(MemoryLayout<Int32>.size)
+            guard getsockopt(descriptor, SOL_SOCKET, SO_ERROR, &socketError, &length) == 0,
+                  socketError == 0
+            else { return nil }
+        }
+
+        if !request.isEmpty {
+            let sent = request.withUnsafeBytes { bytes -> Bool in
+                guard let base = bytes.baseAddress else { return true }
+                var offset = 0
+                while offset < bytes.count {
+                    guard poll(descriptor, events: Int16(POLLOUT), timeoutMilliseconds: timeoutMilliseconds) else {
+                        return false
+                    }
+                    let count = Darwin.send(descriptor, base.advanced(by: offset), bytes.count - offset, 0)
+                    if count > 0 { offset += count; continue }
+                    if count < 0, errno == EINTR || errno == EAGAIN { continue }
+                    return false
+                }
+                return true
+            }
+            guard sent else { return nil }
+        }
+
+        let limit = min(max(responseLimit, 1), 65_536)
+        var response = Data()
+        var buffer = [UInt8](repeating: 0, count: min(4_096, limit))
+        var wait = min(max(timeoutMilliseconds, 50), 5_000)
+        while response.count < limit,
+              poll(descriptor, events: Int16(POLLIN), timeoutMilliseconds: wait) {
+            let capacity = min(buffer.count, limit - response.count)
+            let count = buffer.withUnsafeMutableBytes { bytes in
+                Darwin.recv(descriptor, bytes.baseAddress, capacity, 0)
+            }
+            guard count > 0 else { break }
+            response.append(buffer, count: count)
+            wait = 10
+        }
+        return response.isEmpty ? nil : response
+    }
+
+    private static func poll(_ descriptor: Int32, events: Int16, timeoutMilliseconds: Int) -> Bool {
+        var item = pollfd(fd: descriptor, events: events, revents: 0)
+        let result = Darwin.poll(&item, 1, Int32(min(max(timeoutMilliseconds, 1), 5_000)))
+        return result > 0 && item.revents & (events | Int16(POLLHUP)) != 0
+    }
+}
+
+nonisolated enum NetToysProtocolFetchers {
+    static func httpServer(from response: Data) -> String? {
+        guard let headers = HTTPHeaders(response), headers.statusLine.hasPrefix("HTTP/") else { return nil }
+        return headers["server"] ?? headers.statusLine
+    }
+
+    static func proxy(from response: Data) -> String? {
+        guard let headers = HTTPHeaders(response), headers.statusLine.hasPrefix("HTTP/") else { return nil }
+        if headers.statusLine.localizedCaseInsensitiveContains("connection established")
+            || headers["proxy-agent"] != nil || headers["via"] != nil {
+            return headers["proxy-agent"] ?? "HTTP proxy"
+        }
+        return nil
+    }
+
+    static func collect(
+        address: IPv4Address,
+        openPorts: [UInt16],
+        timeoutMilliseconds: Int,
+        options: NetToysFetchOptions
+    ) async -> NetToysProtocolMetadata {
+        async let httpServer = options.detectHTTPServer
+            ? detectHTTPServer(address: address, ports: openPorts, timeoutMilliseconds: timeoutMilliseconds)
+            : nil
+        async let httpProxy = options.detectHTTPProxy
+            ? detectProxy(address: address, ports: openPorts, timeoutMilliseconds: timeoutMilliseconds)
+            : nil
+        async let netBIOSName = options.detectNetBIOS
+            ? NetBIOSProbe.check(address: address, timeoutMilliseconds: timeoutMilliseconds)
+            : nil
+        async let customText = detectCustomText(
+            address: address,
+            probe: options.customTextProbe,
+            timeoutMilliseconds: timeoutMilliseconds
+        )
+        return await NetToysProtocolMetadata(
+            httpServer: httpServer,
+            httpProxy: httpProxy,
+            netBIOSName: netBIOSName,
+            customText: customText
+        )
+    }
+
+    private static func detectHTTPServer(
+        address: IPv4Address,
+        ports: [UInt16],
+        timeoutMilliseconds: Int
+    ) async -> String? {
+        for port in ports where port != 443 {
+            let request = Data("HEAD / HTTP/1.0\r\nHost: \(address)\r\nConnection: close\r\n\r\n".utf8)
+            if let response = await TCPTextProbe.exchange(
+                address: address,
+                port: port,
+                request: request,
+                timeoutMilliseconds: timeoutMilliseconds
+            ), let value = httpServer(from: response) { return "\(port): \(value)" }
+        }
+        return nil
+    }
+
+    private static func detectProxy(
+        address: IPv4Address,
+        ports: [UInt16],
+        timeoutMilliseconds: Int
+    ) async -> String? {
+        let request = Data("CONNECT 127.0.0.1:1 HTTP/1.0\r\nConnection: close\r\n\r\n".utf8)
+        for port in ports {
+            if let response = await TCPTextProbe.exchange(
+                address: address,
+                port: port,
+                request: request,
+                timeoutMilliseconds: timeoutMilliseconds
+            ), let value = proxy(from: response) { return "\(port): \(value)" }
+        }
+        return nil
+    }
+
+    private static func detectCustomText(
+        address: IPv4Address,
+        probe: NetToysCustomTextProbe?,
+        timeoutMilliseconds: Int
+    ) async -> String? {
+        guard let probe else { return nil }
+        guard let response = await TCPTextProbe.exchange(
+            address: address,
+            port: probe.port,
+            request: Data(probe.request.utf8),
+            timeoutMilliseconds: timeoutMilliseconds
+        ) else { return nil }
+        return try? probe.match(in: response)
+    }
+
+    private struct HTTPHeaders {
+        private let values: [String: String]
+        let statusLine: String
+
+        init?(_ data: Data) {
+            let text = String(decoding: data.prefix(16_384), as: UTF8.self)
+            let lines = text.components(separatedBy: .newlines)
+            guard let status = lines.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !status.isEmpty
+            else { return nil }
+            statusLine = status
+            values = lines.dropFirst().reduce(into: [:]) { result, line in
+                guard let separator = line.firstIndex(of: ":") else { return }
+                let key = line[..<separator].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let value = line[line.index(after: separator)...].trimmingCharacters(in: .whitespacesAndNewlines)
+                if !key.isEmpty, !value.isEmpty { result[key] = value }
+            }
+        }
+
+        subscript(_ name: String) -> String? { values[name.lowercased()] }
+    }
+}
+
+nonisolated enum NetBIOSProbe {
+    static func check(address: IPv4Address, timeoutMilliseconds: Int) async -> String? {
+        await Task.detached(priority: .utility) {
+            checkSynchronously(address: address, timeoutMilliseconds: timeoutMilliseconds)
+        }.value
+    }
+
+    static func parse(_ response: Data) -> String? {
+        let bytes = [UInt8](response)
+        guard bytes.count >= 12 else { return nil }
+        let questionCount = Int(readUInt16(bytes, at: 4) ?? 0)
+        let answerCount = Int(readUInt16(bytes, at: 6) ?? 0)
+        var offset = 12
+        for _ in 0..<questionCount {
+            guard let next = skipName(bytes, at: offset), next + 4 <= bytes.count else { return nil }
+            offset = next + 4
+        }
+        for _ in 0..<answerCount {
+            guard let nameEnd = skipName(bytes, at: offset), nameEnd + 10 <= bytes.count,
+                  let type = readUInt16(bytes, at: nameEnd),
+                  let length = readUInt16(bytes, at: nameEnd + 8)
+            else { return nil }
+            let dataStart = nameEnd + 10
+            let dataEnd = dataStart + Int(length)
+            guard dataEnd <= bytes.count else { return nil }
+            defer { offset = dataEnd }
+            guard type == 0x21, dataStart < dataEnd else { continue }
+            let count = Int(bytes[dataStart])
+            var preferred: String?
+            for index in 0..<count {
+                let entry = dataStart + 1 + index * 18
+                guard entry + 18 <= dataEnd else { break }
+                let suffix = bytes[entry + 15]
+                let flags = readUInt16(bytes, at: entry + 16) ?? 0
+                guard flags & 0x8000 == 0 else { continue }
+                let name = String(decoding: bytes[entry..<(entry + 15)], as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { continue }
+                if suffix == 0 { return name }
+                if preferred == nil, suffix == 0x20 { preferred = name }
+            }
+            if let preferred { return preferred }
+        }
+        return nil
+    }
+
+    private static func checkSynchronously(address: IPv4Address, timeoutMilliseconds: Int) -> String? {
+        let descriptor = socket(AF_INET, SOCK_DGRAM, 0)
+        guard descriptor >= 0 else { return nil }
+        defer { close(descriptor) }
+        var socketAddress = sockaddr_in()
+        socketAddress.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        socketAddress.sin_family = sa_family_t(AF_INET)
+        socketAddress.sin_port = UInt16(137).bigEndian
+        guard inet_pton(AF_INET, address.description, &socketAddress.sin_addr) == 1 else { return nil }
+        let query = statusQuery()
+        let sent = query.withUnsafeBytes { bytes in
+            withUnsafePointer(to: &socketAddress) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    sendto(descriptor, bytes.baseAddress, bytes.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+        }
+        guard sent == query.count else { return nil }
+        var item = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+        guard Darwin.poll(&item, 1, Int32(min(max(timeoutMilliseconds, 50), 5_000))) > 0 else { return nil }
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+        let count = buffer.withUnsafeMutableBytes { bytes in
+            recv(descriptor, bytes.baseAddress, bytes.count, 0)
+        }
+        guard count > 0 else { return nil }
+        return parse(Data(buffer.prefix(count)))
+    }
+
+    static func statusQuery() -> Data {
+        var bytes = Data([0x4D, 0x50, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0x20])
+        let name = [UInt8(ascii: "*")] + Array(repeating: UInt8(0), count: 15)
+        for byte in name {
+            bytes.append(UInt8(ascii: "A") + (byte >> 4))
+            bytes.append(UInt8(ascii: "A") + (byte & 0x0F))
+        }
+        bytes.append(contentsOf: [0, 0, 0x21, 0, 1])
+        return bytes
+    }
+
+    private static func skipName(_ bytes: [UInt8], at start: Int) -> Int? {
+        var offset = start
+        while offset < bytes.count {
+            let length = Int(bytes[offset])
+            if length & 0xC0 == 0xC0 { return offset + 2 <= bytes.count ? offset + 2 : nil }
+            offset += 1
+            if length == 0 { return offset }
+            guard length <= 63, offset + length <= bytes.count else { return nil }
+            offset += length
+        }
+        return nil
+    }
+
+    private static func readUInt16(_ bytes: [UInt8], at offset: Int) -> UInt16? {
+        guard offset + 1 < bytes.count else { return nil }
+        return UInt16(bytes[offset]) << 8 | UInt16(bytes[offset + 1])
+    }
+}
+
 nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable {
     var id: String { address.description }
     let address: IPv4Address
@@ -285,6 +657,10 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
     let filteredPorts: [UInt16]?
     let ttl: Int?
     let packetLossPercent: Double?
+    let httpServer: String?
+    let httpProxy: String?
+    let netBIOSName: String?
+    let customText: String?
 
     init(
         address: IPv4Address,
@@ -296,7 +672,11 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
         openPorts: [UInt16],
         filteredPorts: [UInt16]? = nil,
         ttl: Int? = nil,
-        packetLossPercent: Double? = nil
+        packetLossPercent: Double? = nil,
+        httpServer: String? = nil,
+        httpProxy: String? = nil,
+        netBIOSName: String? = nil,
+        customText: String? = nil
     ) {
         self.address = address
         self.isReachable = isReachable
@@ -308,6 +688,10 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
         self.filteredPorts = filteredPorts
         self.ttl = ttl
         self.packetLossPercent = packetLossPercent
+        self.httpServer = httpServer
+        self.httpProxy = httpProxy
+        self.netBIOSName = netBIOSName
+        self.customText = customText
     }
 }
 
@@ -402,6 +786,7 @@ actor NetToysScanner {
         collectPingDetails: Bool = false,
         pingProbeCount: Int = 2,
         launchDelayMilliseconds: Int = 0,
+        fetchOptions: NetToysFetchOptions = NetToysFetchOptions(),
         progress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> [NetToysScanResult] {
         await scan(
@@ -411,6 +796,7 @@ actor NetToysScanner {
             collectPingDetails: collectPingDetails,
             pingProbeCount: pingProbeCount,
             launchDelayMilliseconds: launchDelayMilliseconds,
+            fetchOptions: fetchOptions,
             progress: progress
         )
     }
@@ -422,6 +808,7 @@ actor NetToysScanner {
         collectPingDetails: Bool = false,
         pingProbeCount: Int = 2,
         launchDelayMilliseconds: Int = 0,
+        fetchOptions: NetToysFetchOptions = NetToysFetchOptions(),
         progress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> [NetToysScanResult] {
         let maximum = min(max(concurrency, 1), 256)
@@ -445,7 +832,8 @@ actor NetToysScanner {
                             ports: target.ports,
                             timeoutMilliseconds: timeoutMilliseconds,
                             collectPingDetails: collectPingDetails,
-                            pingProbeCount: pingProbeCount
+                            pingProbeCount: pingProbeCount,
+                            fetchOptions: fetchOptions
                         )
                     }
                 }
@@ -472,7 +860,11 @@ actor NetToysScanner {
                 openPorts: result.openPorts,
                 filteredPorts: result.filteredPorts,
                 ttl: result.ttl,
-                packetLossPercent: result.packetLossPercent
+                packetLossPercent: result.packetLossPercent,
+                httpServer: result.httpServer,
+                httpProxy: result.httpProxy,
+                netBIOSName: result.netBIOSName,
+                customText: result.customText
             )
         }.sorted { $0.address < $1.address }
     }
@@ -482,7 +874,8 @@ actor NetToysScanner {
         ports: [UInt16],
         timeoutMilliseconds: Int,
         collectPingDetails: Bool,
-        pingProbeCount: Int
+        pingProbeCount: Int,
+        fetchOptions: NetToysFetchOptions
     ) async -> NetToysScanResult {
         var reachable = false
         var openPorts: [UInt16] = []
@@ -516,6 +909,14 @@ actor NetToysScanner {
             }
         }
         let hostname = reachable ? await HostResolver.reverse(address) : nil
+        let metadata = reachable
+            ? await NetToysProtocolFetchers.collect(
+                address: address,
+                openPorts: openPorts,
+                timeoutMilliseconds: timeoutMilliseconds,
+                options: fetchOptions
+            )
+            : NetToysProtocolMetadata(httpServer: nil, httpProxy: nil, netBIOSName: nil, customText: nil)
         return NetToysScanResult(
             address: address,
             isReachable: reachable,
@@ -526,7 +927,11 @@ actor NetToysScanner {
             openPorts: openPorts,
             filteredPorts: reportedFilteredPorts(filteredPorts, reachable: reachable),
             ttl: ping?.ttl,
-            packetLossPercent: ping?.packetLossPercent
+            packetLossPercent: ping?.packetLossPercent,
+            httpServer: metadata.httpServer,
+            httpProxy: metadata.httpProxy,
+            netBIOSName: metadata.netBIOSName,
+            customText: metadata.customText
         )
     }
 
@@ -697,10 +1102,14 @@ nonisolated enum NetToysScanExport {
                 result.hostname ?? "",
                 result.macAddress ?? "",
                 result.vendor ?? "",
-                result.openPorts.map(String.init).joined(separator: " ")
+                result.openPorts.map(String.init).joined(separator: " "),
+                result.httpServer ?? "",
+                result.httpProxy ?? "",
+                result.netBIOSName ?? "",
+                result.customText ?? ""
             ].map(quote).joined(separator: ",")
         }
-        return (["IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports"] + rows)
+        return (["IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports,HTTP Server,HTTP Proxy,NetBIOS,Custom Text"] + rows)
             .joined(separator: "\n")
     }
 
@@ -713,8 +1122,13 @@ nonisolated enum NetToysScanExport {
                 result.packetLossPercent.map { String(format: "%.1f%%", $0) } ?? "-",
                 result.hostname ?? "-",
                 result.macAddress ?? "-",
+                result.vendor ?? "-",
                 result.openPorts.map(String.init).joined(separator: ","),
-                result.filteredPorts?.map(String.init).joined(separator: ",") ?? ""
+                result.filteredPorts?.map(String.init).joined(separator: ",") ?? "",
+                result.httpServer ?? "-",
+                result.httpProxy ?? "-",
+                result.netBIOSName ?? "-",
+                result.customText ?? "-"
             ].joined(separator: "\t")
         }.joined(separator: "\n")
     }
@@ -731,10 +1145,15 @@ nonisolated enum NetToysScanExport {
               <host ip="\(xmlEscape(result.address.description))" status="\(result.isReachable ? "up" : "down")">
                 <hostname>\(xmlEscape(result.hostname ?? ""))</hostname>
                 <mac>\(xmlEscape(result.macAddress ?? ""))</mac>
+                <mac-vendor>\(xmlEscape(result.vendor ?? ""))</mac-vendor>
                 <ttl>\(result.ttl.map(String.init) ?? "")</ttl>
                 <packet-loss>\(result.packetLossPercent.map { String(format: "%.1f", $0) } ?? "")</packet-loss>
                 <ports>\(xmlEscape(result.openPorts.map(String.init).joined(separator: " ")))</ports>
                 <filtered-ports>\(xmlEscape(result.filteredPorts?.map(String.init).joined(separator: " ") ?? ""))</filtered-ports>
+                <http-server>\(xmlEscape(result.httpServer ?? ""))</http-server>
+                <http-proxy>\(xmlEscape(result.httpProxy ?? ""))</http-proxy>
+                <netbios>\(xmlEscape(result.netBIOSName ?? ""))</netbios>
+                <custom-text>\(xmlEscape(result.customText ?? ""))</custom-text>
               </host>
             """
         }.joined(separator: "\n")
@@ -750,13 +1169,18 @@ nonisolated enum NetToysScanExport {
                 result.packetLossPercent.map { String(format: "%.1f", $0) } ?? "",
                 result.hostname ?? "",
                 result.macAddress ?? "",
+                result.vendor ?? "",
                 result.openPorts.map(String.init).joined(separator: " "),
-                result.filteredPorts?.map(String.init).joined(separator: " ") ?? ""
+                result.filteredPorts?.map(String.init).joined(separator: " ") ?? "",
+                result.httpServer ?? "",
+                result.httpProxy ?? "",
+                result.netBIOSName ?? "",
+                result.customText ?? ""
             ].map(sqlQuote).joined(separator: ", ")
-            return "INSERT INTO nettoys_scan (ip_address, status, ttl, packet_loss, hostname, mac_address, open_ports, filtered_ports) VALUES (\(values));"
+            return "INSERT INTO nettoys_scan (ip_address, status, ttl, packet_loss, hostname, mac_address, mac_vendor, open_ports, filtered_ports, http_server, http_proxy, netbios, custom_text) VALUES (\(values));"
         }
         return ([
-            "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, open_ports TEXT, filtered_ports TEXT);"
+            "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, mac_vendor TEXT, open_ports TEXT, filtered_ports TEXT, http_server TEXT, http_proxy TEXT, netbios TEXT, custom_text TEXT);"
         ] + rows).joined(separator: "\n")
     }
 
