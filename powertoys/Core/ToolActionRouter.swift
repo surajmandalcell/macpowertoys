@@ -77,6 +77,7 @@ final class ToolActionRouter {
         }
         if resolved == "ruler" {
             execute(ToolActionRequest(action: .rulerOpen))
+            dismissMainWindow()
             NSApp.activate(ignoringOtherApps: true)
             return
         }
@@ -87,6 +88,7 @@ final class ToolActionRouter {
                 return
             }
             presentSingleWindow(id: resolved, using: openWindowAction)
+            if resolved != "main" { dismissMainWindow() }
             NSApp.activate(ignoringOtherApps: true)
         } else if MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) {
             Task {
@@ -140,6 +142,12 @@ final class ToolActionRouter {
             return
         }
         openWindow(id: id)
+    }
+
+    private func dismissMainWindow() {
+        NSApp.windows.first(where: {
+            Self.windowIdentifier($0.identifier?.rawValue, matches: "main")
+        })?.close()
     }
 
     nonisolated static func windowIdentifier(_ identifier: String?, matches toolID: String) -> Bool {
