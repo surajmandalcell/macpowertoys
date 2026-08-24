@@ -605,7 +605,7 @@ private struct TrayFooterButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .font(.system(size: 11))
-                .foregroundStyle(isHovering ? .primary : .secondary)
+                .foregroundStyle(Color.primary.opacity(isHovering ? 1 : 0.75))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .contentShape(Rectangle())
