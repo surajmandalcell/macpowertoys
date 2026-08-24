@@ -37,7 +37,7 @@ colors:
   icon-text-extractor: "#2155B0"
   icon-input-devices: "#315B7D"
   icon-system-care: "#17181B"
-  icon-system-monitor: "#303B60"
+  icon-system-monitor: "#002B26"
 typography:
   launcher-detail-title: { size: 17, weight: medium, relative-to: headline }
   title: { size: 13, weight: medium, relative-to: body }
@@ -884,7 +884,7 @@ has been changed.
 | Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
 | Input Devices | `#315B7D` | `#F7F5F0` | Powder-blue wheel, DPI key, and mouse controls |
 | System Care | `#17181B` | `#F3F3F1` | S11-08 gray disk and centered eraser |
-| System Monitor | `#303B60` | `#DDE3F2` | Periwinkle metric bars and amber activity sample |
+| System Monitor | `#002B26` | `#E0FFF8` | OSM13 teal tidal waveform bands |
 
 New Chosen Color tools should receive their own semantic hue unless a documented
 product decision deliberately links them to an existing color. Neutral

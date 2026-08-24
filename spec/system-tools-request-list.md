@@ -51,7 +51,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Done | Name the tool System Monitor everywhere and make its icon show monitoring. | The registry, window, route, source symbols, menu item, Raycast command, tests, specifications, and asset use System Monitor. Narrow read-time fallbacks preserve the old disabled state, menu settings, window frame, and deep links. The icon uses a display with live metric bars. | None. |
+| Done | Name the tool System Monitor everywhere and lock icon OSM13. | The registry, window, route, source symbols, menu item, Raycast command, tests, specifications, and shared `SystemMonitorLogo` asset use System Monitor. Narrow read-time fallbacks preserve the old disabled state, menu settings, window frame, and deep links. The launcher, sidebar, and Dock use the selected teal tidal waveform. | None. |
 | Done | Add CPU, memory, disk, network, battery, thermal, and load data. | `cfa8832` added native samplers and detailed pages for these values. | None. |
 | Done | Collect detailed data only while the System Monitor window is open. | The window starts detailed sampling on appear and stops it on disappear. | None. |
 | Done | Add an optional lightweight menu-bar view. | System Monitor can show CPU, memory, and network values without detailed disk, battery, thermal, or load sampling. | None. |
