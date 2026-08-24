@@ -2,6 +2,17 @@ import XCTest
 @testable import powertoys
 
 final class ToolActionRouterTests: XCTestCase {
+    @MainActor
+    func testRulerClosesMainWindowBeforePostingOpenAction() {
+        var events: [String] = []
+        ToolActionRouter.launchRuler(
+            dismissMainWindow: { events.append("dismiss") },
+            openRuler: { events.append("open") }
+        )
+
+        XCTAssertEqual(events, ["dismiss", "open"])
+    }
+
     func testParsesActionAndPercentDecodedParameters() throws {
         let url = try XCTUnwrap(URL(string: "macpowertoys://run/awake.timed?seconds=1800&label=Focus%20time"))
 

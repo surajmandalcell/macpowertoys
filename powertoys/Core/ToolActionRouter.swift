@@ -76,8 +76,10 @@ final class ToolActionRouter {
             return
         }
         if resolved == "ruler" {
-            execute(ToolActionRequest(action: .rulerOpen))
-            dismissMainWindow()
+            Self.launchRuler(
+                dismissMainWindow: dismissMainWindow,
+                openRuler: { execute(ToolActionRequest(action: .rulerOpen)) }
+            )
             NSApp.activate(ignoringOtherApps: true)
             return
         }
@@ -148,6 +150,11 @@ final class ToolActionRouter {
         NSApp.windows.first(where: {
             Self.windowIdentifier($0.identifier?.rawValue, matches: "main")
         })?.close()
+    }
+
+    static func launchRuler(dismissMainWindow: () -> Void, openRuler: () -> Void) {
+        dismissMainWindow()
+        openRuler()
     }
 
     nonisolated static func windowIdentifier(_ identifier: String?, matches toolID: String) -> Bool {

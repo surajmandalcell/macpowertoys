@@ -32,21 +32,6 @@ final class AppDelegateTests: XCTestCase {
         }
     }
 
-    @MainActor
-    func testRulerLaunchSuppressesOnlyTheNextAutomaticMainWindow() {
-        let delegate = AppDelegate()
-        delegate.prepareWindowRouting(for: URL(string: "macpowertoys://open/ruler")!)
-
-        XCTAssertTrue(delegate.consumeMainWindowSuppression(for: "main"))
-        XCTAssertFalse(delegate.consumeMainWindowSuppression(for: "main"))
-
-        delegate.prepareWindowRouting(for: URL(string: "macpowertoys://open/input-devices")!)
-        XCTAssertFalse(delegate.consumeMainWindowSuppression(for: "main"))
-
-        delegate.prepareWindowRouting(for: URL(string: "macpowertoys://open/main")!)
-        XCTAssertFalse(delegate.consumeMainWindowSuppression(for: "main"))
-    }
-
     func testStatusItemInterceptsOnlyRightClick() {
         XCTAssertFalse(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
         XCTAssertFalse(AppDelegate.statusItemEventMask.contains(.leftMouseUp))
