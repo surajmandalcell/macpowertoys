@@ -7,7 +7,12 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Open | Add the missing NetTools network utility to MacPowerToys. | The current registry, scenes, deep-link routes, Raycast commands, tests, and installed app contain no NetTools tool. The reference Vorssaint repository also contains no NetTools implementation. | Approve the feature scope, then add the native tool, window, launcher entry, deep link, Raycast command, icon, saved window state, tests, and installed-build verification. |
+| Open | Use three main tabs: Network, Tests, and SSH Tunnels. | The user remembers three tabs. Git recovery checks found no prior NetTools tab implementation. | Build the three-tab window with shared MacPowerToys geometry and controls. |
+| Open | Show network interfaces, Wi-Fi details, public IP, speed tests, LAN devices, Bonjour services, and Wake-on-LAN. | macOS frameworks and installed system tools provide the required on-demand data. | Build the Network tab. Handle Local Network and Location access without blocking unrelated data. |
+| Open | Add Ping, DNS, Traceroute, Whois, TLS checks, port scans, and saved run history. | The system provides Ping, Dig, Traceroute, and Whois. Native connections can scan ports and inspect TLS. | Build the Tests tab. Include common ports, bounded custom ranges, and an SSH port 22 preset. |
+| Open | Add SSH port forwarding with saved local, remote, and dynamic SOCKS5 profiles. | The user corrected the draft to include the missing SSH port feature. The system provides `/usr/bin/ssh`. | Build the SSH Tunnels tab. Use SSH agent and config authentication. Store no passwords, passphrases, or private keys. |
+| Open | Keep SSH tunnel sessions safe and bounded. | No implementation exists. | Bind local listeners to `127.0.0.1`. Validate ports, bound logs, support Stop, and end child processes when the app quits. |
+| Open | Integrate NetTools with MacPowerToys. | The registry, scenes, deep links, Raycast commands, tests, and installed app contain no NetTools tool. Vorssaint also has no implementation. | Add the tool, icon, window state, launcher entry, deep link, Raycast command, tests, and installed-build verification. |
 
 ## Input Devices
 

@@ -1,5 +1,21 @@
 # System Tools Troubleshooting
 
+## NetTools
+
+- **Symptom:** NetTools omits SSH port forwarding or loses its three-tab
+  structure.
+- **Cause:** A generic network-tool list replaced the remembered product
+  structure and treated the SSH feature as an optional port scan.
+- **Invariant:** Use Network, Tests, and SSH Tunnels as the three main tabs.
+  Tests includes an SSH port 22 preset. SSH Tunnels includes saved local,
+  remote, and dynamic SOCKS5 forwards through `/usr/bin/ssh`. Use SSH agent and
+  config authentication. Never store passwords, passphrases, or private keys.
+  Bind local listeners to `127.0.0.1`, bound logs, support Stop, and end child
+  processes when the app quits.
+- **Check:** Open all three tabs. Run the SSH port 22 test. Start and stop one
+  local, remote, and dynamic profile. Confirm that no secret enters app storage
+  and no tunnel process remains after quit.
+
 ## Input Devices
 
 - **Symptom:** Mouse settings also change trackpad scrolling, or scrolling stays

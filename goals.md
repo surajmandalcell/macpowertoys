@@ -8,8 +8,7 @@ evidence, and remaining work.
 ## Current work
 
 - Verify the full-width Awake tray controls in the latest normal signed build.
-- Define and add the missing NetTools network utility after the user approves
-  its feature scope.
+- Build and verify the missing three-tab NetTools network utility.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
 - Verify focus appearance and keyboard activation in the menu-bar panels with
