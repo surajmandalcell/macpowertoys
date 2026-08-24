@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import SwiftUI
 import XCTest
 @testable import powertoys
 
@@ -687,5 +688,18 @@ final class NetToysTests: XCTestCase {
             urlTemplate: "ssh://{ip}:{port}",
             requiredPort: 100_000
         ).applies(to: result))
+    }
+
+    func testTableColumnCustomizationPersistsVisibility() throws {
+        var customization = TableColumnCustomization<NetToysScanResult>()
+        customization[visibility: "nettoys.ttl"] = .hidden
+
+        let decoded = try JSONDecoder().decode(
+            TableColumnCustomization<NetToysScanResult>.self,
+            from: JSONEncoder().encode(customization)
+        )
+
+        XCTAssertEqual(decoded, customization)
+        XCTAssertEqual(decoded[visibility: "nettoys.ttl"], .hidden)
     }
 }
