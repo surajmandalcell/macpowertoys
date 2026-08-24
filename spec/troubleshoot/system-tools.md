@@ -1,20 +1,25 @@
 # System Tools Troubleshooting
 
-## NetTools
+## NetToys
 
-- **Symptom:** NetTools omits SSH port forwarding or loses its three-tab
-  structure.
-- **Cause:** A generic network-tool list replaced the remembered product
-  structure and treated the SSH feature as an optional port scan.
-- **Invariant:** Use Network, Tests, and SSH Tunnels as the three main tabs.
-  Tests includes an SSH port 22 preset. SSH Tunnels includes saved local,
-  remote, and dynamic SOCKS5 forwards through `/usr/bin/ssh`. Use SSH agent and
-  config authentication. Never store passwords, passphrases, or private keys.
-  Bind local listeners to `127.0.0.1`, bound logs, support Stop, and end child
-  processes when the app quits.
-- **Check:** Open all three tabs. Run the SSH port 22 test. Start and stop one
-  local, remote, and dynamic profile. Confirm that no secret enters app storage
-  and no tunnel process remains after quit.
+- **Symptom:** NetToys uses generic network tests or SSH tunnels instead of the
+  requested three-part product.
+- **Cause:** An earlier draft was mistaken for the final scope.
+- **Invariant:** Use IP Scanner, SSH Anchor, and Network History as the three
+  destinations. IP Scanner independently implements useful Angry IP Scanner
+  behavior without GPL source. SSH Anchor monitors the selected SSH port every
+  2 to 3 seconds. When the current address stops answering, it scans only that
+  port on the active local IPv4 subnet and identifies the device by exact MAC,
+  or by a unique hostname with learned MAC evidence when randomized MAC mode is
+  enabled. It changes only the selected `HostName` token and preserves every
+  other SSH config byte. Network History stores reachability transitions, not
+  every probe. Enabling NetToys registers and uses its bundled login helper.
+  Disabling NetToys stops monitoring and unregisters the helper.
+- **Check:** Exercise all three destinations. Compare the SSH config before and
+  after an address change and confirm that the one expected token is the only
+  changed byte range. Confirm ambiguous recovery never writes. Enable NetToys,
+  quit MacPowerToys, and confirm the helper continues. Disable NetToys and
+  confirm the helper exits and is no longer registered.
 
 ## Input Devices
 

@@ -797,6 +797,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Input Devices | Chosen Color | Chosen Color | The user-selected Signal, Orbit, or Precision identity is fixed |
 | System Care | Chosen Color | Chosen Color | Green care identity and storage segments are fixed |
 | Power Stats | Chosen Color | Chosen Color | Midnight-blue gauge identity is fixed |
+| NetToys | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
 
 The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different

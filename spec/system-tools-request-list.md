@@ -3,16 +3,18 @@
 Reviewed against current source on 2026-08-24. Update this list when a direct
 user correction or verified result changes a status.
 
-## NetTools
+## NetToys
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Open | Use three main tabs: Network, Tests, and SSH Tunnels. | The user remembers three tabs. Git recovery checks found no prior NetTools tab implementation. | Build the three-tab window with shared MacPowerToys geometry and controls. |
-| Open | Show network interfaces, Wi-Fi details, public IP, speed tests, LAN devices, Bonjour services, and Wake-on-LAN. | macOS frameworks and installed system tools provide the required on-demand data. | Build the Network tab. Handle Local Network and Location access without blocking unrelated data. |
-| Open | Add Ping, DNS, Traceroute, Whois, TLS checks, port scans, and saved run history. | The system provides Ping, Dig, Traceroute, and Whois. Native connections can scan ports and inspect TLS. | Build the Tests tab. Include common ports, bounded custom ranges, and an SSH port 22 preset. |
-| Open | Add SSH port forwarding with saved local, remote, and dynamic SOCKS5 profiles. | The user corrected the draft to include the missing SSH port feature. The system provides `/usr/bin/ssh`. | Build the SSH Tunnels tab. Use SSH agent and config authentication. Store no passwords, passphrases, or private keys. |
-| Open | Keep SSH tunnel sessions safe and bounded. | No implementation exists. | Bind local listeners to `127.0.0.1`. Validate ports, bound logs, support Stop, and end child processes when the app quits. |
-| Open | Integrate NetTools with MacPowerToys. | The registry, scenes, deep links, Raycast commands, tests, and installed app contain no NetTools tool. Vorssaint also has no implementation. | Add the tool, icon, window state, launcher entry, deep link, Raycast command, tests, and installed-build verification. |
+| Open | Use three destinations: IP Scanner, SSH Anchor, and Network History. | The direct correction on 2026-08-24 supersedes the earlier Network, Tests, and SSH Tunnels draft. Git recovery checks found no prior implementation. | Build the three-destination workspace with shared MacPowerToys geometry and controls. |
+| Open | Reimplement the useful Angry IP Scanner feature set without copying GPL source, text, or art. | Native macOS networking APIs can scan bounded IPv4 ranges and selected TCP ports. | Add range, subnet, and IP-list targets; bounded concurrent scanning; host state, response time, hostname, MAC, vendor, and open-port results; sorting, filtering, selection rescans, cancellation, and CSV or text export. |
+| Open | Add SSH Anchor for local devices whose IP address changes. | The user has a maintained `~/.ssh/config` and needs automatic recovery for one selected host and port. | Monitor the configured TCP port every 2 to 3 seconds. On failure, scan the active local IPv4 subnet on only that port, identify the selected device, and update its address. |
+| Open | Support stable and randomized MAC address identity. | The user accepts exact MAC matching in stable mode and a loose unique-hostname match with learned MAC evidence in randomized mode because collisions are not expected. | Never change the config when the selected identity is missing or ambiguous. Learn evidence only from successful matches. |
+| Open | Preserve the SSH config byte for byte except for the selected `HostName` token. | Generic OpenSSH serializers can change whitespace, comments, line endings, and unrelated stanzas. | Locate the selected stanza, compare the expected old token, splice only that token, write atomically, keep a recoverable backup, and verify the saved bytes. |
+| Open | Track gateway and internet availability by active network. | Transition records are sufficient for outage history and avoid continuous sample storage. | Store network, disconnect, recovery, gateway, and internet transitions with timestamps. Do not store every probe. |
+| Open | Require a bundled login helper whenever NetToys is enabled. | No helper target exists. | Enabling must register and use the helper. Disabling must stop monitoring and unregister it. Reconcile helper status at each app start. Do not run persistent NetToys monitoring in the main app. |
+| Open | Integrate NetToys with MacPowerToys. | The registry, scenes, deep links, Raycast commands, tests, and installed app contain no NetToys tool. Vorssaint also has no implementation. | Add the tool, neutral icon assets, restored resizable window, launcher entry, deep link, Raycast command, tests, and installed-build verification. |
 
 ## Input Devices
 

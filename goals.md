@@ -8,7 +8,7 @@ evidence, and remaining work.
 ## Current work
 
 - Verify the full-width Awake tray controls in the latest normal signed build.
-- Build and verify the missing three-tab NetTools network utility.
+- Build and verify NetToys with IP Scanner, SSH Anchor, and Network History.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
 - Verify focus appearance and keyboard activation in the menu-bar panels with
@@ -31,7 +31,7 @@ evidence, and remaining work.
 - [Color Picker](spec/color-picker-request-list.md)
 - [Text Extractor](spec/text-extractor-request-list.md)
 - [Ruler](spec/ruler-request-list.md)
-- [Input Devices, System Care, Power Stats, and NetTools](spec/system-tools-request-list.md)
+- [Input Devices, System Care, Power Stats, and NetToys](spec/system-tools-request-list.md)
 
 ## Status rules
 
