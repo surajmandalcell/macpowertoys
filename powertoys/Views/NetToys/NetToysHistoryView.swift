@@ -1,4 +1,5 @@
 import AppKit
+import CoreLocation
 import Observation
 import SwiftUI
 
@@ -28,6 +29,15 @@ final class NetToysHistoryViewModel {
     var recordsHistory = NetToysConfigurationStore.load().recordsNetworkHistory
     var scanArchive = NetToysScannerStore.archive()
     var errorMessage: String?
+    var locationAuthorizationStatus: CLAuthorizationStatus
+
+    @ObservationIgnored private let locationManager: CLLocationManager
+
+    init() {
+        let locationManager = CLLocationManager()
+        self.locationManager = locationManager
+        locationAuthorizationStatus = locationManager.authorizationStatus
+    }
 
     var visibleEvents: [NetworkTransitionEvent] {
         let cutoff = Date().addingTimeInterval(-range.rawValue)
@@ -35,7 +45,7 @@ final class NetToysHistoryViewModel {
         return history.events.reversed().filter { event in
             guard event.date >= cutoff else { return false }
             guard !query.isEmpty else { return true }
-            return event.networkID.localizedCaseInsensitiveContains(query)
+            return event.displayName.localizedCaseInsensitiveContains(query)
                 || event.changes.map(Self.description).contains {
                     $0.localizedCaseInsensitiveContains(query)
                 }
@@ -47,6 +57,12 @@ final class NetToysHistoryViewModel {
         helperStatus = NetToysConfigurationStore.status()
         recordsHistory = NetToysConfigurationStore.load().recordsNetworkHistory
         scanArchive = NetToysScannerStore.archive()
+        locationAuthorizationStatus = locationManager.authorizationStatus
+    }
+
+    func requestSSIDAccessIfNeeded() {
+        guard locationAuthorizationStatus == .notDetermined else { return }
+        locationManager.requestWhenInUseAuthorization()
     }
 
     func setRecordsHistory(_ enabled: Bool) {
@@ -76,12 +92,13 @@ final class NetToysHistoryViewModel {
         let rows = visibleEvents.map { event in
             [
                 ISO8601DateFormatter().string(from: event.date),
-                event.networkID,
+                event.ssid ?? "",
+                event.displayName,
                 event.changes.map(Self.description).joined(separator: "; ")
             ].map(Self.csv).joined(separator: ",")
         }
         do {
-            try (["Time,Network,Change"] + rows).joined(separator: "\n")
+            try (["Time,SSID,Network,Change"] + rows).joined(separator: "\n")
                 .write(to: url, atomically: true, encoding: .utf8)
         } catch {
             errorMessage = error.localizedDescription
@@ -120,7 +137,7 @@ struct NetToysHistoryView: View {
         VStack(spacing: 0) {
             NetToysPageHeader(
                 title: "Network History",
-                subtitle: model.helperStatus?.network?.networkID ?? "Waiting for the helper"
+                subtitle: model.helperStatus?.network?.displayName ?? "Waiting for the helper"
             ) {
                 Toggle("", isOn: Binding(
                     get: { model.recordsHistory },
@@ -151,6 +168,7 @@ struct NetToysHistoryView: View {
             .thinScrollIndicators()
         }
         .task {
+            model.requestSSIDAccessIfNeeded()
             while !Task.isCancelled {
                 model.refresh()
                 try? await Task.sleep(for: .seconds(3))
@@ -189,7 +207,7 @@ struct NetToysHistoryView: View {
                     Label("Network", systemImage: "network")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    Text(model.helperStatus?.network?.networkID ?? "Unknown")
+                    Text(model.helperStatus?.network?.displayName ?? "Unknown")
                         .font(.system(size: 13, weight: .medium, design: .monospaced))
                         .lineLimit(1)
                     Text(model.helperStatus?.network?.checkedAt.formatted(date: .omitted, time: .standard) ?? "Not checked")
@@ -197,6 +215,11 @@ struct NetToysHistoryView: View {
                         .foregroundStyle(.tertiary)
                 }
                 .utilitySectionCard()
+            }
+            if let message = ssidAccessMessage {
+                Label(message, systemImage: "wifi.exclamationmark")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -286,7 +309,7 @@ struct NetToysHistoryView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(event.changes.map(NetToysHistoryViewModel.description).joined(separator: " · "))
                                     .font(.system(size: 12, weight: .medium))
-                                Text(event.networkID)
+                                Text(event.displayName)
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundStyle(.secondary)
                             }
@@ -369,6 +392,21 @@ struct NetToysHistoryView: View {
         switch change {
         case .network(_, let to): to == "disconnected"
         case .gateway(_, let to), .internet(_, let to): to == .unreachable
+        }
+    }
+
+    private var ssidAccessMessage: String? {
+        guard let snapshot = model.helperStatus?.network,
+              snapshot.ssid == nil,
+              snapshot.networkID != "disconnected"
+        else { return nil }
+        switch model.locationAuthorizationStatus {
+        case .denied, .restricted:
+            return "Allow Location access in System Settings to label Wi-Fi history with the network name."
+        case .authorized, .authorizedAlways:
+            return "The Wi-Fi network name is not available from the background helper."
+        default:
+            return "Allow Location access to label Wi-Fi history with the network name."
         }
     }
 }

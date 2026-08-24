@@ -468,31 +468,67 @@ nonisolated enum NetworkTransitionChange: Codable, Equatable, Sendable {
 
 nonisolated struct NetworkTransitionEvent: Codable, Equatable, Sendable {
     let networkID: String
+    let ssid: String?
     let date: Date
     let changes: [NetworkTransitionChange]
+
+    init(networkID: String, ssid: String? = nil, date: Date, changes: [NetworkTransitionChange]) {
+        self.networkID = networkID
+        self.ssid = ssid
+        self.date = date
+        self.changes = changes
+    }
+
+    var displayName: String { NetworkIdentity(networkID: networkID, ssid: ssid).displayName }
 }
 
 nonisolated struct NetworkTransitionRecorder: Sendable {
-    private var previous: (networkID: String, gateway: NetworkReachability, internet: NetworkReachability)?
+    private var previous: (
+        networkID: String,
+        ssid: String?,
+        gateway: NetworkReachability,
+        internet: NetworkReachability
+    )?
 
     mutating func observe(
         networkID: String,
+        ssid: String? = nil,
         gateway: NetworkReachability,
         internet: NetworkReachability,
         at date: Date
     ) -> NetworkTransitionEvent? {
-        defer { previous = (networkID, gateway, internet) }
+        let normalizedSSID = NetworkIdentity.normalizedSSID(ssid)
+        let effectiveSSID = normalizedSSID
+            ?? (previous?.networkID == networkID ? previous?.ssid : nil)
+        defer { previous = (networkID, effectiveSSID, gateway, internet) }
         guard let previous else { return nil }
         if previous.networkID != networkID {
             return NetworkTransitionEvent(
                 networkID: networkID,
+                ssid: effectiveSSID,
                 date: date,
-                changes: [.network(from: previous.networkID, to: networkID)]
+                changes: [.network(
+                    from: NetworkIdentity(networkID: previous.networkID, ssid: previous.ssid).displayName,
+                    to: NetworkIdentity(networkID: networkID, ssid: effectiveSSID).displayName
+                )]
             )
         }
         var changes: [NetworkTransitionChange] = []
+        if let oldSSID = previous.ssid,
+           let newSSID = normalizedSSID,
+           oldSSID != newSSID {
+            changes.append(.network(
+                from: NetworkIdentity(networkID: networkID, ssid: oldSSID).displayName,
+                to: NetworkIdentity(networkID: networkID, ssid: newSSID).displayName
+            ))
+        }
         if previous.gateway != gateway { changes.append(.gateway(from: previous.gateway, to: gateway)) }
         if previous.internet != internet { changes.append(.internet(from: previous.internet, to: internet)) }
-        return changes.isEmpty ? nil : NetworkTransitionEvent(networkID: networkID, date: date, changes: changes)
+        return changes.isEmpty ? nil : NetworkTransitionEvent(
+            networkID: networkID,
+            ssid: effectiveSSID,
+            date: date,
+            changes: changes
+        )
     }
 }

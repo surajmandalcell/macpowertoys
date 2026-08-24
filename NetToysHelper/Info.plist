@@ -24,5 +24,9 @@
 	<string>$(MPT_SOURCE_COMMIT)</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>SSH Anchor finds a selected device again when its local IP address changes.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
 </dict>
 </plist>

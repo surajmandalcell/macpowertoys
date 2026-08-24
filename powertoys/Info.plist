@@ -10,6 +10,10 @@
 	<string>Input Devices adjusts mouse and trackpad scroll events using the profiles you enable.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>NetToys scans addresses and ports on local networks that you choose.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

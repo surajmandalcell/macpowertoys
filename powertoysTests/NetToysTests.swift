@@ -110,6 +110,90 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(event?.date, start.addingTimeInterval(60))
     }
 
+    func testNetworkIdentityFormatsSSIDInterfaceAndGateway() {
+        XCTAssertEqual(
+            NetworkIdentity(networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi").displayName,
+            "Home Wi-Fi | en0 | 192.168.1.1"
+        )
+        XCTAssertEqual(
+            NetworkIdentity(networkID: "en0|192.168.1.1", ssid: nil).displayName,
+            "en0 | 192.168.1.1"
+        )
+        XCTAssertEqual(NetworkIdentity(networkID: "disconnected", ssid: nil).displayName, "Disconnected")
+    }
+
+    func testNetworkHistoryRecordsKnownSSIDChanges() {
+        var recorder = NetworkTransitionRecorder()
+        let start = Date(timeIntervalSince1970: 1_000)
+
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: "Home Wi-Fi",
+            gateway: .reachable,
+            internet: .reachable,
+            at: start
+        ))
+        let event = recorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: "Guest Wi-Fi",
+            gateway: .reachable,
+            internet: .reachable,
+            at: start.addingTimeInterval(30)
+        )
+
+        XCTAssertEqual(event?.ssid, "Guest Wi-Fi")
+        XCTAssertEqual(
+            event?.changes,
+            [.network(
+                from: "Home Wi-Fi | en0 | 192.168.1.1",
+                to: "Guest Wi-Fi | en0 | 192.168.1.1"
+            )]
+        )
+    }
+
+    func testMissingSSIDDoesNotCreateFalseNetworkTransition() {
+        var recorder = NetworkTransitionRecorder()
+        let start = Date(timeIntervalSince1970: 1_000)
+
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: "Home Wi-Fi",
+            gateway: .reachable,
+            internet: .reachable,
+            at: start
+        ))
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: nil,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start.addingTimeInterval(30)
+        ))
+    }
+
+    func testNetworkStatusAndHistoryDecodeWithoutSSID() throws {
+        let snapshotData = Data(#"{"networkID":"en0|192.168.1.1","gateway":"reachable","internet":"reachable","checkedAt":0}"#.utf8)
+        let snapshot = try JSONDecoder().decode(NetworkRuntimeSnapshot.self, from: snapshotData)
+        XCTAssertNil(snapshot.ssid)
+        XCTAssertEqual(snapshot.displayName, "en0 | 192.168.1.1")
+
+        let event = NetworkTransitionEvent(
+            networkID: "en0|192.168.1.1",
+            ssid: "Home Wi-Fi",
+            date: Date(timeIntervalSinceReferenceDate: 0),
+            changes: [.internet(from: .reachable, to: .unreachable)]
+        )
+        var eventObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(event)) as? [String: Any]
+        )
+        eventObject.removeValue(forKey: "ssid")
+        let legacyEvent = try JSONDecoder().decode(
+            NetworkTransitionEvent.self,
+            from: JSONSerialization.data(withJSONObject: eventObject)
+        )
+        XCTAssertNil(legacyEvent.ssid)
+    }
+
     func testSSHConfigFileUpdaterPreservesSymlinkAndPermissions() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let backup = root.appendingPathComponent("backups", isDirectory: true)
