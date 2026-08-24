@@ -332,15 +332,23 @@
 
 - **Symptom:** A scrollable view reserves a thick track or shows a full-size
   indicator while the rest of the app uses thin overlay scrollbars.
-- **Cause:** A visible `ScrollView`, `Form`, `TextEditor`, or AppKit
-  `NSScrollView` bypassed the shared thin-indicator configuration.
+- **Cause:** A scrolling surface bypassed the shared configuration, the SwiftUI
+  bridge selected the first sibling scroll view instead of the surface under
+  its own frame, or the implementation assumed `.mini` reduced the current
+  macOS overlay thumb below its 15pt native width.
 - **Invariant:** Every SwiftUI `ScrollView`, `Form`, `TextEditor`, `List`, and
   `Table` uses `.thinScrollIndicators()`. Native scroll views call
-  `configureThinScrollIndicators()`. Never hide an indicator.
+  `configureThinScrollIndicators()`. The shared AppKit scroller draws a 4pt
+  thumb, or 6pt with Increased Contrast, over the content with no track. It
+  stays hidden while idle, appears during scrolling or edge hover, and fades
+  after 0.9 seconds. Keep its native-width hit region. Do not remove the
+  indicator or disable scrolling.
 - **Check:** Inventory every scrolling source with `rg`. The surface count must
   equal the shared-modifier count, and `showsIndicators: false` must be absent.
   Exercise long content in every app family, sheet, editor, and horizontal
-  strip. Indicators autohide, overlay content, and use mini control size.
+  strip. In a signed installed launcher, confirm no idle thumb, a thin thumb
+  during scrolling, and no thumb after the fade delay. Use a two-sibling hosted
+  test to confirm that the modifier configures the surface under its own frame.
 
 ## Workspace Pane Seams
 
