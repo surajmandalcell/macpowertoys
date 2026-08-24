@@ -21,6 +21,7 @@ final class NetToysAnchorViewModel {
     var helperStatus = NetToysConfigurationStore.status()
     var errorMessage: String?
     var isInspecting = false
+    var requestedAddress: String?
 
     private let scanner = NetToysScanner()
 
@@ -40,37 +41,49 @@ final class NetToysAnchorViewModel {
     func refresh() {
         let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config")
         if let data = try? Data(contentsOf: url) {
-            entries = SSHConfigEditor.entries(in: data).filter { entry in
-                entry.aliases.count == 1
-                    && !entry.aliases[0].contains("*")
-                    && !entry.aliases[0].contains("?")
-                    && IPv4Address(entry.hostName) != nil
-            }
+            entries = SSHConfigEditor.anchorEntries(in: data)
         } else {
             entries = []
         }
         configuration = NetToysConfigurationStore.load()
         helperStatus = NetToysConfigurationStore.status()
         if !entries.contains(where: { $0.aliases.contains(selectedAlias) }) {
-            selectedAlias = entries.first?.aliases.first ?? ""
+            selectedAlias = requestedAddress == nil ? entries.first?.aliases.first ?? "" : ""
         }
     }
 
+    func apply(_ prefill: NetToysAnchorPrefill) {
+        requestedAddress = prefill.address
+        refresh()
+        selectedAlias = prefill.matchingAlias(in: entries) ?? ""
+        deviceMAC = prefill.macAddress ?? ""
+        deviceHostname = prefill.hostname ?? ""
+        identityMode = AnchorMatcher.normalizedMAC(deviceMAC).count == 12 ? .stable : .randomized
+    }
+
     func inspectSelectedDevice() {
-        guard let entry = selectedEntry, let address = IPv4Address(entry.hostName) else { return }
+        guard let entry = selectedEntry else { return }
         isInspecting = true
         errorMessage = nil
         Task { [weak self] in
             guard let self else { return }
-            let results = await scanner.scan(
-                targets: [address],
-                ports: [entry.port],
-                timeoutMilliseconds: 900,
-                concurrency: 1
-            )
-            if let result = results.first {
-                deviceMAC = result.macAddress ?? ""
-                deviceHostname = result.hostname ?? ""
+            do {
+                let targets = try await NetToysTargetResolver.resolve(
+                    entry.hostName,
+                    defaultPorts: [entry.port],
+                    limit: 1
+                )
+                let results = await scanner.scan(
+                    targets: targets,
+                    timeoutMilliseconds: 900,
+                    concurrency: 1
+                )
+                if let result = results.first {
+                    deviceMAC = result.macAddress ?? ""
+                    deviceHostname = result.hostname ?? ""
+                }
+            } catch {
+                errorMessage = error.localizedDescription
             }
             isInspecting = false
         }
@@ -113,6 +126,7 @@ final class NetToysAnchorViewModel {
         save()
         deviceMAC = ""
         deviceHostname = ""
+        requestedAddress = nil
     }
 
     func setEnabled(_ enabled: Bool, for id: UUID) {
@@ -180,6 +194,10 @@ struct NetToysAnchorView: View {
                 try? await Task.sleep(for: .seconds(2))
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netToysApplyAnchorPrefill)) { notification in
+            guard let prefill = notification.object as? NetToysAnchorPrefill else { return }
+            model.apply(prefill)
+        }
         .alert("SSH Anchor", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -242,8 +260,11 @@ struct NetToysAnchorView: View {
                     rowLabel("SSH host")
                     Picker("", selection: $model.selectedAlias) {
                         if model.entries.isEmpty {
-                            Text("No eligible hosts").tag("")
+                            Text("No SSH hosts").tag("")
                         } else {
+                            if model.selectedAlias.isEmpty {
+                                Text("Select SSH host").tag("")
+                            }
                             ForEach(model.entries, id: \.aliases) { entry in
                                 Text(entry.aliases[0]).tag(entry.aliases[0])
                             }
@@ -409,7 +430,9 @@ struct NetToysAnchorView: View {
     }
 
     private var selectedHostDescription: String {
-        guard let entry = model.selectedEntry else { return "No host selected" }
+        guard let entry = model.selectedEntry else {
+            return model.requestedAddress.map { "Select host for \($0)" } ?? "No host selected"
+        }
         return "\(entry.hostName)  ·  TCP \(entry.port)"
     }
 

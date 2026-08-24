@@ -128,6 +128,22 @@ nonisolated struct SSHConfigEntry: Equatable, Sendable {
     let port: UInt16
 }
 
+nonisolated struct NetToysAnchorPrefill: Equatable, Sendable {
+    let address: String
+    let macAddress: String?
+    let hostname: String?
+
+    func matchingAlias(in entries: [SSHConfigEntry]) -> String? {
+        entries.first {
+            $0.hostName.caseInsensitiveCompare(address) == .orderedSame
+        }?.aliases.first ?? entries.first {
+            guard let hostname else { return false }
+            return $0.hostName.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                .caseInsensitiveCompare(hostname.trimmingCharacters(in: CharacterSet(charactersIn: "."))) == .orderedSame
+        }?.aliases.first
+    }
+}
+
 nonisolated enum SSHConfigEditor {
     enum EditError: LocalizedError {
         case hostNotFound(String)
@@ -217,11 +233,20 @@ nonisolated enum SSHConfigEditor {
                 }
                 index += 1
             }
-            if let hostName, let port, !aliases.isEmpty {
-                result.append(SSHConfigEntry(aliases: aliases, hostName: hostName, port: port))
+            if let hostName, !aliases.isEmpty {
+                result.append(SSHConfigEntry(aliases: aliases, hostName: hostName, port: port ?? 22))
             }
         }
         return result
+    }
+
+    static func anchorEntries(in data: Data) -> [SSHConfigEntry] {
+        entries(in: data).flatMap { entry in
+            entry.aliases.compactMap { alias in
+                guard !alias.hasPrefix("!"), !alias.contains("*"), !alias.contains("?") else { return nil }
+                return SSHConfigEntry(aliases: [alias], hostName: entry.hostName, port: entry.port)
+            }
+        }
     }
 
     private struct Directive {

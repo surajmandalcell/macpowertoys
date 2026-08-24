@@ -533,6 +533,51 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testSSHAnchorEntriesExpandLiteralAliasesAndUseDefaultPort() {
+        let data = Data("""
+        Host jet jetson jetson1
+          HostName 192.168.1.18
+        Host pi pi1 *.local !blocked
+          HostName zero1
+          Port 2222
+        """.utf8)
+
+        XCTAssertEqual(
+            SSHConfigEditor.anchorEntries(in: data),
+            [
+                SSHConfigEntry(aliases: ["jet"], hostName: "192.168.1.18", port: 22),
+                SSHConfigEntry(aliases: ["jetson"], hostName: "192.168.1.18", port: 22),
+                SSHConfigEntry(aliases: ["jetson1"], hostName: "192.168.1.18", port: 22),
+                SSHConfigEntry(aliases: ["pi"], hostName: "zero1", port: 2222),
+                SSHConfigEntry(aliases: ["pi1"], hostName: "zero1", port: 2222),
+            ]
+        )
+    }
+
+    func testSSHAnchorPrefillMatchesAddressThenHostname() {
+        let entries = [
+            SSHConfigEntry(aliases: ["jetson"], hostName: "192.168.1.18", port: 22),
+            SSHConfigEntry(aliases: ["pi"], hostName: "zero1", port: 22),
+        ]
+
+        XCTAssertEqual(
+            NetToysAnchorPrefill(
+                address: "192.168.1.18",
+                macAddress: nil,
+                hostname: "other"
+            ).matchingAlias(in: entries),
+            "jetson"
+        )
+        XCTAssertEqual(
+            NetToysAnchorPrefill(
+                address: "192.168.1.40",
+                macAddress: nil,
+                hostname: "zero1"
+            ).matchingAlias(in: entries),
+            "pi"
+        )
+    }
+
     func testLocalIPv4NetworkProducesUsableHostsAndCapsLargeSubnets() throws {
         let network = try XCTUnwrap(
             LocalIPv4Network(interfaceName: "en0", address: "192.168.1.8", netmask: "255.255.255.252")

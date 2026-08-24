@@ -46,6 +46,14 @@ struct NetToysWindowView: View {
         .onReceive(NotificationCenter.default.publisher(for: .netToysPrefill)) { _ in
             page = .scanner
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netToysOpenAnchor)) { notification in
+            guard let prefill = notification.object as? NetToysAnchorPrefill else { return }
+            page = .anchor
+            Task { @MainActor in
+                await Task.yield()
+                NotificationCenter.default.post(name: .netToysApplyAnchorPrefill, object: prefill)
+            }
+        }
     }
 
     private var sidebar: some View {
@@ -100,6 +108,8 @@ struct NetToysWindowView: View {
 extension Notification.Name {
     static let netToysRescanRun = Notification.Name("netToysRescanRun")
     static let netToysStartScan = Notification.Name("netToysStartScan")
+    static let netToysOpenAnchor = Notification.Name("netToysOpenAnchor")
+    static let netToysApplyAnchorPrefill = Notification.Name("netToysApplyAnchorPrefill")
 }
 
 struct NetToysPageHeader<Actions: View>: View {
