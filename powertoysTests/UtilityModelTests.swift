@@ -70,4 +70,16 @@ final class UtilityModelTests: XCTestCase {
         configuration.mode = .until
         XCTAssertEqual(AwakeQuickMode(configuration: configuration), .custom)
     }
+
+    func testTrayPopoverKeepsTabAndVerticalInsetsBalanced() {
+        let availableWidth: CGFloat = 308
+        let tabWidth = TrayPopoverLayout.tabWidth(availableWidth: availableWidth, count: 2)
+
+        XCTAssertEqual(tabWidth * 2 + TrayPopoverLayout.tabSpacing, availableWidth, accuracy: 0.001)
+        XCTAssertEqual(TrayPopoverLayout.tabHeight, 28)
+        XCTAssertEqual(TrayPopoverLayout.tabGroupInset, 4)
+        XCTAssertLessThan(TrayPopoverLayout.tabGroupBottomInset, TrayPopoverLayout.bodyTopInset)
+        XCTAssertGreaterThan(TrayPopoverLayout.bodyBottomInset, TrayPopoverLayout.bodyTopInset)
+        XCTAssertGreaterThan(TrayPopoverLayout.footerBottomInset, TrayPopoverLayout.footerTopInset)
+    }
 }

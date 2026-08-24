@@ -6,6 +6,29 @@
 import SwiftUI
 import SwiftData
 
+enum TrayPopoverLayout {
+    static let width: CGFloat = 340
+    static let horizontalInset: CGFloat = 12
+    static let tabGroupInset: CGFloat = 4
+    static let tabGroupTopInset: CGFloat = 20
+    static let tabGroupBottomInset: CGFloat = 6
+    static let tabHeight: CGFloat = 28
+    static let tabSpacing: CGFloat = 4
+    static let minimumTabWidth: CGFloat = 30
+    static let labelThreshold: CGFloat = 84
+    static let bodyTopInset: CGFloat = 10
+    static let bodyBottomInset: CGFloat = 14
+    static let footerHorizontalInset: CGFloat = 10
+    static let footerTopInset: CGFloat = 8
+    static let footerBottomInset: CGFloat = 10
+
+    static func tabWidth(availableWidth: CGFloat, count: Int) -> CGFloat {
+        guard count > 0 else { return availableWidth }
+        let totalSpacing = CGFloat(count - 1) * tabSpacing
+        return max(minimumTabWidth, (availableWidth - totalSpacing) / CGFloat(count))
+    }
+}
+
 struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab") private var selectedTab = "rclone"
     @Environment(\.colorScheme) private var colorScheme
@@ -27,7 +50,7 @@ struct TrayPopoverView: View {
                     .frame(height: 160)
             } else {
                 TrayTabStrip(tools: trayTools, selected: tabSelection)
-                    .padding(4)
+                    .padding(TrayPopoverLayout.tabGroupInset)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(Color.black.opacity(colorScheme == .dark ? 0.18 : 0.04))
@@ -40,9 +63,9 @@ struct TrayPopoverView: View {
                                 lineWidth: 1
                             )
                     )
-                    .padding(.horizontal, 12)
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    .padding(.top, TrayPopoverLayout.tabGroupTopInset)
+                    .padding(.bottom, TrayPopoverLayout.tabGroupBottomInset)
 
                 ZStack {
                     tabContent
@@ -60,7 +83,7 @@ struct TrayPopoverView: View {
 
             footer
         }
-        .frame(width: 340)
+        .frame(width: TrayPopoverLayout.width)
         .background {
             Color.black
                 .opacity(colorScheme == .dark ? 0.2 : 0.04)
@@ -117,8 +140,9 @@ struct TrayPopoverView: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.horizontal, TrayPopoverLayout.footerHorizontalInset)
+        .padding(.top, TrayPopoverLayout.footerTopInset)
+        .padding(.bottom, TrayPopoverLayout.footerBottomInset)
         .background(Color.primary.opacity(0.03))
     }
 }
@@ -177,8 +201,9 @@ private struct AwakeTrayTab: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.top, TrayPopoverLayout.bodyTopInset)
+        .padding(.bottom, TrayPopoverLayout.bodyBottomInset)
     }
 
     private var quickMode: Binding<AwakeQuickMode> {
@@ -208,37 +233,33 @@ private struct TrayTabStrip: View {
     let tools: [any Tool]
     @Binding var selected: String
 
-    private let maxTabWidth: CGFloat = 150
-    private let minTabWidth: CGFloat = 30
-    private let labelThreshold: CGFloat = 84
-    private let tabSpacing: CGFloat = 4
-
     var body: some View {
         GeometryReader { geo in
             let count = max(1, tools.count)
-            let perTab = min(maxTabWidth, max(minTabWidth, (geo.size.width - CGFloat(count - 1) * tabSpacing) / CGFloat(count)))
-            let overflow = CGFloat(count) * minTabWidth > geo.size.width
+            let perTab = TrayPopoverLayout.tabWidth(availableWidth: geo.size.width, count: count)
+            let overflow = CGFloat(count) * TrayPopoverLayout.minimumTabWidth
+                + CGFloat(count - 1) * TrayPopoverLayout.tabSpacing > geo.size.width
 
             Group {
                 if overflow {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        strip(perTab: minTabWidth)
+                        strip(perTab: TrayPopoverLayout.minimumTabWidth)
                     }
                 } else {
                     strip(perTab: perTab)
                 }
             }
         }
-        .frame(height: 30)
+        .frame(height: TrayPopoverLayout.tabHeight)
     }
 
     private func strip(perTab: CGFloat) -> some View {
-        HStack(spacing: tabSpacing) {
+        HStack(spacing: TrayPopoverLayout.tabSpacing) {
             ForEach(tools, id: \.id) { tool in
                 TrayTabItem(
                     tool: tool,
                     width: perTab,
-                    showsLabel: perTab > labelThreshold,
+                    showsLabel: perTab > TrayPopoverLayout.labelThreshold,
                     isSelected: selected == tool.id
                 ) {
                     selected = tool.id
@@ -274,7 +295,7 @@ private struct TrayTabItem: View {
                         .lineLimit(1)
                 }
             }
-            .frame(width: width, height: 28)
+            .frame(width: width, height: TrayPopoverLayout.tabHeight)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
@@ -312,8 +333,8 @@ private struct RSyncTrayTab: View {
     var body: some View {
         VStack(spacing: 0) {
             statusRow
-                .padding(.horizontal, 12)
-                .padding(.top, 10)
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                .padding(.top, TrayPopoverLayout.bodyTopInset)
 
             ScrollView(showsIndicators: false) {
                 Group {
@@ -325,8 +346,9 @@ private struct RSyncTrayTab: View {
                         activeTransfers
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                .padding(.top, TrayPopoverLayout.bodyTopInset)
+                .padding(.bottom, TrayPopoverLayout.bodyBottomInset)
                 .onGeometryChange(for: CGFloat.self) { proxy in
                     proxy.size.height
                 } action: { newHeight in
@@ -334,7 +356,6 @@ private struct RSyncTrayTab: View {
                 }
             }
             .frame(height: min(max(contentHeight, 44), maxContentHeight))
-            .padding(.bottom, 2)
         }
     }
 
