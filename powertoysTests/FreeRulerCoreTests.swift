@@ -1185,7 +1185,7 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(window.contentView!.bounds.height, 514, accuracy: 0.5)
             XCTAssertFalse(window.styleMask.contains(.resizable))
             XCTAssertFalse(window.isOpaque)
-            XCTAssertEqual(window.backgroundColor, .clear)
+            XCTAssertEqual(window.backgroundColor, .windowBackgroundColor)
             XCTAssertFalse(window.titlebarAppearsTransparent)
             XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)

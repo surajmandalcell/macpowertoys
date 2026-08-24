@@ -672,7 +672,7 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         window?.identifier = NSUserInterfaceItemIdentifier("preferences-window")
         window?.setAccessibilityIdentifier("preferences-window")
         window?.isMovableByWindowBackground = true
-        window?.backgroundColor = .clear
+        window?.backgroundColor = .windowBackgroundColor
         window?.isOpaque = false
         window?.titlebarAppearsTransparent = false
         configureOpaqueColorPicking()
@@ -993,7 +993,7 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.setAccessibilityIdentifier("ruler-settings-window")
         window?.isMovableByWindowBackground = true
         window?.isReleasedWhenClosed = false
-        window?.backgroundColor = .clear
+        window?.backgroundColor = .windowBackgroundColor
         window?.isOpaque = false
         window?.titlebarAppearsTransparent = false
         window?.initialFirstResponder = unitSegmentedControl
