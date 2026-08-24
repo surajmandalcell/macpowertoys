@@ -148,14 +148,42 @@ struct ToolAboutView: View {
 
 private struct ToolDetailIntro: View {
     let tool: any Tool
+    @AppStorage private var showMenuBarIcon: Bool
+
+    init(tool: any Tool) {
+        self.tool = tool
+        _showMenuBarIcon = AppStorage(
+            wrappedValue: false,
+            IndividualMenuBarTool(rawValue: tool.id)?.preferenceKey
+                ?? "tool.\(tool.id).showMenuBarIcon"
+        )
+    }
 
     var body: some View {
-        Text(tool.description)
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(2)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(tool.description)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if IndividualMenuBarTool(rawValue: tool.id) != nil {
+                HStack(spacing: 12) {
+                    Text("Show a separate menu bar icon")
+                        .font(.system(size: 12, weight: .medium))
+                    Spacer(minLength: 12)
+                    Toggle("Show a separate menu bar icon", isOn: $showMenuBarIcon)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
+                }
+                .onChange(of: showMenuBarIcon) { _, _ in
+                    IndividualMenuBarController.shared.refresh()
+                }
+            }
+        }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
 
@@ -184,6 +212,8 @@ private struct ToolSettingsContent: View {
             ColorPickerSettingsView()
         case "text-extractor":
             TextExtractorSettingsView()
+        case "input-devices":
+            EmptyView()
         case "logs":
             LogsSettingsView()
         default:

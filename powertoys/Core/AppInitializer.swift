@@ -50,6 +50,7 @@ final class AppInitializer {
         _ = ColorPickerService.shared
         _ = TextExtractorService.shared
         _ = GlobalShortcutManager.shared
+        IndividualMenuBarController.shared.start()
         if SettingsManager.shared.isToolEnabled("input-devices") {
             InputDevicesManager.shared.refresh()
         }
@@ -70,6 +71,7 @@ final class AppInitializer {
 
     func shutdown() async {
         LogManager.shared.info("App shutting down...", source: "AppInitializer")
+        IndividualMenuBarController.shared.stop()
     }
 
     private func applyStoredTheme() {
