@@ -38,7 +38,7 @@ struct SystemCareWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar.frame(width: UtilityLayout.compactSidebarWidth)
+            sidebar.frame(width: UtilityLayout.dataSidebarWidth)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .utilityContentTransition(value: page)
@@ -83,7 +83,7 @@ struct SystemCareWindowView: View {
                 Spacer()
             }
             .padding(.horizontal, 12)
-            .padding(.top, 52)
+            .padding(.top, UtilityLayout.workspaceContentTopInset)
             .padding(.bottom, 12)
         }
     }

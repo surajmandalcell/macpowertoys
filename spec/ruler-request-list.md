@@ -8,6 +8,7 @@ Update this list whenever Ruler requirements or verification results change.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep the native titlebar visibly distinct in Ruler Settings and Defaults. | Both AppKit controllers use `.windowBackgroundColor` behind the native titlebar while retaining the HUD material body. Focused `RulerCoreTests` pass. | Inspect both windows in the latest normal signed build. |
 | Done | Replace the custom MacPowerToys Ruler with FreeRuler while fitting the host architecture. | The pinned MIT source, localization catalog, and notices are vendored under `powertoys/FreeRuler`; MacPowerToys adapts host ownership, launch, routing, branding, and settings-window chrome. | None. |
 | Done | Match FreeRuler overlay geometry and visual styling. | Ten product Swift files are byte-identical. Four files differ only in the host-delegate lookup. `PreferencesController.swift` contains the intentional MacPowerToys settings chrome. The core suite covers the 40pt L shape, ticks, labels, colors, zero corners, handles, opacity, shadow, and layout. A same-machine comparison matched the pinned build and the signed host build. | None. |
 | Done | Match pixel, millimeter, and inch units. | Core coverage checks tick scales and labels; the signed UI flow cycles `px` → `mm` → `in` → `px`. | None. |

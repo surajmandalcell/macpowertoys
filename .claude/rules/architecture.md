@@ -70,12 +70,12 @@ HStack(spacing: 6) {
 .background(Color.primary.opacity(0.06))
 .clipShape(RoundedRectangle(cornerRadius: 6))
 .padding(.horizontal, 12)
-.padding(.top, 52)  // space for title + traffic lights
+.padding(.top, 44)  // one 4pt gap below the 40pt title strip
 .padding(.bottom, 12)
 ```
 
 ### Content Area Alignment:
-- Content starts at `.padding(.top, 52)` to align with sidebar search bar top
+- Content starts at `.padding(.top, 44)` to align with sidebar search bar top
 - Use `Color(nsColor: .windowBackgroundColor)` for content background
 
 ## Forms & Settings

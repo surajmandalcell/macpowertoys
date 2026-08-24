@@ -31,7 +31,7 @@ struct CCHistorySettingsPage: View {
                     .focusEffectDisabled()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 52)
+                .padding(.top, UtilityLayout.workspaceContentTopInset)
                 .padding(.bottom, 12)
 
                 QuietDivider()

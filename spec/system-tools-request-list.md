@@ -13,6 +13,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Anchor the Input Devices launcher settings footer to the bottom. | The empty Input Devices settings detail now inserts its flexible space above the shared description and menu-bar toggle instead of beneath them. | Inspect the launcher detail in the latest normal signed build. |
 | Verify | Offer a separate Input Devices menu bar icon. | The launcher setting stores the choice, and `IndividualMenuBarController` opens Input Devices from a native item with a stable autosave name. | Enable the item in the latest normal installed build, move it, relaunch, and confirm that it keeps its position and opens Input Devices. |
 | Done | Add a macOS tool for mouse and trackpad control. | `cfa8832` added Input Devices as an on-demand tool with a separate window, launcher route, and app icon. | None. |
 | Done | Keep the Scroll device selector at the bottom of the window. | `65f1c0e` moved the selector from the scrolling body to a native bottom inset. The exact installed `4e181f8` build confirmed the bottom position. | None. |
@@ -54,6 +55,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Use the correct shared width and padding family for every system-tool sidebar. | Input Devices stays in the 220pt compact family; System Care and Power Stats now use the 240pt data family. All use the shared 44pt top edge and 12pt horizontal padding. Focused layout tests pass. | Inspect all three sidebars at default and minimum widths in the latest normal signed build. |
 | Done | Remember window position, display, and size for the three tools. | Each window uses a stable `WindowAccessor` identifier. `WindowStateManager` stores all three identifiers. | None. |
 | Done | Keep short metadata inline and use two columns on sparse wide pages. | `f44fc7a` adapts Input Devices profiles. `29fcbd0` adapts every Power Stats metric and chart page. `8f4b6dd` adapts System Care Storage and Applications. The normal signed builds confirmed all three tools at their compact and normal widths. Wide pages use multiple columns. Compact pages stack without clipped values. `631facd` also keeps every shared About header readable at the compact limit. | None. |
 | Done | Confirm restoration with multiple displays. | `cf5c975` prevents SwiftUI's initial frame from replacing saved state before restoration. All 400 unit tests pass. In the normal signed build, Input Devices and Power Stats restored at 1891 × 1065 on the built-in display, and System Care restored at 1078 × 699 on the same display after a full app quit and relaunch. The Window menu and the unchanged saved display identifier confirmed the display. The three windows then returned to their normal 980 × 700, 1080 × 720, and 1180 × 780 frames on the main display. | None. |

@@ -18,11 +18,13 @@
 ## Ruler Settings Utility Chrome
 
 - **Symptom:** Ruler Settings or Ruler Defaults returns to a narrow flat form,
-  an opaque page, a bordered Defaults group, or duplicate body title.
+  a transparent native titlebar, a bordered Defaults group, or duplicate body
+  title.
 - **Cause:** The pinned FreeRuler settings nib was treated as a visual source of
   truth after settings chrome moved to MacPowerToys utility tokens.
 - **Invariant:** Both fixed 420pt windows use active HUD material, normal visible
-  native titlebars, 20pt outer edges, 16pt section gaps, 8pt heading gaps, and
+  native titlebars backed by `.windowBackgroundColor`, 20pt outer edges, 16pt
+  section gaps, 8pt heading gaps, and
   14pt card insets. Cards use a 10pt radius and dynamic label color at 5%.
   Settings uses trailing secondary and primary actions. Defaults uses one quiet
   destructive action. Both windows keep their autosaved standalone positions;
@@ -31,7 +33,8 @@
   overlay behavior remain unchanged.
 - **Check:** Compile all three XIBs. Run `RulerCoreTests` and the focused signed
   Ruler UI flow. Inspect light, dark, increased-contrast, reduced-transparency,
-  English, German, and Japanese states. Confirm no overlap, 24pt hit frames,
+  English, German, and Japanese states. Confirm each native titlebar remains
+  visibly distinct from the HUD body, with no overlap, 24pt hit frames,
   the complete key loop, Command-W dismissal, and focus return to the ruler.
 
 ## Ruler Launch Ownership

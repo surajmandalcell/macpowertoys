@@ -46,7 +46,7 @@ struct InputDevicesWindowView: View {
                 Spacer()
             }
             .padding(.horizontal, 12)
-            .padding(.top, 52)
+            .padding(.top, UtilityLayout.workspaceContentTopInset)
             .padding(.bottom, 12)
         }
     }

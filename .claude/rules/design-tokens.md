@@ -6,15 +6,17 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 
 ### Sidebar Layout
 - Title: `.padding(.leading, 84)`, `.padding(.top, 8)`
-- Search field container: `.padding(.top, 52)`, `.padding(.bottom, 12)`, `.padding(.horizontal, 12)`
+- Search field container: `.padding(.top, 44)`, `.padding(.bottom, 12)`, `.padding(.horizontal, 12)`
 - Search field inner: `.padding(8)`
 
 ### Content Area
-- Top padding: `.padding(.top, 52)` - aligns with sidebar search bar top
+- Top padding: `.padding(.top, 44)` - leaves one 4pt gap below the 40pt strip
 - Content and search bar start at the same vertical position
 
 ### Workspace Density
 - Simple sidebar: 220pt; data sidebar: 240pt; conversation sidebar: 260pt
+- Launcher, Logs, and Input Devices use 220pt; Cloud Sync, System Care, and
+  Power Stats use 240pt; AI History uses 260pt
 - Sidebar row: 28pt minimum, 16pt icon, 8pt horizontal inset and gap
 - Workspace page strip: 40pt with 13pt title and optional 11pt subtitle
 - Workspace actions: native small controls in one centered 24pt row

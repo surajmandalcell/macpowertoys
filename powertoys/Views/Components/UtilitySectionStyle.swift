@@ -8,8 +8,9 @@ enum UtilityLayout {
     static let conversationSidebarWidth: CGFloat = 260
     static let sidebarRowHeight: CGFloat = 28
     static let workspaceTitlebarHeight: CGFloat = 40
+    static let workspaceContentTopInset: CGFloat = 44
     static let workspaceActionHeight: CGFloat = 24
-    static let workspaceTitleLeadingInset: CGFloat = 92
+    static let workspaceTitleLeadingInset: CGFloat = 84
     static let workspaceTrafficLightVerticalOffset: CGFloat = 4
     static let compactTitlebarHeight: CGFloat = 40
     static let compactTitlebarTopInset: CGFloat = 4

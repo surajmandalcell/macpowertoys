@@ -94,16 +94,47 @@
 
 ## Workspace Traffic-Light Spacing
 
-- **Symptom:** Workspace traffic lights sit off-center in the top strip or run
-  directly into the sidebar title.
+- **Symptom:** Workspace traffic lights sit off-center, the sidebar title feels
+  detached from them, or the search/navigation leaves a second titlebar gap.
 - **Cause:** AppKit kept its native 32pt titlebar centerline while the sidebar
   used a 40pt visual strip and a title inset sized only to clear the buttons.
 - **Invariant:** Center all three workspace traffic lights at 20pt in the 40pt
-  strip. Start the sidebar title 92pt from the leading window edge, leaving at
-  least 20pt after the zoom button. Reapply the offset when the window becomes
+  strip. `UtilityLayout` is the single source for the 84pt title leading edge
+  and 44pt content top edge, leaving at least 12pt after the zoom button and one
+  4pt gap below the strip. Reapply the vertical offset when the window becomes
   key and never move the native horizontal button positions.
 - **Check:** In every workspace, compare the top and bottom traffic-light gaps
   and the gap before the title. Unit-check all workspace window identifiers.
+
+## Workspace Sidebar Geometry
+
+- **Symptom:** A sidebar is too narrow for its navigation, rows touch the pane
+  edge, or one app invents different title, control, and content offsets.
+- **Cause:** A workspace chose local width or padding literals instead of its
+  shared sidebar family and layout metrics.
+- **Invariant:** Launcher, Logs, and Input Devices use the 220pt compact family;
+  Cloud Sync, System Care, and Power Stats use the 240pt data family; AI History
+  uses the 260pt conversation family. Navigation groups have 12pt horizontal
+  pane padding. All workspace titles and first controls use the shared 84pt and
+  44pt edges.
+- **Check:** Search the complete workspace class for sidebar width, top padding,
+  and title-leading literals. Open all seven sidebars at default and minimum
+  sizes; selected rows keep equal left and right pane clearance.
+
+## Launcher Detail Geometry
+
+- **Symptom:** Tool names are small or heavy, Open is undersized, tabs begin on
+  the wrong edge, an empty settings page floats in the middle, or a sidebar
+  double-click only selects a tool.
+- **Cause:** Launcher detail controls used compact defaults and empty settings
+  content was allowed to choose its own vertical placement.
+- **Invariant:** Launcher detail names are 17pt medium, Open uses regular native
+  control size, and the first detail tab begins at the 20pt content edge. The
+  Input Devices intro/settings footer is bottom-anchored. A double-click on an
+  enabled launcher tool row opens that tool; one click only selects it.
+- **Check:** Inspect every built-in detail page, then single- and double-click
+  launcher rows. Confirm Input Devices keeps its description and menu-bar toggle
+  at the bottom with no unused space beneath it.
 
 ## Applet Settings Placement
 
@@ -259,14 +290,17 @@
 
 ## Awake Window Controls
 
-- **Symptom:** The Awake window can be enlarged, or `Keep Display On` cannot be
-  changed while the selected mode is Passive.
+- **Symptom:** The Awake window can be enlarged, the off state is exposed as
+  `Passive`, or `Keep Display On` cannot be changed while Awake is off.
 - **Cause:** The scene was freely resizable and the display option was disabled
   whenever Awake was not actively holding a power assertion.
-- **Invariant:** Awake has a fixed 560pt by 500pt content size. Its existing
-  `Keep Display On` titlebar switch remains configurable in Passive mode; do not
-  add a separate titlebar on/off action.
-- **Check:** In Passive mode, toggle `Keep Display On` on and off, then drag a
+- **Invariant:** Awake has a fixed 560pt by 500pt content size. The persisted
+  internal `.passive` case is always labeled `Off` in user-facing copy. Its
+  existing `Keep Display On` titlebar switch remains configurable while off;
+  do not add a separate titlebar on/off action. The tray's four modes fill the
+  available width at regular native control size.
+- **Check:** With Off selected, toggle `Keep Display On` on and off, confirm all
+  four tray segments share the available width, then drag a
   window edge and confirm the content size remains unchanged.
 
 ## Awake Titlebar Appearance

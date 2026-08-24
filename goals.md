@@ -7,6 +7,10 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify the shared 84pt title edge, 44pt content edge, sidebar family widths,
+  launcher detail geometry and double-click opening in the signed build.
+- Verify the Ruler utility titlebars, Awake Off/tray controls, and bottom-anchored
+  Input Devices launcher footer in the signed build.
 - Define and add the missing NetTools network utility after the user approves
   its feature scope.
 - Verify separate menu bar icons, saved visibility, position restoration, and

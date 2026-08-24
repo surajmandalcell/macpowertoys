@@ -39,7 +39,7 @@ colors:
   icon-system-care: "#385A4B"
   icon-power-stats: "#303B60"
 typography:
-  launcher-detail-title: { size: 22, weight: semibold, relative-to: title2 }
+  launcher-detail-title: { size: 17, weight: medium, relative-to: headline }
   title: { size: 13, weight: medium, relative-to: body }
   body: { size: 13, weight: regular, relative-to: body }
   row: { size: 13, weight: regular, relative-to: body }
@@ -64,10 +64,10 @@ spacing:
   card-padding: 14  # inner padding of section cards
   section-gap: 16
   section-label-gap: 8
-  sidebar-title-leading: 92   # 24pt after the zoom traffic light
+  sidebar-title-leading: 84   # 12pt minimum after the zoom traffic light
   compact-title-leading: 60   # reclaims the hidden zoom position
   compact-titlebar-top: 4     # applied once to the complete row
-  content-top: 52   # content aligns with sidebar search bar top
+  content-top: 44   # one 4pt gap below the 40pt top strip
   header-top: 0     # window-top strips hug the top (10pt vertical inset)
   floating-control-edge: 8
 windows:
@@ -210,14 +210,14 @@ type range through `.accessibility5`. Non-action window titles use the exact
 base size and expose their full text to accessibility. Action labels scale or
 relocate according to their family rule. The role scale is closed:
 
-22 semibold (launcher detail title only) · 13 medium (titles and sidebar primary
+17 medium (launcher detail title only) · 13 medium (titles and sidebar primary
 actions) · 13 regular (body/rows) · 12 regular (controls) ·
 12 medium (tab labels) ·
 12 monospaced (paths, patterns, code) · 11 medium (compact actions, launcher
 `Open`, badges) · 11 regular (captions, metrics) ·
 10 medium UPPERCASE secondary (section headers) · 10 (micro/tertiary detail).
 
-The `relative-to` mapping is binding: 22pt detail titles use `.title2`; 13pt
+The `relative-to` mapping is binding: 17pt detail titles use `.headline`; 13pt
 titles, body, and rows use `.body`; 12pt controls, tabs, and code use `.callout`;
 11pt compact actions, badges, and captions use `.caption`; and 10pt section or
 micro text uses `.caption2`. Do not select a different `Font.TextStyle` per
@@ -235,11 +235,11 @@ dense-list gutter, a 12pt sidebar gutter, or Color Picker's 12pt body gutter.
 Never invent an in-between alignment point. Align a tab strip's leading pill
 boundary to the gutter, never to the pill's inset text.
 
-- Sidebar titles: center inside a 40pt top strip and start 92pt from the window
-  edge, leaving at least 20pt after the zoom traffic light.
-- Search field container: `.top, 52` / `.horizontal, 12` / inner `.padding(8)`.
+- Sidebar titles: center inside a 40pt top strip and start 84pt from the window
+  edge, leaving at least 12pt after the zoom traffic light.
+- Search field container: `.top, 44` / `.horizontal, 12` / inner `.padding(8)`.
 - Launcher content and a workspace's first body surface align near the sidebar
-  search top at y=52. Workspace top strips themselves hug y=0. Compact bodies
+  search top at y=44. Workspace top strips themselves hug y=0. Compact bodies
   follow their own 40pt titlebar and 16pt internal inset.
 - Use only the family-defined top coordinate. Never stack a second page, header,
   or local top offset on it.
@@ -352,7 +352,7 @@ Canonical anatomy:
 780 × 700 SwiftUI content, fixed
 ┌──────── sidebar 220 ────────┬──────── content 560 ─────────┐
 │ traffic lights  title       │                              │
-│ search at y=52              │ grid or tool detail at y=52  │
+│ search at y=44              │ grid or tool detail at y=44  │
 │ All Tools                   │                              │
 │ CATEGORY                    │                              │
 │   tool rows                 │                              │
@@ -365,9 +365,9 @@ Canonical anatomy:
   current screenshot is 780×732 because the captured `NSWindow` frame adds
   32pt above that content size. Never shrink the content to force the outer
   capture to 780×700. Do not resize, collapse, or add an inspector.
-- The sidebar title is `MacPowerToys`, centered in the 40pt top strip and 92pt
+- The sidebar title is `MacPowerToys`, centered in the 40pt top strip and 84pt
   from the leading window edge. It is the only app title.
-- The custom search field uses 12pt sidebar insets and starts at y=52. It is at
+- The custom search field uses 12pt sidebar insets and starts at y=44. It is at
   least 32pt high, uses `Search` as its placeholder, and filters registered tool
   names and search keywords while preserving registry category order. Never
   invent family filters such as “Quick tools” or “Workspaces”; family is not
@@ -380,7 +380,7 @@ Canonical anatomy:
   material transition is the pane boundary; do not add a vertical divider.
 - Launch opens `All Tools` with an empty search. Restore a prior selection only
   within the same running launcher session, never across a fresh app launch.
-- `All Tools` content begins at y=52. It uses 24pt horizontal and bottom
+- `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
   padding, an adaptive two-column grid with 220pt minimum columns, and 16pt
   row/column gaps.
 - A launcher tool card is at least 110pt high at default text sizes, with 12pt outer
@@ -395,12 +395,12 @@ Canonical anatomy:
   its unlabeled enable switch changes availability without selecting or
   opening it. These actions must remain separately accessible. A disabled card
   stays selectable so the tool can be re-enabled, while `Open` is disabled.
-- A tool detail page uses a 24pt gutter, 48pt named tool icon, the one allowed
-  22pt semibold detail title, category, description, a trailing unlabeled
-  enable switch beside a native small `Open` button, and a segmented `Settings` / `How to
-  Use` choice. It opens on Settings and renders the same settings view as the
+- A tool detail page uses a 20pt gutter, 30pt named tool icon, a 17pt medium
+  detail title, description, a trailing unlabeled enable switch beside a native
+  regular `Open` button, and `Settings` / `How to Use` tabs whose first pill
+  begins at the 20pt content edge. It opens on Settings and renders the same settings view as the
   tool window; Ruler links to its existing AppKit Settings and Defaults panels.
-  How to Use keeps 12pt-radius instruction cards. Do not use the 22pt title
+  How to Use keeps 12pt-radius instruction cards. Do not use the 17pt title
   elsewhere.
 - Enablement has one persistent source. Every tool is enabled by default. A
   disabled tool is absent from the menu-bar tab strip, cannot be launched by
@@ -448,8 +448,8 @@ Canonical anatomy:
 content at least 640 wide; height at least 600; resizable
 ┌──── sidebar 220–260 ────┬──────── flexible content ────────┐
 │ traffic lights  title   │ 40pt top strip                  │
-│ search/action at y=52   ├─────────────────────────────────┤
-│ destinations            │ body; first surface near y=52  │
+│ search/action at y=44   ├─────────────────────────────────┤
+│ destinations            │ body; first surface near y=44  │
 │                         │                                 │
 │ settings/footer actions │                                 │
 └─────────────────────────┴─────────────────────────────────┘
@@ -461,7 +461,7 @@ content at least 640 wide; height at least 600; resizable
 - Choose 220pt for a simple workspace, 240pt for data navigation, or 260pt for
   conversation navigation. It does not resize with the window and never
   collapses into an overlay. Title position matches the launcher.
-- The sidebar's primary control starts at y=52 with 12pt horizontal insets. Use
+- The sidebar's primary control starts at y=44 with 12pt horizontal insets. Use
   the custom 32pt sidebar search when the navigation itself is searchable. Use a
   full-width primary workflow action there when creation is the main entry
   point. That action is at least 34pt high with 12pt internal horizontal
@@ -486,7 +486,7 @@ content at least 640 wide; height at least 600; resizable
   available width, move the least important labeled actions into the first body
   action row; never wrap, clip, or shrink them. The body starts immediately
   after the strip. At standard size, a 12pt body inset places its first row or
-  card near the sidebar search's y=52 line.
+  card near the sidebar search's y=44 line.
 - Top-strip actions use native small controls with a shared 24pt minimum visible
   height. Menus and adjacent buttons share one vertical centerline.
 - The top strip contains destination context on the left and only global page
@@ -494,7 +494,7 @@ content at least 640 wide; height at least 600; resizable
   controls use the 4pt/6pt radius roles; the titlebar-only radius exception does
   not apply.
 - The top strip uses a 13pt medium destination title and optional 11pt
-  subtitle. The 22pt launcher detail title never appears in a workspace body.
+  subtitle. The 17pt launcher detail title never appears in a workspace body.
   Body content starts 12pt below the strip. Do not add a second 32pt top gap.
 - Content uses one 20pt leading gutter unless a dense list uses a documented
   16pt row gutter. Headers, tabs, fields, cards, and rows within that container
@@ -518,11 +518,14 @@ content at least 640 wide; height at least 600; resizable
 
 Existing workspaces fix the reference choices that general ranges leave open:
 
-| Workspace | Default / sidebar | y=52 control and navigation | Primary content |
+| Workspace | Default / sidebar | y=44 control and navigation | Primary content |
 |---|---|---|---|
 | Logs | 900×600 / 220pt | Search; level filters; Settings | Selectable dense log stream |
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, remotes, Settings | Transfer rows, remote browser, or activity ledger |
 | AI History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
+| Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
+| System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
+| Power Stats | 1080×720 / 240pt | Metric destinations and menu settings | Live charts and metric grids |
 
 A new workspace's product brief chooses destinations and data, then follows the
 closest content pattern: homogeneous operational items use dense rows; grouped
