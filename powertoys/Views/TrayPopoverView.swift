@@ -151,7 +151,8 @@ private struct AwakeTrayTab: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .controlSize(.small)
+            .controlSize(.regular)
+            .frame(maxWidth: .infinity)
 
             HStack(spacing: 8) {
                 Text("Keep Display On")

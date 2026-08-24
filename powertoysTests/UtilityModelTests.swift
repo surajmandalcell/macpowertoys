@@ -41,7 +41,7 @@ final class UtilityModelTests: XCTestCase {
 
     func testAwakeModesHaveStableTitlesAndConfigurationDefaults() {
         XCTAssertEqual(AwakeMode.allCases.map(\.title), [
-            "Passive", "Keep Awake Indefinitely", "Keep Awake for an Interval", "Keep Awake Until"
+            "Off", "Keep Awake Indefinitely", "Keep Awake for an Interval", "Keep Awake Until"
         ])
         let configuration = AwakeConfiguration()
         XCTAssertEqual(configuration.mode, .passive)
