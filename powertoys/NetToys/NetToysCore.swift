@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 nonisolated struct IPv4Address: Hashable, Comparable, CustomStringConvertible, Sendable {
     let rawValue: UInt32
@@ -233,6 +234,116 @@ nonisolated enum SSHConfigEditor {
         !value.isEmpty && value.utf8.allSatisfy { byte in
             byte > 0x20 && byte != 0x23 && byte != 0x22 && byte != 0x7f
         }
+    }
+}
+
+nonisolated enum SSHConfigFileUpdater {
+    enum UpdateError: LocalizedError {
+        case cannotLock
+        case configTooLarge
+        case fileChanged
+        case metadataCopyFailed
+        case verificationFailed
+
+        var errorDescription: String? {
+            switch self {
+            case .cannotLock: "SSH Anchor could not lock its update operation."
+            case .configTooLarge: "The SSH config is too large to update safely."
+            case .fileChanged: "The SSH config changed during the update."
+            case .metadataCopyFailed: "SSH Anchor could not preserve the config metadata."
+            case .verificationFailed: "SSH Anchor could not verify the replacement file."
+            }
+        }
+    }
+
+    static func update(
+        configURL: URL,
+        backupDirectory: URL,
+        hostAlias: String,
+        expectedHostName: String,
+        newHostName: String
+    ) throws -> SSHConfigEdit {
+        let fileManager = FileManager.default
+        let target = configURL.resolvingSymlinksInPath()
+        try fileManager.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
+        let lockURL = backupDirectory.appendingPathComponent("update.lock")
+        let lockDescriptor = open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard lockDescriptor >= 0, flock(lockDescriptor, LOCK_EX) == 0 else {
+            if lockDescriptor >= 0 { close(lockDescriptor) }
+            throw UpdateError.cannotLock
+        }
+        defer {
+            flock(lockDescriptor, LOCK_UN)
+            close(lockDescriptor)
+        }
+
+        var before = stat()
+        guard lstat(target.path, &before) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+        guard before.st_size <= 5 * 1_024 * 1_024 else { throw UpdateError.configTooLarge }
+        let original = try Data(contentsOf: target)
+        let edit = try SSHConfigEditor.replacingHostName(
+            in: original,
+            hostAlias: hostAlias,
+            expectedHostName: expectedHostName,
+            newHostName: newHostName
+        )
+
+        let backupURL = backupDirectory.appendingPathComponent("\(target.lastPathComponent).\(UUID().uuidString).backup")
+        try original.write(to: backupURL, options: .atomic)
+        try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: backupURL.path)
+
+        let temporary = target.deletingLastPathComponent()
+            .appendingPathComponent(".\(target.lastPathComponent).macpowertoys.\(UUID().uuidString).tmp")
+        let descriptor = open(temporary.path, O_CREAT | O_EXCL | O_WRONLY, before.st_mode & 0o7777)
+        guard descriptor >= 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+        var shouldRemoveTemporary = true
+        defer {
+            close(descriptor)
+            if shouldRemoveTemporary { unlink(temporary.path) }
+        }
+
+        try edit.data.withUnsafeBytes { rawBuffer in
+            guard let baseAddress = rawBuffer.baseAddress else { return }
+            var written = 0
+            while written < rawBuffer.count {
+                let count = Darwin.write(descriptor, baseAddress.advanced(by: written), rawBuffer.count - written)
+                guard count > 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+                written += count
+            }
+        }
+        guard fsync(descriptor) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+        guard copyfile(target.path, temporary.path, nil, copyfile_flags_t(COPYFILE_METADATA)) == 0 else {
+            throw UpdateError.metadataCopyFailed
+        }
+        guard try Data(contentsOf: temporary) == edit.data else { throw UpdateError.verificationFailed }
+
+        var current = stat()
+        guard lstat(target.path, &current) == 0,
+              current.st_dev == before.st_dev,
+              current.st_ino == before.st_ino,
+              current.st_size == before.st_size,
+              current.st_mtimespec.tv_sec == before.st_mtimespec.tv_sec,
+              current.st_mtimespec.tv_nsec == before.st_mtimespec.tv_nsec
+        else { throw UpdateError.fileChanged }
+        guard rename(temporary.path, target.path) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+        shouldRemoveTemporary = false
+        rotateBackups(in: backupDirectory, keeping: 5)
+        return edit
+    }
+
+    private static func rotateBackups(in directory: URL, keeping limit: Int) {
+        let fileManager = FileManager.default
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return }
+        let backups = files.filter { $0.pathExtension == "backup" }.sorted { lhs, rhs in
+            let left = try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            let right = try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            return (left ?? .distantPast) > (right ?? .distantPast)
+        }
+        for file in backups.dropFirst(limit) { try? fileManager.removeItem(at: file) }
     }
 }
 
