@@ -195,14 +195,84 @@ extension NSScrollView {
         autohidesScrollers = true
         verticalScroller?.controlSize = .mini
         horizontalScroller?.controlSize = .mini
+        (verticalScroller as? ThinOverlayScroller)?.observeScrolling(in: self)
+        (horizontalScroller as? ThinOverlayScroller)?.observeScrolling(in: self)
     }
 }
 
 final class ThinOverlayScroller: NSScroller {
+    private weak var observedClipView: NSClipView?
+    private var trackingArea: NSTrackingArea?
+    private var hideTask: DispatchWorkItem?
+    private var isPointerInside = false
+
     override class var isCompatibleWithOverlayScrollers: Bool { true }
 
     static func knobThickness(increasedContrast: Bool) -> CGFloat {
         increasedContrast ? 6 : 4
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        alphaValue = 0
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        alphaValue = 0
+    }
+
+    deinit {
+        hideTask?.cancel()
+        if let observedClipView {
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSView.boundsDidChangeNotification,
+                object: observedClipView
+            )
+        }
+    }
+
+    func observeScrolling(in scrollView: NSScrollView) {
+        let clipView = scrollView.contentView
+        guard observedClipView !== clipView else { return }
+        if let observedClipView {
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSView.boundsDidChangeNotification,
+                object: observedClipView
+            )
+        }
+        observedClipView = clipView
+        clipView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(scrollPositionDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: clipView
+        )
+    }
+
+    override func updateTrackingAreas() {
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingArea = area
+        super.updateTrackingAreas()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isPointerInside = true
+        showThumb()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isPointerInside = false
+        scheduleHide()
     }
 
     override func drawKnob() {
@@ -225,6 +295,33 @@ final class ThinOverlayScroller: NSScroller {
     }
 
     override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
+
+    @objc private func scrollPositionDidChange() {
+        showThumb()
+        scheduleHide()
+    }
+
+    private func showThumb() {
+        hideTask?.cancel()
+        alphaValue = 1
+    }
+
+    private func scheduleHide() {
+        hideTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            guard let self, !isPointerInside else { return }
+            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                alphaValue = 0
+            } else {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = UtilityMotion.standardDuration
+                    self.animator().alphaValue = 0
+                }
+            }
+        }
+        hideTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9, execute: task)
+    }
 }
 
 private struct ThinScrollIndicatorConfigurator: NSViewRepresentable {
