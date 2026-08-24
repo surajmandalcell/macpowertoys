@@ -695,6 +695,107 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
     }
 }
 
+nonisolated struct NetToysOpener: Codable, Identifiable, Equatable, Sendable {
+    enum ValidationError: LocalizedError {
+        case nameRequired
+        case nameTooLong
+        case invalidPort
+        case invalidTemplate
+        case unsupportedScheme
+        case credentialsNotAllowed
+        case tooManyOpeners
+        case duplicateName
+
+        var errorDescription: String? {
+            switch self {
+            case .nameRequired: "Enter an opener name."
+            case .nameTooLong: "Opener names must be 64 characters or shorter."
+            case .invalidPort: "Opener ports must be between 1 and 65535."
+            case .invalidTemplate: "Enter an absolute URL with a supported placeholder."
+            case .unsupportedScheme: "Use HTTP, HTTPS, SSH, FTP, SFTP, Telnet, SMB, or VNC."
+            case .credentialsNotAllowed: "Opener URLs cannot contain a user name or password."
+            case .tooManyOpeners: "Use no more than 20 openers."
+            case .duplicateName: "Give each opener a different name."
+            }
+        }
+    }
+
+    static let defaults = [
+        Self(name: "Web", urlTemplate: "http://{ip}:{port}/", requiredPort: 80),
+        Self(name: "Secure Web", urlTemplate: "https://{ip}:{port}/", requiredPort: 443),
+        Self(name: "SSH", urlTemplate: "ssh://{ip}:{port}", requiredPort: 22),
+        Self(name: "FTP", urlTemplate: "ftp://{ip}:{port}/", requiredPort: 21),
+        Self(name: "Screen Sharing", urlTemplate: "vnc://{ip}:{port}", requiredPort: 5900)
+    ]
+
+    private static let allowedSchemes = Set(["http", "https", "ssh", "ftp", "sftp", "telnet", "smb", "vnc"])
+    private static let placeholders = ["{ip}", "{hostname}", "{port}"]
+
+    var id = UUID()
+    var name: String
+    var urlTemplate: String
+    var requiredPort: Int
+
+    func validate() throws {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { throw ValidationError.nameRequired }
+        guard cleanName.count <= 64 else { throw ValidationError.nameTooLong }
+        guard (1...65_535).contains(requiredPort) else { throw ValidationError.invalidPort }
+        guard !urlTemplate.isEmpty, urlTemplate.utf8.count <= 2_048 else {
+            throw ValidationError.invalidTemplate
+        }
+        guard urlTemplate.contains("{ip}") || urlTemplate.contains("{hostname}") else {
+            throw ValidationError.invalidTemplate
+        }
+        var remainder = urlTemplate
+        for placeholder in Self.placeholders {
+            remainder = remainder.replacingOccurrences(of: placeholder, with: "")
+        }
+        guard !remainder.contains("{") && !remainder.contains("}") else {
+            throw ValidationError.invalidTemplate
+        }
+        _ = try resolvedURL(
+            address: IPv4Address(rawValue: 0xC000_0201),
+            hostname: "host.example"
+        )
+    }
+
+    func applies(to result: NetToysScanResult) -> Bool {
+        guard let port = UInt16(exactly: requiredPort) else { return false }
+        return result.openPorts.contains(port)
+    }
+
+    func resolvedURL(address: IPv4Address, hostname: String?) throws -> URL {
+        let safeHostname = hostname.flatMap(Self.safeHostname) ?? address.description
+        let expanded = urlTemplate
+            .replacingOccurrences(of: "{ip}", with: address.description)
+            .replacingOccurrences(of: "{hostname}", with: safeHostname)
+            .replacingOccurrences(of: "{port}", with: String(requiredPort))
+        guard let components = URLComponents(string: expanded),
+              let scheme = components.scheme?.lowercased(),
+              components.host != nil,
+              let url = components.url,
+              url.absoluteString.utf8.count <= 4_096
+        else { throw ValidationError.invalidTemplate }
+        guard Self.allowedSchemes.contains(scheme) else { throw ValidationError.unsupportedScheme }
+        guard components.user == nil, components.password == nil else {
+            throw ValidationError.credentialsNotAllowed
+        }
+        return url
+    }
+
+    private static func safeHostname(_ value: String) -> String? {
+        let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean.utf8.count <= 253,
+              clean.unicodeScalars.allSatisfy({ scalar in
+                  scalar.isASCII
+                      && (CharacterSet.alphanumerics.contains(scalar) || scalar == "." || scalar == "-")
+              })
+        else { return nil }
+        return clean
+    }
+}
+
 nonisolated struct NetToysScanRun: Codable, Equatable, Identifiable, Sendable {
     var id: UUID
     let date: Date
