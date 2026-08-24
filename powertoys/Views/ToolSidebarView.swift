@@ -29,13 +29,9 @@ struct ToolSidebarView: View {
                         selectedTool = "all-tools"
                     }
 
-                    ForEach(filteredCategories, id: \.id) { category in
-                        SidebarSectionHeader(title: category.rawValue)
-
-                        ForEach(filteredTools(for: category), id: \.id) { tool in
-                            SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id, logoAsset: tool.logoAsset) {
-                                selectedTool = tool.id
-                            }
+                    ForEach(filteredTools, id: \.id) { tool in
+                        SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id, logoAsset: tool.logoAsset) {
+                            selectedTool = tool.id
                         }
                     }
                 }
@@ -63,19 +59,8 @@ struct ToolSidebarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectBackground())
     }
-    private var categoriesWithTools: [ToolCategory] {
-        ToolCategory.allCases.filter { $0 != .all && !ToolRegistry.tools(for: $0).isEmpty }
-    }
-
-    private var filteredCategories: [ToolCategory] {
-        if searchText.isEmpty {
-            return categoriesWithTools
-        }
-        return categoriesWithTools.filter { !filteredTools(for: $0).isEmpty }
-    }
-
-    private func filteredTools(for category: ToolCategory) -> [any Tool] {
-        let tools = ToolRegistry.tools(for: category)
+    private var filteredTools: [any Tool] {
+        let tools = ToolRegistry.allTools
         if searchText.isEmpty {
             return tools
         }
