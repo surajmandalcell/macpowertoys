@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import XCTest
 @testable import powertoys
 
@@ -127,5 +128,65 @@ final class NetToysTests: XCTestCase {
                 .filter { $0.pathExtension == "backup" }.count,
             1
         )
+    }
+
+    func testPortListParsesRangesAndRejectsInvalidPorts() throws {
+        XCTAssertEqual(try PortList.parse("22, 80-82, 22"), [22, 80, 81, 82])
+        XCTAssertThrowsError(try PortList.parse("0"))
+        XCTAssertThrowsError(try PortList.parse("80-70000"))
+    }
+
+    func testARPTableParsesMacAddresses() {
+        let output = """
+        ? (192.168.1.1) at aa:bb:cc:dd:ee:ff on en0 ifscope [ethernet]
+        jetson.local (192.168.1.44) at 12-34-56-78-9a-bc on en0 ifscope [ethernet]
+        ? (192.168.1.50) at (incomplete) on en0 ifscope [ethernet]
+        """
+        XCTAssertEqual(
+            ARPTable.parse(output),
+            ["192.168.1.1": "aa:bb:cc:dd:ee:ff", "192.168.1.44": "12:34:56:78:9a:bc"]
+        )
+    }
+
+    func testTCPProbeAndScannerFindLocalListener() async throws {
+        let descriptor = socket(AF_INET, SOCK_STREAM, 0)
+        XCTAssertGreaterThanOrEqual(descriptor, 0)
+        defer { close(descriptor) }
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = 0
+        address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+        let bindResult = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.bind(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        XCTAssertEqual(bindResult, 0)
+        XCTAssertEqual(listen(descriptor, 4), 0)
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        XCTAssertEqual(
+            withUnsafeMutablePointer(to: &address) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    getsockname(descriptor, $0, &length)
+                }
+            },
+            0
+        )
+        let port = UInt16(bigEndian: address.sin_port)
+
+        let probe = await TCPPortProbe.check(host: "127.0.0.1", port: port, timeoutMilliseconds: 500)
+        XCTAssertEqual(probe.state, .open)
+
+        let scanner = NetToysScanner()
+        let results = await scanner.scan(
+            targets: [try XCTUnwrap(IPv4Address("127.0.0.1"))],
+            ports: [port],
+            timeoutMilliseconds: 500,
+            concurrency: 4
+        )
+        XCTAssertEqual(results.count, 1)
+        XCTAssertTrue(results[0].isReachable)
+        XCTAssertEqual(results[0].openPorts, [port])
     }
 }
