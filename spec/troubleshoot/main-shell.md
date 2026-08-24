@@ -66,6 +66,19 @@
 - **Check:** Change one setting from each launcher detail, reopen its tool
   window, and confirm the same value and control surface are present.
 
+## External Sub-App Launch Ordering
+
+- **Symptom:** A Raycast sub-app command shows the main window for one frame
+  before it shows the requested sub-app.
+- **Cause:** The Ruler route built its AppKit windows before it closed the
+  pending SwiftUI main window. Native SwiftUI scene links also used a second
+  manual routing path.
+- **Invariant:** Use only SwiftUI scene routing for native sub-app windows. For
+  an AppKit sub-app, close the main window before synchronous window creation.
+- **Check:** Start from a stopped process and sample WindowServer windows every
+  5 ms while opening one native sub-app and Ruler. No positive-size main window
+  may appear. Only the requested sub-app may draw.
+
 ## Window Space Restoration
 
 - **Symptom:** A reopened utility returns to its saved frame and display but not
