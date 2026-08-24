@@ -6,7 +6,22 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* NetToysCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* NetToysCore.swift */; };
+		A10000000000000000000002 /* NetToysRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* NetToysRuntime.swift */; };
+		A10000000000000000000003 /* NetToysScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* NetToysScanner.swift */; };
+		A10000000000000000000004 /* NetToysHelperRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* NetToysHelperRuntime.swift */; };
+		A10000000000000000000005 /* MacPowerToysNetHelper.app in Embed Login Items */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* MacPowerToysNetHelper.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		A10000000000000000000012 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1BDFA9462F08A44C009A9009 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000010;
+			remoteInfo = MacPowerToysNetHelper;
+		};
 		1BDFA95C2F08A44C009A9009 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 1BDFA9462F08A44C009A9009 /* Project object */;
@@ -24,12 +39,24 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A10000000000000000000006 /* MacPowerToysNetHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacPowerToysNetHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000007 /* NetToysCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysCore.swift; sourceTree = SOURCE_ROOT; };
+		A10000000000000000000008 /* NetToysRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysRuntime.swift; sourceTree = SOURCE_ROOT; };
+		A10000000000000000000009 /* NetToysScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysScanner.swift; sourceTree = SOURCE_ROOT; };
+		A1000000000000000000000A /* NetToysHelperRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysHelperRuntime.swift; sourceTree = SOURCE_ROOT; };
 		1BDFA94E2F08A44C009A9009 /* powertoys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = powertoys.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1BDFA95B2F08A44C009A9009 /* powertoysTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = powertoysTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1BDFA9652F08A44C009A9009 /* powertoysUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = powertoysUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A1000000000000000000000C /* Exceptions for "NetToysHelper" folder in "MacPowerToysNetHelper" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A10000000000000000000010 /* MacPowerToysNetHelper */;
+		};
 		1BAA00012F0AAAAA009A9009 /* Exceptions for "powertoys" folder in "powertoys" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -40,6 +67,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		A1000000000000000000000B /* NetToysHelper */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A1000000000000000000000C /* Exceptions for "NetToysHelper" folder in "MacPowerToysNetHelper" target */,
+			);
+			path = NetToysHelper;
+			sourceTree = "<group>";
+		};
 		1BDFA9502F08A44C009A9009 /* powertoys */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -61,6 +96,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A1000000000000000000000D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1BDFA94B2F08A44C009A9009 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				1BDFA9502F08A44C009A9009 /* powertoys */,
+				A1000000000000000000000B /* NetToysHelper */,
 				1BDFA95E2F08A44C009A9009 /* powertoysTests */,
 				1BDFA9682F08A44C009A9009 /* powertoysUITests */,
 				1BDFA94F2F08A44C009A9009 /* Products */,
@@ -107,6 +150,7 @@
 			isa = PBXGroup;
 			children = (
 				1BDFA94E2F08A44C009A9009 /* powertoys.app */,
+				A10000000000000000000006 /* MacPowerToysNetHelper.app */,
 				1BDFA95B2F08A44C009A9009 /* powertoysTests.xctest */,
 				1BDFA9652F08A44C009A9009 /* powertoysUITests.xctest */,
 			);
@@ -116,6 +160,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A10000000000000000000010 /* MacPowerToysNetHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000016 /* Build configuration list for PBXNativeTarget "MacPowerToysNetHelper" */;
+			buildPhases = (
+				A1000000000000000000000F /* Sources */,
+				A1000000000000000000000D /* Frameworks */,
+				A1000000000000000000000E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A1000000000000000000000B /* NetToysHelper */,
+			);
+			name = MacPowerToysNetHelper;
+			packageProductDependencies = (
+			);
+			productName = MacPowerToysNetHelper;
+			productReference = A10000000000000000000006 /* MacPowerToysNetHelper.app */;
+			productType = "com.apple.product-type.application";
+		};
 		1BDFA94D2F08A44C009A9009 /* powertoys */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1BDFA96F2F08A44C009A9009 /* Build configuration list for PBXNativeTarget "powertoys" */;
@@ -123,10 +189,12 @@
 				1BDFA94A2F08A44C009A9009 /* Sources */,
 				1BDFA94B2F08A44C009A9009 /* Frameworks */,
 				1BDFA94C2F08A44C009A9009 /* Resources */,
+				A10000000000000000000011 /* Embed Login Items */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A10000000000000000000013 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				1BDFA9502F08A44C009A9009 /* powertoys */,
@@ -194,6 +262,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					A10000000000000000000010 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					1BDFA94D2F08A44C009A9009 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -222,13 +293,35 @@
 			projectRoot = "";
 			targets = (
 				1BDFA94D2F08A44C009A9009 /* powertoys */,
+				A10000000000000000000010 /* MacPowerToysNetHelper */,
 				1BDFA95A2F08A44C009A9009 /* powertoysTests */,
 				1BDFA9642F08A44C009A9009 /* powertoysUITests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		A10000000000000000000011 /* Embed Login Items */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LoginItems;
+			dstSubfolderSpec = 1;
+			files = (
+				A10000000000000000000005 /* MacPowerToysNetHelper.app in Embed Login Items */,
+			);
+			name = "Embed Login Items";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXResourcesBuildPhase section */
+		A1000000000000000000000E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1BDFA94C2F08A44C009A9009 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -253,6 +346,17 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A1000000000000000000000F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* NetToysCore.swift in Sources */,
+				A10000000000000000000002 /* NetToysRuntime.swift in Sources */,
+				A10000000000000000000003 /* NetToysScanner.swift in Sources */,
+				A10000000000000000000004 /* NetToysHelperRuntime.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1BDFA94A2F08A44C009A9009 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -277,6 +381,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A10000000000000000000013 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000010 /* MacPowerToysNetHelper */;
+			targetProxy = A10000000000000000000012 /* PBXContainerItemProxy */;
+		};
 		1BDFA95D2F08A44C009A9009 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 1BDFA94D2F08A44C009A9009 /* powertoys */;
@@ -290,6 +399,46 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A10000000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = GF57JXJF5A;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NetToysHelper/Info.plist;
+				MARKETING_VERSION = 1.7.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.surajmandal.macpowertoys.nettoys-helper";
+				PRODUCT_NAME = MacPowerToysNetHelper;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A10000000000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = GF57JXJF5A;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NetToysHelper/Info.plist;
+				MARKETING_VERSION = 1.7.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.surajmandal.macpowertoys.nettoys-helper";
+				PRODUCT_NAME = MacPowerToysNetHelper;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		1BDFA96D2F08A44C009A9009 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -565,6 +714,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A10000000000000000000016 /* Build configuration list for PBXNativeTarget "MacPowerToysNetHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000014 /* Debug */,
+				A10000000000000000000015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		1BDFA9492F08A44C009A9009 /* Build configuration list for PBXProject "powertoys" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

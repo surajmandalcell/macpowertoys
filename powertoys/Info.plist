@@ -8,6 +8,8 @@
 	<string>Text Extractor captures only the region you select so Apple Vision can recognize its text locally.</string>
 	<key>NSInputMonitoringUsageDescription</key>
 	<string>Input Devices adjusts mouse and trackpad scroll events using the profiles you enable.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>NetToys scans addresses and ports on local networks that you choose.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

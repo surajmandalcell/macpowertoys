@@ -223,4 +223,106 @@ final class NetToysTests: XCTestCase {
             configuration
         )
     }
+
+    func testReplacingAnchorPreservesOtherConfiguration() throws {
+        let first = SSHAnchorConfiguration(
+            hostAlias: "jetson",
+            hostName: "192.168.1.8",
+            port: 22,
+            identity: .randomizedMAC(hostname: "jetson.local", learnedMACs: [])
+        )
+        let second = SSHAnchorConfiguration(
+            hostAlias: "nas",
+            hostName: "192.168.1.4",
+            port: 2222,
+            identity: .stableMAC("aa:bb:cc:dd:ee:ff")
+        )
+        var changed = first
+        changed.hostName = "192.168.1.44"
+        let original = NetToysConfiguration(probeInterval: 2.5, anchors: [first, second], recordsNetworkHistory: false)
+
+        let updated = try original.replacingAnchor(changed)
+
+        XCTAssertEqual(updated.anchors, [changed, second])
+        XCTAssertEqual(updated.probeInterval, original.probeInterval)
+        XCTAssertEqual(updated.recordsNetworkHistory, original.recordsNetworkHistory)
+    }
+
+    func testNetworkHistoryKeepsNewestBoundedEvents() throws {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let events = (0..<4).map { offset in
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1",
+                date: start.addingTimeInterval(Double(offset)),
+                changes: [.internet(from: .reachable, to: .unreachable)]
+            )
+        }
+
+        let history = NetworkHistory(events: events, limit: 3)
+
+        XCTAssertEqual(history.events.map(\.date), Array(events.suffix(3)).map(\.date))
+        XCTAssertEqual(try JSONDecoder().decode(NetworkHistory.self, from: JSONEncoder().encode(history)), history)
+    }
+
+    func testAnchorRecoveryUsesOnlyTheConfiguredPortAndLearnsRandomizedMAC() throws {
+        let anchor = SSHAnchorConfiguration(
+            hostAlias: "jetson",
+            hostName: "192.168.1.8",
+            port: 2222,
+            identity: .randomizedMAC(hostname: "jetson.local", learnedMACs: [])
+        )
+        let wrongPort = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.168.1.40")),
+            isReachable: true,
+            responseMilliseconds: 1,
+            hostname: "jetson.local",
+            macAddress: "00:11:22:33:44:55",
+            vendor: nil,
+            openPorts: [22]
+        )
+        let moved = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.168.1.44")),
+            isReachable: true,
+            responseMilliseconds: 2,
+            hostname: "jetson.local.",
+            macAddress: "AA:BB:CC:DD:EE:FF",
+            vendor: nil,
+            openPorts: [2222]
+        )
+
+        let recovered = try XCTUnwrap(SSHAnchorRecovery.resolve(anchor: anchor, scanResults: [wrongPort, moved]))
+
+        XCTAssertEqual(recovered.hostName, "192.168.1.44")
+        XCTAssertEqual(
+            recovered.identity,
+            .randomizedMAC(hostname: "jetson.local", learnedMACs: ["aabbccddeeff"])
+        )
+    }
+
+    func testDefaultRouteParserExtractsInterfaceAndGateway() {
+        let output = """
+           route to: default
+        destination: default
+               mask: default
+            gateway: 192.168.1.1
+          interface: en0
+        """
+        XCTAssertEqual(
+            DefaultRoute.parse(output),
+            DefaultRoute(interfaceName: "en0", gateway: "192.168.1.1")
+        )
+    }
+
+    func testHelperHeartbeatMustBeFresh() {
+        let now = Date(timeIntervalSince1970: 100)
+        XCTAssertTrue(NetToysLoginItemManager.hasFreshHeartbeat(
+            NetToysHelperStatus(version: 1, heartbeat: now.addingTimeInterval(-4), anchors: []),
+            now: now
+        ))
+        XCTAssertFalse(NetToysLoginItemManager.hasFreshHeartbeat(
+            NetToysHelperStatus(version: 1, heartbeat: now.addingTimeInterval(-8), anchors: []),
+            now: now
+        ))
+        XCTAssertFalse(NetToysLoginItemManager.hasFreshHeartbeat(nil, now: now))
+    }
 }
