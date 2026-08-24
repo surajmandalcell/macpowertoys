@@ -224,7 +224,7 @@ struct LogsWindowView: View {
                         LogManager.shared.clearMemoryLogs()
                     }
                 } else {
-                    SidebarActionRow(icon: "arrow.clockwise", title: "Refresh System Issues") {
+                    SidebarActionRow(icon: "arrow.clockwise", title: "Refresh Issues") {
                         systemLogs.refresh(range: systemRange)
                     }
                 }
