@@ -18,10 +18,6 @@ struct TrayPopoverView: View {
 
     private var trayToolIDs: [String] { trayTools.map(\.id) }
 
-    private var maxPopoverHeight: CGFloat {
-        (NSScreen.main?.visibleFrame.height ?? 900) * 0.7
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             if trayTools.isEmpty {
@@ -52,7 +48,6 @@ struct TrayPopoverView: View {
             footer
         }
         .frame(width: 340)
-        .frame(maxHeight: maxPopoverHeight)
         .onAppear(perform: normalizeSelection)
         .onChange(of: trayToolIDs) { normalizeSelection() }
     }
@@ -130,24 +125,53 @@ private struct AwakeTrayTab: View {
                 .buttonStyle(.borderless)
             }
             .frame(minHeight: 24)
-            HStack(spacing: 8) {
-                Button("Off") { service.setMode(.passive) }
-                Button("Indefinite") { service.setMode(.indefinite) }
-                Button("30 min") { service.setMode(.timed, duration: 1800) }
-                Button("1 hour") { service.setMode(.timed, duration: 3600) }
+            Picker("Awake mode", selection: quickMode) {
+                Text("Off").tag(AwakeQuickMode.off)
+                Text("Indefinite").tag(AwakeQuickMode.indefinite)
+                Text("30 min").tag(AwakeQuickMode.thirtyMinutes)
+                Text("1 hour").tag(AwakeQuickMode.oneHour)
             }
-            .buttonStyle(.bordered)
+            .pickerStyle(.segmented)
+            .labelsHidden()
             .controlSize(.small)
+
             Toggle("Keep Display On", isOn: Binding(
                 get: { service.configuration.keepDisplayOn },
                 set: service.setKeepDisplayOn
             ))
             .toggleStyle(.switch)
             .controlSize(.small)
-            .disabled(service.configuration.mode == .passive)
+            .help("Applies while Awake is active")
+
+            if let error = service.assertionError {
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private var quickMode: Binding<AwakeQuickMode> {
+        Binding(
+            get: { AwakeQuickMode(configuration: service.configuration) },
+            set: { mode in
+                switch mode {
+                case .off:
+                    service.setMode(.passive)
+                case .indefinite:
+                    service.setMode(.indefinite)
+                case .thirtyMinutes:
+                    service.setMode(.timed, duration: 1_800)
+                case .oneHour:
+                    service.setMode(.timed, duration: 3_600)
+                case .custom:
+                    break
+                }
+            }
+        )
     }
 }
 

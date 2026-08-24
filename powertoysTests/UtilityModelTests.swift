@@ -50,4 +50,24 @@ final class UtilityModelTests: XCTestCase {
         XCTAssertEqual(configuration.intervalSeconds, 1_800)
         XCTAssertEqual(configuration.presets, [900, 1_800, 3_600, 7_200])
     }
+
+    func testAwakeQuickModeMatchesOnlyExactTrayPresets() {
+        XCTAssertEqual(AwakeQuickMode(configuration: AwakeConfiguration()), .off)
+
+        var configuration = AwakeConfiguration(mode: .indefinite)
+        XCTAssertEqual(AwakeQuickMode(configuration: configuration), .indefinite)
+
+        configuration.mode = .timed
+        configuration.intervalSeconds = 1_800
+        XCTAssertEqual(AwakeQuickMode(configuration: configuration), .thirtyMinutes)
+
+        configuration.intervalSeconds = 3_600
+        XCTAssertEqual(AwakeQuickMode(configuration: configuration), .oneHour)
+
+        configuration.intervalSeconds = 900
+        XCTAssertEqual(AwakeQuickMode(configuration: configuration), .custom)
+
+        configuration.mode = .until
+        XCTAssertEqual(AwakeQuickMode(configuration: configuration), .custom)
+    }
 }
