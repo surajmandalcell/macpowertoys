@@ -36,15 +36,13 @@ struct TrayPopoverView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .strokeBorder(
                                 (colorScheme == .dark ? Color.white : Color.black)
-                                    .opacity(contrast == .increased ? 0.18 : 0.1),
+                                    .opacity(contrast == .increased ? 0.16 : 0.08),
                                 lineWidth: 1
                             )
                     )
                     .padding(.horizontal, 12)
-                    .padding(.top, 12)
+                    .padding(.top, 20)
                     .padding(.bottom, 10)
-
-                QuietDivider()
 
                 ZStack {
                     tabContent
@@ -130,7 +128,7 @@ private struct AwakeTrayTab: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(service.isActive ? Color.green : Color.secondary)
@@ -138,14 +136,13 @@ private struct AwakeTrayTab: View {
                     .frame(width: 18)
                 Text(service.statusText).font(.system(size: 11)).monospacedDigit().lineLimit(1)
                 Spacer()
-                Button("Open") {
+                TrayActionButton(title: "Open", isPrimary: false) {
                     openWindow(id: "awake")
                     NSApp.activate(ignoringOtherApps: true)
                 }
-                .buttonStyle(.borderless)
-                .focusEffectDisabled()
             }
             .frame(minHeight: 24)
+
             Picker("Awake mode", selection: quickMode) {
                 Text("Off").tag(AwakeQuickMode.off)
                 Text("Indefinite").tag(AwakeQuickMode.indefinite)
@@ -156,13 +153,21 @@ private struct AwakeTrayTab: View {
             .labelsHidden()
             .controlSize(.small)
 
-            Toggle("Keep Display On", isOn: Binding(
-                get: { service.configuration.keepDisplayOn },
-                set: service.setKeepDisplayOn
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .help("Applies while Awake is active")
+            HStack(spacing: 8) {
+                Text("Keep Display On")
+                    .font(.system(size: 12))
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { service.configuration.keepDisplayOn },
+                    set: service.setKeepDisplayOn
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("Applies while Awake is active")
+                .accessibilityLabel("Keep Display On")
+            }
+            .frame(minHeight: 24)
 
             if let error = service.assertionError {
                 Text(error)
@@ -205,7 +210,7 @@ private struct TrayTabStrip: View {
     private let maxTabWidth: CGFloat = 150
     private let minTabWidth: CGFloat = 30
     private let labelThreshold: CGFloat = 84
-    private let tabSpacing: CGFloat = 8
+    private let tabSpacing: CGFloat = 4
 
     var body: some View {
         GeometryReader { geo in
@@ -260,19 +265,28 @@ private struct TrayTabItem: View {
                 if showsLabel {
                     Text(tool.name)
                         .font(.system(size: 12, weight: isSelected ? .medium : .regular))
-                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .foregroundStyle(
+                            isSelected
+                                ? Color(nsColor: .alternateSelectedControlTextColor)
+                                : (isHovering ? Color.primary : Color.secondary)
+                        )
                         .lineLimit(1)
                 }
             }
-            .frame(width: width, height: 26)
+            .frame(width: width, height: 28)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.primary.opacity(0.08) : (isHovering ? Color.primary.opacity(0.06) : Color.clear))
+                    .fill(
+                        isSelected
+                            ? Color(nsColor: .controlAccentColor)
+                            : (isHovering ? Color.primary.opacity(0.06) : Color.clear)
+                    )
             )
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onHover { isHovering = $0 }
         .animation(.easeInOut(duration: 0.15), value: isHovering)
     }

@@ -14,9 +14,9 @@ final class AppDelegateTests: XCTestCase {
         ]))
     }
 
-    func testStatusItemInterceptsLeftAndRightClicks() {
-        XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
-        XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.leftMouseUp))
+    func testStatusItemInterceptsOnlyRightClick() {
+        XCTAssertFalse(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
+        XCTAssertFalse(AppDelegate.statusItemEventMask.contains(.leftMouseUp))
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.rightMouseDown))
         XCTAssertEqual(AppDelegate.openMainWindowSymbol, "arrow.up.forward.square")
     }

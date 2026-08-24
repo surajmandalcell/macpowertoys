@@ -10,11 +10,7 @@ import Darwin
 class AppDelegate: NSObject, NSApplicationDelegate {
     static let openMainWindowSymbol = "arrow.up.forward.square"
     static weak var current: AppDelegate?
-    static let statusItemEventMask: NSEvent.EventTypeMask = [
-        .leftMouseDown,
-        .leftMouseUp,
-        .rightMouseDown
-    ]
+    static let statusItemEventMask: NSEvent.EventTypeMask = [.rightMouseDown]
 
     private var statusItemClickMonitor: Any?
     private var currentDockIconAssetName = "AppIcon"
@@ -23,9 +19,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var didFinishLaunching = false
     private var didStartApplication = false
     private var applicationStartup: (@MainActor () async -> Void)?
-    private let statusItemClickCoordinator = StatusItemClickCoordinator(
-        delay: NSEvent.doubleClickInterval
-    )
     private var ownsInstance = true
 
     static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?) -> Bool {
@@ -152,27 +145,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
 
-            // MenuBarExtra opens on mouse-up. Swallow it while the delayed
-            // mouse-down action waits for a possible second click.
-            if event.type == .leftMouseUp {
-                return nil
-            }
-
-            if event.type == .rightMouseDown {
-                NSMenu.popUpContextMenu(
-                    self.statusItemContextMenu(),
-                    with: event,
-                    for: statusButton
-                )
-                return nil
-            }
-
-            self.statusItemClickCoordinator.handle(
-                clickCount: event.clickCount,
-                singleClick: { [weak statusButton] in
-                    statusButton?.performClick(nil)
-                },
-                doubleClick: self.openMainWindowFromStatusItem
+            NSMenu.popUpContextMenu(
+                self.statusItemContextMenu(),
+                with: event,
+                for: statusButton
             )
             return nil
         }
