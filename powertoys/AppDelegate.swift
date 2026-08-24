@@ -19,7 +19,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var didFinishLaunching = false
     private var didStartApplication = false
     private var applicationStartup: (@MainActor () async -> Void)?
-    private var suppressNextMainWindow = false
     private var ownsInstance = true
 
     static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?) -> Bool {
@@ -37,19 +36,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let toolID = url.pathComponents.first { $0 != "/" }
         return toolID.map { !nativeSceneToolIDs.contains($0) } ?? true
-    }
-
-    func prepareWindowRouting(for url: URL) {
-        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "open" else { return }
-        let toolID = url.pathComponents.first { $0 != "/" }
-        suppressNextMainWindow = toolID != "main" && Self.requiresManualURLRouting(url)
-    }
-
-    func consumeMainWindowSuppression(for identifier: String?) -> Bool {
-        guard suppressNextMainWindow,
-              ToolActionRouter.windowIdentifier(identifier, matches: "main") else { return false }
-        suppressNextMainWindow = false
-        return true
     }
 
     @MainActor
@@ -242,9 +228,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
-        if !ToolActionRouter.windowIdentifier(window.identifier?.rawValue, matches: "main") {
-            suppressNextMainWindow = false
-        }
         updateDockIcon(for: window.identifier?.rawValue)
         updateFreeRulerMenuContext(for: window)
     }
@@ -311,11 +294,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls {
-            prepareWindowRouting(for: url)
-            if Self.requiresManualURLRouting(url) {
-                MacPowerToysApp.handleIncomingURL(url)
-            }
+        for url in urls where Self.requiresManualURLRouting(url) {
+            MacPowerToysApp.handleIncomingURL(url)
         }
     }
 
