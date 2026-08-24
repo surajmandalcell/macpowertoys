@@ -1,0 +1,13 @@
+IEEE Registration Authority MAC assignment data
+
+The bundled ieee-mac-vendors.tsv file is generated from the IEEE Registration
+Authority public MA-L, MA-M, and MA-S listings. IEEE provides the complete
+public listings for download at:
+
+https://standards-oui.ieee.org/oui/oui.csv
+https://standards-oui.ieee.org/oui28/mam.csv
+https://standards-oui.ieee.org/oui36/oui36.csv
+
+The bundled snapshot was downloaded on 2026-08-24. It contains only the public
+assignment prefix, prefix length, and organization name. It excludes postal
+addresses.
