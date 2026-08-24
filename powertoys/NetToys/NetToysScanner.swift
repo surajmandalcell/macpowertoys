@@ -215,6 +215,64 @@ nonisolated enum TCPPortProbe {
     }
 }
 
+nonisolated struct PingProbeResult: Equatable, Sendable {
+    let ttl: Int?
+    let packetLossPercent: Double?
+    let averageMilliseconds: Double?
+}
+
+nonisolated enum PingProbe {
+    static func check(
+        address: IPv4Address,
+        count: Int,
+        timeoutMilliseconds: Int
+    ) async -> PingProbeResult? {
+        await Task.detached(priority: .utility) {
+            let process = Process()
+            let pipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/sbin/ping")
+            process.arguments = [
+                "-n", "-c", String(min(max(count, 1), 5)),
+                "-W", String(min(max(timeoutMilliseconds, 100), 5_000)),
+                address.description
+            ]
+            process.environment = ProcessInfo.processInfo.environment.merging(["LC_ALL": "C"]) { _, new in new }
+            process.standardOutput = pipe
+            process.standardError = pipe
+            do {
+                try process.run()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                return parse(String(decoding: data, as: UTF8.self))
+            } catch {
+                return nil
+            }
+        }.value
+    }
+
+    static func parse(_ output: String) -> PingProbeResult? {
+        let lines = output.split(whereSeparator: \.isNewline).map(String.init)
+        let ttl = lines.compactMap { line -> Int? in
+            guard let range = line.range(of: "ttl=") else { return nil }
+            return Int(line[range.upperBound...].prefix(while: \.isNumber))
+        }.first
+        let loss = lines.compactMap { line -> Double? in
+            guard line.contains("packet loss"), let percent = line.firstIndex(of: "%") else { return nil }
+            let prefix = line[..<percent]
+            let value = prefix.split(whereSeparator: { $0 == " " || $0 == "," }).last
+            return value.flatMap { Double($0) }
+        }.first
+        let average = lines.compactMap { line -> Double? in
+            guard line.contains("min/avg/max"), let equals = line.firstIndex(of: "=") else { return nil }
+            let values = line[line.index(after: equals)...].split(separator: "/")
+            guard values.count >= 2 else { return nil }
+            return Double(values[1].trimmingCharacters(in: .whitespaces))
+        }.first
+        guard ttl != nil || loss != nil || average != nil else { return nil }
+        return PingProbeResult(ttl: ttl, packetLossPercent: loss, averageMilliseconds: average)
+    }
+}
+
 nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable {
     var id: String { address.description }
     let address: IPv4Address
@@ -224,6 +282,33 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
     let macAddress: String?
     let vendor: String?
     let openPorts: [UInt16]
+    let filteredPorts: [UInt16]?
+    let ttl: Int?
+    let packetLossPercent: Double?
+
+    init(
+        address: IPv4Address,
+        isReachable: Bool,
+        responseMilliseconds: Double?,
+        hostname: String?,
+        macAddress: String?,
+        vendor: String?,
+        openPorts: [UInt16],
+        filteredPorts: [UInt16]? = nil,
+        ttl: Int? = nil,
+        packetLossPercent: Double? = nil
+    ) {
+        self.address = address
+        self.isReachable = isReachable
+        self.responseMilliseconds = responseMilliseconds
+        self.hostname = hostname
+        self.macAddress = macAddress
+        self.vendor = vendor
+        self.openPorts = openPorts
+        self.filteredPorts = filteredPorts
+        self.ttl = ttl
+        self.packetLossPercent = packetLossPercent
+    }
 }
 
 nonisolated struct NetToysScanRun: Codable, Equatable, Identifiable, Sendable {
@@ -314,12 +399,18 @@ actor NetToysScanner {
         ports: [UInt16],
         timeoutMilliseconds: Int = 750,
         concurrency: Int = 64,
+        collectPingDetails: Bool = false,
+        pingProbeCount: Int = 2,
+        launchDelayMilliseconds: Int = 0,
         progress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> [NetToysScanResult] {
         await scan(
             targets: targets.map { NetToysScanTarget(address: $0, ports: ports) },
             timeoutMilliseconds: timeoutMilliseconds,
             concurrency: concurrency,
+            collectPingDetails: collectPingDetails,
+            pingProbeCount: pingProbeCount,
+            launchDelayMilliseconds: launchDelayMilliseconds,
             progress: progress
         )
     }
@@ -328,6 +419,9 @@ actor NetToysScanner {
         targets: [NetToysScanTarget],
         timeoutMilliseconds: Int = 750,
         concurrency: Int = 64,
+        collectPingDetails: Bool = false,
+        pingProbeCount: Int = 2,
+        launchDelayMilliseconds: Int = 0,
         progress: (@Sendable (Int, Int) -> Void)? = nil
     ) async -> [NetToysScanResult] {
         let maximum = min(max(concurrency, 1), 256)
@@ -338,13 +432,20 @@ actor NetToysScanner {
             if Task.isCancelled { break }
             let batch = targets[offset..<min(offset + maximum, targets.count)]
             let results = await withTaskGroup(of: NetToysScanResult?.self) { group in
-                for target in batch {
+                for (index, target) in batch.enumerated() {
                     group.addTask {
                         guard !Task.isCancelled else { return nil }
+                        if launchDelayMilliseconds > 0, index > 0 {
+                            try? await Task.sleep(for: .milliseconds(
+                                min(1_000, launchDelayMilliseconds) * index
+                            ))
+                        }
                         return await Self.scanHost(
                             target.address,
                             ports: target.ports,
-                            timeoutMilliseconds: timeoutMilliseconds
+                            timeoutMilliseconds: timeoutMilliseconds,
+                            collectPingDetails: collectPingDetails,
+                            pingProbeCount: pingProbeCount
                         )
                     }
                 }
@@ -367,7 +468,10 @@ actor NetToysScanner {
                 hostname: result.hostname,
                 macAddress: arp[result.address.description],
                 vendor: result.vendor,
-                openPorts: result.openPorts
+                openPorts: result.openPorts,
+                filteredPorts: result.filteredPorts,
+                ttl: result.ttl,
+                packetLossPercent: result.packetLossPercent
             )
         }.sorted { $0.address < $1.address }
     }
@@ -375,10 +479,13 @@ actor NetToysScanner {
     private nonisolated static func scanHost(
         _ address: IPv4Address,
         ports: [UInt16],
-        timeoutMilliseconds: Int
+        timeoutMilliseconds: Int,
+        collectPingDetails: Bool,
+        pingProbeCount: Int
     ) async -> NetToysScanResult {
         var reachable = false
         var openPorts: [UInt16] = []
+        var filteredPorts: [UInt16] = []
         var fastest: Double?
         for port in ports {
             if Task.isCancelled { break }
@@ -392,6 +499,20 @@ actor NetToysScanner {
                 fastest = min(fastest ?? probe.latencyMilliseconds, probe.latencyMilliseconds)
             }
             if probe.state == .open { openPorts.append(port) }
+            if probe.state == .unreachable { filteredPorts.append(port) }
+        }
+        let ping = collectPingDetails
+            ? await PingProbe.check(
+                address: address,
+                count: pingProbeCount,
+                timeoutMilliseconds: timeoutMilliseconds
+            )
+            : nil
+        if let loss = ping?.packetLossPercent, loss < 100 {
+            reachable = true
+            if let latency = ping?.averageMilliseconds {
+                fastest = min(fastest ?? latency, latency)
+            }
         }
         let hostname = reachable ? await HostResolver.reverse(address) : nil
         return NetToysScanResult(
@@ -401,7 +522,10 @@ actor NetToysScanner {
             hostname: hostname,
             macAddress: nil,
             vendor: nil,
-            openPorts: openPorts
+            openPorts: openPorts,
+            filteredPorts: filteredPorts,
+            ttl: ping?.ttl,
+            packetLossPercent: ping?.packetLossPercent
         )
     }
 }
@@ -525,13 +649,16 @@ nonisolated enum NetToysScanExport {
                 result.address.description,
                 result.isReachable ? "Up" : "Down",
                 result.responseMilliseconds.map { String(format: "%.1f", $0) } ?? "",
+                result.ttl.map(String.init) ?? "",
+                result.packetLossPercent.map { String(format: "%.1f", $0) } ?? "",
+                result.filteredPorts?.map(String.init).joined(separator: " ") ?? "",
                 result.hostname ?? "",
                 result.macAddress ?? "",
                 result.vendor ?? "",
                 result.openPorts.map(String.init).joined(separator: " ")
             ].map(quote).joined(separator: ",")
         }
-        return (["IP Address,Status,Response ms,Hostname,MAC Address,Vendor,Open Ports"] + rows)
+        return (["IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports"] + rows)
             .joined(separator: "\n")
     }
 
@@ -540,9 +667,12 @@ nonisolated enum NetToysScanExport {
             [
                 result.address.description,
                 result.isReachable ? "Up" : "Down",
+                result.ttl.map(String.init) ?? "-",
+                result.packetLossPercent.map { String(format: "%.1f%%", $0) } ?? "-",
                 result.hostname ?? "-",
                 result.macAddress ?? "-",
-                result.openPorts.map(String.init).joined(separator: ",")
+                result.openPorts.map(String.init).joined(separator: ","),
+                result.filteredPorts?.map(String.init).joined(separator: ",") ?? ""
             ].joined(separator: "\t")
         }.joined(separator: "\n")
     }
@@ -559,7 +689,10 @@ nonisolated enum NetToysScanExport {
               <host ip="\(xmlEscape(result.address.description))" status="\(result.isReachable ? "up" : "down")">
                 <hostname>\(xmlEscape(result.hostname ?? ""))</hostname>
                 <mac>\(xmlEscape(result.macAddress ?? ""))</mac>
+                <ttl>\(result.ttl.map(String.init) ?? "")</ttl>
+                <packet-loss>\(result.packetLossPercent.map { String(format: "%.1f", $0) } ?? "")</packet-loss>
                 <ports>\(xmlEscape(result.openPorts.map(String.init).joined(separator: " ")))</ports>
+                <filtered-ports>\(xmlEscape(result.filteredPorts?.map(String.init).joined(separator: " ") ?? ""))</filtered-ports>
               </host>
             """
         }.joined(separator: "\n")
@@ -571,14 +704,17 @@ nonisolated enum NetToysScanExport {
             let values = [
                 result.address.description,
                 result.isReachable ? "up" : "down",
+                result.ttl.map(String.init) ?? "",
+                result.packetLossPercent.map { String(format: "%.1f", $0) } ?? "",
                 result.hostname ?? "",
                 result.macAddress ?? "",
-                result.openPorts.map(String.init).joined(separator: " ")
+                result.openPorts.map(String.init).joined(separator: " "),
+                result.filteredPorts?.map(String.init).joined(separator: " ") ?? ""
             ].map(sqlQuote).joined(separator: ", ")
-            return "INSERT INTO nettoys_scan (ip_address, status, hostname, mac_address, open_ports) VALUES (\(values));"
+            return "INSERT INTO nettoys_scan (ip_address, status, ttl, packet_loss, hostname, mac_address, open_ports, filtered_ports) VALUES (\(values));"
         }
         return ([
-            "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, hostname TEXT, mac_address TEXT, open_ports TEXT);"
+            "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, open_ports TEXT, filtered_ports TEXT);"
         ] + rows).joined(separator: "\n")
     }
 

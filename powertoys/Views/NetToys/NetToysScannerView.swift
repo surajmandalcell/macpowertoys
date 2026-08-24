@@ -11,6 +11,21 @@ enum NetToysResultFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum NetToysColumn: String, CaseIterable, Identifiable {
+    case status = "Status"
+    case response = "Response"
+    case ttl = "TTL"
+    case packetLoss = "Packet Loss"
+    case hostname = "Hostname"
+    case macAddress = "MAC Address"
+    case openPorts = "Open Ports"
+    case filteredPorts = "Filtered Ports"
+
+    var id: String { rawValue }
+
+    static let defaults: Set<Self> = [.status, .response, .hostname, .macAddress, .openPorts]
+}
+
 enum NetToysExportFormat: String, CaseIterable, Identifiable {
     case savedResults = "NetToys Results"
     case csv = "CSV"
@@ -39,6 +54,11 @@ extension NetToysScanResult {
     nonisolated var hostnameTitle: String { hostname ?? "" }
     nonisolated var macTitle: String { macAddress ?? "" }
     nonisolated var portsTitle: String { openPorts.map(String.init).joined(separator: ", ") }
+    nonisolated var filteredPortsTitle: String { filteredPorts?.map(String.init).joined(separator: ", ") ?? "" }
+    nonisolated var ttlTitle: String { ttl.map(String.init) ?? "" }
+    nonisolated var packetLossTitle: String {
+        packetLossPercent.map { String(format: "%.1f", $0) } ?? ""
+    }
 }
 
 @Observable
@@ -56,6 +76,14 @@ final class NetToysScannerViewModel {
     var isScanning = false
     var timeoutMilliseconds = 750
     var concurrency = 64
+    var launchDelayMilliseconds = 0
+    var collectPingDetails = false
+    var pingProbeCount = 2
+    var visibleColumns = NetToysColumn.defaults {
+        didSet {
+            UserDefaults.standard.set(visibleColumns.map(\.rawValue).sorted(), forKey: "nettoys.scanner.columns")
+        }
+    }
     var favoriteTargets = NetToysScannerStore.favoriteTargets()
     var annotations = NetToysScannerStore.annotations()
 
@@ -64,6 +92,10 @@ final class NetToysScannerViewModel {
 
     init() {
         targetInput = LocalIPv4Network.active()?.cidr ?? "192.168.1.0/24"
+        if let saved = UserDefaults.standard.stringArray(forKey: "nettoys.scanner.columns") {
+            let columns = Set(saved.compactMap(NetToysColumn.init(rawValue:)))
+            if !columns.isEmpty { visibleColumns = columns }
+        }
     }
 
     var visibleResults: [NetToysScanResult] {
@@ -110,7 +142,10 @@ final class NetToysScannerViewModel {
                     let values = await scanner.scan(
                         targets: targets,
                         timeoutMilliseconds: timeoutMilliseconds,
-                        concurrency: concurrency
+                        concurrency: concurrency,
+                        collectPingDetails: collectPingDetails,
+                        pingProbeCount: pingProbeCount,
+                        launchDelayMilliseconds: launchDelayMilliseconds
                     ) { completed, total in
                         Task { @MainActor in
                             self.completed = completed
@@ -418,35 +453,67 @@ struct NetToysScannerView: View {
             }
             .width(min: 112, ideal: 126)
 
-            TableColumn("Status", value: \.statusTitle) { result in
-                Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
-                    .labelStyle(.titleAndIcon)
-                    .foregroundStyle(result.isReachable ? .green : .secondary)
+            if model.visibleColumns.contains(.status) {
+                TableColumn("Status", value: \.statusTitle) { result in
+                    Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(result.isReachable ? .green : .secondary)
+                }
+                .width(min: 68, ideal: 76)
             }
-            .width(min: 68, ideal: 76)
 
-            TableColumn("Response", value: \.responseTitle) { result in
-                Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
-                    .monospacedDigit()
+            if model.visibleColumns.contains(.response) {
+                TableColumn("Response", value: \.responseTitle) { result in
+                    Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
+                        .monospacedDigit()
+                }
+                .width(min: 76, ideal: 86)
             }
-            .width(min: 76, ideal: 86)
 
-            TableColumn("Hostname", value: \.hostnameTitle) { result in
-                Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
-                    .lineLimit(1)
+            if model.visibleColumns.contains(.ttl) {
+                TableColumn("TTL", value: \.ttlTitle) { result in
+                    Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
+                }
+                .width(min: 44, ideal: 48)
             }
-            .width(min: 116, ideal: 154)
 
-            TableColumn("MAC Address", value: \.macTitle) { result in
-                Text(result.macTitle.isEmpty ? "—" : result.macTitle)
-                    .font(.system(.body, design: .monospaced))
+            if model.visibleColumns.contains(.packetLoss) {
+                TableColumn("Loss", value: \.packetLossTitle) { result in
+                    Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
+                        .monospacedDigit()
+                }
+                .width(min: 58, ideal: 66)
             }
-            .width(min: 130, ideal: 142)
 
-            TableColumn("Open Ports", value: \.portsTitle) { result in
-                Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
+            if model.visibleColumns.contains(.hostname) {
+                TableColumn("Hostname", value: \.hostnameTitle) { result in
+                    Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
+                        .lineLimit(1)
+                }
+                .width(min: 116, ideal: 154)
             }
-            .width(min: 86, ideal: 106)
+
+            if model.visibleColumns.contains(.macAddress) {
+                TableColumn("MAC Address", value: \.macTitle) { result in
+                    Text(result.macTitle.isEmpty ? "—" : result.macTitle)
+                        .font(.system(.body, design: .monospaced))
+                }
+                .width(min: 130, ideal: 142)
+            }
+
+            if model.visibleColumns.contains(.openPorts) {
+                TableColumn("Open Ports", value: \.portsTitle) { result in
+                    Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
+                }
+                .width(min: 86, ideal: 106)
+            }
+
+            if model.visibleColumns.contains(.filteredPorts) {
+                TableColumn("Filtered", value: \.filteredPortsTitle) { result in
+                    Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
+                }
+                .width(min: 80, ideal: 100)
+            }
         }
         .contextMenu(forSelectionType: String.self) { selected in
             if let result = model.results.first(where: { selected.contains($0.id) }) {
@@ -549,8 +616,34 @@ private struct NetToysScannerSettingsView: View {
             Form {
                 Stepper("Timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
                 Stepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
+                Stepper(
+                    "Launch delay: \(model.launchDelayMilliseconds) ms",
+                    value: $model.launchDelayMilliseconds,
+                    in: 0...100,
+                    step: 5
+                )
+                Toggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
+                if model.collectPingDetails {
+                    Stepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
+                }
+
+                Section("Visible columns") {
+                    ForEach(NetToysColumn.allCases) { column in
+                        Toggle(column.rawValue, isOn: Binding(
+                            get: { model.visibleColumns.contains(column) },
+                            set: { enabled in
+                                if enabled {
+                                    model.visibleColumns.insert(column)
+                                } else {
+                                    model.visibleColumns.remove(column)
+                                }
+                            }
+                        ))
+                    }
+                }
             }
             .formStyle(.grouped)
+            .controlSize(.small)
 
             HStack {
                 Spacer()
@@ -628,9 +721,12 @@ private struct NetToysHostDetailsView: View {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
                 detailRow("Status", result.statusTitle)
                 detailRow("Response", result.responseTitle.isEmpty ? "Not available" : "\(result.responseTitle) ms")
+                detailRow("TTL", result.ttlTitle.isEmpty ? "Not collected" : result.ttlTitle)
+                detailRow("Packet loss", result.packetLossTitle.isEmpty ? "Not collected" : "\(result.packetLossTitle)%")
                 detailRow("MAC address", result.macTitle.isEmpty ? "Not available" : result.macTitle)
                 detailRow("MAC vendor", result.vendor ?? "Not available")
                 detailRow("Open ports", result.portsTitle.isEmpty ? "None" : result.portsTitle)
+                detailRow("Filtered ports", result.filteredPortsTitle.isEmpty ? "None" : result.filteredPortsTitle)
             }
 
             VStack(alignment: .leading, spacing: 6) {
