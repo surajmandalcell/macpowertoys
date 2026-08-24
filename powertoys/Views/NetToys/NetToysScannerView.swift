@@ -11,26 +11,6 @@ enum NetToysResultFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum NetToysColumn: String, CaseIterable, Identifiable {
-    case status = "Status"
-    case response = "Response"
-    case ttl = "TTL"
-    case packetLoss = "Packet Loss"
-    case hostname = "Hostname"
-    case macAddress = "MAC Address"
-    case macVendor = "MAC Vendor"
-    case openPorts = "Open Ports"
-    case filteredPorts = "Filtered Ports"
-    case httpServer = "HTTP Server"
-    case httpProxy = "HTTP Proxy"
-    case netBIOS = "NetBIOS"
-    case customText = "Custom Text"
-
-    var id: String { rawValue }
-
-    static let defaults: Set<Self> = [.status, .response, .hostname, .macAddress, .openPorts]
-}
-
 enum NetToysExportFormat: String, CaseIterable, Identifiable {
     case savedResults = "NetToys Results"
     case csv = "CSV"
@@ -106,11 +86,6 @@ final class NetToysScannerViewModel {
     var customTextPort = 22
     var customTextRequest = ""
     var customTextPattern = ""
-    var visibleColumns = NetToysColumn.defaults {
-        didSet {
-            UserDefaults.standard.set(visibleColumns.map(\.rawValue).sorted(), forKey: "nettoys.scanner.columns")
-        }
-    }
     var favoriteTargets = NetToysScannerStore.favoriteTargets()
     var annotations = NetToysScannerStore.annotations()
     var openers = NetToysOpener.defaults
@@ -135,10 +110,6 @@ final class NetToysScannerViewModel {
             customTextPort = min(max(preferences.customTextPort, 1), 65_535)
             customTextRequest = preferences.customTextRequest
             customTextPattern = preferences.customTextPattern
-        }
-        if let saved = UserDefaults.standard.stringArray(forKey: "nettoys.scanner.columns") {
-            let columns = Set(saved.compactMap(NetToysColumn.init(rawValue:)))
-            if !columns.isEmpty { visibleColumns = columns }
         }
         if let data = UserDefaults.standard.data(forKey: Self.openersKey),
            let saved = try? JSONDecoder().decode([NetToysOpener].self, from: data),
@@ -443,6 +414,8 @@ struct NetToysScannerView: View {
     @State private var model = NetToysScannerViewModel()
     @State private var selection = Set<String>()
     @State private var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)]
+    @AppStorage("nettoys.scanner.table-columns")
+    private var columnCustomization: TableColumnCustomization<NetToysScanResult>
     @State private var showSettings = false
     @State private var showRandomTargets = false
     @State private var detailResult: NetToysScanResult?
@@ -614,119 +587,121 @@ struct NetToysScannerView: View {
     }
 
     private var resultsTable: some View {
-        Table(sortedResults, selection: $selection, sortOrder: $sortOrder) {
+        Table(
+            sortedResults,
+            selection: $selection,
+            sortOrder: $sortOrder,
+            columnCustomization: $columnCustomization
+        ) {
             TableColumn("IP Address", value: \.sortAddress) { result in
                 Text(result.address.description)
                     .font(.system(.body, design: .monospaced))
             }
             .width(min: 112, ideal: 126)
+            .customizationID("nettoys.ip")
+            .disabledCustomizationBehavior(.visibility)
 
             Group {
-                if model.visibleColumns.contains(.status) {
-                    TableColumn("Status", value: \NetToysScanResult.statusTitle) { result in
-                        Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
-                            .labelStyle(.titleAndIcon)
-                            .foregroundStyle(result.isReachable ? .green : .secondary)
-                    }
-                    .width(min: 68, ideal: 76)
+                TableColumn("Status", value: \NetToysScanResult.statusTitle) { result in
+                    Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(result.isReachable ? .green : .secondary)
                 }
+                .width(min: 68, ideal: 76)
+                .customizationID("nettoys.status")
 
-                if model.visibleColumns.contains(.response) {
-                    TableColumn("Response", value: \NetToysScanResult.responseTitle) { result in
-                        Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
-                            .monospacedDigit()
-                    }
-                    .width(min: 76, ideal: 86)
+                TableColumn("Response", value: \NetToysScanResult.responseTitle) { result in
+                    Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
+                        .monospacedDigit()
                 }
+                .width(min: 76, ideal: 86)
+                .customizationID("nettoys.response")
 
-                if model.visibleColumns.contains(.ttl) {
-                    TableColumn("TTL", value: \NetToysScanResult.ttlTitle) { result in
-                        Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
-                    }
-                    .width(min: 44, ideal: 48)
+                TableColumn("TTL", value: \NetToysScanResult.ttlTitle) { result in
+                    Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
                 }
+                .width(min: 44, ideal: 48)
+                .customizationID("nettoys.ttl")
+                .defaultVisibility(.hidden)
 
-                if model.visibleColumns.contains(.packetLoss) {
-                    TableColumn("Loss", value: \NetToysScanResult.packetLossTitle) { result in
-                        Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
-                            .monospacedDigit()
-                    }
-                    .width(min: 58, ideal: 66)
+                TableColumn("Loss", value: \NetToysScanResult.packetLossTitle) { result in
+                    Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
+                        .monospacedDigit()
                 }
+                .width(min: 58, ideal: 66)
+                .customizationID("nettoys.loss")
+                .defaultVisibility(.hidden)
             }
 
             Group {
-                if model.visibleColumns.contains(.hostname) {
-                    TableColumn("Hostname", value: \NetToysScanResult.hostnameTitle) { result in
-                        Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
-                            .lineLimit(1)
-                    }
-                    .width(min: 116, ideal: 154)
+                TableColumn("Hostname", value: \NetToysScanResult.hostnameTitle) { result in
+                    Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
+                        .lineLimit(1)
                 }
+                .width(min: 116, ideal: 154)
+                .customizationID("nettoys.hostname")
 
-                if model.visibleColumns.contains(.macAddress) {
-                    TableColumn("MAC Address", value: \NetToysScanResult.macTitle) { result in
-                        Text(result.macTitle.isEmpty ? "—" : result.macTitle)
-                            .font(.system(.body, design: .monospaced))
-                    }
-                    .width(min: 130, ideal: 142)
+                TableColumn("MAC Address", value: \NetToysScanResult.macTitle) { result in
+                    Text(result.macTitle.isEmpty ? "—" : result.macTitle)
+                        .font(.system(.body, design: .monospaced))
                 }
+                .width(min: 130, ideal: 142)
+                .customizationID("nettoys.mac")
 
-                if model.visibleColumns.contains(.macVendor) {
-                    TableColumn("MAC Vendor", value: \NetToysScanResult.vendorTitle) { result in
-                        Text(result.vendorTitle.isEmpty ? "—" : result.vendorTitle)
-                            .lineLimit(1)
-                    }
-                    .width(min: 120, ideal: 160)
+                TableColumn("MAC Vendor", value: \NetToysScanResult.vendorTitle) { result in
+                    Text(result.vendorTitle.isEmpty ? "—" : result.vendorTitle)
+                        .lineLimit(1)
                 }
+                .width(min: 120, ideal: 160)
+                .customizationID("nettoys.vendor")
+                .defaultVisibility(.hidden)
 
-                if model.visibleColumns.contains(.netBIOS) {
-                    TableColumn("NetBIOS", value: \NetToysScanResult.netBIOSTitle) { result in
-                        Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
-                            .lineLimit(1)
-                    }
-                    .width(min: 90, ideal: 120)
+                TableColumn("NetBIOS", value: \NetToysScanResult.netBIOSTitle) { result in
+                    Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
+                        .lineLimit(1)
                 }
+                .width(min: 90, ideal: 120)
+                .customizationID("nettoys.netbios")
+                .defaultVisibility(.hidden)
             }
 
             Group {
-                if model.visibleColumns.contains(.openPorts) {
-                    TableColumn("Open Ports", value: \NetToysScanResult.portsTitle) { result in
-                        Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
-                    }
-                    .width(min: 86, ideal: 106)
+                TableColumn("Open Ports", value: \NetToysScanResult.portsTitle) { result in
+                    Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
                 }
+                .width(min: 86, ideal: 106)
+                .customizationID("nettoys.open-ports")
 
-                if model.visibleColumns.contains(.filteredPorts) {
-                    TableColumn("Filtered", value: \NetToysScanResult.filteredPortsTitle) { result in
-                        Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
-                    }
-                    .width(min: 80, ideal: 100)
+                TableColumn("Filtered", value: \NetToysScanResult.filteredPortsTitle) { result in
+                    Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
                 }
+                .width(min: 80, ideal: 100)
+                .customizationID("nettoys.filtered-ports")
+                .defaultVisibility(.hidden)
 
-                if model.visibleColumns.contains(.httpServer) {
-                    TableColumn("HTTP Server", value: \NetToysScanResult.httpServerTitle) { result in
-                        Text(result.httpServerTitle.isEmpty ? "—" : result.httpServerTitle)
-                            .lineLimit(1)
-                    }
-                    .width(min: 110, ideal: 150)
+                TableColumn("HTTP Server", value: \NetToysScanResult.httpServerTitle) { result in
+                    Text(result.httpServerTitle.isEmpty ? "—" : result.httpServerTitle)
+                        .lineLimit(1)
                 }
+                .width(min: 110, ideal: 150)
+                .customizationID("nettoys.http-server")
+                .defaultVisibility(.hidden)
 
-                if model.visibleColumns.contains(.httpProxy) {
-                    TableColumn("HTTP Proxy", value: \NetToysScanResult.httpProxyTitle) { result in
-                        Text(result.httpProxyTitle.isEmpty ? "—" : result.httpProxyTitle)
-                            .lineLimit(1)
-                    }
-                    .width(min: 100, ideal: 140)
+                TableColumn("HTTP Proxy", value: \NetToysScanResult.httpProxyTitle) { result in
+                    Text(result.httpProxyTitle.isEmpty ? "—" : result.httpProxyTitle)
+                        .lineLimit(1)
                 }
+                .width(min: 100, ideal: 140)
+                .customizationID("nettoys.http-proxy")
+                .defaultVisibility(.hidden)
 
-                if model.visibleColumns.contains(.customText) {
-                    TableColumn("Custom Text", value: \NetToysScanResult.customTextTitle) { result in
-                        Text(result.customTextTitle.isEmpty ? "—" : result.customTextTitle)
-                            .lineLimit(1)
-                    }
-                    .width(min: 110, ideal: 160)
+                TableColumn("Custom Text", value: \NetToysScanResult.customTextTitle) { result in
+                    Text(result.customTextTitle.isEmpty ? "—" : result.customTextTitle)
+                        .lineLimit(1)
                 }
+                .width(min: 110, ideal: 160)
+                .customizationID("nettoys.custom-text")
+                .defaultVisibility(.hidden)
             }
         }
         .contextMenu(forSelectionType: String.self) { selected in
@@ -905,21 +880,6 @@ private struct NetToysScannerSettingsView: View {
                     Text("Use {ip}, {hostname}, and {port}. NetToys opens only URL protocols and always shows a preview.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                }
-
-                Section("Visible columns") {
-                    ForEach(NetToysColumn.allCases) { column in
-                        Toggle(column.rawValue, isOn: Binding(
-                            get: { model.visibleColumns.contains(column) },
-                            set: { enabled in
-                                if enabled {
-                                    model.visibleColumns.insert(column)
-                                } else {
-                                    model.visibleColumns.remove(column)
-                                }
-                            }
-                        ))
-                    }
                 }
             }
             .formStyle(.grouped)
