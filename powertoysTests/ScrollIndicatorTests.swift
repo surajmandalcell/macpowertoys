@@ -51,11 +51,44 @@ final class ScrollIndicatorTests: XCTestCase {
         let scrollView = try XCTUnwrap(firstScrollView(in: hostingView))
         XCTAssertEqual(scrollView.scrollerStyle, .overlay)
         XCTAssertTrue(scrollView.autohidesScrollers)
-        XCTAssertEqual(
-            try XCTUnwrap(scrollView.verticalScroller).controlSize,
-            .mini,
-            hierarchyDescription(hostingView)
+        let scroller = try XCTUnwrap(scrollView.verticalScroller)
+        XCTAssertTrue(scroller is ThinOverlayScroller, hierarchyDescription(hostingView))
+        XCTAssertEqual(scroller.controlSize, .mini, hierarchyDescription(hostingView))
+    }
+
+    func testSwiftUIModifierConfiguresTheMatchingSiblingScrollView() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 120),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
         )
+        let hostingView = NSHostingView(
+            rootView: HStack(spacing: 0) {
+                ScrollView { Text("Sidebar") }
+                    .frame(width: 180)
+                ScrollView {
+                    VStack {
+                        ForEach(0..<40) { index in Text("Row \(index)") }
+                    }
+                }
+                .thinScrollIndicators()
+                .frame(width: 300)
+            }
+            .frame(width: 480, height: 120)
+        )
+        window.contentView = hostingView
+        hostingView.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+
+        let scrollViews = allScrollViews(in: hostingView)
+            .sorted {
+                $0.convert($0.bounds, to: hostingView).minX
+                    < $1.convert($1.bounds, to: hostingView).minX
+            }
+        XCTAssertEqual(scrollViews.count, 2, hierarchyDescription(hostingView))
+        XCTAssertFalse(try XCTUnwrap(scrollViews.first?.verticalScroller) is ThinOverlayScroller)
+        XCTAssertTrue(try XCTUnwrap(scrollViews.last?.verticalScroller) is ThinOverlayScroller)
     }
 
     func testEverySwiftUIScrollSurfaceUsesThinIndicators() throws {
@@ -86,6 +119,10 @@ final class ScrollIndicatorTests: XCTestCase {
     private func firstScrollView(in view: NSView) -> NSScrollView? {
         if let scrollView = view as? NSScrollView { return scrollView }
         return view.subviews.lazy.compactMap(firstScrollView(in:)).first
+    }
+
+    private func allScrollViews(in view: NSView) -> [NSScrollView] {
+        (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap(allScrollViews(in:))
     }
 
     private func hierarchyDescription(_ view: NSView, depth: Int = 0) -> String {

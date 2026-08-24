@@ -264,9 +264,10 @@ private final class ThinScrollIndicatorView: NSView {
             }
 
             // SwiftUI hosts a background beside its scroll view, not inside it.
+            let targetPoint = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
             var ancestor = superview
             while let view = ancestor {
-                if let scrollView = view.firstDescendantScrollView {
+                if let scrollView = view.firstDescendantScrollView(containing: targetPoint) {
                     configuredScrollView = scrollView
                     scrollView.configureThinScrollIndicators()
                     return
@@ -278,10 +279,15 @@ private final class ThinScrollIndicatorView: NSView {
 }
 
 private extension NSView {
-    var firstDescendantScrollView: NSScrollView? {
+    func firstDescendantScrollView(containing point: NSPoint) -> NSScrollView? {
         for view in subviews {
-            if let scrollView = view as? NSScrollView { return scrollView }
-            if let scrollView = view.firstDescendantScrollView { return scrollView }
+            if let scrollView = view as? NSScrollView,
+               scrollView.convert(scrollView.bounds, to: nil).contains(point) {
+                return scrollView
+            }
+            if let scrollView = view.firstDescendantScrollView(containing: point) {
+                return scrollView
+            }
         }
         return nil
     }
