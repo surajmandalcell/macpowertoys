@@ -99,6 +99,12 @@ nonisolated struct SSHConfigEdit: Equatable {
     let newValue: String
 }
 
+nonisolated struct SSHConfigEntry: Equatable, Sendable {
+    let aliases: [String]
+    let hostName: String
+    let port: UInt16
+}
+
 nonisolated enum SSHConfigEditor {
     enum EditError: LocalizedError {
         case hostNotFound(String)
@@ -157,6 +163,42 @@ nonisolated enum SSHConfigEditor {
             )
         }
         throw EditError.hostNameNotFound(hostAlias)
+    }
+
+    static func entries(in data: Data) -> [SSHConfigEntry] {
+        let bytes = [UInt8](data)
+        let lines = lineRanges(bytes)
+        var result: [SSHConfigEntry] = []
+        var index = 0
+        while index < lines.count {
+            guard let host = directive(in: bytes, range: lines[index]), host.key == "host" else {
+                index += 1
+                continue
+            }
+            let aliases = tokens(in: bytes, range: host.valueRange).map { asciiString(bytes[$0]) }
+            var hostName: String?
+            var port: UInt16?
+            index += 1
+            while index < lines.count {
+                guard let item = directive(in: bytes, range: lines[index]) else {
+                    index += 1
+                    continue
+                }
+                if item.key == "host" || item.key == "match" { break }
+                if item.key == "hostname", hostName == nil,
+                   let token = valueToken(in: bytes, range: item.valueRange) {
+                    hostName = asciiString(bytes[token])
+                } else if item.key == "port", port == nil,
+                          let token = valueToken(in: bytes, range: item.valueRange) {
+                    port = UInt16(asciiString(bytes[token]))
+                }
+                index += 1
+            }
+            if let hostName, let port, !aliases.isEmpty {
+                result.append(SSHConfigEntry(aliases: aliases, hostName: hostName, port: port))
+            }
+        }
+        return result
     }
 
     private struct Directive {
@@ -353,7 +395,7 @@ nonisolated struct AnchorCandidate: Equatable, Sendable {
     let hostname: String?
 }
 
-nonisolated enum AnchorIdentity: Equatable, Sendable {
+nonisolated enum AnchorIdentity: Codable, Equatable, Sendable {
     case stableMAC(String)
     case randomizedMAC(hostname: String, learnedMACs: Set<String>)
 }
