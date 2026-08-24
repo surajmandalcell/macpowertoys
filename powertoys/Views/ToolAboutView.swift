@@ -23,16 +23,18 @@ struct ToolAboutView: View {
         if let tool {
             VStack(spacing: 0) {
                 header(for: tool)
-
-                Picker("Tool page", selection: $page) {
+                HStack(spacing: 2) {
                     ForEach(ToolDetailPage.allCases) { page in
-                        Text(page.rawValue).tag(page)
+                        UtilityTabPill(
+                            title: page.rawValue,
+                            isSelected: self.page == page
+                        ) {
+                            self.page = page
+                        }
                     }
+                    Spacer(minLength: 0)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
-                .frame(width: 190)
+                .padding(.horizontal, 10)
                 .padding(.bottom, 12)
                 .accessibilityIdentifier("tool.\(tool.id).page")
 
@@ -41,7 +43,11 @@ struct ToolAboutView: View {
                 Group {
                     switch page {
                     case .settings:
-                        ToolSettingsContent(toolID: tool.id)
+                        VStack(spacing: 0) {
+                            ToolDetailIntro(tool: tool)
+                            ToolSettingsContent(toolID: tool.id)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                             .disabled(!settings.isToolEnabled(tool.id))
                     case .guide:
                         manualSection(for: tool)
@@ -57,28 +63,15 @@ struct ToolAboutView: View {
     }
 
     private func header(for tool: any Tool) -> some View {
-        HStack(spacing: 14) {
-            ToolIconView(tool: tool, size: 48)
+        HStack(spacing: 10) {
+            ToolIconView(tool: tool, size: 30)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(tool.name)
-                        .font(.system(size: 22, weight: .semibold))
-                        .lineLimit(1)
-                        .layoutPriority(1)
+            Text(tool.name)
+                .font(.system(size: 15, weight: .semibold))
+                .lineLimit(1)
+                .layoutPriority(1)
 
-                    Text(tool.category.rawValue)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize()
-                }
-                Text(tool.description)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.primary.opacity(0.75))
-                    .lineLimit(1)
-                    .textSelection(.enabled)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 12)
 
             HStack(spacing: 10) {
                 Toggle(isOn: enabledBinding(for: tool.id)) { EmptyView() }
@@ -104,8 +97,8 @@ struct ToolAboutView: View {
             }
             .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 
     private func enabledBinding(for toolID: String) -> Binding<Bool> {
@@ -150,6 +143,23 @@ struct ToolAboutView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct ToolDetailIntro: View {
+    let tool: any Tool
+
+    var body: some View {
+        Text(tool.description)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+
+        QuietDivider()
     }
 }
 

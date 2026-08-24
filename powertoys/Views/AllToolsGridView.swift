@@ -45,19 +45,11 @@ struct ToolCard: View {
                     HStack(alignment: .center, spacing: 12) {
                         ToolIconView(tool: tool, size: 36)
 
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(tool.name)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                                .layoutPriority(1)
-
-                            Text(tool.category.rawValue)
-                                .font(.system(size: 10, weight: .medium))
-                                .textCase(.uppercase)
-                                .foregroundStyle(.tertiary)
-                                .fixedSize()
-                        }
+                        Text(tool.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .layoutPriority(1)
 
                         Spacer(minLength: 0)
                     }

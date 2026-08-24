@@ -65,7 +65,7 @@ struct AppSettingsSheet: View {
     private var tabStrip: some View {
         HStack(spacing: 2) {
             ForEach(SettingsTab.allCases) { tab in
-                SettingsTabPill(
+                UtilityTabPill(
                     title: tab.rawValue,
                     isSelected: selectedTab == tab
                 ) {
@@ -78,7 +78,7 @@ struct AppSettingsSheet: View {
     }
 }
 
-private struct SettingsTabPill: View {
+struct UtilityTabPill: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
