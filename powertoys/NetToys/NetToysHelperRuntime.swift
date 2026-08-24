@@ -243,7 +243,13 @@ actor NetToysHelperRuntime {
 
     private func writeStatus() {
         try? NetToysConfigurationStore.saveStatus(
-            NetToysHelperStatus(version: 1, heartbeat: Date(), anchors: currentStatuses, network: networkSnapshot)
+            NetToysHelperStatus(
+                version: 1,
+                heartbeat: Date(),
+                anchors: currentStatuses,
+                network: networkSnapshot,
+                sourceCommit: Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
+            )
         )
     }
 }

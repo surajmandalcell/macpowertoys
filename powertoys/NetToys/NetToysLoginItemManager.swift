@@ -22,15 +22,25 @@ final class NetToysLoginItemManager {
 
     nonisolated static func hasFreshHeartbeat(
         _ status: NetToysHelperStatus?,
-        now: Date = Date()
+        now: Date = Date(),
+        expectedSourceCommit: String? = nil
     ) -> Bool {
         guard let status else { return false }
-        return now.timeIntervalSince(status.heartbeat) <= 7
+        guard now.timeIntervalSince(status.heartbeat) <= 7 else { return false }
+        guard let expectedSourceCommit,
+              !expectedSourceCommit.isEmpty,
+              expectedSourceCommit != "$(MPT_SOURCE_COMMIT)"
+        else { return true }
+        return status.sourceCommit == expectedSourceCommit
     }
 
     private func enable() async -> Bool {
+        let expectedSourceCommit = Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
         if service.status == .enabled,
-           Self.hasFreshHeartbeat(NetToysConfigurationStore.status()) {
+           Self.hasFreshHeartbeat(
+               NetToysConfigurationStore.status(),
+               expectedSourceCommit: expectedSourceCommit
+           ) {
             return true
         }
         do {
@@ -57,7 +67,10 @@ final class NetToysLoginItemManager {
             return false
         }
         for _ in 0..<32 {
-            if Self.hasFreshHeartbeat(NetToysConfigurationStore.status()) { return true }
+            if Self.hasFreshHeartbeat(
+                NetToysConfigurationStore.status(),
+                expectedSourceCommit: expectedSourceCommit
+            ) { return true }
             try? await Task.sleep(for: .milliseconds(250))
         }
         errorMessage = "NetToys Helper did not start."
