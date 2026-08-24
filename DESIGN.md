@@ -405,8 +405,9 @@ Canonical anatomy:
 - A tool detail page uses a 20pt gutter, 30pt named tool icon, a 17pt medium
   detail title, description, a trailing unlabeled enable switch beside a native
   regular `Open` button, and `Settings` / `How to Use` tabs whose first pill
-  begins at the 20pt content edge. It opens on Settings and renders the same settings view as the
-  tool window; Ruler links to its existing AppKit Settings and Defaults panels.
+  begins at an 18pt leading inset after a 6pt top gap. It opens on Settings and
+  renders the same settings view as the tool window; Ruler links to its existing
+  AppKit Settings and Defaults panels.
   How to Use keeps 12pt-radius instruction cards. Do not use the 17pt title
   elsewhere.
 - Enablement has one persistent source. Every tool is enabled by default. A
@@ -815,6 +816,8 @@ palette or reuse another tool's semantic hue.
 
 - Work in a `512 × 512` SVG view box.
 - Use a full-canvas rounded square with `rx="112"` as the ground.
+- Clip the complete tile artwork to that same `rx="112"` rounded square. A
+  bleeding glyph or band must never replace a rounded corner with a sharp one.
 - Let the glyph occupy 60–72% of the tile width. Structural elements may bleed
   through the tile edge so the subject feels large instead of sticker-like.
 - Build one literal metaphor from the fewest recognizable shapes. Prefer broad

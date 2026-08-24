@@ -129,9 +129,10 @@
 - **Cause:** Launcher detail controls used compact defaults and empty settings
   content was allowed to choose its own vertical placement.
 - **Invariant:** Launcher detail names are 17pt medium, Open uses regular native
-  control size, and the first detail tab begins at the 20pt content edge. The
-  Input Devices intro/settings footer is bottom-anchored. A double-click on an
-  enabled launcher tool row opens that tool; one click only selects it.
+  control size, and the first detail tab uses an 18pt leading inset and a 6pt
+  top inset. The Input Devices intro/settings footer is bottom-anchored. A
+  double-click on an enabled launcher tool row opens that tool; one click only
+  selects it.
 - **Check:** Inspect every built-in detail page, then single- and double-click
   launcher rows. Confirm Input Devices keeps its description and menu-bar toggle
   at the bottom with no unused space beneath it.
