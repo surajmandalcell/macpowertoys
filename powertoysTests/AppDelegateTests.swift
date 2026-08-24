@@ -5,6 +5,15 @@ import SwiftUI
 @testable import powertoys
 
 final class AppDelegateTests: XCTestCase {
+    func testNondefaultLaunchDoesNotOpenMainWindow() {
+        XCTAssertTrue(AppDelegate.shouldOpenMainWindowAfterLaunch(userInfo: [
+            NSApplication.launchIsDefaultUserInfoKey: true
+        ]))
+        XCTAssertFalse(AppDelegate.shouldOpenMainWindowAfterLaunch(userInfo: [
+            NSApplication.launchIsDefaultUserInfoKey: false
+        ]))
+    }
+
     func testStatusItemInterceptsLeftAndRightClicks() {
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
         XCTAssertTrue(AppDelegate.statusItemEventMask.contains(.rightMouseDown))
