@@ -35,7 +35,7 @@ colors:
   icon-awake: "#F5B71E"
   icon-color-picker: "#23272E"
   icon-text-extractor: "#2155B0"
-  icon-input-devices: "#315B7D"
+  icon-input-devices: "#1C1D22"
   icon-system-care: "#17181B"
   icon-system-monitor: "#002B26"
 typography:
@@ -882,7 +882,7 @@ has been changed.
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
 | Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
-| Input Devices | `#315B7D` | `#F7F5F0` | Powder-blue wheel, DPI key, and mouse controls |
+| Input Devices | `#1C1D22` | `#F4F4F5` | OX16 Midnight Tether mouse and solid gray echo |
 | System Care | `#17181B` | `#F3F3F1` | S11-08 gray disk and centered eraser |
 | System Monitor | `#002B26` | `#E0FFF8` | OSM13 teal tidal waveform bands |
 
