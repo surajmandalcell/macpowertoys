@@ -7,6 +7,10 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify the Minimal page header and the flat launcher tool list in the latest
+  normal installed build.
+- Verify separate menu bar icons, saved visibility, position restoration, and
+  actions for every eligible background tool.
 - Verify that custom controls never show the large blue focus outline and keep
   keyboard activation in the latest normal installed build.
 - Verify compact inline metadata and adaptive two-column pages in the latest

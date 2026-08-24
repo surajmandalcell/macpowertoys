@@ -5,6 +5,7 @@ direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Offer a separate Text Extractor menu bar icon. | The launcher setting stores the choice. The native item starts Extract Text and uses a stable autosave name for macOS position restoration. | Enable the item in the latest normal installed build, move it, relaunch, and confirm that it keeps its position and starts Extract Text. |
 | Done | Keep extraction times on the related text row and reduce row height. | The signed `4662560` build showed short and long history text in compact rows. Each time stayed on its text row. Long text truncated before the time and action controls. | None. |
 | Done | Create 20 visually different handwritten-loupe icon options in `tmp/textextractor.html`. | The page defines and renders exactly 20 named color and material variants. | None. |
 | Done | Use the selected "Cobalt 051" icon in the app. | `TextExtractorLogo.imageset/icon.svg` uses the approved low-right loupe, empty powder-blue lens, and muted sand wave hierarchy on cobalt. | None. |

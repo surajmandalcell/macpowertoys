@@ -4,6 +4,7 @@ Reviewed against app source commit `0bc0c81` on 2026-08-24.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Offer a separate Awake menu bar icon. | The launcher setting stores the choice, and `IndividualMenuBarController` opens Awake from a native item with a stable autosave name. | Enable the item in the latest normal installed build, move it, relaunch, and confirm that it keeps its position and opens Awake. |
 | Done | Keep the Awake window fixed instead of allowing it to grow. | `AwakeView` has a fixed 560pt by 500pt frame, its scene uses content-size resizability, and `WindowAccessor` removes the AppKit resizable style. | None. |
 | Done | Vertically align Awake's titlebar items. | The shared 40pt `CompactTitlebar` applies one 4pt row inset and centers its title and switch on the same 22pt centerline. Unit coverage and the normal signed `98f35f6` build confirmed the alignment. | None. |
 | Done | Move the traffic lights down for more breathing room. | `WindowAccessor` reapplies the shared 6pt downward offset after SwiftUI's delayed layout pass and every key-window transition. Regression coverage forces a late native reset and verifies recovery. | None. |

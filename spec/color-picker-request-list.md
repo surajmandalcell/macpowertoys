@@ -5,6 +5,7 @@ direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Offer a separate Color Picker menu bar icon. | The launcher setting stores the choice. The native item starts Pick Color and uses a stable autosave name for macOS position restoration. | Enable the item in the latest normal installed build, move it, relaunch, and confirm that it keeps its position and starts Pick Color. |
 | Done | Keep project counts and color timestamps on their related row. | `4ad3da2` puts each project count beside its name and each timestamp beside its color value. In the normal signed `4662560` build, an intentionally long project name truncated before `0 colors`, and the long NSColor representation truncated before `1 mo ago` and the row actions. | None. |
 | Superseded | Keep a settings cog at the top-right beside `Pick Color`. | The newer cross-app chrome requirement reserves compact titlebars for app names and primary actions; Color Picker uses the shared bottom-right `FloatingSettingsButton` for its full settings page. | Keep settings out of the compact titlebar. |
 | Done | Remove lag while the native color sampler is active. | `5b3d174` rejects overlapping sampler sessions and reuses the row date formatter. A live process watcher in the normal signed `4662560` build detected the native ColorSampler 334.7 ms after the Pick Color action. The action disabled while the sampler was active and recovered after the controlled test restart. | None. |

@@ -7,6 +7,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Offer a separate Input Devices menu bar icon. | The launcher setting stores the choice, and `IndividualMenuBarController` opens Input Devices from a native item with a stable autosave name. | Enable the item in the latest normal installed build, move it, relaunch, and confirm that it keeps its position and opens Input Devices. |
 | Done | Add a macOS tool for mouse and trackpad control. | `cfa8832` added Input Devices as an on-demand tool with a separate window, launcher route, and app icon. | None. |
 | Done | Use icon option 03. | `3e504d3` made `InputDevicesLogoA` the only Input Devices icon. | None. |
 | Done | Keep separate mouse and trackpad profiles. | `InputDevicesManager` stores separate profiles. The UI exposes both profiles in two columns. | None. |
