@@ -292,6 +292,37 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testLivenessControlsAdaptTCPTimeoutAndGatePortScans() {
+        let down = PingProbeResult(ttl: nil, packetLossPercent: 100, averageMilliseconds: nil)
+        let up = PingProbeResult(ttl: 64, packetLossPercent: 0, averageMilliseconds: 35)
+
+        XCTAssertEqual(NetToysScanner.effectiveTCPTimeout(
+            configuredMilliseconds: 750,
+            pingAverageMilliseconds: 35,
+            adaptive: true
+        ), 140)
+        XCTAssertEqual(NetToysScanner.effectiveTCPTimeout(
+            configuredMilliseconds: 750,
+            pingAverageMilliseconds: nil,
+            adaptive: true
+        ), 750)
+        XCTAssertFalse(NetToysScanner.shouldScanPorts(
+            ping: down,
+            livenessMethod: .icmpAndTCP,
+            scanUnresponsiveHosts: false
+        ))
+        XCTAssertTrue(NetToysScanner.shouldScanPorts(
+            ping: up,
+            livenessMethod: .icmpAndTCP,
+            scanUnresponsiveHosts: false
+        ))
+        XCTAssertTrue(NetToysScanner.shouldScanPorts(
+            ping: down,
+            livenessMethod: .tcp,
+            scanUnresponsiveHosts: false
+        ))
+    }
+
     func testProtocolFetchersParseHTTPProxyCustomTextAndNetBIOSResponses() throws {
         let http = Data("HTTP/1.1 200 OK\r\nServer: nginx/1.27\r\nContent-Length: 0\r\n\r\n".utf8)
         XCTAssertEqual(NetToysProtocolFetchers.httpServer(from: http), "nginx/1.27")
