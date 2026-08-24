@@ -145,7 +145,7 @@ struct AddRemoteSheet: View {
             }
             .padding(20)
         } else {
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     fieldTitle("CONNECTOR")
                     ProviderDropdown(
@@ -184,13 +184,14 @@ struct AddRemoteSheet: View {
                 .padding(20)
                 .animation(.easeInOut(duration: 0.16), value: selectedAuthenticationMode)
             }
+            .thinScrollIndicators()
         }
     }
 
     private var authenticationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             fieldTitle("SIGN IN")
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 2) {
                     ForEach(authenticationModes) { mode in
                         AuthenticationModeTab(
@@ -202,6 +203,7 @@ struct AddRemoteSheet: View {
                     }
                 }
             }
+            .thinScrollIndicators()
             Text(selectedAuthenticationMode.detail)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)

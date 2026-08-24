@@ -1012,6 +1012,7 @@ private struct NetToysScannerSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .thinScrollIndicators()
             .formStyle(.grouped)
             .controlSize(.small)
 
@@ -1100,6 +1101,7 @@ private struct NetToysRandomTargetsView: View {
                 TextField("CIDR", text: $cidr)
                 Stepper("Address count: \(count)", value: $count, in: 1...1_024)
             }
+            .thinScrollIndicators()
             .formStyle(.grouped)
             HStack {
                 Spacer()
@@ -1163,6 +1165,7 @@ private struct NetToysHostDetailsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("COMMENT").utilitySectionHeader()
                 TextEditor(text: $annotation.comment)
+                    .thinScrollIndicators()
                     .font(.system(size: 12))
                     .frame(height: 84)
                     .padding(6)

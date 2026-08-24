@@ -137,7 +137,7 @@ struct RcloneTransferListView: View {
     // MARK: List
 
     private var transferList: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             LazyVStack(spacing: 10) {
                 ForEach(manager.filteredJobs) { job in
                     TransferJobRow(job: job)
@@ -147,6 +147,7 @@ struct RcloneTransferListView: View {
             .padding(.top, 12)
             .padding(.bottom, 20)
         }
+        .thinScrollIndicators()
     }
 
     // MARK: Empty state

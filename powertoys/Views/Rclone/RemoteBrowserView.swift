@@ -88,7 +88,7 @@ struct RemoteBrowserView: View {
     }
 
     private var breadcrumbs: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 5) {
                 breadcrumbButton(isCurrent: pathComponents.isEmpty, destination: "") {
                     HStack(spacing: 5) {
@@ -113,6 +113,7 @@ struct RemoteBrowserView: View {
                 }
             }
         }
+        .thinScrollIndicators()
     }
 
     private func breadcrumbButton<Label: View>(
@@ -165,7 +166,7 @@ struct RemoteBrowserView: View {
     }
 
     private var entryList: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             LazyVStack(spacing: 1) {
                 ForEach(entries) { entry in
                     RemoteEntryRow(
@@ -182,6 +183,7 @@ struct RemoteBrowserView: View {
             .padding(.top, 12)
             .padding(.bottom, 20)
         }
+        .thinScrollIndicators()
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(.space) {

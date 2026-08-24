@@ -198,7 +198,7 @@ struct CleanupRemoteSheet: View {
         VStack(spacing: 0) {
             selectionHeader
             QuietDivider()
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     if let truncatedFrom {
                         truncationNote(total: truncatedFrom)
@@ -213,6 +213,7 @@ struct CleanupRemoteSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
+            .thinScrollIndicators()
         }
     }
 

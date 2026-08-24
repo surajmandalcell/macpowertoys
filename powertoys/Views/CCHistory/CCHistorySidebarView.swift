@@ -33,7 +33,7 @@ struct CCHistorySidebarView: View {
                         .padding(.bottom, 8)
                 }
 
-                ScrollView(showsIndicators: false) {
+                ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         if searchText.isEmpty {
                             projectsList
@@ -44,6 +44,7 @@ struct CCHistorySidebarView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 20)
                 }
+                .thinScrollIndicators()
 
                 if let openSettings {
                     VStack(spacing: 4) {
@@ -174,7 +175,7 @@ private struct BookmarksSection: View {
                 .foregroundStyle(.tertiary)
                 .padding(.leading, 8)
 
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 6) {
                     ForEach(bookmarkManager.bookmarks) { session in
                         Button {
@@ -203,6 +204,7 @@ private struct BookmarksSection: View {
                     }
                 }
             }
+            .thinScrollIndicators()
         }
     }
 }

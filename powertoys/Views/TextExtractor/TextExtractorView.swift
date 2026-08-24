@@ -108,7 +108,7 @@ struct TextExtractorView: View {
                 if service.history.isEmpty {
                     capturePrompt
                 } else {
-                    ScrollView(showsIndicators: false) {
+                    ScrollView {
                         LazyVStack(spacing: 6) {
                             ForEach(service.history) { extraction in
                                 TextExtractionRow(extraction: extraction) {
@@ -213,7 +213,7 @@ struct TextExtractorSettingsView: View {
     @State private var languages = ""
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 shortcutSettings
                 recognitionSettings

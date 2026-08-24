@@ -68,7 +68,7 @@ struct RcloneSidebarView: View {
             .padding(.top, UtilityLayout.workspaceContentTopInset)
 
 
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     SidebarSectionHeader(title: "Show")
 
@@ -120,6 +120,7 @@ struct RcloneSidebarView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 20)
             }
+            .thinScrollIndicators()
 
             NavRow(
                 icon: "gearshape",

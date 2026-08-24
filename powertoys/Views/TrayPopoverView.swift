@@ -242,9 +242,10 @@ private struct TrayTabStrip: View {
 
             Group {
                 if overflow {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal) {
                         strip(perTab: TrayPopoverLayout.minimumTabWidth)
                     }
+                    .thinScrollIndicators()
                 } else {
                     strip(perTab: perTab)
                 }
@@ -336,7 +337,7 @@ private struct RSyncTrayTab: View {
                 .padding(.horizontal, TrayPopoverLayout.horizontalInset)
                 .padding(.top, TrayPopoverLayout.bodyTopInset)
 
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 Group {
                     if !manager.isDaemonRunning {
                         engineOffState
@@ -355,6 +356,7 @@ private struct RSyncTrayTab: View {
                     contentHeight = newHeight
                 }
             }
+            .thinScrollIndicators()
             .frame(height: min(max(contentHeight, 44), maxContentHeight))
         }
     }

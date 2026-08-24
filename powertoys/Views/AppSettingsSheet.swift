@@ -112,7 +112,7 @@ private struct GeneralSettingsTab: View {
     private var syncManager: SettingsSyncManager { SettingsSyncManager.shared }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 appearanceSection
                 windowSection
@@ -122,6 +122,7 @@ private struct GeneralSettingsTab: View {
             .padding(.bottom, 20)
             .padding(.top, 12)
         }
+        .thinScrollIndicators()
         .confirmationDialog(
             "iCloud already contains MacPowerToys settings",
             isPresented: $showSyncConflictDialog,
@@ -232,7 +233,7 @@ private struct AboutSettingsTab: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("ABOUT")
@@ -276,6 +277,7 @@ private struct AboutSettingsTab: View {
             .padding(.bottom, 20)
             .padding(.top, 12)
         }
+        .thinScrollIndicators()
     }
 
     private var aboutRow: some View {

@@ -16,7 +16,7 @@ struct MarketplaceSettingsView: View {
     @State private var toolError: String?
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 sourcesSection
                 toolsSection
@@ -25,6 +25,7 @@ struct MarketplaceSettingsView: View {
             .padding(.bottom, 20)
             .padding(.top, 12)
         }
+        .thinScrollIndicators()
         .task { await manager.refreshAll() }
         .animation(.easeInOut(duration: 0.15), value: manager.sources)
         .animation(.easeInOut(duration: 0.15), value: manager.receipts)

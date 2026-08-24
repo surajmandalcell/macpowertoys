@@ -32,7 +32,7 @@ struct NewTransferSheet: View {
             header
             QuietDivider()
 
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     operationSection
                     EndpointCard(title: "Source", config: $source, remotes: manager.remotes, chooseDirectoriesOnly: false)
@@ -45,6 +45,7 @@ struct NewTransferSheet: View {
                 }
                 .padding(20)
             }
+            .thinScrollIndicators()
 
             QuietDivider()
             footer
@@ -131,7 +132,7 @@ struct NewTransferSheet: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(spacing: 6) {
                         ForEach(manager.settings.ignorePatterns, id: \.self) { pattern in
                             Text(pattern)
@@ -144,6 +145,7 @@ struct NewTransferSheet: View {
                         }
                     }
                 }
+                .thinScrollIndicators()
                 Text("From settings · applied to every transfer")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
