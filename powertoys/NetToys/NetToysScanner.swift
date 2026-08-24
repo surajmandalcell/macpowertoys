@@ -695,6 +695,35 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
     }
 }
 
+nonisolated struct NetToysScanStatistics: Equatable, Sendable {
+    let addressCount: Int
+    let reachableCount: Int
+    let openPortHostCount: Int
+    let openPortCount: Int
+    let averageResponseMilliseconds: Double?
+    let fastestResponseMilliseconds: Double?
+    let slowestResponseMilliseconds: Double?
+    let duration: TimeInterval?
+
+    init(results: [NetToysScanResult], duration: TimeInterval?) {
+        let responses = results.compactMap(\.responseMilliseconds)
+        addressCount = results.count
+        reachableCount = results.filter(\.isReachable).count
+        openPortHostCount = results.filter { !$0.openPorts.isEmpty }.count
+        openPortCount = results.reduce(0) { $0 + $1.openPorts.count }
+        averageResponseMilliseconds = responses.isEmpty ? nil : responses.reduce(0, +) / Double(responses.count)
+        fastestResponseMilliseconds = responses.min()
+        slowestResponseMilliseconds = responses.max()
+        self.duration = duration
+    }
+
+    var downCount: Int { addressCount - reachableCount }
+    var addressesPerSecond: Double? {
+        guard let duration, duration > 0 else { return nil }
+        return Double(addressCount) / duration
+    }
+}
+
 nonisolated struct NetToysOpener: Codable, Identifiable, Equatable, Sendable {
     enum ValidationError: LocalizedError {
         case nameRequired
