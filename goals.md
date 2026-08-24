@@ -7,6 +7,8 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify that every workspace sidebar meets its body without a visible seam in
+  the latest normal signed build.
 - Select and install one redesigned NetToys icon.
 - Verify the full-width Awake tray controls in the latest normal signed build.
 - Verify separate menu bar icons, saved visibility, position restoration, and

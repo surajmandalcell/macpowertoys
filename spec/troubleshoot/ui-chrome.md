@@ -261,6 +261,18 @@
   Exercise long content in every app family, sheet, editor, and horizontal
   strip. Indicators autohide, overlay content, and use mini control size.
 
+## Workspace Pane Seams
+
+- **Symptom:** A line or clear-looking gap appears between a workspace sidebar
+  and its body.
+- **Cause:** A workspace root inserted a divider between two panes that already
+  meet with zero stack spacing.
+- **Invariant:** Workspace roots place the sidebar and opaque body directly next
+  to each other in a zero-spacing stack. Do not add a divider or spacer at the
+  pane boundary.
+- **Check:** Inspect every sidebar workspace root. The sidebar and body are
+  adjacent, and no window background appears between them.
+
 ## Settings Page Replacement
 
 - **Symptom:** Home tabs remain above settings or settings gains a false top
