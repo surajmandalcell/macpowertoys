@@ -291,6 +291,82 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testProtocolFetchersParseHTTPProxyCustomTextAndNetBIOSResponses() throws {
+        let http = Data("HTTP/1.1 200 OK\r\nServer: nginx/1.27\r\nContent-Length: 0\r\n\r\n".utf8)
+        XCTAssertEqual(NetToysProtocolFetchers.httpServer(from: http), "nginx/1.27")
+        XCTAssertEqual(
+            NetToysProtocolFetchers.proxy(from: Data("HTTP/1.1 200 Connection established\r\n\r\n".utf8)),
+            "HTTP proxy"
+        )
+        XCTAssertNil(NetToysProtocolFetchers.proxy(from: http))
+
+        let custom = NetToysCustomTextProbe(
+            port: 22,
+            request: "",
+            responsePattern: #"SSH-([0-9.]+)"#
+        )
+        XCTAssertEqual(
+            try custom.match(in: Data("SSH-2.0-OpenSSH_9.9\r\n".utf8)),
+            "SSH-2.0"
+        )
+        XCTAssertThrowsError(try NetToysCustomTextProbe(port: 0, request: "", responsePattern: ".+").validate())
+        XCTAssertThrowsError(try NetToysCustomTextProbe(port: 22, request: "", responsePattern: "").validate())
+
+        var netBIOS = Data([0x12, 0x34, 0x85, 0x00, 0, 0, 0, 1, 0, 0, 0, 0])
+        netBIOS.append(contentsOf: [0xC0, 0x0C, 0, 0x21, 0, 1, 0, 0, 0, 0, 0, 0x13, 1])
+        netBIOS.append(contentsOf: Array("JETSON".utf8) + Array(repeating: 0x20, count: 9))
+        netBIOS.append(contentsOf: [0, 0, 0])
+        XCTAssertEqual(NetBIOSProbe.parse(netBIOS), "JETSON")
+        XCTAssertEqual(Array(NetBIOSProbe.statusQuery()[13...16]), [0x43, 0x4B, 0x41, 0x41])
+    }
+
+    func testTCPTextProbeExchangesBoundedProtocolData() async throws {
+        let descriptor = socket(AF_INET, SOCK_STREAM, 0)
+        XCTAssertGreaterThanOrEqual(descriptor, 0)
+        defer { close(descriptor) }
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = 0
+        address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+        XCTAssertEqual(withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.bind(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }, 0)
+        XCTAssertEqual(listen(descriptor, 1), 0)
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        XCTAssertEqual(withUnsafeMutablePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                getsockname(descriptor, $0, &length)
+            }
+        }, 0)
+        let port = UInt16(bigEndian: address.sin_port)
+        let server = Task.detached { () -> String in
+            var pollItem = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+            guard Darwin.poll(&pollItem, 1, 1_000) > 0 else { return "" }
+            let client = Darwin.accept(descriptor, nil, nil)
+            guard client >= 0 else { return "" }
+            defer { close(client) }
+            var request = [UInt8](repeating: 0, count: 1_024)
+            let count = request.withUnsafeMutableBytes { recv(client, $0.baseAddress, $0.count, 0) }
+            let response = Data("HTTP/1.1 200 OK\r\nServer: test-server\r\n\r\n".utf8)
+            _ = response.withUnsafeBytes { send(client, $0.baseAddress, $0.count, 0) }
+            return count > 0 ? String(decoding: request.prefix(count), as: UTF8.self) : ""
+        }
+
+        let response = await TCPTextProbe.exchange(
+            address: try XCTUnwrap(IPv4Address("127.0.0.1")),
+            port: port,
+            request: Data("HEAD / HTTP/1.0\r\n\r\n".utf8),
+            timeoutMilliseconds: 500
+        )
+
+        XCTAssertEqual(response.flatMap(NetToysProtocolFetchers.httpServer), "test-server")
+        let receivedRequest = await server.value
+        XCTAssertTrue(receivedRequest.hasPrefix("HEAD /"))
+    }
+
     func testTCPProbeAndScannerFindLocalListener() async throws {
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         XCTAssertGreaterThanOrEqual(descriptor, 0)
@@ -491,7 +567,11 @@ final class NetToysTests: XCTestCase {
             openPorts: [22],
             filteredPorts: [443],
             ttl: 63,
-            packetLossPercent: 1.5
+            packetLossPercent: 1.5,
+            httpServer: "80: nginx<&",
+            httpProxy: "8080: HTTP proxy",
+            netBIOSName: "JETSON",
+            customText: "SSH-2.0"
         )
         let run = NetToysScanRun(target: "10.0.0.0/24", ports: [22], duration: 1, results: [result])
         let archive = NetToysScanArchive(runs: Array(repeating: run, count: 4), limit: 3)
@@ -503,6 +583,32 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(NetToysScanExport.ipPorts([result]), "10.0.0.2:22")
         XCTAssertTrue(NetToysScanExport.csv([result]).contains("TTL,Packet Loss %,Filtered Ports"))
         XCTAssertTrue(NetToysScanExport.csv([result]).contains("\"63\",\"1.5\",\"443\""))
+        XCTAssertTrue(NetToysScanExport.csv([result]).contains("\"80: nginx<&\""))
+        XCTAssertTrue(NetToysScanExport.xml([result]).contains("<http-server>80: nginx&lt;&amp;</http-server>"))
+        XCTAssertTrue(NetToysScanExport.sql([result]).contains("'8080: HTTP proxy'"))
         XCTAssertEqual(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([result])), [result])
+    }
+
+    func testSavedResultsFromBeforeProtocolFetchersStillImport() throws {
+        let original = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("10.0.0.8")),
+            isReachable: true,
+            responseMilliseconds: 1,
+            hostname: "host.local",
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [22]
+        )
+        let encoded = try NetToysScanExport.savedResults([original])
+        var document = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        var results = try XCTUnwrap(document["results"] as? [[String: Any]])
+        for key in ["filteredPorts", "ttl", "packetLossPercent", "httpServer", "httpProxy", "netBIOSName", "customText"] {
+            results[0].removeValue(forKey: key)
+        }
+        document["results"] = results
+
+        let imported = try NetToysScanImport.savedResults(JSONSerialization.data(withJSONObject: document))
+
+        XCTAssertEqual(imported, [original])
     }
 }
