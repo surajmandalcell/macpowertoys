@@ -636,4 +636,56 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(value.components(separatedBy: "\n").count, 3)
         XCTAssertFalse(NetToysScanExport.sql([result], includeSchema: false).contains("CREATE TABLE"))
     }
+
+    func testOpenersResolveSafeURLTemplatesAndRejectCommands() throws {
+        let address = try XCTUnwrap(IPv4Address("10.0.0.9"))
+        let opener = NetToysOpener(
+            name: "Device UI",
+            urlTemplate: "https://{hostname}:{port}/status?device={ip}",
+            requiredPort: 8443
+        )
+        try opener.validate()
+        XCTAssertEqual(
+            try opener.resolvedURL(address: address, hostname: "jetson.local").absoluteString,
+            "https://jetson.local:8443/status?device=10.0.0.9"
+        )
+        XCTAssertEqual(
+            try opener.resolvedURL(address: address, hostname: "bad host/@evil").host,
+            "10.0.0.9"
+        )
+        XCTAssertThrowsError(try NetToysOpener(
+            name: "Script",
+            urlTemplate: "file:///tmp/{ip}",
+            requiredPort: 22
+        ).validate())
+        XCTAssertThrowsError(try NetToysOpener(
+            name: "Script",
+            urlTemplate: "https://user:secret@{ip}:{port}/",
+            requiredPort: 443
+        ).validate())
+        XCTAssertThrowsError(try NetToysOpener(
+            name: "Script",
+            urlTemplate: "ssh {ip}",
+            requiredPort: 22
+        ).validate())
+        XCTAssertThrowsError(try NetToysOpener(
+            name: "Unrelated",
+            urlTemplate: "https://example.com/",
+            requiredPort: 443
+        ).validate())
+        let result = NetToysScanResult(
+            address: address,
+            isReachable: true,
+            responseMilliseconds: 1,
+            hostname: nil,
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [22]
+        )
+        XCTAssertFalse(NetToysOpener(
+            name: "Invalid port",
+            urlTemplate: "ssh://{ip}:{port}",
+            requiredPort: 100_000
+        ).applies(to: result))
+    }
 }

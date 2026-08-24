@@ -82,6 +82,7 @@ extension NetToysScanResult {
 @MainActor
 final class NetToysScannerViewModel {
     private static let preferencesKey = "nettoys.scanner.preferences"
+    private static let openersKey = "nettoys.scanner.openers"
 
     var targetInput: String
     var portInput = "22, 80, 443"
@@ -112,6 +113,7 @@ final class NetToysScannerViewModel {
     }
     var favoriteTargets = NetToysScannerStore.favoriteTargets()
     var annotations = NetToysScannerStore.annotations()
+    var openers = NetToysOpener.defaults
 
     private let scanner = NetToysScanner()
     private var scanTask: Task<Void, Never>?
@@ -138,6 +140,16 @@ final class NetToysScannerViewModel {
             let columns = Set(saved.compactMap(NetToysColumn.init(rawValue:)))
             if !columns.isEmpty { visibleColumns = columns }
         }
+        if let data = UserDefaults.standard.data(forKey: Self.openersKey),
+           let saved = try? JSONDecoder().decode([NetToysOpener].self, from: data),
+           saved.count <= 20,
+           Set(saved.map(\.id)).count == saved.count,
+           Set(saved.map {
+               $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+           }).count == saved.count,
+           saved.allSatisfy({ (try? $0.validate()) != nil }) {
+            openers = saved
+        }
     }
 
     func savePreferences() {
@@ -159,6 +171,19 @@ final class NetToysScannerViewModel {
         if let data = try? JSONEncoder().encode(value) {
             UserDefaults.standard.set(data, forKey: Self.preferencesKey)
         }
+    }
+
+    func saveOpeners(_ proposed: [NetToysOpener]) throws {
+        guard proposed.count <= 20 else { throw NetToysOpener.ValidationError.tooManyOpeners }
+        try proposed.forEach { try $0.validate() }
+        let names = proposed.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        guard Set(names).count == names.count else { throw NetToysOpener.ValidationError.duplicateName }
+        var normalized = proposed
+        for index in normalized.indices {
+            normalized[index].name = normalized[index].name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        openers = normalized
+        UserDefaults.standard.set(try JSONEncoder().encode(openers), forKey: Self.openersKey)
     }
 
     var visibleResults: [NetToysScanResult] {
@@ -421,6 +446,7 @@ struct NetToysScannerView: View {
     @State private var showSettings = false
     @State private var showRandomTargets = false
     @State private var detailResult: NetToysScanResult?
+    @State private var openerPreview: NetToysOpenerPreview?
 
     private var sortedResults: [NetToysScanResult] {
         model.visibleResults.sorted(using: sortOrder)
@@ -456,6 +482,9 @@ struct NetToysScannerView: View {
         }
         .sheet(item: $detailResult) { result in
             NetToysHostDetailsView(model: model, result: result)
+        }
+        .sheet(item: $openerPreview) { preview in
+            NetToysOpenerPreviewSheet(preview: preview)
         }
         .onReceive(NotificationCenter.default.publisher(for: .netToysStartScan)) { notification in
             guard let run = notification.object as? NetToysScanRun else { return }
@@ -709,14 +738,13 @@ struct NetToysScannerView: View {
                     model.saveAnnotation(annotation, for: result.id)
                 }
                 Divider()
-                if result.openPorts.contains(22) {
-                    Button("Open SSH") { open(result, scheme: "ssh", port: 22) }
-                }
-                if result.openPorts.contains(80) {
-                    Button("Open HTTP") { open(result, scheme: "http", port: 80) }
-                }
-                if result.openPorts.contains(443) {
-                    Button("Open HTTPS") { open(result, scheme: "https", port: 443) }
+                let openers = model.openers.filter { $0.applies(to: result) }
+                if !openers.isEmpty {
+                    Menu("Open With") {
+                        ForEach(openers) { opener in
+                            Button(opener.name) { preview(opener, result: result) }
+                        }
+                    }
                 }
                 Divider()
             }
@@ -770,14 +798,15 @@ struct NetToysScannerView: View {
         return model.results.isEmpty ? "Enter a target and one or more TCP ports" : nil
     }
 
-    private func open(_ result: NetToysScanResult, scheme: String, port: UInt16) {
-        var components = URLComponents()
-        components.scheme = scheme
-        components.host = result.address.description
-        if !((scheme == "http" && port == 80) || (scheme == "https" && port == 443)) {
-            components.port = Int(port)
+    private func preview(_ opener: NetToysOpener, result: NetToysScanResult) {
+        do {
+            openerPreview = NetToysOpenerPreview(
+                name: opener.name,
+                url: try opener.resolvedURL(address: result.address, hostname: result.hostname)
+            )
+        } catch {
+            model.errorMessage = error.localizedDescription
         }
-        if let url = components.url { NSWorkspace.shared.open(url) }
     }
 
     private func selectNext(where predicate: (NetToysScanResult) -> Bool) {
@@ -792,6 +821,13 @@ struct NetToysScannerView: View {
 private struct NetToysScannerSettingsView: View {
     @Bindable var model: NetToysScannerViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var errorMessage: String?
+    @State private var openers: [NetToysOpener]
+
+    init(model: NetToysScannerViewModel) {
+        self.model = model
+        _openers = State(initialValue: model.openers)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -825,6 +861,52 @@ private struct NetToysScannerSettingsView: View {
                     }
                 }
 
+                Section("Openers") {
+                    Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                        GridRow {
+                            Text("Name")
+                            Text("URL template")
+                            Text("Port")
+                            Color.clear.frame(width: 20)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                        ForEach(Array(openers.enumerated()), id: \.element.id) { index, opener in
+                            GridRow {
+                                TextField("Name", text: $openers[index].name)
+                                    .frame(width: 110)
+                                TextField("URL template", text: $openers[index].urlTemplate)
+                                    .frame(minWidth: 280)
+                                TextField("Port", value: $openers[index].requiredPort, format: .number)
+                                    .frame(width: 60)
+                                Button(role: .destructive) {
+                                    openers.removeAll { $0.id == opener.id }
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Delete \(opener.name) opener")
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Button("Add Opener") {
+                            guard openers.count < 20 else { return }
+                            openers.append(NetToysOpener(
+                                name: "New Opener",
+                                urlTemplate: "http://{ip}:{port}/",
+                                requiredPort: 80
+                            ))
+                        }
+                        Button("Restore Defaults") { openers = NetToysOpener.defaults }
+                    }
+                    Text("Use {ip}, {hostname}, and {port}. NetToys opens only URL protocols and always shows a preview.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Visible columns") {
                     ForEach(NetToysColumn.allCases) { column in
                         Toggle(column.rawValue, isOn: Binding(
@@ -845,13 +927,69 @@ private struct NetToysScannerSettingsView: View {
 
             HStack {
                 Spacer()
-                Button("Done") { dismiss() }
+                Button("Done") {
+                    do {
+                        try model.saveOpeners(openers)
+                        model.savePreferences()
+                        dismiss()
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                }
                     .keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)
-        .frame(width: 430)
+        .frame(width: 700)
         .onDisappear { model.savePreferences() }
+        .alert("Openers", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+}
+
+private struct NetToysOpenerPreview: Identifiable {
+    let id = UUID()
+    let name: String
+    let url: URL
+}
+
+private struct NetToysOpenerPreviewSheet: View {
+    let preview: NetToysOpenerPreview
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Open with \(preview.name)?")
+                .font(.title2.weight(.semibold))
+            Text("Review the complete URL before another app opens it.")
+                .foregroundStyle(.secondary)
+            Text(preview.url.absoluteString)
+                .font(.system(.body, design: .monospaced))
+                .textSelection(.enabled)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button("Open") {
+                    NSWorkspace.shared.open(preview.url)
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+            .controlSize(.small)
+        }
+        .padding(20)
+        .frame(width: 560)
     }
 }
 
