@@ -189,4 +189,38 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(results[0].isReachable)
         XCTAssertEqual(results[0].openPorts, [port])
     }
+
+    func testSSHConfigEntriesExposeLiteralHostAddressAndPort() throws {
+        let data = Data("Host jetson\n  User suraj\n  HostName 192.168.1.8\n  Port 2222\nMatch host other\n  HostName 10.0.0.2\n".utf8)
+        XCTAssertEqual(
+            SSHConfigEditor.entries(in: data),
+            [SSHConfigEntry(aliases: ["jetson"], hostName: "192.168.1.8", port: 2222)]
+        )
+    }
+
+    func testLocalIPv4NetworkProducesUsableHostsAndCapsLargeSubnets() throws {
+        let network = try XCTUnwrap(
+            LocalIPv4Network(interfaceName: "en0", address: "192.168.1.8", netmask: "255.255.255.252")
+        )
+        XCTAssertEqual(try network.targets(limit: 1_024).map(\.description), ["192.168.1.9", "192.168.1.10"])
+        let large = try XCTUnwrap(
+            LocalIPv4Network(interfaceName: "en0", address: "10.0.1.2", netmask: "255.255.0.0")
+        )
+        XCTAssertThrowsError(try large.targets(limit: 1_024))
+    }
+
+    func testNetToysConfigurationRoundTripsAndClampsProbeInterval() throws {
+        let anchor = SSHAnchorConfiguration(
+            hostAlias: "jetson",
+            hostName: "192.168.1.8",
+            port: 2222,
+            identity: .stableMAC("aa:bb:cc:dd:ee:ff")
+        )
+        let configuration = NetToysConfiguration(probeInterval: 8, anchors: [anchor], recordsNetworkHistory: true)
+        XCTAssertEqual(configuration.probeInterval, 3)
+        XCTAssertEqual(
+            try JSONDecoder().decode(NetToysConfiguration.self, from: JSONEncoder().encode(configuration)),
+            configuration
+        )
+    }
 }
