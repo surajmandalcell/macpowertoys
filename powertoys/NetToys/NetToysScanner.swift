@@ -1090,7 +1090,7 @@ nonisolated enum NetToysScanExport {
         return try encoder.encode(SavedResults(version: 1, results: results))
     }
 
-    static func csv(_ results: [NetToysScanResult]) -> String {
+    static func csv(_ results: [NetToysScanResult], includeHeader: Bool = true) -> String {
         let rows = results.map { result in
             [
                 result.address.description,
@@ -1109,8 +1109,8 @@ nonisolated enum NetToysScanExport {
                 result.customText ?? ""
             ].map(quote).joined(separator: ",")
         }
-        return (["IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports,HTTP Server,HTTP Proxy,NetBIOS,Custom Text"] + rows)
-            .joined(separator: "\n")
+        let header = "IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports,HTTP Server,HTTP Proxy,NetBIOS,Custom Text"
+        return ((includeHeader ? [header] : []) + rows).joined(separator: "\n")
     }
 
     static func text(_ results: [NetToysScanResult]) -> String {
@@ -1160,7 +1160,7 @@ nonisolated enum NetToysScanExport {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<scan>\n\(hosts)\n</scan>"
     }
 
-    static func sql(_ results: [NetToysScanResult]) -> String {
+    static func sql(_ results: [NetToysScanResult], includeSchema: Bool = true) -> String {
         let rows = results.map { result in
             let values = [
                 result.address.description,
@@ -1179,9 +1179,23 @@ nonisolated enum NetToysScanExport {
             ].map(sqlQuote).joined(separator: ", ")
             return "INSERT INTO nettoys_scan (ip_address, status, ttl, packet_loss, hostname, mac_address, mac_vendor, open_ports, filtered_ports, http_server, http_proxy, netbios, custom_text) VALUES (\(values));"
         }
-        return ([
-            "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, mac_vendor TEXT, open_ports TEXT, filtered_ports TEXT, http_server TEXT, http_proxy TEXT, netbios TEXT, custom_text TEXT);"
-        ] + rows).joined(separator: "\n")
+        let schema = "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, mac_vendor TEXT, open_ports TEXT, filtered_ports TEXT, http_server TEXT, http_proxy TEXT, netbios TEXT, custom_text TEXT);"
+        return ((includeSchema ? [schema] : []) + rows).joined(separator: "\n")
+    }
+
+    static func append(_ value: String, to url: URL) throws {
+        guard !value.isEmpty else { return }
+        let handle = try FileHandle(forUpdating: url)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        var prefix = ""
+        if size > 0 {
+            try handle.seek(toOffset: size - 1)
+            prefix = try handle.read(upToCount: 1) == Data([0x0A]) ? "" : "\n"
+            try handle.seekToEnd()
+        }
+        try handle.write(contentsOf: Data((prefix + value).utf8))
+        try handle.synchronize()
     }
 
     private static func quote(_ value: String) -> String {

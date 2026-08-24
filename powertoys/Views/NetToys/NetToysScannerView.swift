@@ -41,6 +41,13 @@ enum NetToysExportFormat: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var canAppend: Bool {
+        switch self {
+        case .csv, .text, .ipPorts, .sql: true
+        case .savedResults, .xml: false
+        }
+    }
+
     var fileExtension: String {
         switch self {
         case .savedResults: "nettoys"
@@ -307,6 +314,29 @@ final class NetToysScannerViewModel {
         }
     }
 
+    func append(_ format: NetToysExportFormat, rows: [NetToysScanResult]) {
+        guard format.canAppend, !rows.isEmpty else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: format.fileExtension) ?? .plainText]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.prompt = "Append"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let isEmpty = (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) == 0
+            let value = switch format {
+            case .csv: NetToysScanExport.csv(rows, includeHeader: isEmpty)
+            case .text: NetToysScanExport.text(rows)
+            case .ipPorts: NetToysScanExport.ipPorts(rows)
+            case .sql: NetToysScanExport.sql(rows, includeSchema: isEmpty)
+            case .savedResults, .xml: ""
+            }
+            try NetToysScanExport.append(value, to: url)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func loadResults() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "nettoys") ?? .data]
@@ -536,6 +566,14 @@ struct NetToysScannerView: View {
                 ForEach(NetToysExportFormat.allCases) { format in
                     Button(format.rawValue) {
                         model.export(format, rows: selectedRows.isEmpty ? sortedResults : selectedRows)
+                    }
+                }
+                Divider()
+                Menu("Append to Existing File") {
+                    ForEach(NetToysExportFormat.allCases.filter(\.canAppend)) { format in
+                        Button(format.rawValue) {
+                            model.append(format, rows: selectedRows.isEmpty ? sortedResults : selectedRows)
+                        }
                     }
                 }
             }

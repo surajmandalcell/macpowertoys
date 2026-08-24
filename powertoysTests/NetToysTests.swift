@@ -611,4 +611,29 @@ final class NetToysTests: XCTestCase {
 
         XCTAssertEqual(imported, [original])
     }
+
+    func testAppendExportKeepsExistingDataAndOmitsDuplicateHeaders() throws {
+        let result = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("10.0.0.9")),
+            isReachable: true,
+            responseMilliseconds: 1,
+            hostname: nil,
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [22]
+        )
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("scan.csv")
+        try (NetToysScanExport.csv([result]) + "\n").write(to: url, atomically: true, encoding: .utf8)
+
+        try NetToysScanExport.append(NetToysScanExport.csv([result], includeHeader: false), to: url)
+
+        let value = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertEqual(value.components(separatedBy: "IP Address,Status").count - 1, 1)
+        XCTAssertEqual(value.components(separatedBy: "\n").count, 3)
+        XCTAssertFalse(NetToysScanExport.sql([result], includeSchema: false).contains("CREATE TABLE"))
+    }
 }
