@@ -109,7 +109,7 @@ nonisolated enum TCPPortProbe {
     }
 }
 
-nonisolated struct NetToysScanResult: Identifiable, Equatable, Sendable {
+nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable {
     var id: String { address.description }
     let address: IPv4Address
     let isReachable: Bool
@@ -118,6 +118,88 @@ nonisolated struct NetToysScanResult: Identifiable, Equatable, Sendable {
     let macAddress: String?
     let vendor: String?
     let openPorts: [UInt16]
+}
+
+nonisolated struct NetToysScanRun: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    let date: Date
+    let target: String
+    let ports: [UInt16]
+    let duration: TimeInterval
+    let results: [NetToysScanResult]
+
+    init(
+        id: UUID = UUID(),
+        date: Date = Date(),
+        target: String,
+        ports: [UInt16],
+        duration: TimeInterval,
+        results: [NetToysScanResult]
+    ) {
+        self.id = id
+        self.date = date
+        self.target = target
+        self.ports = ports
+        self.duration = duration
+        self.results = results
+    }
+}
+
+nonisolated struct NetToysScanArchive: Codable, Equatable, Sendable {
+    var runs: [NetToysScanRun]
+
+    init(runs: [NetToysScanRun] = [], limit: Int = 50) {
+        self.runs = Array(runs.suffix(max(1, limit)))
+    }
+
+    mutating func append(_ run: NetToysScanRun, limit: Int = 50) {
+        runs.append(run)
+        if runs.count > limit { runs.removeFirst(runs.count - limit) }
+    }
+}
+
+nonisolated struct NetToysHostAnnotation: Codable, Equatable, Sendable {
+    var comment: String = ""
+    var isFavorite = false
+}
+
+nonisolated enum NetToysScannerStore {
+    static func archive() -> NetToysScanArchive {
+        load(NetToysScanArchive.self, from: NetToysPaths.scanHistory) ?? NetToysScanArchive()
+    }
+
+    static func record(_ run: NetToysScanRun) throws {
+        var value = archive()
+        value.append(run)
+        try save(value, to: NetToysPaths.scanHistory)
+    }
+
+    static func annotations() -> [String: NetToysHostAnnotation] {
+        load([String: NetToysHostAnnotation].self, from: NetToysPaths.scannerAnnotations) ?? [:]
+    }
+
+    static func saveAnnotations(_ value: [String: NetToysHostAnnotation]) throws {
+        try save(value, to: NetToysPaths.scannerAnnotations)
+    }
+
+    static func favoriteTargets() -> [String] {
+        load([String].self, from: NetToysPaths.favoriteTargets) ?? []
+    }
+
+    static func saveFavoriteTargets(_ value: [String]) throws {
+        try save(Array(value.prefix(50)), to: NetToysPaths.favoriteTargets)
+    }
+
+    private static func load<Value: Decodable>(_ type: Value.Type, from url: URL) -> Value? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
+    private static func save<Value: Encodable>(_ value: Value, to url: URL) throws {
+        try FileManager.default.createDirectory(at: NetToysPaths.directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(value).write(to: url, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
 }
 
 actor NetToysScanner {
@@ -307,7 +389,55 @@ nonisolated enum NetToysScanExport {
         }.joined(separator: "\n")
     }
 
+    static func ipPorts(_ results: [NetToysScanResult]) -> String {
+        results.flatMap { result in
+            result.openPorts.map { "\(result.address):\($0)" }
+        }.joined(separator: "\n")
+    }
+
+    static func xml(_ results: [NetToysScanResult]) -> String {
+        let hosts = results.map { result in
+            """
+              <host ip="\(xmlEscape(result.address.description))" status="\(result.isReachable ? "up" : "down")">
+                <hostname>\(xmlEscape(result.hostname ?? ""))</hostname>
+                <mac>\(xmlEscape(result.macAddress ?? ""))</mac>
+                <ports>\(xmlEscape(result.openPorts.map(String.init).joined(separator: " ")))</ports>
+              </host>
+            """
+        }.joined(separator: "\n")
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<scan>\n\(hosts)\n</scan>"
+    }
+
+    static func sql(_ results: [NetToysScanResult]) -> String {
+        let rows = results.map { result in
+            let values = [
+                result.address.description,
+                result.isReachable ? "up" : "down",
+                result.hostname ?? "",
+                result.macAddress ?? "",
+                result.openPorts.map(String.init).joined(separator: " ")
+            ].map(sqlQuote).joined(separator: ", ")
+            return "INSERT INTO nettoys_scan (ip_address, status, hostname, mac_address, open_ports) VALUES (\(values));"
+        }
+        return ([
+            "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, hostname TEXT, mac_address TEXT, open_ports TEXT);"
+        ] + rows).joined(separator: "\n")
+    }
+
     private static func quote(_ value: String) -> String {
         "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
+    }
+
+    private static func xmlEscape(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&apos;")
+    }
+
+    private static func sqlQuote(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "''"))'"
     }
 }

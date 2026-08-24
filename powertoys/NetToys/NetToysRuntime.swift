@@ -273,6 +273,9 @@ nonisolated enum NetToysPaths {
     static var configuration: URL { directory.appendingPathComponent("configuration.json") }
     static var helperStatus: URL { directory.appendingPathComponent("helper-status.json") }
     static var history: URL { directory.appendingPathComponent("history.json") }
+    static var scanHistory: URL { directory.appendingPathComponent("scan-history.json") }
+    static var scannerAnnotations: URL { directory.appendingPathComponent("scanner-annotations.json") }
+    static var favoriteTargets: URL { directory.appendingPathComponent("favorite-targets.json") }
     static var backups: URL { directory.appendingPathComponent("SSH Backups", isDirectory: true) }
 }
 

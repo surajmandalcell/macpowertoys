@@ -326,6 +326,35 @@ struct SystemMonitorTool: Tool {
     static let shared = SystemMonitorTool()
 }
 
+// MARK: - NetToys Tool
+
+struct NetToysTool: Tool {
+    let id = "nettoys"
+    let name = "NetToys"
+    let description = "Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages."
+    let icon = "network"
+    let logoAsset = "NetToysLogo"
+    let category = ToolCategory.system
+
+    let manual = [
+        ToolManualSection(title: "IP Scanner", points: [
+            "Enter one address, a range, a CIDR block, or a list of addresses.",
+            "Choose TCP ports, then scan. Filter, select, copy, rescan, or export the results."
+        ]),
+        ToolManualSection(title: "SSH Anchor", points: [
+            "Choose an explicit host and port from ~/.ssh/config.",
+            "SSH Anchor checks that port every 2 to 3 seconds. If the address stops working, it searches the local subnet on only that port.",
+            "A successful recovery changes only the HostName value in the selected host block."
+        ]),
+        ToolManualSection(title: "Network History", points: [
+            "Network History records gateway and internet state changes.",
+            "The bundled NetToys Helper runs only while NetToys is enabled."
+        ])
+    ]
+
+    static let shared = NetToysTool()
+}
+
 // MARK: - Marketplace Tool
 
 struct MarketplaceTool: Tool {
@@ -356,7 +385,8 @@ struct ToolRegistry {
         TextExtractorTool.shared,
         InputDevicesTool.shared,
         SystemCareTool.shared,
-        SystemMonitorTool.shared
+        SystemMonitorTool.shared,
+        NetToysTool.shared
     ]
 
     static var allTools: [any Tool] {

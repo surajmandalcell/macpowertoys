@@ -180,6 +180,15 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["system-monitor"]))
         .restorationBehavior(.disabled)
 
+        Window("NetToys", id: "nettoys") {
+            NetToysWindowView()
+                .utilityMotionPolicy()
+        }
+        .defaultSize(width: 1100, height: 720)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["nettoys"]))
+        .restorationBehavior(.disabled)
+
         MenuBarExtra("MacPowerToys", image: "MenuBarIcon", isInserted: trayBinding) {
             TrayPopoverView()
                 .utilityMotionPolicy()

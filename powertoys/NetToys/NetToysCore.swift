@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-nonisolated struct IPv4Address: Hashable, Comparable, CustomStringConvertible, Sendable {
+nonisolated struct IPv4Address: Codable, Hashable, Comparable, CustomStringConvertible, Sendable {
     let rawValue: UInt32
 
     init?(_ text: String) {
@@ -58,6 +58,29 @@ nonisolated enum IPv4Targets {
             guard addresses.count <= limit else { throw ParseError.tooMany(limit) }
         }
         return addresses
+    }
+
+    static func random(in input: String, count: Int, limit: Int = 65_536) throws -> [IPv4Address] {
+        let parts = input.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 2,
+              let address = IPv4Address(String(parts[0]).trimmingCharacters(in: .whitespaces)),
+              let prefix = UInt8(parts[1]), prefix <= 32,
+              count > 0, count <= limit
+        else { throw ParseError.invalid(input) }
+        let hostBits = 32 - Int(prefix)
+        let total = UInt64(1) << UInt64(hostBits)
+        let excluded = hostBits >= 2 ? 2 : 0
+        let usable = total - UInt64(excluded)
+        guard UInt64(count) <= usable else { throw ParseError.tooMany(Int(usable)) }
+        let mask = prefix == 0 ? UInt32(0) : UInt32.max << UInt32(hostBits)
+        let network = address.rawValue & mask
+        let first = network &+ UInt32(excluded == 2 ? 1 : 0)
+        let last = network &+ UInt32(truncatingIfNeeded: total - 1 - UInt64(excluded == 2 ? 1 : 0))
+        var values = Set<IPv4Address>()
+        while values.count < count {
+            values.insert(IPv4Address(rawValue: UInt32.random(in: first...last)))
+        }
+        return Array(values)
     }
 
     private static func range(_ input: String, limit: Int) throws -> [IPv4Address] {
