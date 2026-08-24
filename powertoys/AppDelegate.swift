@@ -35,6 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
         let toolID = url.pathComponents.first { $0 != "/" }
+        if toolID == "nettoys", url.query != nil { return true }
         return toolID.map { !nativeSceneToolIDs.contains($0) } ?? true
     }
 

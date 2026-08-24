@@ -44,6 +44,9 @@ struct NetToysWindowView: View {
                 NotificationCenter.default.post(name: .netToysStartScan, object: run)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netToysPrefill)) { _ in
+            page = .scanner
+        }
     }
 
     private var sidebar: some View {
