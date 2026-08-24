@@ -20,7 +20,7 @@ struct ToolSidebarView: View {
         VStack(spacing: 0) {
             SearchField(text: $searchText, placeholder: "Search")
                 .padding(.horizontal, 12)
-                .padding(.top, 52)
+                .padding(.top, UtilityLayout.workspaceContentTopInset)
                 .padding(.bottom, 12)
 
             ScrollView(showsIndicators: false) {
@@ -33,6 +33,11 @@ struct ToolSidebarView: View {
                         SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id, logoAsset: tool.logoAsset) {
                             selectedTool = tool.id
                         }
+                        .simultaneousGesture(
+                            TapGesture(count: 2).onEnded {
+                                ToolActionRouter.shared.open(toolID: tool.id)
+                            }
+                        )
                     }
                 }
                 .padding(.horizontal, 12)

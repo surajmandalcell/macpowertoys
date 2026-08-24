@@ -34,7 +34,8 @@ struct ToolAboutView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 10)
+                .padding(.leading, 20)
+                .padding(.trailing, 10)
                 .padding(.bottom, 12)
                 .accessibilityIdentifier("tool.\(tool.id).page")
 
@@ -44,9 +45,14 @@ struct ToolAboutView: View {
                     switch page {
                     case .settings:
                         VStack(spacing: 0) {
-                            ToolDetailIntro(tool: tool)
-                            ToolSettingsContent(toolID: tool.id)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            if tool.id == "input-devices" {
+                                Spacer(minLength: 0)
+                                ToolDetailIntro(tool: tool)
+                            } else {
+                                ToolDetailIntro(tool: tool)
+                                ToolSettingsContent(toolID: tool.id)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
                         }
                             .disabled(!settings.isToolEnabled(tool.id))
                     case .guide:
@@ -67,7 +73,7 @@ struct ToolAboutView: View {
             ToolIconView(tool: tool, size: 30)
 
             Text(tool.name)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .medium))
                 .lineLimit(1)
                 .layoutPriority(1)
 
@@ -91,7 +97,7 @@ struct ToolAboutView: View {
                 .accessibilityLabel("Open \(tool.name)")
                 .accessibilityIdentifier("tool.\(tool.id).launch")
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .controlSize(.regular)
                 .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
                 .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
             }

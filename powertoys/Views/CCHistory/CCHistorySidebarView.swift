@@ -24,7 +24,7 @@ struct CCHistorySidebarView: View {
             VStack(spacing: 0) {
                 SearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching, deepSearchEnabled: $deepSearchEnabled)
                     .padding(.horizontal, 12)
-                    .padding(.top, 52)
+                    .padding(.top, UtilityLayout.workspaceContentTopInset)
                     .padding(.bottom, 12)
 
                 if !bookmarkManager.bookmarks.isEmpty {

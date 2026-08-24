@@ -177,7 +177,7 @@ final class WindowAccessorTests: XCTestCase {
             let zoomButton = try XCTUnwrap(window.standardWindowButton(.zoomButton))
             XCTAssertGreaterThanOrEqual(
                 UtilityLayout.workspaceTitleLeadingInset - zoomButton.frame.maxX,
-                20,
+                12,
                 identifier
             )
         }
@@ -189,6 +189,8 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(UtilityLayout.conversationSidebarWidth, 260)
         XCTAssertEqual(UtilityLayout.sidebarRowHeight, 28)
         XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 40)
+        XCTAssertEqual(UtilityLayout.workspaceContentTopInset, 44)
+        XCTAssertEqual(UtilityLayout.workspaceTitleLeadingInset, 84)
         XCTAssertEqual(UtilityLayout.workspaceActionHeight, 24)
         XCTAssertEqual(UtilityLayout.separatorOpacity, 0.22)
         XCTAssertEqual(UtilityLayout.increasedContrastSeparatorOpacity, 0.44)

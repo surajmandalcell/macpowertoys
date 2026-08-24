@@ -170,7 +170,7 @@ struct LogsWindowView: View {
         VStack(spacing: 0) {
             SearchField(text: $searchText, placeholder: "Search logs...")
                 .padding(.horizontal, 12)
-                .padding(.top, 52)
+                .padding(.top, UtilityLayout.workspaceContentTopInset)
                 .padding(.bottom, 12)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -188,6 +188,7 @@ struct LogsWindowView: View {
                     .accessibilityIdentifier("logs.source.\(source.id)")
                 }
             }
+            .padding(.horizontal, 12)
 
             if selectedSource == .internalLogs {
                 VStack(alignment: .leading, spacing: 4) {
@@ -209,6 +210,7 @@ struct LogsWindowView: View {
                     }
                 }
                 .padding(.top, 12)
+                .padding(.horizontal, 12)
             }
 
             Spacer()

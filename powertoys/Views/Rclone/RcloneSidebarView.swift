@@ -46,7 +46,7 @@ struct RcloneSidebarView: View {
                 .help("Reconnect")
             }
         }
-        .padding(.leading, 84)
+        .padding(.leading, UtilityLayout.workspaceTitleLeadingInset)
         .padding(.top, 8)
     }
 
@@ -65,7 +65,7 @@ struct RcloneSidebarView: View {
                 manager.isPresentingNewTransfer = true
             }
             .padding(.horizontal, 12)
-            .padding(.top, 52)
+            .padding(.top, UtilityLayout.workspaceContentTopInset)
 
 
             ScrollView(showsIndicators: false) {

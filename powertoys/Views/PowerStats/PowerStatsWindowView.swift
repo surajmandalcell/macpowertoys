@@ -27,7 +27,7 @@ struct PowerStatsWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar.frame(width: UtilityLayout.compactSidebarWidth)
+            sidebar.frame(width: UtilityLayout.dataSidebarWidth)
             content
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -59,7 +59,7 @@ struct PowerStatsWindowView: View {
                 .padding(10)
             }
             .padding(.horizontal, 12)
-            .padding(.top, 52)
+            .padding(.top, UtilityLayout.workspaceContentTopInset)
             .padding(.bottom, 12)
         }
     }
