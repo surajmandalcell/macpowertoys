@@ -9,8 +9,6 @@ evidence, and remaining work.
 
 - Define and add the missing NetTools network utility after the user approves
   its feature scope.
-- Verify the Minimal page header and the flat launcher tool list in the latest
-  normal installed build.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
 - Verify that custom controls never show the large blue focus outline and keep
