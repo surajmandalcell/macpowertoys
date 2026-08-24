@@ -84,13 +84,56 @@ final class NetToysScannerViewModel {
     func start(targets override: [IPv4Address]? = nil) {
         guard !isScanning else { return }
         do {
-            let targets = try override ?? IPv4Targets.parse(targetInput)
-            let ports = try PortList.parse(portInput)
-            guard !targets.isEmpty else { throw IPv4Targets.ParseError.invalid(targetInput) }
+            let defaultPorts = try PortList.parse(portInput)
             let sourceTarget = override == nil
                 ? targetInput
-                : targets.map(\.description).joined(separator: ", ")
-            begin(targets: targets, ports: ports, sourceTarget: sourceTarget)
+                : override?.map(\.description).joined(separator: ", ") ?? ""
+            errorMessage = nil
+            completed = 0
+            total = override?.count ?? 0
+            isScanning = true
+            let started = Date()
+            scanTask = Task { [weak self] in
+                guard let self else { return }
+                do {
+                    let targets = if let override {
+                        override.map { NetToysScanTarget(address: $0, ports: defaultPorts) }
+                    } else {
+                        try await NetToysTargetResolver.resolve(targetInput, defaultPorts: defaultPorts)
+                    }
+                    guard !targets.isEmpty else {
+                        throw NetToysTargetInput.ParseError.invalid(sourceTarget)
+                    }
+                    total = targets.count
+                    let values = await scanner.scan(
+                        targets: targets,
+                        timeoutMilliseconds: timeoutMilliseconds,
+                        concurrency: concurrency
+                    ) { completed, total in
+                        Task { @MainActor in
+                            self.completed = completed
+                            self.total = total
+                        }
+                    }
+                    guard !Task.isCancelled else { return }
+                    let duration = Date().timeIntervalSince(started)
+                    results = values
+                    lastDuration = duration
+                    isScanning = false
+                    scanTask = nil
+                    try NetToysScannerStore.record(NetToysScanRun(
+                        target: sourceTarget,
+                        ports: Set(targets.flatMap(\.ports)).sorted(),
+                        duration: duration,
+                        results: values
+                    ))
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    errorMessage = error.localizedDescription
+                    isScanning = false
+                    scanTask = nil
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -179,43 +222,6 @@ final class NetToysScannerViewModel {
         }
     }
 
-    private func begin(targets: [IPv4Address], ports: [UInt16], sourceTarget: String) {
-        errorMessage = nil
-        completed = 0
-        total = targets.count
-        isScanning = true
-        let started = Date()
-        scanTask = Task { [weak self] in
-            guard let self else { return }
-            let values = await scanner.scan(
-                targets: targets,
-                ports: ports,
-                timeoutMilliseconds: timeoutMilliseconds,
-                concurrency: concurrency
-            ) { completed, total in
-                Task { @MainActor in
-                    self.completed = completed
-                    self.total = total
-                }
-            }
-            guard !Task.isCancelled else { return }
-            let duration = Date().timeIntervalSince(started)
-            results = values
-            lastDuration = duration
-            isScanning = false
-            scanTask = nil
-            do {
-                try NetToysScannerStore.record(NetToysScanRun(
-                    target: sourceTarget,
-                    ports: ports,
-                    duration: duration,
-                    results: values
-                ))
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
 }
 
 struct NetToysScannerView: View {

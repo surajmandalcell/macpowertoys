@@ -212,6 +212,33 @@ final class NetToysTests: XCTestCase {
         XCTAssertThrowsError(try PortList.parse("80-70000"))
     }
 
+    func testScanTargetInputAcceptsHostnamesAndPerTargetPorts() throws {
+        XCTAssertEqual(
+            try NetToysTargetInput.parse("10.0.0.2:2222, jetson.local:22, 10.0.0.4-10.0.0.5"),
+            [
+                .addresses([try XCTUnwrap(IPv4Address("10.0.0.2"))], port: 2222),
+                .hostname("jetson.local", port: 22),
+                .addresses([
+                    try XCTUnwrap(IPv4Address("10.0.0.4")),
+                    try XCTUnwrap(IPv4Address("10.0.0.5"))
+                ], port: nil)
+            ]
+        )
+        XCTAssertThrowsError(try NetToysTargetInput.parse("fe80::1")) { error in
+            XCTAssertEqual(error as? NetToysTargetInput.ParseError, .unsupportedIPv6("fe80::1"))
+        }
+    }
+
+    func testScanTargetResolverResolvesLocalhostAndKeepsPerTargetPort() async throws {
+        let targets = try await NetToysTargetResolver.resolve("localhost:2222", defaultPorts: [22, 80])
+
+        XCTAssertTrue(targets.contains(NetToysScanTarget(
+            address: try XCTUnwrap(IPv4Address("127.0.0.1")),
+            ports: [2222]
+        )))
+        XCTAssertTrue(targets.allSatisfy { $0.ports == [2222] })
+    }
+
     func testARPTableParsesMacAddresses() {
         let output = """
         ? (192.168.1.1) at aa:bb:cc:dd:ee:ff on en0 ifscope [ethernet]
