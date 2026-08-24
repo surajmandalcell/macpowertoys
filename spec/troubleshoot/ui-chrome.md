@@ -250,6 +250,21 @@
   device inspection. Switch identity modes and wait for helper refreshes. No
   label, input, status, or action may change its horizontal position.
 
+## NetToys SSH Host Catalog And Scanner Handoff
+
+- **Symptom:** SSH Anchor shows only some aliases from `~/.ssh/config`, or a
+  scan result requires the user to copy its identity into SSH Anchor by hand.
+- **Cause:** The host picker accepted only single-alias blocks with literal IPv4
+  HostName values. It also required an explicit Port line.
+- **Invariant:** Expand every literal alias from each Host block. Keep literal
+  hostname and IPv4 HostName values. Use port 22 when Port is absent. Exclude
+  wildcard and negated patterns because they do not name one editable host.
+  Scanner result actions open SSH Anchor and fill the address, MAC, hostname,
+  and matching alias without creating the anchor automatically.
+- **Check:** Compare the picker with every literal alias in the current config.
+  Scan a configured host, use Add SSH Anchor, and confirm the page and fields
+  change in one action. Repeat with no MAC and with no matching alias.
+
 ## NetToys Wi-Fi Identity Permission
 
 - **Symptom:** Network History shows only `interface | gateway` and no Wi-Fi
