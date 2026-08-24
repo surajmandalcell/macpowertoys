@@ -251,6 +251,23 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testPingProbeParsesMacOSPacketLossLatencyAndTTL() {
+        let output = """
+        PING 10.0.0.2 (10.0.0.2): 56 data bytes
+        64 bytes from 10.0.0.2: icmp_seq=0 ttl=63 time=0.200 ms
+        64 bytes from 10.0.0.2: icmp_seq=1 ttl=63 time=0.400 ms
+
+        --- 10.0.0.2 ping statistics ---
+        3 packets transmitted, 2 packets received, 33.3% packet loss
+        round-trip min/avg/max/stddev = 0.200/0.300/0.400/0.100 ms
+        """
+
+        XCTAssertEqual(
+            PingProbe.parse(output),
+            PingProbeResult(ttl: 63, packetLossPercent: 33.3, averageMilliseconds: 0.3)
+        )
+    }
+
     func testTCPProbeAndScannerFindLocalListener() async throws {
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         XCTAssertGreaterThanOrEqual(descriptor, 0)
@@ -286,11 +303,15 @@ final class NetToysTests: XCTestCase {
             targets: [try XCTUnwrap(IPv4Address("127.0.0.1"))],
             ports: [port],
             timeoutMilliseconds: 500,
-            concurrency: 4
+            concurrency: 4,
+            collectPingDetails: true,
+            pingProbeCount: 1
         )
         XCTAssertEqual(results.count, 1)
         XCTAssertTrue(results[0].isReachable)
         XCTAssertEqual(results[0].openPorts, [port])
+        XCTAssertEqual(results[0].packetLossPercent, 0)
+        XCTAssertNotNil(results[0].ttl)
     }
 
     func testSSHConfigEntriesExposeLiteralHostAddressAndPort() throws {
@@ -448,7 +469,10 @@ final class NetToysTests: XCTestCase {
             hostname: "dev<&'\".local",
             macAddress: "aa:bb:cc:dd:ee:ff",
             vendor: nil,
-            openPorts: [22]
+            openPorts: [22],
+            filteredPorts: [443],
+            ttl: 63,
+            packetLossPercent: 1.5
         )
         let run = NetToysScanRun(target: "10.0.0.0/24", ports: [22], duration: 1, results: [result])
         let archive = NetToysScanArchive(runs: Array(repeating: run, count: 4), limit: 3)
@@ -458,6 +482,8 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(NetToysScanExport.sql([result]).contains("dev<&amp;''\".local") == false)
         XCTAssertTrue(NetToysScanExport.sql([result]).contains("dev<&''\".local"))
         XCTAssertEqual(NetToysScanExport.ipPorts([result]), "10.0.0.2:22")
+        XCTAssertTrue(NetToysScanExport.csv([result]).contains("TTL,Packet Loss %,Filtered Ports"))
+        XCTAssertTrue(NetToysScanExport.csv([result]).contains("\"63\",\"1.5\",\"443\""))
         XCTAssertEqual(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([result])), [result])
     }
 }
