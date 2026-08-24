@@ -9,7 +9,7 @@ enum AwakeMode: String, CaseIterable, Codable, Identifiable, Sendable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .passive: "Passive"
+        case .passive: "Off"
         case .indefinite: "Keep Awake Indefinitely"
         case .timed: "Keep Awake for an Interval"
         case .until: "Keep Awake Until"

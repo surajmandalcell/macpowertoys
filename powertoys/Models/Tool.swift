@@ -195,7 +195,7 @@ struct AwakeTool: Tool {
 
     let manual = [
         ToolManualSection(title: "Modes", points: [
-            "Passive uses normal macOS power settings. Indefinite remains active until disabled.",
+            "Off uses normal macOS power settings. Indefinite remains active until disabled.",
             "Timed mode counts down for a duration. Until mode expires at a specific date and time.",
             "Keep Display On is independent and only applies while an active Awake mode is selected."
         ]),
