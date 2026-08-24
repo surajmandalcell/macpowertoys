@@ -85,10 +85,10 @@
       "mode": "no-view"
     },
     {
-      "name": "power-stats",
-      "title": "Power Stats",
-      "description": "Open Power Stats",
-      "icon": "power-stats.png",
+      "name": "system-monitor",
+      "title": "System Monitor",
+      "description": "Open System Monitor",
+      "icon": "system-monitor.png",
       "mode": "no-view"
     }
   ],

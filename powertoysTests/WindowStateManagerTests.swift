@@ -40,7 +40,7 @@ final class WindowStateManagerTests: XCTestCase {
     func testWindowInstancesShareStableStorageIdentifiers() {
         for identifier in [
             "main", "cc-history", "rclone", "logs", "awake",
-            "color-picker", "text-extractor", "input-devices", "system-care", "power-stats"
+            "color-picker", "text-extractor", "input-devices", "system-care", "system-monitor"
         ] {
             XCTAssertEqual(
                 WindowStateManager.storageIdentifier(for: "\(identifier)-AppWindow-2"),
@@ -49,6 +49,27 @@ final class WindowStateManagerTests: XCTestCase {
         }
 
         XCTAssertNil(WindowStateManager.storageIdentifier(for: "unknown-AppWindow-1"))
+    }
+
+    @MainActor
+    func testSystemMonitorReadsLegacyWindowStateWhenCurrentStateIsAbsent() throws {
+        let suite = "WindowStateManagerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let legacyData = Data("legacy-frame".utf8)
+        defaults.set(legacyData, forKey: "windowState.power-stats")
+
+        XCTAssertEqual(
+            WindowStateManager.storedStateData(for: "system-monitor", in: defaults),
+            legacyData
+        )
+
+        let currentData = Data("current-frame".utf8)
+        defaults.set(currentData, forKey: "windowState.system-monitor")
+        XCTAssertEqual(
+            WindowStateManager.storedStateData(for: "system-monitor", in: defaults),
+            currentData
+        )
     }
 
     func testRestoredWorkspaceFrameIsClampedToItsRememberedMonitor() {

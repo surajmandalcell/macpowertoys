@@ -1,6 +1,6 @@
 import SwiftUI
 
-private enum PowerStatsPage: String, CaseIterable, Identifiable {
+private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case overview = "Overview"
     case processor = "Processor"
     case memory = "Memory"
@@ -11,7 +11,7 @@ private enum PowerStatsPage: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var icon: String {
         switch self {
-        case .overview: "gauge.with.dots.needle.50percent"
+        case .overview: "chart.xyaxis.line"
         case .processor: "cpu"
         case .memory: "memorychip"
         case .network: "network"
@@ -21,9 +21,9 @@ private enum PowerStatsPage: String, CaseIterable, Identifiable {
     }
 }
 
-struct PowerStatsWindowView: View {
-    @State private var service = PowerStatsService.shared
-    @State private var page = PowerStatsPage.overview
+struct SystemMonitorWindowView: View {
+    @State private var service = SystemMonitorService.shared
+    @State private var page = SystemMonitorPage.overview
 
     var body: some View {
         HStack(spacing: 0) {
@@ -34,7 +34,7 @@ struct PowerStatsWindowView: View {
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
-        .background(WindowAccessor(identifier: "power-stats"))
+        .background(WindowAccessor(identifier: "system-monitor"))
         .onAppear { service.startDetailed() }
         .onDisappear { service.stopDetailed() }
     }
@@ -42,9 +42,9 @@ struct PowerStatsWindowView: View {
     private var sidebar: some View {
         ZStack(alignment: .topLeading) {
             VisualEffectBackground(material: .sidebar)
-            SidebarTitle(text: "Power Stats")
+            SidebarTitle(text: "System Monitor")
             VStack(spacing: 4) {
-                ForEach(PowerStatsPage.allCases) { item in
+                ForEach(SystemMonitorPage.allCases) { item in
                     SidebarRow(icon: item.icon, title: item.rawValue, isSelected: page == item) {
                         page = item
                     }
@@ -72,7 +72,7 @@ struct PowerStatsWindowView: View {
         case .memory: memoryPage
         case .network: networkPage
         case .menuBar: menuBarPage
-        case .about: ToolAboutView(toolId: "power-stats")
+        case .about: ToolAboutView(toolId: "system-monitor")
         }
     }
 
@@ -240,7 +240,7 @@ struct PowerStatsWindowView: View {
                             get: { $0.mode },
                             set: { $0.mode = $1 }
                         )) {
-                            ForEach(PowerMenuMode.allCases) { Text($0.title).tag($0) }
+                            ForEach(SystemMonitorMenuMode.allCases) { Text($0.title).tag($0) }
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
@@ -272,7 +272,7 @@ struct PowerStatsWindowView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("METRICS").utilitySectionHeader()
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 10) {
-                        ForEach(PowerMenuMetric.allCases) { metric in
+                        ForEach(SystemMonitorMenuMetric.allCases) { metric in
                             Toggle(metric.title, isOn: metricBinding(metric)).toggleStyle(.checkbox)
                         }
                     }
@@ -313,8 +313,8 @@ struct PowerStatsWindowView: View {
     }
 
     private func menuSetting<Value>(
-        get: @escaping (PowerStatsMenuSettings) -> Value,
-        set: @escaping (inout PowerStatsMenuSettings, Value) -> Void
+        get: @escaping (SystemMonitorMenuSettings) -> Value,
+        set: @escaping (inout SystemMonitorMenuSettings, Value) -> Void
     ) -> Binding<Value> {
         Binding(
             get: { get(service.menuSettings) },
@@ -322,7 +322,7 @@ struct PowerStatsWindowView: View {
         )
     }
 
-    private func metricBinding(_ metric: PowerMenuMetric) -> Binding<Bool> {
+    private func metricBinding(_ metric: SystemMonitorMenuMetric) -> Binding<Bool> {
         Binding(
             get: { service.menuSettings.metrics.contains(metric) },
             set: { enabled in
@@ -372,5 +372,5 @@ private extension Int64 {
 }
 
 #Preview {
-    PowerStatsWindowView().frame(width: 1080, height: 720)
+    SystemMonitorWindowView().frame(width: 1080, height: 720)
 }

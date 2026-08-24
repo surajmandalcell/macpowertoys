@@ -65,12 +65,13 @@ final class ToolActionRouter {
         "cloud-sync": "rclone",
         "cloudsync": "rclone",
         "rsync": "rclone",
+        "power-stats": "system-monitor",
         "settings": "main",
         "home": "main"
     ]
 
     func open(toolID: String) {
-        let resolved = Self.windowAliases[toolID] ?? toolID
+        let resolved = Self.resolvedWindowID(toolID)
         guard resolved == "main" || SettingsManager.shared.isToolEnabled(resolved) else {
             LogManager.shared.info("Ignored disabled tool: \(resolved)", source: "ToolActionRouter")
             return
@@ -106,6 +107,10 @@ final class ToolActionRouter {
         } else {
             LogManager.shared.warning("Unknown tool ID: \(resolved)", source: "ToolActionRouter")
         }
+    }
+
+    static func resolvedWindowID(_ toolID: String) -> String {
+        windowAliases[toolID] ?? toolID
     }
 
     func execute(_ request: ToolActionRequest) {

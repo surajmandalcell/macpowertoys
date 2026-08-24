@@ -301,19 +301,19 @@ struct SystemCareTool: Tool {
     static let shared = SystemCareTool()
 }
 
-// MARK: - Power Stats Tool
+// MARK: - System Monitor Tool
 
-struct PowerStatsTool: Tool {
-    let id = "power-stats"
-    let name = "Power Stats"
+struct SystemMonitorTool: Tool {
+    let id = "system-monitor"
+    let name = "System Monitor"
     let description = "Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary."
-    let icon = "gauge.with.dots.needle.50percent"
-    let logoAsset = "PowerStatsLogo"
+    let icon = "chart.xyaxis.line"
+    let logoAsset = "SystemMonitorLogo"
     let category = ToolCategory.system
 
     let manual = [
         ToolManualSection(title: "Detailed Monitoring", points: [
-            "Open Power Stats to view CPU, memory, disk, network, battery, and thermal state.",
+            "Open System Monitor to view CPU, memory, disk, network, battery, and thermal state.",
             "Charts show the last two minutes of activity.",
             "Closing the window stops detailed updates."
         ]),
@@ -323,7 +323,7 @@ struct PowerStatsTool: Tool {
         ])
     ]
 
-    static let shared = PowerStatsTool()
+    static let shared = SystemMonitorTool()
 }
 
 // MARK: - Marketplace Tool
@@ -356,7 +356,7 @@ struct ToolRegistry {
         TextExtractorTool.shared,
         InputDevicesTool.shared,
         SystemCareTool.shared,
-        PowerStatsTool.shared
+        SystemMonitorTool.shared
     ]
 
     static var allTools: [any Tool] {
