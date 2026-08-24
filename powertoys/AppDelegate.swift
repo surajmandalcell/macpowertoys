@@ -25,6 +25,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool == true
     }
 
+    private static let nativeSceneToolIDs: Set<String> = [
+        "cc-history", "rclone", "logs", "awake", "color-picker",
+        "text-extractor", "input-devices", "system-care", "power-stats",
+    ]
+
+    static func requiresManualURLRouting(_ url: URL) -> Bool {
+        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "open" else {
+            return true
+        }
+        let toolID = url.pathComponents.first { $0 != "/" }
+        return toolID.map { !nativeSceneToolIDs.contains($0) } ?? true
+    }
+
     @MainActor
     func configureApplication(startup: @escaping @MainActor () async -> Void) {
         applicationStartup = startup
@@ -281,7 +294,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls {
+        for url in urls where Self.requiresManualURLRouting(url) {
             MacPowerToysApp.handleIncomingURL(url)
         }
     }
