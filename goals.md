@@ -7,7 +7,7 @@ evidence, and remaining work.
 
 ## Current work
 
-- Select and install one OSS-derived Input Devices mouse icon.
+- Select and install one redesigned Input Devices mouse icon.
 - Verify the full-width Awake tray controls in the latest normal signed build.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
