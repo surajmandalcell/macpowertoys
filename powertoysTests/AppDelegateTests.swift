@@ -14,6 +14,24 @@ final class AppDelegateTests: XCTestCase {
         ]))
     }
 
+    func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
+        for toolID in [
+            "cc-history", "rclone", "logs", "awake", "color-picker",
+            "text-extractor", "input-devices", "system-care", "power-stats",
+        ] {
+            let url = URL(string: "macpowertoys://open/\(toolID)")!
+            XCTAssertFalse(AppDelegate.requiresManualURLRouting(url), toolID)
+        }
+
+        for url in [
+            URL(string: "macpowertoys://open/main")!,
+            URL(string: "macpowertoys://open/ruler")!,
+            URL(string: "macpowertoys://run/awake.toggle")!,
+        ] {
+            XCTAssertTrue(AppDelegate.requiresManualURLRouting(url), url.absoluteString)
+        }
+    }
+
     func testStatusItemInterceptsOnlyRightClick() {
         XCTAssertFalse(AppDelegate.statusItemEventMask.contains(.leftMouseDown))
         XCTAssertFalse(AppDelegate.statusItemEventMask.contains(.leftMouseUp))
