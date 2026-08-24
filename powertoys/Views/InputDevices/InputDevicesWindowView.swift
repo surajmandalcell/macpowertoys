@@ -206,24 +206,35 @@ struct InputDevicesWindowView: View {
                 profileCard(title: "Mouse", icon: "computermouse", profile: \.mouse, supportsSmoothing: true)
                 profileCard(title: "Trackpad", icon: "rectangle.and.hand.point.up.left", profile: \.trackpad, supportsSmoothing: false)
             }
-
-            HStack(spacing: 12) {
-                Text("Scroll device")
-                    .font(.system(size: 12))
-                Spacer()
-                Picker("Scroll device", selection: setting(
-                    get: { $0.eventOverride },
-                    set: { $0.eventOverride = $1 }
-                )) {
-                    ForEach(InputEventOverride.allCases) { option in
-                        Text(option.title).tag(option)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(width: 160)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                QuietDivider()
+                scrollDeviceFooter
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.vertical, 10)
             }
+            .background(Color(nsColor: .windowBackgroundColor))
+        }
+    }
+
+    private var scrollDeviceFooter: some View {
+        HStack(spacing: 12) {
+            Text("Scroll device")
+                .font(.system(size: 12))
+            Spacer()
+            Picker("Scroll device", selection: setting(
+                get: { $0.eventOverride },
+                set: { $0.eventOverride = $1 }
+            )) {
+                ForEach(InputEventOverride.allCases) { option in
+                    Text(option.title).tag(option)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .frame(width: 160)
         }
     }
 
