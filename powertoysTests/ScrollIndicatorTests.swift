@@ -24,6 +24,15 @@ final class ScrollIndicatorTests: XCTestCase {
         XCTAssertEqual(horizontalScroller.controlSize, .mini)
         XCTAssertEqual(ThinOverlayScroller.knobThickness(increasedContrast: false), 4)
         XCTAssertEqual(ThinOverlayScroller.knobThickness(increasedContrast: true), 6)
+        XCTAssertEqual(verticalScroller.alphaValue, 0)
+
+        NotificationCenter.default.post(
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+        XCTAssertEqual(verticalScroller.alphaValue, 1)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.2))
+        XCTAssertEqual(verticalScroller.alphaValue, 0, accuracy: 0.01)
     }
 
     func testSwiftUIModifierConfiguresItsScrollView() throws {
