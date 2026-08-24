@@ -243,12 +243,30 @@
 - **Cause:** Dynamic labels replaced complete controls, optional status views
   appeared and disappeared, and independent `HStack` rows recomputed unrelated
   widths.
-- **Invariant:** Keep one aligned grid for the anchor form. Reserve widths for
-  helper state, inspection icon, host metadata, anchor status, and actions.
-  Change content inside those slots instead of inserting or removing controls.
+- **Invariant:** Keep one label column and one full-width content column for the
+  anchor form. Every row starts its first visible control on the same edge.
+  Reserve widths for helper state, inspection icon, host metadata, anchor
+  status, and actions. Align intrinsic menu controls to the leading edge of
+  their reserved slot. Change content inside those slots instead of inserting
+  or removing controls.
 - **Check:** Inspect the default and minimum widths before, during, and after a
   device inspection. Switch identity modes and wait for helper refreshes. No
   label, input, status, or action may change its horizontal position.
+
+## NetToys Scanner And Sidebar Density
+
+- **Symptom:** The result search is taller than adjacent controls, a redundant
+  section label pushes navigation down, or the first destination sits too far
+  below the traffic lights.
+- **Cause:** The scanner used a padded custom search field, and the only
+  navigation group still rendered a group heading.
+- **Invariant:** Use a native small `NSSearchField` in the result-control row.
+  Its 24pt slot shares the centerline of adjacent small controls. When NetToys
+  has one navigation group, do not show a group heading. Start the first
+  destination at the shared 44pt workspace content edge.
+- **Check:** Open IP Scanner in the signed installed build. The result search,
+  filters, menus, and buttons share one centerline. The sidebar shows NetToys
+  followed directly by IP Scanner, SSH Anchor, and Network History.
 
 ## NetToys SSH Host Catalog And Scanner Handoff
 
