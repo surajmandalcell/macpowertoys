@@ -1,7 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#17181B"/>
-  <circle cx="256" cy="226" r="160" fill="#74767E"/>
-  <circle cx="256" cy="226" r="54" fill="#17181B"/>
-  <path d="m126 390 166-166 92 92-106 106H160Z" fill="#C9CBD0" stroke="#F3F3F1" stroke-width="12" stroke-linejoin="round"/>
-  <path d="M78 438h356" fill="none" stroke="#F3F3F1" stroke-width="20" stroke-linecap="round"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#17181B"/>
+    <circle cx="256" cy="226" r="160" fill="#74767E"/>
+    <circle cx="256" cy="226" r="54" fill="#17181B"/>
+    <path d="m126 390 166-166 92 92-106 106H160Z" fill="#C9CBD0" stroke="#F3F3F1" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M78 438h356" fill="none" stroke="#F3F3F1" stroke-width="20" stroke-linecap="round"/>
+  </g>
 </svg>

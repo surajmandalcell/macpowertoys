@@ -34,7 +34,8 @@ struct ToolAboutView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.leading, 20)
+                .padding(.top, 6)
+                .padding(.leading, 18)
                 .padding(.trailing, 10)
                 .padding(.bottom, 12)
                 .accessibilityIdentifier("tool.\(tool.id).page")

@@ -4,6 +4,20 @@ import XCTest
 
 @MainActor
 final class UtilityToolsTests: XCTestCase {
+    private let alternateDockIconAssets = [
+        "ClaudeHistoryLogo",
+        "CloudSyncLogo",
+        "LogsLogo",
+        "RulerLogo",
+        "AwakeLogo",
+        "ColorPickerLogo",
+        "TextExtractorLogo",
+        "InputDevicesLogoA",
+        "SystemCareLogo",
+        "SystemMonitorLogo",
+        "NetToysLogo"
+    ]
+
     func testDockIconInsetsFullCanvasToOpticalBounds() throws {
         let fixture = NSImage(size: NSSize(width: 512, height: 512), flipped: false) { bounds in
             NSColor.white.setFill()
@@ -17,25 +31,21 @@ final class UtilityToolsTests: XCTestCase {
     }
 
     func testEveryAlternateDockIconUsesOpticalBounds() throws {
-        let assetNames = [
-            "ClaudeHistoryLogo",
-            "CloudSyncLogo",
-            "LogsLogo",
-            "RulerLogo",
-            "AwakeLogo",
-            "ColorPickerLogo",
-            "TextExtractorLogo",
-            "InputDevicesLogoA",
-            "SystemCareLogo",
-            "SystemMonitorLogo",
-            "NetToysLogo"
-        ]
-
-        for assetName in assetNames {
+        for assetName in alternateDockIconAssets {
             let image = try XCTUnwrap(DockIconImage.image(named: assetName))
             XCTAssertEqual(
                 try alphaBounds(of: image),
                 NSRect(x: 58, y: 58, width: 396, height: 396),
+                assetName
+            )
+        }
+    }
+
+    func testEveryAlternateIconKeepsTransparentCorners() throws {
+        for assetName in alternateDockIconAssets {
+            let image = try XCTUnwrap(NSImage(named: assetName))
+            XCTAssertTrue(
+                try cornerAlphaValues(of: image).allSatisfy { $0 < 0.01 },
                 assetName
             )
         }
@@ -229,5 +239,32 @@ final class UtilityToolsTests: XCTestCase {
         return maxX >= minX
             ? NSRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
             : .zero
+    }
+
+    private func cornerAlphaValues(of image: NSImage) throws -> [CGFloat] {
+        let size = 512
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: size,
+            pixelsHigh: size,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        bitmap.size = NSSize(width: size, height: size)
+
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        NSColor.clear.setFill()
+        NSRect(x: 0, y: 0, width: size, height: size).fill()
+        image.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
+
+        return [(0, 0), (size - 1, 0), (0, size - 1), (size - 1, size - 1)]
+            .map { bitmap.colorAt(x: $0.0, y: $0.1)?.alphaComponent ?? 0 }
     }
 }

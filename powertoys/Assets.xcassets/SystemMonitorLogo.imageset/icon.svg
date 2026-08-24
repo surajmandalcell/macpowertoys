@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#002B26"/>
-  <path d="M-20 386q106-118 212 0t212 0 212 0v146H-20Zm0-106q106-118 212 0t212 0 212 0v106q-106-118-212 0t-212 0-212 0Zm0-106q106-118 212 0t212 0 212 0v106q-106-118-212 0t-212 0-212 0Z" fill="#E0FFF8"/>
-  <path d="M-20 174q106-118 212 0t212 0 212 0" fill="none" stroke="#00C7BE" stroke-width="34" stroke-linecap="round"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#002B26"/>
+    <path d="M-20 386q106-118 212 0t212 0 212 0v146H-20Zm0-106q106-118 212 0t212 0 212 0v106q-106-118-212 0t-212 0-212 0Zm0-106q106-118 212 0t212 0 212 0v106q-106-118-212 0t-212 0-212 0Z" fill="#E0FFF8"/>
+    <path d="M-20 174q106-118 212 0t212 0 212 0" fill="none" stroke="#00C7BE" stroke-width="34" stroke-linecap="round"/>
+  </g>
 </svg>
