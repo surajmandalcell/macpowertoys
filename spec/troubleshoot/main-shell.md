@@ -14,13 +14,17 @@
 ## Menu-Bar Click Arbitration
 
 - **Symptom:** Double-clicking the menu-bar icon opens and closes the popover
-  instead of opening the main window, or right-click exposes the full popover.
+  instead of opening the main window, single-click opens the popover before the
+  double-click interval ends, or right-click exposes the full popover.
 - **Cause:** The first click was performed immediately, before macOS could
-  report the second click in the double-click interval.
-- **Invariant:** Intercept left and right mouse-down events on the status-item
-  button. Delay a left single-click by `NSEvent.doubleClickInterval`; a second
-  click cancels it and opens the main window. Right-click bypasses that
-  coordinator and shows only Open MacPowerToys and Quit, with icons.
+  report the second click, or the button's left mouse-up event was not consumed
+  and opened the popover before the delayed action ran.
+- **Invariant:** Intercept left mouse-down and mouse-up plus right mouse-down on
+  the status-item button. Delay a left single-click by
+  `NSEvent.doubleClickInterval`; consume its mouse-up so the system action
+  cannot open early. A second click cancels the delay and opens the main window.
+  Right-click bypasses that coordinator and shows only Open MacPowerToys and
+  Quit, with icons.
 - **Check:** Unit-check single, double, and right-click routing, then exercise
   all three in the latest normal signed build.
 

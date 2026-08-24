@@ -8,6 +8,8 @@ import SwiftData
 
 struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab") private var selectedTab = "rclone"
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.openWindow) private var openWindow
     @State private var slideForward = true
     @State private var settings = SettingsManager.shared
@@ -25,6 +27,19 @@ struct TrayPopoverView: View {
                     .frame(height: 160)
             } else {
                 TrayTabStrip(tools: trayTools, selected: tabSelection)
+                    .padding(4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.black.opacity(colorScheme == .dark ? 0.18 : 0.04))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(
+                                (colorScheme == .dark ? Color.white : Color.black)
+                                    .opacity(contrast == .increased ? 0.18 : 0.1),
+                                lineWidth: 1
+                            )
+                    )
                     .padding(.horizontal, 12)
                     .padding(.top, 12)
                     .padding(.bottom, 10)
@@ -48,6 +63,11 @@ struct TrayPopoverView: View {
             footer
         }
         .frame(width: 340)
+        .background {
+            Color.black
+                .opacity(colorScheme == .dark ? 0.2 : 0.04)
+                .ignoresSafeArea()
+        }
         .onAppear(perform: normalizeSelection)
         .onChange(of: trayToolIDs) { normalizeSelection() }
     }
