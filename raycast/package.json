@@ -90,6 +90,13 @@
       "description": "Open System Monitor",
       "icon": "system-monitor.png",
       "mode": "no-view"
+    },
+    {
+      "name": "nettoys",
+      "title": "NetToys",
+      "description": "Open NetToys",
+      "icon": "nettoys.png",
+      "mode": "no-view"
     }
   ],
   "dependencies": {
