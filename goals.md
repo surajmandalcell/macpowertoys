@@ -10,7 +10,6 @@ evidence, and remaining work.
 - Select and install one OSS-derived Input Devices mouse icon.
 - Verify the full-width Awake tray controls in the latest normal signed build.
 - Verify NetToys and its mandatory login helper in the exact installed build.
-- Complete the remaining clean-room Angry IP Scanner parity inventory.
 - Verify separate menu bar icons, saved visibility, position restoration, and
   actions for every eligible background tool.
 - Verify focus appearance and keyboard activation in the menu-bar panels with

@@ -15,6 +15,13 @@ three pages, in this order:
 Preferences, help, and export options use sheets, menus, or toolbars. They do
 not become workspace pages.
 
+The native MacPowerToys scope is IPv4 scanning in the graphical app. It gives
+an explicit unsupported error for IPv6 targets. It supports validated deep-link
+prefills for automation. It does not ship a separate headless scan and export
+program. User extensions are editable URL openers and one configurable text
+and regular-expression fetcher. NetToys does not load the Angry IP Scanner
+Java plugin format.
+
 ## Clean-room boundary
 
 Angry IP Scanner labels its source as GPLv2 and publishes the full GPLv2 text.
@@ -44,7 +51,7 @@ interface. Its documentation also defines feeders, fetchers, pingers,
 exporters, openers, and bounded parallel work. [Official feature list](https://angryip.org/),
 [official documentation](https://angryip.org/documentation/)
 
-NetToys parity includes:
+The upstream feature inventory includes:
 
 - **Targets:** one host, start/end range, CIDR or netmask, random addresses
   with a base/mask/count, and text-file import. File import accepts hostnames,
@@ -75,8 +82,9 @@ NetToys parity includes:
   [result navigation](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/gui/menu/GotoMenu.java#L8-L30)
 - **Persistence and exchange:** load saved results; export all or selected rows
   as TXT, CSV, XML, IP:port list, and SQL; append when the format supports it;
-  and offer equivalent CLI start, export, append, and quit-after-export
-  behavior. [Load and export actions](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/gui/menu/ScanMenu.java#L8-L29),
+  and provide a command-line interface. MacPowerToys implements the native
+  load, export, and append flow. Its automation surface is a validated GUI
+  prefill link. [Load and export actions](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/gui/menu/ScanMenu.java#L8-L29),
   [CLI contract](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/config/CommandLineProcessor.java#L63-L130)
 - **Ancillary parity:** saved favorites; built-in and editable openers;
   persistent scanning, port, fetcher, display, and language preferences;
@@ -87,16 +95,14 @@ NetToys parity includes:
   [preferences](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/gui/PreferencesDialog.java#L33-L67),
   [update check](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/gui/actions/HelpMenuActions.java#L96-L150),
   [localization, dark-mode, and Retina history](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/CHANGELOG#L108-L120)
-- **Extensions:** define native NetToys extension points for target generators,
-  fetchers, liveness checks, exporters, and openers. Do not load Angry IP Java
-  plugins. The upstream product supports plugin-supplied components, including
-  pingers, but its Java ABI is outside clean-room scope. [Plugin registration](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/config/ComponentRegistry.java#L34-L45)
+- **Extensions:** MacPowerToys provides editable URL openers and a configurable
+  text and regular-expression fetcher. It does not load Angry IP Java plugins.
+  The upstream product supports plugin-supplied components, including pingers,
+  but its Java ABI is outside clean-room scope. [Plugin registration](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/src/net/azib/ipscan/config/ComponentRegistry.java#L34-L45)
 
-IPv6 parity is explicitly partial. Upstream introduced it as experimental and
-incomplete, then added range progress, interface/netmask listing, file input,
-and SQL export incrementally. Capability-gate each pinger and fetcher and show
-**Unsupported**, rather than inventing an IPv6 value. SSH Anchor remains
-IPv4-only. [IPv6 history](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/CHANGELOG#L83-L93),
+IPv6 is outside the current native scope. Show **Unsupported** rather than
+inventing an IPv6 value. SSH Anchor also remains IPv4-only. Upstream introduced
+IPv6 as experimental and incomplete, then added support incrementally. [IPv6 history](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/CHANGELOG#L83-L93),
 [3.9.3 IPv6 additions](https://github.com/angryip/ipscan/blob/d6806bc592685c4298b82af6ec4f1fc92614093b/CHANGELOG#L9-L20)
 
 Use `NWConnection` for nonprivileged TCP connects. It provides endpoint/port
