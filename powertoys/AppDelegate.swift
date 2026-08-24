@@ -19,10 +19,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var currentDockIconAssetName = "AppIcon"
     private var currentDockIconAppearanceName: NSAppearance.Name?
     private var dockIconAppearanceObservation: NSKeyValueObservation?
+    private var didFinishLaunching = false
+    private var didStartApplication = false
+    private var applicationStartup: (@MainActor () async -> Void)?
     private let statusItemClickCoordinator = StatusItemClickCoordinator(
         delay: NSEvent.doubleClickInterval
     )
     private var ownsInstance = true
+
+    static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?) -> Bool {
+        userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool == true
+    }
+
+    @MainActor
+    func configureApplication(startup: @escaping @MainActor () async -> Void) {
+        applicationStartup = startup
+        startApplicationIfReady()
+    }
+
+    @MainActor
+    private func startApplicationIfReady() {
+        guard didFinishLaunching, !didStartApplication, let applicationStartup else { return }
+        didStartApplication = true
+        Task { await applicationStartup() }
+    }
 
     var freeRulerDidInitialize = false
     var freeRulerRoutingDidInstall = false
@@ -148,6 +168,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 doubleClick: self.openMainWindowFromStatusItem
             )
             return nil
+        }
+
+        didFinishLaunching = true
+        startApplicationIfReady()
+        if AppRuntime.isRunningTests
+            || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo) {
+            DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
         }
     }
 

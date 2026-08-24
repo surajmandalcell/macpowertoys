@@ -42,27 +42,33 @@ struct MacPowerToysApp: App {
         }
     }
 
+    @MainActor
+    private func configureApplication() {
+        DeepLinkHandler.shared.setOpenWindowAction(openWindow)
+        appDelegate.configureApplication {
+            guard !AppRuntime.isRunningTests else { return }
+            await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
+            DeepLinkHandler.shared.handleCLIArguments()
+            for id in ["cc-history"] where SettingsManager.shared.isToolEnabled(id)
+                && UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
+                openWindow(id: id)
+            }
+        }
+    }
+
     var body: some Scene {
+        let _ = configureApplication()
+
         Window("MacPowerToys", id: "main") {
             MainWindowView()
                 .utilityMotionPolicy()
-                .task {
-                    DeepLinkHandler.shared.setOpenWindowAction(openWindow)
-                    guard !AppRuntime.isRunningTests else { return }
-                    await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
-                    DeepLinkHandler.shared.handleCLIArguments()
-                    for id in ["cc-history"] where SettingsManager.shared.isToolEnabled(id)
-                        && UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
-                        openWindow(id: id)
-                    }
-                }
         }
         .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 700)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
-        .defaultLaunchBehavior(.presented)
+        .defaultLaunchBehavior(.suppressed)
         .commands {
             AppCommands()
             FreeRulerCommands()

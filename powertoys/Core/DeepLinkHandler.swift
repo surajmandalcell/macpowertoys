@@ -18,6 +18,7 @@ final class DeepLinkHandler {
     private init() {}
 
     func setOpenWindowAction(_ action: OpenWindowAction) {
+        guard openWindowAction == nil else { return }
         self.openWindowAction = action
         ToolActionRouter.shared.configure(openWindow: action)
         processPendingLinks()
