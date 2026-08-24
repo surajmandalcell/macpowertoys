@@ -26,7 +26,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static let nativeSceneToolIDs: Set<String> = [
-        "cc-history", "rclone", "logs", "awake", "color-picker",
+        "main", "cc-history", "rclone", "logs", "awake", "color-picker",
         "text-extractor", "input-devices", "system-care", "power-stats",
     ]
 

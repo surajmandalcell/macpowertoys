@@ -16,7 +16,7 @@ final class AppDelegateTests: XCTestCase {
 
     func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
         for toolID in [
-            "cc-history", "rclone", "logs", "awake", "color-picker",
+            "main", "cc-history", "rclone", "logs", "awake", "color-picker",
             "text-extractor", "input-devices", "system-care", "power-stats",
         ] {
             let url = URL(string: "macpowertoys://open/\(toolID)")!
@@ -24,7 +24,6 @@ final class AppDelegateTests: XCTestCase {
         }
 
         for url in [
-            URL(string: "macpowertoys://open/main")!,
             URL(string: "macpowertoys://open/ruler")!,
             URL(string: "macpowertoys://run/awake.toggle")!,
         ] {
