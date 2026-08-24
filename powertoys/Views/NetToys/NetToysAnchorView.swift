@@ -258,73 +258,86 @@ struct NetToysAnchorView: View {
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
                 GridRow(alignment: .center) {
                     rowLabel("SSH host")
-                    Picker("", selection: $model.selectedAlias) {
-                        if model.entries.isEmpty {
-                            Text("No SSH hosts").tag("")
-                        } else {
-                            if model.selectedAlias.isEmpty {
-                                Text("Select SSH host").tag("")
-                            }
-                            ForEach(model.entries, id: \.aliases) { entry in
-                                Text(entry.aliases[0]).tag(entry.aliases[0])
+                    HStack(spacing: 10) {
+                        Picker("", selection: $model.selectedAlias) {
+                            if model.entries.isEmpty {
+                                Text("No SSH hosts").tag("")
+                            } else {
+                                if model.selectedAlias.isEmpty {
+                                    Text("Select SSH host").tag("")
+                                }
+                                ForEach(model.entries, id: \.aliases) { entry in
+                                    Text(entry.aliases[0]).tag(entry.aliases[0])
+                                }
                             }
                         }
-                    }
-                    .labelsHidden()
-                    .frame(minWidth: 160)
+                        .labelsHidden()
+                        .frame(width: 180)
 
-                    Button {
-                        model.inspectSelectedDevice()
-                    } label: {
-                        HStack(spacing: 6) {
-                        if model.isInspecting {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .frame(width: 13, height: 13)
-                        } else {
-                                Image(systemName: "magnifyingglass")
-                                    .frame(width: 13, height: 13)
+                        Button {
+                            model.inspectSelectedDevice()
+                        } label: {
+                            HStack(spacing: 6) {
+                                if model.isInspecting {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .frame(width: 13, height: 13)
+                                } else {
+                                    Image(systemName: "magnifyingglass")
+                                        .frame(width: 13, height: 13)
+                                }
+                                Text("Inspect Device")
                             }
-                            Text("Inspect Device")
                         }
-                    }
-                    .frame(minWidth: 122)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .disabled(model.selectedEntry == nil || model.isInspecting)
+                        .frame(minWidth: 122)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .disabled(model.selectedEntry == nil || model.isInspecting)
 
-                    Text(selectedHostDescription)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .frame(minWidth: 150, alignment: .trailing)
+                        Spacer(minLength: 10)
+
+                        Text(selectedHostDescription)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .frame(width: 190, alignment: .trailing)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 GridRow(alignment: .center) {
                     rowLabel("Identity")
-                    Picker("", selection: $model.identityMode) {
-                        ForEach(SSHAnchorIdentityMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
+                    HStack {
+                        Picker("", selection: $model.identityMode) {
+                            ForEach(SSHAnchorIdentityMode.allCases) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
                         }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 228)
+
+                        Spacer()
                     }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .gridCellColumns(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 GridRow(alignment: .center) {
                     rowLabel("Device")
-                    TextField("MAC address", text: $model.deviceMAC)
-                        .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 10) {
+                        TextField("MAC address", text: $model.deviceMAC)
+                            .textFieldStyle(.roundedBorder)
 
-                    TextField("Hostname", text: $model.deviceHostname)
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(model.identityMode == .stable)
+                        TextField("Hostname", text: $model.deviceHostname)
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(model.identityMode == .stable)
 
-                    Button("Add Anchor") { model.addAnchor() }
-                        .buttonStyle(.borderedProminent)
-                        .frame(minWidth: 92)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .disabled(model.selectedEntry == nil)
+                        Button("Add Anchor") { model.addAnchor() }
+                            .buttonStyle(.borderedProminent)
+                            .frame(minWidth: 92)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .disabled(model.selectedEntry == nil)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 GridRow {
@@ -336,7 +349,6 @@ struct NetToysAnchorView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .frame(height: 14, alignment: .leading)
-                        .gridCellColumns(3)
                 }
             }
             .controlSize(.small)

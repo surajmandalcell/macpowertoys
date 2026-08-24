@@ -60,9 +60,6 @@ struct NetToysWindowView: View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
-                    SidebarSectionHeader(title: "Network")
-                        .padding(.horizontal, 4)
-
                     ForEach(NetToysPage.allCases) { item in
                         SidebarRow(
                             icon: item.icon,
