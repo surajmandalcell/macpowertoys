@@ -51,6 +51,33 @@ final class UtilityToolsTests: XCTestCase {
         }
     }
 
+    func testEveryAlternateIconUsesSharedRoundedTileTemplate() throws {
+        let assetsRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Assets.xcassets", isDirectory: true)
+
+        for assetName in alternateDockIconAssets {
+            let iconFiles = try FileManager.default.contentsOfDirectory(
+                at: assetsRoot.appendingPathComponent("\(assetName).imageset", isDirectory: true),
+                includingPropertiesForKeys: nil
+            ).filter { $0.pathExtension == "svg" }
+            XCTAssertFalse(iconFiles.isEmpty, assetName)
+
+            for iconFile in iconFiles {
+                let source = String(decoding: try Data(contentsOf: iconFile), as: UTF8.self)
+                XCTAssertNotNil(
+                    source.range(
+                        of: #"<clipPath id="tile">\s*<rect width="512" height="512" rx="112"\s*/>\s*</clipPath>"#,
+                        options: .regularExpression
+                    ),
+                    iconFile.path
+                )
+                XCTAssertTrue(source.contains(#"<g clip-path="url(#tile)">"#), iconFile.path)
+            }
+        }
+    }
+
     func testLogsArtworkKeepsDarkGroundInDarkAppearance() throws {
         let image = try XCTUnwrap(NSImage(named: "LogsLogo"))
         let bitmap = try XCTUnwrap(NSBitmapImageRep(
