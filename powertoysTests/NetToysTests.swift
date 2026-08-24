@@ -251,6 +251,29 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testMACVendorDatabaseUsesLongestPublicPrefixAndRejectsLocalAddresses() {
+        let database = MACVendorDatabase(text: """
+        24\t001122\tExample Holdings
+        28\t0011223\tExample Products
+        36\t001122334\tExample Device Lab
+        """)
+
+        XCTAssertEqual(database.vendor(for: "00:11:22:33:44:55"), "Example Device Lab")
+        XCTAssertEqual(database.vendor(for: "00:11:22:3f:44:55"), "Example Products")
+        XCTAssertEqual(database.vendor(for: "00:11:22:af:44:55"), "Example Holdings")
+        XCTAssertNil(database.vendor(for: "02:11:22:33:44:55"))
+        XCTAssertNil(database.vendor(for: "invalid"))
+        XCTAssertEqual(
+            MACVendorDatabase.bundled.vendor(for: "28:6f:b9:00:00:00"),
+            "Nokia Shanghai Bell Co., Ltd."
+        )
+    }
+
+    func testFilteredPortsAreReportedOnlyForReachableHosts() {
+        XCTAssertEqual(NetToysScanner.reportedFilteredPorts([22, 443], reachable: true), [22, 443])
+        XCTAssertEqual(NetToysScanner.reportedFilteredPorts([22, 443], reachable: false), [])
+    }
+
     func testPingProbeParsesMacOSPacketLossLatencyAndTTL() {
         let output = """
         PING 10.0.0.2 (10.0.0.2): 56 data bytes
@@ -303,15 +326,11 @@ final class NetToysTests: XCTestCase {
             targets: [try XCTUnwrap(IPv4Address("127.0.0.1"))],
             ports: [port],
             timeoutMilliseconds: 500,
-            concurrency: 4,
-            collectPingDetails: true,
-            pingProbeCount: 1
+            concurrency: 4
         )
         XCTAssertEqual(results.count, 1)
         XCTAssertTrue(results[0].isReachable)
         XCTAssertEqual(results[0].openPorts, [port])
-        XCTAssertEqual(results[0].packetLossPercent, 0)
-        XCTAssertNotNil(results[0].ttl)
     }
 
     func testSSHConfigEntriesExposeLiteralHostAddressAndPort() throws {

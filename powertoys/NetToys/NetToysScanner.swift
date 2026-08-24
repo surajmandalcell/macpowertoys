@@ -461,13 +461,14 @@ actor NetToysScanner {
         }
         let arp = await ARPTable.load()
         return scanned.map { result in
-            NetToysScanResult(
+            let macAddress = arp[result.address.description]
+            return NetToysScanResult(
                 address: result.address,
                 isReachable: result.isReachable,
                 responseMilliseconds: result.responseMilliseconds,
                 hostname: result.hostname,
-                macAddress: arp[result.address.description],
-                vendor: result.vendor,
+                macAddress: macAddress,
+                vendor: MACVendorDatabase.bundled.vendor(for: macAddress),
                 openPorts: result.openPorts,
                 filteredPorts: result.filteredPorts,
                 ttl: result.ttl,
@@ -523,10 +524,14 @@ actor NetToysScanner {
             macAddress: nil,
             vendor: nil,
             openPorts: openPorts,
-            filteredPorts: filteredPorts,
+            filteredPorts: reportedFilteredPorts(filteredPorts, reachable: reachable),
             ttl: ping?.ttl,
             packetLossPercent: ping?.packetLossPercent
         )
+    }
+
+    nonisolated static func reportedFilteredPorts(_ ports: [UInt16], reachable: Bool) -> [UInt16] {
+        reachable ? ports : []
     }
 }
 
@@ -628,6 +633,43 @@ nonisolated enum ARPTable {
                 return [:]
             }
         }.value
+    }
+}
+
+nonisolated struct MACVendorDatabase: Sendable {
+    static let bundled: Self = {
+        guard let url = Bundle.main.url(forResource: "ieee-mac-vendors", withExtension: "tsv"),
+              let text = try? String(contentsOf: url, encoding: .utf8)
+        else { return Self(text: "") }
+        return Self(text: text)
+    }()
+
+    private let vendors: [String: String]
+
+    init(text: String) {
+        vendors = text.split(whereSeparator: \.isNewline).reduce(into: [:]) { result, line in
+            guard !line.hasPrefix("#") else { return }
+            let fields = line.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false)
+            guard fields.count == 3,
+                  let bits = Int(fields[0]), [24, 28, 36].contains(bits),
+                  fields[1].count == bits / 4,
+                  !fields[2].isEmpty
+            else { return }
+            result["\(bits):\(fields[1].uppercased())"] = String(fields[2])
+        }
+    }
+
+    func vendor(for macAddress: String?) -> String? {
+        guard let macAddress else { return nil }
+        let normalized = AnchorMatcher.normalizedMAC(macAddress)
+        guard normalized.count == 12,
+              let firstOctet = UInt8(normalized.prefix(2), radix: 16),
+              firstOctet & 0x02 == 0
+        else { return nil }
+        let hexadecimal = normalized.uppercased()
+        return vendors["36:\(hexadecimal.prefix(9))"]
+            ?? vendors["28:\(hexadecimal.prefix(7))"]
+            ?? vendors["24:\(hexadecimal.prefix(6))"]
     }
 }
 
