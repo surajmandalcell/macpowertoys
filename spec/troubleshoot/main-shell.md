@@ -11,22 +11,19 @@
 - **Check:** Inspect every launcher card and tool detail. No visible `Enabled`
   label remains, both controls share one row, and Accessibility names the tool.
 
-## Menu-Bar Click Arbitration
+## Menu-Bar Click Routing
 
-- **Symptom:** Double-clicking the menu-bar icon opens and closes the popover
-  instead of opening the main window, single-click opens the popover before the
-  double-click interval ends, or right-click exposes the full popover.
-- **Cause:** The first click was performed immediately, before macOS could
-  report the second click, or the button's left mouse-up event was not consumed
-  and opened the popover before the delayed action ran.
-- **Invariant:** Intercept left mouse-down and mouse-up plus right mouse-down on
-  the status-item button. Delay a left single-click by
-  `NSEvent.doubleClickInterval`; consume its mouse-up so the system action
-  cannot open early. A second click cancels the delay and opens the main window.
-  Right-click bypasses that coordinator and shows only Open MacPowerToys and
-  Quit, with icons.
-- **Check:** Unit-check single, double, and right-click routing, then exercise
-  all three in the latest normal signed build.
+- **Symptom:** Custom double-click handling makes the menu-bar popover feel
+  delayed or unreliable when the item already owns a native dropdown.
+- **Cause:** Left-click arbitration competes with `MenuBarExtra` instead of
+  letting the system own its standard interaction.
+- **Invariant:** Leave all left clicks native and immediate. Intercept only
+  right mouse-down to show Open MacPowerToys and Quit. Keep the tested
+  `StatusItemClickCoordinator` dormant so a future non-dropdown status item can
+  reuse it without changing the current menu item.
+- **Check:** Unit-check that the status-item mask contains only right
+  mouse-down. In the latest normal signed build, confirm that left-click opens
+  the popover immediately and right-click shows only Open and Quit.
 
 ## Menu-Bar Popover Rhythm
 
@@ -38,6 +35,9 @@
   status/history rows, 8pt between peer controls, and align transfer progress
   with its text column. Keep Pause/Resume on the active transfer row. Awake
   uses the same 12pt horizontal and 10pt vertical content insets as Cloud Sync.
+  Give the outlined tab group enough source top inset to remain visibly clear
+  of the system popover edge. Use one accent selection, 4pt between tabs, and
+  no divider below a group that already has its own surface.
 - **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
   leading labels and trailing actions must remain aligned without crowding.
 

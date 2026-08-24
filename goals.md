@@ -19,8 +19,8 @@ evidence, and remaining work.
   normal installed build at default and minimum widths.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest
   normal installed build.
-- Verify the darker menu-bar popover, outlined tab group, and delayed
-  single-click in the latest normal installed build.
+- Verify the darker menu-bar popover, balanced top inset, organized controls,
+  and native single-click in the latest normal installed build.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 
