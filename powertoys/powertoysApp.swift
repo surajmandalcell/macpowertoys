@@ -69,6 +69,7 @@ struct MacPowerToysApp: App {
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
         .defaultLaunchBehavior(.suppressed)
+        .handlesExternalEvents(matching: Set(["main"]))
         .commands {
             AppCommands()
             FreeRulerCommands()
