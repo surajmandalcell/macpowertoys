@@ -23,7 +23,6 @@ struct NetToysWindowView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            QuietDivider()
             content
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
