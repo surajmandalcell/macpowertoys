@@ -71,6 +71,18 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    var helperSSIDUnavailable: Bool {
+        guard helperStatus?.ssidAccess == .allowed,
+              let snapshot = helperStatus?.network,
+              snapshot.ssid == nil,
+              let interfaceName = NetworkIdentity(
+                  networkID: snapshot.networkID,
+                  ssid: nil
+              ).interfaceName
+        else { return false }
+        return NetworkSSID.isWiFi(interfaceName: interfaceName)
+    }
+
     func refresh() {
         history = NetToysConfigurationStore.history()
         helperStatus = NetToysConfigurationStore.status()
@@ -300,7 +312,8 @@ struct NetToysHistoryView: View {
                     if let title = ssidAccessActionTitle {
                         Button(title) {
                             model.resolveSSIDAccess(
-                                forceSettings: model.helperStatus?.ssidAccess != nil
+                                forceSettings: model.helperSSIDUnavailable
+                                    || model.helperStatus?.ssidAccess != nil
                                     && model.helperStatus?.ssidAccess != .allowed
                             )
                         }
@@ -506,7 +519,9 @@ struct NetToysHistoryView: View {
     }
 
     private var ssidAccessActionTitle: String? {
-        if model.helperStatus?.ssidAccess != nil, model.helperStatus?.ssidAccess != .allowed {
+        if model.helperSSIDUnavailable
+            || model.helperStatus?.ssidAccess != nil && model.helperStatus?.ssidAccess != .allowed
+        {
             return "Open Location Settings"
         }
         return switch NetToysLocationAction(
@@ -584,6 +599,9 @@ struct NetToysSettingsView: View {
         if model.helperStatus?.ssidAccess == .denied || model.helperStatus?.ssidAccess == .restricted {
             return "Enable NetToys Helper in Privacy & Security > Location Services to record SSIDs in the background."
         }
+        if model.helperSSIDUnavailable {
+            return "Location access is allowed, but NetToys Helper could not read the current Wi-Fi name. Check Location Services and try again."
+        }
         if model.locationRequestFailed {
             return "macOS blocked the Location request. Open Privacy & Security > Location Services and allow MacPowerToys."
         }
@@ -635,7 +653,7 @@ struct NetToysSettingsView: View {
 
     private var helperNeedsAccess: Bool {
         guard let state = model.helperStatus?.ssidAccess else { return false }
-        return state != .allowed
+        return state != .allowed || model.helperSSIDUnavailable
     }
 }
 
