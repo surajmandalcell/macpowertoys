@@ -325,7 +325,7 @@ struct NetToysHistoryView: View {
     private var availabilityGraph: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("INTERNET AVAILABILITY").utilitySectionHeader()
+                Text("NETWORK UPTIME").utilitySectionHeader()
                 Spacer()
                 Picker("Range", selection: $model.range) {
                     ForEach(NetToysHistoryRange.allCases) { range in
@@ -339,21 +339,14 @@ struct NetToysHistoryView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                NetworkTransitionGraph(
+                NetworkUptimeTimeline(
                     events: model.history.events,
                     range: model.range.rawValue,
-                    currentState: model.helperStatus?.network?.internet ?? .unknown
+                    currentState: model.helperStatus?.network?.internet ?? .unknown,
+                    currentNetwork: model.helperStatus?.network.map {
+                        $0.ssid ?? $0.displayName
+                    }
                 )
-                    .frame(height: 130)
-                HStack(spacing: 14) {
-                    Label("Reachable", systemImage: "circle.fill").foregroundStyle(.green)
-                    Label("Unavailable", systemImage: "circle.fill").foregroundStyle(.orange)
-                    Label("No data", systemImage: "circle.fill").foregroundStyle(.secondary)
-                    Spacer()
-                    Text("State between recorded transitions is inferred.")
-                        .foregroundStyle(.secondary)
-                }
-                .font(.system(size: 10))
             }
             .utilitySectionCard()
         }
@@ -613,145 +606,267 @@ struct NetToysSettingsView: View {
     }
 }
 
-nonisolated func internetAvailabilityTimeline(
+nonisolated struct NetworkAvailabilitySegment: Equatable, Sendable {
+    let network: String
+    let state: NetworkReachability
+    let start: Date
+    let end: Date
+
+    var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
+}
+
+nonisolated struct NetworkAvailabilitySummary: Equatable, Sendable {
+    let network: String
+    let segments: [NetworkAvailabilitySegment]
+
+    var knownDuration: TimeInterval {
+        segments.filter { $0.state != .unknown }.reduce(0) { $0 + $1.duration }
+    }
+
+    var unavailableDuration: TimeInterval {
+        outages.reduce(0) { $0 + $1.duration }
+    }
+
+    var uptime: Double? {
+        knownDuration > 0 ? (knownDuration - unavailableDuration) / knownDuration : nil
+    }
+
+    var outages: [NetworkAvailabilitySegment] {
+        segments.filter { $0.state == .unreachable }
+    }
+}
+
+nonisolated func networkAvailabilitySummaries(
     events: [NetworkTransitionEvent],
     from start: Date,
     to end: Date,
-    currentState: NetworkReachability = .unknown
-) -> [(date: Date, state: NetworkReachability)] {
+    currentState: NetworkReachability = .unknown,
+    currentNetwork: String? = nil
+) -> [NetworkAvailabilitySummary] {
+    let orderedEvents = events.filter { $0.date <= end }.sorted { $0.date < $1.date }
     var state = NetworkReachability.unknown
-    var baselineDate = Date.distantPast
-    var transitions: [(date: Date, from: NetworkReachability, to: NetworkReachability)] = []
-    for event in events where event.date <= end {
-        for change in event.changes {
-            if case .internet(let from, let to) = change {
-                if event.date < start, event.date > baselineDate {
-                    baselineDate = event.date
-                    state = to
-                } else if event.date >= start {
-                    transitions.append((event.date, from, to))
-                }
-            }
-        }
+    var network: String?
+    var cursor = start
+    var segments: [NetworkAvailabilitySegment] = []
+    let lastInternet = orderedEvents.last { event in
+        event.changes.contains { if case .internet = $0 { true } else { false } }
     }
-    transitions.sort { $0.date < $1.date }
-    guard let lastTransition = transitions.last else {
-        return state == .unknown ? [] : [(start, state), (end, state)]
+    let repairDate = currentState == .unknown ? nil : orderedEvents.last { event in
+        guard let lastInternet, event.date > lastInternet.date else { return false }
+        return event.changes.contains { if case .network = $0 { true } else { false } }
+    }?.date
+
+    func connectedName(_ value: String?) -> String? {
+        guard let value, value.caseInsensitiveCompare("Disconnected") != .orderedSame else { return nil }
+        return value
     }
 
-    var points = [(date: start, state: state)]
-    for transition in transitions {
-        points.append((transition.date, state))
-        if state != transition.from {
-            state = transition.from
-            points.append((transition.date, state))
+    func appendSegment(until date: Date) {
+        let segmentEnd = min(max(date, start), end)
+        guard cursor < segmentEnd, let network else {
+            cursor = max(cursor, segmentEnd)
+            return
         }
-        if state != transition.to {
-            state = transition.to
-            points.append((transition.date, state))
+        if let last = segments.last,
+           last.network == network,
+           last.state == state,
+           last.end == cursor {
+            segments[segments.count - 1] = NetworkAvailabilitySegment(
+                network: network,
+                state: state,
+                start: last.start,
+                end: segmentEnd
+            )
+        } else {
+            segments.append(NetworkAvailabilitySegment(
+                network: network,
+                state: state,
+                start: cursor,
+                end: segmentEnd
+            ))
         }
+        cursor = segmentEnd
     }
-    if currentState != .unknown,
-       state != currentState,
-       let networkDate = events.filter({ event in
-           event.date > lastTransition.date && event.date <= end && event.changes.contains {
-               if case .network = $0 { return true }
-               return false
-           }
-       }).map(\.date).max() {
-        points.append((networkDate, state))
-        state = currentState
-        points.append((networkDate, state))
+
+    for event in orderedEvents {
+        let networkChange = event.changes.compactMap { change -> (String, String)? in
+            if case .network(let from, let to) = change { return (from, to) }
+            return nil
+        }.last
+        let internetChange = event.changes.compactMap { change -> (NetworkReachability, NetworkReachability)? in
+            if case .internet(let from, let to) = change { return (from, to) }
+            return nil
+        }.last
+
+        if event.date >= start {
+            if network == nil {
+                network = connectedName(networkChange?.0)
+                    ?? connectedName(event.ssid)
+                    ?? (event.networkID == "disconnected" ? nil : event.displayName)
+            }
+            if state == .unknown, let internetChange { state = internetChange.0 }
+            appendSegment(until: event.date)
+        }
+
+        if let networkChange {
+            network = event.networkID == "disconnected"
+                ? nil
+                : connectedName(event.ssid) ?? connectedName(networkChange.1)
+        } else if event.networkID == "disconnected" {
+            network = nil
+        } else if let ssid = connectedName(event.ssid) {
+            network = ssid
+        } else if network == nil {
+            network = event.displayName
+        }
+        if let internetChange { state = internetChange.1 }
+        if event.date == repairDate {
+            state = currentState
+            network = connectedName(currentNetwork) ?? network
+        }
+        if event.date < start { cursor = start }
     }
-    points.append((end, state))
-    return points
+    appendSegment(until: end)
+
+    return Dictionary(grouping: segments, by: \NetworkAvailabilitySegment.network)
+        .map { NetworkAvailabilitySummary(network: $0.key, segments: $0.value) }
+        .sorted {
+            ($0.segments.last?.end ?? .distantPast, $0.network)
+                > ($1.segments.last?.end ?? .distantPast, $1.network)
+        }
 }
 
-private struct NetworkTransitionGraph: View {
+private struct NetworkUptimeTimeline: View {
     let events: [NetworkTransitionEvent]
     let range: TimeInterval
     let currentState: NetworkReachability
+    let currentNetwork: String?
 
     var body: some View {
-        Canvas { context, size in
-            let plot = CGRect(x: 8, y: 8, width: max(1, size.width - 16), height: max(1, size.height - 32))
-            let end = Date()
-            let cutoff = end.addingTimeInterval(-range)
-            let points = internetAvailabilityTimeline(
-                events: events,
-                from: cutoff,
-                to: end,
-                currentState: currentState
-            )
-            let reachableY = plot.minY + 8
-            let unknownY = plot.midY
-            let unavailableY = plot.maxY - 8
-            for y in [reachableY, unknownY, unavailableY] {
-                context.stroke(
-                    Path(CGRect(x: plot.minX, y: y, width: plot.width, height: 0)),
-                    with: .color(.secondary.opacity(0.2))
-                )
-            }
-            context.draw(
-                Text(startLabel(cutoff)).font(.system(size: 10)).foregroundStyle(.tertiary),
-                at: CGPoint(x: plot.minX, y: size.height - 5),
-                anchor: .leading
-            )
-            context.draw(
-                Text("Now").font(.system(size: 10)).foregroundStyle(.tertiary),
-                at: CGPoint(x: plot.maxX, y: size.height - 5),
-                anchor: .trailing
-            )
-            guard !points.isEmpty else {
-                context.draw(
-                    Text("No Internet changes in this range").font(.system(size: 11)).foregroundStyle(.secondary),
-                    at: CGPoint(x: plot.midX, y: plot.midY)
-                )
-                return
-            }
-            func point(_ value: (date: Date, state: NetworkReachability)) -> CGPoint {
-                let elapsed = value.date.timeIntervalSince(cutoff)
-                let x = plot.minX + plot.width * min(max(elapsed / range, 0), 1)
-                let y = switch value.state {
-                case .reachable: reachableY
-                case .unreachable: unavailableY
-                case .unknown: unknownY
+        let end = Date()
+        let start = end.addingTimeInterval(-range)
+        let summaries = networkAvailabilitySummaries(
+            events: events,
+            from: start,
+            to: end,
+            currentState: currentState,
+            currentNetwork: currentNetwork
+        )
+        let outages = summaries.flatMap(\.outages).sorted { $0.start > $1.start }
+
+        VStack(alignment: .leading, spacing: 12) {
+            if summaries.isEmpty {
+                Label("No network uptime data in this range.", systemImage: "clock")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
+            } else {
+                ForEach(Array(summaries.enumerated()), id: \.element.network) { index, summary in
+                    if index > 0 { QuietDivider() }
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(summary.network)
+                                .font(.system(size: 12, weight: .medium))
+                                .lineLimit(1)
+                            Spacer()
+                            Text(summaryLabel(summary))
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        availabilityBar(summary, from: start)
+                    }
                 }
-                return CGPoint(x: x, y: y)
-            }
-            for (value, nextValue) in zip(points, points.dropFirst()) {
-                let current = point(value)
-                let next = point(nextValue)
-                var horizontal = Path()
-                horizontal.move(to: current)
-                horizontal.addLine(to: CGPoint(x: next.x, y: current.y))
-                context.stroke(
-                    horizontal,
-                    with: .color(color(for: value.state)),
-                    style: StrokeStyle(lineWidth: 2, lineJoin: .round)
-                )
-                if current.y != next.y {
-                    var vertical = Path()
-                    vertical.move(to: CGPoint(x: next.x, y: current.y))
-                    vertical.addLine(to: next)
-                    context.stroke(vertical, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2))
+                HStack {
+                    Text(startLabel(start))
+                    Spacer()
+                    Text("Now")
                 }
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
             }
-            for value in points.dropFirst().dropLast() {
-                let center = point(value)
-                context.fill(
-                    Path(ellipseIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6)),
-                    with: .color(color(for: value.state))
-                )
+
+            HStack(spacing: 14) {
+                Label("Online", systemImage: "circle.fill").foregroundStyle(.green)
+                Label("Unavailable", systemImage: "circle.fill").foregroundStyle(.orange)
+                Label("Inactive or no data", systemImage: "circle.fill").foregroundStyle(.secondary)
+                Spacer()
+            }
+            .font(.system(size: 10))
+
+            if !outages.isEmpty {
+                QuietDivider()
+                Text("RECENT OUTAGES").utilitySectionHeader()
+                ForEach(Array(outages.prefix(4).enumerated()), id: \.offset) { index, outage in
+                    if index > 0 { QuietDivider() }
+                    HStack(alignment: .top, spacing: 9) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(outage.end == end
+                                ? "\(outage.network) has been unavailable for \(durationLabel(outage.duration))"
+                                : "\(outage.network) was unavailable for \(durationLabel(outage.duration))")
+                                .font(.system(size: 11, weight: .medium))
+                            Text(outageTimeLabel(outage, ongoing: outage.end == end))
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
             }
         }
-        .accessibilityLabel("Internet availability transitions")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Network uptime by network name")
+    }
+
+    private func availabilityBar(
+        _ summary: NetworkAvailabilitySummary,
+        from start: Date
+    ) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.secondary.opacity(0.16))
+                ForEach(Array(summary.segments.enumerated()), id: \.offset) { _, segment in
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color(for: segment.state))
+                        .frame(width: max(1, geometry.size.width * segment.duration / range))
+                        .offset(x: geometry.size.width * segment.start.timeIntervalSince(start) / range)
+                }
+            }
+        }
+        .frame(height: 10)
+        .accessibilityElement()
+        .accessibilityLabel(summary.network)
+        .accessibilityValue(summaryLabel(summary))
     }
 
     private func startLabel(_ date: Date) -> String {
         range <= NetToysHistoryRange.day.rawValue
             ? date.formatted(date: .omitted, time: .shortened)
             : date.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func summaryLabel(_ summary: NetworkAvailabilitySummary) -> String {
+        guard let uptime = summary.uptime else { return "No availability data" }
+        let outageText = summary.outages.count == 1 ? "1 outage" : "\(summary.outages.count) outages"
+        return "\(uptime.formatted(.percent.precision(.fractionLength(1)))) uptime  ·  \(outageText)  ·  \(durationLabel(summary.unavailableDuration)) down"
+    }
+
+    private func durationLabel(_ duration: TimeInterval) -> String {
+        guard duration >= 1 else { return "0 secs" }
+        return Duration.seconds(max(1, duration.rounded()))
+            .formatted(.units(
+                allowed: [.hours, .minutes, .seconds],
+                width: .abbreviated,
+                maximumUnitCount: 2
+            ))
+    }
+
+    private func outageTimeLabel(_ outage: NetworkAvailabilitySegment, ongoing: Bool) -> String {
+        let start = outage.start.formatted(date: .abbreviated, time: .shortened)
+        return ongoing
+            ? "Since \(start)"
+            : "\(start) to \(outage.end.formatted(date: .omitted, time: .shortened))"
     }
 
     private func color(for state: NetworkReachability) -> Color {
