@@ -1,6 +1,6 @@
 # PowerToys goals
 
-Reviewed against current source on 2026-08-25.
+Reviewed against current source on 2026-08-26.
 
 This file is the goals index. Each request list contains the detailed status,
 evidence, and remaining work.
