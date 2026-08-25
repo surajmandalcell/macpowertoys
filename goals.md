@@ -1,6 +1,6 @@
 # PowerToys goals
 
-Reviewed against current source on 2026-08-24.
+Reviewed against current source on 2026-08-25.
 
 This file is the goals index. Each request list contains the detailed status,
 evidence, and remaining work.
@@ -20,6 +20,8 @@ evidence, and remaining work.
 - Accept the Location prompt from active Network History, confirm NetToys
   Settings changes to Allowed, then verify that the signed helper stores and
   shows `SSID | interface | gateway`.
+- Verify the SSID uptime timeline and recent outage durations with real network
+  history in the latest signed installed build.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest
   normal installed build.
 - Verify the darker menu-bar popover, equal tab-group edges, shorter body gap,

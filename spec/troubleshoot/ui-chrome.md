@@ -318,6 +318,28 @@
   NetToys Settings provide an action that opens Location Services while gateway
   and internet history continue.
 
+## NetToys Network Uptime Timeline
+
+- **Symptom:** Network History draws a generic up-and-down line with transition
+  dots. It does not show which Wi-Fi network failed or how long an outage
+  lasted.
+- **Cause:** Internet reachability was plotted as one global step line even
+  though history events already carry the active SSID. The chart encoded a
+  categorical state as vertical position and left outage duration for the user
+  to estimate.
+- **Invariant:** Group connected history by SSID. Give each SSID one horizontal
+  time bar with duration-proportional online and unavailable intervals. Exclude
+  disconnected and unknown intervals from uptime. Show uptime percentage,
+  outage count, total downtime, and recent outage sentences with exact
+  durations. Use `interface | gateway` only as the wired or unavailable-SSID
+  fallback. Do not reintroduce vertical state lines, transition dots, or a
+  gateway-based Wi-Fi identity.
+- **Check:** Record an outage on one SSID, recover, then switch to another SSID.
+  Confirm each SSID has a separate bar, the first outage duration is correct,
+  and the network switch is not counted as an outage. Leave the second SSID
+  unreachable and confirm the recent outage says it has been unavailable for
+  the current duration.
+
 ## Compact Applet Window Height
 
 - **Symptom:** Every compact applet has a 32pt material strip below its fixed
