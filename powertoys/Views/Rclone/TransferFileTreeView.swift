@@ -88,7 +88,13 @@ struct TransferFileTreeView: View {
 
     private var controls: some View {
         VStack(spacing: 8) {
-            SearchField(text: $searchText, placeholder: "Filter files...", isLoading: isIndexing)
+            HStack(spacing: 6) {
+                NativeSearchField(text: $searchText, placeholder: "Filter files...")
+                if isIndexing {
+                    ProgressView().controlSize(.mini)
+                }
+            }
+            .frame(height: UtilityLayout.workspaceActionHeight)
 
             HStack(spacing: 6) {
                 Toggle("List uploaded", isOn: $splitByUploadStatus)

@@ -379,8 +379,9 @@ struct NetToysHistoryView: View {
             HStack(spacing: 8) {
                 Text("TRANSITIONS").utilitySectionHeader()
                 Spacer()
-                SearchField(text: $model.searchText, placeholder: "Find network or state")
+                NativeSearchField(text: $model.searchText, placeholder: "Find network or state")
                     .frame(width: 240)
+                    .frame(height: UtilityLayout.workspaceActionHeight)
                 Button("Export") { model.export() }
                     .disabled(model.visibleEvents.isEmpty)
                 Button("Clear", role: .destructive) { confirmClear = true }

@@ -200,6 +200,30 @@ final class WindowAccessorTests: XCTestCase {
         )
     }
 
+    func testNativeSearchFieldUsesTheSmallControlInContent() throws {
+        let hostingView = NSHostingView(
+            rootView: NativeSearchField(
+                text: .constant(""),
+                placeholder: "Find content"
+            )
+            .frame(width: 240, height: UtilityLayout.workspaceActionHeight)
+        )
+        hostingView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: 240,
+            height: UtilityLayout.workspaceActionHeight
+        )
+        hostingView.layoutSubtreeIfNeeded()
+
+        let searchField = try XCTUnwrap(firstSearchField(in: hostingView))
+        XCTAssertEqual(searchField.controlSize, .small)
+        XCTAssertLessThanOrEqual(
+            searchField.frame.height,
+            UtilityLayout.workspaceActionHeight
+        )
+    }
+
     func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
         XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
     }
@@ -207,5 +231,10 @@ final class WindowAccessorTests: XCTestCase {
     func testUtilityMotionStopsWhenReduceMotionIsEnabled() {
         XCTAssertNotNil(UtilityMotion.animation(reduceMotion: false))
         XCTAssertNil(UtilityMotion.animation(reduceMotion: true))
+    }
+
+    private func firstSearchField(in view: NSView) -> NSSearchField? {
+        if let searchField = view as? NSSearchField { return searchField }
+        return view.subviews.lazy.compactMap(firstSearchField(in:)).first
     }
 }

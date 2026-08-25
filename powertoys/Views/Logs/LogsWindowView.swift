@@ -168,7 +168,7 @@ struct LogsWindowView: View {
 
     private var sidebarBody: some View {
         VStack(spacing: 0) {
-            SearchField(text: $searchText, placeholder: "Search logs...")
+            SidebarSearchField(text: $searchText, placeholder: "Search logs...")
                 .padding(.horizontal, 12)
                 .padding(.top, UtilityLayout.workspaceContentTopInset)
                 .padding(.bottom, 12)
