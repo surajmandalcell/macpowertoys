@@ -21,6 +21,20 @@
   quit MacPowerToys, and confirm the helper continues. Disable NetToys and
   confirm the helper exits and is no longer registered.
 
+## Network History Identity
+
+- **Symptom:** Wi-Fi changes are reported as changes between `en0` and private
+  gateway addresses instead of changes between Wi-Fi network names.
+- **Cause:** The recorder used `interface | gateway` as the primary identity and
+  treated SSID as an optional label.
+- **Invariant:** Use SSID as the Wi-Fi identity. A gateway change on the same
+  SSID is not a network change. If SSID is temporarily unavailable, wait for a
+  known SSID instead of inferring a change from its private gateway. Use
+  `interface | gateway` only for wired links.
+- **Check:** Change the gateway while SSID stays fixed and confirm no network
+  event. Change SSID with the same gateway and confirm one SSID-only event.
+  Confirm wired gateway changes still create network events.
+
 ## Input Devices
 
 - **Symptom:** Mouse settings also change trackpad scrolling, or scrolling stays
