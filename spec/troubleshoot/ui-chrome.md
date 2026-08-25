@@ -293,19 +293,26 @@
   confirm that the app was active. The warning had no recovery action, and
   NetToys Settings showed no permission state. In the signed installed build,
   the authorization request alone stayed Not Requested until the app started a
-  Core Location service.
+  Core Location service. The release build then stripped the Location
+  entitlement, so `locationd` suppressed the prompt and returned a denied error
+  while the public authorization status remained Not Requested.
 - **Invariant:** The main app owns one retained Core Location manager, assigns
   its delegate immediately, requests access only while active, and retries when
   the app becomes active. It starts location updates to trigger the macOS prompt
-  and stops them after authorization, an update, or a failure. Network History
-  provides an Allow Access action.
+  and stops them after authorization, an update, or a failure. A denied failure
+  while status is Not Requested stops automatic retries and changes recovery to
+  Open Location Settings. Signed builds retain
+  `com.apple.security.personal-information.location` in both the main app and
+  helper. Network History provides an Allow Access action.
   NetToys Settings shows Not Requested, Denied, Restricted, or Allowed and
   provides the matching request or System Settings action. The helper reads
   SSID through public CoreWLAN and stores it as optional data. Missing
   permission or Ethernet must stay valid and must not create a false network
   transition.
-- **Check:** Open Network History in the normal signed app, grant Location
-  access from the macOS prompt, and wait for the next helper sample. Confirm
+- **Check:** Confirm `codesign -d --entitlements :-` lists the Location
+  entitlement for the app and embedded helper. Open Network History in the
+  normal signed app, grant Location access from the macOS prompt, and wait for
+  the next helper sample. Confirm
   NetToys Settings changes to Allowed and the status file and UI show
   `SSID | interface | gateway`. Deny access and confirm both Network History and
   NetToys Settings provide an action that opens Location Services while gateway
