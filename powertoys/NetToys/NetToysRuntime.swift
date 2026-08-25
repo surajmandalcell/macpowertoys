@@ -187,6 +187,48 @@ nonisolated struct NetworkHistory: Codable, Equatable, Sendable {
         events.append(event)
         if events.count > limit { events.removeFirst(events.count - limit) }
     }
+
+    mutating func migrateLegacySSIDs(currentNetwork: NetworkRuntimeSnapshot? = nil) -> Bool {
+        var ssidsByNetworkID: [String: Set<String>] = [:]
+        for event in events {
+            if let ssid = NetworkIdentity.normalizedSSID(event.ssid) {
+                ssidsByNetworkID[event.networkID, default: []].insert(ssid)
+            }
+        }
+        if let currentNetwork,
+           let ssid = NetworkIdentity.normalizedSSID(currentNetwork.ssid) {
+            ssidsByNetworkID[currentNetwork.networkID, default: []].insert(ssid)
+        }
+        let unambiguousSSIDs = ssidsByNetworkID.compactMapValues { values in
+            values.count == 1 ? values.first : nil
+        }
+        let ssidsByFallbackName = Dictionary(grouping: unambiguousSSIDs) {
+            NetworkIdentity(networkID: $0.key, ssid: nil).displayName
+        }.compactMapValues { entries in
+            let values = Set(entries.map { $0.value })
+            return values.count == 1 ? values.first : nil
+        }
+        var changed = false
+        events = events.map { event in
+            let ssid = event.ssid ?? unambiguousSSIDs[event.networkID]
+            let changes = event.changes.map { change in
+                guard case .network(let from, let to) = change else { return change }
+                return .network(
+                    from: ssidsByFallbackName[from] ?? from,
+                    to: ssidsByFallbackName[to] ?? to
+                )
+            }
+            guard ssid != event.ssid || changes != event.changes else { return event }
+            changed = true
+            return NetworkTransitionEvent(
+                networkID: event.networkID,
+                ssid: ssid,
+                date: event.date,
+                changes: changes
+            )
+        }
+        return changed
+    }
 }
 
 nonisolated enum SSHAnchorRuntimeState: String, Codable, Sendable {
@@ -378,8 +420,11 @@ nonisolated enum NetToysConfigurationStore {
 
     static func history() -> NetworkHistory {
         guard let data = try? Data(contentsOf: NetToysPaths.history),
-              let value = try? JSONDecoder().decode(NetworkHistory.self, from: data)
+              var value = try? JSONDecoder().decode(NetworkHistory.self, from: data)
         else { return NetworkHistory() }
+        if value.migrateLegacySSIDs(currentNetwork: status()?.network) {
+            try? saveHistory(value)
+        }
         return value
     }
 
