@@ -21,7 +21,7 @@ enum NetToysHistoryRange: TimeInterval, CaseIterable, Identifiable {
 
 @Observable
 @MainActor
-final class NetToysHistoryViewModel {
+final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     var history = NetToysConfigurationStore.history()
     var helperStatus = NetToysConfigurationStore.status()
     var range = NetToysHistoryRange.day
@@ -33,10 +33,12 @@ final class NetToysHistoryViewModel {
 
     @ObservationIgnored private let locationManager: CLLocationManager
 
-    init() {
+    override init() {
         let locationManager = CLLocationManager()
         self.locationManager = locationManager
         locationAuthorizationStatus = locationManager.authorizationStatus
+        super.init()
+        locationManager.delegate = self
     }
 
     var visibleEvents: [NetworkTransitionEvent] {
@@ -61,8 +63,33 @@ final class NetToysHistoryViewModel {
     }
 
     func requestSSIDAccessIfNeeded() {
+        locationAuthorizationStatus = locationManager.authorizationStatus
         guard locationAuthorizationStatus == .notDetermined else { return }
+        guard NSApp.isActive else { return }
         locationManager.requestWhenInUseAuthorization()
+    }
+
+    func resolveSSIDAccess() {
+        locationAuthorizationStatus = locationManager.authorizationStatus
+        switch locationAuthorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .denied:
+            openLocationSettings()
+        default:
+            break
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        locationAuthorizationStatus = manager.authorizationStatus
+    }
+
+    private func openLocationSettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
+        ) else { return }
+        NSWorkspace.shared.open(url)
     }
 
     func setRecordsHistory(_ enabled: Bool) {
@@ -171,6 +198,7 @@ struct NetToysHistoryView: View {
             model.requestSSIDAccessIfNeeded()
             while !Task.isCancelled {
                 model.refresh()
+                model.requestSSIDAccessIfNeeded()
                 try? await Task.sleep(for: .seconds(3))
             }
         }
@@ -220,9 +248,16 @@ struct NetToysHistoryView: View {
                 .utilitySectionCard()
             }
             if let message = ssidAccessMessage {
-                Label(message, systemImage: "wifi.exclamationmark")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Label(message, systemImage: "wifi.exclamationmark")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let title = ssidAccessActionTitle {
+                        Button(title) { model.resolveSSIDAccess() }
+                            .controlSize(.small)
+                    }
+                }
+                .font(.system(size: 11))
             }
         }
     }
@@ -415,6 +450,112 @@ struct NetToysHistoryView: View {
             return "The Wi-Fi network name is not available from the background helper."
         default:
             return "Allow Location access to label Wi-Fi history with the network name."
+        }
+    }
+
+    private var ssidAccessActionTitle: String? {
+        switch model.locationAuthorizationStatus {
+        case .notDetermined:
+            return "Allow Access"
+        case .denied:
+            return "Open System Settings"
+        default:
+            return nil
+        }
+    }
+}
+
+struct NetToysSettingsView: View {
+    @State private var model = NetToysHistoryViewModel()
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("WI-FI NETWORK NAMES").utilitySectionHeader()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Label("Location Access", systemImage: locationStatusSymbol)
+                            .font(.system(size: 12, weight: .medium))
+                        Spacer()
+                        Text(locationStatusTitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(locationStatusColor)
+                    }
+
+                    Text(locationStatusMessage)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if let title = locationActionTitle {
+                        Button(title) { model.resolveSSIDAccess() }
+                            .controlSize(.small)
+                    }
+                }
+                .utilitySectionCard()
+
+                Spacer(minLength: 0)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, minHeight: 300, alignment: .topLeading)
+        }
+        .thinScrollIndicators()
+        .task {
+            model.refresh()
+            model.requestSSIDAccessIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refresh()
+            model.requestSSIDAccessIfNeeded()
+        }
+    }
+
+    private var locationStatusTitle: String {
+        switch model.locationAuthorizationStatus {
+        case .notDetermined: "Not Requested"
+        case .denied: "Denied"
+        case .restricted: "Restricted"
+        case .authorized, .authorizedAlways: "Allowed"
+        @unknown default: "Unknown"
+        }
+    }
+
+    private var locationStatusMessage: String {
+        switch model.locationAuthorizationStatus {
+        case .notDetermined:
+            "Allow Location access so Network History can identify Wi-Fi networks by SSID."
+        case .denied:
+            "Location access is off. Enable MacPowerToys in Privacy & Security > Location Services."
+        case .restricted:
+            "macOS policy prevents Location access for MacPowerToys."
+        case .authorized, .authorizedAlways:
+            "Location access is allowed. New Wi-Fi samples can include the SSID."
+        @unknown default:
+            "macOS did not report the Location access state."
+        }
+    }
+
+    private var locationActionTitle: String? {
+        switch model.locationAuthorizationStatus {
+        case .notDetermined: "Allow Location Access"
+        case .denied: "Open Location Settings"
+        default: nil
+        }
+    }
+
+    private var locationStatusSymbol: String {
+        switch model.locationAuthorizationStatus {
+        case .authorized, .authorizedAlways: "checkmark.circle.fill"
+        case .denied, .restricted: "exclamationmark.triangle.fill"
+        default: "location.circle"
+        }
+    }
+
+    private var locationStatusColor: Color {
+        switch model.locationAuthorizationStatus {
+        case .authorized, .authorizedAlways: .green
+        case .denied, .restricted: .orange
+        default: .secondary
         }
     }
 }

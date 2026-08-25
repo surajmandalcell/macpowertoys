@@ -221,6 +221,8 @@ private struct ToolSettingsContent: View {
             ColorPickerSettingsView()
         case "text-extractor":
             TextExtractorSettingsView()
+        case "nettoys":
+            NetToysSettingsView()
         case "input-devices":
             EmptyView()
         case "logs":
