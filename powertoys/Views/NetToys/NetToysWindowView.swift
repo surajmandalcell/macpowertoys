@@ -79,8 +79,8 @@ final class NetToysLocalNetworkAccess {
 enum NetToysPage: String, CaseIterable, Identifiable {
     case scanner = "IP Scanner"
     case anchor = "SSH Anchor"
-    case history = "Network History"
     case wifiPriority = "Wi-Fi Priority"
+    case history = "Network History"
 
     var id: String { rawValue }
 
