@@ -4,6 +4,7 @@ enum NetToysPage: String, CaseIterable, Identifiable {
     case scanner = "IP Scanner"
     case anchor = "SSH Anchor"
     case history = "Network History"
+    case wifiPriority = "Wi-Fi Priority"
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum NetToysPage: String, CaseIterable, Identifiable {
         case .scanner: "dot.radiowaves.left.and.right"
         case .anchor: "link"
         case .history: "chart.xyaxis.line"
+        case .wifiPriority: "wifi"
         }
     }
 }
@@ -98,6 +100,8 @@ struct NetToysWindowView: View {
             NetToysAnchorView()
         case .history:
             NetToysHistoryView()
+        case .wifiPriority:
+            NetToysWiFiPriorityView()
         }
     }
 }

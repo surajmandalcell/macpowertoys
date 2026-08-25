@@ -146,15 +146,18 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
     var probeInterval: TimeInterval
     var anchors: [SSHAnchorConfiguration]
     var recordsNetworkHistory: Bool
+    var wifiPriority: WiFiPriorityConfiguration
 
     init(
         probeInterval: TimeInterval = 2.5,
         anchors: [SSHAnchorConfiguration] = [],
-        recordsNetworkHistory: Bool = true
+        recordsNetworkHistory: Bool = true,
+        wifiPriority: WiFiPriorityConfiguration = WiFiPriorityConfiguration()
     ) {
         self.probeInterval = min(max(probeInterval, 2), 3)
         self.anchors = Array(anchors.prefix(16))
         self.recordsNetworkHistory = recordsNetworkHistory
+        self.wifiPriority = wifiPriority
     }
 
     init(from decoder: Decoder) throws {
@@ -162,7 +165,11 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
         self.init(
             probeInterval: try values.decode(TimeInterval.self, forKey: .probeInterval),
             anchors: try values.decode([SSHAnchorConfiguration].self, forKey: .anchors),
-            recordsNetworkHistory: try values.decode(Bool.self, forKey: .recordsNetworkHistory)
+            recordsNetworkHistory: try values.decode(Bool.self, forKey: .recordsNetworkHistory),
+            wifiPriority: try values.decodeIfPresent(
+                WiFiPriorityConfiguration.self,
+                forKey: .wifiPriority
+            ) ?? WiFiPriorityConfiguration()
         )
     }
 
@@ -173,6 +180,73 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
         var copy = self
         copy.anchors[index] = anchor
         return copy
+    }
+}
+
+nonisolated struct WiFiPriorityConfiguration: Codable, Equatable, Sendable {
+    var isEnabled: Bool
+    var outageThreshold: TimeInterval
+    var ssids: [String]
+
+    init(
+        isEnabled: Bool = false,
+        outageThreshold: TimeInterval = 10,
+        ssids: [String] = []
+    ) {
+        self.isEnabled = isEnabled
+        self.outageThreshold = min(max(outageThreshold, 5), 60)
+        self.ssids = Array(
+            ssids.compactMap(NetworkIdentity.normalizedSSID).uniqued().prefix(16)
+        )
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            isEnabled: try values.decode(Bool.self, forKey: .isEnabled),
+            outageThreshold: try values.decode(TimeInterval.self, forKey: .outageThreshold),
+            ssids: try values.decode([String].self, forKey: .ssids)
+        )
+    }
+}
+
+nonisolated struct WiFiFailoverMonitor: Sendable {
+    private(set) var outageBeganAt: Date?
+    private(set) var lastAttemptAt: Date?
+
+    mutating func shouldAttempt(
+        isFailure: Bool,
+        threshold: TimeInterval,
+        at date: Date
+    ) -> Bool {
+        guard isFailure else {
+            outageBeganAt = nil
+            lastAttemptAt = nil
+            return false
+        }
+        guard let outageBeganAt else {
+            self.outageBeganAt = date
+            return false
+        }
+        guard date.timeIntervalSince(outageBeganAt) >= threshold else { return false }
+        return lastAttemptAt.map { date.timeIntervalSince($0) >= 30 } ?? true
+    }
+
+    mutating func didAttempt(at date: Date) {
+        lastAttemptAt = date
+    }
+
+    static func nextSSID(
+        after currentSSID: String?,
+        priorities: [String],
+        availableSSIDs: Set<String>
+    ) -> String? {
+        guard !priorities.isEmpty else { return nil }
+        guard let currentSSID,
+              let index = priorities.firstIndex(of: currentSSID)
+        else { return priorities.first(where: availableSSIDs.contains) }
+        let candidates = priorities[(index + 1)...] + priorities[..<index]
+        return candidates.first(where: availableSSIDs.contains)
     }
 }
 
@@ -258,6 +332,7 @@ nonisolated struct NetToysHelperStatus: Codable, Equatable, Sendable {
     var network: NetworkRuntimeSnapshot? = nil
     var sourceCommit: String? = nil
     var ssidAccess: NetToysSSIDAccessState? = nil
+    var wifiFailover: WiFiFailoverStatus? = nil
 }
 
 nonisolated enum NetToysSSIDAccessState: String, Codable, Equatable, Sendable {
@@ -265,6 +340,19 @@ nonisolated enum NetToysSSIDAccessState: String, Codable, Equatable, Sendable {
     case denied
     case restricted
     case allowed
+}
+
+nonisolated enum WiFiFailoverState: String, Codable, Equatable, Sendable {
+    case monitoring
+    case waiting
+    case switching
+    case failed
+}
+
+nonisolated struct WiFiFailoverStatus: Codable, Equatable, Sendable {
+    let state: WiFiFailoverState
+    let message: String
+    let updatedAt: Date
 }
 
 nonisolated struct NetworkRuntimeSnapshot: Codable, Equatable, Sendable {
@@ -333,6 +421,80 @@ nonisolated enum NetworkSSID {
         NetworkIdentity.normalizedSSID(
             CWWiFiClient.shared().interface(withName: interfaceName)?.ssid()
         )
+    }
+}
+
+nonisolated enum WiFiNetworkController {
+    enum WiFiError: LocalizedError {
+        case interfaceUnavailable
+        case joinFailed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .interfaceUnavailable: "No Wi-Fi interface is available."
+            case .joinFailed(let message): message
+            }
+        }
+    }
+
+    static func preferredNetworks() async -> [String] {
+        guard let interfaceName = CWWiFiClient.shared().interface()?.interfaceName else { return [] }
+        let result = await runNetworkSetup(["-listpreferredwirelessnetworks", interfaceName])
+        guard result.status == 0 else { return [] }
+        return parsePreferredNetworks(result.output)
+    }
+
+    static func availableSSIDs() async -> Set<String> {
+        await Task.detached(priority: .utility) {
+            guard let interface = CWWiFiClient.shared().interface(),
+                  let networks = try? interface.scanForNetworks(withName: nil)
+            else { return [] }
+            return Set(networks.compactMap { NetworkIdentity.normalizedSSID($0.ssid) })
+        }.value
+    }
+
+    static func join(_ ssid: String) async throws {
+        guard let interfaceName = CWWiFiClient.shared().interface()?.interfaceName else {
+            throw WiFiError.interfaceUnavailable
+        }
+        let result = await runNetworkSetup(["-setairportnetwork", interfaceName, ssid])
+        guard result.status == 0 else {
+            throw WiFiError.joinFailed(
+                NetworkIdentity.normalizedSSID(result.output) ?? "macOS could not join \(ssid)."
+            )
+        }
+    }
+
+    static func parsePreferredNetworks(_ output: String) -> [String] {
+        output.split(whereSeparator: \.isNewline).dropFirst().compactMap {
+            NetworkIdentity.normalizedSSID(String($0))
+        }.uniqued()
+    }
+
+    private static func runNetworkSetup(_ arguments: [String]) async -> (status: Int32, output: String) {
+        await Task.detached(priority: .utility) {
+            let process = Process()
+            let output = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/sbin/networksetup")
+            process.arguments = arguments
+            process.standardOutput = output
+            process.standardError = output
+            do {
+                try process.run()
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                return (process.terminationStatus, String(decoding: data, as: UTF8.self))
+            } catch {
+                return (-1, error.localizedDescription)
+            }
+        }.value
+    }
+}
+
+private nonisolated extension Sequence where Element: Hashable {
+    func uniqued() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
     }
 }
 
