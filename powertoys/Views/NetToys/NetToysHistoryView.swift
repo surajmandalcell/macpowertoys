@@ -66,14 +66,14 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         locationAuthorizationStatus = locationManager.authorizationStatus
         guard locationAuthorizationStatus == .notDetermined else { return }
         guard NSApp.isActive else { return }
-        locationManager.requestWhenInUseAuthorization()
+        requestLocationAccess()
     }
 
     func resolveSSIDAccess() {
         locationAuthorizationStatus = locationManager.authorizationStatus
         switch locationAuthorizationStatus {
         case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
+            requestLocationAccess()
         case .denied:
             openLocationSettings()
         default:
@@ -83,6 +83,17 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         locationAuthorizationStatus = manager.authorizationStatus
+        if locationAuthorizationStatus != .notDetermined {
+            manager.stopUpdatingLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        manager.stopUpdatingLocation()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
+        manager.stopUpdatingLocation()
     }
 
     private func openLocationSettings() {
@@ -90,6 +101,11 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
         ) else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    private func requestLocationAccess() {
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
     }
 
     func setRecordsHistory(_ enabled: Bool) {
