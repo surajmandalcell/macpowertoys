@@ -24,6 +24,8 @@ evidence, and remaining work.
   normal signed installed build.
 - Verify the 18pt by 6pt launcher-detail tab inset in the latest normal
   installed build.
+- Verify that Input Devices keeps scroll control active through sustained wheel
+  input and a session lock and unlock.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 

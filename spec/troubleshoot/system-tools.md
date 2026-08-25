@@ -74,6 +74,18 @@
 - **Check:** Apply different reverse settings to both profiles, send precise and
   coarse scroll events, then disable the tool and confirm events pass unchanged.
 
+## Input Devices Event Tap Recovery
+
+- **Symptom:** Scroll control stops changing events even though the window still
+  reports that control is active.
+- **Cause:** The disabled-tap callback queued a full tap rebuild on the main
+  queue. A timeout can leave that same queue unable to run the recovery.
+- **Invariant:** When macOS disables the scroll event tap after a timeout or
+  session input change, re-enable the existing tap before the callback returns.
+- **Check:** Use sustained wheel input, then lock and unlock the session. Confirm
+  the selected profile continues without toggling Input control or reopening the
+  window.
+
 ## System Care And Mole
 
 - **Symptom:** A cleanup can delete outside its reviewed scope, or Mole needs an
