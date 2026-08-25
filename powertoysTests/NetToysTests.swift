@@ -814,7 +814,7 @@ final class NetToysTests: XCTestCase {
         )
     }
 
-    func testSSHAnchorEntriesExpandLiteralAliasesAndUseDefaultPort() {
+    func testSSHAnchorEntriesGroupLiteralAliasesAndUseDefaultPort() {
         let data = Data("""
         Host jet jetson jetson1
           HostName 192.168.1.18
@@ -826,11 +826,8 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(
             SSHConfigEditor.anchorEntries(in: data),
             [
-                SSHConfigEntry(aliases: ["jet"], hostName: "192.168.1.18", port: 22),
-                SSHConfigEntry(aliases: ["jetson"], hostName: "192.168.1.18", port: 22),
-                SSHConfigEntry(aliases: ["jetson1"], hostName: "192.168.1.18", port: 22),
-                SSHConfigEntry(aliases: ["pi"], hostName: "zero1", port: 2222),
-                SSHConfigEntry(aliases: ["pi1"], hostName: "zero1", port: 2222),
+                SSHConfigEntry(aliases: ["jet", "jetson", "jetson1"], hostName: "192.168.1.18", port: 22),
+                SSHConfigEntry(aliases: ["pi", "pi1"], hostName: "zero1", port: 2222),
             ]
         )
     }
