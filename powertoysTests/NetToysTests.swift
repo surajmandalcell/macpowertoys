@@ -563,17 +563,34 @@ final class NetToysTests: XCTestCase {
         var header = rt_msghdr()
         header.rtm_msglen = UInt16(headerSize + destination.count + link.count)
         header.rtm_addrs = RTA_DST | RTA_GATEWAY
+        header.rtm_flags = RTF_LLINFO
+        header.rtm_index = 14
         var message = withUnsafeBytes(of: &header) { Data($0) }
         message.append(contentsOf: destination)
         message.append(contentsOf: link)
 
         XCTAssertEqual(
-            ARPTable.parseRoutingMessages(message),
-            ["192.168.1.18": "f8:3d:c6:56:fe:e3"]
+            ARPTable.neighborMAC(
+                in: message,
+                expectedAddress: IPv4Address(rawValue: 0xC0A8_0112),
+                interfaceIndex: 14
+            ),
+            "f8:3d:c6:56:fe:e3"
         )
+        var routedHeader = header
+        routedHeader.rtm_flags = RTF_GATEWAY
+        var routedMessage = withUnsafeBytes(of: &routedHeader) { Data($0) }
+        routedMessage.append(contentsOf: destination)
+        routedMessage.append(contentsOf: link)
+        XCTAssertNil(ARPTable.neighborMAC(
+            in: routedMessage,
+            expectedAddress: IPv4Address(rawValue: 0xC0A8_0112),
+            interfaceIndex: 14
+        ))
 
         let query = ARPTable.queryMessage(
             for: IPv4Address(rawValue: 0xC0A8_0112),
+            interfaceIndex: 14,
             sequence: 7,
             processID: 42
         )
@@ -582,6 +599,8 @@ final class NetToysTests: XCTestCase {
         }
         XCTAssertEqual(queryHeader.rtm_type, UInt8(RTM_GET))
         XCTAssertEqual(queryHeader.rtm_addrs, RTA_DST)
+        XCTAssertEqual(queryHeader.rtm_index, 14)
+        XCTAssertNotEqual(queryHeader.rtm_flags & RTF_IFSCOPE, 0)
         XCTAssertEqual(queryHeader.rtm_seq, 7)
         XCTAssertEqual(queryHeader.rtm_pid, 42)
         XCTAssertEqual(Array(query.suffix(16).prefix(8)), [16, UInt8(AF_INET), 0, 0, 192, 168, 1, 18])

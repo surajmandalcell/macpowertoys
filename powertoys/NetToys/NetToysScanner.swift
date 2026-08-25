@@ -1000,7 +1000,12 @@ actor NetToysScanner {
             }
             scanned.append(contentsOf: results)
         }
-        let arp = await ARPTable.load(addresses: scanned.filter(\.isReachable).map(\.address))
+        let interfaceIndex = LocalIPv4Network.active()
+            .map { if_nametoindex($0.interfaceName) } ?? 0
+        let arp = await ARPTable.load(
+            addresses: scanned.filter(\.isReachable).map(\.address),
+            interfaceIndex: interfaceIndex
+        )
         return scanned.map { result in
             let macAddress = arp[result.address.description]
             return NetToysScanResult(
@@ -1190,12 +1195,15 @@ nonisolated enum HostResolver {
 }
 
 nonisolated enum ARPTable {
-    static func load(addresses: [IPv4Address]) async -> [String: String] {
-        await Task.detached(priority: .utility) { loadSynchronously(addresses: addresses) }.value
+    static func load(addresses: [IPv4Address], interfaceIndex: UInt32) async -> [String: String] {
+        await Task.detached(priority: .utility) {
+            loadSynchronously(addresses: addresses, interfaceIndex: interfaceIndex)
+        }.value
     }
 
     static func queryMessage(
         for address: IPv4Address,
+        interfaceIndex: UInt32,
         sequence: Int32,
         processID: pid_t
     ) -> Data {
@@ -1203,6 +1211,8 @@ nonisolated enum ARPTable {
         header.rtm_msglen = UInt16(MemoryLayout<rt_msghdr>.size + MemoryLayout<sockaddr_in>.size)
         header.rtm_version = UInt8(RTM_VERSION)
         header.rtm_type = UInt8(RTM_GET)
+        header.rtm_index = UInt16(interfaceIndex)
+        header.rtm_flags = RTF_IFSCOPE
         header.rtm_addrs = RTA_DST
         header.rtm_pid = processID
         header.rtm_seq = sequence
@@ -1215,7 +1225,11 @@ nonisolated enum ARPTable {
         return message
     }
 
-    private static func loadSynchronously(addresses: [IPv4Address]) -> [String: String] {
+    private static func loadSynchronously(
+        addresses: [IPv4Address],
+        interfaceIndex: UInt32
+    ) -> [String: String] {
+        guard interfaceIndex > 0, interfaceIndex <= UInt16.max else { return [:] }
         let descriptor = socket(PF_ROUTE, SOCK_RAW, 0)
         guard descriptor >= 0 else { return [:] }
         defer { Darwin.close(descriptor) }
@@ -1231,7 +1245,12 @@ nonisolated enum ARPTable {
         var result: [String: String] = [:]
         for (offset, address) in Array(Set(addresses)).sorted().enumerated() {
             let sequence = Int32(truncatingIfNeeded: offset + 1)
-            let query = queryMessage(for: address, sequence: sequence, processID: processID)
+            let query = queryMessage(
+                for: address,
+                interfaceIndex: interfaceIndex,
+                sequence: sequence,
+                processID: processID
+            )
             let sent = query.withUnsafeBytes {
                 Darwin.write(descriptor, $0.baseAddress, $0.count)
             }
@@ -1247,11 +1266,31 @@ nonisolated enum ARPTable {
                 }
                 guard header.rtm_pid == processID, header.rtm_seq == sequence else { continue }
                 guard header.rtm_errno == 0 else { break }
-                result.merge(parseRoutingMessages(reply.prefix(byteCount))) { _, latest in latest }
+                if let macAddress = neighborMAC(
+                    in: reply.prefix(byteCount),
+                    expectedAddress: address,
+                    interfaceIndex: interfaceIndex
+                ) {
+                    result[address.description] = macAddress
+                }
                 break
             }
         }
         return result
+    }
+
+    static func neighborMAC(
+        in data: Data,
+        expectedAddress: IPv4Address,
+        interfaceIndex: UInt32
+    ) -> String? {
+        guard data.count >= MemoryLayout<rt_msghdr>.size else { return nil }
+        let header = data.withUnsafeBytes { $0.loadUnaligned(as: rt_msghdr.self) }
+        guard header.rtm_index == UInt16(interfaceIndex),
+              header.rtm_flags & RTF_LLINFO != 0,
+              header.rtm_flags & RTF_GATEWAY == 0
+        else { return nil }
+        return parseRoutingMessages(data)[expectedAddress.description]
     }
 
     static func parseRoutingMessages(_ data: Data) -> [String: String] {
