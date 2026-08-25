@@ -271,6 +271,21 @@
   followed directly by IP Scanner, SSH Anchor, Network History, and Wi-Fi
   Priority.
 
+## Search Field Density
+
+- **Symptom:** A search field inside a toolbar, page, or popover looks like the
+  larger padded search field used in workspace sidebars.
+- **Cause:** Content searches reused the sidebar search component or recreated
+  its padding and background locally.
+- **Invariant:** Use `SidebarSearchField` only in workspace sidebars. Use the
+  native small `NSSearchField` in a 24pt slot for every search inside app and
+  sub-app content, toolbars, sheets, and popovers. Put progress beside the
+  native field when a content search needs a loading state.
+- **Check:** Inspect the launcher, Logs, and AI History sidebars, then inspect
+  AI History messages, Color Picker history, Cloud Sync files and connector
+  picker, NetToys scanner and history, and System Care applications. Only the
+  three sidebar searches use the larger padded style.
+
 ## NetToys SSH Host Catalog And Scanner Handoff
 
 - **Symptom:** SSH Anchor shows only some aliases from `~/.ssh/config`, or a

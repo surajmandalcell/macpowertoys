@@ -15,6 +15,8 @@ evidence, and remaining work.
   position restoration, and actions for every eligible background tool.
 - Verify the compact top-aligned launcher introduction for Input Devices and
   the other menu-bar-capable tools.
+- Verify large search fields stay in sidebars and every content search uses the
+  thin native control across apps and sub-apps.
 - Verify focus appearance and keyboard activation in the menu-bar panels with
   a physical menu-bar click. All other built-in surfaces passed.
 - Verify compact inline metadata and adaptive two-column pages in the latest
