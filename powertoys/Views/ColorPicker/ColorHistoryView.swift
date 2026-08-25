@@ -148,7 +148,9 @@ struct ColorHistoryView: View {
     private var history: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                ColorSearchField(text: $search)
+                NativeSearchField(text: $search, placeholder: "Search colors")
+                    .frame(height: UtilityLayout.workspaceActionHeight)
+                    .accessibilityIdentifier("color-picker.search")
                 ColorFormatSelect(selection: $service.defaultFormat)
             }
             .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
@@ -396,30 +398,6 @@ private struct ColorPickerIconButton: View {
         .focusEffectDisabled()
         .onHover { isHovering = $0 }
         .help(helpText)
-    }
-}
-
-private struct ColorSearchField: View {
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            TextField("Search colors", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-            if !text.isEmpty {
-                ColorPickerIconButton(systemName: "xmark.circle.fill", help: "Clear search") { text = "" }
-            }
-        }
-        .padding(.horizontal, 9)
-        .frame(height: 28)
-        .background(Color.primary.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("color-picker.search")
     }
 }
 

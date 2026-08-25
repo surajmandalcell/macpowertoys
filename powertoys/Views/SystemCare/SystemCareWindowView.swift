@@ -400,8 +400,9 @@ struct SystemCareWindowView: View {
 
     private var applicationsPage: some View {
         WorkspacePage("Applications", subtitle: "Review installed applications") {
-            SearchField(text: $appSearch, placeholder: "Search applications…")
+            NativeSearchField(text: $appSearch, placeholder: "Search applications…")
                 .frame(maxWidth: 420)
+                .frame(height: UtilityLayout.workspaceActionHeight)
             if manager.molePath == nil {
                 Label("Install Mole CLI to preview or uninstall applications.", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)

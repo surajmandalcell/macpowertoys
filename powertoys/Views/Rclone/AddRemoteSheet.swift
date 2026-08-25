@@ -510,7 +510,8 @@ private struct ProviderDropdown: View {
 
     private func providerList(width: CGFloat) -> some View {
         VStack(spacing: 0) {
-            SearchField(text: $searchText, placeholder: "Search connectors…")
+            NativeSearchField(text: $searchText, placeholder: "Search connectors…")
+                .frame(height: UtilityLayout.workspaceActionHeight)
                 .padding(8)
             QuietDivider()
             ScrollViewReader { proxy in

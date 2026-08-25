@@ -22,7 +22,7 @@ struct CCHistorySidebarView: View {
         ZStack(alignment: .topLeading) {
             SidebarTitle(text: "AI History")
             VStack(spacing: 0) {
-                SearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching, deepSearchEnabled: $deepSearchEnabled)
+                SidebarSearchField(text: $searchText, placeholder: "Search conversations...", isLoading: isSearching, deepSearchEnabled: $deepSearchEnabled)
                     .padding(.horizontal, 12)
                     .padding(.top, UtilityLayout.workspaceContentTopInset)
                     .padding(.bottom, 12)

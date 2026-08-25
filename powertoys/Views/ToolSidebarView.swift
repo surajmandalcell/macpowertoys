@@ -18,7 +18,7 @@ struct ToolSidebarView: View {
 
     private var sidebarBody: some View {
         VStack(spacing: 0) {
-            SearchField(text: $searchText, placeholder: "Search")
+            SidebarSearchField(text: $searchText, placeholder: "Search")
                 .padding(.horizontal, 12)
                 .padding(.top, UtilityLayout.workspaceContentTopInset)
                 .padding(.bottom, 12)

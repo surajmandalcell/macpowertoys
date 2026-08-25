@@ -26,6 +26,7 @@ struct NativeSearchField: NSViewRepresentable {
 
     func updateNSView(_ field: NSSearchField, context: Context) {
         context.coordinator.text = $text
+        field.controlSize = .small
         field.placeholderString = placeholder
         if field.stringValue != text {
             field.stringValue = text
@@ -46,7 +47,7 @@ struct NativeSearchField: NSViewRepresentable {
     }
 }
 
-struct SearchField: View {
+struct SidebarSearchField: View {
     @Binding var text: String
     var placeholder: String = "Search..."
     var isLoading: Bool = false
@@ -100,11 +101,11 @@ struct SearchField: View {
 
 #Preview {
     VStack(spacing: 20) {
-        SearchField(text: .constant(""), placeholder: "Search tools...")
-        SearchField(text: .constant("test"), placeholder: "Search...")
-        SearchField(text: .constant("loading"), isLoading: true)
-        SearchField(text: .constant("deep"), deepSearchEnabled: .constant(false))
-        SearchField(text: .constant("deep active"), deepSearchEnabled: .constant(true))
+        SidebarSearchField(text: .constant(""), placeholder: "Search tools...")
+        SidebarSearchField(text: .constant("test"), placeholder: "Search...")
+        SidebarSearchField(text: .constant("loading"), isLoading: true)
+        SidebarSearchField(text: .constant("deep"), deepSearchEnabled: .constant(false))
+        SidebarSearchField(text: .constant("deep active"), deepSearchEnabled: .constant(true))
     }
     .padding()
     .frame(width: 280)

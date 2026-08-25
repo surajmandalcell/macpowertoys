@@ -196,31 +196,9 @@ struct FilterToolbarView: View {
                 }
             }
 
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-
-                TextField("Search...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                }
-            }
+            NativeSearchField(text: $searchText, placeholder: "Search...")
             .frame(width: 160)
-            .padding(8)
-            .background(Color.primary.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .frame(height: UtilityLayout.workspaceActionHeight)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
