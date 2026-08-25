@@ -76,6 +76,8 @@ final class UtilityModelTests: XCTestCase {
         let tabWidth = TrayPopoverLayout.tabWidth(availableWidth: availableWidth, count: 2)
 
         XCTAssertEqual(tabWidth * 2 + TrayPopoverLayout.tabSpacing, availableWidth, accuracy: 0.001)
+        XCTAssertTrue(TrayPopoverLayout.showsTabLabels(count: 2))
+        XCTAssertFalse(TrayPopoverLayout.showsTabLabels(count: 3))
         XCTAssertEqual(TrayPopoverLayout.tabHeight, 28)
         XCTAssertEqual(TrayPopoverLayout.tabGroupInset, 4)
         XCTAssertLessThan(TrayPopoverLayout.tabGroupBottomInset, TrayPopoverLayout.bodyTopInset)

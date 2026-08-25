@@ -15,7 +15,6 @@ enum TrayPopoverLayout {
     static let tabHeight: CGFloat = 28
     static let tabSpacing: CGFloat = 4
     static let minimumTabWidth: CGFloat = 30
-    static let labelThreshold: CGFloat = 84
     static let bodyTopInset: CGFloat = 10
     static let bodyBottomInset: CGFloat = 14
     static let footerHorizontalInset: CGFloat = 10
@@ -27,6 +26,8 @@ enum TrayPopoverLayout {
         let totalSpacing = CGFloat(count - 1) * tabSpacing
         return max(minimumTabWidth, (availableWidth - totalSpacing) / CGFloat(count))
     }
+
+    static func showsTabLabels(count: Int) -> Bool { count <= 2 }
 }
 
 struct TrayPopoverView: View {
@@ -36,9 +37,15 @@ struct TrayPopoverView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var slideForward = true
     @State private var settings = SettingsManager.shared
+    @State private var menuBarPreferencesChanged = false
 
     private var trayTools: [any Tool] {
-        ToolRegistry.allTools.filter { $0.hasTrayTab && settings.isToolEnabled($0.id) }
+        _ = menuBarPreferencesChanged
+        return ToolRegistry.allTools.filter { tool in
+            tool.hasTrayTab
+                && settings.isToolEnabled(tool.id)
+                && IndividualMenuBarTool(rawValue: tool.id)?.displayMode() == .combined
+        }
     }
 
     private var trayToolIDs: [String] { trayTools.map(\.id) }
@@ -91,6 +98,9 @@ struct TrayPopoverView: View {
         }
         .onAppear(perform: normalizeSelection)
         .onChange(of: trayToolIDs) { normalizeSelection() }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            menuBarPreferencesChanged.toggle()
+        }
     }
 
     private func normalizeSelection() {
@@ -121,6 +131,10 @@ struct TrayPopoverView: View {
             RSyncTrayTab()
         case "awake":
             AwakeTrayTab()
+        case "color-picker", "text-extractor", "input-devices":
+            if let tool = ToolRegistry.tool(for: selectedTab) {
+                QuickToolTrayTab(tool: tool)
+            }
         default:
             EmptyStateView(icon: "wrench.adjustable", message: "No tray view")
                 .frame(height: 160)
@@ -144,6 +158,38 @@ struct TrayPopoverView: View {
         .padding(.top, TrayPopoverLayout.footerTopInset)
         .padding(.bottom, TrayPopoverLayout.footerBottomInset)
         .background(Color.primary.opacity(0.03))
+    }
+}
+
+private struct QuickToolTrayTab: View {
+    let tool: any Tool
+
+    private var menuBarTool: IndividualMenuBarTool? {
+        IndividualMenuBarTool(rawValue: tool.id)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(tool.description)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+
+            HStack(spacing: 8) {
+                Spacer()
+                if let action = menuBarTool?.quickAction {
+                    TrayActionButton(title: menuBarTool?.actionTitle ?? tool.name, isPrimary: true) {
+                        ToolActionRouter.shared.execute(ToolActionRequest(action: action))
+                    }
+                }
+                TrayActionButton(title: "Open", isPrimary: menuBarTool?.quickAction == nil) {
+                    ToolActionRouter.shared.open(toolID: tool.id)
+                }
+            }
+        }
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.top, TrayPopoverLayout.bodyTopInset)
+        .padding(.bottom, TrayPopoverLayout.bodyBottomInset)
     }
 }
 
@@ -260,7 +306,7 @@ private struct TrayTabStrip: View {
                 TrayTabItem(
                     tool: tool,
                     width: perTab,
-                    showsLabel: perTab > TrayPopoverLayout.labelThreshold,
+                    showsLabel: TrayPopoverLayout.showsTabLabels(count: tools.count),
                     isSelected: selected == tool.id
                 ) {
                     selected = tool.id
