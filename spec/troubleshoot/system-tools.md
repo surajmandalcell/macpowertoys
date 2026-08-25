@@ -31,11 +31,14 @@
   SSID is not a network change. If SSID is temporarily unavailable, wait for a
   known SSID instead of inferring a change from its private gateway. Use
   only the SSID in visible labels when it is available. Use
-  `interface | gateway` only as the wired or unavailable-SSID fallback.
+  `interface | gateway` only as the wired or unavailable-SSID fallback. Migrate
+  legacy events by their exact `interface + gateway` pair only when that pair
+  maps to one unambiguous stored or current SSID; otherwise retain the fallback.
 - **Check:** Change the gateway while SSID stays fixed and confirm no network
   event. Change SSID with the same gateway and confirm one SSID-only event.
   Confirm every visible label shows only that SSID. Confirm wired gateway
-  changes still create network events and use the route fallback.
+  changes still create network events and use the route fallback. Confirm a
+  legacy route pair inherits one known SSID and the migration is idempotent.
 
 ## Network History Availability Timeline
 

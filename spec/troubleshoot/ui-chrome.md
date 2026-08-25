@@ -359,14 +359,17 @@
   disconnected and unknown intervals from uptime. Show uptime percentage,
   outage count, total downtime, and recent outage sentences with exact
   durations. Use `interface | gateway` only as the wired or unavailable-SSID
-  fallback. When an SSID exists, all visible network labels show the SSID alone.
+  fallback. Merge legacy route rows into an SSID row only when the exact route
+  pair has one unambiguous SSID. When an SSID exists, all visible network labels
+  show the SSID alone.
   Do not reintroduce vertical state lines, transition dots, or a
   gateway-based Wi-Fi identity.
 - **Check:** Record an outage on one SSID, recover, then switch to another SSID.
   Confirm each SSID has a separate bar, the first outage duration is correct,
   and the network switch is not counted as an outage. Leave the second SSID
   unreachable and confirm the recent outage says it has been unavailable for
-  the current duration.
+  the current duration. Confirm an unambiguous legacy route row merges into its
+  SSID row while an unknown or ambiguous route keeps its fallback label.
 
 ## Compact Applet Window Height
 
