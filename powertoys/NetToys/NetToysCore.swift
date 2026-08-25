@@ -241,11 +241,12 @@ nonisolated enum SSHConfigEditor {
     }
 
     static func anchorEntries(in data: Data) -> [SSHConfigEntry] {
-        entries(in: data).flatMap { entry in
-            entry.aliases.compactMap { alias in
-                guard !alias.hasPrefix("!"), !alias.contains("*"), !alias.contains("?") else { return nil }
-                return SSHConfigEntry(aliases: [alias], hostName: entry.hostName, port: entry.port)
+        entries(in: data).compactMap { entry in
+            let aliases = entry.aliases.filter {
+                !$0.hasPrefix("!") && !$0.contains("*") && !$0.contains("?")
             }
+            guard !aliases.isEmpty else { return nil }
+            return SSHConfigEntry(aliases: aliases, hostName: entry.hostName, port: entry.port)
         }
     }
 

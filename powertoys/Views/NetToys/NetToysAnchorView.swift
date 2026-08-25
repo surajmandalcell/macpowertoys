@@ -149,6 +149,12 @@ final class NetToysAnchorViewModel {
         helperStatus?.anchors.first { $0.anchorID == id }
     }
 
+    func aliasLabel(for anchor: SSHAnchorConfiguration) -> String {
+        entries.first { entry in
+            entry.aliases.contains { $0.caseInsensitiveCompare(anchor.hostAlias) == .orderedSame }
+        }?.aliases.joined(separator: ",") ?? anchor.hostAlias
+    }
+
     private func save() {
         do {
             try NetToysConfigurationStore.save(configuration)
@@ -267,7 +273,7 @@ struct NetToysAnchorView: View {
                                     Text("Select SSH host").tag("")
                                 }
                                 ForEach(model.entries, id: \.aliases) { entry in
-                                    Text(entry.aliases[0]).tag(entry.aliases[0])
+                                    Text(entry.aliases.joined(separator: ",")).tag(entry.aliases[0])
                                 }
                             }
                         }
@@ -382,6 +388,7 @@ struct NetToysAnchorView: View {
 
     private func anchorRow(_ anchor: SSHAnchorConfiguration) -> some View {
         let status = model.status(for: anchor.id)
+        let aliasLabel = model.aliasLabel(for: anchor)
         return HStack(spacing: 10) {
             Image(systemName: statusSymbol(status?.state))
                 .foregroundStyle(statusColor(status?.state))
@@ -389,7 +396,7 @@ struct NetToysAnchorView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(anchor.hostAlias)
+                    Text(aliasLabel)
                         .font(.system(size: 13, weight: .medium))
                     Text("\(status?.currentHostName ?? anchor.hostName):\(anchor.port)")
                         .font(.system(.caption, design: .monospaced))
@@ -416,7 +423,7 @@ struct NetToysAnchorView: View {
             .labelsHidden()
             .toggleStyle(.switch)
             .controlSize(.small)
-            .accessibilityLabel("Monitor \(anchor.hostAlias)")
+            .accessibilityLabel("Monitor \(aliasLabel)")
 
             Button(role: .destructive) {
                 model.remove(anchor.id)
@@ -427,8 +434,8 @@ struct NetToysAnchorView: View {
             }
             .buttonStyle(.plain)
             .focusEffectDisabled()
-            .accessibilityLabel("Remove \(anchor.hostAlias)")
-            .help("Remove \(anchor.hostAlias)")
+            .accessibilityLabel("Remove \(aliasLabel)")
+            .help("Remove \(aliasLabel)")
         }
         .padding(.vertical, 2)
     }
