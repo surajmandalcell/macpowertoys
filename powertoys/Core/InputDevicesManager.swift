@@ -224,8 +224,10 @@ final class InputDevicesManager {
         let manager = Unmanaged<InputDevicesManager>.fromOpaque(userInfo).takeUnretainedValue()
 
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            DispatchQueue.main.async { manager.applyInterceptionState() }
-            return Unmanaged.passUnretained(event)
+            return MainActor.assumeIsolated {
+                if let eventTap = manager.eventTap { CGEvent.tapEnable(tap: eventTap, enable: true) }
+                return Unmanaged.passUnretained(event)
+            }
         }
         guard type == .scrollWheel,
               event.getIntegerValueField(.eventSourceUserData) != syntheticEventTag else {
