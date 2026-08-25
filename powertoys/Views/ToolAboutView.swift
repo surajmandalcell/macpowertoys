@@ -56,7 +56,7 @@ struct ToolAboutView: View {
                     }
                 }
                 .utilityContentTransition(value: page)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         } else {
             EmptyStateView(icon: "questionmark.circle", message: "Unknown tool")
@@ -181,6 +181,7 @@ private struct ToolDetailIntro: View {
                             Text(mode.title).tag(mode)
                         }
                     }
+                    .labelsHidden()
                     .pickerStyle(.segmented)
                     .controlSize(.small)
                     .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")

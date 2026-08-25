@@ -237,6 +237,35 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(shortcut.display, "⇧⌘3")
     }
 
+    func testToolDetailsHideTheSegmentedPickersDuplicateLabel() throws {
+        let source = try toolAboutViewSource()
+        let picker = try XCTUnwrap(source.range(of: "Picker(\"Menu Bar Icon\""))
+        let identifier = try XCTUnwrap(
+            source.range(
+                of: ".accessibilityIdentifier(\"tool.\\(tool.id).menu-bar-icon\")",
+                range: picker.lowerBound..<source.endIndex
+            )
+        )
+
+        XCTAssertTrue(source[picker.lowerBound..<identifier.upperBound].contains(".labelsHidden()"))
+    }
+
+    func testToolDetailsTopAlignSparseSettingsContent() throws {
+        XCTAssertTrue(
+            try toolAboutViewSource().contains(
+                ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)"
+            )
+        )
+    }
+
+    private func toolAboutViewSource() throws -> String {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/ToolAboutView.swift")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
+
     private func alphaBounds(of image: NSImage) throws -> NSRect {
         let width = Int(image.size.width)
         let height = Int(image.size.height)
