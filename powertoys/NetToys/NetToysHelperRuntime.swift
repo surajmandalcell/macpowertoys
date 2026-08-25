@@ -68,8 +68,9 @@ actor NetToysHelperRuntime {
     private var currentStatuses: [SSHAnchorStatus] = []
     private var ssidAccess: NetToysSSIDAccessState?
 
-    func setSSIDAccess(_ state: NetToysSSIDAccessState) {
+    func setSSIDAccess(_ state: NetToysSSIDAccessState) async {
         ssidAccess = state
+        if state == .allowed { await checkNetwork() }
         writeStatus()
     }
 

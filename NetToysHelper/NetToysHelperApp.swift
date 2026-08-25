@@ -10,7 +10,7 @@ struct NetToysHelperApp {
                 Task { await runtime.setSSIDAccess(state) }
             }
         }
-        await MainActor.run { locationAccess.requestIfNeeded() }
+        await MainActor.run { locationAccess.start() }
         await runtime.run()
     }
 }
@@ -27,18 +27,30 @@ private final class NetToysHelperLocationAccess: NSObject, CLLocationManagerDele
         publish()
     }
 
-    func requestIfNeeded() {
-        guard manager.authorizationStatus == .notDetermined else { return }
-        manager.requestWhenInUseAuthorization()
+    func start() {
+        if manager.authorizationStatus == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        }
+        guard manager.authorizationStatus != .denied,
+              manager.authorizationStatus != .restricted
+        else { return }
         manager.startUpdatingLocation()
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         publish()
-        if manager.authorizationStatus != .notDetermined { manager.stopUpdatingLocation() }
+        switch manager.authorizationStatus {
+        case .authorized, .authorizedAlways:
+            manager.startUpdatingLocation()
+        case .denied, .restricted:
+            manager.stopUpdatingLocation()
+        default:
+            break
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        publish()
         manager.stopUpdatingLocation()
     }
 
