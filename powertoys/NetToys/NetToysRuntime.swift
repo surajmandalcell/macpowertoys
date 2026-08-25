@@ -263,8 +263,9 @@ nonisolated struct NetworkIdentity: Equatable, Sendable {
 
     var displayName: String {
         guard networkID != "disconnected" else { return "Disconnected" }
+        if let ssid { return ssid }
         guard let components else { return networkID }
-        return [ssid, components.0, components.1].compactMap { $0 }.joined(separator: " | ")
+        return [components.0, components.1].joined(separator: " | ")
     }
 
     static func normalizedSSID(_ value: String?) -> String? {
