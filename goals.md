@@ -22,6 +22,8 @@ evidence, and remaining work.
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
 - Verify SSH Anchor at the minimum window width and with a configured anchor.
+- Verify that every NetToys stepper changes once per press in the latest normal
+  signed build.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest
   normal installed build.
 - Verify the darker menu-bar popover, equal tab-group edges, shorter body gap,

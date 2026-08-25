@@ -271,6 +271,20 @@
   followed directly by IP Scanner, SSH Anchor, Network History, and Wi-Fi
   Priority.
 
+## NetToys Stepper Determinism
+
+- **Symptom:** One click on a scanner setting arrow changes the value several
+  times or changes it in the opposite direction after the pointer moves.
+- **Cause:** The native AppKit stepper enables press-and-hold autorepeat by
+  default, so one mouse press can keep sending actions while the pointer moves
+  between the two arrow halves.
+- **Invariant:** Every NetToys numeric stepper uses the native small AppKit
+  control with autorepeat disabled. One press changes the binding by exactly
+  one configured step.
+- **Check:** Hold each up and down arrow longer than the normal repeat delay.
+  Confirm TCP timeout changes by 100 ms, launch delay by 5 ms, and every other
+  NetToys stepper changes once in the selected direction.
+
 ## Search Field Density
 
 - **Symptom:** A search field inside a toolbar, page, or popover looks like the

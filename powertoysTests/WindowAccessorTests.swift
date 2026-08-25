@@ -224,6 +224,30 @@ final class WindowAccessorTests: XCTestCase {
         )
     }
 
+    func testSingleStepStepperDoesNotRepeatWhileMouseIsHeld() throws {
+        var value = 800
+        let hostingView = NSHostingView(
+            rootView: SingleStepStepper(
+                "TCP timeout: 800 ms",
+                value: Binding(
+                    get: { value },
+                    set: { value = $0 }
+                ),
+                in: 100...5_000,
+                step: 100
+            )
+        )
+        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 28)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let stepper = try XCTUnwrap(firstStepper(in: hostingView))
+        XCTAssertFalse(stepper.autorepeat)
+        XCTAssertEqual(stepper.increment, 100)
+        stepper.integerValue = 900
+        stepper.sendAction(stepper.action, to: stepper.target)
+        XCTAssertEqual(value, 900)
+    }
+
     func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
         XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
     }
@@ -236,5 +260,10 @@ final class WindowAccessorTests: XCTestCase {
     private func firstSearchField(in view: NSView) -> NSSearchField? {
         if let searchField = view as? NSSearchField { return searchField }
         return view.subviews.lazy.compactMap(firstSearchField(in:)).first
+    }
+
+    private func firstStepper(in view: NSView) -> NSStepper? {
+        if let stepper = view as? NSStepper { return stepper }
+        return view.subviews.lazy.compactMap(firstStepper(in:)).first
     }
 }

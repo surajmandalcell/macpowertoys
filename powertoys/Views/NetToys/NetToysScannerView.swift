@@ -983,9 +983,9 @@ private struct NetToysScannerSettingsView: View {
                 .font(.title2.weight(.semibold))
 
             Form {
-                Stepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
-                Stepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
-                Stepper(
+                SingleStepStepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
+                SingleStepStepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
+                SingleStepStepper(
                     "Launch delay: \(model.launchDelayMilliseconds) ms",
                     value: $model.launchDelayMilliseconds,
                     in: 0...100,
@@ -1003,8 +1003,8 @@ private struct NetToysScannerSettingsView: View {
                     }
                     Toggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
                     if model.collectPingDetails || model.livenessMethod == .icmpAndTCP || model.adaptiveTCPTimeout {
-                        Stepper("ICMP timeout: \(model.pingTimeoutMilliseconds) ms", value: $model.pingTimeoutMilliseconds, in: 100...5_000, step: 100)
-                        Stepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
+                        SingleStepStepper("ICMP timeout: \(model.pingTimeoutMilliseconds) ms", value: $model.pingTimeoutMilliseconds, in: 100...5_000, step: 100)
+                        SingleStepStepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
                     }
                 }
 
@@ -1014,7 +1014,7 @@ private struct NetToysScannerSettingsView: View {
                     Toggle("Read NetBIOS names", isOn: $model.detectNetBIOS)
                     Toggle("Use custom text probe", isOn: $model.customTextEnabled)
                     if model.customTextEnabled {
-                        Stepper("Custom port: \(model.customTextPort)", value: $model.customTextPort, in: 1...65_535)
+                        SingleStepStepper("Custom port: \(model.customTextPort)", value: $model.customTextPort, in: 1...65_535)
                         TextField("Request", text: $model.customTextRequest, axis: .vertical)
                             .lineLimit(2...4)
                         TextField("Response regular expression", text: $model.customTextPattern)
@@ -1161,7 +1161,7 @@ private struct NetToysRandomTargetsView: View {
                 .foregroundStyle(.secondary)
             Form {
                 TextField("CIDR", text: $cidr)
-                Stepper("Address count: \(count)", value: $count, in: 1...1_024)
+                SingleStepStepper("Address count: \(count)", value: $count, in: 1...1_024)
             }
             .thinScrollIndicators()
             .formStyle(.grouped)
