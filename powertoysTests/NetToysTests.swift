@@ -571,6 +571,20 @@ final class NetToysTests: XCTestCase {
             ARPTable.parseRoutingMessages(message),
             ["192.168.1.18": "f8:3d:c6:56:fe:e3"]
         )
+
+        let query = ARPTable.queryMessage(
+            for: IPv4Address(rawValue: 0xC0A8_0112),
+            sequence: 7,
+            processID: 42
+        )
+        let queryHeader = query.withUnsafeBytes {
+            $0.loadUnaligned(as: rt_msghdr.self)
+        }
+        XCTAssertEqual(queryHeader.rtm_type, UInt8(RTM_GET))
+        XCTAssertEqual(queryHeader.rtm_addrs, RTA_DST)
+        XCTAssertEqual(queryHeader.rtm_seq, 7)
+        XCTAssertEqual(queryHeader.rtm_pid, 42)
+        XCTAssertEqual(Array(query.suffix(16).prefix(8)), [16, UInt8(AF_INET), 0, 0, 192, 168, 1, 18])
     }
 
     func testMACVendorDatabaseUsesLongestPublicPrefixAndRejectsLocalAddresses() {
