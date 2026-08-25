@@ -64,12 +64,24 @@ final class NetToysScannerViewModel {
     private static let preferencesKey = "nettoys.scanner.preferences"
     private static let livenessPreferencesKey = "nettoys.scanner.liveness-preferences"
     private static let openersKey = "nettoys.scanner.openers"
+    private static let targetKey = "nettoys.scanner.target"
+    private static let portKey = "nettoys.scanner.ports"
+    private static let filterKey = "nettoys.scanner.filter"
+    private static let searchKey = "nettoys.scanner.search"
 
-    var targetInput: String
-    var portInput = "22, 80, 443"
+    var targetInput: String {
+        didSet { defaults.set(targetInput, forKey: Self.targetKey) }
+    }
+    var portInput = "22, 80, 443" {
+        didSet { defaults.set(portInput, forKey: Self.portKey) }
+    }
     var results: [NetToysScanResult] = []
-    var filter = NetToysResultFilter.all
-    var searchText = ""
+    var filter = NetToysResultFilter.all {
+        didSet { defaults.set(filter.rawValue, forKey: Self.filterKey) }
+    }
+    var searchText = "" {
+        didSet { defaults.set(searchText, forKey: Self.searchKey) }
+    }
     var completed = 0
     var total = 0
     var lastDuration: TimeInterval?
@@ -94,13 +106,30 @@ final class NetToysScannerViewModel {
     var favoriteTargets = NetToysScannerStore.favoriteTargets()
     var annotations = NetToysScannerStore.annotations()
     var openers = NetToysOpener.defaults
+    var selection = Set<String>()
+    var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)]
 
+    private let defaults: UserDefaults
     private let scanner = NetToysScanner()
     private var scanTask: Task<Void, Never>?
 
-    init() {
-        targetInput = LocalIPv4Network.active()?.cidr ?? "192.168.1.0/24"
-        if let data = UserDefaults.standard.data(forKey: Self.preferencesKey),
+    init(
+        archive: NetToysScanArchive = NetToysScannerStore.archive(),
+        defaults: UserDefaults = .standard
+    ) {
+        self.defaults = defaults
+        let latestRun = archive.runs.last
+        targetInput = defaults.string(forKey: Self.targetKey)
+            ?? latestRun?.target
+            ?? LocalIPv4Network.active()?.cidr
+            ?? "192.168.1.0/24"
+        results = latestRun?.results ?? []
+        lastDuration = latestRun?.duration
+        completed = results.count
+        total = results.count
+        filter = defaults.string(forKey: Self.filterKey).flatMap(NetToysResultFilter.init(rawValue:)) ?? .all
+        searchText = defaults.string(forKey: Self.searchKey) ?? ""
+        if let data = defaults.data(forKey: Self.preferencesKey),
            let preferences = try? JSONDecoder().decode(NetToysScannerPreferences.self, from: data) {
             portInput = preferences.portInput
             timeoutMilliseconds = min(max(preferences.timeoutMilliseconds, 100), 5_000)
@@ -116,14 +145,15 @@ final class NetToysScannerViewModel {
             customTextRequest = preferences.customTextRequest
             customTextPattern = preferences.customTextPattern
         }
-        if let data = UserDefaults.standard.data(forKey: Self.livenessPreferencesKey),
+        portInput = defaults.string(forKey: Self.portKey) ?? portInput
+        if let data = defaults.data(forKey: Self.livenessPreferencesKey),
            let preferences = try? JSONDecoder().decode(NetToysLivenessPreferences.self, from: data) {
             livenessMethod = preferences.method
             pingTimeoutMilliseconds = min(max(preferences.pingTimeoutMilliseconds, 100), 5_000)
             adaptiveTCPTimeout = preferences.adaptiveTCPTimeout
             scanUnresponsiveHosts = preferences.scanUnresponsiveHosts
         }
-        if let data = UserDefaults.standard.data(forKey: Self.openersKey),
+        if let data = defaults.data(forKey: Self.openersKey),
            let saved = try? JSONDecoder().decode([NetToysOpener].self, from: data),
            saved.count <= 20,
            Set(saved.map(\.id)).count == saved.count,
@@ -152,7 +182,7 @@ final class NetToysScannerViewModel {
             customTextPattern: customTextPattern
         )
         if let data = try? JSONEncoder().encode(value) {
-            UserDefaults.standard.set(data, forKey: Self.preferencesKey)
+            defaults.set(data, forKey: Self.preferencesKey)
         }
         let liveness = NetToysLivenessPreferences(
             method: livenessMethod,
@@ -161,7 +191,7 @@ final class NetToysScannerViewModel {
             scanUnresponsiveHosts: scanUnresponsiveHosts
         )
         if let data = try? JSONEncoder().encode(liveness) {
-            UserDefaults.standard.set(data, forKey: Self.livenessPreferencesKey)
+            defaults.set(data, forKey: Self.livenessPreferencesKey)
         }
     }
 
@@ -175,7 +205,7 @@ final class NetToysScannerViewModel {
             normalized[index].name = normalized[index].name.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         openers = normalized
-        UserDefaults.standard.set(try JSONEncoder().encode(openers), forKey: Self.openersKey)
+        defaults.set(try JSONEncoder().encode(openers), forKey: Self.openersKey)
     }
 
     var visibleResults: [NetToysScanResult] {
@@ -443,9 +473,7 @@ nonisolated struct NetToysLivenessPreferences: Codable, Equatable, Sendable {
 }
 
 struct NetToysScannerView: View {
-    @State private var model = NetToysScannerViewModel()
-    @State private var selection = Set<String>()
-    @State private var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)]
+    @Bindable var model: NetToysScannerViewModel
     @AppStorage("nettoys.scanner.table-columns")
     private var columnCustomization: TableColumnCustomization<NetToysScanResult>
     @State private var showSettings = false
@@ -455,11 +483,15 @@ struct NetToysScannerView: View {
     @State private var openerPreview: NetToysOpenerPreview?
 
     private var sortedResults: [NetToysScanResult] {
-        model.visibleResults.sorted(using: sortOrder)
+        model.visibleResults.sorted(using: model.sortOrder)
     }
 
     private var selectedRows: [NetToysScanResult] {
-        model.results.filter { selection.contains($0.id) }
+        model.results.filter { model.selection.contains($0.id) }
+    }
+
+    init(model: NetToysScannerViewModel) {
+        self.model = model
     }
 
     var body: some View {
@@ -613,24 +645,24 @@ struct NetToysScannerView: View {
                 .disabled(selectedRows.count != 1)
                 Divider()
                 Button("Copy Selected Details") { copyDetails(selectedRows) }
-                    .disabled(selection.isEmpty)
+                    .disabled(model.selection.isEmpty)
                 Button("Delete Selected", role: .destructive) {
-                    model.removeResults(ids: selection)
-                    selection.removeAll()
+                    model.removeResults(ids: model.selection)
+                    model.selection.removeAll()
                 }
-                .disabled(selection.isEmpty)
+                .disabled(model.selection.isEmpty)
             }
 
             Button("Copy IP") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(selectedRows.map { $0.address.description }.joined(separator: "\n"), forType: .string)
             }
-            .disabled(selection.isEmpty)
+            .disabled(model.selection.isEmpty)
 
             Button("Rescan") {
                 model.start(targets: selectedRows.map(\.address))
             }
-            .disabled(selection.isEmpty || model.isScanning)
+            .disabled(model.selection.isEmpty || model.isScanning)
 
             Menu("Export") {
                 ForEach(NetToysExportFormat.allCases) { format in
@@ -657,8 +689,8 @@ struct NetToysScannerView: View {
     private var resultsTable: some View {
         Table(
             sortedResults,
-            selection: $selection,
-            sortOrder: $sortOrder,
+            selection: $model.selection,
+            sortOrder: $model.sortOrder,
             columnCustomization: $columnCustomization
         ) {
             TableColumn("IP Address", value: \.sortAddress) { result in
@@ -806,7 +838,7 @@ struct NetToysScannerView: View {
             .disabled(model.isScanning)
             Button("Delete", role: .destructive) {
                 model.removeResults(ids: selected)
-                selection.subtract(selected)
+                model.selection.subtract(selected)
             }
         } primaryAction: { selected in
             detailResult = model.results.first { selected.contains($0.id) }
@@ -876,11 +908,11 @@ struct NetToysScannerView: View {
     private func select(offset: Int, where predicate: (NetToysScanResult) -> Bool) {
         let matches = sortedResults.filter(predicate)
         guard !matches.isEmpty else { return }
-        let current = selection.first.flatMap { id in matches.firstIndex { $0.id == id } }
+        let current = model.selection.first.flatMap { id in matches.firstIndex { $0.id == id } }
         let index = current.map { ($0 + offset + matches.count) % matches.count }
             ?? (offset < 0 ? matches.count - 1 : 0)
         let next = matches[index]
-        selection = [next.id]
+        model.selection = [next.id]
     }
 }
 
