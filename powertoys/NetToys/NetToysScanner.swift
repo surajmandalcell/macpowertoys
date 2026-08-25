@@ -1000,7 +1000,7 @@ actor NetToysScanner {
             }
             scanned.append(contentsOf: results)
         }
-        let arp = await ARPTable.load()
+        let arp = await ARPTable.load(addresses: scanned.filter(\.isReachable).map(\.address))
         return scanned.map { result in
             let macAddress = arp[result.address.description]
             return NetToysScanResult(
@@ -1190,30 +1190,68 @@ nonisolated enum HostResolver {
 }
 
 nonisolated enum ARPTable {
-    static func load() async -> [String: String] {
-        await Task.detached(priority: .utility) {
-            var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_LLINFO]
-            var byteCount = 0
-            let sizeStatus = mib.withUnsafeMutableBufferPointer {
-                sysctl($0.baseAddress, UInt32($0.count), nil, &byteCount, nil, 0)
+    static func load(addresses: [IPv4Address]) async -> [String: String] {
+        await Task.detached(priority: .utility) { loadSynchronously(addresses: addresses) }.value
+    }
+
+    static func queryMessage(
+        for address: IPv4Address,
+        sequence: Int32,
+        processID: pid_t
+    ) -> Data {
+        var header = rt_msghdr()
+        header.rtm_msglen = UInt16(MemoryLayout<rt_msghdr>.size + MemoryLayout<sockaddr_in>.size)
+        header.rtm_version = UInt8(RTM_VERSION)
+        header.rtm_type = UInt8(RTM_GET)
+        header.rtm_addrs = RTA_DST
+        header.rtm_pid = processID
+        header.rtm_seq = sequence
+        var destination = sockaddr_in()
+        destination.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        destination.sin_family = sa_family_t(AF_INET)
+        destination.sin_addr.s_addr = address.rawValue.bigEndian
+        var message = withUnsafeBytes(of: &header) { Data($0) }
+        message.append(withUnsafeBytes(of: &destination) { Data($0) })
+        return message
+    }
+
+    private static func loadSynchronously(addresses: [IPv4Address]) -> [String: String] {
+        let descriptor = socket(PF_ROUTE, SOCK_RAW, 0)
+        guard descriptor >= 0 else { return [:] }
+        defer { Darwin.close(descriptor) }
+        var timeout = timeval(tv_sec: 0, tv_usec: 250_000)
+        _ = setsockopt(
+            descriptor,
+            SOL_SOCKET,
+            SO_RCVTIMEO,
+            &timeout,
+            socklen_t(MemoryLayout<timeval>.size)
+        )
+        let processID = getpid()
+        var result: [String: String] = [:]
+        for (offset, address) in Array(Set(addresses)).sorted().enumerated() {
+            let sequence = Int32(truncatingIfNeeded: offset + 1)
+            let query = queryMessage(for: address, sequence: sequence, processID: processID)
+            let sent = query.withUnsafeBytes {
+                Darwin.write(descriptor, $0.baseAddress, $0.count)
             }
-            guard sizeStatus == 0, byteCount > 0 else { return [:] }
-            var data = Data(count: byteCount)
-            let readStatus = mib.withUnsafeMutableBufferPointer { mibBuffer in
-                data.withUnsafeMutableBytes { dataBuffer in
-                    sysctl(
-                        mibBuffer.baseAddress,
-                        UInt32(mibBuffer.count),
-                        dataBuffer.baseAddress,
-                        &byteCount,
-                        nil,
-                        0
-                    )
+            guard sent == query.count else { continue }
+            for _ in 0..<8 {
+                var reply = Data(count: 2_048)
+                let byteCount = reply.withUnsafeMutableBytes {
+                    Darwin.read(descriptor, $0.baseAddress, $0.count)
                 }
+                guard byteCount >= MemoryLayout<rt_msghdr>.size else { break }
+                let header = reply.withUnsafeBytes {
+                    $0.loadUnaligned(as: rt_msghdr.self)
+                }
+                guard header.rtm_pid == processID, header.rtm_seq == sequence else { continue }
+                guard header.rtm_errno == 0 else { break }
+                result.merge(parseRoutingMessages(reply.prefix(byteCount))) { _, latest in latest }
+                break
             }
-            guard readStatus == 0 else { return [:] }
-            return parseRoutingMessages(data.prefix(byteCount))
-        }.value
+        }
+        return result
     }
 
     static func parseRoutingMessages(_ data: Data) -> [String: String] {
