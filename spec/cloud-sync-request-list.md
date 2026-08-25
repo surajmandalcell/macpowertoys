@@ -4,7 +4,7 @@ Reviewed against current source on 2026-08-24. Installed checks remain marked Ve
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Offer a separate Cloud Sync menu bar icon. | The launcher setting stores the choice, and `IndividualMenuBarController` opens Cloud Sync from a native item with a stable autosave name. | Enable the item in the latest normal installed build, move it, relaunch, and confirm that it keeps its position and opens Cloud Sync. |
+| Verify | Choose no Cloud Sync menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Cloud Sync preserves its combined default and any legacy separate choice; its separate native item retains the stable autosave name. | Exercise all three modes in the latest normal installed build, then move the separate item, relaunch, and confirm its position and action. |
 | Done | Rename "Split uploaded" to "List uploaded" and show uploaded files as a tree in the right pane. | `bb42342`; `TransferFileTreeView` uses "List uploaded" and tree rows in the uploaded column. | None. |
 | Done | Vertically center Recalculate with Transfer plan and move the subtitle into an info popover. | `ebc8692`; the row is center-aligned and owns an `info.circle` popover. | None. |
 | Done | Keep detail tabs aligned when the selected pill adds its 10pt inset. | `6ad4568`; the pill boundary starts at the shared 20pt gutter. `DESIGN.md` forbids tab movement on selection. | None. |

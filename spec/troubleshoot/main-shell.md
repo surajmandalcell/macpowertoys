@@ -38,11 +38,30 @@
   insets. Give the outlined tab group a 20pt top inset and a 6pt body gap. Its
   4pt inner inset must be equal on every edge, and non-scrolling tabs must use
   the complete available width. Use one accent selection, 4pt between tabs,
-  and no divider below a group that already has its own surface. Give the
-  footer 8pt top and 10pt bottom insets.
+  and no divider below a group that already has its own surface. Show tab icons
+  and names for one or two combined tools, then icons only above two. Persist
+  the last selected available tool. Give the footer 8pt top and 10pt bottom
+  insets.
 - **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
   leading labels and trailing actions must remain aligned without crowding.
-  Measure every tab-group edge, both body bottoms, and both footer edges.
+  Measure every tab-group edge, both body bottoms, and both footer edges. Add a
+  third combined tool, confirm labels disappear, then reopen the popover and
+  confirm the last selected available tool returns.
+
+## Menu-Bar Tool Placement
+
+- **Symptom:** A menu-capable tool is forced into the combined popover, can only
+  add a separate icon, or has no launcher control for either placement.
+- **Cause:** Combined membership and separate status items used independent
+  Boolean rules instead of one per-tool placement preference.
+- **Invariant:** Cloud Sync, Awake, Color Picker, Text Extractor, and Input
+  Devices each expose one native segmented launcher control with None,
+  Combined, and Separate. One tool occupies at most one placement. Preserve
+  legacy separate choices, preserve the existing Cloud Sync and Awake combined
+  defaults, and keep separate-item autosave names stable.
+- **Check:** Exercise all three modes for all five tools. Confirm Combined adds
+  exactly one tab, Separate removes that tab and adds one native status item,
+  and None removes both without changing tool enablement.
 
 ## Menu-Bar Footer Contrast
 

@@ -10,8 +10,11 @@ evidence, and remaining work.
 - Verify that every workspace sidebar meets its body without a visible seam in
   the latest normal signed build.
 - Verify the full-width Awake tray controls in the latest normal signed build.
-- Verify separate menu bar icons, saved visibility, position restoration, and
-  actions for every eligible background tool.
+- Verify None, Combined, and Separate menu-bar modes, compact icon-only
+  navigation above two combined tools, saved tab selection, separate-item
+  position restoration, and actions for every eligible background tool.
+- Verify the compact top-aligned launcher introduction for Input Devices and
+  the other menu-bar-capable tools.
 - Verify focus appearance and keyboard activation in the menu-bar panels with
   a physical menu-bar click. All other built-in surfaces passed.
 - Verify compact inline metadata and adaptive two-column pages in the latest
