@@ -272,6 +272,7 @@ struct NetToysHistoryView: View {
                 HStack(spacing: 14) {
                     Label("Reachable", systemImage: "circle.fill").foregroundStyle(.green)
                     Label("Unavailable", systemImage: "circle.fill").foregroundStyle(.orange)
+                    Label("No data", systemImage: "circle.fill").foregroundStyle(.secondary)
                     Spacer()
                     Text("State between recorded transitions is inferred.")
                         .foregroundStyle(.secondary)
@@ -424,29 +425,42 @@ nonisolated func internetAvailabilityTimeline(
     to end: Date,
     currentState: NetworkReachability = .unknown
 ) -> [(date: Date, state: NetworkReachability)] {
+    var state = NetworkReachability.unknown
+    var baselineDate = Date.distantPast
     var transitions: [(date: Date, from: NetworkReachability, to: NetworkReachability)] = []
-    for event in events where event.date >= start && event.date <= end {
+    for event in events where event.date <= end {
         for change in event.changes {
             if case .internet(let from, let to) = change {
-                transitions.append((event.date, from, to))
+                if event.date < start, event.date > baselineDate {
+                    baselineDate = event.date
+                    state = to
+                } else if event.date >= start {
+                    transitions.append((event.date, from, to))
+                }
             }
         }
     }
     transitions.sort { $0.date < $1.date }
-    guard let first = transitions.first else { return [] }
-    let lastTransitionDate = transitions.last?.date ?? first.date
+    guard let lastTransition = transitions.last else {
+        return state == .unknown ? [] : [(start, state), (end, state)]
+    }
 
-    var state = first.from
     var points = [(date: start, state: state)]
     for transition in transitions {
         points.append((transition.date, state))
-        state = transition.to
-        points.append((transition.date, state))
+        if state != transition.from {
+            state = transition.from
+            points.append((transition.date, state))
+        }
+        if state != transition.to {
+            state = transition.to
+            points.append((transition.date, state))
+        }
     }
     if currentState != .unknown,
        state != currentState,
        let networkDate = events.filter({ event in
-           event.date > lastTransitionDate && event.date <= end && event.changes.contains {
+           event.date > lastTransition.date && event.date <= end && event.changes.contains {
                if case .network = $0 { return true }
                return false
            }
@@ -476,8 +490,9 @@ private struct NetworkTransitionGraph: View {
                 currentState: currentState
             )
             let reachableY = plot.minY + 8
+            let unknownY = plot.midY
             let unavailableY = plot.maxY - 8
-            for y in [reachableY, unavailableY] {
+            for y in [reachableY, unknownY, unavailableY] {
                 context.stroke(
                     Path(CGRect(x: plot.minX, y: y, width: plot.width, height: 0)),
                     with: .color(.secondary.opacity(0.2))
@@ -503,21 +518,36 @@ private struct NetworkTransitionGraph: View {
             func point(_ value: (date: Date, state: NetworkReachability)) -> CGPoint {
                 let elapsed = value.date.timeIntervalSince(cutoff)
                 let x = plot.minX + plot.width * min(max(elapsed / range, 0), 1)
-                return CGPoint(x: x, y: value.state == .reachable ? reachableY : unavailableY)
+                let y = switch value.state {
+                case .reachable: reachableY
+                case .unreachable: unavailableY
+                case .unknown: unknownY
+                }
+                return CGPoint(x: x, y: y)
             }
-            var path = Path()
-            path.move(to: point(points[0]))
-            for value in points.dropFirst() {
-                let next = point(value)
-                path.addLine(to: CGPoint(x: next.x, y: path.currentPoint?.y ?? next.y))
-                path.addLine(to: next)
+            for (value, nextValue) in zip(points, points.dropFirst()) {
+                let current = point(value)
+                let next = point(nextValue)
+                var horizontal = Path()
+                horizontal.move(to: current)
+                horizontal.addLine(to: CGPoint(x: next.x, y: current.y))
+                context.stroke(
+                    horizontal,
+                    with: .color(color(for: value.state)),
+                    style: StrokeStyle(lineWidth: 2, lineJoin: .round)
+                )
+                if current.y != next.y {
+                    var vertical = Path()
+                    vertical.move(to: CGPoint(x: next.x, y: current.y))
+                    vertical.addLine(to: next)
+                    context.stroke(vertical, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2))
+                }
             }
-            context.stroke(path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
             for value in points.dropFirst().dropLast() {
                 let center = point(value)
                 context.fill(
                     Path(ellipseIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6)),
-                    with: .color(value.state == .reachable ? .green : .orange)
+                    with: .color(color(for: value.state))
                 )
             }
         }
@@ -528,5 +558,13 @@ private struct NetworkTransitionGraph: View {
         range <= NetToysHistoryRange.day.rawValue
             ? date.formatted(date: .omitted, time: .shortened)
             : date.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func color(for state: NetworkReachability) -> Color {
+        switch state {
+        case .reachable: .green
+        case .unreachable: .orange
+        case .unknown: .secondary
+        }
     }
 }

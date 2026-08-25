@@ -137,12 +137,19 @@ final class NetToysTests: XCTestCase {
             internet: .reachable,
             at: start.addingTimeInterval(80)
         ))
-        let events = [reconnected,
+        let events = [
+            reconnected,
             NetworkTransitionEvent(
                 networkID: "en0|192.168.1.1",
                 date: start.addingTimeInterval(60),
                 changes: [.network(from: "Home Wi-Fi", to: "Guest Wi-Fi")]
-            ), disconnected
+            ),
+            disconnected,
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1",
+                date: start.addingTimeInterval(-10),
+                changes: [.internet(from: .unreachable, to: .reachable)]
+            )
         ]
 
         let points = internetAvailabilityTimeline(events: events, from: start, to: end)
@@ -185,11 +192,20 @@ final class NetToysTests: XCTestCase {
             start,
             start.addingTimeInterval(40),
             start.addingTimeInterval(40),
+            start.addingTimeInterval(40),
             start.addingTimeInterval(80),
             start.addingTimeInterval(80),
             end
         ])
-        XCTAssertEqual(legacyPoints.map { $0.state == .reachable }, [true, true, false, false, true, true])
+        XCTAssertEqual(legacyPoints.map { $0.state }, [
+            .unknown,
+            .unknown,
+            .reachable,
+            .unreachable,
+            .unreachable,
+            .reachable,
+            .reachable
+        ])
     }
 
     func testNetworkIdentityFormatsSSIDInterfaceAndGateway() {
