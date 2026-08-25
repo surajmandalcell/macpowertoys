@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import CoreLocation
 import SwiftUI
 import XCTest
 @testable import powertoys
@@ -15,6 +16,17 @@ final class NetToysTests: XCTestCase {
         func next() -> Bool {
             values.isEmpty ? false : values.removeFirst()
         }
+    }
+
+    func testLocationFailureRoutesToSettingsWithoutRetrying() {
+        XCTAssertEqual(
+            NetToysLocationAction(status: .notDetermined, requestFailed: false),
+            .request
+        )
+        XCTAssertEqual(
+            NetToysLocationAction(status: .notDetermined, requestFailed: true),
+            .openSettings
+        )
     }
 
     func testIPv4TargetsParseRangeCIDRAndListWithoutDuplicates() throws {
