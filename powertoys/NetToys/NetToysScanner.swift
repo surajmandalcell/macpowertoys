@@ -1328,9 +1328,12 @@ nonisolated enum ARPTable {
                         let macLength = Int(bytes[addressOffset + 6])
                         let macOffset = addressOffset + 8 + nameLength
                         if macLength == 6, macOffset + macLength <= addressOffset + addressLength {
-                            macAddress = (0..<macLength)
-                                .map { String(format: "%02x", bytes[macOffset + $0]) }
-                                .joined(separator: ":")
+                            let octets = (0..<macLength).map { bytes[macOffset + $0] }
+                            if octets != [2, 0, 0, 0, 0, 0], octets.contains(where: { $0 != 0 }) {
+                                macAddress = octets
+                                    .map { String(format: "%02x", $0) }
+                                    .joined(separator: ":")
+                            }
                         }
                     }
                     addressOffset += alignedLength

@@ -44,7 +44,12 @@ extension NetToysScanResult {
     nonisolated var statusTitle: String { isReachable ? "Up" : "Down" }
     nonisolated var responseTitle: String { responseMilliseconds.map { String(format: "%.1f", $0) } ?? "" }
     nonisolated var hostnameTitle: String { hostname ?? "" }
-    nonisolated var macTitle: String { macAddress ?? "" }
+    nonisolated var macTitle: String { macAddress ?? (isReachable ? "macOS restricted" : "") }
+    nonisolated var macHelp: String {
+        macAddress == nil && isReachable
+            ? "macOS restricts neighboring device MAC addresses to Apple-entitled processes."
+            : ""
+    }
     nonisolated var vendorTitle: String { vendor ?? "" }
     nonisolated var portsTitle: String { openPorts.map(String.init).joined(separator: ", ") }
     nonisolated var filteredPortsTitle: String { filteredPorts?.map(String.init).joined(separator: ", ") ?? "" }
@@ -744,6 +749,7 @@ struct NetToysScannerView: View {
                 TableColumn("MAC Address", value: \NetToysScanResult.macTitle) { result in
                     Text(result.macTitle.isEmpty ? "—" : result.macTitle)
                         .font(.system(.body, design: .monospaced))
+                        .help(result.macHelp)
                 }
                 .width(min: 130, ideal: 142)
                 .customizationID("nettoys.mac")
@@ -1013,6 +1019,12 @@ private struct NetToysScannerSettingsView: View {
                             .lineLimit(2...4)
                         TextField("Response regular expression", text: $model.customTextPattern)
                     }
+                }
+
+                Section("MAC addresses") {
+                    Text("macOS restricts neighboring device MAC addresses to processes with Apple's private neighbor-cache privilege. NetToys never presents the system's privacy placeholder as a device MAC.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Openers") {
