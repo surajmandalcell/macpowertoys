@@ -622,11 +622,11 @@ struct NetToysSettingsView: View {
     private var localNetworkStatusMessage: String {
         switch localNetworkAccess.state {
         case .checking:
-            "Respond to the macOS prompt so IP Scanner can discover local devices and their MAC addresses."
+            "Respond to the macOS prompt so IP Scanner can discover local devices."
         case .allowed:
-            "Local Network access is allowed. IP Scanner can discover local devices and their MAC addresses."
+            "Local Network access is allowed. Device MAC addresses remain restricted by macOS."
         case .denied:
-            "Allow MacPowerToys in Privacy & Security > Local Network to scan devices and read MAC addresses."
+            "Allow MacPowerToys in Privacy & Security > Local Network to scan local devices."
         case .unavailable:
             "macOS could not check Local Network access. Check the network and try again."
         }

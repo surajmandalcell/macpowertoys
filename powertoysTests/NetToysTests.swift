@@ -587,6 +587,17 @@ final class NetToysTests: XCTestCase {
             expectedAddress: IPv4Address(rawValue: 0xC0A8_0112),
             interfaceIndex: 14
         ))
+        let privacyPlaceholder = link.enumerated().map { offset, byte in
+            (11...16).contains(offset) ? [0x02, 0, 0, 0, 0, 0][offset - 11] : byte
+        }
+        var redactedMessage = withUnsafeBytes(of: &header) { Data($0) }
+        redactedMessage.append(contentsOf: destination)
+        redactedMessage.append(contentsOf: privacyPlaceholder)
+        XCTAssertNil(ARPTable.neighborMAC(
+            in: redactedMessage,
+            expectedAddress: IPv4Address(rawValue: 0xC0A8_0112),
+            interfaceIndex: 14
+        ))
 
         let query = ARPTable.queryMessage(
             for: IPv4Address(rawValue: 0xC0A8_0112),
