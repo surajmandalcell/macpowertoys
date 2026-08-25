@@ -22,6 +22,29 @@
   quit MacPowerToys, and confirm the helper continues. Disable NetToys and
   confirm the helper exits and is no longer registered.
 
+## NetToys Scanner Persistence And MAC Addresses
+
+- **Symptom:** Scanner results disappear after changing destinations, or the
+  MAC column is empty or shows `02:00:00:00:00:00`.
+- **Cause:** The scanner view owned its model, so SwiftUI discarded the live
+  results with the destination. Completed scan archives were written but not
+  restored. On current macOS, the routing socket scrubs neighboring hardware
+  addresses for third-party processes; the SDK reserves unsanitized neighbor
+  cache reads for an Apple-restricted privilege. Local Network permission
+  allows device discovery but does not grant that privilege.
+- **Invariant:** The NetToys window owns the scanner model. Preserve live
+  results, selection, and sorting across destination changes. Restore the
+  latest completed run after relaunch, and persist target, ports, filter,
+  search, scanner preferences, columns, openers, favorites, and annotations.
+  Request Local Network access on use and show its state and recovery action in
+  Settings. Never present macOS's `02:00:00:00:00:00` privacy placeholder as a
+  device MAC; label the platform restriction directly instead.
+- **Check:** Recreate the scanner model and confirm the latest archive loads.
+  Change destinations and return, then quit and relaunch, confirming the result
+  remains. Deny Local Network access and confirm Settings offers recovery. In
+  the signed app, rescan a reachable neighbor and confirm the privacy
+  placeholder is rejected and the MAC cell says `macOS restricted`.
+
 ## Wi-Fi Priority Failover
 
 - **Symptom:** A failed Wi-Fi connection stays active even when another saved
