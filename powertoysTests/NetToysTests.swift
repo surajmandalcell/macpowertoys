@@ -817,6 +817,53 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testWiFiPriorityDefaultsAndFailoverTiming() throws {
+        let legacyData = Data(
+            #"{"probeInterval":2.5,"anchors":[],"recordsNetworkHistory":true}"#.utf8
+        )
+        let legacy = try JSONDecoder().decode(NetToysConfiguration.self, from: legacyData)
+        XCTAssertEqual(legacy.wifiPriority, WiFiPriorityConfiguration())
+
+        let priority = WiFiPriorityConfiguration(
+            isEnabled: true,
+            outageThreshold: 10,
+            ssids: ["Batcave2.4G", "BatcaveAlt", "Batcave2.4G"]
+        )
+        XCTAssertEqual(priority.ssids, ["Batcave2.4G", "BatcaveAlt"])
+        XCTAssertEqual(
+            WiFiNetworkController.parsePreferredNetworks(
+                "Preferred networks on en0:\n\tBatcave2.4G\n\tBatcaveAlt\n"
+            ),
+            ["Batcave2.4G", "BatcaveAlt"]
+        )
+
+        let startedAt = Date(timeIntervalSince1970: 1_000)
+        var monitor = WiFiFailoverMonitor()
+        XCTAssertFalse(monitor.shouldAttempt(isFailure: true, threshold: 10, at: startedAt))
+        XCTAssertFalse(monitor.shouldAttempt(isFailure: true, threshold: 10, at: startedAt.addingTimeInterval(9)))
+        XCTAssertTrue(monitor.shouldAttempt(isFailure: true, threshold: 10, at: startedAt.addingTimeInterval(10)))
+        XCTAssertEqual(
+            WiFiFailoverMonitor.nextSSID(
+                after: "Batcave2.4G",
+                priorities: priority.ssids,
+                availableSSIDs: ["Batcave2.4G", "BatcaveAlt"]
+            ),
+            "BatcaveAlt"
+        )
+        XCTAssertEqual(
+            WiFiFailoverMonitor.nextSSID(
+                after: "BatcaveAlt",
+                priorities: priority.ssids,
+                availableSSIDs: ["Batcave2.4G", "BatcaveAlt"]
+            ),
+            "Batcave2.4G"
+        )
+        monitor.didAttempt(at: startedAt.addingTimeInterval(10))
+        XCTAssertFalse(monitor.shouldAttempt(isFailure: true, threshold: 10, at: startedAt.addingTimeInterval(20)))
+        XCTAssertFalse(monitor.shouldAttempt(isFailure: false, threshold: 10, at: startedAt.addingTimeInterval(21)))
+        XCTAssertFalse(monitor.shouldAttempt(isFailure: true, threshold: 10, at: startedAt.addingTimeInterval(22)))
+    }
+
     func testReplacingAnchorPreservesOtherConfiguration() throws {
         let first = SSHAnchorConfiguration(
             hostAlias: "jetson",

@@ -67,10 +67,12 @@ actor NetToysHelperRuntime {
     private var networkSnapshot: NetworkRuntimeSnapshot?
     private var currentStatuses: [SSHAnchorStatus] = []
     private var ssidAccess: NetToysSSIDAccessState?
+    private var wifiFailoverMonitor = WiFiFailoverMonitor()
+    private var wifiFailoverStatus: WiFiFailoverStatus?
 
     func setSSIDAccess(_ state: NetToysSSIDAccessState) async {
         ssidAccess = state
-        if state == .allowed { await checkNetwork() }
+        if state == .allowed { await checkNetwork(NetToysConfigurationStore.load()) }
         writeStatus()
     }
 
@@ -90,10 +92,14 @@ actor NetToysHelperRuntime {
         for anchor in configuration.anchors {
             statuses.append(await check(anchor))
         }
-        if configuration.recordsNetworkHistory,
-           Date().timeIntervalSince(lastHistoryCheck) >= 30 {
+        if configuration.wifiPriority.isEnabled
+            || (configuration.recordsNetworkHistory
+                && Date().timeIntervalSince(lastHistoryCheck) >= 30) {
             lastHistoryCheck = Date()
-            await checkNetwork()
+            await checkNetwork(configuration)
+        } else if !configuration.wifiPriority.isEnabled {
+            wifiFailoverMonitor = WiFiFailoverMonitor()
+            wifiFailoverStatus = nil
         }
         saveStatus(statuses)
     }
@@ -189,20 +195,107 @@ actor NetToysHelperRuntime {
         nextRecovery[id] = Date().addingTimeInterval(TimeInterval(seconds))
     }
 
-    private func checkNetwork() async {
+    private func checkNetwork(_ configuration: NetToysConfiguration) async {
         guard let route = await DefaultRoute.load() else {
-            recordNetwork(networkID: "disconnected", ssid: nil, gateway: .unknown, internet: .unknown)
+            recordNetwork(
+                networkID: "disconnected",
+                ssid: nil,
+                gateway: .unknown,
+                internet: .unknown,
+                shouldRecordHistory: configuration.recordsNetworkHistory
+            )
+            await updateWiFiFailover(
+                configuration.wifiPriority,
+                currentSSID: nil,
+                isFailure: true,
+                hasActiveRoute: false
+            )
             return
         }
         async let gateway = NetworkProbe.gateway(route.gateway)
         async let internet = NetworkProbe.internet()
+        let ssid = NetworkSSID.current(interfaceName: route.interfaceName)
+        let internetState = await internet
         recordNetwork(
             networkID: route.networkID,
-            ssid: NetworkSSID.current(interfaceName: route.interfaceName),
+            ssid: ssid,
             usesSSIDIdentity: NetworkSSID.isWiFi(interfaceName: route.interfaceName),
             gateway: await gateway,
-            internet: await internet
+            internet: internetState,
+            shouldRecordHistory: configuration.recordsNetworkHistory
         )
+        await updateWiFiFailover(
+            configuration.wifiPriority,
+            currentSSID: ssid,
+            isFailure: internetState == .unreachable,
+            hasActiveRoute: true
+        )
+    }
+
+    private func updateWiFiFailover(
+        _ configuration: WiFiPriorityConfiguration,
+        currentSSID: String?,
+        isFailure: Bool,
+        hasActiveRoute: Bool
+    ) async {
+        guard configuration.isEnabled else { return }
+        let date = Date()
+        guard !(hasActiveRoute && currentSSID == nil) else {
+            wifiFailoverStatus = WiFiFailoverStatus(
+                state: .failed,
+                message: "The helper needs the Wi-Fi network name before it can switch networks.",
+                updatedAt: date
+            )
+            return
+        }
+        guard wifiFailoverMonitor.shouldAttempt(
+            isFailure: isFailure,
+            threshold: configuration.outageThreshold,
+            at: date
+        ) else {
+            wifiFailoverStatus = WiFiFailoverStatus(
+                state: isFailure ? .waiting : .monitoring,
+                message: isFailure
+                    ? "Internet is unavailable. Waiting before failover."
+                    : "Internet is reachable.",
+                updatedAt: date
+            )
+            return
+        }
+        wifiFailoverMonitor.didAttempt(at: date)
+        wifiFailoverStatus = WiFiFailoverStatus(
+            state: .switching,
+            message: "Looking for the next saved Wi-Fi network.",
+            updatedAt: date
+        )
+        writeStatus()
+        let availableSSIDs = await WiFiNetworkController.availableSSIDs()
+        guard let target = WiFiFailoverMonitor.nextSSID(
+            after: currentSSID,
+            priorities: configuration.ssids,
+            availableSSIDs: availableSSIDs
+        ) else {
+            wifiFailoverStatus = WiFiFailoverStatus(
+                state: .failed,
+                message: "No configured backup Wi-Fi network is nearby. macOS can try Instant Hotspot next.",
+                updatedAt: Date()
+            )
+            return
+        }
+        do {
+            try await WiFiNetworkController.join(target)
+            wifiFailoverStatus = WiFiFailoverStatus(
+                state: .switching,
+                message: "Joined \(target). Checking Internet access.",
+                updatedAt: Date()
+            )
+        } catch {
+            wifiFailoverStatus = WiFiFailoverStatus(
+                state: .failed,
+                message: error.localizedDescription,
+                updatedAt: Date()
+            )
+        }
     }
 
     private func recordNetwork(
@@ -210,7 +303,8 @@ actor NetToysHelperRuntime {
         ssid: String?,
         usesSSIDIdentity: Bool = false,
         gateway: NetworkReachability,
-        internet: NetworkReachability
+        internet: NetworkReachability,
+        shouldRecordHistory: Bool = true
     ) {
         let date = Date()
         networkSnapshot = NetworkRuntimeSnapshot(
@@ -220,7 +314,8 @@ actor NetToysHelperRuntime {
             internet: internet,
             checkedAt: date
         )
-        guard let event = historyRecorder.observe(
+        guard shouldRecordHistory,
+              let event = historyRecorder.observe(
             networkID: networkID,
             ssid: ssid,
             usesSSIDIdentity: usesSSIDIdentity,
@@ -267,7 +362,8 @@ actor NetToysHelperRuntime {
                 anchors: currentStatuses,
                 network: networkSnapshot,
                 sourceCommit: Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String,
-                ssidAccess: ssidAccess
+                ssidAccess: ssidAccess,
+                wifiFailover: wifiFailoverStatus
             )
         )
     }
