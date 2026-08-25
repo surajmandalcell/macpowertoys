@@ -192,6 +192,7 @@ actor NetToysHelperRuntime {
         recordNetwork(
             networkID: route.networkID,
             ssid: NetworkSSID.current(interfaceName: route.interfaceName),
+            usesSSIDIdentity: NetworkSSID.isWiFi(interfaceName: route.interfaceName),
             gateway: await gateway,
             internet: await internet
         )
@@ -200,6 +201,7 @@ actor NetToysHelperRuntime {
     private func recordNetwork(
         networkID: String,
         ssid: String?,
+        usesSSIDIdentity: Bool = false,
         gateway: NetworkReachability,
         internet: NetworkReachability
     ) {
@@ -214,6 +216,7 @@ actor NetToysHelperRuntime {
         guard let event = historyRecorder.observe(
             networkID: networkID,
             ssid: ssid,
+            usesSSIDIdentity: usesSSIDIdentity,
             gateway: gateway,
             internet: internet,
             at: date
