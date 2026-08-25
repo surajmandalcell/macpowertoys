@@ -217,6 +217,7 @@ struct ColorPickerTool: Tool {
     let icon = "eyedropper"
     let logoAsset = "ColorPickerLogo"
     let category = ToolCategory.dev
+    let hasTrayTab = true
 
     let manual = [
         ToolManualSection(title: "Pick and Copy", points: [
@@ -238,6 +239,7 @@ struct TextExtractorTool: Tool {
     let icon = "text.viewfinder"
     let logoAsset = "TextExtractorLogo"
     let category = ToolCategory.text
+    let hasTrayTab = true
 
     let manual = [
         ToolManualSection(title: "Extract Text", points: [
@@ -259,6 +261,7 @@ struct InputDevicesTool: Tool {
     let icon = "computermouse"
     let logoAsset = "InputDevicesLogoA"
     let category = ToolCategory.system
+    let hasTrayTab = true
 
     let manual = [
         ToolManualSection(title: "Profiles", points: [

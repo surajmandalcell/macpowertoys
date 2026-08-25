@@ -1,6 +1,22 @@
 import AppKit
 import Foundation
 
+enum MenuBarDisplayMode: String, CaseIterable, Identifiable {
+    case none
+    case combined
+    case separate
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .none: "None"
+        case .combined: "Combined"
+        case .separate: "Separate"
+        }
+    }
+}
+
 enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
     case cloudSync = "rclone"
     case awake
@@ -9,8 +25,20 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
     case inputDevices = "input-devices"
 
     var id: String { rawValue }
-    var preferenceKey: String { "tool.\(rawValue).showMenuBarIcon" }
+    var preferenceKey: String { "tool.\(rawValue).menuBarDisplayMode" }
+    var legacyPreferenceKey: String { "tool.\(rawValue).showMenuBarIcon" }
     var autosaveName: String { "MacPowerToys.\(rawValue)" }
+
+    func displayMode(in defaults: UserDefaults = .standard) -> MenuBarDisplayMode {
+        if let rawValue = defaults.string(forKey: preferenceKey),
+           let mode = MenuBarDisplayMode(rawValue: rawValue) {
+            return mode
+        }
+        if defaults.bool(forKey: legacyPreferenceKey) {
+            return .separate
+        }
+        return self == .cloudSync || self == .awake ? .combined : .none
+    }
 
     var title: String {
         switch self {
@@ -36,6 +64,14 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
         switch self {
         case .colorPicker: .colorPickerPick
         case .textExtractor: .textExtractorCapture
+        default: nil
+        }
+    }
+
+    var actionTitle: String? {
+        switch self {
+        case .colorPicker: "Pick Color"
+        case .textExtractor: "Extract Text"
         default: nil
         }
     }
@@ -86,7 +122,7 @@ final class IndividualMenuBarController: NSObject {
 
     func refresh() {
         for tool in IndividualMenuBarTool.allCases {
-            let shouldShow = defaults.bool(forKey: tool.preferenceKey)
+            let shouldShow = tool.displayMode(in: defaults) == .separate
                 && SettingsManager.shared.isToolEnabled(tool.id)
             if shouldShow, statusItems[tool] == nil {
                 statusItems[tool] = makeStatusItem(for: tool)

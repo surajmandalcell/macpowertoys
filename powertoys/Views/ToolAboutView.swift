@@ -46,16 +46,11 @@ struct ToolAboutView: View {
                     switch page {
                     case .settings:
                         VStack(spacing: 0) {
-                            if tool.id == "input-devices" {
-                                Spacer(minLength: 0)
-                                ToolDetailIntro(tool: tool)
-                            } else {
-                                ToolDetailIntro(tool: tool)
-                                ToolSettingsContent(toolID: tool.id)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            }
+                            ToolDetailIntro(tool: tool)
+                            ToolSettingsContent(toolID: tool.id)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                            .disabled(!settings.isToolEnabled(tool.id))
+                        .disabled(!settings.isToolEnabled(tool.id))
                     case .guide:
                         manualSection(for: tool)
                     }
@@ -156,14 +151,14 @@ struct ToolAboutView: View {
 
 private struct ToolDetailIntro: View {
     let tool: any Tool
-    @AppStorage private var showMenuBarIcon: Bool
+    @AppStorage private var menuBarMode: MenuBarDisplayMode
 
     init(tool: any Tool) {
         self.tool = tool
-        _showMenuBarIcon = AppStorage(
-            wrappedValue: false,
-            IndividualMenuBarTool(rawValue: tool.id)?.preferenceKey
-                ?? "tool.\(tool.id).showMenuBarIcon"
+        let menuBarTool = IndividualMenuBarTool(rawValue: tool.id)
+        _menuBarMode = AppStorage(
+            wrappedValue: menuBarTool?.displayMode() ?? .none,
+            menuBarTool?.preferenceKey ?? "tool.\(tool.id).menuBarDisplayMode"
         )
     }
 
@@ -178,16 +173,20 @@ private struct ToolDetailIntro: View {
 
             if IndividualMenuBarTool(rawValue: tool.id) != nil {
                 HStack(spacing: 12) {
-                    Text("Show a separate menu bar icon")
+                    Text("Menu Bar Icon")
                         .font(.system(size: 12, weight: .medium))
                     Spacer(minLength: 12)
-                    Toggle("Show a separate menu bar icon", isOn: $showMenuBarIcon)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
+                    Picker("Menu Bar Icon", selection: $menuBarMode) {
+                        ForEach(MenuBarDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
+                    .frame(width: 240)
                 }
-                .onChange(of: showMenuBarIcon) { _, _ in
+                .onChange(of: menuBarMode) { _, _ in
                     IndividualMenuBarController.shared.refresh()
                 }
             }
