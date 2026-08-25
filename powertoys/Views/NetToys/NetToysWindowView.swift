@@ -21,6 +21,7 @@ enum NetToysPage: String, CaseIterable, Identifiable {
 struct NetToysWindowView: View {
     @State private var page = NetToysPage.scanner
     @State private var showSettings = false
+    @State private var scannerModel = NetToysScannerViewModel()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -95,7 +96,7 @@ struct NetToysWindowView: View {
     private var content: some View {
         switch page {
         case .scanner:
-            NetToysScannerView()
+            NetToysScannerView(model: scannerModel)
         case .anchor:
             NetToysAnchorView()
         case .history:

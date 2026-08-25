@@ -537,15 +537,24 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(targets.allSatisfy { $0.ports == [2222] })
     }
 
-    func testARPTableParsesMacAddresses() {
-        let output = """
-        ? (192.168.1.1) at aa:bb:cc:dd:ee:ff on en0 ifscope [ethernet]
-        jetson.local (192.168.1.44) at 12-34-56-78-9a-bc on en0 ifscope [ethernet]
-        ? (192.168.1.50) at (incomplete) on en0 ifscope [ethernet]
-        """
+    func testARPTableParsesNativeNeighborMessages() {
+        let headerSize = MemoryLayout<rt_msghdr>.size
+        let destination: [UInt8] = [16, UInt8(AF_INET), 0, 0, 192, 168, 1, 18]
+            + Array(repeating: 0, count: 8)
+        let link: [UInt8] = [20, UInt8(AF_LINK), 0, 0, 0, 3, 6, 0]
+            + Array("en0".utf8)
+            + [0xf8, 0x3d, 0xc6, 0x56, 0xfe, 0xe3]
+            + Array(repeating: 0, count: 3)
+        var header = rt_msghdr()
+        header.rtm_msglen = UInt16(headerSize + destination.count + link.count)
+        header.rtm_addrs = RTA_DST | RTA_GATEWAY
+        var message = withUnsafeBytes(of: &header) { Data($0) }
+        message.append(contentsOf: destination)
+        message.append(contentsOf: link)
+
         XCTAssertEqual(
-            ARPTable.parse(output),
-            ["192.168.1.1": "aa:bb:cc:dd:ee:ff", "192.168.1.44": "12:34:56:78:9a:bc"]
+            ARPTable.parseRoutingMessages(message),
+            ["192.168.1.18": "f8:3d:c6:56:fe:e3"]
         )
     }
 
@@ -1028,6 +1037,59 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(NetToysScanExport.xml([result]).contains("<http-server>80: nginx&lt;&amp;</http-server>"))
         XCTAssertTrue(NetToysScanExport.sql([result]).contains("'8080: HTTP proxy'"))
         XCTAssertEqual(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([result])), [result])
+    }
+
+    @MainActor
+    func testScannerViewModelRestoresLatestRunWhenRecreated() throws {
+        let older = NetToysScanRun(
+            target: "10.0.0.0/24",
+            ports: [22],
+            duration: 4,
+            results: []
+        )
+        let result = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.168.1.18")),
+            isReachable: true,
+            responseMilliseconds: 1.5,
+            hostname: "jetson.local",
+            macAddress: "aa:bb:cc:dd:ee:ff",
+            vendor: "Example",
+            openPorts: [22]
+        )
+        let latest = NetToysScanRun(
+            target: "192.168.1.0/24",
+            ports: [22, 80, 443],
+            duration: 12,
+            results: [result]
+        )
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+
+        let model = NetToysScannerViewModel(
+            archive: NetToysScanArchive(runs: [older, latest]),
+            defaults: defaults
+        )
+
+        XCTAssertEqual(model.targetInput, latest.target)
+        XCTAssertEqual(model.results, latest.results)
+        XCTAssertEqual(model.lastDuration, latest.duration)
+        XCTAssertEqual(model.completed, 1)
+        XCTAssertEqual(model.total, 1)
+        model.targetInput = "192.168.1.18"
+        model.portInput = "22"
+        model.filter = .alive
+        model.searchText = "jetson"
+
+        let recreated = NetToysScannerViewModel(
+            archive: NetToysScanArchive(runs: [older, latest]),
+            defaults: defaults
+        )
+        XCTAssertEqual(recreated.targetInput, "192.168.1.18")
+        XCTAssertEqual(recreated.portInput, "22")
+        XCTAssertEqual(recreated.filter, .alive)
+        XCTAssertEqual(recreated.searchText, "jetson")
+        XCTAssertEqual(recreated.results, latest.results)
+        defaults.removePersistentDomain(forName: #function)
     }
 
     func testSavedResultsFromBeforeProtocolFetchersStillImport() throws {

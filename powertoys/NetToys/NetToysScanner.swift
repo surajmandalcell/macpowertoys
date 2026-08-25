@@ -1190,48 +1190,79 @@ nonisolated enum HostResolver {
 }
 
 nonisolated enum ARPTable {
-    static func parse(_ output: String) -> [String: String] {
-        var result: [String: String] = [:]
-        for line in output.split(whereSeparator: \.isNewline) {
-            guard let addressStart = line.firstIndex(of: "("),
-                  let addressEnd = line[addressStart...].firstIndex(of: ")"),
-                  let marker = line.range(of: " at ", range: addressEnd..<line.endIndex)
-            else { continue }
-            let ip = String(line[line.index(after: addressStart)..<addressEnd])
-            let macStart = marker.upperBound
-            let macEnd = line[macStart...].firstIndex(where: \.isWhitespace) ?? line.endIndex
-            let rawMAC = String(line[macStart..<macEnd])
-            let normalized = AnchorMatcher.normalizedMAC(rawMAC)
-            guard normalized.count == 12 else { continue }
-            result[ip] = stride(from: 0, to: 12, by: 2)
-                .map { offset in
-                    let start = normalized.index(normalized.startIndex, offsetBy: offset)
-                    let end = normalized.index(start, offsetBy: 2)
-                    return String(normalized[start..<end])
-                }
-                .joined(separator: ":")
-        }
-        return result
-    }
-
     static func load() async -> [String: String] {
         await Task.detached(priority: .utility) {
-            let process = Process()
-            let pipe = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/usr/sbin/arp")
-            process.arguments = ["-an"]
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
-            do {
-                try process.run()
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                guard process.terminationStatus == 0 else { return [:] }
-                return parse(String(decoding: data, as: UTF8.self))
-            } catch {
-                return [:]
+            var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_LLINFO]
+            var byteCount = 0
+            let sizeStatus = mib.withUnsafeMutableBufferPointer {
+                sysctl($0.baseAddress, UInt32($0.count), nil, &byteCount, nil, 0)
             }
+            guard sizeStatus == 0, byteCount > 0 else { return [:] }
+            var data = Data(count: byteCount)
+            let readStatus = mib.withUnsafeMutableBufferPointer { mibBuffer in
+                data.withUnsafeMutableBytes { dataBuffer in
+                    sysctl(
+                        mibBuffer.baseAddress,
+                        UInt32(mibBuffer.count),
+                        dataBuffer.baseAddress,
+                        &byteCount,
+                        nil,
+                        0
+                    )
+                }
+            }
+            guard readStatus == 0 else { return [:] }
+            return parseRoutingMessages(data.prefix(byteCount))
         }.value
+    }
+
+    static func parseRoutingMessages(_ data: Data) -> [String: String] {
+        data.withUnsafeBytes { bytes in
+            var result: [String: String] = [:]
+            var messageOffset = 0
+            let headerSize = MemoryLayout<rt_msghdr>.size
+            while messageOffset + headerSize <= bytes.count {
+                let header = bytes.loadUnaligned(
+                    fromByteOffset: messageOffset,
+                    as: rt_msghdr.self
+                )
+                let messageLength = Int(header.rtm_msglen)
+                guard messageLength >= headerSize,
+                      messageOffset + messageLength <= bytes.count
+                else { break }
+                var addressOffset = messageOffset + headerSize
+                var ipAddress: String?
+                var macAddress: String?
+                for index in 0..<Int(RTAX_MAX) where header.rtm_addrs & (1 << index) != 0 {
+                    guard addressOffset + 2 <= messageOffset + messageLength else { break }
+                    let addressLength = Int(bytes[addressOffset])
+                    let family = Int32(bytes[addressOffset + 1])
+                    let alignedLength = addressLength > 0
+                        ? (addressLength + MemoryLayout<UInt32>.size - 1)
+                            & ~(MemoryLayout<UInt32>.size - 1)
+                        : MemoryLayout<UInt32>.size
+                    guard addressOffset + alignedLength <= messageOffset + messageLength else { break }
+                    if index == Int(RTAX_DST), family == AF_INET, addressLength >= 8 {
+                        ipAddress = (4..<8)
+                            .map { String(bytes[addressOffset + $0]) }
+                            .joined(separator: ".")
+                    } else if index == Int(RTAX_GATEWAY), family == AF_LINK, addressLength >= 8 {
+                        let nameLength = Int(bytes[addressOffset + 5])
+                        let macLength = Int(bytes[addressOffset + 6])
+                        let macOffset = addressOffset + 8 + nameLength
+                        if macLength == 6, macOffset + macLength <= addressOffset + addressLength {
+                            macAddress = (0..<macLength)
+                                .map { String(format: "%02x", bytes[macOffset + $0]) }
+                                .joined(separator: ":")
+                        }
+                    }
+                    addressOffset += alignedLength
+                }
+                if let ipAddress, let macAddress { result[ipAddress] = macAddress }
+                messageOffset += messageLength
+            }
+            return result
+        }
     }
 }
 
