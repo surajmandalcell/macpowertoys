@@ -289,15 +289,23 @@
   network name.
 - **Cause:** macOS redacts CoreWLAN SSID values until the main app requests and
   receives Location access while it is active. A background helper cannot show
-  that prompt.
-- **Invariant:** The main app owns the foreground permission request and retries
-  it when the app becomes active. The helper reads SSID through public CoreWLAN
-  and stores it as optional data. Missing permission or Ethernet must stay a
-  valid state and must not create a false network transition.
+  that prompt. The request path did not assign the Core Location delegate or
+  confirm that the app was active. The warning had no recovery action, and
+  NetToys Settings showed no permission state.
+- **Invariant:** The main app owns one retained Core Location manager, assigns
+  its delegate immediately, requests access only while active, and retries when
+  the app becomes active. Network History provides an Allow Access action.
+  NetToys Settings shows Not Requested, Denied, Restricted, or Allowed and
+  provides the matching request or System Settings action. The helper reads
+  SSID through public CoreWLAN and stores it as optional data. Missing
+  permission or Ethernet must stay valid and must not create a false network
+  transition.
 - **Check:** Open Network History in the normal signed app, grant Location
-  access, and wait for the next helper sample. Confirm the status file and UI
-  show `SSID | interface | gateway`. Deny access and confirm the UI explains the
-  limitation while gateway and internet history continue.
+  access from the macOS prompt, and wait for the next helper sample. Confirm
+  NetToys Settings changes to Allowed and the status file and UI show
+  `SSID | interface | gateway`. Deny access and confirm both Network History and
+  NetToys Settings provide an action that opens Location Services while gateway
+  and internet history continue.
 
 ## Compact Applet Window Height
 
