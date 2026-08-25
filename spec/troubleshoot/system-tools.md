@@ -3,10 +3,11 @@
 ## NetToys
 
 - **Symptom:** NetToys uses generic network tests or SSH tunnels instead of the
-  requested three-part product.
+  requested four-part product.
 - **Cause:** An earlier draft was mistaken for the final scope.
-- **Invariant:** Use IP Scanner, SSH Anchor, and Network History as the three
-  destinations. IP Scanner independently implements useful Angry IP Scanner
+- **Invariant:** Use IP Scanner, SSH Anchor, Network History, and Wi-Fi Priority
+  as the destinations. IP Scanner independently implements useful Angry IP
+  Scanner
   behavior without GPL source. SSH Anchor monitors the selected SSH port every
   2 to 3 seconds. When the current address stops answering, it scans only that
   port on the active local IPv4 subnet and identifies the device by exact MAC,
@@ -15,11 +16,31 @@
   other SSH config byte. Network History stores reachability transitions, not
   every probe. Enabling NetToys registers and uses its bundled login helper.
   Disabling NetToys stops monitoring and unregisters the helper.
-- **Check:** Exercise all three destinations. Compare the SSH config before and
+- **Check:** Exercise all four destinations. Compare the SSH config before and
   after an address change and confirm that the one expected token is the only
   changed byte range. Confirm ambiguous recovery never writes. Enable NetToys,
   quit MacPowerToys, and confirm the helper continues. Disable NetToys and
   confirm the helper exits and is no longer registered.
+
+## Wi-Fi Priority Failover
+
+- **Symptom:** A failed Wi-Fi connection stays active even when another saved
+  network or the Mac's Instant Hotspot fallback is available.
+- **Cause:** Network History measured outages but had no ordered failover
+  configuration or switching policy.
+- **Invariant:** Wi-Fi Priority stores an ordered list of saved SSIDs without
+  passwords. Automatic failover is off until at least two SSIDs are configured.
+  The helper checks Internet access every 2 to 3 seconds while enabled. After a
+  continuous failure reaches the selected 5 to 60 second threshold, 10 seconds
+  by default, scan nearby SSIDs and join the next saved network in order. Wait
+  30 seconds before another attempt. Keep Instant Hotspot as the final
+  system-managed fallback and open Wi-Fi Settings for its Auto-Join setting.
+  Do not claim that the app can invoke Instant Hotspot through a public API.
+- **Check:** Confirm legacy configuration decodes with failover off. Confirm the
+  timing test stays idle through 9 seconds, attempts at 10 seconds, rotates to
+  the next nearby SSID, wraps the order, and applies the 30-second cooldown.
+  In the signed installed app, confirm the page lists saved SSIDs, keeps the
+  switch disabled with fewer than two rows, and shows Instant Hotspot last.
 
 ## Network History Identity
 

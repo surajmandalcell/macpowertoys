@@ -268,7 +268,8 @@
   destination at the shared 44pt workspace content edge.
 - **Check:** Open IP Scanner in the signed installed build. The result search,
   filters, menus, and buttons share one centerline. The sidebar shows NetToys
-  followed directly by IP Scanner, SSH Anchor, and Network History.
+  followed directly by IP Scanner, SSH Anchor, Network History, and Wi-Fi
+  Priority.
 
 ## NetToys SSH Host Catalog And Scanner Handoff
 
@@ -372,6 +373,20 @@
   unreachable and confirm the recent outage says it has been unavailable for
   the current duration. Confirm an unambiguous legacy route row merges into its
   SSID row while an unknown or ambiguous route keeps its fallback label.
+
+## NetToys Wi-Fi Priority
+
+- **Symptom:** Wi-Fi failover settings are hidden in Network History or expose
+  interface and gateway details instead of network names.
+- **Cause:** NetToys had no dedicated page for ordering saved Wi-Fi networks.
+- **Invariant:** Use one Wi-Fi Priority sidebar page. Show the current SSID in
+  the page header, a native failover switch, a native duration menu, one ordered
+  SSID row per saved network, and the system-managed iPhone Personal Hotspot as
+  the final row. Use SSID-only labels. Use native move, remove, add, and Settings
+  actions with text or help labels. Opening the page must not change networks.
+- **Check:** Inspect the empty and configured states at 860pt and default width.
+  Confirm row actions stay aligned, Connected is not color-only, keyboard focus
+  reaches every control, and Wi-Fi Settings opens the system Wi-Fi pane.
 
 ## Compact Applet Window Height
 
