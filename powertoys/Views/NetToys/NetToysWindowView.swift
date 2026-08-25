@@ -1,4 +1,80 @@
+import AppKit
+import Network
+import Observation
 import SwiftUI
+
+nonisolated enum NetToysLocalNetworkAccessState: Equatable {
+    case checking
+    case allowed
+    case denied
+    case unavailable
+
+    init(dnsErrorCode: Int32) {
+        self = dnsErrorCode == -65_570 ? .denied : .unavailable
+    }
+
+    init(posixError: POSIXErrorCode) {
+        self = posixError == .EPERM ? .denied : .unavailable
+    }
+}
+
+@Observable
+@MainActor
+final class NetToysLocalNetworkAccess {
+    static let shared = NetToysLocalNetworkAccess()
+
+    private(set) var state = NetToysLocalNetworkAccessState.checking
+    @ObservationIgnored private var browser: NWBrowser?
+
+    func request() {
+        browser?.cancel()
+        state = .checking
+        let browser = NWBrowser(
+            for: .bonjour(type: "_macpowertoys-permission._tcp", domain: nil),
+            using: .tcp
+        )
+        let observer = self
+        browser.stateUpdateHandler = { browserState in
+            Task { @MainActor in observer.update(browserState) }
+        }
+        self.browser = browser
+        browser.start(queue: DispatchQueue(label: "com.surajmandal.macpowertoys.local-network"))
+    }
+
+    func openSettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork"
+        ) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private func update(_ browserState: NWBrowser.State) {
+        switch browserState {
+        case .ready:
+            finish(.allowed)
+        case .waiting(let error), .failed(let error):
+            switch error {
+            case .dns(let code): finish(.init(dnsErrorCode: code))
+            case .posix(let code): finish(.init(posixError: code))
+            case .tls, .wifiAware: finish(.unavailable)
+            @unknown default: finish(.unavailable)
+            }
+        case .cancelled:
+            break
+        case .setup:
+            state = .checking
+        @unknown default:
+            finish(.unavailable)
+        }
+    }
+
+    private func finish(_ state: NetToysLocalNetworkAccessState) {
+        browser?.stateUpdateHandler = nil
+        browser?.cancel()
+        browser = nil
+        self.state = state
+    }
+}
 
 enum NetToysPage: String, CaseIterable, Identifiable {
     case scanner = "IP Scanner"
@@ -22,6 +98,7 @@ struct NetToysWindowView: View {
     @State private var page = NetToysPage.scanner
     @State private var showSettings = false
     @State private var scannerModel = NetToysScannerViewModel()
+    @State private var localNetworkAccess = NetToysLocalNetworkAccess.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -56,6 +133,10 @@ struct NetToysWindowView: View {
                 await Task.yield()
                 NotificationCenter.default.post(name: .netToysApplyAnchorPrefill, object: prefill)
             }
+        }
+        .task { localNetworkAccess.request() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            localNetworkAccess.request()
         }
     }
 

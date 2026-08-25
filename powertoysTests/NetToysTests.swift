@@ -29,6 +29,21 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testLocalNetworkPolicyDenialNeedsSettings() {
+        XCTAssertEqual(
+            NetToysLocalNetworkAccessState(dnsErrorCode: -65_570),
+            .denied
+        )
+        XCTAssertEqual(
+            NetToysLocalNetworkAccessState(posixError: .EPERM),
+            .denied
+        )
+        XCTAssertEqual(
+            NetToysLocalNetworkAccessState(posixError: .ENETDOWN),
+            .unavailable
+        )
+    }
+
     func testIPv4TargetsParseRangeCIDRAndListWithoutDuplicates() throws {
         XCTAssertEqual(
             try IPv4Targets.parse("192.168.1.3-192.168.1.5").map(\.description),

@@ -538,6 +538,7 @@ struct NetToysHistoryView: View {
 
 struct NetToysSettingsView: View {
     @State private var model = NetToysHistoryViewModel()
+    @State private var localNetworkAccess = NetToysLocalNetworkAccess.shared
 
     var body: some View {
         ScrollView {
@@ -565,6 +566,32 @@ struct NetToysSettingsView: View {
                 }
                 .utilitySectionCard()
 
+                Text("LOCAL NETWORK").utilitySectionHeader()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Label("Local Network Access", systemImage: localNetworkStatusSymbol)
+                            .font(.system(size: 12, weight: .medium))
+                        Spacer()
+                        Text(localNetworkStatusTitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(localNetworkStatusColor)
+                    }
+
+                    Text(localNetworkStatusMessage)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if localNetworkAccess.state == .denied {
+                        Button("Open Local Network Settings") { localNetworkAccess.openSettings() }
+                            .controlSize(.small)
+                    } else if localNetworkAccess.state == .unavailable {
+                        Button("Try Again") { localNetworkAccess.request() }
+                            .controlSize(.small)
+                    }
+                }
+                .utilitySectionCard()
+
                 Spacer(minLength: 0)
             }
             .padding(24)
@@ -574,10 +601,51 @@ struct NetToysSettingsView: View {
         .task {
             model.refresh()
             model.requestSSIDAccessIfNeeded()
+            localNetworkAccess.request()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refresh()
             model.requestSSIDAccessIfNeeded()
+            localNetworkAccess.request()
+        }
+    }
+
+    private var localNetworkStatusTitle: String {
+        switch localNetworkAccess.state {
+        case .checking: "Checking"
+        case .allowed: "Allowed"
+        case .denied: "Needs Attention"
+        case .unavailable: "Unavailable"
+        }
+    }
+
+    private var localNetworkStatusMessage: String {
+        switch localNetworkAccess.state {
+        case .checking:
+            "Respond to the macOS prompt so IP Scanner can discover local devices and their MAC addresses."
+        case .allowed:
+            "Local Network access is allowed. IP Scanner can discover local devices and their MAC addresses."
+        case .denied:
+            "Allow MacPowerToys in Privacy & Security > Local Network to scan devices and read MAC addresses."
+        case .unavailable:
+            "macOS could not check Local Network access. Check the network and try again."
+        }
+    }
+
+    private var localNetworkStatusSymbol: String {
+        switch localNetworkAccess.state {
+        case .allowed: "checkmark.circle.fill"
+        case .denied: "exclamationmark.triangle.fill"
+        case .checking: "network"
+        case .unavailable: "questionmark.circle"
+        }
+    }
+
+    private var localNetworkStatusColor: Color {
+        switch localNetworkAccess.state {
+        case .allowed: .green
+        case .denied: .orange
+        case .checking, .unavailable: .secondary
         }
     }
 
