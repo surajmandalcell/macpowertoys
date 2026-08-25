@@ -291,10 +291,14 @@
   receives Location access while it is active. A background helper cannot show
   that prompt. The request path did not assign the Core Location delegate or
   confirm that the app was active. The warning had no recovery action, and
-  NetToys Settings showed no permission state.
+  NetToys Settings showed no permission state. In the signed installed build,
+  the authorization request alone stayed Not Requested until the app started a
+  Core Location service.
 - **Invariant:** The main app owns one retained Core Location manager, assigns
   its delegate immediately, requests access only while active, and retries when
-  the app becomes active. Network History provides an Allow Access action.
+  the app becomes active. It starts location updates to trigger the macOS prompt
+  and stops them after authorization, an update, or a failure. Network History
+  provides an Allow Access action.
   NetToys Settings shows Not Requested, Denied, Restricted, or Allowed and
   provides the matching request or System Settings action. The helper reads
   SSID through public CoreWLAN and stores it as optional data. Missing
