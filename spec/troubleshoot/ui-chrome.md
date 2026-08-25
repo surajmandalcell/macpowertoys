@@ -283,31 +283,51 @@
   Scan a configured host, use Add SSH Anchor, and confirm the page and fields
   change in one action. Repeat with no MAC and with no matching alias.
 
+## Permission-Dependent Features
+
+- **Symptom:** A feature silently falls back, appears broken, or tells the user
+  to change System Settings without first asking for the permission it needs.
+- **Invariant:** The process that uses a protected API owns and retains its
+  permission manager, requests access at the first eligible in-context use,
+  and starts the native service when macOS requires that to show the prompt.
+  Every affected feature surface and its Settings page show Not Requested,
+  Denied, Restricted, Allowed, or Needs Attention, with the matching request or
+  System Settings recovery action. Background helpers request and publish their
+  own state. An Allowed state with protected data still unavailable is Needs
+  Attention, not success. Apply this rule to every current and future
+  permission-dependent feature.
+- **Check:** Reset each permission under test, enter the feature, and confirm
+  macOS asks at the correct time. Test denial, restriction, later approval, and
+  an allowed-but-unavailable API result. Confirm both the feature and Settings
+  always explain the state and provide the next action.
+
 ## NetToys Wi-Fi Identity Permission
 
 - **Symptom:** Network History shows only `interface | gateway` and no Wi-Fi
   network name.
-- **Cause:** macOS redacts CoreWLAN SSID values until the main app requests and
-  receives Location access while it is active. A background helper cannot show
-  that prompt. The request path did not assign the Core Location delegate or
-  confirm that the app was active. The warning had no recovery action, and
-  NetToys Settings showed no permission state. In the signed installed build,
-  the authorization request alone stayed Not Requested until the app started a
+- **Cause:** macOS redacts CoreWLAN SSID values until the calling process
+  receives Location access. The request path did not assign the Core Location
+  delegate or confirm that the app was active. The warning had no recovery
+  action, and NetToys Settings showed no permission state. In the signed
+  installed build, the authorization request alone stayed Not Requested until the app started a
   Core Location service. The release build then stripped the Location
   entitlement, so `locationd` suppressed the prompt and returned a denied error
   while the public authorization status remained Not Requested. Granting the
   main app still left the login helper without SSID access because macOS treats
-  the helper as a separate Location client.
+  the helper as a separate Location client. The helper then stopped Location
+  Services immediately after authorization and read CoreWLAN before the first
+  location update made SSID data available.
 - **Invariant:** The main app and login helper each own one retained Core
   Location manager and request their own access. The main app requests only
   while active and retries when it becomes active. Both processes start location
-  updates to trigger the macOS prompt and stop them after authorization, an
-  update, or a failure. The helper publishes Not Requested, Denied, Restricted,
+  updates to trigger the macOS prompt and stop them after an update or a
+  failure. Allowed access restarts the service, and the first update triggers an
+  immediate SSID sample. The helper publishes Not Requested, Denied, Restricted,
   or Allowed in its status file. Network History and NetToys Settings show a
   Needs Attention state and Location Settings recovery whenever the helper lacks
-  access. A denied main-app failure while status is Not Requested stops
-  automatic retries and changes recovery to Open Location Settings. Signed
-  builds retain
+  access or reports Allowed without an SSID on Wi-Fi. A denied main-app failure
+  while status is Not Requested stops automatic retries and changes recovery to
+  Open Location Settings. Signed builds retain
   `com.apple.security.personal-information.location` in both the main app and
   helper. Network History provides an Allow Access action.
   NetToys Settings shows Not Requested, Denied, Restricted, or Allowed and
