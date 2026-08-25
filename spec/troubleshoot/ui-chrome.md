@@ -295,13 +295,19 @@
   the authorization request alone stayed Not Requested until the app started a
   Core Location service. The release build then stripped the Location
   entitlement, so `locationd` suppressed the prompt and returned a denied error
-  while the public authorization status remained Not Requested.
-- **Invariant:** The main app owns one retained Core Location manager, assigns
-  its delegate immediately, requests access only while active, and retries when
-  the app becomes active. It starts location updates to trigger the macOS prompt
-  and stops them after authorization, an update, or a failure. A denied failure
-  while status is Not Requested stops automatic retries and changes recovery to
-  Open Location Settings. Signed builds retain
+  while the public authorization status remained Not Requested. Granting the
+  main app still left the login helper without SSID access because macOS treats
+  the helper as a separate Location client.
+- **Invariant:** The main app and login helper each own one retained Core
+  Location manager and request their own access. The main app requests only
+  while active and retries when it becomes active. Both processes start location
+  updates to trigger the macOS prompt and stop them after authorization, an
+  update, or a failure. The helper publishes Not Requested, Denied, Restricted,
+  or Allowed in its status file. Network History and NetToys Settings show a
+  Needs Attention state and Location Settings recovery whenever the helper lacks
+  access. A denied main-app failure while status is Not Requested stops
+  automatic retries and changes recovery to Open Location Settings. Signed
+  builds retain
   `com.apple.security.personal-information.location` in both the main app and
   helper. Network History provides an Allow Access action.
   NetToys Settings shows Not Requested, Denied, Restricted, or Allowed and
@@ -311,9 +317,10 @@
   transition.
 - **Check:** Confirm `codesign -d --entitlements :-` lists the Location
   entitlement for the app and embedded helper. Open Network History in the
-  normal signed app, grant Location access from the macOS prompt, and wait for
-  the next helper sample. Confirm
-  NetToys Settings changes to Allowed and the status file and UI show
+  normal signed app and grant Location access to both MacPowerToys and NetToys
+  Helper when macOS asks. Confirm NetToys Settings changes to Allowed and the
+  helper status reports `ssidAccess: allowed`. Wait for the next sample and
+  confirm the status file and UI show
   `SSID | interface | gateway`. Deny access and confirm both Network History and
   NetToys Settings provide an action that opens Location Services while gateway
   and internet history continue.
