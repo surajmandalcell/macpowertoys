@@ -19,6 +19,22 @@ enum NetToysHistoryRange: TimeInterval, CaseIterable, Identifiable {
     }
 }
 
+nonisolated enum NetToysLocationAction: Equatable {
+    case request
+    case openSettings
+    case none
+
+    init(status: CLAuthorizationStatus, requestFailed: Bool) {
+        if requestFailed || status == .denied {
+            self = .openSettings
+        } else if status == .notDetermined {
+            self = .request
+        } else {
+            self = .none
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
@@ -30,6 +46,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     var scanArchive = NetToysScannerStore.archive()
     var errorMessage: String?
     var locationAuthorizationStatus: CLAuthorizationStatus
+    var locationRequestFailed = false
 
     @ObservationIgnored private let locationManager: CLLocationManager
 
@@ -64,6 +81,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
 
     func requestSSIDAccessIfNeeded() {
         locationAuthorizationStatus = locationManager.authorizationStatus
+        guard !locationRequestFailed else { return }
         guard locationAuthorizationStatus == .notDetermined else { return }
         guard NSApp.isActive else { return }
         requestLocationAccess()
@@ -71,12 +89,15 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
 
     func resolveSSIDAccess() {
         locationAuthorizationStatus = locationManager.authorizationStatus
-        switch locationAuthorizationStatus {
-        case .notDetermined:
+        switch NetToysLocationAction(
+            status: locationAuthorizationStatus,
+            requestFailed: locationRequestFailed
+        ) {
+        case .request:
             requestLocationAccess()
-        case .denied:
+        case .openSettings:
             openLocationSettings()
-        default:
+        case .none:
             break
         }
     }
@@ -94,6 +115,10 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
         manager.stopUpdatingLocation()
+        if manager.authorizationStatus == .notDetermined,
+           (error as? CLError)?.code == .denied {
+            locationRequestFailed = true
+        }
     }
 
     private func openLocationSettings() {
@@ -459,6 +484,9 @@ struct NetToysHistoryView: View {
               snapshot.ssid == nil,
               snapshot.networkID != "disconnected"
         else { return nil }
+        if model.locationRequestFailed {
+            return "macOS blocked the Location request. Open Location Services to allow MacPowerToys."
+        }
         switch model.locationAuthorizationStatus {
         case .denied, .restricted:
             return "Allow Location access in System Settings to label Wi-Fi history with the network name."
@@ -470,13 +498,13 @@ struct NetToysHistoryView: View {
     }
 
     private var ssidAccessActionTitle: String? {
-        switch model.locationAuthorizationStatus {
-        case .notDetermined:
-            return "Allow Access"
-        case .denied:
-            return "Open System Settings"
-        default:
-            return nil
+        switch NetToysLocationAction(
+            status: model.locationAuthorizationStatus,
+            requestFailed: model.locationRequestFailed
+        ) {
+        case .request: "Allow Access"
+        case .openSettings: "Open System Settings"
+        case .none: nil
         }
     }
 }
@@ -527,7 +555,8 @@ struct NetToysSettingsView: View {
     }
 
     private var locationStatusTitle: String {
-        switch model.locationAuthorizationStatus {
+        if model.locationRequestFailed { return "Needs Attention" }
+        return switch model.locationAuthorizationStatus {
         case .notDetermined: "Not Requested"
         case .denied: "Denied"
         case .restricted: "Restricted"
@@ -537,7 +566,10 @@ struct NetToysSettingsView: View {
     }
 
     private var locationStatusMessage: String {
-        switch model.locationAuthorizationStatus {
+        if model.locationRequestFailed {
+            return "macOS blocked the Location request. Open Privacy & Security > Location Services and allow MacPowerToys."
+        }
+        return switch model.locationAuthorizationStatus {
         case .notDetermined:
             "Allow Location access so Network History can identify Wi-Fi networks by SSID."
         case .denied:
@@ -552,15 +584,19 @@ struct NetToysSettingsView: View {
     }
 
     private var locationActionTitle: String? {
-        switch model.locationAuthorizationStatus {
-        case .notDetermined: "Allow Location Access"
-        case .denied: "Open Location Settings"
-        default: nil
+        switch NetToysLocationAction(
+            status: model.locationAuthorizationStatus,
+            requestFailed: model.locationRequestFailed
+        ) {
+        case .request: "Allow Location Access"
+        case .openSettings: "Open Location Settings"
+        case .none: nil
         }
     }
 
     private var locationStatusSymbol: String {
-        switch model.locationAuthorizationStatus {
+        if model.locationRequestFailed { return "exclamationmark.triangle.fill" }
+        return switch model.locationAuthorizationStatus {
         case .authorized, .authorizedAlways: "checkmark.circle.fill"
         case .denied, .restricted: "exclamationmark.triangle.fill"
         default: "location.circle"
@@ -568,7 +604,8 @@ struct NetToysSettingsView: View {
     }
 
     private var locationStatusColor: Color {
-        switch model.locationAuthorizationStatus {
+        if model.locationRequestFailed { return .orange }
+        return switch model.locationAuthorizationStatus {
         case .authorized, .authorizedAlways: .green
         case .denied, .restricted: .orange
         default: .secondary
