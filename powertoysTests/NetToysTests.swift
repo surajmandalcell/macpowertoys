@@ -199,6 +199,48 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(NetworkIdentity(networkID: "disconnected", ssid: nil).displayName, "Disconnected")
     }
 
+    func testNetworkHistoryMigratesLegacySSIDByUnambiguousRoute() {
+        let date = Date(timeIntervalSince1970: 1_000)
+        var history = NetworkHistory(events: [
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1",
+                date: date,
+                changes: [.network(from: "Disconnected", to: "en0 | 192.168.1.1")]
+            ),
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1",
+                ssid: "Home Wi-Fi",
+                date: date.addingTimeInterval(10),
+                changes: [.internet(from: .reachable, to: .unreachable)]
+            ),
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.31.1",
+                date: date.addingTimeInterval(20),
+                changes: [.network(from: "Home Wi-Fi", to: "en0 | 192.168.31.1")]
+            )
+        ])
+        let current = NetworkRuntimeSnapshot(
+            networkID: "en0|192.168.31.1",
+            ssid: "BatcaveAlt",
+            gateway: .reachable,
+            internet: .reachable,
+            checkedAt: date
+        )
+
+        XCTAssertTrue(history.migrateLegacySSIDs(currentNetwork: current))
+        XCTAssertEqual(history.events[0].ssid, "Home Wi-Fi")
+        XCTAssertEqual(
+            history.events[0].changes,
+            [.network(from: "Disconnected", to: "Home Wi-Fi")]
+        )
+        XCTAssertEqual(history.events[2].ssid, "BatcaveAlt")
+        XCTAssertEqual(
+            history.events[2].changes,
+            [.network(from: "Home Wi-Fi", to: "BatcaveAlt")]
+        )
+        XCTAssertFalse(history.migrateLegacySSIDs(currentNetwork: current))
+    }
+
     func testNetworkHistoryRecordsKnownSSIDChanges() {
         var recorder = NetworkTransitionRecorder()
         let start = Date(timeIntervalSince1970: 1_000)
