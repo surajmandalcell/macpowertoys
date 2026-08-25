@@ -187,10 +187,10 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(repaired.first { $0.network == "Guest Wi-Fi" }?.unavailableDuration, 0)
     }
 
-    func testNetworkIdentityFormatsSSIDInterfaceAndGateway() {
+    func testNetworkIdentityUsesSSIDWithRouteFallback() {
         XCTAssertEqual(
             NetworkIdentity(networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi").displayName,
-            "Home Wi-Fi | en0 | 192.168.1.1"
+            "Home Wi-Fi"
         )
         XCTAssertEqual(
             NetworkIdentity(networkID: "en0|192.168.1.1", ssid: nil).displayName,
