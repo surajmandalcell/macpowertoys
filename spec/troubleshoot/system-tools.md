@@ -30,10 +30,12 @@
 - **Invariant:** Use SSID as the Wi-Fi identity. A gateway change on the same
   SSID is not a network change. If SSID is temporarily unavailable, wait for a
   known SSID instead of inferring a change from its private gateway. Use
-  `interface | gateway` only for wired links.
+  only the SSID in visible labels when it is available. Use
+  `interface | gateway` only as the wired or unavailable-SSID fallback.
 - **Check:** Change the gateway while SSID stays fixed and confirm no network
   event. Change SSID with the same gateway and confirm one SSID-only event.
-  Confirm wired gateway changes still create network events.
+  Confirm every visible label shows only that SSID. Confirm wired gateway
+  changes still create network events and use the route fallback.
 
 ## Network History Availability Timeline
 

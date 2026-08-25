@@ -340,8 +340,8 @@
   normal signed app and grant Location access to both MacPowerToys and NetToys
   Helper when macOS asks. Confirm NetToys Settings changes to Allowed and the
   helper status reports `ssidAccess: allowed`. Wait for the next sample and
-  confirm the status file and UI show
-  `SSID | interface | gateway`. Deny access and confirm both Network History and
+  confirm the status file contains the SSID and the UI shows only that SSID.
+  Deny access and confirm both Network History and
   NetToys Settings provide an action that opens Location Services while gateway
   and internet history continue.
 
@@ -359,7 +359,8 @@
   disconnected and unknown intervals from uptime. Show uptime percentage,
   outage count, total downtime, and recent outage sentences with exact
   durations. Use `interface | gateway` only as the wired or unavailable-SSID
-  fallback. Do not reintroduce vertical state lines, transition dots, or a
+  fallback. When an SSID exists, all visible network labels show the SSID alone.
+  Do not reintroduce vertical state lines, transition dots, or a
   gateway-based Wi-Fi identity.
 - **Check:** Record an outage on one SSID, recover, then switch to another SSID.
   Confirm each SSID has a separate bar, the first outage duration is correct,
