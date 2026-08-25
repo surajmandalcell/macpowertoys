@@ -129,6 +129,7 @@ final class NetToysTests: XCTestCase {
         XCTAssertNil(recorder.observe(
             networkID: "en0|192.168.1.1",
             ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
             gateway: .reachable,
             internet: .reachable,
             at: start
@@ -136,6 +137,7 @@ final class NetToysTests: XCTestCase {
         let event = recorder.observe(
             networkID: "en0|192.168.1.1",
             ssid: "Guest Wi-Fi",
+            usesSSIDIdentity: true,
             gateway: .reachable,
             internet: .reachable,
             at: start.addingTimeInterval(30)
@@ -145,30 +147,103 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(
             event?.changes,
             [.network(
-                from: "Home Wi-Fi | en0 | 192.168.1.1",
-                to: "Guest Wi-Fi | en0 | 192.168.1.1"
+                from: "Home Wi-Fi",
+                to: "Guest Wi-Fi"
             )]
         )
     }
 
-    func testMissingSSIDDoesNotCreateFalseNetworkTransition() {
+    func testWiFiIdentityIgnoresGatewayChangesAndMissingSSID() {
         var recorder = NetworkTransitionRecorder()
         let start = Date(timeIntervalSince1970: 1_000)
 
         XCTAssertNil(recorder.observe(
             networkID: "en0|192.168.1.1",
             ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start
+        ))
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.31.1",
+            ssid: nil,
+            usesSSIDIdentity: true,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start.addingTimeInterval(30)
+        ))
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.31.1",
+            ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start.addingTimeInterval(60)
+        ))
+    }
+
+    func testWiFiSSIDAppearingDoesNotCreateAFalseTransition() {
+        var recorder = NetworkTransitionRecorder()
+        let start = Date(timeIntervalSince1970: 1_000)
+
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.1.1",
+            usesSSIDIdentity: true,
             gateway: .reachable,
             internet: .reachable,
             at: start
         ))
         XCTAssertNil(recorder.observe(
             networkID: "en0|192.168.1.1",
-            ssid: nil,
+            ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
             gateway: .reachable,
             internet: .reachable,
             at: start.addingTimeInterval(30)
         ))
+    }
+
+    func testWiredIdentityFallsBackToInterfaceAndGateway() {
+        var recorder = NetworkTransitionRecorder()
+        let start = Date(timeIntervalSince1970: 1_000)
+
+        XCTAssertNil(recorder.observe(
+            networkID: "en5|192.168.1.1",
+            gateway: .reachable,
+            internet: .reachable,
+            at: start
+        ))
+        let event = recorder.observe(
+            networkID: "en5|10.0.0.1",
+            gateway: .reachable,
+            internet: .reachable,
+            at: start.addingTimeInterval(30)
+        )
+
+        XCTAssertEqual(
+            event?.changes,
+            [.network(from: "en5 | 192.168.1.1", to: "en5 | 10.0.0.1")]
+        )
+
+        var transportRecorder = NetworkTransitionRecorder()
+        XCTAssertNil(transportRecorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start
+        ))
+        XCTAssertEqual(
+            transportRecorder.observe(
+                networkID: "en5|10.0.0.1",
+                gateway: .reachable,
+                internet: .reachable,
+                at: start.addingTimeInterval(30)
+            )?.changes,
+            [.network(from: "Home Wi-Fi", to: "en5 | 10.0.0.1")]
+        )
     }
 
     func testNetworkStatusAndHistoryDecodeWithoutSSID() throws {

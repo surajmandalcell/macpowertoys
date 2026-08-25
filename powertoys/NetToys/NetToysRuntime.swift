@@ -274,6 +274,10 @@ nonisolated struct NetworkIdentity: Equatable, Sendable {
 }
 
 nonisolated enum NetworkSSID {
+    static func isWiFi(interfaceName: String) -> Bool {
+        CWWiFiClient.shared().interface(withName: interfaceName) != nil
+    }
+
     static func current(interfaceName: String) -> String? {
         NetworkIdentity.normalizedSSID(
             CWWiFiClient.shared().interface(withName: interfaceName)?.ssid()
