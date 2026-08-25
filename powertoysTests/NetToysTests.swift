@@ -110,6 +110,88 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(event?.date, start.addingTimeInterval(60))
     }
 
+    func testInternetAvailabilityTimelineSpansRangeAndKeepsReconnects() throws {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let end = start.addingTimeInterval(100)
+        var recorder = NetworkTransitionRecorder()
+        XCTAssertNil(recorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start
+        ))
+        let disconnected = try XCTUnwrap(recorder.observe(
+            networkID: "disconnected",
+            usesSSIDIdentity: false,
+            gateway: .unknown,
+            internet: .unknown,
+            at: start.addingTimeInterval(30)
+        ))
+        let reconnected = try XCTUnwrap(recorder.observe(
+            networkID: "en0|192.168.1.1",
+            ssid: "Home Wi-Fi",
+            usesSSIDIdentity: true,
+            gateway: .reachable,
+            internet: .reachable,
+            at: start.addingTimeInterval(80)
+        ))
+        let events = [reconnected,
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1",
+                date: start.addingTimeInterval(60),
+                changes: [.network(from: "Home Wi-Fi", to: "Guest Wi-Fi")]
+            ), disconnected
+        ]
+
+        let points = internetAvailabilityTimeline(events: events, from: start, to: end)
+
+        XCTAssertEqual(points.map { $0.date }, [
+            start,
+            start.addingTimeInterval(30),
+            start.addingTimeInterval(30),
+            start.addingTimeInterval(80),
+            start.addingTimeInterval(80),
+            end
+        ])
+        XCTAssertEqual(points.map { $0.state }, [
+            .reachable,
+            .reachable,
+            .unknown,
+            .unknown,
+            .reachable,
+            .reachable
+        ])
+
+        let legacyPoints = internetAvailabilityTimeline(
+            events: [
+                NetworkTransitionEvent(
+                    networkID: "en0|192.168.1.1",
+                    date: start.addingTimeInterval(40),
+                    changes: [.internet(from: .reachable, to: .unreachable)]
+                ),
+                NetworkTransitionEvent(
+                    networkID: "en0|192.168.31.1",
+                    date: start.addingTimeInterval(80),
+                    changes: [.network(from: "Home Wi-Fi", to: "Guest Wi-Fi")]
+                )
+            ],
+            from: start,
+            to: end,
+            currentState: .reachable
+        )
+        XCTAssertEqual(legacyPoints.map { $0.date }, [
+            start,
+            start.addingTimeInterval(40),
+            start.addingTimeInterval(40),
+            start.addingTimeInterval(80),
+            start.addingTimeInterval(80),
+            end
+        ])
+        XCTAssertEqual(legacyPoints.map { $0.state == .reachable }, [true, true, false, false, true, true])
+    }
+
     func testNetworkIdentityFormatsSSIDInterfaceAndGateway() {
         XCTAssertEqual(
             NetworkIdentity(networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi").displayName,

@@ -537,21 +537,16 @@ nonisolated struct NetworkTransitionRecorder: Sendable {
             || (usesSSIDIdentity
                 ? previous.ssid != nil && normalizedSSID != nil && previous.ssid != normalizedSSID
                 : previous.networkID != networkID)
-        if changedNetwork {
-            return NetworkTransitionEvent(
-                networkID: networkID,
-                ssid: effectiveSSID,
-                date: date,
-                changes: [.network(
-                    from: previous.ssid ?? NetworkIdentity(
-                        networkID: previous.networkID,
-                        ssid: nil
-                    ).displayName,
-                    to: effectiveSSID ?? NetworkIdentity(networkID: networkID, ssid: nil).displayName
-                )]
-            )
-        }
         var changes: [NetworkTransitionChange] = []
+        if changedNetwork {
+            changes.append(.network(
+                from: previous.ssid ?? NetworkIdentity(
+                    networkID: previous.networkID,
+                    ssid: nil
+                ).displayName,
+                to: effectiveSSID ?? NetworkIdentity(networkID: networkID, ssid: nil).displayName
+            ))
+        }
         if previous.gateway != gateway { changes.append(.gateway(from: previous.gateway, to: gateway)) }
         if previous.internet != internet { changes.append(.internet(from: previous.internet, to: internet)) }
         return changes.isEmpty ? nil : NetworkTransitionEvent(

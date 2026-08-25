@@ -249,7 +249,7 @@ struct NetToysHistoryView: View {
     private var availabilityGraph: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("AVAILABILITY CHANGES").utilitySectionHeader()
+                Text("INTERNET AVAILABILITY").utilitySectionHeader()
                 Spacer()
                 Picker("Range", selection: $model.range) {
                     ForEach(NetToysHistoryRange.allCases) { range in
@@ -263,13 +263,17 @@ struct NetToysHistoryView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                NetworkTransitionGraph(events: Array(model.visibleEvents.reversed()), range: model.range.rawValue)
+                NetworkTransitionGraph(
+                    events: model.history.events,
+                    range: model.range.rawValue,
+                    currentState: model.helperStatus?.network?.internet ?? .unknown
+                )
                     .frame(height: 130)
                 HStack(spacing: 14) {
                     Label("Reachable", systemImage: "circle.fill").foregroundStyle(.green)
                     Label("Unavailable", systemImage: "circle.fill").foregroundStyle(.orange)
                     Spacer()
-                    Text("Transitions are stored. Continuous samples are not stored.")
+                    Text("State between recorded transitions is inferred.")
                         .foregroundStyle(.secondary)
                 }
                 .font(.system(size: 10))
@@ -414,40 +418,92 @@ struct NetToysHistoryView: View {
     }
 }
 
+nonisolated func internetAvailabilityTimeline(
+    events: [NetworkTransitionEvent],
+    from start: Date,
+    to end: Date,
+    currentState: NetworkReachability = .unknown
+) -> [(date: Date, state: NetworkReachability)] {
+    var transitions: [(date: Date, from: NetworkReachability, to: NetworkReachability)] = []
+    for event in events where event.date >= start && event.date <= end {
+        for change in event.changes {
+            if case .internet(let from, let to) = change {
+                transitions.append((event.date, from, to))
+            }
+        }
+    }
+    transitions.sort { $0.date < $1.date }
+    guard let first = transitions.first else { return [] }
+    let lastTransitionDate = transitions.last?.date ?? first.date
+
+    var state = first.from
+    var points = [(date: start, state: state)]
+    for transition in transitions {
+        points.append((transition.date, state))
+        state = transition.to
+        points.append((transition.date, state))
+    }
+    if currentState != .unknown,
+       state != currentState,
+       let networkDate = events.filter({ event in
+           event.date > lastTransitionDate && event.date <= end && event.changes.contains {
+               if case .network = $0 { return true }
+               return false
+           }
+       }).map(\.date).max() {
+        points.append((networkDate, state))
+        state = currentState
+        points.append((networkDate, state))
+    }
+    points.append((end, state))
+    return points
+}
+
 private struct NetworkTransitionGraph: View {
     let events: [NetworkTransitionEvent]
     let range: TimeInterval
+    let currentState: NetworkReachability
 
     var body: some View {
         Canvas { context, size in
-            let plot = CGRect(x: 8, y: 8, width: max(1, size.width - 16), height: max(1, size.height - 16))
-            context.stroke(Path(CGRect(x: plot.minX, y: plot.midY, width: plot.width, height: 0)), with: .color(.secondary.opacity(0.25)))
-            let cutoff = Date().addingTimeInterval(-range)
-            var points: [(Date, Bool)] = []
-            for event in events where event.date >= cutoff {
-                for change in event.changes {
-                    switch change {
-                    case .internet(let from, let to):
-                        points.append((event.date.addingTimeInterval(-0.01), from == .reachable))
-                        points.append((event.date, to == .reachable))
-                    case .network(_, let to) where to == "disconnected":
-                        points.append((event.date, false))
-                    default:
-                        break
-                    }
-                }
+            let plot = CGRect(x: 8, y: 8, width: max(1, size.width - 16), height: max(1, size.height - 32))
+            let end = Date()
+            let cutoff = end.addingTimeInterval(-range)
+            let points = internetAvailabilityTimeline(
+                events: events,
+                from: cutoff,
+                to: end,
+                currentState: currentState
+            )
+            let reachableY = plot.minY + 8
+            let unavailableY = plot.maxY - 8
+            for y in [reachableY, unavailableY] {
+                context.stroke(
+                    Path(CGRect(x: plot.minX, y: y, width: plot.width, height: 0)),
+                    with: .color(.secondary.opacity(0.2))
+                )
             }
+            context.draw(
+                Text(startLabel(cutoff)).font(.system(size: 10)).foregroundStyle(.tertiary),
+                at: CGPoint(x: plot.minX, y: size.height - 5),
+                anchor: .leading
+            )
+            context.draw(
+                Text("Now").font(.system(size: 10)).foregroundStyle(.tertiary),
+                at: CGPoint(x: plot.maxX, y: size.height - 5),
+                anchor: .trailing
+            )
             guard !points.isEmpty else {
                 context.draw(
-                    Text("No transitions in this range").font(.system(size: 11)).foregroundStyle(.secondary),
+                    Text("No Internet changes in this range").font(.system(size: 11)).foregroundStyle(.secondary),
                     at: CGPoint(x: plot.midX, y: plot.midY)
                 )
                 return
             }
-            func point(_ value: (Date, Bool)) -> CGPoint {
-                let elapsed = value.0.timeIntervalSince(cutoff)
+            func point(_ value: (date: Date, state: NetworkReachability)) -> CGPoint {
+                let elapsed = value.date.timeIntervalSince(cutoff)
                 let x = plot.minX + plot.width * min(max(elapsed / range, 0), 1)
-                return CGPoint(x: x, y: value.1 ? plot.minY + 8 : plot.maxY - 8)
+                return CGPoint(x: x, y: value.state == .reachable ? reachableY : unavailableY)
             }
             var path = Path()
             path.move(to: point(points[0]))
@@ -457,11 +513,20 @@ private struct NetworkTransitionGraph: View {
                 path.addLine(to: next)
             }
             context.stroke(path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-            for value in points {
+            for value in points.dropFirst().dropLast() {
                 let center = point(value)
-                context.fill(Path(ellipseIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6)), with: .color(value.1 ? .green : .orange))
+                context.fill(
+                    Path(ellipseIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6)),
+                    with: .color(value.state == .reachable ? .green : .orange)
+                )
             }
         }
         .accessibilityLabel("Internet availability transitions")
+    }
+
+    private func startLabel(_ date: Date) -> String {
+        range <= NetToysHistoryRange.day.rawValue
+            ? date.formatted(date: .omitted, time: .shortened)
+            : date.formatted(date: .abbreviated, time: .omitted)
     }
 }
