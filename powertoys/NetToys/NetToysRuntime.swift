@@ -215,6 +215,14 @@ nonisolated struct NetToysHelperStatus: Codable, Equatable, Sendable {
     let anchors: [SSHAnchorStatus]
     var network: NetworkRuntimeSnapshot? = nil
     var sourceCommit: String? = nil
+    var ssidAccess: NetToysSSIDAccessState? = nil
+}
+
+nonisolated enum NetToysSSIDAccessState: String, Codable, Equatable, Sendable {
+    case notDetermined
+    case denied
+    case restricted
+    case allowed
 }
 
 nonisolated struct NetworkRuntimeSnapshot: Codable, Equatable, Sendable {

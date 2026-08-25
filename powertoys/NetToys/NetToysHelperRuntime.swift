@@ -66,6 +66,12 @@ actor NetToysHelperRuntime {
     private var lastHistoryCheck = Date.distantPast
     private var networkSnapshot: NetworkRuntimeSnapshot?
     private var currentStatuses: [SSHAnchorStatus] = []
+    private var ssidAccess: NetToysSSIDAccessState?
+
+    func setSSIDAccess(_ state: NetToysSSIDAccessState) {
+        ssidAccess = state
+        writeStatus()
+    }
 
     func run() async {
         let heartbeat = Task { await heartbeatLoop() }
@@ -259,7 +265,8 @@ actor NetToysHelperRuntime {
                 heartbeat: Date(),
                 anchors: currentStatuses,
                 network: networkSnapshot,
-                sourceCommit: Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
+                sourceCommit: Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String,
+                ssidAccess: ssidAccess
             )
         )
     }

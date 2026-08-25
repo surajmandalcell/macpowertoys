@@ -329,6 +329,25 @@ final class NetToysTests: XCTestCase {
         XCTAssertNil(snapshot.ssid)
         XCTAssertEqual(snapshot.displayName, "en0 | 192.168.1.1")
 
+        let legacyStatus = try JSONDecoder().decode(
+            NetToysHelperStatus.self,
+            from: Data(#"{"version":1,"heartbeat":0,"anchors":[]}"#.utf8)
+        )
+        XCTAssertNil(legacyStatus.ssidAccess)
+        let currentStatus = NetToysHelperStatus(
+            version: 1,
+            heartbeat: .distantPast,
+            anchors: [],
+            ssidAccess: .allowed
+        )
+        XCTAssertEqual(
+            try JSONDecoder().decode(
+                NetToysHelperStatus.self,
+                from: JSONEncoder().encode(currentStatus)
+            ).ssidAccess,
+            .allowed
+        )
+
         let event = NetworkTransitionEvent(
             networkID: "en0|192.168.1.1",
             ssid: "Home Wi-Fi",
