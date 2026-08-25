@@ -45,15 +45,16 @@
   and inherited the transition list's search filter.
 - **Invariant:** Draw Internet reachability as a chronological step timeline
   from the selected range's start through now. Network changes and search text
-  do not directly alter the series. A network event must retain simultaneous
-  gateway and Internet changes so disconnect and recovery remain paired. Use a
-  later network boundary plus the current Internet state only to repair legacy
-  records that omitted the paired recovery.
+  do not directly alter the series. Show time before the first known state as a
+  distinct no-data level instead of calling it unavailable. A network event
+  must retain simultaneous gateway and Internet changes so disconnect and
+  recovery remain paired. Use a later network boundary plus the current
+  Internet state only to repair legacy records that omitted the paired recovery.
 - **Check:** Record reachable, disconnect, reconnect, and an SSID-only change.
-  Confirm the graph spans the full range, changes level only at the Internet
-  transitions, ends at the current state, and does not change when transition
-  search text changes. Confirm reversing transition order fails the timeline
-  regression test.
+  Confirm the graph spans the full range, shows unrecorded time as no data,
+  changes level only at the Internet transitions, ends at the current state,
+  and does not change when transition search text changes. Confirm reversing
+  transition order fails the timeline regression test.
 
 ## Input Devices
 
