@@ -38,13 +38,15 @@
 - **Invariant:** The NetToys window owns the scanner model. Preserve live
   results, selection, and sorting across destination changes. Restore the
   latest completed run after relaunch, and persist target, ports, filter,
-  search, scanner preferences, columns, openers, favorites, and annotations.
+  search, scanner preferences, columns, sort field and direction, openers,
+  favorites, and annotations.
   Request Local Network access on use and show its state and recovery action in
   Settings. Query the scoped routing socket first, then fill only missing
   scanned addresses from `/usr/sbin/arp -an` on the same active interface.
   Never accept incomplete, all-zero, or `02:00:00:00:00:00` values. Label the
   platform restriction only when both paths return no usable MAC.
-- **Check:** Recreate the scanner model and confirm the latest archive loads.
+- **Check:** Recreate the scanner model and confirm the latest archive and
+  selected sort field and direction load.
   Change destinations and return, then quit and relaunch, confirming the result
   remains. Deny Local Network access and confirm Settings offers recovery. In
   the signed app, rescan a reachable neighbor and confirm the privacy
