@@ -47,6 +47,30 @@
   warning appears. Present a different server key through the same anchor and
   confirm SSH refuses it.
 
+## SSH Anchor Key Access
+
+- **Symptom:** SSH Anchor follows a Windows device to its new address, but
+  `ssh <alias>` asks for the account password again.
+- **Cause:** Host-key identity and user authentication are separate. SSH Anchor
+  prepared stable host trust but never installed the Mac public key on the
+  enrolled device. A password-authenticated connection can appear passwordless
+  only while OpenSSH reuses that live connection.
+- **Invariant:** Automatic enrollment checks key-only login. If the device
+  rejects the key, request the SSH password once in a secure app sheet, pass it
+  to system OpenSSH through a private one-use FIFO, and never store or log it.
+  Install the selected public key in the Windows user authorized-key file. For
+  an administrator account, also use the ProgramData administrator file and
+  restrict it to the Administrators and SYSTEM SIDs. Use `ssh-copy-id` for
+  Unix OpenSSH. Recheck with `BatchMode=yes` before recording success. Keep the
+  stable `HostKeyAlias`, so the verified key remains valid after every address
+  change. Never bypass a changed host-key warning.
+- **Check:** Confirm key-only SSH fails before enrollment. Complete Automatic
+  enrollment, enter the password once, and confirm the app marks Key Access as
+  verified. Confirm the password is absent from process arguments, environment,
+  logs, and disk. Change the device address, wait for SSH Anchor recovery, and
+  confirm key-only SSH still succeeds. On Windows, verify the standard-user and
+  administrator paths and ACLs with separate test accounts.
+
 ## NetToys Scanner Persistence And MAC Addresses
 
 - **Symptom:** Scanner results disappear after changing destinations, or the
