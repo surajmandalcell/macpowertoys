@@ -1,6 +1,7 @@
 import AppKit
 import CoreLocation
 import Observation
+import ServiceManagement
 import SwiftUI
 
 enum NetToysHistoryRange: TimeInterval, CaseIterable, Identifiable {
@@ -545,6 +546,7 @@ struct NetToysHistoryView: View {
 struct NetToysSettingsView: View {
     @State private var model = NetToysHistoryViewModel()
     @State private var localNetworkAccess = NetToysLocalNetworkAccess.shared
+    @State private var neighborService = NetToysNeighborServiceManager.shared
     @State private var confirmClear = false
 
     var body: some View {
@@ -599,6 +601,31 @@ struct NetToysSettingsView: View {
                 }
                 .utilitySectionCard()
 
+                Text("MAC ADDRESSES").utilitySectionHeader()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Label("MAC Address Access", systemImage: neighborService.isEnabled
+                            ? "checkmark.circle.fill"
+                            : "lock.open")
+                            .font(.system(size: 12, weight: .medium))
+                        Spacer()
+                        Text(macAccessStatusTitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(neighborService.isEnabled ? .green : .secondary)
+                    }
+
+                    Text(macAccessStatusMessage)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if !neighborService.isEnabled {
+                        Button(macAccessActionTitle) { neighborService.enable() }
+                            .controlSize(.small)
+                    }
+                }
+                .utilitySectionCard()
+
                 Text("DATA").utilitySectionHeader()
 
                 HStack(spacing: 12) {
@@ -626,11 +653,13 @@ struct NetToysSettingsView: View {
             model.refresh()
             model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
+            neighborService.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refresh()
             model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
+            neighborService.refresh()
         }
         .confirmationDialog("Clear network history?", isPresented: $confirmClear) {
             Button("Clear History", role: .destructive) { model.clear() }
@@ -649,12 +678,42 @@ struct NetToysSettingsView: View {
         }
     }
 
+    private var macAccessStatusTitle: String {
+        _ = neighborService.revision
+        return switch neighborService.status {
+        case .enabled: "Allowed"
+        case .requiresApproval: "Needs Approval"
+        case .notRegistered: "Not Enabled"
+        case .notFound: "Unavailable"
+        @unknown default: "Unavailable"
+        }
+    }
+
+    private var macAccessStatusMessage: String {
+        switch neighborService.status {
+        case .enabled:
+            "The approved helper supplies neighboring MAC addresses automatically during scans."
+        case .requiresApproval:
+            "Allow MacPowerToys in System Settings > Login Items, then return and scan again."
+        case .notRegistered:
+            "Enable the narrow privileged helper that reads the system neighbor cache."
+        case .notFound:
+            neighborService.errorMessage ?? "The installed app does not contain its MAC address helper."
+        @unknown default:
+            neighborService.errorMessage ?? "macOS could not determine the helper state."
+        }
+    }
+
+    private var macAccessActionTitle: String {
+        neighborService.status == .requiresApproval ? "Open Login Items" : "Enable MAC Access"
+    }
+
     private var localNetworkStatusMessage: String {
         switch localNetworkAccess.state {
         case .checking:
             "Respond to the macOS prompt so IP Scanner can discover local devices."
         case .allowed:
-            "Local Network access is allowed. Device MAC addresses remain restricted by macOS."
+            "Local Network access is allowed for IP scanning and device discovery."
         case .denied:
             "Allow MacPowerToys in Privacy & Security > Local Network to scan local devices."
         case .unavailable:

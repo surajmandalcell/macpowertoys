@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -47,7 +48,7 @@ extension NetToysScanResult {
     nonisolated var macTitle: String { macAddress ?? (isReachable ? "macOS restricted" : "") }
     nonisolated var macHelp: String {
         macAddress == nil && isReachable
-            ? "macOS restricts neighboring device MAC addresses to Apple-entitled processes."
+            ? "Enable MAC Access in NetToys Settings, then rescan this neighboring device."
             : ""
     }
     nonisolated var vendorTitle: String { vendor ?? "" }
@@ -300,6 +301,7 @@ final class NetToysScannerViewModel {
 
     func start(targets override: [IPv4Address]? = nil) {
         guard !isScanning else { return }
+        _ = NetToysNeighborServiceManager.shared.enable()
         do {
             var defaultPorts = try PortList.parse(portInput)
             if customTextEnabled {
@@ -550,6 +552,12 @@ struct NetToysScannerView: View {
     @State private var showStatistics = false
     @State private var detailResult: NetToysScanResult?
     @State private var openerPreview: NetToysOpenerPreview?
+    @State private var neighborService = NetToysNeighborServiceManager.shared
+
+    private var macAccessEnabled: Bool {
+        _ = neighborService.revision
+        return neighborService.isEnabled
+    }
 
     private var sortedResults: [NetToysScanResult] {
         model.visibleResults.sorted(using: model.sortOrder)
@@ -566,6 +574,16 @@ struct NetToysScannerView: View {
     var body: some View {
         VStack(spacing: 0) {
             NetToysPageHeader(title: "IP Scanner", subtitle: scanSubtitle) {
+                if macAccessEnabled {
+                    Label("MAC Access", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Button {
+                        neighborService.enable()
+                    } label: {
+                        Label("Enable MAC Access", systemImage: "lock.open")
+                    }
+                }
                 Button {
                     showSettings = true
                 } label: {
@@ -608,6 +626,9 @@ struct NetToysScannerView: View {
         .onReceive(NotificationCenter.default.publisher(for: .netToysPrefill)) { notification in
             applyPrefill(DeepLinkHandler.shared.takeNetToysPrefill()
                 ?? notification.object as? NetToysScanPrefill)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            neighborService.refresh()
         }
         .onAppear {
             applyPrefill(DeepLinkHandler.shared.takeNetToysPrefill())
