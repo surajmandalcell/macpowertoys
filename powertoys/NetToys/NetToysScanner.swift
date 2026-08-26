@@ -886,6 +886,10 @@ nonisolated enum NetToysScannerStore {
         try save(value, to: NetToysPaths.scanHistory)
     }
 
+    static func clearArchive() throws {
+        try save(NetToysScanArchive(), to: NetToysPaths.scanHistory)
+    }
+
     static func annotations() -> [String: NetToysHostAnnotation] {
         load([String: NetToysHostAnnotation].self, from: NetToysPaths.scannerAnnotations) ?? [:]
     }

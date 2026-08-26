@@ -163,6 +163,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     func clear() {
         do {
             try NetToysConfigurationStore.saveHistory(NetworkHistory())
+            try NetToysScannerStore.clearArchive()
             refresh()
         } catch {
             errorMessage = error.localizedDescription
@@ -266,7 +267,7 @@ struct NetToysHistoryView: View {
             Button("Clear History", role: .destructive) { model.clear() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes the stored transition records from this Mac.")
+            Text("This removes saved uptime, transition, and IP scan records from this Mac.")
         }
         .alert("Network History", isPresented: Binding(
             get: { model.errorMessage != nil },
@@ -600,7 +601,7 @@ struct NetToysSettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Network History")
                             .font(.system(size: 12, weight: .medium))
-                        Text("Remove saved network transitions and uptime records from this Mac.")
+                        Text("Remove saved uptime, transition, and IP scan records from this Mac.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
@@ -631,7 +632,7 @@ struct NetToysSettingsView: View {
             Button("Clear History", role: .destructive) { model.clear() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes the stored transition records from this Mac.")
+            Text("This removes saved uptime, transition, and IP scan records from this Mac.")
         }
     }
 
