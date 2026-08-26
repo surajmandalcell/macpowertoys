@@ -73,6 +73,17 @@ final class NetToysScannerViewModel {
     private static let portKey = "nettoys.scanner.ports"
     private static let filterKey = "nettoys.scanner.filter"
     private static let searchKey = "nettoys.scanner.search"
+    private static let sortKey = "nettoys.scanner.sort"
+
+    private enum SortField: String, Codable {
+        case address, status, response, ttl, loss, hostname, mac, vendor
+        case netBIOS, openPorts, filteredPorts, httpServer, httpProxy, customText
+    }
+
+    private struct SavedSort: Codable {
+        let field: SortField
+        let order: SortOrder
+    }
 
     var targetInput: String {
         didSet { defaults.set(targetInput, forKey: Self.targetKey) }
@@ -112,7 +123,11 @@ final class NetToysScannerViewModel {
     var annotations = NetToysScannerStore.annotations()
     var openers = NetToysOpener.defaults
     var selection = Set<String>()
-    var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)]
+    var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)] {
+        didSet {
+            defaults.set(try? JSONEncoder().encode(sortOrder.compactMap(Self.savedSort)), forKey: Self.sortKey)
+        }
+    }
 
     private let defaults: UserDefaults
     private let scanner = NetToysScanner()
@@ -167,6 +182,55 @@ final class NetToysScannerViewModel {
            }).count == saved.count,
            saved.allSatisfy({ (try? $0.validate()) != nil }) {
             openers = saved
+        }
+        if let data = defaults.data(forKey: Self.sortKey),
+           let saved = try? JSONDecoder().decode([SavedSort].self, from: data) {
+            let restored = saved.map(Self.comparator)
+            if !restored.isEmpty { sortOrder = restored }
+        }
+    }
+
+    private static func savedSort(
+        _ comparator: KeyPathComparator<NetToysScanResult>
+    ) -> SavedSort? {
+        let keyPath = comparator.keyPath
+        let field: SortField?
+        if keyPath == \NetToysScanResult.sortAddress { field = .address }
+        else if keyPath == \NetToysScanResult.statusTitle { field = .status }
+        else if keyPath == \NetToysScanResult.responseTitle { field = .response }
+        else if keyPath == \NetToysScanResult.ttlTitle { field = .ttl }
+        else if keyPath == \NetToysScanResult.packetLossTitle { field = .loss }
+        else if keyPath == \NetToysScanResult.hostnameTitle { field = .hostname }
+        else if keyPath == \NetToysScanResult.macTitle { field = .mac }
+        else if keyPath == \NetToysScanResult.vendorTitle { field = .vendor }
+        else if keyPath == \NetToysScanResult.netBIOSTitle { field = .netBIOS }
+        else if keyPath == \NetToysScanResult.portsTitle { field = .openPorts }
+        else if keyPath == \NetToysScanResult.filteredPortsTitle { field = .filteredPorts }
+        else if keyPath == \NetToysScanResult.httpServerTitle { field = .httpServer }
+        else if keyPath == \NetToysScanResult.httpProxyTitle { field = .httpProxy }
+        else if keyPath == \NetToysScanResult.customTextTitle { field = .customText }
+        else { field = nil }
+        return field.map { SavedSort(field: $0, order: comparator.order) }
+    }
+
+    private static func comparator(
+        _ saved: SavedSort
+    ) -> KeyPathComparator<NetToysScanResult> {
+        switch saved.field {
+        case .address: KeyPathComparator(\NetToysScanResult.sortAddress, order: saved.order)
+        case .status: KeyPathComparator(\NetToysScanResult.statusTitle, order: saved.order)
+        case .response: KeyPathComparator(\NetToysScanResult.responseTitle, order: saved.order)
+        case .ttl: KeyPathComparator(\NetToysScanResult.ttlTitle, order: saved.order)
+        case .loss: KeyPathComparator(\NetToysScanResult.packetLossTitle, order: saved.order)
+        case .hostname: KeyPathComparator(\NetToysScanResult.hostnameTitle, order: saved.order)
+        case .mac: KeyPathComparator(\NetToysScanResult.macTitle, order: saved.order)
+        case .vendor: KeyPathComparator(\NetToysScanResult.vendorTitle, order: saved.order)
+        case .netBIOS: KeyPathComparator(\NetToysScanResult.netBIOSTitle, order: saved.order)
+        case .openPorts: KeyPathComparator(\NetToysScanResult.portsTitle, order: saved.order)
+        case .filteredPorts: KeyPathComparator(\NetToysScanResult.filteredPortsTitle, order: saved.order)
+        case .httpServer: KeyPathComparator(\NetToysScanResult.httpServerTitle, order: saved.order)
+        case .httpProxy: KeyPathComparator(\NetToysScanResult.httpProxyTitle, order: saved.order)
+        case .customText: KeyPathComparator(\NetToysScanResult.customTextTitle, order: saved.order)
         }
     }
 

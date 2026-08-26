@@ -1179,6 +1179,7 @@ final class NetToysTests: XCTestCase {
         model.portInput = "22"
         model.filter = .alive
         model.searchText = "jetson"
+        model.sortOrder = [KeyPathComparator(\NetToysScanResult.hostnameTitle, order: .reverse)]
 
         let recreated = NetToysScannerViewModel(
             archive: NetToysScanArchive(runs: [older, latest]),
@@ -1188,6 +1189,8 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(recreated.portInput, "22")
         XCTAssertEqual(recreated.filter, .alive)
         XCTAssertEqual(recreated.searchText, "jetson")
+        XCTAssertEqual(recreated.sortOrder.first?.keyPath, \NetToysScanResult.hostnameTitle)
+        XCTAssertEqual(recreated.sortOrder.first?.order, .reverse)
         XCTAssertEqual(recreated.results, latest.results)
         defaults.removePersistentDomain(forName: #function)
     }
