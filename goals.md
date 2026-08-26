@@ -29,6 +29,8 @@ evidence, and remaining work.
   normal signed installed build.
 - Verify the 18pt by 6pt launcher-detail tab inset in the latest normal
   installed build.
+- Verify representative updated tool icons and launchers in the refreshed
+  local Raycast extension.
 - Verify that Input Devices keeps scroll control active through sustained wheel
   input and a session lock and unlock.
 - Complete the live checks in the request lists.

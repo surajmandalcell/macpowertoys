@@ -20,20 +20,26 @@ build-for-testing:
 test:
 	$(XCODEBUILD) test -destination 'platform=macOS' -only-testing:powertoysTests -skip-testing:powertoysUITests CODE_SIGNING_ALLOWED=NO
 
-raycast:
+raycast-assets:
+	sh raycast/sync-icons.sh
+
+raycast: raycast-assets
 	npm --prefix raycast ci
 	npm --prefix raycast run lint
 	npm --prefix raycast run build
+
+raycast-install: raycast
+	sh raycast/reload-local.sh
 
 install-preflight:
 	@test "$(ALLOW_INSTALL)" = "1" || (echo "Refusing to install. Re-run with ALLOW_INSTALL=1 after all Cloud Sync transfers finish." && exit 1)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install from a dirty worktree. Commit the complete source state first." && exit 1)
 
-install: install-preflight build
+install: raycast-assets install-preflight raycast-install build
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install because the worktree changed during the build." && exit 1)
 	@CURRENT_COMMIT="$$(git rev-parse HEAD)"; BUILT_COMMIT="$$(plutil -extract MPTSourceCommit raw "$(DERIVED_DATA)/Build/Products/Release/MacPowerToys.app/Contents/Info.plist" 2>/dev/null)"; test "$(SOURCE_COMMIT)" = "$$CURRENT_COMMIT" && test "$$BUILT_COMMIT" = "$$CURRENT_COMMIT" || (echo "Refusing to install a stale build. Re-run make install from the current HEAD." && exit 1)
 	@! pgrep -f '^/Applications/MacPowerToys.app/Contents/MacOS/MacPowerToys$$' >/dev/null || (echo "Refusing to replace the running installed MacPowerToys app." && exit 1)
 	rm -rf /Applications/MacPowerToys.app
 	ditto "$(DERIVED_DATA)/Build/Products/Release/MacPowerToys.app" /Applications/MacPowerToys.app
 
-.PHONY: build build-for-testing test raycast install install-preflight
+.PHONY: build build-for-testing test raycast-assets raycast raycast-install install install-preflight

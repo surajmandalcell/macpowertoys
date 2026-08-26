@@ -80,6 +80,19 @@
 - **Check:** Confirm no active transfer, install the final Release product, and
   confirm the installed process is running.
 
+## Raycast Local Install Drift
+
+- **Symptom:** The signed app is current, but Raycast keeps old tool icons or
+  launcher metadata.
+- **Cause:** The app installer replaced only the app bundle. Raycast retained a
+  separately built development extension, and its PNG icons had drifted from
+  the app's SVG assets.
+- **Invariant:** Generate Raycast tool icons from the app asset catalog, build
+  the extension, and reload an imported local extension during `make install`.
+  If Raycast is closed, update its extension directory without launching it.
+- **Check:** Run the icon sync check, compare the imported manifest and assets,
+  and inspect representative launchers in the running Raycast build.
+
 ## Cloud Sync Pause Test Ends Before Interaction
 
 - **Symptom:** A disposable local transfer finishes before the menu-bar Pause
