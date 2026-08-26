@@ -266,6 +266,16 @@ final class UtilityToolsTests: XCTestCase {
         )
     }
 
+    func testNetToysMACAccessSurvivesAppUpdates() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/NetToys/NetToysScanner.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertFalse(source.contains("sourceCommit == expectedCommit"))
+    }
+
     private func toolAboutViewSource() throws -> String {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

@@ -62,15 +62,8 @@ nonisolated enum NetToysNeighborXPCClient {
             connection.resume()
             let proxy = connection.remoteObjectProxyWithErrorHandler { _ in reply.finish([:]) }
                 as? NetToysNeighborXPCProtocol
-            proxy?.neighborSnapshot { data, sourceCommit in
-                let expectedCommit = Bundle.main.object(
-                    forInfoDictionaryKey: "MPTSourceCommit"
-                ) as? String
-                guard let data,
-                      expectedCommit == nil
-                        || expectedCommit == "$(MPT_SOURCE_COMMIT)"
-                        || sourceCommit == expectedCommit
-                else {
+            proxy?.neighborSnapshot { data, _ in
+                guard let data else {
                     reply.finish([:])
                     return
                 }
