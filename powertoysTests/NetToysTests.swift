@@ -598,6 +598,11 @@ final class NetToysTests: XCTestCase {
             ),
             "f8:3d:c6:56:fe:e3"
         )
+        XCTAssertEqual(
+            ARPTable.parseRoutingMessages(message, interfaceIndex: 14),
+            ["192.168.1.18": "f8:3d:c6:56:fe:e3"]
+        )
+        XCTAssertTrue(ARPTable.parseRoutingMessages(message, interfaceIndex: 15).isEmpty)
         var routedHeader = header
         routedHeader.rtm_flags = RTF_GATEWAY
         var routedMessage = withUnsafeBytes(of: &routedHeader) { Data($0) }
@@ -636,29 +641,6 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(queryHeader.rtm_seq, 7)
         XCTAssertEqual(queryHeader.rtm_pid, 42)
         XCTAssertEqual(Array(query.suffix(16).prefix(8)), [16, UInt8(AF_INET), 0, 0, 192, 168, 1, 18])
-    }
-
-    func testARPTableParsesAppleCommandFallbackWithoutPrivacyPlaceholders() throws {
-        let output = """
-        ? (192.168.1.18) at f8:3d:c6:56:fe:e3 on en0 ifscope [ethernet]
-        ? (192.168.1.19) at (incomplete) on en0 ifscope [ethernet]
-        ? (192.168.1.20) at 02:00:00:00:00:00 on en0 ifscope [ethernet]
-        ? (192.168.1.21) at aa:bb:cc:dd:ee:ff on en1 ifscope [ethernet]
-        """
-
-        XCTAssertEqual(
-            ARPTable.parseCommandOutput(
-                output,
-                addresses: [
-                    try XCTUnwrap(IPv4Address("192.168.1.18")),
-                    try XCTUnwrap(IPv4Address("192.168.1.19")),
-                    try XCTUnwrap(IPv4Address("192.168.1.20")),
-                    try XCTUnwrap(IPv4Address("192.168.1.21")),
-                ],
-                interfaceName: "en0"
-            ),
-            ["192.168.1.18": "f8:3d:c6:56:fe:e3"]
-        )
     }
 
     func testMACVendorDatabaseUsesLongestPublicPrefixAndRejectsLocalAddresses() {
