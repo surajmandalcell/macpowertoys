@@ -26,6 +26,7 @@ final class NetToysAnchorViewModel {
     var pendingTailscaleAnchorID: UUID?
     var tailscaleLoadingAnchorID: UUID?
     var pendingKeyAccessAnchorID: UUID?
+    var keyAccessRetryAnchorID: UUID?
     var keyAccessRunningAnchorID: UUID?
     var keyAccessRemoteKind = SSHRemoteKind.unknown
     var keyAccessErrorMessage: String?
@@ -272,6 +273,7 @@ final class NetToysAnchorViewModel {
 
     func remove(_ id: UUID) {
         configuration.anchors.removeAll { $0.id == id }
+        if keyAccessRetryAnchorID == id { keyAccessRetryAnchorID = nil }
         save()
     }
 
@@ -287,6 +289,7 @@ final class NetToysAnchorViewModel {
     func setUpKeyAccess(for id: UUID) {
         guard let anchor = configuration.anchors.first(where: { $0.id == id }) else { return }
         keyAccessTask?.cancel()
+        keyAccessRetryAnchorID = nil
         keyAccessRunningAnchorID = id
         keyAccessErrorMessage = nil
         keyAccessTask = Task { [weak self] in
@@ -327,6 +330,7 @@ final class NetToysAnchorViewModel {
                     remoteKind: remoteKind
                 )
                 markKeyAccessVerified(id)
+                keyAccessRetryAnchorID = nil
                 pendingKeyAccessAnchorID = nil
             } catch is CancellationError {
                 return
@@ -340,6 +344,7 @@ final class NetToysAnchorViewModel {
         keyAccessTask?.cancel()
         keyAccessTask = nil
         keyAccessRunningAnchorID = nil
+        keyAccessRetryAnchorID = pendingKeyAccessAnchorID ?? keyAccessRetryAnchorID
         pendingKeyAccessAnchorID = nil
         keyAccessErrorMessage = nil
     }
@@ -668,6 +673,22 @@ struct NetToysAnchorView: View {
                 }
                 .utilitySectionCard()
             } else {
+                if let retryID = model.keyAccessRetryAnchorID,
+                   let retryAnchor = model.configuration.anchors.first(where: { $0.id == retryID }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "key")
+                        Text("Key access wasn't finished for \(model.aliasLabel(for: retryAnchor)).")
+                        Spacer()
+                        Button("Retry") { model.setUpKeyAccess(for: retryID) }
+                            .controlSize(.small)
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+                }
+
                 VStack(spacing: 0) {
                     ForEach(Array(model.configuration.anchors.enumerated()), id: \.element.id) { index, anchor in
                         anchorRow(anchor)
