@@ -14,18 +14,23 @@
   by exact MAC, or by one unique first hostname label with learned MAC evidence.
   Automatic setup inspects the selected SSH entry, retains both signals when
   available, enables the anchor, and enables the helper in one action. It
-  adds one managed host-key policy during enrollment. Later recovery changes
-  only the selected `HostName` token and preserves every other SSH config byte.
+  adds one managed host-key policy during enrollment. When setup starts from an
+  IP Scanner result, the selected scan address overrides a stale `HostName` and
+  both changes use one atomic SSH config edit. Later recovery changes only the
+  selected `HostName` token and preserves every other SSH config byte.
   Network History stores reachability transitions, not every probe. Enabling
   NetToys registers and uses its bundled login helper. Disabling NetToys stops
   monitoring and unregisters the helper.
 - **Check:** Exercise all four destinations. Compare the SSH config before and
   after an address change and confirm that the one expected token is the only
   changed byte range. Confirm automatic setup fills the detected evidence and
-  starts the helper. Change between Wi-Fi or wired connections and confirm the
-  default interface is scanned. Confirm ambiguous recovery never writes. Enable
-  NetToys, quit MacPowerToys, and confirm the helper continues. Disable NetToys
-  and confirm the helper exits and is no longer registered.
+  starts the helper. Start from a scanner address that differs from the SSH
+  entry, choose the entry, and confirm enrollment inspects and saves the scanner
+  address instead of the stale address. Change between Wi-Fi or wired
+  connections and confirm the default interface is scanned. Confirm ambiguous
+  recovery never writes. Enable NetToys, quit MacPowerToys, and confirm the
+  helper continues. Disable NetToys and confirm the helper exits and is no
+  longer registered.
 
 ## SSH Anchor Host-Key Identity
 
@@ -167,7 +172,8 @@
   Tailscale dwell. Accept a cached local address only on the active subnet.
   Every route change uses the existing verified, atomic `HostName` update and
   rollback path. Keep the existing bounded local-scan backoff and a 30-second
-  Tailscale retry gate.
+  Tailscale retry gate. Initial peer matching must inspect the scanner-selected
+  local endpoint, not a stale address from the original SSH entry.
 - **Check:** Decode a legacy local-only anchor. Reject ambiguous labels and a
   cached private address from another subnet. Confirm the two-failure,
   three-success, and dwell thresholds. Change a peer IP while retaining its

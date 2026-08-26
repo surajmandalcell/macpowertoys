@@ -39,7 +39,15 @@ final class NetToysAnchorViewModel {
     }
 
     var selectedEntry: SSHConfigEntry? {
-        entries.first { $0.aliases.contains(selectedAlias) }
+        guard let entry = entries.first(where: { $0.aliases.contains(selectedAlias) }) else {
+            return nil
+        }
+        guard let requestedAddress else { return entry }
+        return SSHConfigEntry(
+            aliases: entry.aliases,
+            hostName: requestedAddress,
+            port: entry.port
+        )
     }
 
     var helperIsHealthy: Bool {
@@ -410,7 +418,8 @@ final class NetToysAnchorViewModel {
             configURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config"),
             backupDirectory: NetToysPaths.backups,
             hostAlias: anchor.hostAlias,
-            knownHostsAlias: anchor.knownHostsAlias
+            knownHostsAlias: anchor.knownHostsAlias,
+            targetHostName: anchor.hostName
         )
     }
 }
@@ -793,7 +802,7 @@ struct NetToysAnchorView: View {
             .accessibilityLabel("Remove \(aliasLabel)")
             .help("Remove \(aliasLabel)")
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 6)
     }
 
     private var tailscalePeerPicker: some View {

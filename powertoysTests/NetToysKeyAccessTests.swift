@@ -4,6 +4,23 @@ import Testing
 
 @Suite("NetToys SSH key access")
 struct NetToysKeyAccessTests {
+    @Test("Scanner-selected address overrides the stale SSH address")
+    @MainActor
+    func scannerAddressWinsDuringEnrollment() {
+        let model = NetToysAnchorViewModel()
+        model.entries = [
+            SSHConfigEntry(
+                aliases: ["winbox", "win1"],
+                hostName: "192.168.1.11",
+                port: 22
+            ),
+        ]
+        model.selectedAlias = "winbox"
+        model.requestedAddress = "192.168.1.7"
+
+        #expect(model.selectedEntry?.hostName == "192.168.1.7")
+    }
+
     @Test("Dismissing password setup leaves a retry path")
     @MainActor
     func dismissalKeepsRetry() {

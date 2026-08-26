@@ -142,6 +142,24 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(moved.data, policy + Data("# keep\r\nHost winbox win1\r\n\tUser suraj\r\n\tHostName 192.168.1.44\r\n".utf8))
     }
 
+    func testSSHAnchorPreparationUsesSelectedScannerAddress() throws {
+        let input = Data("Host winbox win1\n  HostName 192.168.1.11\n".utf8)
+
+        let prepared = try SSHConfigEditor.preparingAnchor(
+            in: input,
+            hostAlias: "winbox",
+            knownHostsAlias: "macpowertoys-anchor-123",
+            targetHostName: "192.168.1.7"
+        )
+
+        XCTAssertTrue(String(decoding: prepared, as: UTF8.self).contains(
+            "HostName 192.168.1.7"
+        ))
+        XCTAssertFalse(String(decoding: prepared, as: UTF8.self).contains(
+            "HostName 192.168.1.11"
+        ))
+    }
+
     func testAnchorMatcherUsesExactMACOrUniqueHostnameEvidence() {
         let old = AnchorCandidate(ip: "192.168.1.8", macAddress: "AA:BB:CC:DD:EE:FF", hostname: "jetson.local")
         let moved = AnchorCandidate(ip: "192.168.1.44", macAddress: "aa-bb-cc-dd-ee-ff", hostname: nil)

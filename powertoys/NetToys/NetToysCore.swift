@@ -166,7 +166,8 @@ nonisolated enum SSHConfigEditor {
     static func preparingAnchor(
         in data: Data,
         hostAlias: String,
-        knownHostsAlias: String
+        knownHostsAlias: String,
+        targetHostName: String? = nil
     ) throws -> Data {
         guard isSafeToken(hostAlias), isSafeToken(knownHostsAlias),
               let entry = entries(in: data).first(where: {
@@ -175,6 +176,17 @@ nonisolated enum SSHConfigEditor {
         else { throw EditError.hostNotFound(hostAlias) }
         let aliases = entry.aliases.filter(isLiteralAlias)
         guard !aliases.isEmpty else { throw EditError.hostNotFound(hostAlias) }
+
+        let prepared = if let targetHostName, targetHostName != entry.hostName {
+            try replacingHostName(
+                in: data,
+                hostAlias: hostAlias,
+                expectedHostName: entry.hostName,
+                newHostName: targetHostName
+            ).data
+        } else {
+            data
+        }
 
         let newline = data.range(of: Data([0x0d, 0x0a])) == nil ? "\n" : "\r\n"
         let startMarker = "# MacPowerToys SSH Anchor: \(knownHostsAlias)"
@@ -189,25 +201,28 @@ nonisolated enum SSHConfigEditor {
             "",
             "",
         ].joined(separator: newline)).utf8)
-        if data.range(of: block) != nil { return data }
+        if prepared.range(of: block) != nil { return prepared }
 
         let start = Data((startMarker + newline).utf8)
         let end = Data((endMarker + newline).utf8)
-        if let startRange = data.range(of: start) {
-            guard let endRange = data.range(of: end, in: startRange.upperBound..<data.endIndex) else {
+        if let startRange = prepared.range(of: start) {
+            guard let endRange = prepared.range(
+                of: end,
+                in: startRange.upperBound..<prepared.endIndex
+            ) else {
                 throw EditError.invalidManagedPolicy(hostAlias)
             }
             var upperBound = endRange.upperBound
             let separator = Data(newline.utf8)
-            if data[upperBound...].starts(with: separator) { upperBound += separator.count }
-            var output = data
+            if prepared[upperBound...].starts(with: separator) { upperBound += separator.count }
+            var output = prepared
             output.replaceSubrange(startRange.lowerBound..<upperBound, with: block)
             return output
         }
-        guard data.range(of: Data(endMarker.utf8)) == nil else {
+        guard prepared.range(of: Data(endMarker.utf8)) == nil else {
             throw EditError.invalidManagedPolicy(hostAlias)
         }
-        return block + data
+        return block + prepared
     }
 
     static func replacingHostName(
@@ -427,14 +442,16 @@ nonisolated enum SSHConfigFileUpdater {
         configURL: URL,
         backupDirectory: URL,
         hostAlias: String,
-        knownHostsAlias: String
+        knownHostsAlias: String,
+        targetHostName: String? = nil
     ) throws -> Bool {
         var changed = false
         try replace(configURL: configURL, backupDirectory: backupDirectory) { original in
             let prepared = try SSHConfigEditor.preparingAnchor(
                 in: original,
                 hostAlias: hostAlias,
-                knownHostsAlias: knownHostsAlias
+                knownHostsAlias: knownHostsAlias,
+                targetHostName: targetHostName
             )
             changed = prepared != original
             return prepared
