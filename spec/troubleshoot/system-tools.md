@@ -10,17 +10,21 @@
   Scanner
   behavior without GPL source. SSH Anchor monitors the selected SSH port every
   2 to 3 seconds. When the current address stops answering, it scans only that
-  port on the active local IPv4 subnet and identifies the device by exact MAC,
-  or by a unique hostname with learned MAC evidence when randomized MAC mode is
-  enabled. It changes only the selected `HostName` token and preserves every
-  other SSH config byte. Network History stores reachability transitions, not
-  every probe. Enabling NetToys registers and uses its bundled login helper.
-  Disabling NetToys stops monitoring and unregisters the helper.
+  port on the default connection's local IPv4 subnet and identifies the device
+  by exact MAC, or by one unique first hostname label with learned MAC evidence.
+  Automatic setup inspects the selected SSH entry, retains both signals when
+  available, enables the anchor, and enables the helper in one action. It
+  changes only the selected `HostName` token and preserves every other SSH
+  config byte. Network History stores reachability transitions, not every
+  probe. Enabling NetToys registers and uses its bundled login helper. Disabling
+  NetToys stops monitoring and unregisters the helper.
 - **Check:** Exercise all four destinations. Compare the SSH config before and
   after an address change and confirm that the one expected token is the only
-  changed byte range. Confirm ambiguous recovery never writes. Enable NetToys,
-  quit MacPowerToys, and confirm the helper continues. Disable NetToys and
-  confirm the helper exits and is no longer registered.
+  changed byte range. Confirm automatic setup fills the detected evidence and
+  starts the helper. Change between Wi-Fi or wired connections and confirm the
+  default interface is scanned. Confirm ambiguous recovery never writes. Enable
+  NetToys, quit MacPowerToys, and confirm the helper continues. Disable NetToys
+  and confirm the helper exits and is no longer registered.
 
 ## NetToys Scanner Persistence And MAC Addresses
 

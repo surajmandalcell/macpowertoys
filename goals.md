@@ -25,7 +25,8 @@ evidence, and remaining work.
   a physical menu-bar click. All other built-in surfaces passed.
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
-- Verify SSH Anchor at the minimum window width and with a configured anchor.
+- Verify automatic SSH Anchor setup at the minimum window width, then change
+  connections and confirm the signed helper repairs the enrolled host's IP.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest
   normal installed build.
 - Verify the darker menu-bar popover, equal tab-group edges, shorter body gap,
