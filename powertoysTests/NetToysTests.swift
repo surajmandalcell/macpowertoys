@@ -114,6 +114,34 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testSSHAnchorPreparationPinsTrustToAliasesAndRemainsEditable() throws {
+        let input = Data("# keep\r\nHost winbox win1\r\n\tUser suraj\r\n\tHostName 192.168.1.11\r\n".utf8)
+        let prepared = try SSHConfigEditor.preparingAnchor(
+            in: input,
+            hostAlias: "win1",
+            knownHostsAlias: "macpowertoys-anchor-123"
+        )
+
+        let policy = Data("# MacPowerToys SSH Anchor: macpowertoys-anchor-123\r\nHost winbox win1\r\n    HostKeyAlias macpowertoys-anchor-123\r\n    StrictHostKeyChecking accept-new\r\n    CheckHostIP no\r\n# End MacPowerToys SSH Anchor: macpowertoys-anchor-123\r\n\r\n".utf8)
+        XCTAssertEqual(prepared, policy + input)
+        XCTAssertEqual(
+            try SSHConfigEditor.preparingAnchor(
+                in: prepared,
+                hostAlias: "win1",
+                knownHostsAlias: "macpowertoys-anchor-123"
+            ),
+            prepared
+        )
+
+        let moved = try SSHConfigEditor.replacingHostName(
+            in: prepared,
+            hostAlias: "win1",
+            expectedHostName: "192.168.1.11",
+            newHostName: "192.168.1.44"
+        )
+        XCTAssertEqual(moved.data, policy + Data("# keep\r\nHost winbox win1\r\n\tUser suraj\r\n\tHostName 192.168.1.44\r\n".utf8))
+    }
+
     func testAnchorMatcherUsesExactMACOrUniqueHostnameEvidence() {
         let old = AnchorCandidate(ip: "192.168.1.8", macAddress: "AA:BB:CC:DD:EE:FF", hostname: "jetson.local")
         let moved = AnchorCandidate(ip: "192.168.1.44", macAddress: "aa-bb-cc-dd-ee-ff", hostname: nil)
@@ -486,6 +514,38 @@ final class NetToysTests: XCTestCase {
             try FileManager.default.contentsOfDirectory(at: backup, includingPropertiesForKeys: nil)
                 .filter { $0.pathExtension == "backup" }.count,
             1
+        )
+    }
+
+    func testSSHConfigFileUpdaterPreparesAnchorPolicyOnlyOnce() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let backup = root.appendingPathComponent("backups", isDirectory: true)
+        let config = root.appendingPathComponent("config")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data("Host winbox win1\n  HostName 192.168.1.11\n".utf8).write(to: config)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: config.path)
+
+        XCTAssertTrue(try SSHConfigFileUpdater.prepareAnchor(
+            configURL: config,
+            backupDirectory: backup,
+            hostAlias: "win1",
+            knownHostsAlias: "macpowertoys-anchor-123"
+        ))
+        XCTAssertFalse(try SSHConfigFileUpdater.prepareAnchor(
+            configURL: config,
+            backupDirectory: backup,
+            hostAlias: "win1",
+            knownHostsAlias: "macpowertoys-anchor-123"
+        ))
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(at: backup, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "backup" }.count,
+            1
+        )
+        XCTAssertEqual(
+            try FileManager.default.attributesOfItem(atPath: config.path)[.posixPermissions] as? NSNumber,
+            NSNumber(value: 0o600)
         )
     }
 
