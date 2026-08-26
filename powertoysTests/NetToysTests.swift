@@ -638,6 +638,29 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(Array(query.suffix(16).prefix(8)), [16, UInt8(AF_INET), 0, 0, 192, 168, 1, 18])
     }
 
+    func testARPTableParsesAppleCommandFallbackWithoutPrivacyPlaceholders() throws {
+        let output = """
+        ? (192.168.1.18) at f8:3d:c6:56:fe:e3 on en0 ifscope [ethernet]
+        ? (192.168.1.19) at (incomplete) on en0 ifscope [ethernet]
+        ? (192.168.1.20) at 02:00:00:00:00:00 on en0 ifscope [ethernet]
+        ? (192.168.1.21) at aa:bb:cc:dd:ee:ff on en1 ifscope [ethernet]
+        """
+
+        XCTAssertEqual(
+            ARPTable.parseCommandOutput(
+                output,
+                addresses: [
+                    try XCTUnwrap(IPv4Address("192.168.1.18")),
+                    try XCTUnwrap(IPv4Address("192.168.1.19")),
+                    try XCTUnwrap(IPv4Address("192.168.1.20")),
+                    try XCTUnwrap(IPv4Address("192.168.1.21")),
+                ],
+                interfaceName: "en0"
+            ),
+            ["192.168.1.18": "f8:3d:c6:56:fe:e3"]
+        )
+    }
+
     func testMACVendorDatabaseUsesLongestPublicPrefixAndRejectsLocalAddresses() {
         let database = MACVendorDatabase(text: """
         24\t001122\tExample Holdings
