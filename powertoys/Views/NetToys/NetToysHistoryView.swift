@@ -71,6 +71,10 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    var hasStoredHistory: Bool {
+        !history.events.isEmpty || !scanArchive.runs.isEmpty
+    }
+
     var helperSSIDUnavailable: Bool {
         guard helperStatus?.ssidAccess == .allowed,
               let snapshot = helperStatus?.network,
@@ -387,7 +391,7 @@ struct NetToysHistoryView: View {
                 Button("Export") { model.export() }
                     .disabled(model.visibleEvents.isEmpty)
                 Button("Clear", role: .destructive) { confirmClear = true }
-                    .disabled(model.history.events.isEmpty)
+                    .disabled(!model.hasStoredHistory)
             }
             .controlSize(.small)
 
@@ -608,7 +612,7 @@ struct NetToysSettingsView: View {
                     Spacer()
                     Button("Clear History", role: .destructive) { confirmClear = true }
                         .controlSize(.small)
-                        .disabled(model.history.events.isEmpty)
+                        .disabled(!model.hasStoredHistory)
                 }
                 .utilitySectionCard()
 
