@@ -258,6 +258,14 @@ final class UtilityToolsTests: XCTestCase {
         )
     }
 
+    func testNetToysRecoverySettingsStayInteractiveWhileToolIsOff() throws {
+        XCTAssertTrue(
+            try toolAboutViewSource().contains(
+                ".disabled(!settings.isToolEnabled(tool.id) && tool.id != \"nettoys\")"
+            )
+        )
+    }
+
     private func toolAboutViewSource() throws -> String {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

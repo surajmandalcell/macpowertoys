@@ -83,6 +83,23 @@
   installed app. Confirm another interface and an unrequested address are
   ignored.
 
+## NetToys Background Approval Recovery
+
+- **Symptom:** NetToys cannot be enabled, MAC Address Access says Needs
+  Approval, and Open Login Items is disabled.
+- **Cause:** The shared launcher disabled the complete settings body whenever a
+  tool was off. NetToys kept its macOS background-service recovery action in
+  that body, so the action needed to restore approval was unreachable.
+- **Invariant:** Keep NetToys Settings interactive while NetToys is off. When
+  macOS requires approval, direct the user to turn on every MacPowerToys entry
+  under Background App Activity because the login helper and neighbor daemon
+  are separate approved services. Other disabled tools keep their settings
+  bodies disabled.
+- **Check:** Disable NetToys and confirm Open Login Items remains enabled. Turn
+  on every MacPowerToys Background App Activity entry, return to the app, and
+  confirm NetToys enables, the login helper publishes a fresh heartbeat, and
+  MAC Address Access changes to Allowed.
+
 ## NetToys Live Scanner Results
 
 - **Symptom:** The scan counter moves, but the result table stays unchanged

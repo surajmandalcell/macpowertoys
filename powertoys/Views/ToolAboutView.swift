@@ -52,7 +52,7 @@ struct ToolAboutView: View {
                             ToolSettingsContent(toolID: tool.id)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                        .disabled(!settings.isToolEnabled(tool.id))
+                        .disabled(!settings.isToolEnabled(tool.id) && tool.id != "nettoys")
                     case .guide:
                         manualSection(for: tool)
                     }
