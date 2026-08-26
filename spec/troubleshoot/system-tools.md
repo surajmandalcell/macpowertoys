@@ -34,27 +34,33 @@
   results with the destination. Completed scan archives were written but not
   restored. On current macOS, direct routing-socket replies can scrub neighbor
   hardware addresses even with Local Network permission. A child `arp`
-  process inherits the signed app's privacy context, so shell output is not a
-  valid app-level verification of that fallback.
+  process and an in-process neighbor-cache snapshot inherit the signed app's
+  privacy context. A system launch daemon is exempt from per-user Local
+  Network Privacy, but macOS requires explicit Background Item approval.
 - **Invariant:** The NetToys window owns the scanner model. Preserve live
   results, selection, and sorting across destination changes. Restore the
   latest completed run after relaunch, and persist target, ports, filter,
   search, scanner preferences, columns, sort field and direction, openers,
   favorites, and annotations.
   Request Local Network access on use and show its state and recovery action in
-  Settings. Query the scoped routing socket first, then fill only missing
-  scanned addresses from the native `NET_RT_FLAGS` neighbor-cache snapshot,
-  filtered to the same active interface index and requested addresses. Never
-  accept incomplete, all-zero, or `02:00:00:00:00:00` values. Label the
-  platform restriction only when both native paths return no usable MAC.
+  Settings. Query the scoped routing socket and in-process `NET_RT_FLAGS`
+  snapshot first. If values are still missing, register the on-demand neighbor
+  daemon and show its Not Enabled, Needs Approval, Allowed, or Unavailable
+  state beside IP Scanner and in NetToys Settings. The daemon accepts no input
+  and returns only the raw snapshot over mutually code-signing-restricted XPC;
+  the app verifies the source commit and filters to the active interface and
+  requested addresses. Never accept incomplete, all-zero, or
+  `02:00:00:00:00:00` values.
 - **Check:** Recreate the scanner model and confirm the latest archive and
   selected sort field and direction load.
   Change destinations and return, then quit and relaunch, confirming the result
   remains. Deny Local Network access and confirm Settings offers recovery. In
-  the signed app, rescan a reachable neighbor and confirm the privacy
-  placeholder is rejected. Compare a reachable address in the completed scan
-  with `/usr/sbin/arp -an` and confirm the same canonical MAC appears in the
-  table. Confirm another interface and an unrequested address are ignored.
+  the signed app, enable MAC Access, approve the Background Item when macOS
+  asks, and rescan a reachable neighbor. Compare it with `/usr/sbin/arp -an`
+  and confirm the same canonical MAC appears. Confirm the embedded daemon
+  plist, signatures, source commit, and XPC peer requirements match the final
+  installed app. Confirm another interface and an unrequested address are
+  ignored.
 
 ## Wi-Fi Priority Failover
 
