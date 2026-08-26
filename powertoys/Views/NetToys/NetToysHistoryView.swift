@@ -694,7 +694,8 @@ struct NetToysSettingsView: View {
         case .enabled:
             "The approved helper supplies neighboring MAC addresses automatically during scans."
         case .requiresApproval:
-            "Allow MacPowerToys in System Settings > Login Items, then return and scan again."
+            "Turn on every MacPowerToys entry under System Settings > General > "
+                + "Login Items & Extensions > Background App Activity, then return and scan again."
         case .notRegistered:
             "Enable the narrow privileged helper that reads the system neighbor cache."
         case .notFound:
