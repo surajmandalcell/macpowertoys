@@ -1008,8 +1008,7 @@ actor NetToysScanner {
         let interfaceIndex = activeNetwork.map { if_nametoindex($0.interfaceName) } ?? 0
         let arp = await ARPTable.load(
             addresses: scanned.filter(\.isReachable).map(\.address),
-            interfaceIndex: interfaceIndex,
-            interfaceName: activeNetwork?.interfaceName
+            interfaceIndex: interfaceIndex
         )
         return scanned.map { result in
             let macAddress = arp[result.address.description]
@@ -1202,67 +1201,35 @@ nonisolated enum HostResolver {
 nonisolated enum ARPTable {
     static func load(
         addresses: [IPv4Address],
-        interfaceIndex: UInt32,
-        interfaceName: String?
+        interfaceIndex: UInt32
     ) async -> [String: String] {
         await Task.detached(priority: .utility) {
             var result = loadSynchronously(addresses: addresses, interfaceIndex: interfaceIndex)
-            guard let interfaceName, result.count < Set(addresses).count else { return result }
-            result.merge(loadAppleARP(addresses: addresses, interfaceName: interfaceName)) {
+            guard result.count < Set(addresses).count else { return result }
+            result.merge(loadNeighborCache(addresses: addresses, interfaceIndex: interfaceIndex)) {
                 current, _ in current
             }
             return result
         }.value
     }
 
-    static func parseCommandOutput(
-        _ output: String,
+    private static func loadNeighborCache(
         addresses: [IPv4Address],
-        interfaceName: String
+        interfaceIndex: UInt32
     ) -> [String: String] {
+        guard interfaceIndex > 0, interfaceIndex <= UInt16.max else { return [:] }
+        var mib = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_LLINFO]
+        var size = 0
+        guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return [:] }
+        var data = Data(count: size)
+        let status = data.withUnsafeMutableBytes {
+            sysctl(&mib, u_int(mib.count), $0.baseAddress, &size, nil, 0)
+        }
+        guard status == 0 else { return [:] }
+        if size < data.count { data.removeSubrange(size..<data.count) }
         let requested = Set(addresses.map(\.description))
-        return output.split(whereSeparator: \.isNewline).reduce(into: [:]) { result, line in
-            let fields = line.split(whereSeparator: \.isWhitespace)
-            guard fields.count >= 6,
-                  fields[1].first == "(", fields[1].last == ")",
-                  fields[2] == "at", fields[4] == "on",
-                  String(fields[5]) == interfaceName
-            else { return }
-            let address = String(fields[1].dropFirst().dropLast())
-            let normalized = AnchorMatcher.normalizedMAC(String(fields[3]))
-            guard requested.contains(address), normalized.count == 12,
-                  normalized != "020000000000", normalized != "000000000000"
-            else { return }
-            let characters = Array(normalized)
-            result[address] = stride(from: 0, to: characters.count, by: 2)
-                .map { String(characters[$0...($0 + 1)]) }
-                .joined(separator: ":")
-        }
-    }
-
-    private static func loadAppleARP(
-        addresses: [IPv4Address],
-        interfaceName: String
-    ) -> [String: String] {
-        let process = Process()
-        let output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/arp")
-        process.arguments = ["-an"]
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-        do {
-            try process.run()
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return [:] }
-            return parseCommandOutput(
-                String(decoding: data, as: UTF8.self),
-                addresses: addresses,
-                interfaceName: interfaceName
-            )
-        } catch {
-            return [:]
-        }
+        return parseRoutingMessages(data, interfaceIndex: interfaceIndex)
+            .filter { requested.contains($0.key) }
     }
 
     static func queryMessage(
@@ -1354,10 +1321,13 @@ nonisolated enum ARPTable {
               header.rtm_flags & RTF_LLINFO != 0,
               header.rtm_flags & RTF_GATEWAY == 0
         else { return nil }
-        return parseRoutingMessages(data)[expectedAddress.description]
+        return parseRoutingMessages(data, interfaceIndex: interfaceIndex)[expectedAddress.description]
     }
 
-    static func parseRoutingMessages(_ data: Data) -> [String: String] {
+    static func parseRoutingMessages(
+        _ data: Data,
+        interfaceIndex: UInt32? = nil
+    ) -> [String: String] {
         data.withUnsafeBytes { bytes in
             var result: [String: String] = [:]
             var messageOffset = 0
@@ -1371,6 +1341,10 @@ nonisolated enum ARPTable {
                 guard messageLength >= headerSize,
                       messageOffset + messageLength <= bytes.count
                 else { break }
+                if let interfaceIndex, header.rtm_index != UInt16(interfaceIndex) {
+                    messageOffset += messageLength
+                    continue
+                }
                 var addressOffset = messageOffset + headerSize
                 var ipAddress: String?
                 var macAddress: String?
