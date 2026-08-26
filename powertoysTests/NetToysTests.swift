@@ -1043,7 +1043,8 @@ final class NetToysTests: XCTestCase {
                 nodeID: "node-a",
                 hostName: "jetson",
                 ipAddress: "100.64.0.8"
-            )
+            ),
+            keyAccessVerifiedAt: Date(timeIntervalSinceReferenceDate: 500)
         )
         let configuration = NetToysConfiguration(probeInterval: 8, anchors: [anchor], recordsNetworkHistory: true)
         XCTAssertEqual(configuration.probeInterval, 3)
@@ -1051,6 +1052,15 @@ final class NetToysTests: XCTestCase {
             try JSONDecoder().decode(NetToysConfiguration.self, from: JSONEncoder().encode(configuration)),
             configuration
         )
+
+        var legacy = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(anchor)) as? [String: Any]
+        )
+        legacy.removeValue(forKey: "keyAccessVerifiedAt")
+        XCTAssertNil(try JSONDecoder().decode(
+            SSHAnchorConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: legacy)
+        ).keyAccessVerifiedAt)
     }
 
     func testTailscaleCatalogMatchesOneExactDeviceLabelAndPinsNodeID() throws {
