@@ -1004,11 +1004,12 @@ actor NetToysScanner {
             }
             scanned.append(contentsOf: results)
         }
-        let interfaceIndex = LocalIPv4Network.active()
-            .map { if_nametoindex($0.interfaceName) } ?? 0
+        let activeNetwork = LocalIPv4Network.active()
+        let interfaceIndex = activeNetwork.map { if_nametoindex($0.interfaceName) } ?? 0
         let arp = await ARPTable.load(
             addresses: scanned.filter(\.isReachable).map(\.address),
-            interfaceIndex: interfaceIndex
+            interfaceIndex: interfaceIndex,
+            interfaceName: activeNetwork?.interfaceName
         )
         return scanned.map { result in
             let macAddress = arp[result.address.description]
@@ -1199,10 +1200,69 @@ nonisolated enum HostResolver {
 }
 
 nonisolated enum ARPTable {
-    static func load(addresses: [IPv4Address], interfaceIndex: UInt32) async -> [String: String] {
+    static func load(
+        addresses: [IPv4Address],
+        interfaceIndex: UInt32,
+        interfaceName: String?
+    ) async -> [String: String] {
         await Task.detached(priority: .utility) {
-            loadSynchronously(addresses: addresses, interfaceIndex: interfaceIndex)
+            var result = loadSynchronously(addresses: addresses, interfaceIndex: interfaceIndex)
+            guard let interfaceName, result.count < Set(addresses).count else { return result }
+            result.merge(loadAppleARP(addresses: addresses, interfaceName: interfaceName)) {
+                current, _ in current
+            }
+            return result
         }.value
+    }
+
+    static func parseCommandOutput(
+        _ output: String,
+        addresses: [IPv4Address],
+        interfaceName: String
+    ) -> [String: String] {
+        let requested = Set(addresses.map(\.description))
+        return output.split(whereSeparator: \.isNewline).reduce(into: [:]) { result, line in
+            let fields = line.split(whereSeparator: \.isWhitespace)
+            guard fields.count >= 6,
+                  fields[1].first == "(", fields[1].last == ")",
+                  fields[2] == "at", fields[4] == "on",
+                  String(fields[5]) == interfaceName
+            else { return }
+            let address = String(fields[1].dropFirst().dropLast())
+            let normalized = AnchorMatcher.normalizedMAC(String(fields[3]))
+            guard requested.contains(address), normalized.count == 12,
+                  normalized != "020000000000", normalized != "000000000000"
+            else { return }
+            let characters = Array(normalized)
+            result[address] = stride(from: 0, to: characters.count, by: 2)
+                .map { String(characters[$0...($0 + 1)]) }
+                .joined(separator: ":")
+        }
+    }
+
+    private static func loadAppleARP(
+        addresses: [IPv4Address],
+        interfaceName: String
+    ) -> [String: String] {
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/arp")
+        process.arguments = ["-an"]
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return [:] }
+            return parseCommandOutput(
+                String(decoding: data, as: UTF8.self),
+                addresses: addresses,
+                interfaceName: interfaceName
+            )
+        } catch {
+            return [:]
+        }
     }
 
     static func queryMessage(
