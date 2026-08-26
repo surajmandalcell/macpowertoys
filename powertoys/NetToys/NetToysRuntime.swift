@@ -251,6 +251,7 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
     var identity: AnchorIdentity
     var localHostName: String?
     var tailscaleFallback: TailscaleFallbackConfiguration?
+    var keyAccessVerifiedAt: Date?
 
     init(
         id: UUID = UUID(),
@@ -260,7 +261,8 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
         port: UInt16,
         identity: AnchorIdentity,
         localHostName: String? = nil,
-        tailscaleFallback: TailscaleFallbackConfiguration? = nil
+        tailscaleFallback: TailscaleFallbackConfiguration? = nil,
+        keyAccessVerifiedAt: Date? = nil
     ) {
         self.id = id
         self.isEnabled = isEnabled
@@ -270,6 +272,7 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
         self.identity = identity
         self.localHostName = localHostName
         self.tailscaleFallback = tailscaleFallback
+        self.keyAccessVerifiedAt = keyAccessVerifiedAt
     }
 
     var route: SSHAnchorRoute {

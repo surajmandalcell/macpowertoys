@@ -25,8 +25,13 @@ final class NetToysAnchorViewModel {
     var tailscalePeers: [TailscalePeer] = []
     var pendingTailscaleAnchorID: UUID?
     var tailscaleLoadingAnchorID: UUID?
+    var pendingKeyAccessAnchorID: UUID?
+    var keyAccessRunningAnchorID: UUID?
+    var keyAccessRemoteKind = SSHRemoteKind.unknown
+    var keyAccessErrorMessage: String?
 
     private let scanner = NetToysScanner()
+    private var keyAccessTask: Task<Void, Never>?
 
     init() {
         refresh()
@@ -119,6 +124,7 @@ final class NetToysAnchorViewModel {
                 }) {
                     anchor.id = configuration.anchors[index].id
                     anchor.tailscaleFallback = configuration.anchors[index].tailscaleFallback
+                    anchor.keyAccessVerifiedAt = configuration.anchors[index].keyAccessVerifiedAt
                     try prepareHostKeyPolicy(anchor)
                     configuration.anchors[index] = anchor
                 } else {
@@ -135,6 +141,7 @@ final class NetToysAnchorViewModel {
                 }
                 helperStatus = NetToysConfigurationStore.status()
                 requestedAddress = nil
+                setUpKeyAccess(for: anchor.id)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -277,6 +284,66 @@ final class NetToysAnchorViewModel {
         helperStatus?.anchors.first { $0.anchorID == id }
     }
 
+    func setUpKeyAccess(for id: UUID) {
+        guard let anchor = configuration.anchors.first(where: { $0.id == id }) else { return }
+        keyAccessTask?.cancel()
+        keyAccessRunningAnchorID = id
+        keyAccessErrorMessage = nil
+        keyAccessTask = Task { [weak self] in
+            guard let self else { return }
+            defer { keyAccessRunningAnchorID = nil }
+            do {
+                switch try await SSHKeyAccessInstaller.check(alias: anchor.hostAlias) {
+                case .ready:
+                    markKeyAccessVerified(id)
+                case .needsPassword(let remoteKind):
+                    clearKeyAccessVerification(id)
+                    keyAccessRemoteKind = remoteKind
+                    pendingKeyAccessAnchorID = id
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func installKeyAccess(password: String) {
+        guard let id = pendingKeyAccessAnchorID,
+              let anchor = configuration.anchors.first(where: { $0.id == id })
+        else { return }
+        keyAccessTask?.cancel()
+        keyAccessRunningAnchorID = id
+        keyAccessErrorMessage = nil
+        let remoteKind = keyAccessRemoteKind
+        keyAccessTask = Task { [weak self] in
+            guard let self else { return }
+            defer { keyAccessRunningAnchorID = nil }
+            do {
+                try await SSHKeyAccessInstaller.install(
+                    alias: anchor.hostAlias,
+                    password: password,
+                    remoteKind: remoteKind
+                )
+                markKeyAccessVerified(id)
+                pendingKeyAccessAnchorID = nil
+            } catch is CancellationError {
+                return
+            } catch {
+                keyAccessErrorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func cancelKeyAccess() {
+        keyAccessTask?.cancel()
+        keyAccessTask = nil
+        keyAccessRunningAnchorID = nil
+        pendingKeyAccessAnchorID = nil
+        keyAccessErrorMessage = nil
+    }
+
     func aliasLabel(for anchor: SSHAnchorConfiguration) -> String {
         entries.first { entry in
             entry.aliases.contains { $0.caseInsensitiveCompare(anchor.hostAlias) == .orderedSame }
@@ -290,6 +357,20 @@ final class NetToysAnchorViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func markKeyAccessVerified(_ id: UUID) {
+        guard let index = configuration.anchors.firstIndex(where: { $0.id == id }) else { return }
+        configuration.anchors[index].keyAccessVerifiedAt = Date()
+        save()
+    }
+
+    private func clearKeyAccessVerification(_ id: UUID) {
+        guard let index = configuration.anchors.firstIndex(where: { $0.id == id }),
+              configuration.anchors[index].keyAccessVerifiedAt != nil
+        else { return }
+        configuration.anchors[index].keyAccessVerifiedAt = nil
+        save()
     }
 
     private func applyTailscalePeer(_ peer: TailscalePeer, to id: UUID) {
@@ -381,6 +462,18 @@ struct NetToysAnchorView: View {
             set: { if !$0 { model.cancelTailscaleSelection() } }
         )) {
             tailscalePeerPicker
+        }
+        .sheet(isPresented: Binding(
+            get: { model.pendingKeyAccessAnchorID != nil },
+            set: { if !$0 { model.cancelKeyAccess() } }
+        )) {
+            SSHKeyAccessSheet(
+                alias: keyAccessAlias,
+                isInstalling: model.keyAccessRunningAnchorID != nil,
+                errorMessage: model.keyAccessErrorMessage,
+                onCancel: model.cancelKeyAccess,
+                onContinue: model.installKeyAccess
+            )
         }
     }
 
@@ -617,6 +710,30 @@ struct NetToysAnchorView: View {
                 .frame(width: 74, alignment: .trailing)
 
             Group {
+                if model.keyAccessRunningAnchorID == anchor.id {
+                    ProgressView().controlSize(.small)
+                } else if let verifiedAt = anchor.keyAccessVerifiedAt {
+                    Image(systemName: "key.fill")
+                        .foregroundStyle(.secondary)
+                        .help("Key access verified \(verifiedAt.formatted())")
+                        .accessibilityLabel("Key access verified for \(aliasLabel)")
+                } else {
+                    Button {
+                        model.setUpKeyAccess(for: anchor.id)
+                    } label: {
+                        Image(systemName: "key")
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .help("Set up key access")
+                    .accessibilityLabel("Set up key access for \(aliasLabel)")
+                }
+            }
+            .frame(width: 26)
+
+            Group {
                 if model.tailscaleLoadingAnchorID == anchor.id {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.small)
@@ -719,6 +836,13 @@ struct NetToysAnchorView: View {
         return "\(entry.hostName)  ·  TCP \(entry.port)"
     }
 
+    private var keyAccessAlias: String {
+        guard let id = model.pendingKeyAccessAnchorID,
+              let anchor = model.configuration.anchors.first(where: { $0.id == id })
+        else { return "SSH host" }
+        return model.aliasLabel(for: anchor)
+    }
+
     private func rowLabel(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 12))
@@ -752,5 +876,68 @@ struct NetToysAnchorView: View {
         case let state?: state.rawValue.capitalized
         case nil: "Waiting"
         }
+    }
+}
+
+private struct SSHKeyAccessSheet: View {
+    let alias: String
+    let isInstalling: Bool
+    let errorMessage: String?
+    let onCancel: () -> Void
+    let onContinue: (String) -> Void
+
+    @State private var password = ""
+    @FocusState private var passwordIsFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Set Up Key Access")
+                .font(.system(size: 13, weight: .medium))
+                .padding(20)
+
+            QuietDivider()
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Enter the SSH password for \(alias) once. MacPowerToys installs your public key and does not keep the password.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+
+                SecureField("Password", text: $password)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($passwordIsFocused)
+                    .disabled(isInstalling)
+                    .onSubmit(submit)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.red)
+                }
+
+                HStack {
+                    if isInstalling {
+                        ProgressView().controlSize(.small)
+                        Text("Installing and verifying key access...")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Cancel", action: onCancel)
+                    Button("Continue", action: submit)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(password.isEmpty || isInstalling)
+                }
+            }
+            .padding(20)
+        }
+        .frame(width: 420)
+        .onAppear { passwordIsFocused = true }
+    }
+
+    private func submit() {
+        guard !password.isEmpty, !isInstalling else { return }
+        let submittedPassword = password
+        password = ""
+        onContinue(submittedPassword)
     }
 }

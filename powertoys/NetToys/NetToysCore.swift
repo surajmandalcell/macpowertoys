@@ -372,7 +372,7 @@ nonisolated enum SSHConfigEditor {
         String(decoding: bytes, as: UTF8.self)
     }
 
-    private static func isSafeToken(_ value: String) -> Bool {
+    static func isSafeToken(_ value: String) -> Bool {
         !value.isEmpty && value.utf8.allSatisfy { byte in
             byte > 0x20 && byte != 0x23 && byte != 0x22 && byte != 0x7f
         }
