@@ -6,6 +6,19 @@ import XCTest
 @testable import powertoys
 
 final class NetToysTests: XCTestCase {
+    private final class ScanUpdateRecorder: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: [NetToysScanResult] = []
+
+        func append(_ result: NetToysScanResult) {
+            lock.withLock { stored.append(result) }
+        }
+
+        var values: [NetToysScanResult] {
+            lock.withLock { stored }
+        }
+    }
+
     private actor ProbeAnswers {
         private var values: [Bool]
 
@@ -736,10 +749,20 @@ final class NetToysTests: XCTestCase {
         XCTAssertThrowsError(try NetToysCustomTextProbe(port: 22, request: "", responsePattern: "").validate())
 
         var netBIOS = Data([0x12, 0x34, 0x85, 0x00, 0, 0, 0, 1, 0, 0, 0, 0])
-        netBIOS.append(contentsOf: [0xC0, 0x0C, 0, 0x21, 0, 1, 0, 0, 0, 0, 0, 0x13, 1])
-        netBIOS.append(contentsOf: Array("JETSON".utf8) + Array(repeating: 0x20, count: 9))
-        netBIOS.append(contentsOf: [0, 0, 0])
-        XCTAssertEqual(NetBIOSProbe.parse(netBIOS), "JETSON")
+        netBIOS.append(contentsOf: [0xC0, 0x0C, 0, 0x21, 0, 1, 0, 0, 0, 0, 0, 0x3D, 3])
+        func appendName(_ name: String, suffix: UInt8, group: Bool) {
+            netBIOS.append(contentsOf: Array(name.utf8) + Array(repeating: 0x20, count: 15 - name.count))
+            netBIOS.append(suffix)
+            netBIOS.append(contentsOf: group ? [0x80, 0] : [0, 0])
+        }
+        appendName("MACBOOK", suffix: 0, group: false)
+        appendName("WORKGROUP", suffix: 0, group: true)
+        appendName("SURAJ", suffix: 3, group: false)
+        netBIOS.append(contentsOf: [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF])
+        XCTAssertEqual(
+            NetBIOSProbe.parse(netBIOS),
+            "WORKGROUP\\SURAJ@MACBOOK [AA:BB:CC:DD:EE:FF]"
+        )
         XCTAssertEqual(Array(NetBIOSProbe.statusQuery()[13...16]), [0x43, 0x4B, 0x41, 0x41])
     }
 
@@ -830,6 +853,61 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(results.count, 1)
         XCTAssertTrue(results[0].isReachable)
         XCTAssertEqual(results[0].openPorts, [port])
+    }
+
+    func testScannerStreamsHostFieldsBeforeTheScanFinishes() async throws {
+        let descriptor = socket(AF_INET, SOCK_STREAM, 0)
+        XCTAssertGreaterThanOrEqual(descriptor, 0)
+        defer { close(descriptor) }
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = 0
+        address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+        XCTAssertEqual(withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.bind(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }, 0)
+        XCTAssertEqual(listen(descriptor, 4), 0)
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        XCTAssertEqual(withUnsafeMutablePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                getsockname(descriptor, $0, &length)
+            }
+        }, 0)
+        let port = UInt16(bigEndian: address.sin_port)
+        let server = Task.detached {
+            for connection in 0..<2 {
+                var pollItem = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+                guard Darwin.poll(&pollItem, 1, 1_000) > 0 else { return }
+                let client = Darwin.accept(descriptor, nil, nil)
+                guard client >= 0 else { return }
+                defer { close(client) }
+                if connection == 1 {
+                    var request = [UInt8](repeating: 0, count: 1_024)
+                    _ = request.withUnsafeMutableBytes { recv(client, $0.baseAddress, $0.count, 0) }
+                    let response = Data("HTTP/1.1 200 OK\r\nServer: stage-server\r\n\r\n".utf8)
+                    _ = response.withUnsafeBytes { send(client, $0.baseAddress, $0.count, 0) }
+                }
+            }
+        }
+        let recorder = ScanUpdateRecorder()
+
+        let results = await NetToysScanner().scan(
+            targets: [try XCTUnwrap(IPv4Address("127.0.0.1"))],
+            ports: [port],
+            timeoutMilliseconds: 500,
+            concurrency: 1,
+            fetchOptions: NetToysFetchOptions(detectHTTPServer: true),
+            update: { recorder.append($0) }
+        )
+        await server.value
+
+        let updates = recorder.values
+        XCTAssertTrue(updates.contains { $0.openPorts == [port] && $0.httpServer == nil })
+        XCTAssertTrue(updates.contains { $0.httpServer == "\(port): stage-server" })
+        XCTAssertEqual(results.first?.httpServer, "\(port): stage-server")
     }
 
     func testSSHConfigEntriesExposeLiteralHostAddressAndPort() throws {
@@ -1229,7 +1307,8 @@ final class NetToysTests: XCTestCase {
             httpServer: "80: nginx<&",
             httpProxy: "8080: HTTP proxy",
             netBIOSName: "JETSON",
-            customText: "SSH-2.0"
+            customText: "SSH-2.0",
+            comment: "Rack 4"
         )
         let run = NetToysScanRun(target: "10.0.0.0/24", ports: [22], duration: 1, results: [result])
         let archive = NetToysScanArchive(runs: Array(repeating: run, count: 4), limit: 3)
@@ -1242,8 +1321,13 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(NetToysScanExport.csv([result]).contains("TTL,Packet Loss %,Filtered Ports"))
         XCTAssertTrue(NetToysScanExport.csv([result]).contains("\"63\",\"1.5\",\"443\""))
         XCTAssertTrue(NetToysScanExport.csv([result]).contains("\"80: nginx<&\""))
+        XCTAssertTrue(NetToysScanExport.csv([result]).contains("Comments"))
+        XCTAssertTrue(NetToysScanExport.csv([result]).contains("\"Rack 4\""))
+        XCTAssertTrue(NetToysScanExport.text([result]).contains("Rack 4"))
         XCTAssertTrue(NetToysScanExport.xml([result]).contains("<http-server>80: nginx&lt;&amp;</http-server>"))
+        XCTAssertTrue(NetToysScanExport.xml([result]).contains("<comment>Rack 4</comment>"))
         XCTAssertTrue(NetToysScanExport.sql([result]).contains("'8080: HTTP proxy'"))
+        XCTAssertTrue(NetToysScanExport.sql([result]).contains("'Rack 4'"))
         XCTAssertEqual(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([result])), [result])
     }
 
@@ -1300,6 +1384,51 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(recreated.sortOrder.first?.keyPath, \NetToysScanResult.hostnameTitle)
         XCTAssertEqual(recreated.sortOrder.first?.order, .reverse)
         XCTAssertEqual(recreated.results, latest.results)
+        defaults.removePersistentDomain(forName: #function)
+    }
+
+    @MainActor
+    func testScannerViewModelMergesLiveRescanWithoutDroppingOtherHosts() throws {
+        let first = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.168.1.10")),
+            isReachable: false,
+            responseMilliseconds: nil,
+            hostname: nil,
+            macAddress: nil,
+            vendor: nil,
+            openPorts: []
+        )
+        let second = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.168.1.11")),
+            isReachable: true,
+            responseMilliseconds: 2,
+            hostname: "printer.local",
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [80]
+        )
+        let updatedFirst = NetToysScanResult(
+            address: first.address,
+            isReachable: true,
+            responseMilliseconds: 1,
+            hostname: "server.local",
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [22]
+        )
+        let run = NetToysScanRun(target: "192.168.1.0/24", ports: [22, 80], duration: 1, results: [first, second])
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let model = NetToysScannerViewModel(
+            archive: NetToysScanArchive(runs: [run]),
+            defaults: defaults
+        )
+
+        model.applyScanUpdate(updatedFirst)
+
+        XCTAssertEqual(model.results.count, 2)
+        XCTAssertEqual(model.results.first(where: { $0.id == first.id }), updatedFirst)
+        XCTAssertEqual(model.results.first(where: { $0.id == second.id }), second)
         defaults.removePersistentDomain(forName: #function)
     }
 

@@ -184,7 +184,10 @@ struct MacPowerToysApp: App {
             NetToysWindowView()
                 .utilityMotionPolicy()
         }
-        .defaultSize(width: 1100, height: 720)
+        .defaultSize(
+            width: UtilityLayout.netToysDefaultContentSize.width,
+            height: UtilityLayout.netToysDefaultContentSize.height
+        )
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["nettoys"]))
         .restorationBehavior(.disabled)

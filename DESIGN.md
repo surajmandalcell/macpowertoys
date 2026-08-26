@@ -80,6 +80,7 @@ spacing:
 windows:
   launcher: { content-width: 780, content-height: 700, sidebar-width: 220, card-min-height: 110, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, resizable: true }
+  nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
@@ -466,6 +467,8 @@ content at least 640 wide; height at least 600; resizable
 - Use 900×600 for a simple list workspace, 1000×720 for the standard case, and
   1200×800 for a detail-heavy workspace. The person may resize it down to the
   chosen sidebar width plus 640pt of content, never below 600pt high.
+- NetToys is the data-table exception: start it at 1280×800 and keep at least
+  1100×700 so its scanner columns remain useful.
 - Choose 220pt for a simple workspace, 240pt for data navigation, or 260pt for
   conversation navigation. It does not resize with the window and never
   collapses into an overlay. Title position matches the launcher.

@@ -8,6 +8,8 @@ enum UtilityLayout {
     static let conversationSidebarWidth: CGFloat = 260
     static let workspaceMinimumContentWidth: CGFloat = 640
     static let workspaceMinimumHeight: CGFloat = 600
+    static let netToysMinimumContentSize = NSSize(width: 1_100, height: 700)
+    static let netToysDefaultContentSize = NSSize(width: 1_280, height: 800)
     static let sidebarRowHeight: CGFloat = 28
     static let workspaceTitlebarHeight: CGFloat = 40
     static let workspaceContentTopInset: CGFloat = 44
@@ -40,11 +42,13 @@ enum UtilityLayout {
         switch identifier {
         case "main":
             return NSSize(width: 780, height: 700)
+        case "nettoys":
+            return netToysMinimumContentSize
         case "cc-history":
             sidebarWidth = conversationSidebarWidth
         case "rclone", "system-care", "system-monitor":
             sidebarWidth = dataSidebarWidth
-        case "logs", "input-devices", "nettoys":
+        case "logs", "input-devices":
             sidebarWidth = compactSidebarWidth
         default:
             return nil

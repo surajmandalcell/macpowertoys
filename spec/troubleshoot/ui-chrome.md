@@ -54,10 +54,11 @@
 - **Cause:** SwiftUI's default scene size is an initial size, not a minimum.
 - **Invariant:** `WindowAccessor` applies the shared minimum content size before
   restoring a saved frame. The launcher uses 780 by 700 points. Logs, Cloud
-  Sync, AI History, Input Devices, System Care, System Monitor, and NetToys use
-  their sidebar family plus a 640-point content minimum and a 600-point height.
-  Compact applets and Ruler retain their existing fixed or overlay-specific
-  sizing.
+  Sync, AI History, Input Devices, System Care, and System Monitor use their
+  sidebar family plus a 640-point content minimum and a 600-point height.
+  NetToys uses a 1,280 by 800 point default and a 1,100 by 700 point minimum so
+  the IP Scanner table retains useful column space. Compact applets and Ruler
+  retain their existing fixed or overlay-specific sizing.
 - **Check:** Unit-check every workspace identifier and confirm restoration
   cannot produce a frame below its family minimum.
 

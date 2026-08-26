@@ -62,6 +62,29 @@
   installed app. Confirm another interface and an unrequested address are
   ignored.
 
+## NetToys Live Scanner Results
+
+- **Symptom:** The scan counter moves, but the result table stays unchanged
+  until the full network scan finishes. A selected-host rescan can also remove
+  every unselected row.
+- **Cause:** The scanner returned only a final result array. Hostname, protocol,
+  and neighbor enrichment all completed before the view model replaced its
+  table state.
+- **Invariant:** Publish each host after liveness and port probing, update that
+  row after hostname and optional protocol fetchers complete, then update it
+  again if MAC and vendor data arrive. Merge by IP address. A selected-host
+  rescan preserves unrelated rows. A full scan clears the prior run only after
+  target resolution succeeds. Ignore callbacks from a cancelled or superseded
+  scan. Keep comments in the visible table and every full-detail export.
+  NetBIOS information includes available workgroup, user, computer, and MAC
+  fields instead of returning only the first name.
+- **Check:** Scan a subnet with responsive and unresponsive hosts. Confirm rows
+  appear during the scan, later fields fill without row duplication, and live
+  shown and alive counts change. Rescan one selected host and confirm every
+  other row stays. Cancel and immediately start another scan, then confirm the
+  first scan cannot change the new table. Add a comment and confirm it appears
+  in the table and CSV, text, XML, SQL, and saved-result exports.
+
 ## SSH Anchor Tailscale Fallback
 
 - **Symptom:** An SSH Anchor stops working away from its local network, or

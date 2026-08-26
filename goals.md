@@ -36,6 +36,8 @@ evidence, and remaining work.
   local Raycast extension.
 - Verify that Input Devices keeps scroll control active through sustained wheel
   input and a session lock and unlock.
+- Verify that a signed NetToys subnet scan fills rows and later fetcher fields
+  live at its 1,280 by 800 default and 1,100 by 700 minimum sizes.
 - Complete the live checks in the request lists.
 - Complete the public release checklist only after product work is complete.
 
