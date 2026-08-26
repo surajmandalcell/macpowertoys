@@ -289,7 +289,7 @@ private nonisolated enum SSHProcessRunner {
             }
             let deadline = Date().addingTimeInterval(timeout)
             while process.isRunning, !Task.isCancelled, Date() < deadline {
-                Thread.sleep(forTimeInterval: 0.02)
+                usleep(20_000)
             }
             let wasCancelled = Task.isCancelled
             let timedOut = process.isRunning && Date() >= deadline
@@ -297,7 +297,7 @@ private nonisolated enum SSHProcessRunner {
                 process.terminate()
                 let killDeadline = Date().addingTimeInterval(2)
                 while process.isRunning, Date() < killDeadline {
-                    Thread.sleep(forTimeInterval: 0.02)
+                    usleep(20_000)
                 }
                 if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
             }
