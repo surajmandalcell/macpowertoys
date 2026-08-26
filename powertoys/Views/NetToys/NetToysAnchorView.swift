@@ -22,6 +22,9 @@ final class NetToysAnchorViewModel {
     var errorMessage: String?
     var isInspecting = false
     var requestedAddress: String?
+    var tailscalePeers: [TailscalePeer] = []
+    var pendingTailscaleAnchorID: UUID?
+    var tailscaleLoadingAnchorID: UUID?
 
     private let scanner = NetToysScanner()
 
@@ -108,13 +111,15 @@ final class NetToysAnchorViewModel {
                     hostAlias: alias,
                     hostName: entry.hostName,
                     port: entry.port,
-                    identity: identity
+                    identity: identity,
+                    localHostName: entry.hostName
                 )
                 if let index = configuration.anchors.firstIndex(where: {
                     $0.hostAlias.caseInsensitiveCompare(alias) == .orderedSame
                 }) {
                     var replacement = anchor
                     replacement.id = configuration.anchors[index].id
+                    replacement.tailscaleFallback = configuration.anchors[index].tailscaleFallback
                     configuration.anchors[index] = replacement
                 } else {
                     configuration.anchors.append(anchor)
@@ -167,7 +172,8 @@ final class NetToysAnchorViewModel {
             hostAlias: alias,
             hostName: entry.hostName,
             port: entry.port,
-            identity: identity
+            identity: identity,
+            localHostName: entry.hostName
         ))
         save()
         deviceMAC = ""
@@ -179,6 +185,74 @@ final class NetToysAnchorViewModel {
         guard let index = configuration.anchors.firstIndex(where: { $0.id == id }) else { return }
         configuration.anchors[index].isEnabled = enabled
         save()
+    }
+
+    func tailscaleIsEnabled(for anchor: SSHAnchorConfiguration) -> Bool {
+        anchor.tailscaleFallback?.isEnabled == true
+    }
+
+    func setTailscaleEnabled(_ enabled: Bool, for id: UUID) {
+        guard let index = configuration.anchors.firstIndex(where: { $0.id == id }) else { return }
+        if !enabled {
+            configuration.anchors[index].tailscaleFallback?.isEnabled = false
+            save()
+            return
+        }
+        let anchor = configuration.anchors[index]
+        tailscaleLoadingAnchorID = id
+        errorMessage = nil
+        Task { [weak self] in
+            guard let self else { return }
+            defer { tailscaleLoadingAnchorID = nil }
+            do {
+                let peers = try await TailscalePeerCatalog.load()
+                if let nodeID = anchor.tailscaleFallback?.nodeID,
+                   let endpoint = TailscalePeerCatalog.endpoint(nodeID: nodeID, peers: peers) {
+                    guard let currentIndex = configuration.anchors.firstIndex(where: { $0.id == id }) else {
+                        return
+                    }
+                    configuration.anchors[currentIndex].tailscaleFallback = endpoint
+                    save()
+                    return
+                }
+                var labels: [String] = []
+                if case .randomizedMAC(let hostname, _) = anchor.identity {
+                    labels.append(hostname)
+                }
+                if TailscalePeerCatalog.exactMatch(labels: labels, peers: peers) == nil,
+                   let address = IPv4Address(anchor.hostName) {
+                    let results = await scanner.scan(
+                        targets: [address],
+                        ports: [anchor.port],
+                        timeoutMilliseconds: 600,
+                        concurrency: 1
+                    )
+                    if let hostname = results.first?.hostname { labels.append(hostname) }
+                }
+                if let peer = TailscalePeerCatalog.exactMatch(labels: labels, peers: peers) {
+                    applyTailscalePeer(peer, to: id)
+                } else if peers.isEmpty {
+                    errorMessage = "No Tailscale devices with an IPv4 address are available."
+                } else {
+                    tailscalePeers = peers
+                    pendingTailscaleAnchorID = id
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func chooseTailscalePeer(_ peer: TailscalePeer) {
+        guard let id = pendingTailscaleAnchorID else { return }
+        applyTailscalePeer(peer, to: id)
+        pendingTailscaleAnchorID = nil
+        tailscalePeers = []
+    }
+
+    func cancelTailscaleSelection() {
+        pendingTailscaleAnchorID = nil
+        tailscalePeers = []
     }
 
     func remove(_ id: UUID) {
@@ -208,6 +282,20 @@ final class NetToysAnchorViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func applyTailscalePeer(_ peer: TailscalePeer, to id: UUID) {
+        guard let index = configuration.anchors.firstIndex(where: { $0.id == id }) else { return }
+        configuration.anchors[index].tailscaleFallback = TailscalePeerCatalog.endpoint(
+            nodeID: peer.nodeID,
+            peers: [peer]
+        )
+        if configuration.anchors[index].localHostName == nil,
+           configuration.anchors[index].route == .local,
+           !TailscalePeerCatalog.isTailscaleAddress(configuration.anchors[index].hostName) {
+            configuration.anchors[index].localHostName = configuration.anchors[index].hostName
+        }
+        save()
     }
 
     private func inspect(_ entry: SSHConfigEntry) async throws -> NetToysScanResult? {
@@ -270,6 +358,12 @@ struct NetToysAnchorView: View {
             Button("OK") { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
+        }
+        .sheet(isPresented: Binding(
+            get: { model.pendingTailscaleAnchorID != nil },
+            set: { if !$0 { model.cancelTailscaleSelection() } }
+        )) {
+            tailscalePeerPicker
         }
     }
 
@@ -499,11 +593,29 @@ struct NetToysAnchorView: View {
 
             Spacer()
 
-            Text(status?.state.rawValue.capitalized ?? "Waiting")
+            Text(statusLabel(status?.state))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(width: 74, alignment: .trailing)
+
+            Group {
+                if model.tailscaleLoadingAnchorID == anchor.id {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Tailscale")
+                    }
+                } else {
+                    Toggle("Tailscale", isOn: Binding(
+                        get: { model.tailscaleIsEnabled(for: anchor) },
+                        set: { model.setTailscaleEnabled($0, for: anchor.id) }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .help("Prefer the local connection and use Tailscale only while it is unavailable.")
+                }
+            }
+            .frame(width: 94, alignment: .leading)
 
             Toggle("", isOn: Binding(
                 get: { anchor.isEnabled },
@@ -527,6 +639,52 @@ struct NetToysAnchorView: View {
             .help("Remove \(aliasLabel)")
         }
         .padding(.vertical, 2)
+    }
+
+    private var tailscalePeerPicker: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Choose Tailscale Device")
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+                Button("Cancel") { model.cancelTailscaleSelection() }
+                    .controlSize(.small)
+            }
+            .padding(20)
+
+            QuietDivider()
+
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(model.tailscalePeers) { peer in
+                        Button {
+                            model.chooseTailscalePeer(peer)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(peer.hostName)
+                                        .font(.system(size: 13, weight: .medium))
+                                    Text(peer.ipAddress)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text(peer.isOnline ? "Online" : "Offline")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(10)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .focusEffectDisabled()
+                    }
+                }
+                .padding(12)
+            }
+            .thinScrollIndicators()
+        }
+        .frame(width: 420, height: 300)
     }
 
     private func identityDescription(_ identity: AnchorIdentity) -> String {
@@ -553,19 +711,29 @@ struct NetToysAnchorView: View {
 
     private func statusSymbol(_ state: SSHAnchorRuntimeState?) -> String {
         switch state {
-        case .healthy, .recovered: "checkmark.circle.fill"
+        case .healthy, .recovered, .fallback: "checkmark.circle.fill"
         case .scanning: "arrow.triangle.2.circlepath"
-        case .error, .notFound, .ambiguous, .unavailable: "exclamationmark.circle.fill"
+        case .error, .notFound, .ambiguous, .unavailable, .fallbackUnavailable:
+            "exclamationmark.circle.fill"
         default: "circle"
         }
     }
 
     private func statusColor(_ state: SSHAnchorRuntimeState?) -> Color {
         switch state {
-        case .healthy, .recovered: .green
+        case .healthy, .recovered, .fallback: .green
         case .scanning: .accentColor
-        case .error, .notFound, .ambiguous, .unavailable: .orange
+        case .error, .notFound, .ambiguous, .unavailable, .fallbackUnavailable: .orange
         default: .secondary
+        }
+    }
+
+    private func statusLabel(_ state: SSHAnchorRuntimeState?) -> String {
+        switch state {
+        case .fallbackUnavailable: "Needs Tailscale"
+        case .fallback: "Tailscale"
+        case let state?: state.rawValue.capitalized
+        case nil: "Waiting"
         }
     }
 }

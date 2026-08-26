@@ -32,6 +32,11 @@ nonisolated struct LocalIPv4Network: Equatable, Sendable {
         "\(IPv4Address(rawValue: address.rawValue & netmask.rawValue))/\(prefixLength)"
     }
 
+    func contains(_ candidate: String) -> Bool {
+        guard let candidate = IPv4Address(candidate) else { return false }
+        return candidate.rawValue & netmask.rawValue == address.rawValue & netmask.rawValue
+    }
+
     func targets(limit: Int) throws -> [IPv4Address] {
         let hostBits = 32 - prefixLength
         let total = UInt64(1) << UInt64(hostBits)
@@ -89,6 +94,154 @@ nonisolated struct LocalIPv4Network: Equatable, Sendable {
     }
 }
 
+nonisolated struct TailscalePeer: Equatable, Identifiable, Sendable {
+    var id: String { nodeID }
+    let nodeID: String
+    let hostName: String
+    let dnsName: String
+    let ipAddress: String
+    let isOnline: Bool
+}
+
+nonisolated struct TailscaleFallbackConfiguration: Codable, Equatable, Sendable {
+    var isEnabled: Bool
+    let nodeID: String
+    let hostName: String
+    let ipAddress: String
+}
+
+nonisolated enum TailscalePeerCatalog {
+    enum CatalogError: LocalizedError {
+        case unavailable
+        case notRunning
+        case invalidStatus
+        case peerNotFound
+
+        var errorDescription: String? {
+            switch self {
+            case .unavailable: "Tailscale is not installed or its status is unavailable."
+            case .notRunning: "Connect Tailscale before enabling this fallback."
+            case .invalidStatus: "Tailscale returned an unreadable device list."
+            case .peerNotFound:
+                "The saved Tailscale device is unavailable. Turn Tailscale off and on to choose it again."
+            }
+        }
+    }
+
+    private struct Status: Decodable {
+        let backendState: String
+        let peer: [String: Peer]?
+
+        enum CodingKeys: String, CodingKey {
+            case backendState = "BackendState"
+            case peer = "Peer"
+        }
+    }
+
+    private struct Peer: Decodable {
+        let nodeID: String?
+        let hostName: String?
+        let dnsName: String?
+        let tailscaleIPs: [String]?
+        let isOnline: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case nodeID = "ID"
+            case hostName = "HostName"
+            case dnsName = "DNSName"
+            case tailscaleIPs = "TailscaleIPs"
+            case isOnline = "Online"
+        }
+    }
+
+    static func load() async throws -> [TailscalePeer] {
+        try await Task.detached(priority: .utility) {
+            let paths = [
+                "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+                "/opt/homebrew/bin/tailscale",
+                "/usr/local/bin/tailscale",
+            ]
+            guard let path = paths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+                throw CatalogError.unavailable
+            }
+            let process = Process()
+            let output = Pipe()
+            process.executableURL = URL(fileURLWithPath: path)
+            process.arguments = ["status", "--json"]
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            do {
+                try process.run()
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                guard process.terminationStatus == 0 else { throw CatalogError.unavailable }
+                return try parse(data)
+            } catch let error as CatalogError {
+                throw error
+            } catch {
+                throw CatalogError.unavailable
+            }
+        }.value
+    }
+
+    static func parse(_ data: Data) throws -> [TailscalePeer] {
+        let status: Status
+        do {
+            status = try JSONDecoder().decode(Status.self, from: data)
+        } catch {
+            throw CatalogError.invalidStatus
+        }
+        guard status.backendState == "Running" else { throw CatalogError.notRunning }
+        let peers = status.peer.map { Array($0.values) } ?? []
+        return peers.compactMap { peer in
+            guard let nodeID = peer.nodeID,
+                  let ipAddress = peer.tailscaleIPs?.first(where: isTailscaleAddress),
+                  let hostName = [peer.hostName, peer.dnsName]
+                    .compactMap({ $0 })
+                    .map(AnchorMatcher.hostnameLabel)
+                    .first(where: { !$0.isEmpty })
+            else {
+                return nil
+            }
+            return TailscalePeer(
+                nodeID: nodeID,
+                hostName: hostName,
+                dnsName: peer.dnsName ?? "",
+                ipAddress: ipAddress,
+                isOnline: peer.isOnline ?? false
+            )
+        }.sorted { $0.hostName.localizedCaseInsensitiveCompare($1.hostName) == .orderedAscending }
+    }
+
+    static func isTailscaleAddress(_ value: String) -> Bool {
+        guard let address = IPv4Address(value) else { return false }
+        return address.rawValue & 0xFFC0_0000 == 0x6440_0000
+    }
+
+    static func exactMatch(labels: [String], peers: [TailscalePeer]) -> TailscalePeer? {
+        let expected = Set(labels.map(AnchorMatcher.hostnameLabel).filter { !$0.isEmpty })
+        let matches = peers.filter {
+            expected.contains(AnchorMatcher.hostnameLabel($0.hostName))
+                || expected.contains(AnchorMatcher.hostnameLabel($0.dnsName))
+        }
+        return matches.count == 1 ? matches[0] : nil
+    }
+
+    static func endpoint(
+        nodeID: String,
+        peers: [TailscalePeer],
+        isEnabled: Bool = true
+    ) -> TailscaleFallbackConfiguration? {
+        guard let peer = peers.first(where: { $0.nodeID == nodeID }) else { return nil }
+        return TailscaleFallbackConfiguration(
+            isEnabled: isEnabled,
+            nodeID: peer.nodeID,
+            hostName: peer.hostName,
+            ipAddress: peer.ipAddress
+        )
+    }
+}
+
 nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sendable {
     var id: UUID
     var isEnabled: Bool
@@ -96,6 +249,8 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
     var hostName: String
     var port: UInt16
     var identity: AnchorIdentity
+    var localHostName: String?
+    var tailscaleFallback: TailscaleFallbackConfiguration?
 
     init(
         id: UUID = UUID(),
@@ -103,7 +258,9 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
         hostAlias: String,
         hostName: String,
         port: UInt16,
-        identity: AnchorIdentity
+        identity: AnchorIdentity,
+        localHostName: String? = nil,
+        tailscaleFallback: TailscaleFallbackConfiguration? = nil
     ) {
         self.id = id
         self.isEnabled = isEnabled
@@ -111,6 +268,69 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
         self.hostName = hostName
         self.port = port
         self.identity = identity
+        self.localHostName = localHostName
+        self.tailscaleFallback = tailscaleFallback
+    }
+
+    var route: SSHAnchorRoute {
+        tailscaleFallback?.ipAddress == hostName ? .tailscale : .local
+    }
+}
+
+nonisolated enum SSHAnchorRoute: Equatable, Sendable {
+    case local
+    case tailscale
+}
+
+nonisolated enum SSHAnchorRouteAction: Equatable, Sendable {
+    case none
+    case useTailscale
+    case useLocal
+}
+
+nonisolated struct SSHAnchorRouteMonitor: Sendable {
+    static let fallbackFailureCount = 2
+    static let restoreSuccessCount = 3
+    static let minimumTailscaleDwell: TimeInterval = 30
+
+    private var localFailures = 0
+    private var localSuccesses = 0
+    private var tailscaleSince: Date?
+
+    mutating func observe(
+        route: SSHAnchorRoute,
+        localIsOpen: Bool,
+        at date: Date
+    ) -> SSHAnchorRouteAction {
+        switch route {
+        case .local:
+            localSuccesses = 0
+            tailscaleSince = nil
+            if localIsOpen {
+                localFailures = 0
+                return .none
+            }
+            localFailures = min(localFailures + 1, Self.fallbackFailureCount)
+            return localFailures >= Self.fallbackFailureCount ? .useTailscale : .none
+        case .tailscale:
+            localFailures = 0
+            if tailscaleSince == nil { tailscaleSince = date }
+            if localIsOpen {
+                localSuccesses = min(localSuccesses + 1, Self.restoreSuccessCount)
+            } else {
+                localSuccesses = 0
+            }
+            guard localSuccesses >= Self.restoreSuccessCount,
+                  date.timeIntervalSince(tailscaleSince ?? date) >= Self.minimumTailscaleDwell
+            else { return .none }
+            return .useLocal
+        }
+    }
+
+    mutating func didSwitch(to route: SSHAnchorRoute, at date: Date) {
+        localFailures = 0
+        localSuccesses = 0
+        tailscaleSince = route == .tailscale ? date : nil
     }
 }
 
@@ -312,6 +532,8 @@ nonisolated struct NetworkHistory: Codable, Equatable, Sendable {
 nonisolated enum SSHAnchorRuntimeState: String, Codable, Sendable {
     case idle
     case healthy
+    case fallback
+    case fallbackUnavailable
     case scanning
     case recovered
     case notFound

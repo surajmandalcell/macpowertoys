@@ -898,13 +898,139 @@ final class NetToysTests: XCTestCase {
             hostAlias: "jetson",
             hostName: "192.168.1.8",
             port: 2222,
-            identity: .stableMAC("aa:bb:cc:dd:ee:ff")
+            identity: .stableMAC("aa:bb:cc:dd:ee:ff"),
+            localHostName: "192.168.1.8",
+            tailscaleFallback: TailscaleFallbackConfiguration(
+                isEnabled: true,
+                nodeID: "node-a",
+                hostName: "jetson",
+                ipAddress: "100.64.0.8"
+            )
         )
         let configuration = NetToysConfiguration(probeInterval: 8, anchors: [anchor], recordsNetworkHistory: true)
         XCTAssertEqual(configuration.probeInterval, 3)
         XCTAssertEqual(
             try JSONDecoder().decode(NetToysConfiguration.self, from: JSONEncoder().encode(configuration)),
             configuration
+        )
+    }
+
+    func testTailscaleCatalogMatchesOneExactDeviceLabelAndPinsNodeID() throws {
+        let data = Data(#"""
+        {
+          "BackendState":"Running",
+          "Peer":{
+            "key-a":{"ID":"node-a","HostName":"jetson","DNSName":"jetson.example.ts.net.","TailscaleIPs":["100.64.0.8","fd7a:115c:a1e0::8"],"Online":true},
+            "key-b":{"ID":"node-b","HostName":"nas","DNSName":"nas.example.ts.net.","TailscaleIPs":["100.64.0.9"],"Online":false}
+          }
+        }
+        """#.utf8)
+        let peers = try TailscalePeerCatalog.parse(data)
+
+        XCTAssertEqual(peers.map(\.nodeID), ["node-a", "node-b"])
+        XCTAssertEqual(
+            TailscalePeerCatalog.exactMatch(labels: ["JETSON.lan"], peers: peers)?.nodeID,
+            "node-a"
+        )
+        XCTAssertEqual(
+            TailscalePeerCatalog.endpoint(nodeID: "node-a", peers: peers),
+            TailscaleFallbackConfiguration(
+                isEnabled: true,
+                nodeID: "node-a",
+                hostName: "jetson",
+                ipAddress: "100.64.0.8"
+            )
+        )
+        XCTAssertNil(TailscalePeerCatalog.endpoint(nodeID: "deleted", peers: peers))
+    }
+
+    func testTailscaleCatalogRefusesAmbiguousDeviceLabels() throws {
+        let peers = [
+            TailscalePeer(
+                nodeID: "node-a",
+                hostName: "jetson",
+                dnsName: "jetson.one.ts.net",
+                ipAddress: "100.64.0.8",
+                isOnline: true
+            ),
+            TailscalePeer(
+                nodeID: "node-b",
+                hostName: "jetson",
+                dnsName: "jetson.two.ts.net",
+                ipAddress: "100.64.0.9",
+                isOnline: true
+            ),
+        ]
+
+        XCTAssertNil(TailscalePeerCatalog.exactMatch(labels: ["jetson.local"], peers: peers))
+    }
+
+    func testLegacySSHAnchorDefaultsToLocalOnly() throws {
+        let anchor = SSHAnchorConfiguration(
+            hostAlias: "jetson",
+            hostName: "192.168.1.8",
+            port: 22,
+            identity: .randomizedMAC(hostname: "jetson", learnedMACs: [])
+        )
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(anchor)) as? [String: Any]
+        )
+        object.removeValue(forKey: "localHostName")
+        object.removeValue(forKey: "tailscaleFallback")
+
+        let legacy = try JSONDecoder().decode(
+            SSHAnchorConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertNil(legacy.localHostName)
+        XCTAssertNil(legacy.tailscaleFallback)
+        XCTAssertEqual(legacy.route, .local)
+    }
+
+    func testLocalNetworkRejectsTheSamePrivateAddressOnAnotherSubnet() throws {
+        let network = try XCTUnwrap(
+            LocalIPv4Network(interfaceName: "en0", address: "192.168.1.20", netmask: "255.255.255.0")
+        )
+
+        XCTAssertTrue(network.contains("192.168.1.8"))
+        XCTAssertFalse(network.contains("192.168.2.8"))
+        XCTAssertFalse(network.contains("invalid"))
+    }
+
+    func testSSHAnchorRouteMonitorRequiresStableFailureAndRecovery() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        var monitor = SSHAnchorRouteMonitor()
+
+        XCTAssertEqual(monitor.observe(route: .local, localIsOpen: false, at: start), .none)
+        XCTAssertEqual(
+            monitor.observe(route: .local, localIsOpen: false, at: start.addingTimeInterval(3)),
+            .useTailscale
+        )
+        monitor.didSwitch(to: .tailscale, at: start.addingTimeInterval(3))
+        XCTAssertEqual(
+            monitor.observe(route: .tailscale, localIsOpen: true, at: start.addingTimeInterval(10)),
+            .none
+        )
+        XCTAssertEqual(
+            monitor.observe(route: .tailscale, localIsOpen: true, at: start.addingTimeInterval(20)),
+            .none
+        )
+        XCTAssertEqual(
+            monitor.observe(route: .tailscale, localIsOpen: false, at: start.addingTimeInterval(25)),
+            .none
+        )
+        XCTAssertEqual(
+            monitor.observe(route: .tailscale, localIsOpen: true, at: start.addingTimeInterval(30)),
+            .none
+        )
+        XCTAssertEqual(
+            monitor.observe(route: .tailscale, localIsOpen: true, at: start.addingTimeInterval(31)),
+            .none
+        )
+        XCTAssertEqual(
+            monitor.observe(route: .tailscale, localIsOpen: true, at: start.addingTimeInterval(34)),
+            .useLocal
         )
     }
 
