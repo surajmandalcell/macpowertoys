@@ -44,7 +44,7 @@ nonisolated struct LocalIPv4Network: Equatable, Sendable {
         return (first...last).map(IPv4Address.init(rawValue:))
     }
 
-    static func active() -> LocalIPv4Network? {
+    static func active(preferredInterfaceName: String? = nil) -> LocalIPv4Network? {
         var pointer: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&pointer) == 0, let first = pointer else { return nil }
         defer { freeifaddrs(pointer) }
@@ -64,14 +64,18 @@ nonisolated struct LocalIPv4Network: Equatable, Sendable {
             else { continue }
             candidates.append(network)
         }
-        return candidates.sorted { preference($0.interfaceName) < preference($1.interfaceName) }.first
+        return candidates.sorted {
+            preference($0.interfaceName, preferred: preferredInterfaceName)
+                < preference($1.interfaceName, preferred: preferredInterfaceName)
+        }.first
     }
 
-    private static func preference(_ name: String) -> Int {
-        if name == "en0" { return 0 }
-        if name.hasPrefix("en") { return 1 }
-        if name.hasPrefix("bridge") { return 2 }
-        return 3
+    private static func preference(_ name: String, preferred: String?) -> Int {
+        if name == preferred { return 0 }
+        if name == "en0" { return 1 }
+        if name.hasPrefix("en") { return 2 }
+        if name.hasPrefix("bridge") { return 3 }
+        return 4
     }
 
     private static func numericAddress(_ pointer: UnsafeMutablePointer<sockaddr>?) -> String? {

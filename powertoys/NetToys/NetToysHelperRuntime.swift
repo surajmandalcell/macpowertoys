@@ -120,7 +120,8 @@ actor NetToysHelperRuntime {
     }
 
     private func recover(_ anchor: SSHAnchorConfiguration) async -> SSHAnchorStatus {
-        guard let network = LocalIPv4Network.active() else {
+        let route = await DefaultRoute.load()
+        guard let network = LocalIPv4Network.active(preferredInterfaceName: route?.interfaceName) else {
             scheduleRetry(for: anchor.id)
             return status(anchor, .unavailable, "No active local IPv4 network was found.")
         }

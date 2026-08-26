@@ -457,8 +457,10 @@ nonisolated enum AnchorMatcher {
             let expected = normalizedMAC(mac)
             matches = candidates.filter { $0.macAddress.map(normalizedMAC) == expected }
         case .randomizedMAC(let hostname, let learnedMACs):
-            let expected = normalizedHostname(hostname)
-            let hostnameMatches = candidates.filter { $0.hostname.map(normalizedHostname) == expected }
+            let expected = hostnameLabel(hostname)
+            let hostnameMatches = expected.isEmpty ? [] : candidates.filter {
+                $0.hostname.map(hostnameLabel) == expected
+            }
             if !hostnameMatches.isEmpty {
                 matches = hostnameMatches
             } else {
@@ -477,6 +479,25 @@ nonisolated enum AnchorMatcher {
 
     static func normalizedHostname(_ value: String) -> String {
         value.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+    }
+
+    static func hostnameLabel(_ value: String) -> String {
+        normalizedHostname(value).split(separator: ".", maxSplits: 1).first.map(String.init) ?? ""
+    }
+
+    static func automaticIdentity(
+        macAddress: String?,
+        hostname: String?,
+        fallbackHostName: String
+    ) -> AnchorIdentity? {
+        let mac = macAddress.map(normalizedMAC) ?? ""
+        let name = hostname ?? (IPv4Address(fallbackHostName) == nil ? fallbackHostName : "")
+        let label = hostnameLabel(name)
+        guard !label.isEmpty || mac.count == 12 else { return nil }
+        return .randomizedMAC(
+            hostname: label,
+            learnedMACs: mac.count == 12 ? [mac] : []
+        )
     }
 }
 
