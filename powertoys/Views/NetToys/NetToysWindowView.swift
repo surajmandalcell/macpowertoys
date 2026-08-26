@@ -112,7 +112,7 @@ struct NetToysWindowView: View {
         .frame(minWidth: 860, minHeight: 600)
         .background(WindowAccessor(identifier: "nettoys"))
         .sheet(isPresented: $showSettings) {
-            ToolAboutView(toolId: "nettoys")
+            ToolAboutView(toolId: "nettoys", showsModalCloseButton: true)
                 .frame(width: 540, height: 520)
         }
         .onReceive(NotificationCenter.default.publisher(for: .netToysRescanRun)) { notification in

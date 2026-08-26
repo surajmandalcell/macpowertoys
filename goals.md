@@ -7,6 +7,10 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify visible close controls in App Settings and representative
+  NetToys, Cloud Sync, Text Extractor, and AI History modals.
+- Clear the current NetToys network history and confirm the empty
+  state from both Network History and NetToys Settings.
 - Verify that every workspace sidebar meets its body without a visible seam in
   the latest normal signed build.
 - Verify the full-width Awake tray controls in the latest normal signed build.

@@ -5,6 +5,24 @@
 
 import SwiftUI
 
+struct UtilityModalCloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(.secondary)
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .contentShape(Rectangle())
+        .help("Close")
+        .accessibilityLabel("Close")
+    }
+}
+
 struct CenteredModal<Content: View>: View {
     @Binding var isPresented: Bool
     let title: String
@@ -38,13 +56,7 @@ struct CenteredModal<Content: View>: View {
                     Text(title)
                         .font(.system(size: 15, weight: .semibold))
                     Spacer()
-                    Button(action: dismiss) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
+                    UtilityModalCloseButton(action: dismiss)
                 }
                 .padding(16)
 

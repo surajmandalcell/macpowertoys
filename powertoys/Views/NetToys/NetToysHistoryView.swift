@@ -264,6 +264,7 @@ struct NetToysHistoryView: View {
         }
         .confirmationDialog("Clear network history?", isPresented: $confirmClear) {
             Button("Clear History", role: .destructive) { model.clear() }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes the stored transition records from this Mac.")
         }
@@ -539,6 +540,7 @@ struct NetToysHistoryView: View {
 struct NetToysSettingsView: View {
     @State private var model = NetToysHistoryViewModel()
     @State private var localNetworkAccess = NetToysLocalNetworkAccess.shared
+    @State private var confirmClear = false
 
     var body: some View {
         ScrollView {
@@ -592,6 +594,23 @@ struct NetToysSettingsView: View {
                 }
                 .utilitySectionCard()
 
+                Text("DATA").utilitySectionHeader()
+
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Network History")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Remove saved network transitions and uptime records from this Mac.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Clear History", role: .destructive) { confirmClear = true }
+                        .controlSize(.small)
+                        .disabled(model.history.events.isEmpty)
+                }
+                .utilitySectionCard()
+
                 Spacer(minLength: 0)
             }
             .padding(24)
@@ -607,6 +626,12 @@ struct NetToysSettingsView: View {
             model.refresh()
             model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
+        }
+        .confirmationDialog("Clear network history?", isPresented: $confirmClear) {
+            Button("Clear History", role: .destructive) { model.clear() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the stored transition records from this Mac.")
         }
     }
 

@@ -45,6 +45,11 @@ struct CleanupRemoteSheet: View {
 
     private var allMatches: [RemoteEntry] { groups.flatMap(\.items) }
 
+    private var canClose: Bool {
+        if case .deleting = phase { return false }
+        return true
+    }
+
     private var checkedBytes: Int64 {
         allMatches.reduce(0) { $0 + (!$1.isDir && checked.contains($1.path) ? $1.size : 0) }
     }
@@ -93,27 +98,11 @@ struct CleanupRemoteSheet: View {
 
             Spacer()
 
-            headerButton
+            UtilityModalCloseButton(action: close)
+                .disabled(!canClose)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-    }
-
-    @ViewBuilder
-    private var headerButton: some View {
-        switch phase {
-        case .scanning:
-            Button("Cancel") {
-                scanTask?.cancel()
-                dismiss()
-            }
-            .keyboardShortcut(.cancelAction)
-        case .review, .deleting:
-            EmptyView()
-        case .empty, .done, .failure:
-            Button("Done") { dismiss() }
-                .keyboardShortcut(.defaultAction)
-        }
     }
 
     // MARK: Content
@@ -300,6 +289,11 @@ struct CleanupRemoteSheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
+    }
+
+    private func close() {
+        scanTask?.cancel()
+        dismiss()
     }
 
     // MARK: Selection

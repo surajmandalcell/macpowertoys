@@ -92,9 +92,7 @@ struct TransferInfoSheet: View {
                 .font(.system(size: 15, weight: .semibold))
 
             Spacer()
-
-            Button("Done") { dismiss() }
-                .keyboardShortcut(.defaultAction)
+            UtilityModalCloseButton { dismiss() }
         }
         .padding(.horizontal, Self.gutter)
         .padding(.vertical, 16)

@@ -22,13 +22,7 @@ struct CCHistorySettingsPage: View {
                     Text("Settings")
                         .font(.system(size: 13, weight: .medium))
                     Spacer()
-                    Button(action: onDone) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
+                    UtilityModalCloseButton(action: onDone)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, UtilityLayout.workspaceContentTopInset)

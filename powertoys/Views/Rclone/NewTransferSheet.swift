@@ -74,6 +74,7 @@ struct NewTransferSheet: View {
             Text("New Transfer")
                 .font(.system(size: 15, weight: .semibold))
             Spacer()
+            UtilityModalCloseButton { dismiss() }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
