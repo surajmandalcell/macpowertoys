@@ -62,6 +62,7 @@ extension NetToysScanResult {
     nonisolated var httpProxyTitle: String { httpProxy ?? "" }
     nonisolated var netBIOSTitle: String { netBIOSName ?? "" }
     nonisolated var customTextTitle: String { customText ?? "" }
+    nonisolated var commentTitle: String { comment ?? "" }
 }
 
 @Observable
@@ -78,7 +79,7 @@ final class NetToysScannerViewModel {
 
     private enum SortField: String, Codable {
         case address, status, response, ttl, loss, hostname, mac, vendor
-        case netBIOS, openPorts, filteredPorts, httpServer, httpProxy, customText
+        case netBIOS, openPorts, filteredPorts, httpServer, httpProxy, customText, comment
     }
 
     private struct SavedSort: Codable {
@@ -133,6 +134,8 @@ final class NetToysScannerViewModel {
     private let defaults: UserDefaults
     private let scanner = NetToysScanner()
     private var scanTask: Task<Void, Never>?
+    private var scanIdentifier: UUID?
+    private var resultIndices: [String: Int] = [:]
 
     init(
         archive: NetToysScanArchive = NetToysScannerStore.archive(),
@@ -189,6 +192,7 @@ final class NetToysScannerViewModel {
             let restored = saved.map(Self.comparator)
             if !restored.isEmpty { sortOrder = restored }
         }
+        replaceResults(results)
     }
 
     private static func savedSort(
@@ -210,6 +214,7 @@ final class NetToysScannerViewModel {
         else if keyPath == \NetToysScanResult.httpServerTitle { field = .httpServer }
         else if keyPath == \NetToysScanResult.httpProxyTitle { field = .httpProxy }
         else if keyPath == \NetToysScanResult.customTextTitle { field = .customText }
+        else if keyPath == \NetToysScanResult.commentTitle { field = .comment }
         else { field = nil }
         return field.map { SavedSort(field: $0, order: comparator.order) }
     }
@@ -232,6 +237,7 @@ final class NetToysScannerViewModel {
         case .httpServer: KeyPathComparator(\NetToysScanResult.httpServerTitle, order: saved.order)
         case .httpProxy: KeyPathComparator(\NetToysScanResult.httpProxyTitle, order: saved.order)
         case .customText: KeyPathComparator(\NetToysScanResult.customTextTitle, order: saved.order)
+        case .comment: KeyPathComparator(\NetToysScanResult.commentTitle, order: saved.order)
         }
     }
 
@@ -292,9 +298,8 @@ final class NetToysScannerViewModel {
             return ([
                 result.address.description, result.hostnameTitle, result.macTitle, result.vendorTitle,
                 result.portsTitle, result.httpServerTitle, result.httpProxyTitle,
-                result.netBIOSTitle, result.customTextTitle
-            ]
-                + [annotations[result.id]?.comment ?? ""])
+                result.netBIOSTitle, result.customTextTitle, result.commentTitle
+            ])
                 .contains { $0.localizedCaseInsensitiveContains(query) }
         }
     }
@@ -320,6 +325,8 @@ final class NetToysScannerViewModel {
             completed = 0
             total = override?.count ?? 0
             isScanning = true
+            let identifier = UUID()
+            scanIdentifier = identifier
             let started = Date()
             scanTask = Task { [weak self] in
                 guard let self else { return }
@@ -331,6 +338,11 @@ final class NetToysScannerViewModel {
                     }
                     guard !targets.isEmpty else {
                         throw NetToysTargetInput.ParseError.invalid(sourceTarget)
+                    }
+                    guard scanIdentifier == identifier else { return }
+                    if override == nil {
+                        replaceResults([])
+                        selection.removeAll()
                     }
                     total = targets.count
                     let values = await scanner.scan(
@@ -344,18 +356,27 @@ final class NetToysScannerViewModel {
                         adaptiveTCPTimeout: adaptiveTCPTimeout,
                         scanUnresponsiveHosts: scanUnresponsiveHosts,
                         launchDelayMilliseconds: launchDelayMilliseconds,
-                        fetchOptions: fetchOptions
-                    ) { completed, total in
-                        Task { @MainActor in
-                            self.completed = completed
-                            self.total = total
+                        fetchOptions: fetchOptions,
+                        progress: { [weak self] completed, total in
+                            Task { @MainActor [weak self] in
+                                guard self?.scanIdentifier == identifier else { return }
+                                self?.completed = completed
+                                self?.total = total
+                            }
+                        },
+                        update: { [weak self] result in
+                            Task { @MainActor [weak self] in
+                                guard self?.scanIdentifier == identifier else { return }
+                                self?.applyScanUpdate(result)
+                            }
                         }
-                    }
-                    guard !Task.isCancelled else { return }
+                    )
+                    guard !Task.isCancelled, scanIdentifier == identifier else { return }
+                    values.forEach(applyScanUpdate)
                     let duration = Date().timeIntervalSince(started)
-                    results = values
                     lastDuration = duration
                     isScanning = false
+                    scanIdentifier = nil
                     scanTask = nil
                     try NetToysScannerStore.record(NetToysScanRun(
                         target: sourceTarget,
@@ -364,9 +385,10 @@ final class NetToysScannerViewModel {
                         results: values
                     ))
                 } catch {
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled, scanIdentifier == identifier else { return }
                     errorMessage = error.localizedDescription
                     isScanning = false
+                    scanIdentifier = nil
                     scanTask = nil
                 }
             }
@@ -391,6 +413,7 @@ final class NetToysScannerViewModel {
     }
 
     func cancel() {
+        scanIdentifier = nil
         scanTask?.cancel()
         scanTask = nil
         isScanning = false
@@ -465,7 +488,7 @@ final class NetToysScannerViewModel {
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            results = try NetToysScanImport.savedResults(Data(contentsOf: url))
+            replaceResults(try NetToysScanImport.savedResults(Data(contentsOf: url)))
             lastDuration = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -474,6 +497,7 @@ final class NetToysScannerViewModel {
 
     func removeResults(ids: Set<String>) {
         results.removeAll { ids.contains($0.id) }
+        rebuildResultIndices()
     }
 
     func toggleFavoriteTarget() {
@@ -511,11 +535,41 @@ final class NetToysScannerViewModel {
         } else {
             annotations[address] = annotation
         }
+        if let index = resultIndices[address] {
+            results[index].comment = annotation.comment.isEmpty ? nil : annotation.comment
+        }
         do {
             try NetToysScannerStore.saveAnnotations(annotations)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func applyScanUpdate(_ update: NetToysScanResult) {
+        var update = update
+        if let comment = annotations[update.id]?.comment, !comment.isEmpty {
+            update.comment = comment
+        }
+        if let index = resultIndices[update.id] {
+            results[index] = update
+        } else {
+            resultIndices[update.id] = results.endIndex
+            results.append(update)
+        }
+    }
+
+    private func replaceResults(_ values: [NetToysScanResult]) {
+        results = values
+        rebuildResultIndices()
+        for index in results.indices {
+            if let comment = annotations[results[index].id]?.comment, !comment.isEmpty {
+                results[index].comment = comment
+            }
+        }
+    }
+
+    private func rebuildResultIndices() {
+        resultIndices = Dictionary(uniqueKeysWithValues: results.indices.map { (results[$0].id, $0) })
     }
 
 }
@@ -847,7 +901,7 @@ struct NetToysScannerView: View {
                 .customizationID("nettoys.vendor")
                 .defaultVisibility(.hidden)
 
-                TableColumn("NetBIOS", value: \NetToysScanResult.netBIOSTitle) { result in
+                TableColumn("NetBIOS Info", value: \NetToysScanResult.netBIOSTitle) { result in
                     Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
                         .lineLimit(1)
                 }
@@ -893,6 +947,13 @@ struct NetToysScannerView: View {
                 .width(min: 110, ideal: 160)
                 .customizationID("nettoys.custom-text")
                 .defaultVisibility(.hidden)
+
+                TableColumn("Comments", value: \NetToysScanResult.commentTitle) { result in
+                    Text(result.commentTitle.isEmpty ? "—" : result.commentTitle)
+                        .lineLimit(1)
+                }
+                .width(min: 100, ideal: 150)
+                .customizationID("nettoys.comments")
             }
         }
         .contextMenu(forSelectionType: String.self) { selected in
@@ -945,6 +1006,10 @@ struct NetToysScannerView: View {
                     .frame(width: 120)
                 Text("\(model.completed) of \(model.total)")
                     .monospacedDigit()
+                Text("·")
+                Text("\(sortedResults.count) shown")
+                Text("·")
+                Text("\(model.results.filter(\.isReachable).count) alive")
             } else {
                 Text("\(sortedResults.count) shown")
                 Text("·")

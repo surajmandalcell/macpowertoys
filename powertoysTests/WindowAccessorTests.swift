@@ -192,7 +192,7 @@ final class WindowAccessorTests: XCTestCase {
             "input-devices": NSSize(width: 860, height: 600),
             "system-care": NSSize(width: 880, height: 600),
             "system-monitor": NSSize(width: 880, height: 600),
-            "nettoys": NSSize(width: 860, height: 600),
+            "nettoys": NSSize(width: 1_100, height: 700),
         ]
 
         for (identifier, expectedSize) in expectedSizes {
@@ -208,6 +208,7 @@ final class WindowAccessorTests: XCTestCase {
 
             XCTAssertEqual(window.contentMinSize, expectedSize, identifier)
         }
+        XCTAssertEqual(UtilityLayout.netToysDefaultContentSize, NSSize(width: 1_280, height: 800))
     }
 
     func testWorkspaceDensityUsesCompactSharedMetrics() {

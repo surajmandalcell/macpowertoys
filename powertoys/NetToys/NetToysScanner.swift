@@ -661,20 +661,44 @@ nonisolated enum NetBIOSProbe {
             defer { offset = dataEnd }
             guard type == 0x21, dataStart < dataEnd else { continue }
             let count = Int(bytes[dataStart])
-            var preferred: String?
+            let namesEnd = dataStart + 1 + count * 18
+            guard namesEnd <= dataEnd else { return nil }
+            var computer: String?
+            var fallbackComputer: String?
+            var workgroup: String?
+            var user: String?
             for index in 0..<count {
                 let entry = dataStart + 1 + index * 18
-                guard entry + 18 <= dataEnd else { break }
                 let suffix = bytes[entry + 15]
                 let flags = readUInt16(bytes, at: entry + 16) ?? 0
-                guard flags & 0x8000 == 0 else { continue }
                 let name = String(decoding: bytes[entry..<(entry + 15)], as: UTF8.self)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { continue }
-                if suffix == 0 { return name }
-                if preferred == nil, suffix == 0x20 { preferred = name }
+                if flags & 0x8000 != 0 {
+                    if workgroup == nil, suffix == 0 || suffix == 0x1E { workgroup = name }
+                } else {
+                    if computer == nil, suffix == 0 { computer = name }
+                    if fallbackComputer == nil, suffix == 0x20 { fallbackComputer = name }
+                    if user == nil, suffix == 3 { user = name }
+                }
             }
-            if let preferred { return preferred }
+            computer = computer ?? fallbackComputer
+            let macBytes = namesEnd + 6 <= dataEnd ? Array(bytes[namesEnd..<(namesEnd + 6)]) : []
+            let mac = macBytes.count == 6 && macBytes.contains(where: { $0 != 0 })
+                ? macBytes.map { String(format: "%02X", $0) }.joined(separator: ":")
+                : nil
+            let identity: String?
+            if let computer, let user, let workgroup {
+                identity = "\(workgroup)\\\(user)@\(computer)"
+            } else if let computer, let user {
+                identity = "\(user)@\(computer)"
+            } else if let computer, let workgroup {
+                identity = "\(workgroup)\\\(computer)"
+            } else {
+                identity = computer ?? user ?? workgroup
+            }
+            if let identity { return mac.map { "\(identity) [\($0)]" } ?? identity }
+            if let mac { return "[\(mac)]" }
         }
         return nil
     }
@@ -740,19 +764,20 @@ nonisolated enum NetBIOSProbe {
 nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable {
     var id: String { address.description }
     let address: IPv4Address
-    let isReachable: Bool
-    let responseMilliseconds: Double?
-    let hostname: String?
-    let macAddress: String?
-    let vendor: String?
-    let openPorts: [UInt16]
-    let filteredPorts: [UInt16]?
-    let ttl: Int?
-    let packetLossPercent: Double?
-    let httpServer: String?
-    let httpProxy: String?
-    let netBIOSName: String?
-    let customText: String?
+    var isReachable: Bool
+    var responseMilliseconds: Double?
+    var hostname: String?
+    var macAddress: String?
+    var vendor: String?
+    var openPorts: [UInt16]
+    var filteredPorts: [UInt16]?
+    var ttl: Int?
+    var packetLossPercent: Double?
+    var httpServer: String?
+    var httpProxy: String?
+    var netBIOSName: String?
+    var customText: String?
+    var comment: String?
 
     init(
         address: IPv4Address,
@@ -768,7 +793,8 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
         httpServer: String? = nil,
         httpProxy: String? = nil,
         netBIOSName: String? = nil,
-        customText: String? = nil
+        customText: String? = nil,
+        comment: String? = nil
     ) {
         self.address = address
         self.isReachable = isReachable
@@ -784,6 +810,7 @@ nonisolated struct NetToysScanResult: Codable, Identifiable, Equatable, Sendable
         self.httpProxy = httpProxy
         self.netBIOSName = netBIOSName
         self.customText = customText
+        self.comment = comment
     }
 }
 
@@ -1017,7 +1044,8 @@ actor NetToysScanner {
         scanUnresponsiveHosts: Bool = true,
         launchDelayMilliseconds: Int = 0,
         fetchOptions: NetToysFetchOptions = NetToysFetchOptions(),
-        progress: (@Sendable (Int, Int) -> Void)? = nil
+        progress: (@Sendable (Int, Int) -> Void)? = nil,
+        update: (@Sendable (NetToysScanResult) -> Void)? = nil
     ) async -> [NetToysScanResult] {
         await scan(
             targets: targets.map { NetToysScanTarget(address: $0, ports: ports) },
@@ -1031,7 +1059,8 @@ actor NetToysScanner {
             scanUnresponsiveHosts: scanUnresponsiveHosts,
             launchDelayMilliseconds: launchDelayMilliseconds,
             fetchOptions: fetchOptions,
-            progress: progress
+            progress: progress,
+            update: update
         )
     }
 
@@ -1047,7 +1076,8 @@ actor NetToysScanner {
         scanUnresponsiveHosts: Bool = true,
         launchDelayMilliseconds: Int = 0,
         fetchOptions: NetToysFetchOptions = NetToysFetchOptions(),
-        progress: (@Sendable (Int, Int) -> Void)? = nil
+        progress: (@Sendable (Int, Int) -> Void)? = nil,
+        update: (@Sendable (NetToysScanResult) -> Void)? = nil
     ) async -> [NetToysScanResult] {
         let maximum = min(max(concurrency, 1), 256)
         var scanned: [NetToysScanResult] = []
@@ -1075,7 +1105,8 @@ actor NetToysScanner {
                             pingTimeoutMilliseconds: pingTimeoutMilliseconds,
                             adaptiveTCPTimeout: adaptiveTCPTimeout,
                             scanUnresponsiveHosts: scanUnresponsiveHosts,
-                            fetchOptions: fetchOptions
+                            fetchOptions: fetchOptions,
+                            update: update
                         )
                     }
                 }
@@ -1097,22 +1128,12 @@ actor NetToysScanner {
         )
         return scanned.map { result in
             let macAddress = arp[result.address.description]
-            return NetToysScanResult(
-                address: result.address,
-                isReachable: result.isReachable,
-                responseMilliseconds: result.responseMilliseconds,
-                hostname: result.hostname,
-                macAddress: macAddress,
-                vendor: MACVendorDatabase.bundled.vendor(for: macAddress),
-                openPorts: result.openPorts,
-                filteredPorts: result.filteredPorts,
-                ttl: result.ttl,
-                packetLossPercent: result.packetLossPercent,
-                httpServer: result.httpServer,
-                httpProxy: result.httpProxy,
-                netBIOSName: result.netBIOSName,
-                customText: result.customText
-            )
+            guard macAddress != nil else { return result }
+            var enriched = result
+            enriched.macAddress = macAddress
+            enriched.vendor = MACVendorDatabase.bundled.vendor(for: macAddress)
+            update?(enriched)
+            return enriched
         }.sorted { $0.address < $1.address }
     }
 
@@ -1126,7 +1147,8 @@ actor NetToysScanner {
         pingTimeoutMilliseconds: Int,
         adaptiveTCPTimeout: Bool,
         scanUnresponsiveHosts: Bool,
-        fetchOptions: NetToysFetchOptions
+        fetchOptions: NetToysFetchOptions,
+        update: (@Sendable (NetToysScanResult) -> Void)?
     ) async -> NetToysScanResult {
         let needsPing = collectPingDetails || livenessMethod == .icmpAndTCP || adaptiveTCPTimeout
         let ping = needsPing
@@ -1165,31 +1187,39 @@ actor NetToysScanner {
                 if probe.state == .unreachable { filteredPorts.append(port) }
             }
         }
-        let hostname = reachable ? await HostResolver.reverse(address) : nil
-        let metadata = reachable
-            ? await NetToysProtocolFetchers.collect(
-                address: address,
-                openPorts: openPorts,
-                timeoutMilliseconds: tcpTimeout,
-                options: fetchOptions
-            )
-            : NetToysProtocolMetadata(httpServer: nil, httpProxy: nil, netBIOSName: nil, customText: nil)
-        return NetToysScanResult(
+        var result = NetToysScanResult(
             address: address,
             isReachable: reachable,
             responseMilliseconds: fastest,
-            hostname: hostname,
+            hostname: nil,
             macAddress: nil,
             vendor: nil,
             openPorts: openPorts,
             filteredPorts: reportedFilteredPorts(filteredPorts, reachable: reachable),
             ttl: ping?.ttl,
-            packetLossPercent: ping?.packetLossPercent,
-            httpServer: metadata.httpServer,
-            httpProxy: metadata.httpProxy,
-            netBIOSName: metadata.netBIOSName,
-            customText: metadata.customText
+            packetLossPercent: ping?.packetLossPercent
         )
+        update?(result)
+        guard reachable, !Task.isCancelled else { return result }
+
+        result.hostname = await HostResolver.reverse(address)
+        if result.hostname != nil { update?(result) }
+
+        let metadata = await NetToysProtocolFetchers.collect(
+            address: address,
+            openPorts: openPorts,
+            timeoutMilliseconds: tcpTimeout,
+            options: fetchOptions
+        )
+        result.httpServer = metadata.httpServer
+        result.httpProxy = metadata.httpProxy
+        result.netBIOSName = metadata.netBIOSName
+        result.customText = metadata.customText
+        if metadata.httpServer != nil || metadata.httpProxy != nil
+            || metadata.netBIOSName != nil || metadata.customText != nil {
+            update?(result)
+        }
+        return result
     }
 
     nonisolated static func reportedFilteredPorts(_ ports: [UInt16], reachable: Bool) -> [UInt16] {
@@ -1546,10 +1576,11 @@ nonisolated enum NetToysScanExport {
                 result.httpServer ?? "",
                 result.httpProxy ?? "",
                 result.netBIOSName ?? "",
-                result.customText ?? ""
+                result.customText ?? "",
+                result.comment ?? ""
             ].map(quote).joined(separator: ",")
         }
-        let header = "IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports,HTTP Server,HTTP Proxy,NetBIOS,Custom Text"
+        let header = "IP Address,Status,Response ms,TTL,Packet Loss %,Filtered Ports,Hostname,MAC Address,Vendor,Open Ports,HTTP Server,HTTP Proxy,NetBIOS,Custom Text,Comments"
         return ((includeHeader ? [header] : []) + rows).joined(separator: "\n")
     }
 
@@ -1568,7 +1599,8 @@ nonisolated enum NetToysScanExport {
                 result.httpServer ?? "-",
                 result.httpProxy ?? "-",
                 result.netBIOSName ?? "-",
-                result.customText ?? "-"
+                result.customText ?? "-",
+                result.comment ?? "-"
             ].joined(separator: "\t")
         }.joined(separator: "\n")
     }
@@ -1594,6 +1626,7 @@ nonisolated enum NetToysScanExport {
                 <http-proxy>\(xmlEscape(result.httpProxy ?? ""))</http-proxy>
                 <netbios>\(xmlEscape(result.netBIOSName ?? ""))</netbios>
                 <custom-text>\(xmlEscape(result.customText ?? ""))</custom-text>
+                <comment>\(xmlEscape(result.comment ?? ""))</comment>
               </host>
             """
         }.joined(separator: "\n")
@@ -1615,11 +1648,12 @@ nonisolated enum NetToysScanExport {
                 result.httpServer ?? "",
                 result.httpProxy ?? "",
                 result.netBIOSName ?? "",
-                result.customText ?? ""
+                result.customText ?? "",
+                result.comment ?? ""
             ].map(sqlQuote).joined(separator: ", ")
-            return "INSERT INTO nettoys_scan (ip_address, status, ttl, packet_loss, hostname, mac_address, mac_vendor, open_ports, filtered_ports, http_server, http_proxy, netbios, custom_text) VALUES (\(values));"
+            return "INSERT INTO nettoys_scan (ip_address, status, ttl, packet_loss, hostname, mac_address, mac_vendor, open_ports, filtered_ports, http_server, http_proxy, netbios, custom_text, comment) VALUES (\(values));"
         }
-        let schema = "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, mac_vendor TEXT, open_ports TEXT, filtered_ports TEXT, http_server TEXT, http_proxy TEXT, netbios TEXT, custom_text TEXT);"
+        let schema = "CREATE TABLE IF NOT EXISTS nettoys_scan (ip_address TEXT, status TEXT, ttl TEXT, packet_loss TEXT, hostname TEXT, mac_address TEXT, mac_vendor TEXT, open_ports TEXT, filtered_ports TEXT, http_server TEXT, http_proxy TEXT, netbios TEXT, custom_text TEXT, comment TEXT);"
         return ((includeSchema ? [schema] : []) + rows).joined(separator: "\n")
     }
 
