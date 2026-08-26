@@ -120,9 +120,30 @@ final class NetToysTests: XCTestCase {
         )
         XCTAssertNil(
             AnchorMatcher.match(
-                candidates: [randomized, AnchorCandidate(ip: "192.168.1.46", macAddress: nil, hostname: "jetson.local")],
+                candidates: [randomized, AnchorCandidate(ip: "192.168.1.46", macAddress: nil, hostname: "jetson.office")],
                 identity: .randomizedMAC(hostname: "jetson.local", learnedMACs: [])
             )
+        )
+
+        let otherNetwork = AnchorCandidate(
+            ip: "10.0.0.44",
+            macAddress: nil,
+            hostname: "jetson.office.example"
+        )
+        XCTAssertEqual(
+            AnchorMatcher.match(
+                candidates: [stranger, otherNetwork],
+                identity: .randomizedMAC(hostname: "jetson.local", learnedMACs: [])
+            ),
+            otherNetwork
+        )
+        XCTAssertEqual(
+            AnchorMatcher.automaticIdentity(
+                macAddress: "AA:BB:CC:DD:EE:FF",
+                hostname: "jetson.home",
+                fallbackHostName: "192.168.1.8"
+            ),
+            .randomizedMAC(hostname: "jetson", learnedMACs: ["aabbccddeeff"])
         )
     }
 

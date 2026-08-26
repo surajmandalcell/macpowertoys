@@ -68,17 +68,7 @@ final class NetToysAnchorViewModel {
         Task { [weak self] in
             guard let self else { return }
             do {
-                let targets = try await NetToysTargetResolver.resolve(
-                    entry.hostName,
-                    defaultPorts: [entry.port],
-                    limit: 1
-                )
-                let results = await scanner.scan(
-                    targets: targets,
-                    timeoutMilliseconds: 900,
-                    concurrency: 1
-                )
-                if let result = results.first {
+                if let result = try await inspect(entry) {
                     deviceMAC = result.macAddress ?? ""
                     deviceHostname = result.hostname ?? ""
                 }
@@ -86,6 +76,62 @@ final class NetToysAnchorViewModel {
                 errorMessage = error.localizedDescription
             }
             isInspecting = false
+        }
+    }
+
+    func enableAutomaticAnchor() {
+        guard let entry = selectedEntry, let alias = entry.aliases.first else { return }
+        isInspecting = true
+        errorMessage = nil
+        Task { [weak self] in
+            guard let self else { return }
+            defer { isInspecting = false }
+            do {
+                guard let result = try await inspect(entry),
+                      result.openPorts.contains(entry.port)
+                else {
+                    errorMessage = "The selected SSH host is not reachable on port \(entry.port)."
+                    return
+                }
+                deviceMAC = result.macAddress ?? ""
+                deviceHostname = result.hostname ?? ""
+                guard let identity = AnchorMatcher.automaticIdentity(
+                    macAddress: result.macAddress,
+                    hostname: result.hostname,
+                    fallbackHostName: entry.hostName
+                ) else {
+                    errorMessage = "No stable MAC or hostname was detected. Use the manual identity fields."
+                    return
+                }
+
+                let anchor = SSHAnchorConfiguration(
+                    hostAlias: alias,
+                    hostName: entry.hostName,
+                    port: entry.port,
+                    identity: identity
+                )
+                if let index = configuration.anchors.firstIndex(where: {
+                    $0.hostAlias.caseInsensitiveCompare(alias) == .orderedSame
+                }) {
+                    var replacement = anchor
+                    replacement.id = configuration.anchors[index].id
+                    configuration.anchors[index] = replacement
+                } else {
+                    configuration.anchors.append(anchor)
+                }
+                try NetToysConfigurationStore.save(configuration)
+                refresh()
+
+                guard await NetToysLoginItemManager.shared.setEnabled(true) else {
+                    errorMessage = NetToysLoginItemManager.shared.errorMessage
+                        ?? "The NetToys helper could not be enabled."
+                    return
+                }
+                helperStatus = NetToysConfigurationStore.status()
+                requestedAddress = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -162,6 +208,19 @@ final class NetToysAnchorViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func inspect(_ entry: SSHConfigEntry) async throws -> NetToysScanResult? {
+        let targets = try await NetToysTargetResolver.resolve(
+            entry.hostName,
+            defaultPorts: [entry.port],
+            limit: 1
+        )
+        return await scanner.scan(
+            targets: targets,
+            timeoutMilliseconds: 900,
+            concurrency: 1
+        ).first
     }
 }
 
@@ -311,6 +370,36 @@ struct NetToysAnchorView: View {
                 }
 
                 GridRow(alignment: .center) {
+                    rowLabel("Automatic")
+                    HStack(spacing: 10) {
+                        Text("Detect this device, enable monitoring, and repair its IP when the connection changes.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer()
+                        Button {
+                            model.enableAutomaticAnchor()
+                        } label: {
+                            HStack(spacing: 6) {
+                                if model.isInspecting {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .frame(width: 13, height: 13)
+                                } else {
+                                    Image(systemName: "bolt.fill")
+                                        .frame(width: 13, height: 13)
+                                }
+                                Text("Enable Automatically")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .disabled(model.selectedEntry == nil || model.isInspecting)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                GridRow(alignment: .center) {
                     rowLabel("Identity")
                     HStack {
                         Picker("", selection: $model.identityMode) {
@@ -444,7 +533,7 @@ struct NetToysAnchorView: View {
         switch identity {
         case .stableMAC(let mac): "Stable MAC  ·  \(mac)"
         case .randomizedMAC(let hostname, let macs):
-            "Randomized MAC  ·  \(hostname.isEmpty ? "No hostname" : hostname)  ·  \(macs.count) learned MAC"
+            "Hostname \(hostname.isEmpty ? "unavailable" : hostname)  ·  \(macs.count) learned MAC"
         }
     }
 
