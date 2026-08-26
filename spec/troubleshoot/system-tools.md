@@ -32,22 +32,25 @@
   MAC column is empty or shows `02:00:00:00:00:00`.
 - **Cause:** The scanner view owned its model, so SwiftUI discarded the live
   results with the destination. Completed scan archives were written but not
-  restored. On current macOS, the routing socket scrubs neighboring hardware
-  addresses for third-party processes; the SDK reserves unsanitized neighbor
-  cache reads for an Apple-restricted privilege. Local Network permission
-  allows device discovery but does not grant that privilege.
+  restored. On current macOS, direct routing-socket replies can scrub neighbor
+  hardware addresses even with Local Network permission, while Apple's fixed
+  `/usr/sbin/arp` tool still exposes the permitted neighbor-cache view.
 - **Invariant:** The NetToys window owns the scanner model. Preserve live
   results, selection, and sorting across destination changes. Restore the
   latest completed run after relaunch, and persist target, ports, filter,
   search, scanner preferences, columns, openers, favorites, and annotations.
   Request Local Network access on use and show its state and recovery action in
-  Settings. Never present macOS's `02:00:00:00:00:00` privacy placeholder as a
-  device MAC; label the platform restriction directly instead.
+  Settings. Query the scoped routing socket first, then fill only missing
+  scanned addresses from `/usr/sbin/arp -an` on the same active interface.
+  Never accept incomplete, all-zero, or `02:00:00:00:00:00` values. Label the
+  platform restriction only when both paths return no usable MAC.
 - **Check:** Recreate the scanner model and confirm the latest archive loads.
   Change destinations and return, then quit and relaunch, confirming the result
   remains. Deny Local Network access and confirm Settings offers recovery. In
   the signed app, rescan a reachable neighbor and confirm the privacy
-  placeholder is rejected and the MAC cell says `macOS restricted`.
+  placeholder is rejected. Compare a reachable address in the completed scan
+  with `/usr/sbin/arp -an` and confirm the same canonical MAC appears in the
+  table. Confirm another interface and an unrequested address are ignored.
 
 ## Wi-Fi Priority Failover
 
