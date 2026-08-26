@@ -22,7 +22,8 @@ evidence, and remaining work.
 - Verify compact inline metadata and adaptive two-column pages in the latest
   normal installed build at default and minimum widths.
 - Verify automatic SSH Anchor setup at the minimum window width, then change
-  connections and confirm the signed helper repairs the enrolled host's IP.
+  connections and confirm the signed helper repairs the enrolled host's IP
+  without a host-key prompt or changed-identification failure.
 - Verify one signed SSH Anchor falls back through its pinned Tailscale device
   and returns to the local endpoint without changing an unrelated SSH stanza.
 - Verify content-sized menu-bar tabs and selected Awake controls in the latest

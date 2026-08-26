@@ -64,6 +64,7 @@ actor NetToysHelperRuntime {
     private var nextRecovery: [UUID: Date] = [:]
     private var routeMonitors: [UUID: SSHAnchorRouteMonitor] = [:]
     private var nextTailscaleAttempt: [UUID: Date] = [:]
+    private var preparedAnchorPolicies = Set<UUID>()
     private var historyRecorder = NetworkTransitionRecorder()
     private var lastHistoryCheck = Date.distantPast
     private var networkSnapshot: NetworkRuntimeSnapshot?
@@ -108,6 +109,11 @@ actor NetToysHelperRuntime {
 
     private func check(_ configuredAnchor: SSHAnchorConfiguration) async -> SSHAnchorStatus {
         guard configuredAnchor.isEnabled else { return status(configuredAnchor, .idle) }
+        do {
+            try prepareHostKeyPolicy(configuredAnchor)
+        } catch {
+            return status(configuredAnchor, .error, error.localizedDescription)
+        }
         let anchor = synchronizedAnchor(configuredAnchor)
         if anchor.route == .tailscale { return await checkTailscale(anchor) }
         let probe = await TCPPortProbe.check(host: anchor.hostName, port: anchor.port, timeoutMilliseconds: 900)
@@ -385,6 +391,17 @@ actor NetToysHelperRuntime {
             try? NetToysConfigurationStore.save(updated)
         }
         return copy
+    }
+
+    private func prepareHostKeyPolicy(_ anchor: SSHAnchorConfiguration) throws {
+        guard !preparedAnchorPolicies.contains(anchor.id) else { return }
+        _ = try SSHConfigFileUpdater.prepareAnchor(
+            configURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config"),
+            backupDirectory: NetToysPaths.backups,
+            hostAlias: anchor.hostAlias,
+            knownHostsAlias: anchor.knownHostsAlias
+        )
+        preparedAnchorPolicies.insert(anchor.id)
     }
 
     private func scheduleRetry(for id: UUID) {

@@ -148,6 +148,7 @@ nonisolated enum SSHConfigEditor {
     enum EditError: LocalizedError {
         case hostNotFound(String)
         case hostNameNotFound(String)
+        case invalidManagedPolicy(String)
         case valueChanged(expected: String, actual: String)
         case invalidValue
 
@@ -155,10 +156,58 @@ nonisolated enum SSHConfigEditor {
             switch self {
             case .hostNotFound(let host): "SSH host not found: \(host)"
             case .hostNameNotFound(let host): "HostName is missing for SSH host: \(host)"
+            case .invalidManagedPolicy(let host): "SSH Anchor policy is incomplete for SSH host: \(host)"
             case .valueChanged(let expected, let actual): "HostName changed from \(expected) to \(actual)."
             case .invalidValue: "The replacement HostName contains unsupported characters."
             }
         }
+    }
+
+    static func preparingAnchor(
+        in data: Data,
+        hostAlias: String,
+        knownHostsAlias: String
+    ) throws -> Data {
+        guard isSafeToken(hostAlias), isSafeToken(knownHostsAlias),
+              let entry = entries(in: data).first(where: {
+                  $0.aliases.contains { $0.caseInsensitiveCompare(hostAlias) == .orderedSame }
+              })
+        else { throw EditError.hostNotFound(hostAlias) }
+        let aliases = entry.aliases.filter(isLiteralAlias)
+        guard !aliases.isEmpty else { throw EditError.hostNotFound(hostAlias) }
+
+        let newline = data.range(of: Data([0x0d, 0x0a])) == nil ? "\n" : "\r\n"
+        let startMarker = "# MacPowerToys SSH Anchor: \(knownHostsAlias)"
+        let endMarker = "# End MacPowerToys SSH Anchor: \(knownHostsAlias)"
+        let block = Data(([
+            startMarker,
+            "Host \(aliases.joined(separator: " "))",
+            "    HostKeyAlias \(knownHostsAlias)",
+            "    StrictHostKeyChecking accept-new",
+            "    CheckHostIP no",
+            endMarker,
+            "",
+            "",
+        ].joined(separator: newline)).utf8)
+        if data.range(of: block) != nil { return data }
+
+        let start = Data((startMarker + newline).utf8)
+        let end = Data((endMarker + newline).utf8)
+        if let startRange = data.range(of: start) {
+            guard let endRange = data.range(of: end, in: startRange.upperBound..<data.endIndex) else {
+                throw EditError.invalidManagedPolicy(hostAlias)
+            }
+            var upperBound = endRange.upperBound
+            let separator = Data(newline.utf8)
+            if data[upperBound...].starts(with: separator) { upperBound += separator.count }
+            var output = data
+            output.replaceSubrange(startRange.lowerBound..<upperBound, with: block)
+            return output
+        }
+        guard data.range(of: Data(endMarker.utf8)) == nil else {
+            throw EditError.invalidManagedPolicy(hostAlias)
+        }
+        return block + data
     }
 
     static func replacingHostName(
@@ -170,38 +219,40 @@ nonisolated enum SSHConfigEditor {
         guard isSafeToken(newHostName) else { throw EditError.invalidValue }
         let bytes = [UInt8](data)
         let lines = lineRanges(bytes)
-        guard let hostLine = lines.firstIndex(where: {
-            guard let directive = directive(in: bytes, range: $0), directive.key == "host" else { return false }
-            return tokens(in: bytes, range: directive.valueRange).contains {
-                asciiString(bytes[$0]).caseInsensitiveCompare(hostAlias) == .orderedSame
-            }
-        }) else { throw EditError.hostNotFound(hostAlias) }
-
-        let stanzaEnd = lines[(hostLine + 1)...].firstIndex(where: {
-            guard let item = directive(in: bytes, range: $0) else { return false }
-            return item.key == "host" || item.key == "match"
-        }) ?? lines.endIndex
-
-        for index in (hostLine + 1)..<stanzaEnd {
-            guard let item = directive(in: bytes, range: lines[index]), item.key == "hostname",
-                  let token = valueToken(in: bytes, range: item.valueRange)
+        var foundHost = false
+        for hostLine in lines.indices {
+            guard let host = directive(in: bytes, range: lines[hostLine]), host.key == "host",
+                  tokens(in: bytes, range: host.valueRange).contains(where: {
+                      asciiString(bytes[$0]).caseInsensitiveCompare(hostAlias) == .orderedSame
+                  })
             else { continue }
-            let oldValue = asciiString(bytes[token])
-            guard oldValue == expectedHostName else {
-                throw EditError.valueChanged(expected: expectedHostName, actual: oldValue)
+            foundHost = true
+            let stanzaEnd = lines[(hostLine + 1)...].firstIndex(where: {
+                guard let item = directive(in: bytes, range: $0) else { return false }
+                return item.key == "host" || item.key == "match"
+            }) ?? lines.endIndex
+
+            for index in (hostLine + 1)..<stanzaEnd {
+                guard let item = directive(in: bytes, range: lines[index]), item.key == "hostname",
+                      let token = valueToken(in: bytes, range: item.valueRange)
+                else { continue }
+                let oldValue = asciiString(bytes[token])
+                guard oldValue == expectedHostName else {
+                    throw EditError.valueChanged(expected: expectedHostName, actual: oldValue)
+                }
+                let replacement = Array(newHostName.utf8)
+                var output = bytes
+                output.replaceSubrange(token, with: replacement)
+                return SSHConfigEdit(
+                    data: Data(output),
+                    originalRange: token,
+                    changedRange: token.lowerBound..<(token.lowerBound + replacement.count),
+                    oldValue: oldValue,
+                    newValue: newHostName
+                )
             }
-            let replacement = Array(newHostName.utf8)
-            var output = bytes
-            output.replaceSubrange(token, with: replacement)
-            return SSHConfigEdit(
-                data: Data(output),
-                originalRange: token,
-                changedRange: token.lowerBound..<(token.lowerBound + replacement.count),
-                oldValue: oldValue,
-                newValue: newHostName
-            )
         }
-        throw EditError.hostNameNotFound(hostAlias)
+        throw foundHost ? EditError.hostNameNotFound(hostAlias) : EditError.hostNotFound(hostAlias)
     }
 
     static func entries(in data: Data) -> [SSHConfigEntry] {
@@ -326,6 +377,10 @@ nonisolated enum SSHConfigEditor {
             byte > 0x20 && byte != 0x23 && byte != 0x22 && byte != 0x7f
         }
     }
+
+    private static func isLiteralAlias(_ value: String) -> Bool {
+        isSafeToken(value) && !value.hasPrefix("!") && !value.contains("*") && !value.contains("?")
+    }
 }
 
 nonisolated enum SSHConfigFileUpdater {
@@ -354,6 +409,44 @@ nonisolated enum SSHConfigFileUpdater {
         expectedHostName: String,
         newHostName: String
     ) throws -> SSHConfigEdit {
+        var result: SSHConfigEdit?
+        try replace(configURL: configURL, backupDirectory: backupDirectory) { original in
+            let edit = try SSHConfigEditor.replacingHostName(
+                in: original,
+                hostAlias: hostAlias,
+                expectedHostName: expectedHostName,
+                newHostName: newHostName
+            )
+            result = edit
+            return edit.data
+        }
+        return result!
+    }
+
+    static func prepareAnchor(
+        configURL: URL,
+        backupDirectory: URL,
+        hostAlias: String,
+        knownHostsAlias: String
+    ) throws -> Bool {
+        var changed = false
+        try replace(configURL: configURL, backupDirectory: backupDirectory) { original in
+            let prepared = try SSHConfigEditor.preparingAnchor(
+                in: original,
+                hostAlias: hostAlias,
+                knownHostsAlias: knownHostsAlias
+            )
+            changed = prepared != original
+            return prepared
+        }
+        return changed
+    }
+
+    private static func replace(
+        configURL: URL,
+        backupDirectory: URL,
+        transform: (Data) throws -> Data
+    ) throws {
         let fileManager = FileManager.default
         let target = configURL.resolvingSymlinksInPath()
         try fileManager.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
@@ -372,12 +465,8 @@ nonisolated enum SSHConfigFileUpdater {
         guard lstat(target.path, &before) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
         guard before.st_size <= 5 * 1_024 * 1_024 else { throw UpdateError.configTooLarge }
         let original = try Data(contentsOf: target)
-        let edit = try SSHConfigEditor.replacingHostName(
-            in: original,
-            hostAlias: hostAlias,
-            expectedHostName: expectedHostName,
-            newHostName: newHostName
-        )
+        let replacement = try transform(original)
+        guard replacement != original else { return }
 
         let backupURL = backupDirectory.appendingPathComponent("\(target.lastPathComponent).\(UUID().uuidString).backup")
         try original.write(to: backupURL, options: .atomic)
@@ -393,7 +482,7 @@ nonisolated enum SSHConfigFileUpdater {
             if shouldRemoveTemporary { unlink(temporary.path) }
         }
 
-        try edit.data.withUnsafeBytes { rawBuffer in
+        try replacement.withUnsafeBytes { rawBuffer in
             guard let baseAddress = rawBuffer.baseAddress else { return }
             var written = 0
             while written < rawBuffer.count {
@@ -406,7 +495,7 @@ nonisolated enum SSHConfigFileUpdater {
         guard copyfile(target.path, temporary.path, nil, copyfile_flags_t(COPYFILE_METADATA)) == 0 else {
             throw UpdateError.metadataCopyFailed
         }
-        guard try Data(contentsOf: temporary) == edit.data else { throw UpdateError.verificationFailed }
+        guard try Data(contentsOf: temporary) == replacement else { throw UpdateError.verificationFailed }
 
         var current = stat()
         guard lstat(target.path, &current) == 0,
@@ -419,7 +508,6 @@ nonisolated enum SSHConfigFileUpdater {
         guard rename(temporary.path, target.path) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
         shouldRemoveTemporary = false
         rotateBackups(in: backupDirectory, keeping: 5)
-        return edit
     }
 
     private static func rotateBackups(in directory: URL, keeping limit: Int) {

@@ -213,6 +213,11 @@ grammar](https://man.openbsd.org/ssh_config#DESCRIPTION),
 
 ### Config edit contract
 
+Enrollment may prepend one marked MacPowerToys policy block for every literal
+alias in the selected stanza. That block sets an anchor-specific `HostKeyAlias`,
+`StrictHostKeyChecking accept-new`, and `CheckHostIP no`. All later recovery
+edits follow the byte-range contract below and change only `HostName`.
+
 - Edit only the top-level `~/.ssh/config`. It must be a user-owned, writable,
   regular file with link count one. It must not be a symbolic link. Never edit
   an included file, `/etc/ssh/ssh_config`, a generated file, or any other path.
@@ -235,7 +240,7 @@ grammar](https://man.openbsd.org/ssh_config#DESCRIPTION),
 - OpenSSH applies a `Host` block when a positive pattern matches and no negated
   pattern matches. NetToys intentionally blocks every multi-pattern, wildcard,
   or negated block from automatic edits. [OpenSSH `Host` patterns](https://man.openbsd.org/ssh_config#Host)
-- Replace only the selected `HostName` value bytes. Preserve all other bytes,
+- During recovery, replace only the selected `HostName` value bytes. Preserve all other bytes,
   including indentation, keyword case, spaces or `=`, quotes, comments, line
   endings, encoding bytes, and final-newline state. Never rewrite `Host`,
   `Port`, `User`, identity, proxy, forwarding, or unknown directives. Store the
@@ -382,9 +387,9 @@ upload it by default.
    Assert that Include- or Match-selected values, multi-pattern blocks, and
    duplicate `HostName` directives are read-only. Only after that preflight,
    use `ssh -G -F <safe-fixture> <alias>` to verify the effective hostname and
-   port. For a successful eligible top-level edit, the raw diff changes only
-   the chosen `HostName` value bytes and every other effective SSH field stays
-   equal.
+   port. Verify the one-time managed host-key policy separately. For a
+   successful recovery edit, the raw diff changes only the chosen `HostName`
+   value bytes and every other effective SSH field stays equal.
 5. **Write faults:** inject failure before backup, after backup, during temp
    write, before swap, after swap, before post-check, and during rollback. Kill
    the helper at each point and replay the journal. The path must contain one

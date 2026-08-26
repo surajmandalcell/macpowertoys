@@ -14,10 +14,11 @@
   by exact MAC, or by one unique first hostname label with learned MAC evidence.
   Automatic setup inspects the selected SSH entry, retains both signals when
   available, enables the anchor, and enables the helper in one action. It
-  changes only the selected `HostName` token and preserves every other SSH
-  config byte. Network History stores reachability transitions, not every
-  probe. Enabling NetToys registers and uses its bundled login helper. Disabling
-  NetToys stops monitoring and unregisters the helper.
+  adds one managed host-key policy during enrollment. Later recovery changes
+  only the selected `HostName` token and preserves every other SSH config byte.
+  Network History stores reachability transitions, not every probe. Enabling
+  NetToys registers and uses its bundled login helper. Disabling NetToys stops
+  monitoring and unregisters the helper.
 - **Check:** Exercise all four destinations. Compare the SSH config before and
   after an address change and confirm that the one expected token is the only
   changed byte range. Confirm automatic setup fills the detected evidence and
@@ -25,6 +26,26 @@
   default interface is scanned. Confirm ambiguous recovery never writes. Enable
   NetToys, quit MacPowerToys, and confirm the helper continues. Disable NetToys
   and confirm the helper exits and is no longer registered.
+
+## SSH Anchor Host-Key Identity
+
+- **Symptom:** SSH reports an unknown host or a changed remote identification
+  after SSH Anchor changes an address, especially when local addresses are
+  reused by several devices.
+- **Cause:** OpenSSH looked up `known_hosts` by the changing `HostName` address,
+  so trust followed the DHCP slot instead of the enrolled device.
+- **Invariant:** Enrollment atomically prepends one managed policy for every
+  literal alias in the selected `Host` stanza. Use a stable, anchor-specific
+  `HostKeyAlias`, `StrictHostKeyChecking accept-new`, and `CheckHostIP no`.
+  OpenSSH accepts and stores the first key without a confirmation prompt, reuses
+  it across local and Tailscale address changes, and still rejects a real host
+  key change. The login helper migrates existing enabled anchors before probing.
+  Later recovery still changes only the selected `HostName` token.
+- **Check:** Resolve the prepared alias with `ssh -G` and confirm its host-key
+  alias stays fixed while `hostname` changes. Connect once, move the same server
+  to another address, and confirm no confirmation or changed-identification
+  warning appears. Present a different server key through the same anchor and
+  confirm SSH refuses it.
 
 ## NetToys Scanner Persistence And MAC Addresses
 

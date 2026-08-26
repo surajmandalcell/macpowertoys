@@ -275,6 +275,10 @@ nonisolated struct SSHAnchorConfiguration: Codable, Equatable, Identifiable, Sen
     var route: SSHAnchorRoute {
         tailscaleFallback?.ipAddress == hostName ? .tailscale : .local
     }
+
+    var knownHostsAlias: String {
+        "macpowertoys-\(id.uuidString.lowercased())"
+    }
 }
 
 nonisolated enum SSHAnchorRoute: Equatable, Sendable {

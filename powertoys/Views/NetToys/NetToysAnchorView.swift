@@ -107,7 +107,7 @@ final class NetToysAnchorViewModel {
                     return
                 }
 
-                let anchor = SSHAnchorConfiguration(
+                var anchor = SSHAnchorConfiguration(
                     hostAlias: alias,
                     hostName: entry.hostName,
                     port: entry.port,
@@ -117,11 +117,12 @@ final class NetToysAnchorViewModel {
                 if let index = configuration.anchors.firstIndex(where: {
                     $0.hostAlias.caseInsensitiveCompare(alias) == .orderedSame
                 }) {
-                    var replacement = anchor
-                    replacement.id = configuration.anchors[index].id
-                    replacement.tailscaleFallback = configuration.anchors[index].tailscaleFallback
-                    configuration.anchors[index] = replacement
+                    anchor.id = configuration.anchors[index].id
+                    anchor.tailscaleFallback = configuration.anchors[index].tailscaleFallback
+                    try prepareHostKeyPolicy(anchor)
+                    configuration.anchors[index] = anchor
                 } else {
+                    try prepareHostKeyPolicy(anchor)
                     configuration.anchors.append(anchor)
                 }
                 try NetToysConfigurationStore.save(configuration)
@@ -168,13 +169,20 @@ final class NetToysAnchorViewModel {
             errorMessage = "This SSH host already has an anchor."
             return
         }
-        configuration.anchors.append(SSHAnchorConfiguration(
+        let anchor = SSHAnchorConfiguration(
             hostAlias: alias,
             hostName: entry.hostName,
             port: entry.port,
             identity: identity,
             localHostName: entry.hostName
-        ))
+        )
+        do {
+            try prepareHostKeyPolicy(anchor)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        configuration.anchors.append(anchor)
         save()
         deviceMAC = ""
         deviceHostname = ""
@@ -309,6 +317,15 @@ final class NetToysAnchorViewModel {
             timeoutMilliseconds: 900,
             concurrency: 1
         ).first
+    }
+
+    private func prepareHostKeyPolicy(_ anchor: SSHAnchorConfiguration) throws {
+        _ = try SSHConfigFileUpdater.prepareAnchor(
+            configURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config"),
+            backupDirectory: NetToysPaths.backups,
+            hostAlias: anchor.hostAlias,
+            knownHostsAlias: anchor.knownHostsAlias
+        )
     }
 }
 
