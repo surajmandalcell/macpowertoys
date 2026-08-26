@@ -33,8 +33,9 @@
 - **Cause:** The scanner view owned its model, so SwiftUI discarded the live
   results with the destination. Completed scan archives were written but not
   restored. On current macOS, direct routing-socket replies can scrub neighbor
-  hardware addresses even with Local Network permission, while Apple's fixed
-  `/usr/sbin/arp` tool still exposes the permitted neighbor-cache view.
+  hardware addresses even with Local Network permission. A child `arp`
+  process inherits the signed app's privacy context, so shell output is not a
+  valid app-level verification of that fallback.
 - **Invariant:** The NetToys window owns the scanner model. Preserve live
   results, selection, and sorting across destination changes. Restore the
   latest completed run after relaunch, and persist target, ports, filter,
@@ -42,9 +43,10 @@
   favorites, and annotations.
   Request Local Network access on use and show its state and recovery action in
   Settings. Query the scoped routing socket first, then fill only missing
-  scanned addresses from `/usr/sbin/arp -an` on the same active interface.
-  Never accept incomplete, all-zero, or `02:00:00:00:00:00` values. Label the
-  platform restriction only when both paths return no usable MAC.
+  scanned addresses from the native `NET_RT_FLAGS` neighbor-cache snapshot,
+  filtered to the same active interface index and requested addresses. Never
+  accept incomplete, all-zero, or `02:00:00:00:00:00` values. Label the
+  platform restriction only when both native paths return no usable MAC.
 - **Check:** Recreate the scanner model and confirm the latest archive and
   selected sort field and direction load.
   Change destinations and return, then quit and relaunch, confirming the result
