@@ -1,6 +1,91 @@
 import Darwin
 import Foundation
 
+nonisolated enum NetToysNeighborServiceContract {
+    static let daemonPlistName = "com.surajmandal.macpowertoys.nettoys-neighbor.plist"
+    static let machServiceName = "com.surajmandal.macpowertoys.nettoys-neighbor"
+    static let mainAppRequirement = "identifier \"com.surajmandal.macpowertoys\" and anchor apple generic and certificate leaf[subject.OU] = \"GF57JXJF5A\""
+    static let helperRequirement = "identifier \"com.surajmandal.macpowertoys.nettoys-helper\" and anchor apple generic and certificate leaf[subject.OU] = \"GF57JXJF5A\""
+}
+
+@objc nonisolated protocol NetToysNeighborXPCProtocol {
+    func neighborSnapshot(reply: @escaping (Data?, String) -> Void)
+}
+
+nonisolated enum NetToysNeighborXPCClient {
+    private final class Reply: @unchecked Sendable {
+        private let lock = NSLock()
+        private var continuation: CheckedContinuation<[String: String], Never>?
+        private var connection: NSXPCConnection?
+
+        init(_ continuation: CheckedContinuation<[String: String], Never>) {
+            self.continuation = continuation
+        }
+
+        func attach(_ connection: NSXPCConnection) {
+            lock.lock()
+            self.connection = connection
+            lock.unlock()
+        }
+
+        func finish(_ value: [String: String]) {
+            lock.lock()
+            guard let continuation else {
+                lock.unlock()
+                return
+            }
+            self.continuation = nil
+            let connection = self.connection
+            self.connection = nil
+            lock.unlock()
+            connection?.invalidate()
+            continuation.resume(returning: value)
+        }
+    }
+
+    static func load(
+        addresses: [IPv4Address],
+        interfaceIndex: UInt32
+    ) async -> [String: String] {
+        guard !addresses.isEmpty else { return [:] }
+        return await withCheckedContinuation { continuation in
+            let reply = Reply(continuation)
+            let connection = NSXPCConnection(
+                machServiceName: NetToysNeighborServiceContract.machServiceName,
+                options: .privileged
+            )
+            reply.attach(connection)
+            connection.remoteObjectInterface = NSXPCInterface(with: NetToysNeighborXPCProtocol.self)
+            connection.setCodeSigningRequirement(NetToysNeighborServiceContract.helperRequirement)
+            connection.interruptionHandler = { reply.finish([:]) }
+            connection.invalidationHandler = { reply.finish([:]) }
+            connection.resume()
+            let proxy = connection.remoteObjectProxyWithErrorHandler { _ in reply.finish([:]) }
+                as? NetToysNeighborXPCProtocol
+            proxy?.neighborSnapshot { data, sourceCommit in
+                let expectedCommit = Bundle.main.object(
+                    forInfoDictionaryKey: "MPTSourceCommit"
+                ) as? String
+                guard let data,
+                      expectedCommit == nil
+                        || expectedCommit == "$(MPT_SOURCE_COMMIT)"
+                        || sourceCommit == expectedCommit
+                else {
+                    reply.finish([:])
+                    return
+                }
+                let requested = Set(addresses.map(\.description))
+                reply.finish(ARPTable.parseRoutingMessages(data, interfaceIndex: interfaceIndex)
+                    .filter { requested.contains($0.key) })
+            }
+            if proxy == nil { reply.finish([:]) }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1) {
+                reply.finish([:])
+            }
+        }
+    }
+}
+
 nonisolated enum PortList {
     enum ParseError: LocalizedError {
         case invalid(String)
@@ -1209,27 +1294,39 @@ nonisolated enum ARPTable {
             result.merge(loadNeighborCache(addresses: addresses, interfaceIndex: interfaceIndex)) {
                 current, _ in current
             }
+            let missing = addresses.filter { result[$0.description] == nil }
+            if !missing.isEmpty {
+                result.merge(await NetToysNeighborXPCClient.load(
+                    addresses: missing,
+                    interfaceIndex: interfaceIndex
+                )) { current, _ in current }
+            }
             return result
         }.value
     }
 
-    private static func loadNeighborCache(
+    static func loadNeighborCache(
         addresses: [IPv4Address],
         interfaceIndex: UInt32
     ) -> [String: String] {
         guard interfaceIndex > 0, interfaceIndex <= UInt16.max else { return [:] }
+        guard let data = neighborCacheData() else { return [:] }
+        let requested = Set(addresses.map(\.description))
+        return parseRoutingMessages(data, interfaceIndex: interfaceIndex)
+            .filter { requested.contains($0.key) }
+    }
+
+    static func neighborCacheData() -> Data? {
         var mib = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_LLINFO]
         var size = 0
-        guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return [:] }
+        guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return nil }
         var data = Data(count: size)
         let status = data.withUnsafeMutableBytes {
             sysctl(&mib, u_int(mib.count), $0.baseAddress, &size, nil, 0)
         }
-        guard status == 0 else { return [:] }
+        guard status == 0 else { return nil }
         if size < data.count { data.removeSubrange(size..<data.count) }
-        let requested = Set(addresses.map(\.description))
-        return parseRoutingMessages(data, interfaceIndex: interfaceIndex)
-            .filter { requested.contains($0.key) }
+        return data
     }
 
     static func queryMessage(

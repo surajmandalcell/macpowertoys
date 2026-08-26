@@ -1,9 +1,13 @@
 import CoreLocation
+import Darwin
 import Foundation
 
 @main
 struct NetToysHelperApp {
     static func main() async {
+        if geteuid() == 0 {
+            NetToysNeighborDaemon.run()
+        }
         let runtime = NetToysHelperRuntime()
         let locationAccess = await MainActor.run {
             NetToysHelperLocationAccess { state in
