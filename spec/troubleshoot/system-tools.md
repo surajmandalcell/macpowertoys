@@ -161,9 +161,13 @@
 ## SSH Anchor Tailscale Fallback
 
 - **Symptom:** An SSH Anchor stops working away from its local network, or
-  repeatedly flips between a local and Tailscale address.
+  repeatedly flips between a local and Tailscale address. Enabling Tailscale
+  can also report that its device list is unreadable even while Tailscale is
+  running.
 - **Cause:** The helper knew only the current local address and had no stable
-  remote identity or route hysteresis.
+  remote identity or route hysteresis. Tailscale treats a child process without
+  `TERM` as a GUI launch, so a macOS app process received GUI error text instead
+  of JSON from `tailscale status --json`.
 - **Invariant:** Tailscale fallback is opt-in per anchor. Match an exact first
   hostname label only during setup; if it is not unique, require the device
   chooser. Persist the selected Tailscale node ID and refresh its endpoint by
@@ -173,13 +177,16 @@
   Every route change uses the existing verified, atomic `HostName` update and
   rollback path. Keep the existing bounded local-scan backoff and a 30-second
   Tailscale retry gate. Initial peer matching must inspect the scanner-selected
-  local endpoint, not a stale address from the original SSH entry.
+  local endpoint, not a stale address from the original SSH entry. Run the
+  Tailscale child with `TERM=dumb` so its documented JSON command stays in CLI
+  mode when launched by the signed app.
 - **Check:** Decode a legacy local-only anchor. Reject ambiguous labels and a
   cached private address from another subnet. Confirm the two-failure,
   three-success, and dwell thresholds. Change a peer IP while retaining its
   node ID and confirm endpoint refresh. In the signed app, inspect the per-row
-  Tailscale checkbox and chooser, then exercise fallback and local recovery
-  with a disposable SSH host.
+  Tailscale checkbox and chooser. Confirm enabling it reads the device list and
+  saves the selected node without an unreadable-list error, then exercise
+  fallback and local recovery with a disposable SSH host.
 
 ## Wi-Fi Priority Failover
 

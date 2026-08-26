@@ -168,6 +168,9 @@ nonisolated enum TailscalePeerCatalog {
             let output = Pipe()
             process.executableURL = URL(fileURLWithPath: path)
             process.arguments = ["status", "--json"]
+            var environment = ProcessInfo.processInfo.environment
+            environment["TERM"] = "dumb"
+            process.environment = environment
             process.standardOutput = output
             process.standardError = FileHandle.nullDevice
             do {
