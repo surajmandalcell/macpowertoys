@@ -9,7 +9,9 @@ private enum ToolDetailPage: String, CaseIterable, Identifiable {
 
 struct ToolAboutView: View {
     let toolId: String
+    var showsModalCloseButton = false
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.dismissWindow) private var dismissWindow
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
     @State private var settings = SettingsManager.shared
@@ -96,6 +98,10 @@ struct ToolAboutView: View {
                 .controlSize(.regular)
                 .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
                 .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
+
+                if showsModalCloseButton {
+                    UtilityModalCloseButton { dismiss() }
+                }
             }
             .fixedSize(horizontal: true, vertical: false)
         }

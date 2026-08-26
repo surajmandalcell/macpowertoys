@@ -344,8 +344,7 @@ private struct LogsSettingsSheet: View {
                 Text("Logs Settings")
                     .font(.system(size: 15, weight: .semibold))
                 Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
+                UtilityModalCloseButton { dismiss() }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)

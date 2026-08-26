@@ -477,8 +477,7 @@ private struct TextExtractionDetailView: View {
             } actions: {
                 HStack(spacing: 6) {
                     CompactTitlebarButton(title: "Copy") { service.copy(extraction) }
-                    CompactTitlebarButton(title: "Done", isPrimary: true) { dismiss() }
-                        .keyboardShortcut(.defaultAction)
+                    UtilityModalCloseButton { dismiss() }
                 }
             }
 

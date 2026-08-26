@@ -928,8 +928,12 @@ private struct NetToysStatisticsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Scan Statistics")
-                .font(.title2.weight(.semibold))
+            HStack {
+                Text("Scan Statistics")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                UtilityModalCloseButton { dismiss() }
+            }
             Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                 row("Addresses", statistics.addressCount.formatted())
                 row("Reachable", statistics.reachableCount.formatted())
@@ -942,12 +946,6 @@ private struct NetToysStatisticsView: View {
                 row("Duration", statistics.duration.map { "\($0.formatted(.number.precision(.fractionLength(1)))) s" } ?? "Not available")
                 row("Scan rate", statistics.addressesPerSecond.map { "\($0.formatted(.number.precision(.fractionLength(1)))) addresses/s" } ?? "Not available")
             }
-            HStack {
-                Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
-            .controlSize(.small)
         }
         .padding(20)
         .frame(width: 480)
@@ -979,8 +977,12 @@ private struct NetToysScannerSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Scanner Settings")
-                .font(.title2.weight(.semibold))
+            HStack {
+                Text("Scanner Settings")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                UtilityModalCloseButton(action: saveAndDismiss)
+            }
 
             Form {
                 SingleStepStepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
@@ -1080,15 +1082,7 @@ private struct NetToysScannerSettingsView: View {
 
             HStack {
                 Spacer()
-                Button("Done") {
-                    do {
-                        try model.saveOpeners(openers)
-                        model.savePreferences()
-                        dismiss()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-                }
+                Button("Done", action: saveAndDismiss)
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -1102,6 +1096,16 @@ private struct NetToysScannerSettingsView: View {
             Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
+        }
+    }
+
+    private func saveAndDismiss() {
+        do {
+            try model.saveOpeners(openers)
+            model.savePreferences()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
@@ -1118,8 +1122,12 @@ private struct NetToysOpenerPreviewSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Open with \(preview.name)?")
-                .font(.title2.weight(.semibold))
+            HStack {
+                Text("Open with \(preview.name)?")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                UtilityModalCloseButton { dismiss() }
+            }
             Text("Review the complete URL before another app opens it.")
                 .foregroundStyle(.secondary)
             Text(preview.url.absoluteString)
@@ -1154,8 +1162,12 @@ private struct NetToysRandomTargetsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Random Targets")
-                .font(.title2.weight(.semibold))
+            HStack {
+                Text("Random Targets")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                UtilityModalCloseButton { dismiss() }
+            }
             Text("Generate unique usable IPv4 addresses inside one CIDR block.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -1207,6 +1219,7 @@ private struct NetToysHostDetailsView: View {
                 Toggle("Favorite", isOn: $annotation.isFavorite)
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                UtilityModalCloseButton { dismiss() }
             }
 
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {

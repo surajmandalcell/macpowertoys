@@ -129,6 +129,7 @@ struct AddRemoteSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
+            UtilityModalCloseButton(action: close)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -391,12 +392,8 @@ struct AddRemoteSheet: View {
                 .disabled(!canConnect)
             }
             Spacer()
-            Button(closeButtonTitle) {
-                if manager.isAuthInProgress { manager.cancelAuth() }
-                else { manager.acknowledgeAuthResult() }
-                dismiss()
-            }
-            .keyboardShortcut(.cancelAction)
+            Button(closeButtonTitle, action: close)
+                .keyboardShortcut(.cancelAction)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -407,6 +404,12 @@ struct AddRemoteSheet: View {
         case .idle, .waiting, .question: return "Cancel"
         case .succeeded, .failed: return "Close"
         }
+    }
+
+    private func close() {
+        if manager.isAuthInProgress { manager.cancelAuth() }
+        else { manager.acknowledgeAuthResult() }
+        dismiss()
     }
 
     private var connectButtonTitle: String {
