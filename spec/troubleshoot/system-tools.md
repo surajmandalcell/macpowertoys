@@ -69,8 +69,9 @@
   daemon and show its Not Enabled, Needs Approval, Allowed, or Unavailable
   state beside IP Scanner and in NetToys Settings. The daemon accepts no input
   and returns only the raw snapshot over mutually code-signing-restricted XPC;
-  the app verifies the source commit and filters to the active interface and
-  requested addresses. Never accept incomplete, all-zero, or
+  the app filters to the active interface and requested addresses. Do not tie
+  the snapshot to the app's exact source commit because an approved daemon can
+  remain alive across an app update. Never accept incomplete, all-zero, or
   `02:00:00:00:00:00` values.
 - **Check:** Recreate the scanner model and confirm the latest archive and
   selected sort field and direction load.
@@ -79,9 +80,10 @@
   the signed app, enable MAC Access, approve the Background Item when macOS
   asks, and rescan a reachable neighbor. Compare it with `/usr/sbin/arp -an`
   and confirm the same canonical MAC appears. Confirm the embedded daemon
-  plist, signatures, source commit, and XPC peer requirements match the final
-  installed app. Confirm another interface and an unrequested address are
-  ignored.
+  plist, signatures, and XPC peer requirements match the final installed app.
+  Replace the app while the approved daemon remains alive, rescan, and confirm
+  its canonical MAC still appears. Confirm another interface and an
+  unrequested address are ignored.
 
 ## NetToys Background Approval Recovery
 
