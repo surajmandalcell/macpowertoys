@@ -63,13 +63,17 @@
   restrict it to the Administrators and SYSTEM SIDs. Use `ssh-copy-id` for
   Unix OpenSSH. Recheck with `BatchMode=yes` before recording success. Keep the
   stable `HostKeyAlias`, so the verified key remains valid after every address
-  change. Never bypass a changed host-key warning.
+  change. If the password sheet is dismissed, leave a quiet inline retry action
+  for that anchor; the key button also remains available. Never bypass a
+  changed host-key warning.
 - **Check:** Confirm key-only SSH fails before enrollment. Complete Automatic
   enrollment, enter the password once, and confirm the app marks Key Access as
   verified. Confirm the password is absent from process arguments, environment,
   logs, and disk. Change the device address, wait for SSH Anchor recovery, and
   confirm key-only SSH still succeeds. On Windows, verify the standard-user and
   administrator paths and ACLs with separate test accounts.
+  Dismiss the password sheet and confirm the affected anchor shows the compact
+  retry notice, then use Retry and confirm the sheet reopens.
 
 ## NetToys Scanner Persistence And MAC Addresses
 

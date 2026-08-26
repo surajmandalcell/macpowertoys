@@ -4,6 +4,18 @@ import Testing
 
 @Suite("NetToys SSH key access")
 struct NetToysKeyAccessTests {
+    @Test("Dismissing password setup leaves a retry path")
+    @MainActor
+    func dismissalKeepsRetry() {
+        let model = NetToysAnchorViewModel()
+        let anchorID = UUID()
+        model.pendingKeyAccessAnchorID = anchorID
+
+        model.cancelKeyAccess()
+
+        #expect(model.keyAccessRetryAnchorID == anchorID)
+    }
+
     @Test("Public keys are reduced to one safe key line")
     func publicKeyValidation() throws {
         let key = try SSHPublicKey(
