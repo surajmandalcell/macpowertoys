@@ -47,6 +47,20 @@
   Menus and buttons share one centerline. Start System Care work on every page
   and confirm the status stays at the bottom without unused space below it.
 
+## Workspace Minimum Window Sizes
+
+- **Symptom:** A newly added workspace can be resized until its sidebar,
+  controls, or content clips.
+- **Cause:** SwiftUI's default scene size is an initial size, not a minimum.
+- **Invariant:** `WindowAccessor` applies the shared minimum content size before
+  restoring a saved frame. The launcher uses 780 by 700 points. Logs, Cloud
+  Sync, AI History, Input Devices, System Care, System Monitor, and NetToys use
+  their sidebar family plus a 640-point content minimum and a 600-point height.
+  Compact applets and Ruler retain their existing fixed or overlay-specific
+  sizing.
+- **Check:** Unit-check every workspace identifier and confirm restoration
+  cannot produce a frame below its family minimum.
+
 ## Inline Metadata And Sparse Pages
 
 - **Symptom:** A short category, path, count, kind, time, or total consumes a

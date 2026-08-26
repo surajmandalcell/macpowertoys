@@ -62,6 +62,28 @@
   installed app. Confirm another interface and an unrequested address are
   ignored.
 
+## SSH Anchor Tailscale Fallback
+
+- **Symptom:** An SSH Anchor stops working away from its local network, or
+  repeatedly flips between a local and Tailscale address.
+- **Cause:** The helper knew only the current local address and had no stable
+  remote identity or route hysteresis.
+- **Invariant:** Tailscale fallback is opt-in per anchor. Match an exact first
+  hostname label only during setup; if it is not unique, require the device
+  chooser. Persist the selected Tailscale node ID and refresh its endpoint by
+  that ID. Prefer the local endpoint, fall back after two local failures, and
+  return only after three verified local successes and a 30-second minimum
+  Tailscale dwell. Accept a cached local address only on the active subnet.
+  Every route change uses the existing verified, atomic `HostName` update and
+  rollback path. Keep the existing bounded local-scan backoff and a 30-second
+  Tailscale retry gate.
+- **Check:** Decode a legacy local-only anchor. Reject ambiguous labels and a
+  cached private address from another subnet. Confirm the two-failure,
+  three-success, and dwell thresholds. Change a peer IP while retaining its
+  node ID and confirm endpoint refresh. In the signed app, inspect the per-row
+  Tailscale checkbox and chooser, then exercise fallback and local recovery
+  with a disposable SSH host.
+
 ## Wi-Fi Priority Failover
 
 - **Symptom:** A failed Wi-Fi connection stays active even when another saved
