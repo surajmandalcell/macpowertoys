@@ -62,6 +62,9 @@ private class WindowAccessorView: NSView {
         super.viewDidMoveToWindow()
         guard let window = window else { return }
         window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
+        if let minimumSize = UtilityLayout.minimumContentSize(for: windowIdentifier) {
+            window.contentMinSize = minimumSize
+        }
         let isCompactApplet = Self.compactAppletWindowIdentifiers.contains(windowIdentifier)
         if restoredWindow !== window {
             WindowStateManager.shared.restoreState(for: window)

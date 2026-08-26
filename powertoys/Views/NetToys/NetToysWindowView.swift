@@ -109,7 +109,6 @@ struct NetToysWindowView: View {
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
-        .frame(minWidth: 860, minHeight: 600)
         .background(WindowAccessor(identifier: "nettoys"))
         .sheet(isPresented: $showSettings) {
             ToolAboutView(toolId: "nettoys", showsModalCloseButton: true)

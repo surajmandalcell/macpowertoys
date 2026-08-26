@@ -6,6 +6,8 @@ enum UtilityLayout {
     static let compactSidebarWidth: CGFloat = 220
     static let dataSidebarWidth: CGFloat = 240
     static let conversationSidebarWidth: CGFloat = 260
+    static let workspaceMinimumContentWidth: CGFloat = 640
+    static let workspaceMinimumHeight: CGFloat = 600
     static let sidebarRowHeight: CGFloat = 28
     static let workspaceTitlebarHeight: CGFloat = 40
     static let workspaceContentTopInset: CGFloat = 44
@@ -32,6 +34,26 @@ enum UtilityLayout {
     static let cardRadius: CGFloat = 10
     static let separatorOpacity: Double = 0.22
     static let increasedContrastSeparatorOpacity: Double = 0.44
+
+    static func minimumContentSize(for identifier: String) -> NSSize? {
+        let sidebarWidth: CGFloat
+        switch identifier {
+        case "main":
+            return NSSize(width: 780, height: 700)
+        case "cc-history":
+            sidebarWidth = conversationSidebarWidth
+        case "rclone", "system-care", "system-monitor":
+            sidebarWidth = dataSidebarWidth
+        case "logs", "input-devices", "nettoys":
+            sidebarWidth = compactSidebarWidth
+        default:
+            return nil
+        }
+        return NSSize(
+            width: sidebarWidth + workspaceMinimumContentWidth,
+            height: workspaceMinimumHeight
+        )
+    }
 }
 
 enum UtilityMotion {

@@ -183,6 +183,33 @@ final class WindowAccessorTests: XCTestCase {
         }
     }
 
+    func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {
+        let expectedSizes: [String: NSSize] = [
+            "main": NSSize(width: 780, height: 700),
+            "cc-history": NSSize(width: 900, height: 600),
+            "rclone": NSSize(width: 880, height: 600),
+            "logs": NSSize(width: 860, height: 600),
+            "input-devices": NSSize(width: 860, height: 600),
+            "system-care": NSSize(width: 880, height: 600),
+            "system-monitor": NSSize(width: 880, height: 600),
+            "nettoys": NSSize(width: 860, height: 600),
+        ]
+
+        for (identifier, expectedSize) in expectedSizes {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            Self.retainedWindows.append(window)
+            window.contentView = NSHostingView(rootView: WindowAccessor(identifier: identifier))
+            window.contentView?.layoutSubtreeIfNeeded()
+
+            XCTAssertEqual(window.contentMinSize, expectedSize, identifier)
+        }
+    }
+
     func testWorkspaceDensityUsesCompactSharedMetrics() {
         XCTAssertEqual(UtilityLayout.compactSidebarWidth, 220)
         XCTAssertEqual(UtilityLayout.dataSidebarWidth, 240)
