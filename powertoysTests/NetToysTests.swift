@@ -1131,6 +1131,54 @@ final class NetToysTests: XCTestCase {
         XCTAssertNil(TailscalePeerCatalog.exactMatch(labels: ["jetson.local"], peers: peers))
     }
 
+    func testTailscalePeerChooserUsesCompactShortAndScrollingListGeometry() {
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerWidth, 360)
+        XCTAssertEqual(NetToysAnchorSheetLayout.titleRowHeight, 44)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerRowHeight, 40)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 1), 93)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 5), 257)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 6), 260)
+        XCTAssertFalse(NetToysAnchorSheetLayout.peerPickerNeedsScrolling(peerCount: 5))
+        XCTAssertTrue(NetToysAnchorSheetLayout.peerPickerNeedsScrolling(peerCount: 6))
+    }
+
+    func testSSHAnchorSheetsUseSharedCloseAndPeerInteractionControls() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/NetToys/NetToysAnchorView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let peerPickerStart = try XCTUnwrap(source.range(of: "private var tailscalePeerPicker"))
+        let peerPickerEnd = try XCTUnwrap(source.range(
+            of: "private func identityDescription",
+            range: peerPickerStart.upperBound..<source.endIndex
+        ))
+        let peerPicker = source[peerPickerStart.lowerBound..<peerPickerEnd.lowerBound]
+        let keyAccessStart = try XCTUnwrap(source.range(of: "private struct SSHKeyAccessSheet"))
+        let keyAccessSheet = source[keyAccessStart.lowerBound..<source.endIndex]
+
+        XCTAssertTrue(peerPicker.contains("UtilityModalCloseButton(action: model.cancelTailscaleSelection)"))
+        XCTAssertTrue(keyAccessSheet.contains("UtilityModalCloseButton(action: onCancel)"))
+        XCTAssertTrue(peerPicker.contains("UtilityInteractionButtonStyle("))
+        XCTAssertTrue(peerPicker.contains("cornerRadius: NetToysAnchorSheetLayout.peerCornerRadius"))
+        XCTAssertEqual(
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: true,
+                isHovering: true,
+                isPressed: false
+            ),
+            0.06
+        )
+        XCTAssertEqual(
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: true,
+                isHovering: false,
+                isPressed: true
+            ),
+            0.1
+        )
+    }
+
     func testLegacySSHAnchorDefaultsToLocalOnly() throws {
         let anchor = SSHAnchorConfiguration(
             hostAlias: "jetson",
