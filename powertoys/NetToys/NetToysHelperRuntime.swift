@@ -73,6 +73,13 @@ actor NetToysHelperRuntime {
     private var wifiFailoverMonitor = WiFiFailoverMonitor()
     private var wifiFailoverStatus: WiFiFailoverStatus?
 
+    nonisolated static func localSwitchCandidate(
+        _ candidate: SSHAnchorConfiguration?,
+        routeAction: SSHAnchorRouteAction
+    ) -> SSHAnchorConfiguration? {
+        routeAction == .useLocal ? candidate : nil
+    }
+
     func setSSIDAccess(_ state: NetToysSSIDAccessState) async {
         ssidAccess = state
         if state == .allowed { await checkNetwork(NetToysConfigurationStore.load()) }
@@ -187,16 +194,11 @@ actor NetToysHelperRuntime {
                 discovered.localHostName = discovered.hostName
                 recovered = discovered
                 action = routeMonitor.observe(route: .tailscale, localIsOpen: true, at: date)
-                if action != .useLocal,
-                   tailscaleProbe.state == .open,
-                   anchor.tailscaleFallback?.isEnabled == true {
-                    recovered = nil
-                }
             }
         }
         routeMonitors[anchor.id] = routeMonitor
 
-        if let recovered {
+        if let recovered = Self.localSwitchCandidate(recovered, routeAction: action) {
             return await switchToLocal(anchor, recovered: recovered)
         }
         if tailscaleProbe.state == .open {
