@@ -423,6 +423,20 @@ struct SystemMonitorMenuSettingsView: View {
     }
 
     private func itemControls(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .bottom, spacing: 10) {
+                primaryItemControls(item)
+                itemSpecificControl(item)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                primaryItemControls(item)
+                itemSpecificControl(item)
+            }
+        }
+    }
+
+    private func primaryItemControls(_ item: SystemMonitorMenuItemConfiguration) -> some View {
         HStack(alignment: .bottom, spacing: 10) {
             settingControl("STYLE", width: 92) {
                 Picker("Style", selection: itemSetting(
@@ -462,7 +476,9 @@ struct SystemMonitorMenuSettingsView: View {
                     get: { $0.interval },
                     set: { $0.interval = $1 }
                 )) {
-                    ForEach(SystemMonitorMenuInterval.allCases) { interval in
+                    ForEach(
+                        item.metric.supportedIntervals(global: service.menuSettings.interval)
+                    ) { interval in
                         Text(interval.title).tag(interval)
                     }
                 }
@@ -471,8 +487,6 @@ struct SystemMonitorMenuSettingsView: View {
                 .accessibilityLabel("\(item.metric.title) interval")
                 .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).interval")
             }
-
-            itemSpecificControl(item)
         }
     }
 
@@ -495,21 +509,87 @@ struct SystemMonitorMenuSettingsView: View {
                 .accessibilityLabel("Memory unit")
                 .accessibilityIdentifier("system-monitor.menu.item.memory.unit")
             }
-        case .network:
-            settingControl("DIRECTION", width: 100) {
-                Picker("Direction", selection: itemSetting(
+        case .disk:
+            settingControl("UNIT", width: 88) {
+                Picker("Unit", selection: itemSetting(
                     item,
-                    get: { $0.networkDirection },
-                    set: { $0.networkDirection = $1 }
+                    get: { $0.diskUnit },
+                    set: { $0.diskUnit = $1 }
                 )) {
-                    ForEach(SystemMonitorNetworkDirection.allCases) { direction in
-                        Text(direction.title).tag(direction)
+                    ForEach(SystemMonitorDiskUnit.allCases) { unit in
+                        Text(unit.title).tag(unit)
                     }
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
-                .accessibilityLabel("Network direction")
-                .accessibilityIdentifier("system-monitor.menu.item.network.direction")
+                .accessibilityLabel("Disk unit")
+                .accessibilityIdentifier("system-monitor.menu.item.disk.unit")
+            }
+        case .network:
+            HStack(alignment: .bottom, spacing: 10) {
+                settingControl("DIRECTION", width: 100) {
+                    Picker("Direction", selection: itemSetting(
+                        item,
+                        get: { $0.networkDirection },
+                        set: { $0.networkDirection = $1 }
+                    )) {
+                        ForEach(SystemMonitorNetworkDirection.allCases) { direction in
+                            Text(direction.title).tag(direction)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Network direction")
+                    .accessibilityIdentifier("system-monitor.menu.item.network.direction")
+                }
+
+                settingControl("UNIT", width: 130) {
+                    Picker("Unit", selection: itemSetting(
+                        item,
+                        get: { $0.networkUnit },
+                        set: { $0.networkUnit = $1 }
+                    )) {
+                        ForEach(SystemMonitorNetworkUnit.allCases) { unit in
+                            Text(unit.title).tag(unit)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Network unit")
+                    .accessibilityIdentifier("system-monitor.menu.item.network.unit")
+                }
+            }
+        case .battery:
+            settingControl("DISPLAY", width: 150) {
+                Picker("Display", selection: itemSetting(
+                    item,
+                    get: { $0.batteryDisplay },
+                    set: { $0.batteryDisplay = $1 }
+                )) {
+                    ForEach(SystemMonitorBatteryDisplay.allCases) { display in
+                        Text(display.title).tag(display)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("Battery display")
+                .accessibilityIdentifier("system-monitor.menu.item.battery.display")
+            }
+        case .thermal:
+            settingControl("DISPLAY", width: 100) {
+                Picker("Display", selection: itemSetting(
+                    item,
+                    get: { $0.thermalDisplay },
+                    set: { $0.thermalDisplay = $1 }
+                )) {
+                    ForEach(SystemMonitorThermalDisplay.allCases) { display in
+                        Text(display.title).tag(display)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("Thermal display")
+                .accessibilityIdentifier("system-monitor.menu.item.thermal.display")
             }
         default:
             EmptyView()
