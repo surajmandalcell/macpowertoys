@@ -62,7 +62,8 @@ final class WindowStateManager {
         "text-extractor",
         "input-devices",
         "system-care",
-        "system-monitor"
+        "system-monitor",
+        "nettoys"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
