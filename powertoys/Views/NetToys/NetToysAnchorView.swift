@@ -807,47 +807,67 @@ struct NetToysAnchorView: View {
 
     private var tailscalePeerPicker: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
                 Text("Choose Tailscale Device")
                     .font(.system(size: 13, weight: .medium))
                 Spacer()
                 UtilityModalCloseButton(action: model.cancelTailscaleSelection)
             }
-            .padding(20)
+            .padding(.leading, 14)
+            .padding(.trailing, 10)
+            .frame(height: 44)
 
             QuietDivider()
 
             ScrollView {
-                VStack(spacing: 6) {
+                LazyVStack(spacing: 0) {
                     ForEach(model.tailscalePeers) { peer in
                         Button {
                             model.chooseTailscalePeer(peer)
                         } label: {
-                            HStack {
+                            HStack(spacing: 10) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(peer.hostName)
-                                        .font(.system(size: 13, weight: .medium))
+                                        .font(.system(size: 12, weight: .medium))
                                     Text(peer.ipAddress)
                                         .font(.system(.caption, design: .monospaced))
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text(peer.isOnline ? "Online" : "Offline")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 5) {
+                                    Circle()
+                                        .fill(peer.isOnline ? Color.green : Color.secondary)
+                                        .frame(width: 6, height: 6)
+                                    Text(peer.isOnline ? "Online" : "Offline")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(width: 58, alignment: .leading)
                             }
-                            .padding(10)
+                            .padding(.horizontal, 14)
+                            .frame(height: 40)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .focusEffectDisabled()
+
+                        if peer.id != model.tailscalePeers.last?.id {
+                            QuietDivider()
+                                .padding(.leading, 14)
+                        }
                     }
                 }
-                .padding(12)
+                .padding(.vertical, 4)
             }
             .thinScrollIndicators()
         }
-        .frame(width: 420, height: 300)
+        .frame(
+            width: 360,
+            height: min(260, 52 + CGFloat(model.tailscalePeers.count) * 41)
+        )
     }
 
     private func identityDescription(_ identity: AnchorIdentity) -> String {

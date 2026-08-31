@@ -11,6 +11,7 @@ evidence, and remaining work.
   placement and display restoration, non-obstructing behavior, saved shadow,
   and live Border Opacity behavior.
 - Verify the shared modal Close control in both SSH Anchor sheets.
+- Verify the compact Tailscale device chooser with short and scrolling lists.
 - Verify Command-Q and Command-W across the remaining sub-apps, sheets, and the
   launcher timeout path.
 - Verify None, Combined, and Separate menu-bar modes for every eligible tool,
