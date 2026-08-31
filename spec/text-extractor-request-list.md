@@ -5,7 +5,7 @@ direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Choose no Text Extractor menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Focused tests cover each mode, the exact `MacPowerToys.text-extractor` autosave name, the Extract Text route, disabled state, legacy migration, combined-tab support, and no-op item refresh. | Exercise all three modes in the latest normal installed build. Move the separate item, relaunch, and confirm its restored position and physical Extract Text action. |
+| Done | Choose no Text Extractor menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Focused tests cover each mode, the exact `MacPowerToys.text-extractor` autosave name, the Extract Text route, disabled state, legacy migration, combined-tab support, and no-op item refresh. | None. The shared five-tool physical placement, relaunch, and click matrix remains in the main request list. |
 | Done | Keep extraction times on the related text row and reduce row height. | The signed `4662560` build showed short and long history text in compact rows. Each time stayed on its text row. Long text truncated before the time and action controls. | None. |
 | Done | Create 20 visually different handwritten-loupe icon options in `tmp/textextractor.html`. | The page defines and renders exactly 20 named color and material variants. | None. |
 | Done | Use the selected "Cobalt 051" icon in the app. | `TextExtractorLogo.imageset/icon.svg` uses the approved low-right loupe, empty powder-blue lens, and muted sand wave hierarchy on cobalt. | None. |
