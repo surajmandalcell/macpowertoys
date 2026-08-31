@@ -101,6 +101,41 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(changed.interval, 5)
     }
 
+    func testDirectOrderChangeReturnsOnlyMetricPositionKeys() {
+        let previous = SystemMonitorMenuMetric.allCases
+        let current: [SystemMonitorMenuMetric] = [.memory, .cpu, .gpu, .disk, .network, .battery, .thermal]
+
+        XCTAssertEqual(
+            SystemMonitorStatusItemOrder.preferredPositionKeys(
+                previous: previous,
+                current: current,
+                mode: .direct
+            ),
+            current.map { "NSStatusItem Preferred Position system-monitor.\($0.rawValue)" }
+        )
+        XCTAssertTrue(
+            SystemMonitorStatusItemOrder.preferredPositionKeys(
+                previous: current,
+                current: current,
+                mode: .direct
+            ).isEmpty
+        )
+        XCTAssertTrue(
+            SystemMonitorStatusItemOrder.preferredPositionKeys(
+                previous: previous,
+                current: current,
+                mode: .grouped
+            ).isEmpty
+        )
+    }
+
+    func testLifecycleReconfiguresOnlyForStateChanges() {
+        XCTAssertFalse(SystemMonitorLifecycle.changesState(from: false, to: false))
+        XCTAssertFalse(SystemMonitorLifecycle.changesState(from: true, to: true))
+        XCTAssertTrue(SystemMonitorLifecycle.changesState(from: false, to: true))
+        XCTAssertTrue(SystemMonitorLifecycle.changesState(from: true, to: false))
+    }
+
     func testScheduleUsesOneFastestCadenceAndOnlyReturnsDueMetrics() throws {
         let start = Date(timeIntervalSince1970: 1_000)
         let settings = SystemMonitorMenuSettings(
