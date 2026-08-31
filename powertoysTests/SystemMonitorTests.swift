@@ -2,6 +2,61 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    @MainActor
+    func testTwentyFiveLifecycleCyclesReturnEveryOwnerToBaseline() async throws {
+        let menuSettings = SystemMonitorMenuSettings(
+            enabled: true,
+            items: [SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: true)]
+        )
+        let menuService = SystemMonitorService(
+            menuSettings: menuSettings,
+            toolEnabled: false,
+            observesWake: true
+        )
+
+        XCTAssertEqual(menuService.timerOwnerCount, 0)
+        XCTAssertEqual(menuService.statusItemOwnerCount, 0)
+        XCTAssertEqual(menuService.wakeObserverOwnerCount, 1)
+        for _ in 0..<25 {
+            menuService.setToolEnabled(true)
+            XCTAssertEqual(menuService.timerOwnerCount, 1)
+            XCTAssertEqual(menuService.statusItemOwnerCount, 1)
+            XCTAssertEqual(menuService.wakeObserverOwnerCount, 1)
+            menuService.setToolEnabled(true)
+            XCTAssertEqual(menuService.timerOwnerCount, 1)
+
+            menuService.setToolEnabled(false)
+            XCTAssertEqual(menuService.timerOwnerCount, 0)
+            XCTAssertEqual(menuService.statusItemOwnerCount, 0)
+            XCTAssertEqual(menuService.wakeObserverOwnerCount, 1)
+            menuService.setToolEnabled(false)
+            XCTAssertEqual(menuService.timerOwnerCount, 0)
+        }
+
+        let detailService = SystemMonitorService(
+            menuSettings: SystemMonitorMenuSettings(),
+            toolEnabled: true,
+            observesWake: true
+        )
+        let baselineHistoryCount = detailService.history.count
+        for _ in 0..<25 {
+            detailService.startDetailed()
+            XCTAssertEqual(detailService.timerOwnerCount, 1)
+            detailService.startDetailed()
+            XCTAssertEqual(detailService.timerOwnerCount, 1)
+
+            detailService.stopDetailed()
+            XCTAssertEqual(detailService.timerOwnerCount, 0)
+            detailService.stopDetailed()
+            XCTAssertEqual(detailService.timerOwnerCount, 0)
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(detailService.history.count, baselineHistoryCount)
+        XCTAssertNil(detailService.snapshot)
+        XCTAssertEqual(detailService.statusItemOwnerCount, 0)
+        XCTAssertEqual(detailService.wakeObserverOwnerCount, 1)
+    }
+
     func testCounterDeltasRejectResetsAndCalculateRates() throws {
         XCTAssertEqual(
             try XCTUnwrap(SystemMonitorDelta.cpuUsage(previous: (100, 60), current: (200, 100))),

@@ -734,16 +734,31 @@ final class SystemMonitorService {
     private var toolEnabled = true
     private var generation = 0
 
-    private init() {
-        menuSettings = Self.storedMenuSettings(in: .standard)
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.retryUnavailableMetrics() }
+    private convenience init() {
+        self.init(menuSettings: Self.storedMenuSettings(in: .standard))
+    }
+
+    init(
+        menuSettings: SystemMonitorMenuSettings,
+        toolEnabled: Bool = true,
+        observesWake: Bool = true
+    ) {
+        self.menuSettings = menuSettings
+        self.toolEnabled = toolEnabled
+        if observesWake {
+            wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+                forName: NSWorkspace.didWakeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.retryUnavailableMetrics() }
+            }
         }
     }
+
+    var timerOwnerCount: Int { timer == nil ? 0 : 1 }
+    var statusItemOwnerCount: Int { menuController.statusItemCount }
+    var wakeObserverOwnerCount: Int { wakeObserver == nil ? 0 : 1 }
 
     static func storedMenuSettings(in defaults: UserDefaults) -> SystemMonitorMenuSettings {
         let data = defaults.data(forKey: settingsKey) ?? defaults.data(forKey: legacySettingsKey)
@@ -869,6 +884,8 @@ private final class SystemMonitorMenuController: NSObject {
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
+
+    var statusItemCount: Int { statusItems.count }
 
     func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
