@@ -1,4 +1,4 @@
-# PowerToys goals
+# MacPowerToys goals
 
 Reviewed against current source on 2026-08-31.
 

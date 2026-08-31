@@ -10,7 +10,7 @@ headers as primary sources.
 
 1. **Integrate Mole as an optional external dependency first.** Detect a supported `mo`
    installation and offer a user-approved install of a pinned stable release. Do not embed
-   Mole in PowerToys by default.
+   Mole in MacPowerToys by default.
 2. **Do not promise exact per-device scroll policies in the first Input Devices release.**
    Public APIs can enumerate exact HID devices and can modify global scroll events, but the
    mutable event does not expose a documented general mouse or trackpad device identifier.
@@ -50,14 +50,14 @@ The project provides a useful but incomplete machine-readable surface:
 The official interfaces for clean, optimize, purge, and installer do not provide a stable
 JSON plan-and-execute contract. A complete native GUI must not scrape ANSI/TUI output or
 automate interactive sudo prompts. It needs either an upstream machine-readable contract or
-a maintained GPL-compatible fork. Until then, PowerToys can give native views to the
+a maintained GPL-compatible fork. Until then, MacPowerToys can give native views to the
 documented JSON surfaces and open unsupported destructive flows in a visible terminal.
 
 ### Installation and packaging
 
 The official install routes are Homebrew or the project's
 [installer](https://github.com/tw93/Mole/blob/V1.52.0/install.sh). The installer supports a
-user-owned prefix, which avoids an admin-owned default location. PowerToys should:
+user-owned prefix, which avoids an admin-owned default location. MacPowerToys should:
 
 1. Detect `mo`, resolve its absolute path, and verify a supported version.
 2. Offer `brew install mole` when Homebrew exists.
@@ -87,17 +87,17 @@ a permitted method, mark modifications, license Mole-derived changes under GPLv3
 no further restrictions. A separate unmodified subprocess may be an independent aggregate,
 but the license alone does not settle whether a purpose-built, tightly coupled GUI and Mole
 form one combined work. That product-specific question needs legal review before a
-proprietary PowerToys distribution embeds Mole. This is an engineering risk assessment, not
+proprietary MacPowerToys distribution embeds Mole. This is an engineering risk assessment, not
 legal advice.
 
 The official [trademark policy](https://github.com/tw93/Mole/blob/V1.52.0/TRADEMARK.md)
 reserves the Mole name and logo, requires forks to use a different name and icon, and
-prohibits implying endorsement. Use a PowerToys-owned product name such as **System Care**
+prohibits implying endorsement. Use a MacPowerToys-owned product name such as **System Care**
 and identify “Mole CLI” only as an attributed dependency.
 
 **Recommendation:** keep Mole optional and external. This avoids shipping a third-party GPL
-payload, reduces signing and source-offer obligations, and lets PowerToys support a tested
-version range. If PowerToys later ships a fork, complete legal, trademark, dependency-license,
+payload, reduces signing and source-offer obligations, and lets MacPowerToys support a tested
+version range. If MacPowerToys later ships a fork, complete legal, trademark, dependency-license,
 Corresponding Source, signing, notarization, and update reviews first.
 
 Mole's [security audit](https://github.com/tw93/Mole/blob/V1.52.0/SECURITY_AUDIT.md)
@@ -128,7 +128,7 @@ can fail when devices are used together.
 
 [`kIOHIDOptionsTypeSeizeDevice`](https://developer.apple.com/documentation/iokit/1556660-anonymous/kiohidoptionstypeseizedevice)
 can prevent other clients, including the system, from receiving a HID device. It could form
-part of an exact per-device engine, but PowerToys would then have to recreate all affected
+part of an exact per-device engine, but MacPowerToys would then have to recreate all affected
 input and gestures and could leave a device unusable while active. Do not use seizure as the
 default design. A virtual HID or DriverKit-based design has much higher signing, entitlement,
 compatibility, and recovery risk and needs a separate architecture review.

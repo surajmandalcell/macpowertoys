@@ -1,4 +1,4 @@
-# PowerToys
+# MacPowerToys
 
 SwiftUI macOS utility app with pluggable tools.
 
