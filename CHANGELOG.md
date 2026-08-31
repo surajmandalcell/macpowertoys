@@ -52,8 +52,8 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 - Fixed Text Extractor region capture on multiple displays, blank selections,
   cancellation, permission recovery, clipboard content, and completion cues.
-- Fixed titlebar dragging, transparency, traffic-light alignment, focus rings,
-  and excess body space across utility windows.
+- Matched native titlebar chrome, traffic-light alignment, focus behavior, and
+  compact body spacing across utility windows.
 - Fixed window size, position, and display restoration. Added minimum sizes for
   the launcher and workspace windows.
 - Changed Command-Q to close only the active sub-app. The launcher now requires
