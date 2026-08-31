@@ -95,10 +95,12 @@ struct AwakeSettingsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("MODE").utilitySectionHeader()
             VStack(alignment: .leading, spacing: 12) {
-                modeButton(.passive)
-                modeButton(.indefinite)
+                modeButton(.passive) { service.setMode(.passive) }
+                modeButton(.indefinite) { service.setMode(.indefinite) }
                 HStack {
-                    modeButton(.timed)
+                    modeButton(.timed) {
+                        service.setMode(.timed, duration: TimeInterval(hours * 3600 + minutes * 60))
+                    }
                     Stepper("\(hours) h", value: $hours, in: 0...168)
                         .contentShape(Rectangle())
                     Stepper("\(minutes) min", value: $minutes, in: 0...59, step: 5)
@@ -108,7 +110,7 @@ struct AwakeSettingsView: View {
                         .contentShape(Rectangle())
                 }
                 HStack {
-                    modeButton(.until)
+                    modeButton(.until) { service.setMode(.until, until: expiration) }
                     DatePicker("", selection: $expiration, in: Date()...)
                         .labelsHidden()
                         .contentShape(Rectangle())
@@ -164,10 +166,8 @@ struct AwakeSettingsView: View {
         }
     }
 
-    private func modeButton(_ mode: AwakeMode) -> some View {
-        Button {
-            if mode == .passive || mode == .indefinite { service.setMode(mode) }
-        } label: {
+    private func modeButton(_ mode: AwakeMode, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack {
                 Image(systemName: service.configuration.mode == mode ? "record.circle.fill" : "circle")
                 Text(mode.title)
