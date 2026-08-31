@@ -3,37 +3,14 @@ import Cocoa
 private let colorPanelOpaqueConfigurationRetryDelays: [TimeInterval] = [0.1, 0.3]
 private let rulerColorPanelIdentifier = NSUserInterfaceItemIdentifier("ruler-color-panel")
 private let rulerColorPanelOpaqueAccessibilityValue = "ruler-color-panel-alpha-hidden"
-private let rulerTitlebarMaterialIdentifier = NSUserInterfaceItemIdentifier("ruler-titlebar-material")
 private weak var activeRulerColorWell: RulerColorWell?
-
-private final class RulerTitlebarMaterialView: UtilityMaterialView {
-    override var mouseDownCanMoveWindow: Bool {
-        true
-    }
-
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-        true
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        window?.performDrag(with: event)
-    }
-}
 
 private func configureRulerUtilityWindowChrome(_ window: NSWindow?) {
     guard let window else { return }
 
     window.backgroundColor = .clear
     window.isOpaque = false
-    window.titlebarAppearsTransparent = true
-
-    guard let titlebarView = window.standardWindowButton(.closeButton)?.superview,
-          !titlebarView.subviews.contains(where: { $0.identifier == rulerTitlebarMaterialIdentifier }) else { return }
-
-    let materialView = RulerTitlebarMaterialView(frame: titlebarView.bounds)
-    materialView.identifier = rulerTitlebarMaterialIdentifier
-    materialView.autoresizingMask = [.width, .height]
-    titlebarView.addSubview(materialView, positioned: .below, relativeTo: nil)
+    window.titlebarAppearsTransparent = false
 }
 
 func configureOpaqueColorPicking() {
