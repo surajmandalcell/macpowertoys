@@ -95,6 +95,42 @@ final class RcloneJobManagerLogicTests: XCTestCase {
         XCTAssertEqual(manager.filteredJobs.map(\.id), [running.id, second.id])
     }
 
+    func testRuntimeNeedFollowsWindowTransferContinuousAndBackgroundOwners() {
+        let completed = makeJob()
+        completed.state = .completed
+
+        XCTAssertFalse(RcloneJobManager.needsRuntime(
+            windowVisible: false,
+            jobs: [completed],
+            backgroundEnabled: false
+        ))
+        XCTAssertTrue(RcloneJobManager.needsRuntime(
+            windowVisible: true,
+            jobs: [completed],
+            backgroundEnabled: false
+        ))
+
+        completed.state = .running
+        XCTAssertTrue(RcloneJobManager.needsRuntime(
+            windowVisible: false,
+            jobs: [completed],
+            backgroundEnabled: false
+        ))
+
+        completed.state = .completed
+        completed.continuousSync = true
+        XCTAssertTrue(RcloneJobManager.needsRuntime(
+            windowVisible: false,
+            jobs: [completed],
+            backgroundEnabled: false
+        ))
+        XCTAssertTrue(RcloneJobManager.needsRuntime(
+            windowVisible: false,
+            jobs: [],
+            backgroundEnabled: true
+        ))
+    }
+
     private func makeJob(
         source: String = "/source",
         destination: String = "remote:backup",

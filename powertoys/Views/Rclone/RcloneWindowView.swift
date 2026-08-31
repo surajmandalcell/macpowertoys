@@ -20,6 +20,7 @@ struct RcloneWindowView: View {
     @State private var showAddRemote = false
     @AppStorage("rclone.lastContent") private var lastContent = "transfers"
     @AppStorage("rclone.lastFilter") private var lastFilter = JobFilter.all.rawValue
+    @State private var windowOwner = UUID()
 
     var body: some View {
         @Bindable var manager = manager
@@ -59,8 +60,11 @@ struct RcloneWindowView: View {
             manager.modelContext = modelContext
             restoreUIState()
             if SettingsManager.shared.isToolEnabled("rclone") {
-                await manager.start()
+                await manager.windowDidOpen(owner: windowOwner)
             }
+        }
+        .onDisappear {
+            manager.windowDidClose(owner: windowOwner)
         }
         .onChange(of: content) {
             switch content {
