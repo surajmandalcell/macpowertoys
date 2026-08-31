@@ -30,12 +30,12 @@
 <table>
   <tr>
     <td width="33%" align="center"><b>Native</b><br><sub>SwiftUI, AppKit, system materials, and proper Mac windows.</sub></td>
-    <td width="33%" align="center"><b>Private</b><br><sub>Recognition, history, settings, and diagnostics stay local.</sub></td>
+    <td width="33%" align="center"><b>Private</b><br><sub>No first-party analytics, advertising SDK, or telemetry service.</sub></td>
     <td width="33%" align="center"><b>Consistent</b><br><sub>One launcher, remembered windows, and keyboard-first controls.</sub></td>
   </tr>
 </table>
 
-## Seven focused tools
+## Eleven focused tools
 
 | | Tool | What it does |
 |:--:|---|---|
@@ -46,6 +46,10 @@
 | <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="30" alt=""> | **Cloud Sync** | Plan and run copy, move, mirror, and two-way rclone transfers. |
 | <img src="powertoys/Assets.xcassets/ClaudeHistoryLogo.imageset/icon.svg" width="30" alt=""> | **AI History** | Search, bookmark, and export local Claude Code conversations. |
 | <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="30" alt=""> | **Logs** | Search and filter MacPowerToys diagnostics. |
+| <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.svg" width="30" alt=""> | **Input Devices** | Control mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
+| <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.svg" width="30" alt=""> | **System Care** | Analyze storage, preview safe cleanup, remove apps, and use advanced Mole maintenance. |
+| <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.svg" width="30" alt=""> | **System Monitor** | View CPU, memory, disk, network, battery, and thermal health on demand or in the menu bar. |
+| <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
 
 ## Designed for the Mac
 
@@ -72,7 +76,7 @@
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/text-extractor.png" width="100%" alt="Text Extractor controls on a dark desktop"><br>
-      <sub><b>Text Extractor</b> · fast, private text recognition</sub>
+      <sub><b>Text Extractor</b> · on-device Apple Vision text recognition</sub>
     </td>
   </tr>
 </table>
@@ -92,7 +96,7 @@ make build
 Open `powertoys.xcodeproj` and run the `powertoys` scheme, or
 use `make build ADHOC=1` on a Mac without an Apple Development
 identity. Raycast users can import the `raycast` directory;
-the extension exposes only the main app and its seven tools.
+the extension exposes the main app and all 11 built-in tools.
 
 > [!NOTE]
 > Personal-team signing works on the signing Mac. Public,
@@ -113,9 +117,16 @@ changes. Never replace a running installation during a transfer.
 
 ## Privacy and security
 
-- Text recognition runs locally with Apple Vision.
-- Histories, logs, settings, and window positions stay local.
-- Cloud credentials remain in rclone's local configuration.
+- MacPowerToys has no first-party analytics, advertising SDK, or telemetry service.
+- Text Extractor processes the selected screenshot with Apple Vision on the Mac.
+- AI History reads local Claude Code JSONL files and builds a local cache for
+  browsing and search.
+- rclone stores provider credentials in its local configuration according to
+  rclone's behavior.
+- Optional iCloud settings sync uses an explicit allowlist of preferences.
+  It does not sync credentials, rclone configuration, file paths,
+  security-scoped bookmarks, histories, logs, caches, transfer records,
+  window geometry, installed app bundles, or receipts.
 - The rclone control API uses a fresh random credential per launch.
 - Marketplace apps require a declared checksum, Developer ID,
   bundle identity, and Apple notarization.

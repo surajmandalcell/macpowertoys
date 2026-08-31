@@ -14,20 +14,24 @@ Requirements are macOS 26.2, Xcode 26.2, and rclone for Cloud Sync integration t
 
 ```bash
 brew install rclone
-git clone https://github.com/surajmandalcell/powertoys.git
-cd powertoys
-xcodebuild build-for-testing \
-  -project powertoys.xcodeproj \
-  -scheme powertoys \
-  -derivedDataPath /tmp/macpowertoys-derived \
-  CODE_SIGNING_ALLOWED=NO
+git clone https://github.com/surajmandalcell/macpowertoys.git
+cd macpowertoys
+make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests
 ```
 
-## Tests and coverage
+## Local verification
 
-`make build-for-testing` compiles the app and every test target without launching the app. Run `make test` when no important Cloud Sync transfer is active; macOS unit tests launch an isolated app test host.
+The repository has no automated macOS CI workflow. Run these local checks before you open a pull request:
 
-Pull requests run unit tests, local rclone integration tests, and UI smoke tests in clean GitHub runners. CI reports line coverage for `Core`, `Models`, and `Services` and rejects changes below the current 25% floor. SwiftUI `body` generation is intentionally excluded from this business-logic metric; user flows are protected by the separate UI smoke job.
+```bash
+make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests
+make test DERIVED_DATA=/tmp/macpowertoys-tests
+make build ADHOC=1 DERIVED_DATA=/tmp/macpowertoys-release
+```
+
+`make build-for-testing` compiles the app and all test targets without launching the app. `make test` runs the macOS unit and integration target. Do not run tests during an important Cloud Sync transfer.
+
+For UI changes, open a signed current build and test each affected flow. Never launch an unsigned UI test runner.
 
 Tests should assert observable behavior at a public or internal module seam. Prefer exhaustive state/enum tables and boundary cases over tests coupled to private methods. Every bug fix should include a test that fails before the fix.
 
