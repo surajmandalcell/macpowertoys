@@ -6,6 +6,12 @@ private let rulerColorPanelOpaqueAccessibilityValue = "ruler-color-panel-alpha-h
 private let rulerTitlebarMaterialIdentifier = NSUserInterfaceItemIdentifier("ruler-titlebar-material")
 private weak var activeRulerColorWell: RulerColorWell?
 
+private final class RulerTitlebarMaterialView: UtilityMaterialView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+}
+
 private func configureRulerUtilityWindowChrome(_ window: NSWindow?) {
     guard let window else { return }
 
@@ -16,7 +22,7 @@ private func configureRulerUtilityWindowChrome(_ window: NSWindow?) {
     guard let titlebarView = window.standardWindowButton(.closeButton)?.superview,
           !titlebarView.subviews.contains(where: { $0.identifier == rulerTitlebarMaterialIdentifier }) else { return }
 
-    let materialView = UtilityMaterialView(frame: titlebarView.bounds)
+    let materialView = RulerTitlebarMaterialView(frame: titlebarView.bounds)
     materialView.identifier = rulerTitlebarMaterialIdentifier
     materialView.autoresizingMask = [.width, .height]
     titlebarView.addSubview(materialView, positioned: .below, relativeTo: nil)

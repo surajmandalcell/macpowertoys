@@ -84,7 +84,7 @@ struct QuietDivider: View {
     }
 }
 
-final class UtilityMaterialView: NSVisualEffectView {
+class UtilityMaterialView: NSVisualEffectView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         configureMaterial()

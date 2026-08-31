@@ -811,8 +811,7 @@ struct NetToysAnchorView: View {
                 Text("Choose Tailscale Device")
                     .font(.system(size: 13, weight: .medium))
                 Spacer()
-                Button("Cancel") { model.cancelTailscaleSelection() }
-                    .controlSize(.small)
+                UtilityModalCloseButton(action: model.cancelTailscaleSelection)
             }
             .padding(20)
 
@@ -921,9 +920,13 @@ private struct SSHKeyAccessSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Set Up Key Access")
-                .font(.system(size: 13, weight: .medium))
-                .padding(20)
+            HStack {
+                Text("Set Up Key Access")
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+                UtilityModalCloseButton(action: onCancel)
+            }
+            .padding(20)
 
             QuietDivider()
 
