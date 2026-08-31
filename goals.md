@@ -7,15 +7,15 @@ evidence, and remaining work.
 
 ## Current work
 
-- Verify Ruler Settings and Ruler Defaults titlebar dragging, independent
-  placement, and display restoration.
+- Verify native titlebar dragging for Ruler Settings and Ruler Defaults.
 - Verify the shared modal Close control in both SSH Anchor sheets.
 - Verify the compact Tailscale device chooser with short and scrolling lists,
   including peer-row hover and pressed feedback.
 - Verify hover and pressed feedback for every updated selectable row, card, and
   tab family.
-- Verify Command-Q and Command-W across the remaining sub-apps, sheets, and the
-  launcher timeout path.
+- Verify Command-Q in a live sheet and across the launcher timeout path, then
+  verify Command-W. The latest signed build closes every sub-app scope without
+  terminating MacPowerToys.
 - Verify live None, Combined, and Separate menu-bar modes for every eligible
   tool, including compact combined navigation, saved selection, and separate-
   item position restoration. Deterministic placement, action, and item-
@@ -33,18 +33,18 @@ evidence, and remaining work.
   narrow-width fallbacks.
 - Verify that physical Command-Shift-3 opens Color Picker and suppresses the
   macOS screenshot action.
-- Verify the refreshed Raycast icons and every launcher, including NetToys
-  prefill routing, cold launch, saved frame, and embedded source commit.
+- Verify visible Raycast icon rendering, NetToys cold-launch and prefill routing,
+  and NetToys saved-frame restoration.
 - Verify SSH Anchor at minimum width and across real address changes, key-only
   setup for `win1`, Tailscale fallback and recovery, host-key safety, helper
   repair, and preservation of unrelated SSH configuration.
 - Verify that a signed NetToys subnet scan streams rows and enrichment fields
-  at its default and minimum window sizes.
+  at its minimum window size. The default-size signed scan is complete.
 - Verify Input Devices with real mouse and trackpad hardware, sustained wheel
   input, and session lock and unlock.
 - Verify all seven System Monitor menu metrics, zero selection, ordering,
-  dragged-position preservation, per-item display settings, saved exact
-  cadences, unavailable-metric suspension, and change-gated updates.
+  dragged-position preservation, and per-item display settings at minimum width
+  and after relaunch.
 - Run the installed 25-cycle cross-tool resource soak. Verify owner counts,
   timers, status items, event taps, observers, watchers, tasks, helpers, Cloud
   Sync polling, CPU-time growth, and RSS against their allowed baselines.
