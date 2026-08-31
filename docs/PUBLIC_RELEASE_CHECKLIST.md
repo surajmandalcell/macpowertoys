@@ -20,7 +20,8 @@ already public at `surajmandalcell/macpowertoys`.
 - [x] List all 11 built-in tools in the README and marketplace schema. On
   2026-08-31, both lists matched `ToolRegistry.builtInTools`.
 - [x] Enable private vulnerability reporting, secret scanning, push
-  protection, and Dependabot security updates.
+  protection, and Dependabot security updates. The GitHub API confirmed all
+  four settings again on 2026-08-31.
 - [ ] Protect `main`. The GitHub API reported no branch protection on
   2026-08-31.
 - [x] Add repository topics, the project description, and README privacy and
@@ -37,7 +38,8 @@ already public at `surajmandalcell/macpowertoys`.
   validator passed all seven fixtures on 2026-08-31.
 - [ ] Run the complete suite on a clean supported Mac account.
 - [ ] Verify every tool's Dock icon in light and dark appearance at 32 px and
-  full Dock size.
+  full Dock size. All 13 current light and dark source variants render as
+  valid 32 by 32 images. The live Dock appearance still needs inspection.
 - [x] Verify both `macpowertoys://` and legacy `powertoys://` links. In exact
   installed build `327ebb1`, both schemes opened the main window. One
   background matrix opened all 11 sub-app windows through each scheme; the
@@ -54,10 +56,14 @@ already public at `surajmandalcell/macpowertoys`.
 
 ## Distribution
 
-- Enroll in the paid Apple Developer Program before preparing a public binary.
-- Create a Developer ID Application certificate and an entitlement-compatible provisioning profile.
-- Confirm hardened runtime, Developer ID signature, notarization, stapling, and SHA-256 verification.
-- Verify the archive on a clean account before publishing the tag.
-- Publish explicit pre-release limitations and recovery instructions.
+- [ ] Enroll in the paid Apple Developer Program before preparing a public
+  binary.
+- [ ] Create a Developer ID Application certificate and an
+  entitlement-compatible provisioning profile.
+- [ ] Confirm the hardened runtime, Developer ID signature, notarization,
+  stapling, and SHA-256 verification. Gatekeeper rejected the current Apple
+  Development build as expected on 2026-08-31.
+- [ ] Verify the archive on a clean account before publishing the tag.
+- [ ] Publish explicit pre-release limitations and recovery instructions.
 
 Never replace or relaunch an installed MacPowerToys build while Cloud Sync is actively transferring data.
