@@ -951,7 +951,7 @@ extension PreferencesController: RulerSettingsControlsViewDelegate {
     }
 }
 
-final class RulerSettingsWindow: NSPanel {
+final class RulerSettingsWindow: NSWindow {
     weak var settingsController: RulerSettingsController?
 
     override var canBecomeKey: Bool {
@@ -1066,9 +1066,9 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.setAccessibilityIdentifier("ruler-settings-window")
         window?.isMovableByWindowBackground = true
         window?.isReleasedWhenClosed = false
+        (window as? RulerSettingsWindow)?.settingsController = self
         configureRulerUtilityWindowChrome(window)
         window?.initialFirstResponder = unitSegmentedControl
-        configureFloatingPanelWindow()
         settingsControlsView.delegate = self
         settingsControlsView.configureForRulerSettings()
         rulerColorWell.colorPanelPresenter = { [weak self] colorWell, colorPanel in
@@ -1241,19 +1241,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
 
     func performSettingsKeyEquivalent(with event: NSEvent) -> Bool {
         return settingsControlsView.performRulerSettingsKeyEquivalent(with: event)
-    }
-
-    private func configureFloatingPanelWindow() {
-        guard let settingsWindow = window else { return }
-
-        settingsWindow.styleMask.insert(.utilityWindow)
-        settingsWindow.animationBehavior = .utilityWindow
-
-        guard let panel = settingsWindow as? RulerSettingsWindow else { return }
-
-        panel.settingsController = self
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
     }
 
     func presentColorPanel(_ colorPanel: NSColorPanel, for colorWell: RulerColorWell) {

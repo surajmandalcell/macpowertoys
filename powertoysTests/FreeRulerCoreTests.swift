@@ -1427,7 +1427,7 @@ final class RulerCoreTests: XCTestCase {
         }
     }
 
-    func testRulerSettingsControllerUsesFloatingUtilityPanelStyle() {
+    func testRulerSettingsControllerUsesStandardIndependentWindowStyle() {
         let controller = RulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
@@ -1449,13 +1449,11 @@ final class RulerCoreTests: XCTestCase {
             return
         }
 
-        XCTAssertTrue(settingsWindow is NSPanel)
-        XCTAssertTrue(settingsWindow.styleMask.contains(.utilityWindow))
-        XCTAssertEqual(settingsWindow.animationBehavior, .utilityWindow)
-
-        let settingsPanel = settingsWindow as? NSPanel
-        XCTAssertTrue(settingsPanel?.isFloatingPanel ?? false)
-        XCTAssertFalse(settingsPanel?.hidesOnDeactivate ?? true)
+        XCTAssertFalse(settingsWindow is NSPanel)
+        XCTAssertTrue(settingsWindow.styleMask.contains(.titled))
+        XCTAssertTrue(settingsWindow.styleMask.contains(.closable))
+        XCTAssertFalse(settingsWindow.styleMask.contains(.utilityWindow))
+        XCTAssertNil(settingsWindow.parent)
     }
 
     func testRulerSettingsColorPanelAttachesOnRightForLeftZeroCorner() {
