@@ -1,11 +1,11 @@
 # Awake Request List
 
-Reviewed against app source commit `0bc0c81` on 2026-08-24.
+Reviewed against current source and Git history on 2026-08-31.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Call the inactive Awake state `Off` and let all four tray modes use the available width. | User-facing mode copy maps the persisted `.passive` value to `Off`; the signed `a5ad439` Awake window showed `Off`. The segmented tray picker uses regular control size and fills its container, and focused model tests pass. | Inspect the menu-bar panel in the latest normal signed build. |
-| Verify | Choose no Awake menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Awake preserves its combined default and any legacy separate choice; its separate native item retains the stable autosave name. | Exercise all three modes in the latest normal installed build, then move the separate item, relaunch, and confirm its position and action. |
+| Verify | Call the inactive Awake state `Off` and let all four tray modes use the available width. | User-facing mode copy maps the persisted `.passive` value to `Off`; the signed `a5ad439` Awake window showed `Off`. The segmented tray picker uses regular control size and fills its container. Focused tests cover the exact Off, Indefinite, 30-minute, 1-hour, and custom-duration mappings. | Inspect the menu-bar panel in the latest normal signed build. |
+| Verify | Choose no Awake menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Awake preserves its combined default and any legacy separate choice; its separate native item retains the stable autosave name. Focused tests cover all three stored modes and the unique autosave name. | Exercise all three modes in the latest normal installed build, then move the separate item, relaunch, and confirm its position and action. |
 | Done | Keep the Awake window fixed instead of allowing it to grow. | `AwakeView` has a fixed 560pt by 500pt frame, its scene uses content-size resizability, and `WindowAccessor` removes the AppKit resizable style. | None. |
 | Done | Vertically align Awake's titlebar items. | The shared 40pt `CompactTitlebar` applies one 4pt row inset and centers its title and switch on the same 22pt centerline. Unit coverage and the normal signed `98f35f6` build confirmed the alignment. | None. |
 | Done | Move the traffic lights down for more breathing room. | `WindowAccessor` reapplies the shared 6pt downward offset after SwiftUI's delayed layout pass and every key-window transition. Regression coverage forces a late native reset and verifies recovery. | None. |
