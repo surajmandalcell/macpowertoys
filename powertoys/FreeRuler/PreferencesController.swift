@@ -8,8 +8,6 @@ private weak var activeRulerColorWell: RulerColorWell?
 private func configureRulerUtilityWindowChrome(_ window: NSWindow?) {
     guard let window else { return }
 
-    window.backgroundColor = .clear
-    window.isOpaque = false
     window.titlebarAppearsTransparent = false
 }
 
