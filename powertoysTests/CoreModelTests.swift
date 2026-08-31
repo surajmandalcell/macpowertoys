@@ -48,6 +48,43 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(restored.history.last?.text, "Item 1")
     }
 
+    func testDeniedScreenCapturePermissionOpensRecoveryWithoutStartingSelection() {
+        let suiteName = "TextExtractorPermissionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        var openCount = 0
+        let service = TextExtractorService(
+            defaults: defaults,
+            screenCapturePermission: { .denied },
+            openTextExtractor: { openCount += 1 }
+        )
+
+        service.begin()
+
+        guard case .permissionDenied(let message) = service.state else {
+            return XCTFail("Expected the Screen Recording recovery state")
+        }
+        XCTAssertTrue(message.contains("Privacy & Security"))
+        XCTAssertEqual(openCount, 1)
+    }
+
+    func testCancelledScreenCapturePermissionKeepsTextExtractorIdle() {
+        let suiteName = "TextExtractorPermissionCancelTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        var openCount = 0
+        let service = TextExtractorService(
+            defaults: defaults,
+            screenCapturePermission: { .cancelled },
+            openTextExtractor: { openCount += 1 }
+        )
+
+        service.begin()
+
+        XCTAssertEqual(service.state, .idle)
+        XCTAssertEqual(openCount, 0)
+    }
+
     func testRecognitionCopiesOnlyTextBeforePlayingCompletionCue() {
         let suiteName = "TextExtractorCompletionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

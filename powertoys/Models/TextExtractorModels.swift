@@ -75,5 +75,6 @@ enum TextExtractorState: Equatable {
     case selecting
     case recognizing
     case copied(String)
+    case permissionDenied(String)
     case failed(String)
 }

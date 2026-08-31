@@ -1,3 +1,5 @@
+import AppKit
+import SwiftUI
 import XCTest
 @testable import powertoys
 
@@ -93,6 +95,16 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertNil(sample.projectID)
     }
 
+    func testHistoryUsesNativeSmallContentSearch() throws {
+        let hostingView = NSHostingView(rootView: ColorHistoryView())
+        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 300)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let searchField = try XCTUnwrap(searchField(in: hostingView))
+        XCTAssertEqual(searchField.controlSize, .small)
+        XCTAssertLessThanOrEqual(searchField.frame.height, UtilityLayout.workspaceActionHeight)
+    }
+
     private func makeService(
         sampler: any ColorSampling = NSColorSampler()
     ) -> (ColorPickerService, UserDefaults, String) {
@@ -100,6 +112,11 @@ final class ColorPickerTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         return (ColorPickerService(defaults: defaults, sampler: sampler), defaults, suite)
+    }
+
+    private func searchField(in view: NSView) -> NSSearchField? {
+        if let searchField = view as? NSSearchField { return searchField }
+        return view.subviews.lazy.compactMap(searchField(in:)).first
     }
 }
 

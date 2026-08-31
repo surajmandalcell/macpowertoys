@@ -161,22 +161,20 @@ struct TextExtractorView: View {
                 message: "Recognizing text on this Mac…",
                 tint: .accentColor
             )
+        case .permissionDenied(let message):
+            TextExtractorStatusBanner(
+                icon: "exclamationmark.triangle",
+                message: message,
+                tint: .red,
+                actionTitle: "Privacy Settings",
+                action: openPrivacySettings
+            )
         case .failed(let message):
-            if message.contains("Privacy & Security") {
-                TextExtractorStatusBanner(
-                    icon: "exclamationmark.triangle",
-                    message: message,
-                    tint: .red,
-                    actionTitle: "Privacy Settings",
-                    action: openPrivacySettings
-                )
-            } else {
-                TextExtractorStatusBanner(
-                    icon: "exclamationmark.triangle",
-                    message: message,
-                    tint: .red
-                )
-            }
+            TextExtractorStatusBanner(
+                icon: "exclamationmark.triangle",
+                message: message,
+                tint: .red
+            )
         default:
             EmptyView()
         }
@@ -196,6 +194,7 @@ struct TextExtractorView: View {
     private var statusKey: String {
         switch service.state {
         case .recognizing: "recognizing"
+        case .permissionDenied(let message): "permission-denied|\(message)"
         case .failed(let message): "failed|\(message)"
         default: "idle"
         }
