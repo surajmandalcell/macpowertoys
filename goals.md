@@ -7,6 +7,8 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify that Ruler Settings and Ruler Defaults drag from their native titlebars
+  and that both SSH Anchor sheets expose the shared Close control.
 - Verify that Ruler Settings restores its independent position and display,
   stays clear of the ruler, and keeps the ruler open when Settings closes.
 - Verify the live Border Opacity control, its 25% default, the default disabled
