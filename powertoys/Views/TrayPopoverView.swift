@@ -28,6 +28,10 @@ enum TrayPopoverLayout {
     }
 
     static func showsTabLabels(count: Int) -> Bool { count <= 2 }
+
+    static func normalizedSelection(_ selection: String, availableIDs: [String]) -> String? {
+        availableIDs.contains(selection) ? selection : availableIDs.first
+    }
 }
 
 struct TrayPopoverView: View {
@@ -104,8 +108,11 @@ struct TrayPopoverView: View {
     }
 
     private func normalizeSelection() {
-        if !trayTools.contains(where: { $0.id == selectedTab }), let first = trayTools.first {
-            selectedTab = first.id
+        if let normalized = TrayPopoverLayout.normalizedSelection(
+            selectedTab,
+            availableIDs: trayToolIDs
+        ), normalized != selectedTab {
+            selectedTab = normalized
         }
     }
 

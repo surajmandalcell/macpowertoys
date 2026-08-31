@@ -101,18 +101,25 @@ final class AppDelegateTests: XCTestCase {
     func testQuitCommandMapsOnlyKnownSubAppWindows() {
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "main"))
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
-        XCTAssertEqual(AppDelegate.quitCommandToolID(for: "nettoys"), "nettoys")
-        XCTAssertEqual(AppDelegate.quitCommandToolID(for: "nettoys-settings"), "nettoys")
+        for toolID in [
+            "cc-history", "rclone", "logs", "awake", "color-picker",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+        ] {
+            XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
+            XCTAssertEqual(AppDelegate.quitCommandToolID(for: "\(toolID)-settings"), toolID)
+        }
         XCTAssertEqual(AppDelegate.quitCommandToolID(for: "ruler-settings-window"), "ruler")
     }
 
     @MainActor
     func testQuitCommandEndsAttachedSheetBeforeClosingToolWindows() {
         let parent = NSWindow()
+        parent.identifier = NSUserInterfaceItemIdentifier("nettoys")
         let sheet = NSWindow()
         parent.beginSheet(sheet)
 
         XCTAssertTrue(parent.attachedSheet === sheet)
+        XCTAssertEqual(AppDelegate.quitCommandToolID(for: sheet), "nettoys")
         AppDelegate.endAttachedSheet(for: sheet)
         XCTAssertNil(sheet.sheetParent)
         XCTAssertNil(parent.attachedSheet)

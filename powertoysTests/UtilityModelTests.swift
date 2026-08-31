@@ -83,5 +83,14 @@ final class UtilityModelTests: XCTestCase {
         XCTAssertLessThan(TrayPopoverLayout.tabGroupBottomInset, TrayPopoverLayout.bodyTopInset)
         XCTAssertGreaterThan(TrayPopoverLayout.bodyBottomInset, TrayPopoverLayout.bodyTopInset)
         XCTAssertGreaterThan(TrayPopoverLayout.footerBottomInset, TrayPopoverLayout.footerTopInset)
+        XCTAssertEqual(
+            TrayPopoverLayout.normalizedSelection("awake", availableIDs: ["rclone", "awake"]),
+            "awake"
+        )
+        XCTAssertEqual(
+            TrayPopoverLayout.normalizedSelection("missing", availableIDs: ["rclone", "awake"]),
+            "rclone"
+        )
+        XCTAssertNil(TrayPopoverLayout.normalizedSelection("awake", availableIDs: []))
     }
 }

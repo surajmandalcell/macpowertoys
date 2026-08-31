@@ -219,6 +219,14 @@ final class RcloneJobManager {
         stopIfUnneededSoon()
     }
 
+    func backgroundPreferenceDidChange(enabled: Bool) async {
+        if enabled, SettingsManager.shared.isToolEnabled("rclone") {
+            await start()
+        } else {
+            stopIfUnneededSoon()
+        }
+    }
+
     func start() async {
         guard !started else { return }
         started = true
