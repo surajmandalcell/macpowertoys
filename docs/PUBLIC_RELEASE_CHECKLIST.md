@@ -52,8 +52,14 @@ already public at `surajmandalcell/macpowertoys`.
   OAuth round trip and a 64 KiB temporary configuration-only alias round trip.
   Both downloads matched the source SHA-256 value, and both test stores were
   clean after removal.
-- [ ] Test pause and restart with a backend that supports partial continuation
-  and one that restarts the active object.
+- [x] Test pause and restart with a backend that continues completed files and
+  one that restarts the active object. On 2026-08-31, the local backend kept
+  the finished file unchanged, removed its active partial file, and restarted
+  that file. Google Drive stopped after 3,174,400 active bytes, kept the
+  finished file unchanged, and sent all 10,485,760 active-file bytes after
+  restart. The downloaded file matched the source, and both test stores were
+  clean after removal. rclone does not keep byte-level progress across a
+  stopped job; Cloud Sync continues at the completed-file boundary.
 - [x] Run the Raycast Store lint with the owner's valid username. The package
   uses `surajmandalcell`, and `npm --prefix raycast run lint:store` passed on
   2026-08-31.
