@@ -38,21 +38,21 @@
     {
       "name": "logs",
       "title": "Logs",
-      "description": "Open Logs",
+      "description": "Open activity logs",
       "icon": "logs.png",
       "mode": "no-view"
     },
     {
       "name": "ruler",
       "title": "Ruler",
-      "description": "Open Ruler",
+      "description": "Open the screen ruler",
       "icon": "ruler.png",
       "mode": "no-view"
     },
     {
       "name": "awake",
       "title": "Awake",
-      "description": "Open Awake",
+      "description": "Open Awake controls",
       "icon": "awake.png",
       "mode": "no-view"
     },
