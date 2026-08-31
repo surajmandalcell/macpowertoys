@@ -227,6 +227,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             now: ProcessInfo.processInfo.systemUptime
         ) {
         case let .closeToolWindows(toolID):
+            if toolID == "ruler" {
+                closeFreeRulerToolWindows()
+                return
+            }
             Self.endAttachedSheet(for: activeWindow)
             NSApp.windows
                 .filter { $0.isVisible && Self.window($0, belongsTo: toolID) }

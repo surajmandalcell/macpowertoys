@@ -513,6 +513,15 @@ extension AppDelegate {
         closeKeyWindow(sender, keyWindow: NSApp.keyWindow)
     }
 
+    func closeFreeRulerToolWindows() {
+        rulerSettingsController?.close()
+        preferencesController?.close()
+        for controller in rulerManager.controllers {
+            rulerManager.close(controller)
+        }
+        updateMouseTickTimer()
+    }
+
     private func closeKeyWindow(_ sender: Any, keyWindow: NSWindow?) {
         if let controller = rulerManager.controller(containing: keyWindow) {
             rulerManager.close(controller)

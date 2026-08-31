@@ -125,6 +125,9 @@
   on their native paths. Resolve an unidentified sheet through its parent chain,
   end the sheet, and then close the tool windows so modal state cannot block the
   close operation.
+- **Ruler exception:** Close every managed ruler through `RulerManager` instead
+  of calling `performClose` on its borderless windows. Also close Ruler Settings
+  and Defaults, then stop the mouse timer.
 - **Check:** In a normal signed build, press Command-Q in each sub-app and
   confirm only that tool closes. On the launcher, confirm one press keeps the
   app open, a second press within two seconds quits, and an expired press starts
