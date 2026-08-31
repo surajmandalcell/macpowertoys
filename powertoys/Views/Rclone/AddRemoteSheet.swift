@@ -475,7 +475,6 @@ private struct ProviderDropdown: View {
 
     @State private var isPresented = false
     @State private var isHoveringButton = false
-    @State private var hoveredProviderID: String?
 
     var body: some View {
         GeometryReader { geometry in
@@ -559,23 +558,20 @@ private struct ProviderDropdown: View {
             }
             .padding(.horizontal, 10)
             .frame(height: Self.rowHeight)
-            .background(rowBackground(provider.id))
+            .background(
+                selection == provider.id
+                    ? Color.accentColor.opacity(0.1)
+                    : Color.clear
+            )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
         .focusEffectDisabled()
-        .onHover { hoveredProviderID = $0 ? provider.id : nil }
         .help(provider.displayName)
     }
 
     private var listHeight: CGFloat {
         min(max(CGFloat(providers.count), 1) * Self.rowHeight, Self.maximumListHeight)
-    }
-
-    private func rowBackground(_ providerID: String) -> Color {
-        if hoveredProviderID == providerID { return Color.primary.opacity(0.06) }
-        if selection == providerID { return Color.accentColor.opacity(0.1) }
-        return .clear
     }
 }
 

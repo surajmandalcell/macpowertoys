@@ -15,6 +15,7 @@ enum TrayPopoverLayout {
     static let tabHeight: CGFloat = 28
     static let tabSpacing: CGFloat = 4
     static let minimumTabWidth: CGFloat = 30
+    static let tabTransitionDuration = UtilityMotion.standardDuration
     static let bodyTopInset: CGFloat = 10
     static let bodyBottomInset: CGFloat = 14
     static let footerHorizontalInset: CGFloat = 10
@@ -126,7 +127,7 @@ struct TrayPopoverView: View {
                 let oldIndex = trayTools.firstIndex { $0.id == selectedTab } ?? 0
                 let newIndex = trayTools.firstIndex { $0.id == nextTab } ?? 0
                 slideForward = newIndex > oldIndex
-                withAnimation(.easeInOut(duration: 0.18)) {
+                withAnimation(.easeInOut(duration: TrayPopoverLayout.tabTransitionDuration)) {
                     selectedTab = nextTab
                 }
             }
@@ -352,20 +353,51 @@ private struct TrayTabItem: View {
             }
             .frame(width: width, height: TrayPopoverLayout.tabHeight)
             .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(
-                        isSelected
-                            ? Color(nsColor: .controlAccentColor)
-                            : (isHovering ? Color.primary.opacity(0.06) : Color.clear)
-                    )
-            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TrayTabButtonStyle(isSelected: isSelected, isHovering: isHovering))
         .focusEffectDisabled()
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityLabel(tool.name)
         .onHover { isHovering = $0 }
+        .help(tool.name)
         .animation(.easeInOut(duration: 0.15), value: isHovering)
+    }
+}
+
+struct TrayTabButtonStyle: ButtonStyle {
+    let isSelected: Bool
+    let isHovering: Bool
+
+    static func backgroundOpacity(
+        isSelected: Bool,
+        isHovering: Bool,
+        isPressed: Bool
+    ) -> Double {
+        if isSelected { return isPressed ? 0.82 : 1 }
+        return UtilityInteractionButtonStyle.highlightOpacity(
+            isEnabled: true,
+            isHovering: isHovering,
+            isPressed: isPressed
+        )
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    isSelected
+                        ? Color(nsColor: .controlAccentColor).opacity(opacity(configuration))
+                        : Color.primary.opacity(opacity(configuration))
+                )
+        )
+    }
+
+    private func opacity(_ configuration: Configuration) -> Double {
+        Self.backgroundOpacity(
+            isSelected: isSelected,
+            isHovering: isHovering,
+            isPressed: configuration.isPressed
+        )
     }
 }
 
