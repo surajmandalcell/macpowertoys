@@ -4,6 +4,12 @@ import Observation
 import ScreenCaptureKit
 import Vision
 
+enum ScreenCapturePermissionDecision {
+    case granted
+    case cancelled
+    case denied
+}
+
 @Observable
 @MainActor
 final class TextExtractorService {
@@ -19,6 +25,8 @@ final class TextExtractorService {
     private let defaults: UserDefaults
     private let pasteboard: NSPasteboard
     private let playCompletionCue: () -> Void
+    private let screenCapturePermission: () -> ScreenCapturePermissionDecision
+    private let openTextExtractor: () -> Void
     private var selector: TextRegionSelector?
     private var shareableContentTask: Task<SCShareableContent, Error>?
 
@@ -27,11 +35,17 @@ final class TextExtractorService {
         pasteboard: NSPasteboard = .general,
         playCompletionCue: @escaping () -> Void = {
             NSSound(contentsOfFile: "/System/Library/Sounds/Tink.aiff", byReference: true)?.play()
-        }
+        },
+        screenCapturePermission: (() -> ScreenCapturePermissionDecision)? = nil,
+        openTextExtractor: (() -> Void)? = nil
     ) {
         self.defaults = defaults
         self.pasteboard = pasteboard
         self.playCompletionCue = playCompletionCue
+        self.screenCapturePermission = screenCapturePermission ?? Self.requestScreenCapturePermission
+        self.openTextExtractor = openTextExtractor ?? {
+            ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
+        }
         settings = defaults.data(forKey: settingsKey)
             .flatMap { try? JSONDecoder().decode(TextExtractorSettings.self, from: $0) }
             ?? TextExtractorSettings()
@@ -47,7 +61,19 @@ final class TextExtractorService {
 
     func begin() {
         guard state != .selecting, state != .recognizing else { return }
-        guard requestPermissionIfNeeded() else { return }
+        switch screenCapturePermission() {
+        case .granted:
+            break
+        case .cancelled:
+            state = .idle
+            return
+        case .denied:
+            state = .permissionDenied(
+                "Allow MacPowerToys in System Settings > Privacy & Security > Screen & System Audio Recording, then try again."
+            )
+            openTextExtractor()
+            return
+        }
         state = .selecting
         shareableContentTask = Task {
             try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -99,23 +125,15 @@ final class TextExtractorService {
         saveHistory()
     }
 
-    private func requestPermissionIfNeeded() -> Bool {
-        if CGPreflightScreenCaptureAccess() { return true }
+    private static func requestScreenCapturePermission() -> ScreenCapturePermissionDecision {
+        if CGPreflightScreenCaptureAccess() { return .granted }
         let alert = NSAlert()
         alert.messageText = "Screen Recording Permission"
         alert.informativeText = "Text Extractor needs access to capture the region you select. Recognition stays on this Mac and captured pixels are discarded immediately."
         alert.addButton(withTitle: "Continue")
         alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else {
-            state = .idle
-            return false
-        }
-        guard CGRequestScreenCaptureAccess() else {
-            state = .failed("Allow MacPowerToys in System Settings > Privacy & Security > Screen & System Audio Recording, then try again.")
-            ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
-            return false
-        }
-        return true
+        guard alert.runModal() == .alertFirstButtonReturn else { return .cancelled }
+        return CGRequestScreenCaptureAccess() ? .granted : .denied
     }
 
     private func captureAndRecognize(selection: CGRect, screen: NSScreen) async {
@@ -235,7 +253,7 @@ final class TextExtractorService {
 
     private func fail(_ message: String) {
         state = .failed(message)
-        ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
+        openTextExtractor()
     }
 
     private func saveSettings() {
