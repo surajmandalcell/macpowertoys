@@ -22,8 +22,9 @@ already public at `surajmandalcell/macpowertoys`.
 - [x] Enable private vulnerability reporting, secret scanning, push
   protection, and Dependabot security updates. The GitHub API confirmed all
   four settings again on 2026-08-31.
-- [ ] Protect `main`. The GitHub API reported no branch protection on
-  2026-08-31.
+- [x] Protect `main`. On 2026-08-31, the GitHub API confirmed that protection
+  applies to administrators, force-push and deletion are disabled, and normal
+  fast-forward pushes need no pull request, review, or status check.
 - [x] Add repository topics, the project description, and README privacy and
   security links.
 - [x] Verify the GitHub social preview. The live 1,200 by 600 repository card
