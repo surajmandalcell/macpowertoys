@@ -231,6 +231,8 @@ private struct ToolSettingsContent: View {
             NetToysSettingsView()
         case "input-devices":
             EmptyView()
+        case "system-monitor":
+            SystemMonitorMenuSettingsView()
         case "logs":
             LogsSettingsView()
         default:
