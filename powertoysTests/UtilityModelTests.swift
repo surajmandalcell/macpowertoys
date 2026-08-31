@@ -134,7 +134,31 @@ final class UtilityModelTests: XCTestCase {
                 isHovering: false,
                 isPressed: true
             ),
-            0.82
+            1
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.interactionOpacity(
+                isSelected: true,
+                isHovering: true,
+                isPressed: false
+            ),
+            0.1
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.interactionOpacity(
+                isSelected: true,
+                isHovering: false,
+                isPressed: true
+            ),
+            0.18
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.interactionOpacity(
+                isSelected: false,
+                isHovering: true,
+                isPressed: true
+            ),
+            0
         )
     }
 
