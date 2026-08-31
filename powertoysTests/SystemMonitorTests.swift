@@ -79,7 +79,7 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(decoded.items.prefix(3).map(\.metric), [.network, .memory, .cpu])
     }
 
-    func testNormalizationKeepsOneEnabledItemAndValidSymbols() {
+    func testNormalizationAllowsEveryItemToBeDisabledAndValidatesSymbols() {
         var settings = SystemMonitorMenuSettings(
             items: [SystemMonitorMenuItemConfiguration(metric: .cpu, symbol: "not-a-symbol")]
         )
@@ -87,8 +87,18 @@ final class SystemMonitorTests: XCTestCase {
         settings.normalize()
 
         XCTAssertEqual(settings.items.count, SystemMonitorMenuMetric.allCases.count)
-        XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu])
+        XCTAssertTrue(settings.enabledItems.isEmpty)
         XCTAssertEqual(settings.items[0].symbol, SystemMonitorMenuMetric.cpu.symbol)
+        settings.enabled = true
+        XCTAssertNil(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false))
+    }
+
+    func testNoOpSettingsMutationProducesNoUpdate() throws {
+        let settings = SystemMonitorMenuSettings(enabled: true)
+
+        XCTAssertNil(settings.applying { $0.interval = 2 })
+        let changed = try XCTUnwrap(settings.applying { $0.interval = 5 })
+        XCTAssertEqual(changed.interval, 5)
     }
 
     func testScheduleUsesOneFastestCadenceAndOnlyReturnsDueMetrics() throws {
