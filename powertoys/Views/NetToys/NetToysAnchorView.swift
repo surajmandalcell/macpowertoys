@@ -9,6 +9,28 @@ enum SSHAnchorIdentityMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum NetToysAnchorSheetLayout {
+    static let peerPickerWidth: CGFloat = 360
+    static let titleRowHeight: CGFloat = 44
+    static let peerRowHeight: CGFloat = 40
+    static let peerRowStride: CGFloat = 41
+    static let peerPickerBaseHeight: CGFloat = 52
+    static let peerPickerMaximumHeight: CGFloat = 260
+    static let peerCornerRadius: CGFloat = 6
+
+    static func peerPickerHeight(peerCount: Int) -> CGFloat {
+        min(peerPickerMaximumHeight, peerPickerContentHeight(peerCount: peerCount))
+    }
+
+    static func peerPickerNeedsScrolling(peerCount: Int) -> Bool {
+        peerPickerContentHeight(peerCount: peerCount) > peerPickerMaximumHeight
+    }
+
+    private static func peerPickerContentHeight(peerCount: Int) -> CGFloat {
+        peerPickerBaseHeight + CGFloat(max(0, peerCount)) * peerRowStride
+    }
+}
+
 @Observable
 @MainActor
 final class NetToysAnchorViewModel {
@@ -818,7 +840,7 @@ struct NetToysAnchorView: View {
             }
             .padding(.leading, 14)
             .padding(.trailing, 10)
-            .frame(height: 44)
+            .frame(height: NetToysAnchorSheetLayout.titleRowHeight)
 
             QuietDivider()
 
@@ -848,10 +870,12 @@ struct NetToysAnchorView: View {
                                 .frame(width: 58, alignment: .leading)
                             }
                             .padding(.horizontal, 14)
-                            .frame(height: 40)
+                            .frame(height: NetToysAnchorSheetLayout.peerRowHeight)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+                        .buttonStyle(UtilityInteractionButtonStyle(
+                            cornerRadius: NetToysAnchorSheetLayout.peerCornerRadius
+                        ))
                         .focusEffectDisabled()
 
                         if peer.id != model.tailscalePeers.last?.id {
@@ -865,8 +889,8 @@ struct NetToysAnchorView: View {
             .thinScrollIndicators()
         }
         .frame(
-            width: 360,
-            height: min(260, 52 + CGFloat(model.tailscalePeers.count) * 41)
+            width: NetToysAnchorSheetLayout.peerPickerWidth,
+            height: NetToysAnchorSheetLayout.peerPickerHeight(peerCount: model.tailscalePeers.count)
         )
     }
 
