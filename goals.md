@@ -45,9 +45,6 @@ evidence, and remaining work.
 - Verify all seven System Monitor menu metrics, zero selection, ordering,
   dragged-position preservation, and per-item display settings at minimum width
   and after relaunch.
-- Run the installed 25-cycle cross-tool resource soak. Verify owner counts,
-  timers, status items, event taps, observers, watchers, tasks, helpers, Cloud
-  Sync polling, CPU-time growth, and RSS against their allowed baselines.
 - Complete the public release checklist only after every product and live
   verification item above passes.
 
