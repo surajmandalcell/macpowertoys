@@ -348,6 +348,7 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let batteryCharging: Bool?
     let thermalState: String?
     let loadAverage: (Double, Double, Double)?
+    let unavailableMetrics: Set<SystemMonitorMenuMetric>
 
     var memoryUsage: Double? {
         guard let memoryUsed, let memoryTotal, memoryTotal > 0 else { return nil }
@@ -374,15 +375,28 @@ nonisolated enum SystemMonitorDelta {
 }
 
 nonisolated enum SystemMonitorMenuSchedule {
-    static func timerInterval(settings: SystemMonitorMenuSettings, detailed: Bool) -> TimeInterval? {
-        let intervals = settings.enabled ? settings.enabledItems.map { $0.effectiveInterval(global: settings.interval) } : []
-        if detailed { return min(intervals.min() ?? 1, 1) }
+    static func timerInterval(
+        settings: SystemMonitorMenuSettings,
+        detailed: Bool,
+        unavailableMetrics: Set<SystemMonitorMenuMetric> = []
+    ) -> TimeInterval? {
+        if detailed { return 1 }
+        let intervals = settings.enabled
+            ? settings.enabledItems
+                .filter { !unavailableMetrics.contains($0.metric) }
+                .map { $0.effectiveInterval(global: settings.interval) }
+            : []
         return intervals.min()
     }
-    static func dueMetrics(settings: SystemMonitorMenuSettings,
-                           lastSampled: [SystemMonitorMenuMetric: Date], now: Date) -> Set<SystemMonitorMenuMetric> {
+    static func dueMetrics(
+        settings: SystemMonitorMenuSettings,
+        lastSampled: [SystemMonitorMenuMetric: Date],
+        unavailableMetrics: Set<SystemMonitorMenuMetric> = [],
+        now: Date
+    ) -> Set<SystemMonitorMenuMetric> {
         guard settings.enabled else { return [] }
         return Set(settings.enabledItems.compactMap { item in
+            guard !unavailableMetrics.contains(item.metric) else { return nil }
             guard let last = lastSampled[item.metric] else { return item.metric }
             return now.timeIntervalSince(last) >= item.effectiveInterval(global: settings.interval) ? item.metric : nil
         })
@@ -420,6 +434,7 @@ nonisolated enum SystemMonitorMenuRenderer {
                                   value: value(item: item, sample: sample))
     }
     private static func value(item: SystemMonitorMenuItemConfiguration, sample: SystemMonitorSample?) -> String {
+        if sample?.unavailableMetrics.contains(item.metric) == true { return "Unavailable" }
         switch item.metric {
         case .cpu: return sample?.cpuUsage.map(percent) ?? "Waiting"
         case .memory:
@@ -497,8 +512,17 @@ nonisolated struct SystemMonitorRenderedStateCache {
 
 nonisolated private final class SystemMonitorDueTracker: @unchecked Sendable {
     private var lastSampled: [SystemMonitorMenuMetric: Date] = [:]
-    func dueMetrics(settings: SystemMonitorMenuSettings, now: Date) -> Set<SystemMonitorMenuMetric> {
-        let due = SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: lastSampled, now: now)
+    func dueMetrics(
+        settings: SystemMonitorMenuSettings,
+        unavailableMetrics: Set<SystemMonitorMenuMetric>,
+        now: Date
+    ) -> Set<SystemMonitorMenuMetric> {
+        let due = SystemMonitorMenuSchedule.dueMetrics(
+            settings: settings,
+            lastSampled: lastSampled,
+            unavailableMetrics: unavailableMetrics,
+            now: now
+        )
         for metric in due { lastSampled[metric] = now }
         return due
     }
@@ -542,29 +566,50 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         let needsCPU = detailed || metrics.contains(.cpu)
         let needsMemory = detailed || metrics.contains(.memory)
         let needsNetwork = detailed || metrics.contains(.network)
+        let needsGPU = detailed || metrics.contains(.gpu)
+        let needsDisk = detailed || metrics.contains(.disk)
+        let needsBattery = detailed || metrics.contains(.battery)
+        var unavailableMetrics = Set<SystemMonitorMenuMetric>()
 
         var cpuUsage: Double?
-        if needsCPU, let current = Self.cpuCounters() {
-            if let previousCPU {
-                cpuUsage = SystemMonitorDelta.cpuUsage(previous: (previousCPU.total, previousCPU.idle), current: current)
+        if needsCPU {
+            if let current = Self.cpuCounters() {
+                if let previousCPU {
+                    cpuUsage = SystemMonitorDelta.cpuUsage(previous: (previousCPU.total, previousCPU.idle), current: current)
+                }
+                previousCPU = (now, current.total, current.idle)
+            } else {
+                unavailableMetrics.insert(.cpu)
             }
-            previousCPU = (now, current.total, current.idle)
         }
 
         var download: Double?
         var upload: Double?
-        if needsNetwork, let current = Self.networkCounters() {
-            if let previousNetwork {
-                let elapsed = now.timeIntervalSince(previousNetwork.timestamp)
-                download = SystemMonitorDelta.rate(previous: previousNetwork.received, current: current.received, seconds: elapsed)
-                upload = SystemMonitorDelta.rate(previous: previousNetwork.sent, current: current.sent, seconds: elapsed)
+        if needsNetwork {
+            if let current = Self.networkCounters() {
+                if let previousNetwork {
+                    let elapsed = now.timeIntervalSince(previousNetwork.timestamp)
+                    download = SystemMonitorDelta.rate(
+                        previous: previousNetwork.received,
+                        current: current.received,
+                        seconds: elapsed
+                    )
+                    upload = SystemMonitorDelta.rate(previous: previousNetwork.sent, current: current.sent, seconds: elapsed)
+                }
+                previousNetwork = (now, current.received, current.sent)
+            } else {
+                unavailableMetrics.insert(.network)
             }
-            previousNetwork = (now, current.received, current.sent)
         }
 
         let memory = needsMemory ? Self.memoryUsage() : nil
-        let disk = detailed || metrics.contains(.disk) ? Self.diskUsage() : nil
-        let battery = detailed || metrics.contains(.battery) ? Self.battery() : nil
+        if needsMemory && memory == nil { unavailableMetrics.insert(.memory) }
+        let gpu = needsGPU ? gpuReader.usage() : nil
+        if needsGPU && gpu == nil { unavailableMetrics.insert(.gpu) }
+        let disk = needsDisk ? Self.diskUsage() : nil
+        if needsDisk && disk == nil { unavailableMetrics.insert(.disk) }
+        let battery = needsBattery ? Self.battery() : nil
+        if needsBattery && battery == nil { unavailableMetrics.insert(.battery) }
         var loads = [Double](repeating: 0, count: 3)
         let loadCount = detailed ? getloadavg(&loads, 3) : 0
 
@@ -573,7 +618,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
             cpuUsage: cpuUsage,
             memoryUsed: memory?.used,
             memoryTotal: memory?.total,
-            gpuUsage: detailed || metrics.contains(.gpu) ? gpuReader.usage() : nil,
+            gpuUsage: gpu,
             networkDownload: download,
             networkUpload: upload,
             diskUsed: disk?.used,
@@ -581,7 +626,8 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
             batteryPercent: battery?.percent,
             batteryCharging: battery?.charging,
             thermalState: detailed || metrics.contains(.thermal) ? Self.thermalState() : nil,
-            loadAverage: loadCount == 3 ? (loads[0], loads[1], loads[2]) : nil
+            loadAverage: loadCount == 3 ? (loads[0], loads[1], loads[2]) : nil,
+            unavailableMetrics: unavailableMetrics
         )
     }
 
@@ -683,10 +729,21 @@ final class SystemMonitorService {
     private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.system-monitor", qos: .utility)
     private let menuController = SystemMonitorMenuController()
     private var timer: DispatchSourceTimer?
+    private var wakeObserver: NSObjectProtocol?
+    private var unavailableMenuMetrics = Set<SystemMonitorMenuMetric>()
     private var toolEnabled = true
     private var generation = 0
 
-    private init() { menuSettings = Self.storedMenuSettings(in: .standard) }
+    private init() {
+        menuSettings = Self.storedMenuSettings(in: .standard)
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.retryUnavailableMetrics() }
+        }
+    }
 
     static func storedMenuSettings(in defaults: UserDefaults) -> SystemMonitorMenuSettings {
         let data = defaults.data(forKey: settingsKey) ?? defaults.data(forKey: legacySettingsKey)
@@ -694,7 +751,12 @@ final class SystemMonitorService {
             ?? SystemMonitorMenuSettings()
     }
 
-    deinit { MainActor.assumeIsolated { stopTimer() } }
+    isolated deinit {
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
+        stopTimer()
+    }
 
     func startFromStoredSettings() {
         toolEnabled = SettingsManager.shared.isToolEnabled("system-monitor")
@@ -703,6 +765,7 @@ final class SystemMonitorService {
     func startDetailed() {
         guard SystemMonitorLifecycle.changesState(from: detailedActive, to: true) else { return }
         detailedActive = true
+        unavailableMenuMetrics.removeAll()
         reconfigure()
     }
     func stopDetailed() {
@@ -716,12 +779,14 @@ final class SystemMonitorService {
         if let data = try? JSONEncoder().encode(menuSettings) {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
+        unavailableMenuMetrics.removeAll()
         reconfigure()
     }
     func setToolEnabled(_ enabled: Bool) {
         guard SystemMonitorLifecycle.changesState(from: toolEnabled, to: enabled) else { return }
         toolEnabled = enabled
         if !enabled { detailedActive = false }
+        if enabled { unavailableMenuMetrics.removeAll() }
         reconfigure()
     }
 
@@ -733,9 +798,14 @@ final class SystemMonitorService {
         settings.enabled = menuActive
         menuController.configure(settings: settings)
         guard toolEnabled,
-              let interval = SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: detailedActive) else { return }
+              let interval = SystemMonitorMenuSchedule.timerInterval(
+                settings: settings,
+                detailed: detailedActive,
+                unavailableMetrics: unavailableMenuMetrics
+              ) else { return }
 
         let detailed = detailedActive
+        let unavailableMetrics = unavailableMenuMetrics
         let dueTracker = SystemMonitorDueTracker()
         let currentGeneration = generation
         samplingQueue.sync { sampler.reset() }
@@ -743,7 +813,11 @@ final class SystemMonitorService {
         source.schedule(deadline: .now(), repeating: interval,
                         leeway: .milliseconds(Int(interval * 150)))
         source.setEventHandler { [weak self, sampler] in
-            let due = dueTracker.dueMetrics(settings: settings, now: Date())
+            let due = dueTracker.dueMetrics(
+                settings: settings,
+                unavailableMetrics: unavailableMetrics,
+                now: Date()
+            )
             guard detailed || !due.isEmpty else { return }
             let sample = sampler.sample(detailed: detailed, metrics: due)
             Task { @MainActor [weak self] in
@@ -767,6 +841,18 @@ final class SystemMonitorService {
         if toolEnabled && menuSettings.enabled && !dueMetrics.isEmpty {
             menuController.update(sample: sample, dueMetrics: dueMetrics)
         }
+        let enabledMetrics = Set(menuSettings.enabledItems.map(\.metric))
+        let newlyUnavailable = sample.unavailableMetrics.intersection(enabledMetrics)
+            .subtracting(unavailableMenuMetrics)
+        guard !newlyUnavailable.isEmpty else { return }
+        unavailableMenuMetrics.formUnion(newlyUnavailable)
+        if !detailed { reconfigure() }
+    }
+
+    private func retryUnavailableMetrics() {
+        guard !unavailableMenuMetrics.isEmpty else { return }
+        unavailableMenuMetrics.removeAll()
+        reconfigure()
     }
 
     private func stopTimer() {

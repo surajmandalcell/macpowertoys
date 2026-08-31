@@ -287,6 +287,84 @@ final class SystemMonitorTests: XCTestCase {
         })
     }
 
+    func testUnavailableMetricsStayRenderedButRetireFromMenuScheduling() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let settings = SystemMonitorMenuSettings(
+            enabled: true,
+            items: [
+                SystemMonitorMenuItemConfiguration(metric: .gpu, enabled: true),
+                SystemMonitorMenuItemConfiguration(metric: .battery, enabled: true),
+                SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: true),
+                SystemMonitorMenuItemConfiguration(metric: .network, enabled: true)
+            ]
+        )
+        let unavailable: Set<SystemMonitorMenuMetric> = [.gpu, .battery]
+        let firstDelta = sample(
+            cpuUsage: nil,
+            networkDownload: nil,
+            networkUpload: nil,
+            unavailableMetrics: unavailable
+        )
+
+        XCTAssertEqual(
+            SystemMonitorMenuRenderer.render(
+                item: SystemMonitorMenuItemConfiguration(metric: .gpu),
+                sample: firstDelta
+            ).value,
+            "Unavailable"
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuRenderer.render(
+                item: SystemMonitorMenuItemConfiguration(metric: .cpu),
+                sample: firstDelta
+            ).value,
+            "Waiting"
+        )
+        XCTAssertTrue(
+            SystemMonitorMenuRenderer.render(
+                item: SystemMonitorMenuItemConfiguration(metric: .network),
+                sample: firstDelta
+            ).value.contains("Waiting")
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.dueMetrics(
+                settings: settings,
+                lastSampled: [:],
+                unavailableMetrics: unavailable,
+                now: start
+            ),
+            [.cpu, .network]
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.timerInterval(
+                settings: settings,
+                detailed: false,
+                unavailableMetrics: unavailable
+            ),
+            2
+        )
+
+        var onlyUnavailable = settings
+        onlyUnavailable.items.indices.forEach {
+            onlyUnavailable.items[$0].enabled = unavailable.contains(onlyUnavailable.items[$0].metric)
+        }
+        XCTAssertNil(
+            SystemMonitorMenuSchedule.timerInterval(
+                settings: onlyUnavailable,
+                detailed: false,
+                unavailableMetrics: unavailable
+            )
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.timerInterval(
+                settings: onlyUnavailable,
+                detailed: true,
+                unavailableMetrics: unavailable
+            ),
+            1
+        )
+    }
+
     func testRendererAppliesMemoryUnitsNetworkDirectionAndStyles() {
         let sample = sample()
         let memory = SystemMonitorMenuRenderer.render(
@@ -371,21 +449,27 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertTrue(cache.shouldApply(state, for: "cpu"))
     }
 
-    private func sample() -> SystemMonitorSample {
+    private func sample(
+        cpuUsage: Double? = 42.4,
+        networkDownload: Double? = 2_000,
+        networkUpload: Double? = 1_000,
+        unavailableMetrics: Set<SystemMonitorMenuMetric> = []
+    ) -> SystemMonitorSample {
         SystemMonitorSample(
             timestamp: Date(timeIntervalSince1970: 1_000),
-            cpuUsage: 42.4,
+            cpuUsage: cpuUsage,
             memoryUsed: 6_000_000_000,
             memoryTotal: 10_000_000_000,
             gpuUsage: 22,
-            networkDownload: 2_000,
-            networkUpload: 1_000,
+            networkDownload: networkDownload,
+            networkUpload: networkUpload,
             diskUsed: 25,
             diskTotal: 100,
             batteryPercent: 80,
             batteryCharging: true,
             thermalState: "Nominal",
-            loadAverage: (1, 2, 3)
+            loadAverage: (1, 2, 3),
+            unavailableMetrics: unavailableMetrics
         )
     }
 }
