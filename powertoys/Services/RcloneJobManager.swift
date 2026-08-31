@@ -118,6 +118,8 @@ final class RcloneJobManager {
     private var sourceWatchers: [UUID: FileWatcher] = [:]
     private var continuousSyncTasks: [UUID: Task<Void, Never>] = [:]
     private var jobsWithPendingChanges: Set<UUID> = []
+    private var windowOwners: Set<UUID> = []
+    private var idleShutdownTask: Task<Void, Never>?
 
     private let pollInterval: Duration = .milliseconds(700)
     private let continuousSyncDelay: Duration = .seconds(30)
@@ -174,6 +176,17 @@ final class RcloneJobManager {
 
     var activeJobs: [TransferJob] { jobs.filter { $0.state.isActive } }
 
+    var pollingOwnerCount: Int { pollTask == nil ? 0 : 1 }
+    var visibleWindowOwnerCount: Int { windowOwners.count }
+
+    private var runtimeIsNeeded: Bool {
+        Self.needsRuntime(
+            windowVisible: !windowOwners.isEmpty,
+            jobs: jobs,
+            backgroundEnabled: UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch")
+        )
+    }
+
     var filteredJobs: [TransferJob] {
         jobs.filter { filter.matches($0.state) }
     }
@@ -187,6 +200,24 @@ final class RcloneJobManager {
     }
 
     // MARK: Lifecycle
+
+    static func needsRuntime(
+        windowVisible: Bool,
+        jobs: [TransferJob],
+        backgroundEnabled: Bool
+    ) -> Bool {
+        windowVisible || backgroundEnabled || jobs.contains { $0.state.isActive || $0.continuousSync }
+    }
+
+    func windowDidOpen(owner: UUID) async {
+        guard windowOwners.insert(owner).inserted else { return }
+        await start()
+    }
+
+    func windowDidClose(owner: UUID) {
+        guard windowOwners.remove(owner) != nil else { return }
+        stopIfUnneededSoon()
+    }
 
     func start() async {
         guard !started else { return }
@@ -222,7 +253,7 @@ final class RcloneJobManager {
             engineFailureBanner = message
             errorBanner = message
             LogManager.shared.error("rclone start failed: \(error)", source: "RcloneJobManager")
-            scheduleEngineRetry()
+            if runtimeIsNeeded { scheduleEngineRetry() }
         }
     }
 
@@ -235,7 +266,7 @@ final class RcloneJobManager {
             try? await Task.sleep(for: .seconds(delay))
             guard let self, !Task.isCancelled else { return }
             self.engineRetryTask = nil
-            guard !self.started else { return }
+            guard !self.started, self.runtimeIsNeeded else { return }
             await self.start()
         }
     }
@@ -255,6 +286,7 @@ final class RcloneJobManager {
         daemon.stop()
         client = nil
         started = false
+        guard runtimeIsNeeded else { return }
         await start()
     }
 
@@ -303,6 +335,17 @@ final class RcloneJobManager {
         daemon.stop()
         client = nil
         started = false
+    }
+
+    private func stopIfUnneededSoon() {
+        guard idleShutdownTask == nil else { return }
+        idleShutdownTask = Task { [weak self] in
+            guard let self else { return }
+            if !self.runtimeIsNeeded {
+                await self.shutdown()
+            }
+            self.idleShutdownTask = nil
+        }
     }
 
     func refreshRemotes() async {
@@ -823,6 +866,7 @@ final class RcloneJobManager {
             LogManager.shared.info("Continuous \(job.operation.displayName) disabled for \(job.sourceDisplay)", source: "RcloneJobManager")
         }
         persistJobsSoon()
+        if !enabled { stopIfUnneededSoon() }
     }
 
     private func restoreSourceWatchers() {
@@ -933,6 +977,7 @@ final class RcloneJobManager {
                 await client.deleteStats(group: job.statsGroup)
             }
         }
+        stopIfUnneededSoon()
     }
 
     func pause(_ job: TransferJob) {
@@ -1318,6 +1363,7 @@ final class RcloneJobManager {
         }
         persistJobsSoon()
         Task { await client.deleteStats(group: job.statsGroup) }
+        stopIfUnneededSoon()
     }
 
     // MARK: Job persistence

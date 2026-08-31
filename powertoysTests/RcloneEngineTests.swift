@@ -15,7 +15,8 @@ final class RcloneEngineTests: XCTestCase {
         RcloneDefaults.retryBackoffKey,
         RcloneDefaults.transfersKey,
         RcloneDefaults.bandwidthLimitKey,
-        RcloneDefaults.maxConcurrentJobsKey
+        RcloneDefaults.maxConcurrentJobsKey,
+        "tool.rclone.startAtLaunch"
     ]
     private var savedDefaults: [String: Any?] = [:]
 
@@ -43,6 +44,28 @@ final class RcloneEngineTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(150))
         }
         return condition()
+    }
+
+    func testClosingOnlyWindowStopsIdleRuntime() async {
+        UserDefaults.standard.set(false, forKey: "tool.rclone.startAtLaunch")
+        let manager = RcloneJobManager()
+        let owner = UUID()
+        await manager.windowDidOpen(owner: owner)
+        addTeardownBlock { await manager.shutdown() }
+
+        let started = await waitFor(15) {
+            manager.daemonIsHealthy && manager.pollingOwnerCount == 1
+        }
+        XCTAssertTrue(started, "The idle window should own one daemon and one poll loop.")
+        XCTAssertEqual(manager.visibleWindowOwnerCount, 1)
+
+        manager.windowDidClose(owner: owner)
+
+        let stopped = await waitFor(5) {
+            !manager.isDaemonRunning && manager.pollingOwnerCount == 0
+        }
+        XCTAssertTrue(stopped, "Closing the only idle window should release the daemon and poll loop.")
+        XCTAssertEqual(manager.visibleWindowOwnerCount, 0)
     }
 
     func testCopyAppliesIgnorePatternsAndCompletes() async throws {
