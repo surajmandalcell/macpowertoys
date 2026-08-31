@@ -606,6 +606,32 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertTrue(cache.shouldApply(state, for: "cpu"))
     }
 
+    @MainActor
+    func testEqualRenderedContentSkipsActualStatusButtonWrites() throws {
+        for mode in SystemMonitorMenuMode.allCases {
+            let suiteName = "SystemMonitorRenderedWrites.\(mode.rawValue).\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            let controller = SystemMonitorMenuController(defaults: defaults)
+            var settings = SystemMonitorMenuSettings(
+                enabled: true,
+                mode: mode,
+                items: [SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: true)]
+            )
+
+            controller.configure(settings: settings)
+            let writesBeforeSample = controller.renderedWriteCount
+            controller.update(sample: sample(), dueMetrics: [.cpu])
+            XCTAssertEqual(controller.renderedWriteCount, writesBeforeSample + 1)
+
+            controller.update(sample: sample(), dueMetrics: [.cpu])
+            XCTAssertEqual(controller.renderedWriteCount, writesBeforeSample + 1)
+
+            settings.enabled = false
+            controller.configure(settings: settings)
+        }
+    }
+
     private func sample(
         cpuUsage: Double? = 42.4,
         networkDownload: Double? = 2_000,
