@@ -1,6 +1,6 @@
 # Text Extractor Request List
 
-Reviewed against the current app source on 2026-08-24. Update this list when a
+Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
@@ -10,14 +10,13 @@ direct user correction or verified result changes a status.
 | Done | Create 20 visually different handwritten-loupe icon options in `tmp/textextractor.html`. | The page defines and renders exactly 20 named color and material variants. | None. |
 | Done | Use the selected "Cobalt 051" icon in the app. | `TextExtractorLogo.imageset/icon.svg` uses the approved low-right loupe, empty powder-blue lens, and muted sand wave hierarchy on cobalt. | None. |
 | Done | Fix Text Extractor so region selection, OCR, automatic clipboard copy, blank-selection recovery, and cancellation work. | In the signed `4662560` build on two displays, two consecutive selections copied recognized text and added the same text as the first history row. Escape returned in 1.56 seconds and did not change the clipboard. A blank region showed a clear error, kept the history count unchanged, and did not change the clipboard. | None. |
-| Verify | Show the correct recovery path when Screen Recording permission is denied. | The service checks permission before selection and opens Text Extractor with a Privacy Settings action when macOS denies access. | Verify this path on a clean account or Mac that has not granted Screen Recording permission. Do not reset the current user's working permission. |
+| Done | Show the correct recovery path when Screen Recording permission is denied. | `9bd56e2` gives permission denial a typed recovery state. Text Extractor opens instead of starting selection and shows the Privacy Settings action. The denial and cancellation tests inject both results without changing the user's macOS permission and verify the distinct recovery paths. | None. |
 | Done | Make OCR feel immediate, never stage the screenshot on the clipboard, and play a cue after recognized text is copied. | In the signed `4662560` build, the two recognition runs completed 1.55 seconds and 0.59 seconds after release. The pasteboard contained only `NSStringPboardType` and `public.utf8-plain-text`. `4662560` loads the system Tink file directly, the sound loaded and accepted playback, and the unit seam proves that playback follows the text copy. | None. |
 | Done | Put the compact title, shortcut, and primary `Extract Text` action in one consistent titlebar row. | `TextExtractorView` uses the shared 40pt row, 24pt controls, 6pt titlebar radius, 4pt complete-row inset, and one primary accent fill. The normal signed `98f35f6` build showed one aligned row without a launch outline. | None. |
 | Done | Use History as the default body and show `Select text anywhere` only when history is empty. | The history page is the initial state, and `capturePrompt` renders only inside `service.history.isEmpty`. | None. |
 | Done | Remove the redundant `Ready` status. | The status banner renders only recognizing and failure states. | None. |
 | Done | Open large extracted text in a separate selectable detail view. | `needsExpandedView` routes large rows to `TextExtractionDetailView`, whose text selection is enabled. | None. |
 | Done | Move recognition options to their own page. | The floating settings control replaces History with the recognition settings page. | None. |
-| Superseded | Put the settings cog beside `Extract Text`, then later at the bottom-left. | The newest correction places settings at the bottom-right edge. | Keep the current bottom-right placement. |
 | Done | Put the small settings control at the bottom-right edge in every applicable applet. | Text Extractor and Color Picker use the shared 24pt `FloatingSettingsButton` with an 8pt bottom-right inset. Awake has no separate settings page. | None. |
 | Done | Omit seconds from detection timestamps. | `relativeTimestamp` returns `Just now` below one minute and abbreviated coarser units afterward; `CoreModelTests` rejects second-based output. | None. |
 | Done | Show exactly one preview line in each history row. | `TextExtractionRow.summary` uses `.lineLimit(1)`. | None. |

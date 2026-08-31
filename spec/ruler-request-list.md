@@ -1,7 +1,7 @@
 # Ruler Request List
 
 Reviewed against the pinned [FreeRuler](https://github.com/pascalpp/FreeRuler)
-source at commit `d38ca4f673f16c51485940e63eeee68babfbfeed` on 2026-08-24.
+source at commit `d38ca4f673f16c51485940e63eeee68babfbfeed` on 2026-08-31.
 Update this list whenever Ruler requirements or verification results change.
 
 ## Current parity contract
@@ -18,6 +18,7 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Match grouped and ungrouped ruler behavior. | Upstream tests cover grouping, stack order, follower attachment, grouped dragging, and persistence. The signed app toggled grouping without changing the ruler count and completed a grouped drag. | None. |
 | Done | Match FreeRuler persistence. | Tests cover the versioned ruler set, active ruler, per-ruler settings, defaults, frame capture, and corrupt-data fallback. A signed ruler kept the same ID, built-in-display coordinates `[-2267, 1260]`, and `1920 × 1080` lengths through two full quit and relaunch cycles. Settings and Defaults also keep their own frames and display. | None. |
 | Done | Match FreeRuler commands and shortcuts. | Host menus reproduce the Ruler, Unit, and Options commands. Core and signed checks cover wing visibility, unit cycling, grouping, floating, shadow, zero-corner flips, reset, new ruler, active-ruler cycling, Settings, Defaults, and close routing. Exact Command-W closes the focused ruler once and keeps the host running. | None. |
+| Done | Make Command-Q close only Ruler inside the shared process. | `0544fad` routes Command-Q through `RulerManager` to close Settings, Defaults, every ruler, and the mouse timer. The signed `f0f4ce6` build confirmed that one Command-Q closes the Ruler scope and leaves the launcher open. | None. |
 | Verify | Keep per-ruler Settings independent from the ruler and align its chrome with MacPowerToys. | The fixed 420pt panel uses the shared section, card, row, typography, and spacing system. It restores its own frame and display. It does not attach to, follow, or obstruct the ruler. Closing Settings leaves the ruler open. Its decorative titlebar material now passes mouse-down events to the native window drag path. Core coverage preserves target-scoped interaction suspension, controls, reset and default actions, color, opacity, dimensions, floating behavior, shadow, accessibility, localization-safe layout, and independent window placement. The signed `f0f4ce6` build showed the detached native panel and confirmed that its close control leaves the ruler open. | Verify titlebar dragging in the final installed build on each connected display. |
 | Verify | Disable the ruler shadow by default without changing saved user choices. | The registered and factory-reset default is off. Existing `true` values still load as true. Focused tests cover both paths. The signed `f0f4ce6` panel showed the shadow disabled. | Verify a fresh default and a saved enabled choice in the final installed build. |
 | Verify | Add Border Opacity to Ruler Settings and Defaults. | Both native windows provide a localized 0% to 100% slider. The default is 25%, which is half the former 50% border. Per-ruler JSON, global defaults, save-as-default, reset-to-default, factory reset, drawing, keyboard order, and accessibility relationships use the same value. Legacy per-ruler JSON falls back to 25%. The signed `f0f4ce6` panel exposed the accessible Border Opacity slider at 25%. | Verify a live border update in the final installed build. |
@@ -28,19 +29,6 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Show Ruler settings from its launcher detail without duplicating the native implementation. | `Open Ruler Settings` opens the native independent Settings panel. `Open Defaults` opens the native `preferences-window`. | None. |
 | Done | Keep Ruler focused so shortcuts do not reach the previously focused app. | Ruler activation makes its borderless AppKit window key and the signed UI suite successfully drives ruler-local shortcuts. In the normal signed `4662560` build, Raycast launched the MacPowerToys Ruler from its focused `Ruler` query. macOS then reported MacPowerToys as frontmost with `ruler-window` as the focused window. The following `H` key hid only the horizontal ruler wing, and a second `H` restored it. | None. |
 | Done | Make `Ruler` appear when searching in Raycast. | The Raycast extension builds successfully. A live search on 2026-08-23 showed `Ruler` from MacPowerToys as the first result after the development process stopped. | None. |
-
-## Superseded custom behavior
-
-| Status | Superseded request | Current behavior |
-|---|---|---|
-| Superseded | Always open exactly two forced-pair rulers. | FreeRuler opens one L-shaped ruler and permits any number of independent rulers. |
-| Superseded | Keep an 8pt gap between separate horizontal and vertical overlays. | FreeRuler joins horizontal and vertical wings at one zero corner. |
-| Superseded | Add guides, region measurement/capture, and developer copy formats. | Those custom SwiftUI features were deleted; the pinned FreeRuler surface is the product. |
-| Superseded | Calibrate each display or expose points as a unit. | FreeRuler provides pixels, millimeters, and inches with its native conversion behavior. |
-| Superseded | Default length to 30% of the screen and expose `defaultSizeFraction`. | FreeRuler owns its default dimensions and Defaults window. |
-| Superseded | Use a compact 560×600 SwiftUI applet with `New Ruler` and `Measure Region` titlebar actions. | Ruler uses FreeRuler's borderless AppKit overlay plus independent Settings and Defaults windows. |
-| Done | Make Command-Q close only Ruler inside the shared process. | `0544fad` routes Command-Q through `RulerManager` to close Settings, Defaults, and every ruler and stop the mouse timer. The signed `f0f4ce6` build confirmed that one Command-Q closes the Ruler scope and leaves the launcher open. | None. |
-| Superseded | Apply MacPowerToys-specific 48pt thickness, thin ticks, reduced borders, 75% fill, migrations, and custom state models. | FreeRuler's 40pt geometry, ticks, fill, and state model remain. The current Border Opacity control is the only requested border adjustment. |
 
 ## Verification record
 

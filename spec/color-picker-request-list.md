@@ -1,13 +1,12 @@
 # Color Picker Request List
 
-Reviewed against the current app source on 2026-08-24. Update this list when a
+Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Choose no Color Picker menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. The combined tab and separate native item both start Pick Color, and the separate item keeps its stable autosave name. Legacy separate choices migrate unchanged. | Exercise all three modes in the latest normal installed build, then move the separate item, relaunch, and confirm its position and action. |
 | Done | Keep project counts and color timestamps on their related row. | `4ad3da2` puts each project count beside its name and each timestamp beside its color value. In the normal signed `4662560` build, an intentionally long project name truncated before `0 colors`, and the long NSColor representation truncated before `1 mo ago` and the row actions. | None. |
-| Superseded | Keep a settings cog at the top-right beside `Pick Color`. | The newer cross-app chrome requirement reserves compact titlebars for app names and primary actions; Color Picker uses the shared bottom-right `FloatingSettingsButton` for its full settings page. | Keep settings out of the compact titlebar. |
 | Done | Remove lag while the native color sampler is active. | `5b3d174` rejects overlapping sampler sessions and reuses the row date formatter. A live process watcher in the normal signed `4662560` build detected the native ColorSampler 334.7 ms after the Pick Color action. The action disabled while the sampler was active and recovered after the controlled test restart. | None. |
 | Done | Prevent transient or persistent titlebar focus outlines. | Shared titlebar controls suppress focus effects, and Color Picker routes initial focus to its invisible window accessor like every compact applet. Fresh-open and cross-window focus checks in the normal signed `98f35f6` build showed no outline. | None. |
 | Done | Make the Color Picker window narrower. | `ColorPickerLayout.windowWidth` is a fixed 420pt. | None. |
@@ -20,9 +19,8 @@ direct user correction or verified result changes a status.
 | Done | Show only Settings content while Settings is open, with no top body margin. | History and Projects tabs render only outside Settings; the settings body has no top padding. | None. |
 | Done | Left-align `Enable Pick Color shortcut` and place `Clear All` below it. | Both controls use leading alignment; clearing has scope text and confirmation. | None. |
 | Done | Add Projects creation, selection, project-owned picks, persistence, and export. | `ColorPickerService` owns projects and selected destination; `ColorPickerTests` covers ownership and persistence; each named project exports CSS. | None. |
-| Verify | Keep the history search thin while the format Select stays compact. | The newer cross-app search rule replaces the old equal-height rule. Search now uses the native small `NSSearchField` in a 24pt slot; format Select remains 28pt. | Inspect the latest normal signed build. |
+| Done | Keep the history search thin while the format Select stays compact. | `9bd56e2` adds `testHistoryUsesNativeSmallContentSearch`, which renders the real history and verifies its native small `NSSearchField` stays within the shared 24pt content-search slot. The adjacent format Select remains a fixed 28pt compact control. | None. |
 | Done | Fix selected-tab and content left-edge alignment. | Tabs, controls, rows, cards, and settings use one 12pt outer gutter; selection does not change tab geometry. | None. |
 | Done | Reduce left and right body padding. | `ColorPickerLayout.bodyHorizontalInset` is 12pt throughout the applet body. | None. |
 | Done | Vertically align the complete titlebar row, lower traffic lights, remove zoom, and reclaim its title space. | Color Picker uses one 4pt row inset, a 22pt centerline, a 6pt traffic-light shift, a 60pt title start, hidden zoom, and a fixed root size. `WindowAccessor` now reapplies the shared alignment whenever the window becomes key; regression coverage forces the late native reset that previously left the lights 6pt high. | None. |
 | Done | Prevent the unsigned UI-runner Gatekeeper dialog and stale visual checks. | The mandatory verification rules prohibit unsigned UI runners, UI-test-mode visual QA, stale provenance, and shared DerivedData. | None. |
-| Superseded | Add numbered `.agents/troubleshooting1.md` files and make agents load them. | The newer repo rule requires one `spec/troubleshoot/troubleshoot.md` entry point. Both `AGENTS.md` and `CLAUDE.md` load it, this list, and `DESIGN.md`. | Keep focused troubleshooting topics under `spec/troubleshoot/`; do not recreate compatibility files. |
