@@ -257,6 +257,62 @@ final class SystemMonitorTests: XCTestCase {
         )
     }
 
+    func testNextDeadlineKeepsNonDivisibleMetricCadencesExact() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let settings = SystemMonitorMenuSettings(
+            enabled: true,
+            items: [
+                SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: true, interval: .seconds2),
+                SystemMonitorMenuItemConfiguration(metric: .gpu, enabled: true, interval: .seconds5)
+            ]
+        )
+
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.nextInterval(
+                settings: settings,
+                lastSampled: [.cpu: start, .gpu: start],
+                detailed: false,
+                now: start
+            ),
+            2
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.nextInterval(
+                settings: settings,
+                lastSampled: [.cpu: start.addingTimeInterval(2), .gpu: start],
+                detailed: false,
+                now: start.addingTimeInterval(2)
+            ),
+            2
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.nextInterval(
+                settings: settings,
+                lastSampled: [.cpu: start.addingTimeInterval(4), .gpu: start],
+                detailed: false,
+                now: start.addingTimeInterval(4)
+            ),
+            1
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.dueMetrics(
+                settings: settings,
+                lastSampled: [.cpu: start.addingTimeInterval(4), .gpu: start],
+                now: start.addingTimeInterval(5)
+            ),
+            [.gpu]
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.nextInterval(
+                settings: settings,
+                lastSampled: [.cpu: start.addingTimeInterval(4), .gpu: start.addingTimeInterval(5)],
+                detailed: false,
+                now: start.addingTimeInterval(5)
+            ),
+            1
+        )
+    }
+
     func testDisabledScheduleTearsDownAndMetricDefaultsUseSupportedCadences() {
         var settings = SystemMonitorMenuSettings()
         XCTAssertNil(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false))
