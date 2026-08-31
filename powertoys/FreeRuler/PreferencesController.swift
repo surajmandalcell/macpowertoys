@@ -1072,9 +1072,9 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         detachWindowIfNeeded()
         configureOpaqueColorPicking()
         updateView()
+        updateRulerInteractionSuspension(isPresenting: true)
         window?.makeKeyAndOrderFront(sender)
         window?.makeFirstResponder(unitSegmentedControl)
-        updateRulerInteractionSuspension()
     }
 
     func show(attachedTo controller: RulerController, sender: Any?) {
@@ -1300,8 +1300,8 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         updateView()
     }
 
-    private func updateRulerInteractionSuspension() {
-        guard window?.isVisible == true,
+    private func updateRulerInteractionSuspension(isPresenting: Bool = false) {
+        guard (isPresenting || window?.isVisible == true),
               let controller = rulerController else {
             clearRulerInteractionSuspension()
             return
