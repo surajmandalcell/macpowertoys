@@ -68,6 +68,27 @@ final class RcloneEngineTests: XCTestCase {
         XCTAssertEqual(manager.visibleWindowOwnerCount, 0)
     }
 
+    func testDisablingBackgroundStartStopsUnownedRuntime() async {
+        UserDefaults.standard.set(true, forKey: "tool.rclone.startAtLaunch")
+        let manager = RcloneJobManager()
+        await manager.backgroundPreferenceDidChange(enabled: true)
+        addTeardownBlock { await manager.shutdown() }
+
+        let started = await waitFor(15) {
+            manager.daemonIsHealthy && manager.pollingOwnerCount == 1
+        }
+        XCTAssertTrue(started, "Background start should own one daemon and one poll loop.")
+        XCTAssertEqual(manager.visibleWindowOwnerCount, 0)
+
+        UserDefaults.standard.set(false, forKey: "tool.rclone.startAtLaunch")
+        await manager.backgroundPreferenceDidChange(enabled: false)
+
+        let stopped = await waitFor(5) {
+            !manager.isDaemonRunning && manager.pollingOwnerCount == 0
+        }
+        XCTAssertTrue(stopped, "Disabling background start should release an unowned runtime.")
+    }
+
     func testCopyAppliesIgnorePatternsAndCompletes() async throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("rclone-test-\(UUID().uuidString)")

@@ -34,6 +34,9 @@ struct RcloneSettingsPage: View {
             .thinScrollIndicators()
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .onChange(of: startAtLaunch) { _, enabled in
+            Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
+        }
     }
 
     private var header: some View {

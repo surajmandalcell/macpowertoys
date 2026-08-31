@@ -18,6 +18,13 @@ final class IndividualMenuBarControllerTests: XCTestCase {
             forKey: IndividualMenuBarTool.colorPicker.preferenceKey
         )
         XCTAssertEqual(IndividualMenuBarTool.colorPicker.displayMode(in: defaults), .combined)
+
+        for tool in IndividualMenuBarTool.allCases {
+            for mode in MenuBarDisplayMode.allCases {
+                defaults.set(mode.rawValue, forKey: tool.preferenceKey)
+                XCTAssertEqual(tool.displayMode(in: defaults), mode, "\(tool.id): \(mode.id)")
+            }
+        }
     }
 
     func testSupportedToolsHaveStableUniquePreferencesAndActions() {
@@ -31,6 +38,7 @@ final class IndividualMenuBarControllerTests: XCTestCase {
             "input-devices"
         ])
         XCTAssertEqual(Set(tools.map(\.preferenceKey)).count, tools.count)
+        XCTAssertEqual(Set(tools.map(\.autosaveName)).count, tools.count)
         XCTAssertEqual(IndividualMenuBarTool.colorPicker.quickAction, .colorPickerPick)
         XCTAssertEqual(IndividualMenuBarTool.textExtractor.quickAction, .textExtractorCapture)
         XCTAssertNil(IndividualMenuBarTool.cloudSync.quickAction)
