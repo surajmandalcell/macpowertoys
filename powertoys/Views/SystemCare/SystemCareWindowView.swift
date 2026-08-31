@@ -236,26 +236,16 @@ struct SystemCareWindowView: View {
                             ScrollView {
                                 LazyVStack(spacing: 2) {
                                     ForEach(manager.storageEntries) { entry in
-                                        Button {
-                                            if entry.isDirectory { manager.analyze(entry.url) }
-                                        } label: {
-                                            HStack {
-                                                Image(systemName: entry.isDirectory ? "folder" : "doc")
-                                                    .foregroundStyle(.secondary)
-                                                Text(entry.name).lineLimit(1)
-                                                Spacer()
-                                                Text(entry.size.formattedByteCount)
-                                                    .monospacedDigit()
-                                                    .foregroundStyle(.secondary)
-                                                if entry.isDirectory { Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
+                                        if entry.isDirectory {
+                                            Button { manager.analyze(entry.url) } label: {
+                                                storageEntryLabel(entry)
+                                                    .contentShape(Rectangle())
                                             }
-                                            .font(.system(size: 12))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 7)
-                                            .contentShape(Rectangle())
+                                            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+                                            .focusEffectDisabled()
+                                        } else {
+                                            storageEntryLabel(entry)
                                         }
-                                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                                        .focusEffectDisabled()
                                     }
                                 }
                             }
@@ -268,6 +258,22 @@ struct SystemCareWindowView: View {
             }
             .utilityContentTransition(value: storageContentKey)
         }
+    }
+
+    private func storageEntryLabel(_ entry: StorageEntry) -> some View {
+        HStack {
+            Image(systemName: entry.isDirectory ? "folder" : "doc")
+                .foregroundStyle(.secondary)
+            Text(entry.name).lineLimit(1)
+            Spacer()
+            Text(entry.size.formattedByteCount)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+            if entry.isDirectory { Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
     }
 
     private var cleanupPage: some View {
