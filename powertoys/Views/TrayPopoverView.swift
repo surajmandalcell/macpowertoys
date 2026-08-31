@@ -373,7 +373,7 @@ struct TrayTabButtonStyle: ButtonStyle {
         isHovering: Bool,
         isPressed: Bool
     ) -> Double {
-        if isSelected { return isPressed ? 0.82 : 1 }
+        if isSelected { return 1 }
         return UtilityInteractionButtonStyle.highlightOpacity(
             isEnabled: true,
             isHovering: isHovering,
@@ -381,19 +381,42 @@ struct TrayTabButtonStyle: ButtonStyle {
         )
     }
 
+    static func interactionOpacity(
+        isSelected: Bool,
+        isHovering: Bool,
+        isPressed: Bool
+    ) -> Double {
+        guard isSelected else { return 0 }
+        if isPressed { return 0.18 }
+        return isHovering ? 0.1 : 0
+    }
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(
-                    isSelected
-                        ? Color(nsColor: .controlAccentColor).opacity(opacity(configuration))
-                        : Color.primary.opacity(opacity(configuration))
-                )
-        )
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(
+                        isSelected
+                            ? Color(nsColor: .controlAccentColor)
+                            : Color.primary.opacity(opacity(configuration))
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(interactionOpacity(configuration)))
+            )
     }
 
     private func opacity(_ configuration: Configuration) -> Double {
         Self.backgroundOpacity(
+            isSelected: isSelected,
+            isHovering: isHovering,
+            isPressed: configuration.isPressed
+        )
+    }
+
+    private func interactionOpacity(_ configuration: Configuration) -> Double {
+        Self.interactionOpacity(
             isSelected: isSelected,
             isHovering: isHovering,
             isPressed: configuration.isPressed
@@ -657,7 +680,11 @@ private struct TrayActionButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(isPrimary ? .white : .primary)
+                .foregroundStyle(
+                    isPrimary
+                        ? Color(nsColor: .alternateSelectedControlTextColor)
+                        : .primary
+                )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
         }
