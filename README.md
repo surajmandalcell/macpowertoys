@@ -115,6 +115,25 @@ progress survives relaunches, **Recalculate** only adds newly
 discovered work, and each transfer keeps its latest 100 local
 changes. Never replace a running installation during a transfer.
 
+## Current limits and recovery
+
+- Builds from `main` use local development signing. Do not distribute them
+  until the Developer ID and notarization checks pass.
+- macOS can restore a window's size, position, and display. It cannot assign a
+  reopened window to its former Space with a public API.
+- Cloud Sync cannot change one file's priority during a directory transfer.
+  Use **Pause**, **Resume**, **Retry**, or **Recalculate** when needed.
+- Input Devices uses macOS event metadata to separate mouse and trackpad
+  scrolling. macOS does not give each general scroll event a device identity.
+- NetToys IP Scanner and SSH Anchor currently use IPv4. SSH Anchor changes only
+  the selected `HostName` value, keeps a private backup, verifies the new
+  address, and restores the old value when verification fails.
+- System Care native cleanup moves reviewed items to Trash. Use Finder's
+  **Put Back** before you empty Trash. Mole is optional, and privileged Mole
+  commands stay visible in Terminal.
+- Permission-dependent tools show their current access state. Use their
+  settings action to open the correct macOS privacy pane after a denial.
+
 ## Privacy and security
 
 - MacPowerToys has no first-party analytics, advertising SDK, or telemetry service.
