@@ -84,6 +84,57 @@ struct QuietDivider: View {
     }
 }
 
+struct UtilityInteractionButtonStyle: ButtonStyle {
+    var cornerRadius: CGFloat = 8
+
+    static func highlightOpacity(
+        isEnabled: Bool,
+        isHovering: Bool,
+        isPressed: Bool
+    ) -> Double {
+        guard isEnabled else { return 0 }
+        if isPressed { return 0.1 }
+        if isHovering { return 0.06 }
+        return 0
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        Body(
+            label: configuration.label,
+            isPressed: configuration.isPressed,
+            cornerRadius: cornerRadius
+        )
+    }
+
+    private struct Body<Label: View>: View {
+        @Environment(\.isEnabled) private var isEnabled
+        @State private var isHovering = false
+
+        let label: Label
+        let isPressed: Bool
+        let cornerRadius: CGFloat
+
+        var body: some View {
+            label
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(highlightColor)
+                )
+                .onHover { isHovering = isEnabled && $0 }
+        }
+
+        private var highlightColor: Color {
+            Color.primary.opacity(
+                UtilityInteractionButtonStyle.highlightOpacity(
+                    isEnabled: isEnabled,
+                    isHovering: isHovering,
+                    isPressed: isPressed
+                )
+            )
+        }
+    }
+}
+
 class UtilityMaterialView: NSVisualEffectView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)

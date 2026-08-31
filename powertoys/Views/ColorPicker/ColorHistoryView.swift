@@ -141,7 +141,7 @@ struct ColorHistoryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
     }
 
@@ -279,7 +279,7 @@ struct ColorHistoryView: View {
                 .frame(maxWidth: .infinity, minHeight: UtilityLayout.sidebarRowHeight)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(UtilityInteractionButtonStyle())
             .focusEffectDisabled()
 
             if let project {

@@ -253,6 +253,21 @@
   window, sheet, popover, and sidebar. Confirm no blue rectangular outline and
   confirm that Return or Space still activates each control.
 
+## Custom Selectable Interaction States
+
+- **Symptom:** A custom row, card, or tab looks inert when the pointer moves
+  over it.
+- **Cause:** A plain SwiftUI button removed the native control surface without
+  adding replacement hover and pressed states.
+- **Invariant:** Custom selectable rows, cards, and tabs use
+  `UtilityInteractionButtonStyle`. The shared style uses a 0.06 primary hover
+  fill and a 0.1 pressed fill. Disabled controls do not react. Native controls,
+  icon actions, disclosure controls, breadcrumbs, and destructive text actions
+  keep their purpose-specific interaction treatment.
+- **Check:** Inspect the Tailscale chooser, System Care overview and lists,
+  Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
+  History bookmark chips. Every enabled item shows hover and pressed feedback.
+
 ## NetToys Dynamic Form Stability
 
 - **Symptom:** SSH Anchor labels, fields, metadata, and actions move when the

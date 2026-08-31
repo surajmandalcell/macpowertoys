@@ -851,7 +851,7 @@ struct NetToysAnchorView: View {
                             .frame(height: 40)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                         .focusEffectDisabled()
 
                         if peer.id != model.tailscalePeers.last?.id {
