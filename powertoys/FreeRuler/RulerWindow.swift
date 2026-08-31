@@ -1340,6 +1340,7 @@ final class RulerController: NSWindowController, NSWindowDelegate, NotificationO
 
     func updateIsFloatingPanel() {
         rulerWindow.isFloatingPanel = isRulerInteractionSuspended ? false : state.settings.floatRulers
+        rulerWindow.ignoresMouseEvents = isRulerInteractionSuspended
     }
 
     func updateHasShadow() {

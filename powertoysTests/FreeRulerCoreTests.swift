@@ -1356,6 +1356,8 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertFalse(second.isRulerInteractionSuspended)
         XCTAssertFalse(first.rulerWindow.isFloatingPanel)
         XCTAssertTrue(second.rulerWindow.isFloatingPanel)
+        XCTAssertTrue(first.rulerWindow.ignoresMouseEvents)
+        XCTAssertFalse(second.rulerWindow.ignoresMouseEvents)
 
         settingsController.show(attachedTo: second, sender: self)
 
@@ -1363,6 +1365,8 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertTrue(second.isRulerInteractionSuspended)
         XCTAssertTrue(first.rulerWindow.isFloatingPanel)
         XCTAssertFalse(second.rulerWindow.isFloatingPanel)
+        XCTAssertFalse(first.rulerWindow.ignoresMouseEvents)
+        XCTAssertTrue(second.rulerWindow.ignoresMouseEvents)
 
         settingsController.close()
 
@@ -1370,6 +1374,8 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertFalse(second.isRulerInteractionSuspended)
         XCTAssertTrue(first.rulerWindow.isFloatingPanel)
         XCTAssertTrue(second.rulerWindow.isFloatingPanel)
+        XCTAssertFalse(first.rulerWindow.ignoresMouseEvents)
+        XCTAssertFalse(second.rulerWindow.ignoresMouseEvents)
     }
 
     func testRulerSettingsSuspendsAttachedRulerBeforeSettingsBecomesKey() throws {
