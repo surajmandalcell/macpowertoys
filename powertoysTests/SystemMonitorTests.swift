@@ -43,7 +43,8 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(settings.items.map(\.metric), SystemMonitorMenuMetric.allCases)
         XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu, .network])
         XCTAssertTrue(settings.enabledItems.allSatisfy { $0.interval == .global })
-        XCTAssertEqual(settings.items.first(where: { $0.metric == .gpu })?.interval, .seconds30)
+        XCTAssertEqual(settings.schemaVersion, SystemMonitorMenuSettings.currentSchemaVersion)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .gpu })?.interval, .seconds5)
     }
 
     func testConfigurationsRoundTripWithoutLosingOrderOrCustomization() throws {
@@ -57,7 +58,8 @@ final class SystemMonitorTests: XCTestCase {
                     enabled: true,
                     style: .valueOnly,
                     interval: .seconds3,
-                    networkDirection: .upload
+                    networkDirection: .upload,
+                    networkUnit: .bits
                 ),
                 SystemMonitorMenuItemConfiguration(
                     metric: .memory,
@@ -66,7 +68,13 @@ final class SystemMonitorTests: XCTestCase {
                     symbol: "chart.bar.fill",
                     memoryUnit: .available
                 ),
-                SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: false)
+                SystemMonitorMenuItemConfiguration(
+                    metric: .disk,
+                    enabled: false,
+                    diskUnit: .available,
+                    batteryDisplay: .both,
+                    thermalDisplay: .full
+                )
             ]
         )
 
@@ -76,7 +84,27 @@ final class SystemMonitorTests: XCTestCase {
         )
 
         XCTAssertEqual(decoded, expected)
-        XCTAssertEqual(decoded.items.prefix(3).map(\.metric), [.network, .memory, .cpu])
+        XCTAssertEqual(decoded.items.prefix(3).map(\.metric), [.network, .memory, .disk])
+        XCTAssertEqual(decoded.schemaVersion, SystemMonitorMenuSettings.currentSchemaVersion)
+    }
+
+    func testVersionOneItemsDecodeWithNewFormatDefaultsAndEncodeCurrentSchema() throws {
+        let versionOne = """
+        {"enabled":true,"mode":"grouped","interval":2,"items":[{"metric":"battery","enabled":true,"style":"valueOnly","symbol":"battery.75percent","interval":"seconds1","memoryUnit":"percentage","networkDirection":"both"}]}
+        """.data(using: .utf8)!
+
+        let settings = try JSONDecoder().decode(SystemMonitorMenuSettings.self, from: versionOne)
+        let battery = try XCTUnwrap(settings.items.first(where: { $0.metric == .battery }))
+        let encoded = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any]
+        )
+
+        XCTAssertEqual(settings.schemaVersion, SystemMonitorMenuSettings.currentSchemaVersion)
+        XCTAssertEqual(battery.batteryDisplay, .percentage)
+        XCTAssertEqual(battery.networkUnit, .bytes)
+        XCTAssertEqual(battery.diskUnit, .percentage)
+        XCTAssertEqual(battery.thermalDisplay, .compact)
+        XCTAssertEqual(encoded["schemaVersion"] as? Int, SystemMonitorMenuSettings.currentSchemaVersion)
     }
 
     func testNormalizationAllowsEveryItemToBeDisabledAndValidatesSymbols() {
@@ -172,17 +200,51 @@ final class SystemMonitorTests: XCTestCase {
         )
     }
 
-    func testDisabledScheduleTearsDownAndSlowMetricsDefaultToThirtySeconds() {
+    func testDisabledScheduleTearsDownAndMetricDefaultsUseSupportedCadences() {
         var settings = SystemMonitorMenuSettings()
         XCTAssertNil(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false))
         XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: true), 1)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .gpu })?.interval, .seconds5)
         XCTAssertTrue(
             settings.items
-                .filter { [.gpu, .disk, .battery, .thermal].contains($0.metric) }
+                .filter { [.disk, .battery, .thermal].contains($0.metric) }
                 .allSatisfy { $0.interval == .seconds30 }
+        )
+        XCTAssertTrue(
+            settings.items
+                .filter { [.cpu, .memory, .network].contains($0.metric) }
+                .allSatisfy { $0.interval == .global }
         )
         settings.enabled = true
         XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false), 2)
+    }
+
+    func testEffectiveCadenceFloorsProtectDiskBatteryAndThermal() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let settings = SystemMonitorMenuSettings(
+            enabled: true,
+            interval: 1,
+            items: [
+                SystemMonitorMenuItemConfiguration(metric: .disk, enabled: true, interval: .global),
+                SystemMonitorMenuItemConfiguration(metric: .battery, enabled: true, interval: .seconds1),
+                SystemMonitorMenuItemConfiguration(metric: .thermal, enabled: true, interval: .seconds3)
+            ]
+        )
+        let sampled: [SystemMonitorMenuMetric: Date] = [.disk: start, .battery: start, .thermal: start]
+
+        XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false), 10)
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: sampled, now: start.addingTimeInterval(9.999)),
+            []
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: sampled, now: start.addingTimeInterval(10)),
+            [.battery, .thermal]
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: sampled, now: start.addingTimeInterval(15)),
+            [.disk, .battery, .thermal]
+        )
     }
 
     func testRendererAppliesMemoryUnitsNetworkDirectionAndStyles() {
@@ -211,6 +273,49 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(network.style, .valueOnly)
         XCTAssertTrue(network.value.hasPrefix("↑"))
         XCTAssertFalse(network.value.contains("↓"))
+    }
+
+    func testRendererAppliesDiskNetworkBatteryAndThermalFormats() {
+        let sample = sample()
+        let diskUsed = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .disk, diskUnit: .used),
+            sample: sample
+        )
+        let diskAvailable = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .disk, diskUnit: .available),
+            sample: sample
+        )
+        let networkBits = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(
+                metric: .network,
+                networkDirection: .download,
+                networkUnit: .bits
+            ),
+            sample: sample
+        )
+        let batteryStatus = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .battery, batteryDisplay: .status),
+            sample: sample
+        )
+        let batteryBoth = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .battery, batteryDisplay: .both),
+            sample: sample
+        )
+        let thermalCompact = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .thermal, thermalDisplay: .compact),
+            sample: sample
+        )
+        let thermalFull = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .thermal, thermalDisplay: .full),
+            sample: sample
+        )
+
+        XCTAssertNotEqual(diskUsed.value, diskAvailable.value)
+        XCTAssertEqual(networkBits.value, "↓16 kb/s")
+        XCTAssertEqual(batteryStatus.value, "Charging")
+        XCTAssertEqual(batteryBoth.value, "80% · Charging")
+        XCTAssertEqual(thermalCompact.value, "OK")
+        XCTAssertEqual(thermalFull.value, "Nominal")
     }
 
     func testRenderedStateCacheRejectsRedundantWrites() {

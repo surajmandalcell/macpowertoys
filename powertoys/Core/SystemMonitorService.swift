@@ -38,8 +38,17 @@ nonisolated enum SystemMonitorMenuMetric: String, Codable, CaseIterable, Identif
     }
     var defaultInterval: SystemMonitorMenuInterval {
         switch self {
-        case .gpu, .disk, .battery, .thermal: .seconds30
+        case .gpu: .seconds5
+        case .disk, .battery, .thermal: .seconds30
         case .cpu, .memory, .network: .global
+        }
+    }
+
+    var minimumInterval: TimeInterval {
+        switch self {
+        case .disk: 15
+        case .battery, .thermal: 10
+        case .cpu, .memory, .gpu, .network: 1
         }
     }
 }
@@ -110,6 +119,42 @@ nonisolated enum SystemMonitorNetworkDirection: String, Codable, CaseIterable, I
     }
 }
 
+nonisolated enum SystemMonitorDiskUnit: String, Codable, CaseIterable, Identifiable {
+    case percentage, used, available
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .percentage: "Percentage"
+        case .used: "Used"
+        case .available: "Available"
+        }
+    }
+}
+
+nonisolated enum SystemMonitorNetworkUnit: String, Codable, CaseIterable, Identifiable {
+    case bytes, bits
+    var id: String { rawValue }
+    var title: String { self == .bytes ? "Bytes per Second" : "Bits per Second" }
+}
+
+nonisolated enum SystemMonitorBatteryDisplay: String, Codable, CaseIterable, Identifiable {
+    case percentage, status, both
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .percentage: "Percentage"
+        case .status: "Status"
+        case .both: "Percentage and Status"
+        }
+    }
+}
+
+nonisolated enum SystemMonitorThermalDisplay: String, Codable, CaseIterable, Identifiable {
+    case compact, full
+    var id: String { rawValue }
+    var title: String { self == .compact ? "Compact" : "Full" }
+}
+
 nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Identifiable {
     var metric: SystemMonitorMenuMetric
     var enabled: Bool
@@ -118,6 +163,10 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
     var interval: SystemMonitorMenuInterval
     var memoryUnit: SystemMonitorMemoryUnit
     var networkDirection: SystemMonitorNetworkDirection
+    var diskUnit: SystemMonitorDiskUnit
+    var networkUnit: SystemMonitorNetworkUnit
+    var batteryDisplay: SystemMonitorBatteryDisplay
+    var thermalDisplay: SystemMonitorThermalDisplay
     var id: SystemMonitorMenuMetric { metric }
 
     init(
@@ -127,7 +176,11 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
         symbol: String? = nil,
         interval: SystemMonitorMenuInterval? = nil,
         memoryUnit: SystemMonitorMemoryUnit = .percentage,
-        networkDirection: SystemMonitorNetworkDirection = .both
+        networkDirection: SystemMonitorNetworkDirection = .both,
+        diskUnit: SystemMonitorDiskUnit = .percentage,
+        networkUnit: SystemMonitorNetworkUnit = .bytes,
+        batteryDisplay: SystemMonitorBatteryDisplay = .percentage,
+        thermalDisplay: SystemMonitorThermalDisplay = .compact
     ) {
         self.metric = metric
         self.enabled = enabled
@@ -136,10 +189,19 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
         self.interval = interval ?? metric.defaultInterval
         self.memoryUnit = memoryUnit
         self.networkDirection = networkDirection
+        self.diskUnit = diskUnit
+        self.networkUnit = networkUnit
+        self.batteryDisplay = batteryDisplay
+        self.thermalDisplay = thermalDisplay
+    }
+
+    func effectiveInterval(global: TimeInterval) -> TimeInterval {
+        max(interval.seconds(global: global), metric.minimumInterval)
     }
 
     private enum CodingKeys: String, CodingKey {
         case metric, enabled, style, symbol, interval, memoryUnit, networkDirection
+        case diskUnit, networkUnit, batteryDisplay, thermalDisplay
     }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -150,17 +212,26 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
         interval = try values.decodeIfPresent(SystemMonitorMenuInterval.self, forKey: .interval) ?? metric.defaultInterval
         memoryUnit = try values.decodeIfPresent(SystemMonitorMemoryUnit.self, forKey: .memoryUnit) ?? .percentage
         networkDirection = try values.decodeIfPresent(SystemMonitorNetworkDirection.self, forKey: .networkDirection) ?? .both
+        diskUnit = try values.decodeIfPresent(SystemMonitorDiskUnit.self, forKey: .diskUnit) ?? .percentage
+        networkUnit = try values.decodeIfPresent(SystemMonitorNetworkUnit.self, forKey: .networkUnit) ?? .bytes
+        batteryDisplay = try values.decodeIfPresent(SystemMonitorBatteryDisplay.self, forKey: .batteryDisplay) ?? .percentage
+        thermalDisplay = try values.decodeIfPresent(SystemMonitorThermalDisplay.self, forKey: .thermalDisplay) ?? .compact
     }
 }
 
 nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
+    static let currentSchemaVersion = 2
+
+    var schemaVersion: Int
     var enabled: Bool
     var mode: SystemMonitorMenuMode
     var interval: TimeInterval
     var items: [SystemMonitorMenuItemConfiguration]
 
-    init(enabled: Bool = false, mode: SystemMonitorMenuMode = .grouped, interval: TimeInterval = 2,
+    init(schemaVersion: Int = Self.currentSchemaVersion,
+         enabled: Bool = false, mode: SystemMonitorMenuMode = .grouped, interval: TimeInterval = 2,
          items: [SystemMonitorMenuItemConfiguration] = Self.defaultItems) {
+        self.schemaVersion = schemaVersion
         self.enabled = enabled
         self.mode = mode
         self.interval = interval
@@ -170,6 +241,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
 
     func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(schemaVersion, forKey: .schemaVersion)
         try values.encode(enabled, forKey: .enabled)
         try values.encode(mode, forKey: .mode)
         try values.encode(interval, forKey: .interval)
@@ -178,6 +250,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
 
     init(enabled: Bool, mode: SystemMonitorMenuMode, interval: TimeInterval,
          metrics: Set<SystemMonitorMenuMetric>) {
+        schemaVersion = Self.currentSchemaVersion
         self.enabled = enabled
         self.mode = mode
         self.interval = interval
@@ -217,9 +290,11 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case enabled, mode, interval, items, metrics }
+    private enum CodingKeys: String, CodingKey { case schemaVersion, enabled, mode, interval, items, metrics }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        _ = try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        schemaVersion = Self.currentSchemaVersion
         enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
         mode = try values.decodeIfPresent(SystemMonitorMenuMode.self, forKey: .mode) ?? .grouped
         interval = try values.decodeIfPresent(TimeInterval.self, forKey: .interval) ?? 2
@@ -275,7 +350,7 @@ nonisolated enum SystemMonitorDelta {
 
 nonisolated enum SystemMonitorMenuSchedule {
     static func timerInterval(settings: SystemMonitorMenuSettings, detailed: Bool) -> TimeInterval? {
-        let intervals = settings.enabled ? settings.enabledItems.map { $0.interval.seconds(global: settings.interval) } : []
+        let intervals = settings.enabled ? settings.enabledItems.map { $0.effectiveInterval(global: settings.interval) } : []
         if detailed { return min(intervals.min() ?? 1, 1) }
         return intervals.min()
     }
@@ -284,7 +359,7 @@ nonisolated enum SystemMonitorMenuSchedule {
         guard settings.enabled else { return [] }
         return Set(settings.enabledItems.compactMap { item in
             guard let last = lastSampled[item.metric] else { return item.metric }
-            return now.timeIntervalSince(last) >= item.interval.seconds(global: settings.interval) ? item.metric : nil
+            return now.timeIntervalSince(last) >= item.effectiveInterval(global: settings.interval) ? item.metric : nil
         })
     }
 }
@@ -331,19 +406,42 @@ nonisolated enum SystemMonitorMenuRenderer {
                 return bytes(max(total - used, 0))
             }
         case .gpu: return sample?.gpuUsage.map(percent) ?? "Unavailable"
-        case .disk: return sample?.diskUsage.map(percent) ?? "Waiting"
+        case .disk:
+            switch item.diskUnit {
+            case .percentage: return sample?.diskUsage.map(percent) ?? "Waiting"
+            case .used: return sample?.diskUsed.map(bytes) ?? "Waiting"
+            case .available:
+                guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "Waiting" }
+                return bytes(max(total - used, 0))
+            }
         case .network:
-            let down = sample?.networkDownload.map(rate) ?? "Waiting"
-            let up = sample?.networkUpload.map(rate) ?? "Waiting"
+            let formatter = item.networkUnit == .bytes ? rate : bitRate
+            let down = sample?.networkDownload.map(formatter) ?? "Waiting"
+            let up = sample?.networkUpload.map(formatter) ?? "Waiting"
             switch item.networkDirection {
             case .both: return "↓\(down) ↑\(up)"
             case .download: return "↓\(down)"
             case .upload: return "↑\(up)"
             }
         case .battery:
-            guard let value = sample?.batteryPercent else { return "Unavailable" }
-            return sample?.batteryCharging == true ? "\(value)% ⚡" : "\(value)%"
-        case .thermal: return sample?.thermalState ?? "Waiting"
+            let percentage = sample?.batteryPercent.map { "\($0)%" }
+            let status = sample?.batteryCharging.map { $0 ? "Charging" : "On Battery" }
+            switch item.batteryDisplay {
+            case .percentage: return percentage ?? "Unavailable"
+            case .status: return status ?? "Unavailable"
+            case .both:
+                guard let percentage, let status else { return "Unavailable" }
+                return "\(percentage) · \(status)"
+            }
+        case .thermal:
+            guard let state = sample?.thermalState else { return "Waiting" }
+            guard item.thermalDisplay == .compact else { return state }
+            switch state {
+            case "Nominal": return "OK"
+            case "Fair": return "Warm"
+            case "Serious": return "Hot"
+            default: return state
+            }
         }
     }
     private static func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
@@ -352,6 +450,13 @@ nonisolated enum SystemMonitorMenuRenderer {
     }
     private static func rate(_ value: Double) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(max(value, 0)), countStyle: .file) + "/s"
+    }
+    private static func bitRate(_ byteRate: Double) -> String {
+        let bits = max(byteRate, 0) * 8
+        let scales: [(Double, String)] = [(1_000_000_000, "Gb/s"), (1_000_000, "Mb/s"), (1_000, "kb/s")]
+        guard let scale = scales.first(where: { bits >= $0.0 }) else { return "\(Int(bits.rounded())) b/s" }
+        let value = bits / scale.0
+        return value.formatted(.number.precision(.fractionLength(value < 10 ? 1 : 0))) + " " + scale.1
     }
 }
 
