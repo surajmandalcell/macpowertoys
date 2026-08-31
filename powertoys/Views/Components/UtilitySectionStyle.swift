@@ -424,31 +424,45 @@ private final class ThinScrollIndicatorView: NSView {
         configureScrollIndicators()
     }
 
+    override func layout() {
+        super.layout()
+        configureScrollIndicators()
+    }
+
     func configureScrollIndicators() {
+        if configureScrollIndicatorsNow() { return }
+
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            if let configuredScrollView, configuredScrollView.window != nil {
-                configuredScrollView.configureThinScrollIndicators()
-                return
-            }
-            if let scrollView = enclosingScrollView {
+            self?.configureScrollIndicatorsNow()
+        }
+    }
+
+    @discardableResult
+    private func configureScrollIndicatorsNow() -> Bool {
+        if let configuredScrollView, configuredScrollView.window != nil {
+            configuredScrollView.configureThinScrollIndicators()
+            return true
+        }
+        if let scrollView = enclosingScrollView {
+            configuredScrollView = scrollView
+            scrollView.configureThinScrollIndicators()
+            return true
+        }
+
+        guard window != nil, !bounds.isEmpty else { return false }
+
+        // SwiftUI hosts a background beside its scroll view, not inside it.
+        let targetPoint = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
+        var ancestor = superview
+        while let view = ancestor {
+            if let scrollView = view.firstDescendantScrollView(containing: targetPoint) {
                 configuredScrollView = scrollView
                 scrollView.configureThinScrollIndicators()
-                return
+                return true
             }
-
-            // SwiftUI hosts a background beside its scroll view, not inside it.
-            let targetPoint = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
-            var ancestor = superview
-            while let view = ancestor {
-                if let scrollView = view.firstDescendantScrollView(containing: targetPoint) {
-                    configuredScrollView = scrollView
-                    scrollView.configureThinScrollIndicators()
-                    return
-                }
-                ancestor = view.superview
-            }
+            ancestor = view.superview
         }
+        return false
     }
 }
 

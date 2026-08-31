@@ -88,7 +88,6 @@ final class ScrollIndicatorTests: XCTestCase {
         )
         window.contentView = hostingView
         hostingView.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
 
         let scrollViews = allScrollViews(in: hostingView)
             .sorted {
