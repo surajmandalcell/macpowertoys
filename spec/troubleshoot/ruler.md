@@ -28,7 +28,9 @@
   `NSWindow` with a different native titlebar style mask is not the same pattern.
   Ruler Settings also changed the ruler panel's floating state after it ordered
   itself frontmost. That late Ruler-only change could reorder the ruler above
-  Settings and block the native titlebar.
+  Settings and block the native titlebar. Interaction suspension also left the
+  borderless ruler pointer-active, so an overlapping ruler could take titlebar
+  drags and close-button clicks from Settings.
 - **Invariant:** Both fixed 420pt windows use active HUD material in the body
   and opaque native titlebars. Both XIBs instantiate plain `NSWindow` objects
   with the same titled, closable, and miniaturizable native titlebar style.
@@ -42,6 +44,7 @@
   controls update the intended ruler. Closing Settings leaves the ruler open.
   Suspend the target ruler before Settings makes itself key and frontmost. Do
   not mutate the ruler panel level after the final native window ordering.
+  Suspended rulers ignore mouse events until the utility window closes.
   The native color panel can remain a child of Settings.
 - **Check:** Compile all three XIBs. Run `RulerCoreTests` and the focused signed
   Ruler UI flow. Inspect light, dark, increased-contrast, reduced-transparency,
@@ -51,7 +54,8 @@
   Move Settings from the native titlebar, move the ruler, and confirm that the
   Settings window stays in place.
   The ordering regression must prove the target ruler is suspended before
-  Settings calls `makeKeyAndOrderFront`.
+  Settings calls `makeKeyAndOrderFront`. The interaction regression must prove
+  that every suspended ruler is click-through and that input returns on close.
   Close Settings and confirm that the ruler stays open.
 
 ## Ruler Border And Shadow Defaults
