@@ -214,6 +214,7 @@ protocol RulerSettingsControlsViewDelegate: AnyObject {
     func rulerSettingsControlsDidResetRulerColor(_ controlsView: RulerSettingsControlsView)
     func rulerSettingsControlsDidChangeForegroundOpacity(_ controlsView: RulerSettingsControlsView)
     func rulerSettingsControlsDidChangeBackgroundOpacity(_ controlsView: RulerSettingsControlsView)
+    func rulerSettingsControlsDidChangeBorderOpacity(_ controlsView: RulerSettingsControlsView)
     func rulerSettingsControlsDidChangeFloatRulers(_ controlsView: RulerSettingsControlsView)
     func rulerSettingsControlsDidChangeRulerShadow(_ controlsView: RulerSettingsControlsView)
 }
@@ -236,8 +237,11 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
     @IBOutlet weak var foregroundOpacitySlider: NSSlider!
     @IBOutlet weak var backgroundOpacityTitleLabel: NSTextField!
     @IBOutlet weak var backgroundOpacitySlider: NSSlider!
+    @IBOutlet weak var borderOpacityTitleLabel: NSTextField!
+    @IBOutlet weak var borderOpacitySlider: NSSlider!
     @IBOutlet weak var foregroundOpacityLabel: NSTextField!
     @IBOutlet weak var backgroundOpacityLabel: NSTextField!
+    @IBOutlet weak var borderOpacityLabel: NSTextField!
     @IBOutlet weak var floatRulersCheckbox: NSButton!
     @IBOutlet weak var rulerShadowCheckbox: NSButton!
 
@@ -290,8 +294,10 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
             resetButtonIdentifier: "reset-ruler-color-button",
             foregroundSliderIdentifier: "ruler-foreground-opacity-slider",
             backgroundSliderIdentifier: "ruler-background-opacity-slider",
+            borderSliderIdentifier: "ruler-border-opacity-slider",
             foregroundLabelIdentifier: "ruler-foreground-opacity-label",
             backgroundLabelIdentifier: "ruler-background-opacity-label",
+            borderLabelIdentifier: "ruler-border-opacity-label",
             floatCheckboxIdentifier: "float-rulers-checkbox",
             shadowCheckboxIdentifier: "ruler-shadow-checkbox"
         )
@@ -308,8 +314,10 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
             resetButtonIdentifier: "reset-ruler-settings-color-button",
             foregroundSliderIdentifier: "ruler-settings-foreground-opacity-slider",
             backgroundSliderIdentifier: "ruler-settings-background-opacity-slider",
+            borderSliderIdentifier: "ruler-settings-border-opacity-slider",
             foregroundLabelIdentifier: "ruler-settings-foreground-opacity-label",
             backgroundLabelIdentifier: "ruler-settings-background-opacity-label",
+            borderLabelIdentifier: "ruler-settings-border-opacity-label",
             floatCheckboxIdentifier: "ruler-settings-float-rulers-checkbox",
             shadowCheckboxIdentifier: "ruler-settings-ruler-shadow-checkbox"
         )
@@ -324,6 +332,7 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         rulerColor: NSColor,
         foregroundOpacity: Int,
         backgroundOpacity: Int,
+        borderOpacity: Int = Prefs.defaultBorderOpacity,
         floatRulers: Bool,
         rulerShadow: Bool,
         isEnabled: Bool = true
@@ -355,6 +364,10 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         backgroundOpacitySlider.integerValue = backgroundOpacity
         backgroundOpacitySlider.isEnabled = isEnabled
         backgroundOpacityLabel.stringValue = "\(backgroundOpacity)%"
+
+        borderOpacitySlider.integerValue = borderOpacity
+        borderOpacitySlider.isEnabled = isEnabled
+        borderOpacityLabel.stringValue = "\(borderOpacity)%"
 
         floatRulersCheckbox.state = floatRulers ? .on : .off
         floatRulersCheckbox.isEnabled = isEnabled
@@ -476,6 +489,15 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         backgroundOpacitySlider.target = self
         backgroundOpacitySlider.action = #selector(setBackgroundOpacity(_:))
 
+        borderOpacitySlider.minValue = 0
+        borderOpacitySlider.maxValue = 100
+        borderOpacitySlider.numberOfTickMarks = 21
+        borderOpacitySlider.allowsTickMarkValuesOnly = true
+        borderOpacitySlider.tickMarkPosition = .below
+        borderOpacitySlider.isContinuous = true
+        borderOpacitySlider.target = self
+        borderOpacitySlider.action = #selector(setBorderOpacity(_:))
+
         floatRulersCheckbox.target = self
         floatRulersCheckbox.action = #selector(setFloatRulers(_:))
 
@@ -488,6 +510,7 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         rulerColorWell.setAccessibilityTitleUIElement(rulerColorLabel)
         foregroundOpacitySlider.setAccessibilityTitleUIElement(foregroundOpacityTitleLabel)
         backgroundOpacitySlider.setAccessibilityTitleUIElement(backgroundOpacityTitleLabel)
+        borderOpacitySlider.setAccessibilityTitleUIElement(borderOpacityTitleLabel)
 
         configureKeyViewLoop()
     }
@@ -500,8 +523,10 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         resetButtonIdentifier: String,
         foregroundSliderIdentifier: String,
         backgroundSliderIdentifier: String,
+        borderSliderIdentifier: String,
         foregroundLabelIdentifier: String,
         backgroundLabelIdentifier: String,
+        borderLabelIdentifier: String,
         floatCheckboxIdentifier: String,
         shadowCheckboxIdentifier: String
     ) {
@@ -526,6 +551,11 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         backgroundOpacityLabel.identifier = NSUserInterfaceItemIdentifier(backgroundLabelIdentifier)
         backgroundOpacityLabel.setAccessibilityIdentifier(backgroundLabelIdentifier)
 
+        borderOpacitySlider.identifier = NSUserInterfaceItemIdentifier(borderSliderIdentifier)
+        borderOpacitySlider.setAccessibilityIdentifier(borderSliderIdentifier)
+        borderOpacityLabel.identifier = NSUserInterfaceItemIdentifier(borderLabelIdentifier)
+        borderOpacityLabel.setAccessibilityIdentifier(borderLabelIdentifier)
+
         floatRulersCheckbox.identifier = NSUserInterfaceItemIdentifier(floatCheckboxIdentifier)
         floatRulersCheckbox.setAccessibilityIdentifier(floatCheckboxIdentifier)
         rulerShadowCheckbox.identifier = NSUserInterfaceItemIdentifier(shadowCheckboxIdentifier)
@@ -548,7 +578,8 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
             : resetRulerColorButton
         resetRulerColorButton.nextKeyView = foregroundOpacitySlider
         foregroundOpacitySlider.nextKeyView = backgroundOpacitySlider
-        backgroundOpacitySlider.nextKeyView = floatRulersCheckbox
+        backgroundOpacitySlider.nextKeyView = borderOpacitySlider
+        borderOpacitySlider.nextKeyView = floatRulersCheckbox
         floatRulersCheckbox.nextKeyView = rulerShadowCheckbox
         rulerShadowCheckbox.nextKeyView = unitSegmentedControl
     }
@@ -617,6 +648,10 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         delegate?.rulerSettingsControlsDidChangeBackgroundOpacity(self)
     }
 
+    @objc private func setBorderOpacity(_ sender: Any) {
+        delegate?.rulerSettingsControlsDidChangeBorderOpacity(self)
+    }
+
     @objc private func setFloatRulers(_ sender: Any) {
         delegate?.rulerSettingsControlsDidChangeFloatRulers(self)
     }
@@ -654,12 +689,20 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         return settingsControlsView.backgroundOpacitySlider
     }
 
+    var borderOpacitySlider: NSSlider {
+        return settingsControlsView.borderOpacitySlider
+    }
+
     var foregroundOpacityLabel: NSTextField {
         return settingsControlsView.foregroundOpacityLabel
     }
 
     var backgroundOpacityLabel: NSTextField {
         return settingsControlsView.backgroundOpacityLabel
+    }
+
+    var borderOpacityLabel: NSTextField {
+        return settingsControlsView.borderOpacityLabel
     }
 
     var rulerColorWell: RulerColorWell {
@@ -746,6 +789,9 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
             prefs.observe(\Prefs.backgroundOpacity, options: .new) { prefs, changed in
                 self.updateBackgroundSlider()
             },
+            prefs.observe(\Prefs.borderOpacity, options: .new) { prefs, changed in
+                self.updateBorderSlider()
+            },
             prefs.observe(\Prefs.floatRulers, options: .new) { prefs, changed in
                 self.updateFloatRulersCheckbox()
             },
@@ -776,6 +822,9 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
     @IBAction func setBackgroundOpacity(_ sender: Any) {
         prefs.backgroundOpacity = backgroundOpacitySlider.integerValue
     }
+    @IBAction func setBorderOpacity(_ sender: Any) {
+        prefs.borderOpacity = borderOpacitySlider.integerValue
+    }
     @IBAction func setFloatRulers(_ sender: Any) {
         prefs.floatRulers = floatRulersCheckbox.state == .on
     }
@@ -802,6 +851,7 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
             rulerColor: prefs.rulerColor,
             foregroundOpacity: prefs.foregroundOpacity,
             backgroundOpacity: prefs.backgroundOpacity,
+            borderOpacity: prefs.borderOpacity,
             floatRulers: prefs.floatRulers,
             rulerShadow: prefs.rulerShadow
         )
@@ -830,6 +880,11 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
     func updateBackgroundSlider() {
         backgroundOpacitySlider.integerValue = prefs.backgroundOpacity
         backgroundOpacityLabel.stringValue = "\(prefs.backgroundOpacity)%"
+    }
+
+    func updateBorderSlider() {
+        borderOpacitySlider.integerValue = prefs.borderOpacity
+        borderOpacityLabel.stringValue = "\(prefs.borderOpacity)%"
     }
 
     func updateRulerColorWell() {
@@ -890,6 +945,10 @@ extension PreferencesController: RulerSettingsControlsViewDelegate {
 
     func rulerSettingsControlsDidChangeBackgroundOpacity(_ controlsView: RulerSettingsControlsView) {
         setBackgroundOpacity(controlsView.backgroundOpacitySlider as Any)
+    }
+
+    func rulerSettingsControlsDidChangeBorderOpacity(_ controlsView: RulerSettingsControlsView) {
+        setBorderOpacity(controlsView.borderOpacitySlider as Any)
     }
 
     func rulerSettingsControlsDidChangeFloatRulers(_ controlsView: RulerSettingsControlsView) {
@@ -956,12 +1015,20 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         return settingsControlsView.backgroundOpacitySlider
     }
 
+    var borderOpacitySlider: NSSlider {
+        return settingsControlsView.borderOpacitySlider
+    }
+
     var foregroundOpacityLabel: NSTextField {
         return settingsControlsView.foregroundOpacityLabel
     }
 
     var backgroundOpacityLabel: NSTextField {
         return settingsControlsView.backgroundOpacityLabel
+    }
+
+    var borderOpacityLabel: NSTextField {
+        return settingsControlsView.borderOpacityLabel
     }
 
     var floatRulersCheckbox: NSButton {
@@ -1046,36 +1113,7 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
 
     func show(attachedTo controller: RulerController, sender: Any?) {
         updateRulerController(controller)
-        guard let settingsWindow = window else { return }
-
-        configureOpaqueColorPicking()
-
-        if settingsWindow.parent === controller.rulerWindow {
-            position(settingsWindow, attachedTo: controller)
-            settingsWindow.orderFront(sender)
-            settingsWindow.makeKey()
-            settingsWindow.makeFirstResponder(unitSegmentedControl)
-            updateRulerInteractionSuspension()
-            return
-        }
-
-        detachWindowIfNeeded()
-
-        guard controller.rulerWindow.isVisible else {
-            showWindow(sender)
-            return
-        }
-
-        if settingsWindow.isVisible {
-            settingsWindow.orderOut(sender)
-        }
-
-        position(settingsWindow, attachedTo: controller)
-        controller.rulerWindow.addChildWindow(settingsWindow, ordered: .above)
-        settingsWindow.orderFront(sender)
-        settingsWindow.makeKey()
-        settingsWindow.makeFirstResponder(unitSegmentedControl)
-        updateRulerInteractionSuspension()
+        showWindow(sender)
     }
 
     override func close() {
@@ -1131,6 +1169,13 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
             settings.backgroundOpacity = backgroundOpacitySlider.integerValue
         }
         rulerController?.opacity = backgroundOpacitySlider.integerValue
+        updateView()
+    }
+
+    @objc func setBorderOpacity(_ sender: Any) {
+        applySettings { settings in
+            settings.borderOpacity = borderOpacitySlider.integerValue
+        }
         updateView()
     }
 
@@ -1191,6 +1236,7 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
             rulerColor: currentSettings?.rulerColor ?? Prefs.defaultRulerFillColor,
             foregroundOpacity: currentSettings?.foregroundOpacity ?? Prefs.defaultForegroundOpacity,
             backgroundOpacity: currentSettings?.backgroundOpacity ?? Prefs.defaultBackgroundOpacity,
+            borderOpacity: currentSettings?.borderOpacity ?? Prefs.defaultBorderOpacity,
             floatRulers: currentSettings?.floatRulers ?? Prefs.defaultFloatRulers,
             rulerShadow: currentSettings?.rulerShadow ?? Prefs.defaultRulerShadow,
             isEnabled: hasRuler
@@ -1200,7 +1246,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         setDefaultsButton.nextKeyView = unitSegmentedControl
         resetDefaultsButton.isEnabled = hasRuler
         setDefaultsButton.isEnabled = hasRuler
-        repositionAttachedWindowsIfNeeded()
     }
 
     func performSettingsKeyEquivalent(with event: NSEvent) -> Bool {
@@ -1306,20 +1351,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         updateView()
     }
 
-    private func repositionAttachedWindowsIfNeeded() {
-        guard let controller = rulerController,
-              let settingsWindow = window,
-              settingsWindow.isVisible,
-              settingsWindow.parent === controller.rulerWindow else { return }
-
-        position(settingsWindow, attachedTo: controller)
-
-        let colorPanel = NSColorPanel.shared
-        if colorPanel.parent === settingsWindow {
-            position(colorPanel, attachedTo: settingsWindow)
-        }
-    }
-
     private func updateRulerInteractionSuspension() {
         guard window?.isVisible == true,
               let controller = rulerController else {
@@ -1360,34 +1391,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
               activeRulerColorWell === rulerColorWell else { return }
 
         applyRulerColor(colorPanel.color)
-    }
-
-    private func position(_ settingsWindow: NSWindow, attachedTo controller: RulerController) {
-        let settingsSize = settingsWindow.frame.size
-        let frame = settingsFrame(
-            size: settingsSize,
-            zeroPoint: controller.rulerWindow.zeroPoint(),
-            zeroCorner: controller.state.settings.zeroCorner
-        )
-
-        settingsWindow.setFrame(frame, display: true)
-    }
-
-    private func settingsFrame(size: NSSize, zeroPoint: NSPoint, zeroCorner: ZeroCorner) -> NSRect {
-        let origin: NSPoint
-
-        switch zeroCorner {
-        case .topLeft:
-            origin = NSPoint(x: zeroPoint.x, y: zeroPoint.y - size.height)
-        case .topRight:
-            origin = NSPoint(x: zeroPoint.x - size.width, y: zeroPoint.y - size.height)
-        case .bottomLeft:
-            origin = zeroPoint
-        case .bottomRight:
-            origin = NSPoint(x: zeroPoint.x - size.width, y: zeroPoint.y)
-        }
-
-        return NSRect(origin: origin, size: size)
     }
 
     private func clamp(_ value: CGFloat, lower: CGFloat, upper: CGFloat) -> CGFloat {
@@ -1439,6 +1442,10 @@ extension RulerSettingsController: RulerSettingsControlsViewDelegate {
 
     func rulerSettingsControlsDidChangeBackgroundOpacity(_ controlsView: RulerSettingsControlsView) {
         setBackgroundOpacity(controlsView.backgroundOpacitySlider as Any)
+    }
+
+    func rulerSettingsControlsDidChangeBorderOpacity(_ controlsView: RulerSettingsControlsView) {
+        setBorderOpacity(controlsView.borderOpacitySlider as Any)
     }
 
     func rulerSettingsControlsDidChangeFloatRulers(_ controlsView: RulerSettingsControlsView) {

@@ -222,6 +222,7 @@ extension AppDelegate {
             "rulerShadow",
             "foregroundOpacity",
             "backgroundOpacity",
+            "borderOpacity",
             "rulerColor",
             "unit",
             "zeroCorner",
@@ -236,6 +237,7 @@ extension AppDelegate {
         prefs.rulerShadow = false
         prefs.foregroundOpacity = 90
         prefs.backgroundOpacity = 50
+        prefs.borderOpacity = Prefs.defaultBorderOpacity
         prefs.rulerColor = Prefs.defaultRulerFillColor
         prefs.unit = .pixels
         prefs.zeroCorner = Prefs.defaultZeroCorner
