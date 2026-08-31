@@ -1,43 +1,232 @@
 import AppKit
 import Darwin
 import Foundation
+import IOKit
 import IOKit.ps
 
 nonisolated enum SystemMonitorMenuMode: String, Codable, CaseIterable, Identifiable {
-    case grouped
-    case direct
-
+    case grouped, direct
     var id: String { rawValue }
     var title: String { self == .grouped ? "Grouped" : "Individual" }
 }
 
 nonisolated enum SystemMonitorMenuMetric: String, Codable, CaseIterable, Identifiable, Hashable {
-    case cpu
-    case memory
-    case network
-
+    case cpu, memory, gpu, disk, network, battery, thermal
     var id: String { rawValue }
     var title: String {
         switch self {
         case .cpu: "CPU"
         case .memory: "Memory"
+        case .gpu: "GPU"
+        case .disk: "Disk"
         case .network: "Network"
+        case .battery: "Battery"
+        case .thermal: "Thermal"
         }
     }
-    var symbol: String {
+    var symbol: String { symbols[0] }
+    var symbols: [String] {
         switch self {
-        case .cpu: "cpu"
-        case .memory: "memorychip"
-        case .network: "arrow.up.arrow.down"
+        case .cpu: ["cpu", "gauge.with.dots.needle.50percent", "waveform.path.ecg"]
+        case .memory: ["memorychip", "square.stack.3d.up", "chart.bar.fill"]
+        case .gpu: ["display", "rectangle.3.group", "sparkles.rectangle.stack"]
+        case .disk: ["internaldrive", "externaldrive", "chart.pie.fill"]
+        case .network: ["arrow.up.arrow.down", "network", "antenna.radiowaves.left.and.right"]
+        case .battery: ["battery.75percent", "bolt.fill", "battery.100percent"]
+        case .thermal: ["thermometer.medium", "thermometer.high", "flame.fill"]
+        }
+    }
+    var defaultInterval: SystemMonitorMenuInterval {
+        switch self {
+        case .gpu, .disk, .battery, .thermal: .seconds30
+        case .cpu, .memory, .network: .global
         }
     }
 }
 
+nonisolated enum SystemMonitorMenuItemStyle: String, Codable, CaseIterable, Identifiable {
+    case iconAndValue, iconOnly, valueOnly
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .iconAndValue: "Icon and Value"
+        case .iconOnly: "Icon Only"
+        case .valueOnly: "Value Only"
+        }
+    }
+}
+
+nonisolated enum SystemMonitorMenuInterval: String, Codable, CaseIterable, Identifiable {
+    case global, seconds1, seconds2, seconds3, seconds5, seconds10, seconds30, seconds60
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .global: "Global"
+        case .seconds1: "1 second"
+        case .seconds2: "2 seconds"
+        case .seconds3: "3 seconds"
+        case .seconds5: "5 seconds"
+        case .seconds10: "10 seconds"
+        case .seconds30: "30 seconds"
+        case .seconds60: "60 seconds"
+        }
+    }
+    func seconds(global: TimeInterval) -> TimeInterval {
+        switch self {
+        case .global: Self.allowedSeconds.contains(global) ? global : 2
+        case .seconds1: 1
+        case .seconds2: 2
+        case .seconds3: 3
+        case .seconds5: 5
+        case .seconds10: 10
+        case .seconds30: 30
+        case .seconds60: 60
+        }
+    }
+    static let allowedSeconds: [TimeInterval] = [1, 2, 3, 5, 10, 30, 60]
+}
+
+nonisolated enum SystemMonitorMemoryUnit: String, Codable, CaseIterable, Identifiable {
+    case percentage, used, available
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .percentage: "Percentage"
+        case .used: "Used"
+        case .available: "Available"
+        }
+    }
+}
+
+nonisolated enum SystemMonitorNetworkDirection: String, Codable, CaseIterable, Identifiable {
+    case both, download, upload
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .both: "Download and Upload"
+        case .download: "Download"
+        case .upload: "Upload"
+        }
+    }
+}
+
+nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Identifiable {
+    var metric: SystemMonitorMenuMetric
+    var enabled: Bool
+    var style: SystemMonitorMenuItemStyle
+    var symbol: String
+    var interval: SystemMonitorMenuInterval
+    var memoryUnit: SystemMonitorMemoryUnit
+    var networkDirection: SystemMonitorNetworkDirection
+    var id: SystemMonitorMenuMetric { metric }
+
+    init(
+        metric: SystemMonitorMenuMetric,
+        enabled: Bool = false,
+        style: SystemMonitorMenuItemStyle = .iconAndValue,
+        symbol: String? = nil,
+        interval: SystemMonitorMenuInterval? = nil,
+        memoryUnit: SystemMonitorMemoryUnit = .percentage,
+        networkDirection: SystemMonitorNetworkDirection = .both
+    ) {
+        self.metric = metric
+        self.enabled = enabled
+        self.style = style
+        self.symbol = symbol ?? metric.symbol
+        self.interval = interval ?? metric.defaultInterval
+        self.memoryUnit = memoryUnit
+        self.networkDirection = networkDirection
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case metric, enabled, style, symbol, interval, memoryUnit, networkDirection
+    }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        metric = try values.decode(SystemMonitorMenuMetric.self, forKey: .metric)
+        enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        style = try values.decodeIfPresent(SystemMonitorMenuItemStyle.self, forKey: .style) ?? .iconAndValue
+        symbol = try values.decodeIfPresent(String.self, forKey: .symbol) ?? metric.symbol
+        interval = try values.decodeIfPresent(SystemMonitorMenuInterval.self, forKey: .interval) ?? metric.defaultInterval
+        memoryUnit = try values.decodeIfPresent(SystemMonitorMemoryUnit.self, forKey: .memoryUnit) ?? .percentage
+        networkDirection = try values.decodeIfPresent(SystemMonitorNetworkDirection.self, forKey: .networkDirection) ?? .both
+    }
+}
+
 nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
-    var enabled = false
-    var mode = SystemMonitorMenuMode.grouped
-    var interval = 2.0
-    var metrics: Set<SystemMonitorMenuMetric> = [.cpu, .memory]
+    var enabled: Bool
+    var mode: SystemMonitorMenuMode
+    var interval: TimeInterval
+    var items: [SystemMonitorMenuItemConfiguration]
+
+    init(enabled: Bool = false, mode: SystemMonitorMenuMode = .grouped, interval: TimeInterval = 2,
+         items: [SystemMonitorMenuItemConfiguration] = Self.defaultItems) {
+        self.enabled = enabled
+        self.mode = mode
+        self.interval = interval
+        self.items = items
+        normalize()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(enabled, forKey: .enabled)
+        try values.encode(mode, forKey: .mode)
+        try values.encode(interval, forKey: .interval)
+        try values.encode(items, forKey: .items)
+    }
+
+    init(enabled: Bool, mode: SystemMonitorMenuMode, interval: TimeInterval,
+         metrics: Set<SystemMonitorMenuMetric>) {
+        self.enabled = enabled
+        self.mode = mode
+        self.interval = interval
+        items = Self.migratedItems(from: metrics)
+        normalize()
+    }
+
+    var enabledItems: [SystemMonitorMenuItemConfiguration] { items.filter(\.enabled) }
+
+    mutating func normalize() {
+        interval = SystemMonitorMenuInterval.allowedSeconds.contains(interval) ? interval : 2
+        var seen = Set<SystemMonitorMenuMetric>()
+        items = items.filter { seen.insert($0.metric).inserted }
+        for metric in SystemMonitorMenuMetric.allCases where !seen.contains(metric) {
+            items.append(SystemMonitorMenuItemConfiguration(metric: metric))
+        }
+        for index in items.indices where !items[index].metric.symbols.contains(items[index].symbol) {
+            items[index].symbol = items[index].metric.symbol
+        }
+        if !items.contains(where: \.enabled), let index = items.firstIndex(where: { $0.metric == .cpu }) {
+            items[index].enabled = true
+        }
+    }
+
+    static let defaultItems = SystemMonitorMenuMetric.allCases.map {
+        SystemMonitorMenuItemConfiguration(metric: $0, enabled: $0 == .cpu || $0 == .memory)
+    }
+
+    private static func migratedItems(from metrics: Set<SystemMonitorMenuMetric>) -> [SystemMonitorMenuItemConfiguration] {
+        SystemMonitorMenuMetric.allCases.map {
+            SystemMonitorMenuItemConfiguration(metric: $0, enabled: metrics.contains($0),
+                                               interval: metrics.contains($0) ? .global : nil)
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case enabled, mode, interval, items, metrics }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        mode = try values.decodeIfPresent(SystemMonitorMenuMode.self, forKey: .mode) ?? .grouped
+        interval = try values.decodeIfPresent(TimeInterval.self, forKey: .interval) ?? 2
+        if let decoded = try values.decodeIfPresent([SystemMonitorMenuItemConfiguration].self, forKey: .items) {
+            items = decoded
+        } else {
+            items = Self.migratedItems(from: try values.decodeIfPresent(Set<SystemMonitorMenuMetric>.self, forKey: .metrics)
+                                       ?? [.cpu, .memory])
+        }
+        normalize()
+    }
 }
 
 nonisolated struct SystemMonitorSample: Identifiable, Sendable {
@@ -46,6 +235,7 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let cpuUsage: Double?
     let memoryUsed: Int64?
     let memoryTotal: Int64?
+    let gpuUsage: Double?
     let networkDownload: Double?
     let networkUpload: Double?
     let diskUsed: Int64?
@@ -59,7 +249,6 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
         guard let memoryUsed, let memoryTotal, memoryTotal > 0 else { return nil }
         return Double(memoryUsed) / Double(memoryTotal) * 100
     }
-
     var diskUsage: Double? {
         guard let diskUsed, let diskTotal, diskTotal > 0 else { return nil }
         return Double(diskUsed) / Double(diskTotal) * 100
@@ -74,24 +263,127 @@ nonisolated enum SystemMonitorDelta {
         let idle = current.idle - previous.idle
         return min(max(Double(total - min(idle, total)) / Double(total) * 100, 0), 100)
     }
-
     static func rate(previous: UInt64, current: UInt64, seconds: TimeInterval) -> Double? {
         guard seconds > 0, current >= previous else { return nil }
         return Double(current - previous) / seconds
     }
 }
 
-nonisolated private struct SystemMonitorRawSample {
-    let timestamp: Date
-    let cpu: (total: UInt64, idle: UInt64)?
-    let network: (received: UInt64, sent: UInt64)?
+nonisolated enum SystemMonitorMenuSchedule {
+    static func timerInterval(settings: SystemMonitorMenuSettings, detailed: Bool) -> TimeInterval? {
+        let intervals = settings.enabled ? settings.enabledItems.map { $0.interval.seconds(global: settings.interval) } : []
+        if detailed { return min(intervals.min() ?? 1, 1) }
+        return intervals.min()
+    }
+    static func dueMetrics(settings: SystemMonitorMenuSettings,
+                           lastSampled: [SystemMonitorMenuMetric: Date], now: Date) -> Set<SystemMonitorMenuMetric> {
+        guard settings.enabled else { return [] }
+        return Set(settings.enabledItems.compactMap { item in
+            guard let last = lastSampled[item.metric] else { return item.metric }
+            return now.timeIntervalSince(last) >= item.interval.seconds(global: settings.interval) ? item.metric : nil
+        })
+    }
+}
+
+nonisolated struct SystemMonitorRenderedItem: Equatable {
+    let metric: SystemMonitorMenuMetric
+    let style: SystemMonitorMenuItemStyle
+    let symbol: String
+    let value: String
+}
+
+nonisolated enum SystemMonitorMenuRenderer {
+    static func render(item: SystemMonitorMenuItemConfiguration, sample: SystemMonitorSample?) -> SystemMonitorRenderedItem {
+        SystemMonitorRenderedItem(metric: item.metric, style: item.style,
+                                  symbol: item.metric.symbols.contains(item.symbol) ? item.symbol : item.metric.symbol,
+                                  value: value(item: item, sample: sample))
+    }
+    private static func value(item: SystemMonitorMenuItemConfiguration, sample: SystemMonitorSample?) -> String {
+        switch item.metric {
+        case .cpu: return sample?.cpuUsage.map(percent) ?? "Waiting"
+        case .memory:
+            switch item.memoryUnit {
+            case .percentage: return sample?.memoryUsage.map(percent) ?? "Waiting"
+            case .used: return sample?.memoryUsed.map(bytes) ?? "Waiting"
+            case .available:
+                guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "Waiting" }
+                return bytes(max(total - used, 0))
+            }
+        case .gpu: return sample?.gpuUsage.map(percent) ?? "Unavailable"
+        case .disk: return sample?.diskUsage.map(percent) ?? "Waiting"
+        case .network:
+            let down = sample?.networkDownload.map(rate) ?? "Waiting"
+            let up = sample?.networkUpload.map(rate) ?? "Waiting"
+            switch item.networkDirection {
+            case .both: return "↓\(down) ↑\(up)"
+            case .download: return "↓\(down)"
+            case .upload: return "↑\(up)"
+            }
+        case .battery:
+            guard let value = sample?.batteryPercent else { return "Unavailable" }
+            return sample?.batteryCharging == true ? "\(value)% ⚡" : "\(value)%"
+        case .thermal: return sample?.thermalState ?? "Waiting"
+        }
+    }
+    private static func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
+    private static func bytes(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: max(value, 0), countStyle: .memory)
+    }
+    private static func rate(_ value: Double) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(max(value, 0)), countStyle: .file) + "/s"
+    }
+}
+
+nonisolated struct SystemMonitorRenderedStateCache {
+    private var states: [String: [SystemMonitorRenderedItem]] = [:]
+    mutating func shouldApply(_ state: [SystemMonitorRenderedItem], for key: String) -> Bool {
+        guard states[key] != state else { return false }
+        states[key] = state
+        return true
+    }
+    mutating func removeAll() { states.removeAll() }
+}
+
+nonisolated private final class SystemMonitorDueTracker: @unchecked Sendable {
+    private var lastSampled: [SystemMonitorMenuMetric: Date] = [:]
+    func dueMetrics(settings: SystemMonitorMenuSettings, now: Date) -> Set<SystemMonitorMenuMetric> {
+        let due = SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: lastSampled, now: now)
+        for metric in due { lastSampled[metric] = now }
+        return due
+    }
+}
+
+nonisolated private final class SystemMonitorGPUReader: @unchecked Sendable {
+    private var service: io_service_t = 0
+    deinit { if service != 0 { IOObjectRelease(service) } }
+
+    func usage() -> Double? {
+        if service == 0 {
+            service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOAccelerator"))
+        }
+        guard service != 0 else { return nil }
+        guard let values = IORegistryEntryCreateCFProperty(
+            service, "PerformanceStatistics" as CFString, kCFAllocatorDefault, 0
+        )?.takeRetainedValue() as? [String: Any] else {
+            IOObjectRelease(service)
+            service = 0
+            return nil
+        }
+        let keys = ["Device Utilization %", "GPU Core Utilization", "GPU Activity(%)", "GPU Busy"]
+        guard let number = keys.compactMap({ values[$0] as? NSNumber }).first else { return nil }
+        let raw = number.doubleValue
+        return min(max(raw <= 1 ? raw * 100 : raw, 0), 100)
+    }
 }
 
 nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
-    private var previous: SystemMonitorRawSample?
+    private var previousCPU: (timestamp: Date, total: UInt64, idle: UInt64)?
+    private var previousNetwork: (timestamp: Date, received: UInt64, sent: UInt64)?
+    private let gpuReader = SystemMonitorGPUReader()
 
     func reset() {
-        previous = nil
+        previousCPU = nil
+        previousNetwork = nil
     }
 
     func sample(detailed: Bool, metrics: Set<SystemMonitorMenuMetric>) -> SystemMonitorSample {
@@ -99,24 +391,29 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         let needsCPU = detailed || metrics.contains(.cpu)
         let needsMemory = detailed || metrics.contains(.memory)
         let needsNetwork = detailed || metrics.contains(.network)
-        let cpu = needsCPU ? Self.cpuCounters() : nil
-        let network = needsNetwork ? Self.networkCounters() : nil
-        let raw = SystemMonitorRawSample(timestamp: now, cpu: cpu, network: network)
-        let elapsed = previous.map { now.timeIntervalSince($0.timestamp) } ?? 0
-        let cpuUsage = previous?.cpu.flatMap { prior in
-            cpu.flatMap { SystemMonitorDelta.cpuUsage(previous: prior, current: $0) }
+
+        var cpuUsage: Double?
+        if needsCPU, let current = Self.cpuCounters() {
+            if let previousCPU {
+                cpuUsage = SystemMonitorDelta.cpuUsage(previous: (previousCPU.total, previousCPU.idle), current: current)
+            }
+            previousCPU = (now, current.total, current.idle)
         }
-        let download = previous?.network.flatMap { prior in
-            network.flatMap { SystemMonitorDelta.rate(previous: prior.received, current: $0.received, seconds: elapsed) }
+
+        var download: Double?
+        var upload: Double?
+        if needsNetwork, let current = Self.networkCounters() {
+            if let previousNetwork {
+                let elapsed = now.timeIntervalSince(previousNetwork.timestamp)
+                download = SystemMonitorDelta.rate(previous: previousNetwork.received, current: current.received, seconds: elapsed)
+                upload = SystemMonitorDelta.rate(previous: previousNetwork.sent, current: current.sent, seconds: elapsed)
+            }
+            previousNetwork = (now, current.received, current.sent)
         }
-        let upload = previous?.network.flatMap { prior in
-            network.flatMap { SystemMonitorDelta.rate(previous: prior.sent, current: $0.sent, seconds: elapsed) }
-        }
-        previous = raw
 
         let memory = needsMemory ? Self.memoryUsage() : nil
-        let disk = detailed ? Self.diskUsage() : nil
-        let battery = detailed ? Self.battery() : nil
+        let disk = detailed || metrics.contains(.disk) ? Self.diskUsage() : nil
+        let battery = detailed || metrics.contains(.battery) ? Self.battery() : nil
         var loads = [Double](repeating: 0, count: 3)
         let loadCount = detailed ? getloadavg(&loads, 3) : 0
 
@@ -125,22 +422,21 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
             cpuUsage: cpuUsage,
             memoryUsed: memory?.used,
             memoryTotal: memory?.total,
+            gpuUsage: detailed || metrics.contains(.gpu) ? gpuReader.usage() : nil,
             networkDownload: download,
             networkUpload: upload,
             diskUsed: disk?.used,
             diskTotal: disk?.total,
             batteryPercent: battery?.percent,
             batteryCharging: battery?.charging,
-            thermalState: detailed ? Self.thermalState() : nil,
+            thermalState: detailed || metrics.contains(.thermal) ? Self.thermalState() : nil,
             loadAverage: loadCount == 3 ? (loads[0], loads[1], loads[2]) : nil
         )
     }
 
     private static func cpuCounters() -> (total: UInt64, idle: UInt64)? {
         var info = host_cpu_load_info_data_t()
-        var count = mach_msg_type_number_t(
-            MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size
-        )
+        var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &info) { pointer in
             pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
                 host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, $0, &count)
@@ -149,15 +445,12 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         guard result == KERN_SUCCESS else { return nil }
         let ticks = withUnsafeBytes(of: info.cpu_ticks) { Array($0.bindMemory(to: UInt32.self)) }
         guard ticks.count > Int(CPU_STATE_IDLE) else { return nil }
-        let total = ticks.reduce(UInt64(0)) { $0 + UInt64($1) }
-        return (total, UInt64(ticks[Int(CPU_STATE_IDLE)]))
+        return (ticks.reduce(UInt64(0)) { $0 + UInt64($1) }, UInt64(ticks[Int(CPU_STATE_IDLE)]))
     }
 
     private static func memoryUsage() -> (used: Int64, total: Int64)? {
         var info = vm_statistics64_data_t()
-        var count = mach_msg_type_number_t(
-            MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size
-        )
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &info) { pointer in
             pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
                 host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
@@ -166,10 +459,10 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         guard result == KERN_SUCCESS else { return nil }
         var pageSize: vm_size_t = 0
         guard host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS else { return nil }
-        let usedPages = UInt64(info.active_count) + UInt64(info.inactive_count)
+        let pages = UInt64(info.active_count) + UInt64(info.inactive_count)
             + UInt64(info.wire_count) + UInt64(info.compressor_page_count)
         let total = min(ProcessInfo.processInfo.physicalMemory, UInt64(Int64.max))
-        return (Int64(min(usedPages * UInt64(pageSize), total)), Int64(total))
+        return (Int64(min(pages * UInt64(pageSize), total)), Int64(total))
     }
 
     private static func networkCounters() -> (received: UInt64, sent: UInt64)? {
@@ -193,26 +486,20 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
     }
 
     private static func diskUsage() -> (used: Int64, total: Int64)? {
-        let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [
-            .volumeTotalCapacityKey,
-            .volumeAvailableCapacityKey
-        ])
-        guard let totalValue = values?.volumeTotalCapacity,
-              let availableValue = values?.volumeAvailableCapacity else { return nil }
-        let total = Int64(totalValue)
-        return (max(total - Int64(availableValue), 0), total)
+        let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey])
+        guard let total = values?.volumeTotalCapacity, let available = values?.volumeAvailableCapacity else { return nil }
+        return (max(Int64(total) - Int64(available), 0), Int64(total))
     }
 
     private static func battery() -> (percent: Int, charging: Bool)? {
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else { return nil }
         for source in sources {
-            guard let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],
-                  let current = description[kIOPSCurrentCapacityKey] as? Int,
-                  let maximum = description[kIOPSMaxCapacityKey] as? Int,
-                  maximum > 0 else { continue }
-            let state = description[kIOPSPowerSourceStateKey] as? String
-            return (Int((Double(current) / Double(maximum) * 100).rounded()), state == kIOPSACPowerValue)
+            guard let values = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],
+                  let current = values[kIOPSCurrentCapacityKey] as? Int,
+                  let maximum = values[kIOPSMaxCapacityKey] as? Int, maximum > 0 else { continue }
+            return (Int((Double(current) / Double(maximum) * 100).rounded()),
+                    values[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue)
         }
         return nil
     }
@@ -232,7 +519,6 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
 @MainActor
 final class SystemMonitorService {
     static let shared = SystemMonitorService()
-
     static let settingsKey = "systemMonitor.menuSettings"
     static let legacySettingsKey = "powerStats.menuSettings"
     nonisolated static let maximumHistoryCount = 120
@@ -248,11 +534,8 @@ final class SystemMonitorService {
     private var timer: DispatchSourceTimer?
     private var toolEnabled = true
     private var generation = 0
-    private var lastMenuUpdate: Date?
 
-    private init() {
-        menuSettings = Self.storedMenuSettings(in: .standard)
-    }
+    private init() { menuSettings = Self.storedMenuSettings(in: .standard) }
 
     static func storedMenuSettings(in defaults: UserDefaults) -> SystemMonitorMenuSettings {
         let data = defaults.data(forKey: settingsKey) ?? defaults.data(forKey: legacySettingsKey)
@@ -260,34 +543,28 @@ final class SystemMonitorService {
             ?? SystemMonitorMenuSettings()
     }
 
-    deinit {
-        MainActor.assumeIsolated { stopTimer() }
-    }
+    deinit { MainActor.assumeIsolated { stopTimer() } }
 
     func startFromStoredSettings() {
         toolEnabled = SettingsManager.shared.isToolEnabled("system-monitor")
         reconfigure()
     }
-
     func startDetailed() {
         detailedActive = true
         reconfigure()
     }
-
     func stopDetailed() {
         detailedActive = false
         reconfigure()
     }
-
     func updateMenuSettings(_ change: (inout SystemMonitorMenuSettings) -> Void) {
         change(&menuSettings)
-        if menuSettings.metrics.isEmpty { menuSettings.metrics = [.cpu] }
+        menuSettings.normalize()
         if let data = try? JSONEncoder().encode(menuSettings) {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
         reconfigure()
     }
-
     func setToolEnabled(_ enabled: Bool) {
         toolEnabled = enabled
         if !enabled { detailedActive = false }
@@ -297,33 +574,34 @@ final class SystemMonitorService {
     private func reconfigure() {
         stopTimer()
         generation += 1
-        lastMenuUpdate = nil
         let menuActive = toolEnabled && menuSettings.enabled
         menuController.configure(settings: menuActive ? menuSettings : SystemMonitorMenuSettings())
-        guard toolEnabled && (detailedActive || menuActive) else { return }
+        var settings = menuSettings
+        settings.enabled = menuActive
+        guard toolEnabled,
+              let interval = SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: detailedActive) else { return }
 
-        let interval = detailedActive ? 1.0 : menuSettings.interval
-        let detail = detailedActive
-        let metrics = menuActive ? menuSettings.metrics : []
+        let detailed = detailedActive
+        let dueTracker = SystemMonitorDueTracker()
         let currentGeneration = generation
         samplingQueue.sync { sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
-        source.schedule(
-            deadline: .now(),
-            repeating: interval,
-            leeway: .milliseconds(Int(interval * 150))
-        )
+        source.schedule(deadline: .now(), repeating: interval,
+                        leeway: .milliseconds(Int(interval * 150)))
         source.setEventHandler { [weak self, sampler] in
-            let sample = sampler.sample(detailed: detail, metrics: metrics)
+            let due = dueTracker.dueMetrics(settings: settings, now: Date())
+            guard detailed || !due.isEmpty else { return }
+            let sample = sampler.sample(detailed: detailed, metrics: due)
             Task { @MainActor [weak self] in
-                self?.receive(sample, detailed: detail, generation: currentGeneration)
+                self?.receive(sample, detailed: detailed, dueMetrics: due, generation: currentGeneration)
             }
         }
         timer = source
         source.resume()
     }
 
-    private func receive(_ sample: SystemMonitorSample, detailed: Bool, generation: Int) {
+    private func receive(_ sample: SystemMonitorSample, detailed: Bool,
+                         dueMetrics: Set<SystemMonitorMenuMetric>, generation: Int) {
         guard generation == self.generation else { return }
         snapshot = sample
         if detailed {
@@ -332,10 +610,8 @@ final class SystemMonitorService {
                 history.removeFirst(history.count - Self.maximumHistoryCount)
             }
         }
-        if toolEnabled && menuSettings.enabled,
-           lastMenuUpdate.map({ sample.timestamp.timeIntervalSince($0) >= menuSettings.interval * 0.9 }) ?? true {
-            lastMenuUpdate = sample.timestamp
-            menuController.update(sample: sample)
+        if toolEnabled && menuSettings.enabled && !dueMetrics.isEmpty {
+            menuController.update(sample: sample, dueMetrics: dueMetrics)
         }
     }
 
@@ -349,69 +625,111 @@ final class SystemMonitorService {
 @MainActor
 private final class SystemMonitorMenuController: NSObject {
     private var statusItems: [String: NSStatusItem] = [:]
+    private var latestValues: [SystemMonitorMenuMetric: String] = [:]
+    private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
 
     func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
+        let oldLayout = layoutSignature(for: self.settings)
+        self.settings = settings
+        renderedStateCache.removeAll()
+        latestValues.removeAll()
+        guard oldLayout != layoutSignature(for: settings) else {
+            update(sample: nil, dueMetrics: Set(settings.enabledItems.map(\.metric)))
+            return
+        }
+
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
         statusItems.removeAll()
-        self.settings = settings
-        guard settings.enabled else { return }
-
-        if settings.mode == .grouped {
-            statusItems["group"] = makeStatusItem(symbol: "chart.xyaxis.line")
-        } else {
-            for metric in settings.metrics.sorted(by: { $0.rawValue < $1.rawValue }) {
-                statusItems[metric.rawValue] = makeStatusItem(symbol: metric.symbol)
-            }
-        }
-        update(sample: nil)
-    }
-
-    func update(sample: SystemMonitorSample?) {
         guard settings.enabled else { return }
         if settings.mode == .grouped {
-            statusItems["group"]?.button?.title = settings.metrics
-                .sorted(by: { $0.rawValue < $1.rawValue })
-                .map { label(for: $0, sample: sample) }
-                .joined(separator: " · ")
+            statusItems["group"] = makeStatusItem(autosaveName: "system-monitor.grouped")
         } else {
-            for metric in settings.metrics {
-                statusItems[metric.rawValue]?.button?.title = value(for: metric, sample: sample)
+            for item in settings.enabledItems.reversed() {
+                statusItems[item.metric.rawValue] = makeStatusItem(autosaveName: "system-monitor.\(item.metric.rawValue)")
+            }
+        }
+        update(sample: nil, dueMetrics: Set(settings.enabledItems.map(\.metric)))
+    }
+
+    func update(sample: SystemMonitorSample?, dueMetrics: Set<SystemMonitorMenuMetric>) {
+        guard settings.enabled else { return }
+        for item in settings.enabledItems where dueMetrics.contains(item.metric) {
+            latestValues[item.metric] = SystemMonitorMenuRenderer.render(item: item, sample: sample).value
+        }
+        if settings.mode == .grouped {
+            let state = settings.enabledItems.map(renderedItem)
+            guard renderedStateCache.shouldApply(state, for: "group"),
+                  let button = statusItems["group"]?.button else { return }
+            button.image = nil
+            button.attributedTitle = attributedTitle(for: state)
+            button.setAccessibilityLabel(accessibilityLabel(for: state))
+        } else {
+            for item in settings.enabledItems where dueMetrics.contains(item.metric) || sample == nil {
+                let state = [renderedItem(item)]
+                let key = item.metric.rawValue
+                guard renderedStateCache.shouldApply(state, for: key),
+                      let button = statusItems[key]?.button else { continue }
+                apply(state[0], to: button)
             }
         }
     }
 
-    private func makeStatusItem(symbol: String) -> NSStatusItem {
+    private func renderedItem(_ item: SystemMonitorMenuItemConfiguration) -> SystemMonitorRenderedItem {
+        SystemMonitorRenderedItem(metric: item.metric, style: item.style,
+                                  symbol: item.metric.symbols.contains(item.symbol) ? item.symbol : item.metric.symbol,
+                                  value: latestValues[item.metric] ?? "Waiting")
+    }
+
+    private func apply(_ state: SystemMonitorRenderedItem, to button: NSStatusBarButton) {
+        button.attributedTitle = NSAttributedString(string: "")
+        switch state.style {
+        case .iconAndValue:
+            button.image = image(symbol: state.symbol, description: state.metric.title)
+            button.title = state.value
+        case .iconOnly:
+            button.image = image(symbol: state.symbol, description: state.metric.title)
+            button.title = ""
+        case .valueOnly:
+            button.image = nil
+            button.title = state.value
+        }
+        button.setAccessibilityLabel("\(state.metric.title), \(state.value)")
+    }
+
+    private func attributedTitle(for state: [SystemMonitorRenderedItem]) -> NSAttributedString {
+        let output = NSMutableAttributedString()
+        for (index, item) in state.enumerated() {
+            if index > 0 { output.append(NSAttributedString(string: "  ")) }
+            if item.style != .valueOnly, let symbol = image(symbol: item.symbol, description: item.metric.title) {
+                let attachment = NSTextAttachment()
+                attachment.image = symbol
+                output.append(NSAttributedString(attachment: attachment))
+                if item.style == .iconAndValue { output.append(NSAttributedString(string: " ")) }
+            }
+            if item.style != .iconOnly { output.append(NSAttributedString(string: item.value)) }
+        }
+        return output
+    }
+
+    private func accessibilityLabel(for state: [SystemMonitorRenderedItem]) -> String {
+        state.map { "\($0.metric.title), \($0.value)" }.joined(separator: "; ")
+    }
+    private func image(symbol: String, description: String) -> NSImage? {
+        NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+    }
+    private func makeStatusItem(autosaveName: String) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "System Monitor")
+        item.autosaveName = autosaveName
         item.button?.target = self
         item.button?.action = #selector(openSystemMonitor)
         item.button?.sendAction(on: [.leftMouseUp])
         item.button?.toolTip = "Open System Monitor"
         return item
     }
-
-    private func label(for metric: SystemMonitorMenuMetric, sample: SystemMonitorSample?) -> String {
-        "\(metric.title) \(value(for: metric, sample: sample))"
+    private func layoutSignature(for settings: SystemMonitorMenuSettings) -> String {
+        "\(settings.enabled)|\(settings.mode.rawValue)|\(settings.enabledItems.map(\.metric.rawValue).joined(separator: ","))"
     }
-
-    private func value(for metric: SystemMonitorMenuMetric, sample: SystemMonitorSample?) -> String {
-        switch metric {
-        case .cpu:
-            sample?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting"
-        case .memory:
-            sample?.memoryUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting"
-        case .network:
-            sample?.networkDownload.map { "↓\(Self.rate($0))" } ?? "↓Waiting"
-        }
-    }
-
-    nonisolated private static func rate(_ bytes: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(max(bytes, 0)), countStyle: .file) + "/s"
-    }
-
-    @objc private func openSystemMonitor() {
-        ToolActionRouter.shared.open(toolID: "system-monitor")
-    }
+    @objc private func openSystemMonitor() { ToolActionRouter.shared.open(toolID: "system-monitor") }
 }
