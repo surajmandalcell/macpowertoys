@@ -1,6 +1,6 @@
 # PowerToys goals
 
-Reviewed against current source on 2026-08-26.
+Reviewed against current source on 2026-08-31.
 
 This file is the goals index. Each request list contains the detailed status,
 evidence, and remaining work.
@@ -46,11 +46,12 @@ evidence, and remaining work.
   local Raycast extension.
 - Verify that Input Devices keeps scroll control active through sustained wheel
   input and a session lock and unlock.
-- Complete the seven-metric System Monitor menu, per-item settings, due-driven
-  sampling, change-gated writes, and owner-level resource lifecycle tests.
+- Verify the seven-metric System Monitor menu, per-item formats and intervals,
+  saved order, due-driven sampling, and change-gated updates in the installed
+  build.
 - Verify that repeated tool and window lifecycles return timers, status items,
   observers, event taps, watchers, tasks, helpers, CPU-time growth, and RSS to
-  their allowed baseline.
+  their allowed baseline. Include the Cloud Sync daemon and polling owner.
 - Verify that a signed NetToys subnet scan fills rows and later fetcher fields
   live at its 1,280 by 800 default and 1,100 by 700 minimum sizes.
 - Complete the live checks in the request lists.

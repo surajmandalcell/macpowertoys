@@ -1,10 +1,11 @@
 # Cloud Sync Request List
 
-Reviewed against current source on 2026-08-24. Installed checks remain marked Verify.
+Reviewed against current source on 2026-08-31. Installed checks remain marked Verify.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Choose no Cloud Sync menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Cloud Sync preserves its combined default and any legacy separate choice; its separate native item retains the stable autosave name. | Exercise all three modes in the latest normal installed build, then move the separate item, relaunch, and confirm its position and action. |
+| Verify | Stop the Cloud Sync daemon and polling loop when no owner needs them. | `97038e7` adds idempotent window ownership and one runtime-need policy. Closing the last idle window stops the daemon and 700 ms poll. Active transfers, continuous jobs, and saved Start at Launch keep them alive. Thirteen focused tests pass, including an integration regression that changes from one daemon and one poll while visible to zero after idle close. | Confirm the same owner counts and idle CPU behavior in the signed installed build. |
 | Done | Rename "Split uploaded" to "List uploaded" and show uploaded files as a tree in the right pane. | `bb42342`; `TransferFileTreeView` uses "List uploaded" and tree rows in the uploaded column. | None. |
 | Done | Vertically center Recalculate with Transfer plan and move the subtitle into an info popover. | `ebc8692`; the row is center-aligned and owns an `info.circle` popover. | None. |
 | Done | Keep detail tabs aligned when the selected pill adds its 10pt inset. | `6ad4568`; the pill boundary starts at the shared 20pt gutter. `DESIGN.md` forbids tab movement on selection. | None. |
