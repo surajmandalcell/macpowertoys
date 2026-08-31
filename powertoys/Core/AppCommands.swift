@@ -222,6 +222,13 @@ struct AppCommands: Commands {
             }
         }
 
+        CommandGroup(replacing: .appTermination) {
+            Button("Quit MacPowerToys") {
+                AppDelegate.current?.handleQuitCommand()
+            }
+            .keyboardShortcut("q", modifiers: .command)
+        }
+
         CommandMenu("Utilities") {
             Button("Toggle Awake") {
                 ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeToggle))
