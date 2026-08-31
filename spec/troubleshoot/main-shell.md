@@ -122,7 +122,9 @@
   launcher, an unknown window, or no window, require two Command-Q presses
   within two seconds and show `Press ⌘Q again to quit` after the first press.
   Keep explicit status-item Quit, Dock Quit, logout termination, and Command-W
-  on their native paths. Resolve an unidentified sheet through its parent chain.
+  on their native paths. Resolve an unidentified sheet through its parent chain,
+  end the sheet, and then close the tool windows so modal state cannot block the
+  close operation.
 - **Check:** In a normal signed build, press Command-Q in each sub-app and
   confirm only that tool closes. On the launcher, confirm one press keeps the
   app open, a second press within two seconds quits, and an expired press starts

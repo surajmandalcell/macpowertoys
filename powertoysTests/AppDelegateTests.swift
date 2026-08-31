@@ -107,6 +107,18 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testQuitCommandEndsAttachedSheetBeforeClosingToolWindows() {
+        let parent = NSWindow()
+        let sheet = NSWindow()
+        parent.beginSheet(sheet)
+
+        XCTAssertTrue(parent.attachedSheet === sheet)
+        AppDelegate.endAttachedSheet(for: sheet)
+        XCTAssertNil(sheet.sheetParent)
+        XCTAssertNil(parent.attachedSheet)
+    }
+
+    @MainActor
     func testStatusItemContextMenuContainsOnlyOpenAndQuit() {
         let menu = AppDelegate().statusItemContextMenu()
 
