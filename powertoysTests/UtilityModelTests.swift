@@ -137,4 +137,33 @@ final class UtilityModelTests: XCTestCase {
             0.82
         )
     }
+
+    func testCustomInteractionFamiliesUseSharedHoverAndPressedStyle() throws {
+        let expectedStyleCounts = [
+            "Views/AllToolsGridView.swift": 1,
+            "Views/Components/SidebarRow.swift": 2,
+            "Views/Logs/LogsWindowView.swift": 2,
+            "Views/Marketplace/MarketplaceSettingsView.swift": 2,
+            "Views/TextExtractor/TextExtractorView.swift": 5,
+            "Views/TrayPopoverView.swift": 4,
+        ]
+
+        for (path, expectedCount) in expectedStyleCounts {
+            let source = try sourceFile(path)
+            XCTAssertEqual(
+                source.components(separatedBy: ".buttonStyle(UtilityInteractionButtonStyle").count - 1,
+                expectedCount,
+                path
+            )
+        }
+    }
+
+    private func sourceFile(_ path: String) throws -> String {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys")
+            .appendingPathComponent(path)
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
 }
