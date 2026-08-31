@@ -418,8 +418,6 @@ private struct SmallActionButton: View {
     var destructive = false
     let action: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -427,24 +425,20 @@ private struct SmallActionButton: View {
                 .foregroundStyle(foreground)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
-                .background(background)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4))
         .focusEffectDisabled()
         .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
+        .background(background, in: RoundedRectangle(cornerRadius: 4))
     }
 
     private var foreground: Color {
-        if isHovering { return .white }
         if destructive { return .red }
         return prominent ? .primary : .secondary
     }
 
     private var background: Color {
-        guard isHovering else { return Color.primary.opacity(0.06) }
-        return destructive ? .red : .accentColor
+        prominent ? .accentColor : Color.primary.opacity(0.06)
     }
 }
 
@@ -453,21 +447,16 @@ private struct IconActionButton: View {
     let help: String
     let action: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
                 .frame(width: 24, height: 24)
-                .background(Color.primary.opacity(isHovering ? 0.06 : 0))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
         .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
         .help(help)
     }
 }

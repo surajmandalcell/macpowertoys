@@ -474,7 +474,6 @@ private struct SidebarActionRow: View {
     let icon: String
     let title: String
     let action: () -> Void
-    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
@@ -489,14 +488,9 @@ private struct SidebarActionRow: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? Color.primary.opacity(0.06) : Color.clear)
-            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle())
         .focusEffectDisabled()
-        .onHover { isHovered = $0 }
     }
 }
 
@@ -505,7 +499,6 @@ private struct LogLevelFilterRow: View {
     let isSelected: Bool
     let count: Int
     let action: () -> Void
-    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
@@ -528,15 +521,10 @@ private struct LogLevelFilterRow: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? Color.primary.opacity(0.06) : Color.clear)
-            )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle())
         .focusEffectDisabled()
-        .onHover { isHovered = $0 }
     }
 }
 

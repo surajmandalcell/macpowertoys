@@ -373,7 +373,7 @@ private struct TextExtractorStatusBanner: View {
             Spacer(minLength: 8)
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.plain)
+                    .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                     .focusEffectDisabled()
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.accentColor)
@@ -398,7 +398,7 @@ private struct TextExtractionRow: View {
         HStack(spacing: 8) {
             if extraction.needsExpandedView {
                 Button(action: onOpen) { summary }
-                    .buttonStyle(.plain)
+                    .buttonStyle(UtilityInteractionButtonStyle())
                     .focusEffectDisabled()
                     .help("Open full text")
             } else {
@@ -408,12 +408,14 @@ private struct TextExtractionRow: View {
             Button { service.copy(extraction) } label: {
                 Image(systemName: "doc.on.doc").frame(width: 24, height: 24)
             }
+            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
             .help("Copy text")
 
             if let url = extraction.openableURL {
                 Button { NSWorkspace.shared.open(url) } label: {
                     Image(systemName: "arrow.up.right.square").frame(width: 24, height: 24)
                 }
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                 .help("Open link")
             }
 
@@ -422,6 +424,7 @@ private struct TextExtractionRow: View {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                         .frame(width: 24, height: 24)
                 }
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                 .help("Open full text")
             }
 

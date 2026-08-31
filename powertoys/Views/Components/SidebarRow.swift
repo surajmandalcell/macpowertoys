@@ -12,7 +12,6 @@ struct SidebarRow: View {
     var logoAsset: String? = nil
     let action: () -> Void
 
-    @State private var isHovering = false
     @Environment(\.controlActiveState) private var controlActiveState
 
     var body: some View {
@@ -40,24 +39,21 @@ struct SidebarRow: View {
             .padding(.horizontal, 8)
             .frame(minHeight: UtilityLayout.sidebarRowHeight)
             .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(backgroundColor)
-            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle())
         .focusEffectDisabled()
-        .onHover { isHovering = $0 }
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(selectionColor)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var backgroundColor: Color {
-        if isSelected {
-            return Color(nsColor: controlActiveState == .inactive
-                ? .unemphasizedSelectedContentBackgroundColor
-                : .selectedContentBackgroundColor)
-        }
-        if isHovering { return Color.primary.opacity(0.06) }
-        return .clear
+    private var selectionColor: Color {
+        guard isSelected else { return .clear }
+        return Color(nsColor: controlActiveState == .inactive
+            ? .unemphasizedSelectedContentBackgroundColor
+            : .selectedContentBackgroundColor)
     }
 
     private var foregroundColor: Color {
@@ -72,8 +68,6 @@ struct SidebarExternalRow: View {
     let icon: String
     let title: String
     let action: () -> Void
-
-    @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
@@ -96,14 +90,9 @@ struct SidebarExternalRow: View {
             .padding(.horizontal, 8)
             .frame(minHeight: UtilityLayout.sidebarRowHeight)
             .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovering ? Color.primary.opacity(0.06) : Color.clear)
-            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle())
         .focusEffectDisabled()
-        .onHover { isHovering = $0 }
     }
 }
 

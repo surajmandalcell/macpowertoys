@@ -543,24 +543,17 @@ private struct RSyncTrayTab: View {
 private struct TrayRetryButton: View {
     let action: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
         Button(action: action) {
             Image(systemName: "arrow.clockwise")
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .frame(width: 18, height: 18)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.primary.opacity(isHovering ? 0.1 : 0.06))
-                )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
-        .onHover { isHovering = $0 }
-        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
         .help("Restart the engine")
     }
 }
@@ -643,11 +636,11 @@ private struct TrayTransferRow: View {
             Image(systemName: systemImage)
                 .font(.system(size: 9, weight: .semibold))
                 .frame(width: 20, height: 20)
-                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
         .help(title)
         .accessibilityLabel(title)
     }
@@ -660,8 +653,6 @@ private struct TrayActionButton: View {
     let isPrimary: Bool
     let action: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -669,14 +660,13 @@ private struct TrayActionButton: View {
                 .foregroundStyle(isPrimary ? .white : .primary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 6).fill(isPrimary ? Color.accentColor.opacity(isHovering ? 0.85 : 1.0) : Color.primary.opacity(isHovering ? 0.1 : 0.06))
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
-        .onHover { isHovering = $0 }
-        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .background(
+            isPrimary ? Color.accentColor : Color.primary.opacity(0.06),
+            in: RoundedRectangle(cornerRadius: 6)
+        )
     }
 }
 
@@ -695,12 +685,8 @@ private struct TrayFooterButton: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .contentShape(Rectangle())
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isHovering ? Color.primary.opacity(0.06) : Color.clear)
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
         .onHover { isHovering = $0 }
     }
