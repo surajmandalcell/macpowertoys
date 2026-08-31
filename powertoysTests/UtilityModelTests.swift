@@ -93,4 +93,48 @@ final class UtilityModelTests: XCTestCase {
         )
         XCTAssertNil(TrayPopoverLayout.normalizedSelection("awake", availableIDs: []))
     }
+
+    func testTrayTabsUseSharedMotionAndVisiblePressedFeedback() {
+        XCTAssertEqual(TrayPopoverLayout.tabTransitionDuration, UtilityMotion.standardDuration)
+        XCTAssertEqual(
+            TrayTabButtonStyle.backgroundOpacity(
+                isSelected: false,
+                isHovering: false,
+                isPressed: false
+            ),
+            0
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.backgroundOpacity(
+                isSelected: false,
+                isHovering: true,
+                isPressed: false
+            ),
+            0.06
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.backgroundOpacity(
+                isSelected: false,
+                isHovering: true,
+                isPressed: true
+            ),
+            0.1
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.backgroundOpacity(
+                isSelected: true,
+                isHovering: false,
+                isPressed: false
+            ),
+            1
+        )
+        XCTAssertEqual(
+            TrayTabButtonStyle.backgroundOpacity(
+                isSelected: true,
+                isHovering: false,
+                isPressed: true
+            ),
+            0.82
+        )
+    }
 }
