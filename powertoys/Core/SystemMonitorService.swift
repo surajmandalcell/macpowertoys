@@ -422,13 +422,19 @@ nonisolated enum SystemMonitorMenuSchedule {
 }
 
 nonisolated enum SystemMonitorStatusItemOrder {
+    static let groupedAutosaveName = "system-monitor.grouped"
+
+    static func autosaveName(for metric: SystemMonitorMenuMetric) -> String {
+        "system-monitor.\(metric.rawValue)"
+    }
+
     static func preferredPositionKeys(
         previous: [SystemMonitorMenuMetric]?,
         current: [SystemMonitorMenuMetric],
         mode: SystemMonitorMenuMode
     ) -> [String] {
         guard mode == .direct, let previous, previous != current else { return [] }
-        return current.map { "NSStatusItem Preferred Position system-monitor.\($0.rawValue)" }
+        return current.map { "NSStatusItem Preferred Position \(autosaveName(for: $0))" }
     }
 }
 
@@ -760,7 +766,8 @@ final class SystemMonitorService {
 
     private let sampler = SystemMonitorSampler()
     private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.system-monitor", qos: .utility)
-    private let menuController = SystemMonitorMenuController()
+    private let menuController: SystemMonitorMenuController
+    private let defaults: UserDefaults
     private var timer: DispatchSourceTimer?
     private var wakeObserver: NSObjectProtocol?
     private var unavailableMenuMetrics = Set<SystemMonitorMenuMetric>()
@@ -774,10 +781,13 @@ final class SystemMonitorService {
     init(
         menuSettings: SystemMonitorMenuSettings,
         toolEnabled: Bool = true,
-        observesWake: Bool = true
+        observesWake: Bool = true,
+        defaults: UserDefaults = .standard
     ) {
         self.menuSettings = menuSettings
         self.toolEnabled = toolEnabled
+        self.defaults = defaults
+        menuController = SystemMonitorMenuController(defaults: defaults)
         if observesWake {
             wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
                 forName: NSWorkspace.didWakeNotification,
@@ -791,6 +801,8 @@ final class SystemMonitorService {
 
     var timerOwnerCount: Int { timer == nil ? 0 : 1 }
     var statusItemOwnerCount: Int { menuController.statusItemCount }
+    var statusItemIdentities: Set<ObjectIdentifier> { menuController.statusItemIdentities }
+    var statusItemAutosaveNames: Set<String> { menuController.statusItemAutosaveNames }
     var wakeObserverOwnerCount: Int { wakeObserver == nil ? 0 : 1 }
 
     static func storedMenuSettings(in defaults: UserDefaults) -> SystemMonitorMenuSettings {
@@ -825,7 +837,7 @@ final class SystemMonitorService {
         guard let updated = menuSettings.applying(change) else { return }
         menuSettings = updated
         if let data = try? JSONEncoder().encode(menuSettings) {
-            UserDefaults.standard.set(data, forKey: Self.settingsKey)
+            defaults.set(data, forKey: Self.settingsKey)
         }
         unavailableMenuMetrics.removeAll()
         reconfigure()
@@ -930,8 +942,17 @@ private final class SystemMonitorMenuController: NSObject {
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
 
     var statusItemCount: Int { statusItems.count }
+    var statusItemIdentities: Set<ObjectIdentifier> {
+        Set(statusItems.values.map(ObjectIdentifier.init))
+    }
+    var statusItemAutosaveNames: Set<String> { Set(statusItems.values.map(\.autosaveName)) }
 
     func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
@@ -941,7 +962,7 @@ private final class SystemMonitorMenuController: NSObject {
             current: order,
             mode: settings.mode
         )
-        positionKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+        positionKeys.forEach { defaults.removeObject(forKey: $0) }
         if settings.mode == .direct || lastDirectOrder == nil { lastDirectOrder = order }
         let oldLayout = layoutSignature(for: self.settings)
         self.settings = settings
@@ -956,10 +977,14 @@ private final class SystemMonitorMenuController: NSObject {
         statusItems.removeAll()
         guard settings.enabled, !settings.enabledItems.isEmpty else { return }
         if settings.mode == .grouped {
-            statusItems["group"] = makeStatusItem(autosaveName: "system-monitor.grouped")
+            statusItems["group"] = makeStatusItem(
+                autosaveName: SystemMonitorStatusItemOrder.groupedAutosaveName
+            )
         } else {
             for item in settings.enabledItems.reversed() {
-                statusItems[item.metric.rawValue] = makeStatusItem(autosaveName: "system-monitor.\(item.metric.rawValue)")
+                statusItems[item.metric.rawValue] = makeStatusItem(
+                    autosaveName: SystemMonitorStatusItemOrder.autosaveName(for: item.metric)
+                )
             }
         }
         update(sample: nil, dueMetrics: Set(settings.enabledItems.map(\.metric)))

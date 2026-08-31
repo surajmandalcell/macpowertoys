@@ -17,9 +17,10 @@ evidence, and remaining work.
   tab family.
 - Verify Command-Q and Command-W across the remaining sub-apps, sheets, and the
   launcher timeout path.
-- Verify None, Combined, and Separate menu-bar modes for every eligible tool,
-  including compact combined navigation, saved selection, action routing, and
-  separate-item position restoration.
+- Verify live None, Combined, and Separate menu-bar modes for every eligible
+  tool, including compact combined navigation, saved selection, and separate-
+  item position restoration. Deterministic placement, action, and item-
+  identity checks pass.
 - Verify Awake tray sizing, selected states, content-sized tabs, and failure
   presentation.
 - Verify menu-bar focus, keyboard use, compact layout, darker appearance,

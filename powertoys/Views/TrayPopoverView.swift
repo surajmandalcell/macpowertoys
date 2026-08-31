@@ -47,8 +47,10 @@ struct TrayPopoverView: View {
         _ = menuBarPreferencesChanged
         return ToolRegistry.allTools.filter { tool in
             tool.hasTrayTab
-                && settings.isToolEnabled(tool.id)
-                && IndividualMenuBarTool(rawValue: tool.id)?.displayMode() == .combined
+                && IndividualMenuBarTool(rawValue: tool.id)?.usesMenuBarMode(
+                    .combined,
+                    enabled: settings.isToolEnabled(tool.id)
+                ) == true
         }
     }
 

@@ -39,16 +39,63 @@ final class IndividualMenuBarControllerTests: XCTestCase {
         ])
         XCTAssertEqual(Set(tools.map(\.preferenceKey)).count, tools.count)
         XCTAssertEqual(Set(tools.map(\.autosaveName)).count, tools.count)
-        XCTAssertEqual(IndividualMenuBarTool.colorPicker.quickAction, .colorPickerPick)
-        XCTAssertEqual(IndividualMenuBarTool.textExtractor.quickAction, .textExtractorCapture)
-        XCTAssertNil(IndividualMenuBarTool.cloudSync.quickAction)
-        XCTAssertNil(IndividualMenuBarTool.awake.quickAction)
-        XCTAssertNil(IndividualMenuBarTool.inputDevices.quickAction)
+        XCTAssertEqual(tools.map(\.autosaveName), [
+            "MacPowerToys.rclone",
+            "MacPowerToys.awake",
+            "MacPowerToys.color-picker",
+            "MacPowerToys.text-extractor",
+            "MacPowerToys.input-devices"
+        ])
+        XCTAssertEqual(tools.map(\.activation), [
+            .openTool("rclone"),
+            .openTool("awake"),
+            .execute(.colorPickerPick),
+            .execute(.textExtractorCapture),
+            .openTool("input-devices")
+        ])
     }
 
     func testEveryMenuBarToolSupportsACombinedTab() {
         XCTAssertTrue(IndividualMenuBarTool.allCases.allSatisfy { tool in
             ToolRegistry.tool(for: tool.id)?.hasTrayTab == true
         })
+    }
+
+    func testEveryModeUsesOnePlacementAndDisabledToolsUseNone() {
+        let suiteName = "IndividualMenuBarPlacementTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        for tool in IndividualMenuBarTool.allCases {
+            for mode in MenuBarDisplayMode.allCases {
+                defaults.set(mode.rawValue, forKey: tool.preferenceKey)
+                for placement in MenuBarDisplayMode.allCases {
+                    XCTAssertEqual(
+                        tool.usesMenuBarMode(placement, enabled: true, in: defaults),
+                        placement == mode,
+                        "\(tool.id): \(mode.id) -> \(placement.id)"
+                    )
+                    XCTAssertFalse(tool.usesMenuBarMode(placement, enabled: false, in: defaults))
+                }
+            }
+        }
+    }
+
+    func testRefreshPlanKeepsExistingItemsAndChangesOnlyPlacementDelta() {
+        let current: Set<IndividualMenuBarTool> = [.cloudSync, .colorPicker]
+
+        let unchanged = IndividualMenuBarRefreshPlan(
+            current: current,
+            desired: [.cloudSync, .colorPicker]
+        )
+        XCTAssertTrue(unchanged.insertions.isEmpty)
+        XCTAssertTrue(unchanged.removals.isEmpty)
+
+        let changed = IndividualMenuBarRefreshPlan(
+            current: current,
+            desired: [.awake, .colorPicker]
+        )
+        XCTAssertEqual(changed.insertions, [.awake])
+        XCTAssertEqual(changed.removals, [.cloudSync])
     }
 }
