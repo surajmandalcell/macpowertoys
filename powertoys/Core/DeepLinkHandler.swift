@@ -62,6 +62,16 @@ final class DeepLinkHandler {
             return
         }
 
+        if Self.isResourceCountsDiagnosticsURL(url) {
+            do {
+                try ResourceDiagnostics.appendCurrentSnapshot()
+                LogManager.shared.info("Recorded resource owner counts.", source: "DeepLinkHandler")
+            } catch {
+                LogManager.shared.error("Could not record resource owner counts.", source: "DeepLinkHandler")
+            }
+            return
+        }
+
         guard openWindowAction != nil else {
             pendingLinks.append(url)
             LogManager.shared.debug("Queued pending link: \(url)", source: "DeepLinkHandler")
@@ -73,6 +83,17 @@ final class DeepLinkHandler {
 
     nonisolated static func isSupportedScheme(_ scheme: String?) -> Bool {
         scheme == "macpowertoys" || scheme == "powertoys"
+    }
+
+    nonisolated static func isResourceCountsDiagnosticsURL(_ url: URL) -> Bool {
+        url.scheme == "macpowertoys"
+            && url.host == "diagnostics"
+            && url.path == "/resource-counts"
+            && url.query == nil
+            && url.fragment == nil
+            && url.user == nil
+            && url.password == nil
+            && url.port == nil
     }
 
     func handleCLIArguments(_ args: [String] = CommandLine.arguments) {

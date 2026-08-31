@@ -755,6 +755,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
 @MainActor
 final class SystemMonitorService {
     static let shared = SystemMonitorService()
+    static weak var current: SystemMonitorService?
     static let settingsKey = "systemMonitor.menuSettings"
     static let legacySettingsKey = "powerStats.menuSettings"
     nonisolated static let maximumHistoryCount = 120
@@ -797,6 +798,7 @@ final class SystemMonitorService {
                 Task { @MainActor [weak self] in self?.retryUnavailableMetrics() }
             }
         }
+        Self.current = self
     }
 
     var timerOwnerCount: Int { timer == nil ? 0 : 1 }

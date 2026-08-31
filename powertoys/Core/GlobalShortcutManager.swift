@@ -112,6 +112,7 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
 @MainActor
 final class GlobalShortcutManager {
     static let shared = GlobalShortcutManager()
+    static weak var current: GlobalShortcutManager?
 
     private var eventHandler: EventHandlerRef?
     private var hotKeys: [UInt32: EventHotKeyRef] = [:]
@@ -120,6 +121,10 @@ final class GlobalShortcutManager {
     private var shortcuts: [GlobalShortcutAction: GlobalShortcut]
     private var enabledActions: Set<GlobalShortcutAction>
 
+    var eventHandlerOwnerCount: Int { eventHandler == nil ? 0 : 1 }
+    var hotKeyOwnerCount: Int { hotKeys.count }
+    var eventTapOwnerCount: Int { reservedShortcutTap == nil ? 0 : 1 }
+
     private init() {
         shortcuts = Dictionary(uniqueKeysWithValues: GlobalShortcutAction.allCases.map { action in
             (action, Self.storedShortcut(for: action))
@@ -127,6 +132,7 @@ final class GlobalShortcutManager {
         enabledActions = Set(GlobalShortcutAction.allCases.filter { action in
             UserDefaults.standard.object(forKey: "shortcut.\(action.defaultsName).enabled") as? Bool ?? true
         })
+        Self.current = self
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(

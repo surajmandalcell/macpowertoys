@@ -7,6 +7,7 @@ import Observation
 @MainActor
 final class AwakeService {
     static let shared = AwakeService()
+    static weak var current: AwakeService?
 
     private(set) var configuration: AwakeConfiguration
     private(set) var remaining: TimeInterval?
@@ -28,6 +29,7 @@ final class AwakeService {
         configuration = UserDefaults.standard.data(forKey: key)
             .flatMap { try? JSONDecoder().decode(AwakeConfiguration.self, from: $0) }
             ?? AwakeConfiguration()
+        Self.current = self
         if configuration.mode == .timed, let expiry = configuration.expiresAt {
             timedDeadline = .now.advanced(by: .seconds(max(0, expiry.timeIntervalSinceNow)))
         }
@@ -42,6 +44,9 @@ final class AwakeService {
             applyConfiguration()
         }
     }
+
+    var timerOwnerCount: Int { timer == nil ? 0 : 1 }
+    var assertionOwnerCount: Int { assertionID == 0 ? 0 : 1 }
 
     func setMode(_ mode: AwakeMode, duration: TimeInterval? = nil, until date: Date? = nil) {
         configuration.mode = mode

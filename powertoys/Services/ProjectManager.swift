@@ -11,6 +11,7 @@ import Foundation
 @Observable
 @MainActor
 final class ProjectManager {
+    static weak var current: ProjectManager?
     var projects: [CCProject] = []
     var isLoading: Bool = false
     var loadingProgress: Double = 0
@@ -28,7 +29,10 @@ final class ProjectManager {
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         claudeDirectory = home.appendingPathComponent(".claude/projects")
+        Self.current = self
     }
+
+    var fileWatcherOwnerCount: Int { fileWatcher == nil ? 0 : 1 }
 
     // MARK: - Project Loading (Instant)
 

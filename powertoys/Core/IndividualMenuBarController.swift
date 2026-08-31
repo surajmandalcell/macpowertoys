@@ -110,12 +110,19 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
 @MainActor
 final class IndividualMenuBarController: NSObject {
     static let shared = IndividualMenuBarController()
+    static weak var current: IndividualMenuBarController?
 
     private let defaults = UserDefaults.standard
     private var statusItems: [IndividualMenuBarTool: NSStatusItem] = [:]
     private var observers: [NSObjectProtocol] = []
 
-    private override init() {}
+    var statusItemOwnerCount: Int { statusItems.count }
+    var observerOwnerCount: Int { observers.count }
+
+    private override init() {
+        super.init()
+        Self.current = self
+    }
 
     func start() {
         guard observers.isEmpty else {

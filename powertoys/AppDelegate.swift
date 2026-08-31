@@ -22,6 +22,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var ownsInstance = true
     private var quitCommandCoordinator = QuitCommandCoordinator()
 
+    var timerOwnerCount: Int { timer == nil ? 0 : 1 }
+    var eventMonitorOwnerCount: Int {
+        (statusItemClickMonitor == nil ? 0 : 1) + (freeRulerKeyMonitor == nil ? 0 : 1)
+    }
+    var observerOwnerCount: Int {
+        freeRulerObservers.count + (dockIconAppearanceObservation == nil ? 0 : 1)
+    }
+
     static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?) -> Bool {
         userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool == true
     }

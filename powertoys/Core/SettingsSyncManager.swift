@@ -24,6 +24,7 @@ extension Notification.Name {
 @MainActor
 final class SettingsSyncManager {
     static let shared = SettingsSyncManager()
+    static weak var current: SettingsSyncManager?
 
     enum EnableResult {
         case enabled
@@ -57,6 +58,8 @@ final class SettingsSyncManager {
     private var isApplyingRemote = false
     private var observers: [NSObjectProtocol] = []
 
+    var observerOwnerCount: Int { observers.count }
+
     init(
         cloud: KeyValueCloudStore = NSUbiquitousKeyValueStore.default,
         defaults: UserDefaults = .standard,
@@ -83,6 +86,7 @@ final class SettingsSyncManager {
         self.readToolPreference = readToolPreference
         self.writeToolPreference = writeToolPreference
         isEnabled = defaults.bool(forKey: Self.enabledDefaultsKey)
+        Self.current = self
     }
 
     // MARK: - Lifecycle

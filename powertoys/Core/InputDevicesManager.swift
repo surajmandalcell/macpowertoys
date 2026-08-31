@@ -121,6 +121,7 @@ struct InputDeviceDescriptor: Identifiable, Equatable {
 @MainActor
 final class InputDevicesManager {
     static let shared = InputDevicesManager()
+    static weak var current: InputDevicesManager?
 
     private static let settingsKey = "inputDevices.settings"
     private static let syntheticEventTag: Int64 = 0x4D_50_54_49_4E_50_55_54
@@ -141,7 +142,10 @@ final class InputDevicesManager {
         } else {
             settings = InputDevicesSettings()
         }
+        Self.current = self
     }
+
+    var eventTapOwnerCount: Int { eventTap == nil ? 0 : 1 }
 
     deinit {
         MainActor.assumeIsolated { stopInterception() }
