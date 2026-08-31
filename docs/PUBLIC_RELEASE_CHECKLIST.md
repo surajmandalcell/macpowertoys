@@ -1,15 +1,27 @@
 # Public release checklist
 
-Complete this once before making the repository public.
+Track these gates before the next public binary release. The repository is
+already public at `surajmandalcell/macpowertoys`.
 
 ## Repository
 
-- Confirm `git status` contains only intentional files.
-- Scan the full Git history for credentials, private paths, transfer names, conversation content, logs, and screenshots.
-- The previously tracked files under `docs/screenshots/` contained local UI data. Their deletion from the current tree does not remove them from Git history. Create a clean public repository or explicitly approve a history rewrite before publication.
-- Rename the GitHub repository from `powertoys` to `MacPowerToys`, then update badges, clone URLs, and security links after the rename.
-- Enable GitHub private vulnerability reporting, secret scanning, Dependabot alerts, and branch protection for `main`.
-- Add repository topics, a social preview, the project description, and the privacy and security links.
+- [ ] Confirm `git status` contains only intentional files.
+- [x] Scan the full Git history for credentials. Gitleaks 8.30.1 found zero
+  findings on 2026-08-31.
+- [ ] Remove private UI data from public history. Old versions of
+  `cc_history1.png`, `cc_history2.png`, and `logs.png` expose local
+  conversations, identifiers, and a home path. Normal commits cannot remove
+  these blobs. Create a clean repository or explicitly approve a history
+  rewrite and force-push.
+- [x] Use the current `macpowertoys` repository name in badges, clone URLs, and
+  release links.
+- [x] Enable private vulnerability reporting, secret scanning, push
+  protection, and Dependabot security updates.
+- [ ] Protect `main`. The GitHub API reported no branch protection on
+  2026-08-31.
+- [x] Add repository topics, the project description, and README privacy and
+  security links.
+- [ ] Verify the GitHub social preview.
 
 ## Verification
 
