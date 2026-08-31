@@ -1242,9 +1242,12 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(window.frame.width, 420, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.height, 571, accuracy: 0.5)
             XCTAssertFalse(window.styleMask.contains(.resizable))
+            XCTAssertFalse(window.styleMask.contains(.fullSizeContentView))
             XCTAssertFalse(window.isOpaque)
             XCTAssertEqual(window.backgroundColor, .clear)
-            XCTAssertTrue(window.titlebarAppearsTransparent)
+            XCTAssertFalse(window.titlebarAppearsTransparent)
+            XCTAssertTrue(window.isMovable)
+            XCTAssertTrue(window.isMovableByWindowBackground)
             XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxY - controlsView.frame.maxY, 16, accuracy: 0.5)
@@ -1255,14 +1258,10 @@ final class RulerCoreTests: XCTestCase {
                     || NSStringFromClass(type(of: window.contentView!)).hasSuffix("UtilityMaterialView")
             )
             let titlebarView = try XCTUnwrap(window.standardWindowButton(.closeButton)?.superview)
-            let titlebarMaterial = try XCTUnwrap(
+            XCTAssertFalse(
                 rulerSettingsDescendants(in: titlebarView)
-                    .compactMap { $0 as? NSVisualEffectView }
-                    .first { $0.identifier?.rawValue == "ruler-titlebar-material" }
+                    .contains { $0.identifier?.rawValue == "ruler-titlebar-material" }
             )
-            XCTAssertEqual(titlebarMaterial.material, .hudWindow)
-            XCTAssertEqual(titlebarMaterial.state, .active)
-            XCTAssertTrue(titlebarMaterial.mouseDownCanMoveWindow)
         }
 
         XCTAssertEqual(settingsController.resetDefaultsButton.frame.height, 28, accuracy: 0.5)
