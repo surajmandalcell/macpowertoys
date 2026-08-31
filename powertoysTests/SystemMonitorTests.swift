@@ -234,6 +234,10 @@ final class SystemMonitorTests: XCTestCase {
 
         XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false), 10)
         XCTAssertEqual(
+            SystemMonitorMenuItemConfiguration(metric: .disk, interval: .global).effectiveInterval(global: 1),
+            15
+        )
+        XCTAssertEqual(
             SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: sampled, now: start.addingTimeInterval(9.999)),
             []
         )
@@ -243,8 +247,44 @@ final class SystemMonitorTests: XCTestCase {
         )
         XCTAssertEqual(
             SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: sampled, now: start.addingTimeInterval(15)),
+            [.battery, .thermal]
+        )
+        XCTAssertEqual(
+            SystemMonitorMenuSchedule.dueMetrics(settings: settings, lastSampled: sampled, now: start.addingTimeInterval(30)),
             [.disk, .battery, .thermal]
         )
+    }
+
+    func testSupportedIntervalsNormalizeLegacySelectionsAndPreserveValidOnes() {
+        XCTAssertEqual(SystemMonitorMenuMetric.cpu.supportedIntervals(global: 1), SystemMonitorMenuInterval.allCases)
+        XCTAssertEqual(SystemMonitorMenuMetric.disk.supportedIntervals(global: 2), [.seconds30, .seconds60])
+        XCTAssertEqual(SystemMonitorMenuMetric.disk.supportedIntervals(global: 30), [.global, .seconds30, .seconds60])
+        XCTAssertEqual(
+            SystemMonitorMenuMetric.battery.supportedIntervals(global: 10),
+            [.global, .seconds10, .seconds30, .seconds60]
+        )
+
+        let settings = SystemMonitorMenuSettings(
+            interval: 2,
+            items: [
+                SystemMonitorMenuItemConfiguration(metric: .disk, interval: .seconds10),
+                SystemMonitorMenuItemConfiguration(metric: .battery, interval: .global),
+                SystemMonitorMenuItemConfiguration(metric: .thermal, interval: .seconds5),
+                SystemMonitorMenuItemConfiguration(metric: .network, interval: .seconds3),
+                SystemMonitorMenuItemConfiguration(metric: .gpu, interval: .seconds5),
+                SystemMonitorMenuItemConfiguration(metric: .memory, interval: .seconds60)
+            ]
+        )
+
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .disk })?.interval, .seconds30)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .battery })?.interval, .seconds10)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .thermal })?.interval, .seconds10)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .network })?.interval, .seconds3)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .gpu })?.interval, .seconds5)
+        XCTAssertEqual(settings.items.first(where: { $0.metric == .memory })?.interval, .seconds60)
+        XCTAssertTrue(settings.items.allSatisfy {
+            $0.metric.supportedIntervals(global: settings.interval).contains($0.interval)
+        })
     }
 
     func testRendererAppliesMemoryUnitsNetworkDirectionAndStyles() {

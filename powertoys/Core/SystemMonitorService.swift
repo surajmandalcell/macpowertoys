@@ -51,6 +51,28 @@ nonisolated enum SystemMonitorMenuMetric: String, Codable, CaseIterable, Identif
         case .cpu, .memory, .gpu, .network: 1
         }
     }
+
+    func supportedIntervals(global: TimeInterval) -> [SystemMonitorMenuInterval] {
+        switch self {
+        case .cpu, .memory, .gpu, .network:
+            return SystemMonitorMenuInterval.allCases
+        case .disk:
+            return (global >= minimumInterval ? [.global] : []) + [.seconds30, .seconds60]
+        case .battery, .thermal:
+            return (global >= minimumInterval ? [.global] : []) + [.seconds10, .seconds30, .seconds60]
+        }
+    }
+
+    func normalizedInterval(_ selected: SystemMonitorMenuInterval, global: TimeInterval) -> SystemMonitorMenuInterval {
+        let supported = supportedIntervals(global: global)
+        guard !supported.contains(selected) else { return selected }
+        let target = selected.seconds(global: global)
+        return supported.min {
+            let left = abs($0.seconds(global: global) - target)
+            let right = abs($1.seconds(global: global) - target)
+            return left == right ? $0.seconds(global: global) < $1.seconds(global: global) : left < right
+        } ?? defaultInterval
+    }
 }
 
 nonisolated enum SystemMonitorMenuItemStyle: String, Codable, CaseIterable, Identifiable {
@@ -269,6 +291,9 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         }
         for index in items.indices where !items[index].metric.symbols.contains(items[index].symbol) {
             items[index].symbol = items[index].metric.symbol
+        }
+        for index in items.indices {
+            items[index].interval = items[index].metric.normalizedInterval(items[index].interval, global: interval)
         }
     }
 
