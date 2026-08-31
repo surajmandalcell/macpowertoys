@@ -87,17 +87,15 @@ struct MarketplaceSettingsView: View {
     private func sourceRow(_ source: MarketplaceSource) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(source.displayName)
-                        .font(.system(size: 13, weight: .medium))
-                        .fixedSize()
-                    Text(source.url.absoluteString)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                }
+                Text(source.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                Text(source.url.absoluteString)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
                 if let error = source.lastError {
                     Text(error)
                         .font(.system(size: 11))

@@ -158,6 +158,24 @@ final class UtilityModelTests: XCTestCase {
         }
     }
 
+    func testLongPathsUseDedicatedRowsInCompactSettings() throws {
+        let marketplace = try sourceFile("Views/Marketplace/MarketplaceSettingsView.swift")
+        XCTAssertTrue(marketplace.contains(
+            "VStack(alignment: .leading, spacing: 2) {\n                Text(source.displayName)"
+        ))
+        XCTAssertTrue(marketplace.contains(
+            ".lineLimit(1)\n                Text(source.url.absoluteString)"
+        ))
+
+        let cleanup = try sourceFile("Views/Rclone/CleanupRemoteSheet.swift")
+        XCTAssertTrue(cleanup.contains(
+            "VStack(alignment: .leading, spacing: 2) {\n                Text(\"Clean Up by Ignore Rules\")"
+        ))
+        XCTAssertTrue(cleanup.contains(
+            ".font(.system(size: 15, weight: .semibold))\n                Text(scope)"
+        ))
+    }
+
     private func sourceFile(_ path: String) throws -> String {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

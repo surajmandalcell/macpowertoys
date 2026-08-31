@@ -2,6 +2,23 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    func testOverviewHistoryGridUsesAdaptiveChartColumns() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/SystemMonitor/SystemMonitorWindowView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let overviewStart = try XCTUnwrap(source.range(of: "private var overviewPage"))
+        let overviewEnd = try XCTUnwrap(source.range(
+            of: "private var metricColumns",
+            range: overviewStart.upperBound..<source.endIndex
+        ))
+        let overview = source[overviewStart.lowerBound..<overviewEnd.lowerBound]
+
+        XCTAssertTrue(overview.contains("LazyVGrid(columns: chartColumns, spacing: 12)"))
+        XCTAssertTrue(source.contains("GridItem(.adaptive(minimum: 320), spacing: 12)"))
+    }
+
     @MainActor
     func testTwentyFiveLifecycleCyclesReturnEveryOwnerToBaseline() async throws {
         let menuSettings = SystemMonitorMenuSettings(
