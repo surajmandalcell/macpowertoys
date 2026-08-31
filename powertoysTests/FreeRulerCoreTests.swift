@@ -1232,6 +1232,10 @@ final class RulerCoreTests: XCTestCase {
 
         let settingsWindow = try XCTUnwrap(settingsController.window)
         let preferencesWindow = try XCTUnwrap(preferencesController.window)
+        XCTAssertEqual(
+            NSStringFromClass(type(of: settingsWindow)),
+            NSStringFromClass(type(of: preferencesWindow))
+        )
         XCTAssertEqual(settingsWindow.frameAutosaveName, "rulerSettingsWindow")
         XCTAssertEqual(preferencesWindow.frameAutosaveName, "preferencesWindow")
         for (window, controlsView) in [

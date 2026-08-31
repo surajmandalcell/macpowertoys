@@ -949,22 +949,6 @@ extension PreferencesController: RulerSettingsControlsViewDelegate {
     }
 }
 
-final class RulerSettingsWindow: NSWindow {
-    weak var settingsController: RulerSettingsController?
-
-    override var canBecomeKey: Bool {
-        return true
-    }
-
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if settingsController?.performSettingsKeyEquivalent(with: event) == true {
-            return true
-        }
-
-        return super.performKeyEquivalent(with: event)
-    }
-}
-
 final class RulerSettingsController: NSWindowController, NSWindowDelegate {
 
     private weak var rulerController: RulerController?
@@ -1064,7 +1048,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.setAccessibilityIdentifier("ruler-settings-window")
         window?.isMovableByWindowBackground = true
         window?.isReleasedWhenClosed = false
-        (window as? RulerSettingsWindow)?.settingsController = self
         configureRulerUtilityWindowChrome(window)
         window?.initialFirstResponder = unitSegmentedControl
         settingsControlsView.delegate = self
@@ -1235,10 +1218,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         setDefaultsButton.nextKeyView = unitSegmentedControl
         resetDefaultsButton.isEnabled = hasRuler
         setDefaultsButton.isEnabled = hasRuler
-    }
-
-    func performSettingsKeyEquivalent(with event: NSEvent) -> Bool {
-        return settingsControlsView.performRulerSettingsKeyEquivalent(with: event)
     }
 
     func presentColorPanel(_ colorPanel: NSColorPanel, for colorWell: RulerColorWell) {

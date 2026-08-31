@@ -23,10 +23,13 @@
   a transparent native titlebar, a bordered Defaults group, or duplicate body
   title.
 - **Cause:** The pinned FreeRuler settings nib was treated as a visual source of
-  truth after settings chrome moved to MacPowerToys utility tokens.
+  truth after settings chrome moved to MacPowerToys utility tokens, or Ruler
+  Settings kept a ruler-only window subclass instead of the working plain
+  `NSWindow` pattern.
 - **Invariant:** Both fixed 420pt windows use active HUD material in the body
-  and opaque native titlebars. Do not add a custom titlebar material or drag
-  overlay. They use 20pt outer edges, 16pt section gaps, 8pt
+  and opaque native titlebars. Both XIBs instantiate plain `NSWindow` objects.
+  Do not add a custom window subclass, titlebar material, or drag overlay. They
+  use 20pt outer edges, 16pt section gaps, 8pt
   heading gaps, and 14pt card insets. Cards use a 10pt radius and dynamic label
   color at 5%.
   Settings uses trailing secondary and primary actions. Defaults uses one quiet
