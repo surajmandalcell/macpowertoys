@@ -197,9 +197,13 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         for index in items.indices where !items[index].metric.symbols.contains(items[index].symbol) {
             items[index].symbol = items[index].metric.symbol
         }
-        if !items.contains(where: \.enabled), let index = items.firstIndex(where: { $0.metric == .cpu }) {
-            items[index].enabled = true
-        }
+    }
+
+    func applying(_ change: (inout SystemMonitorMenuSettings) -> Void) -> SystemMonitorMenuSettings? {
+        var updated = self
+        change(&updated)
+        updated.normalize()
+        return updated == self ? nil : updated
     }
 
     static let defaultItems = SystemMonitorMenuMetric.allCases.map {
@@ -558,8 +562,8 @@ final class SystemMonitorService {
         reconfigure()
     }
     func updateMenuSettings(_ change: (inout SystemMonitorMenuSettings) -> Void) {
-        change(&menuSettings)
-        menuSettings.normalize()
+        guard let updated = menuSettings.applying(change) else { return }
+        menuSettings = updated
         if let data = try? JSONEncoder().encode(menuSettings) {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
@@ -642,7 +646,7 @@ private final class SystemMonitorMenuController: NSObject {
 
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
         statusItems.removeAll()
-        guard settings.enabled else { return }
+        guard settings.enabled, !settings.enabledItems.isEmpty else { return }
         if settings.mode == .grouped {
             statusItems["group"] = makeStatusItem(autosaveName: "system-monitor.grouped")
         } else {
