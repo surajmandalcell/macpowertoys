@@ -47,8 +47,11 @@ already public at `surajmandalcell/macpowertoys`.
   WindowServer showed the expected AI History, Cloud Sync, Logs, Ruler,
   Awake, Color Picker, Text Extractor, Input Devices, System Care, System
   Monitor, and NetToys windows without bringing the app forward.
-- [ ] Test at least one OAuth remote and one key-based or configuration-only
-  rclone remote.
+- [x] Test at least one OAuth remote and one key-based or configuration-only
+  rclone remote. On 2026-08-31, rclone 1.75.0 completed a 64 KiB Google Drive
+  OAuth round trip and a 64 KiB temporary configuration-only alias round trip.
+  Both downloads matched the source SHA-256 value, and both test stores were
+  clean after removal.
 - [ ] Test pause and restart with a backend that supports partial continuation
   and one that restarts the active object.
 - [x] Run the Raycast Store lint with the owner's valid username. The package
