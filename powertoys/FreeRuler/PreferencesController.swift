@@ -7,8 +7,16 @@ private let rulerTitlebarMaterialIdentifier = NSUserInterfaceItemIdentifier("rul
 private weak var activeRulerColorWell: RulerColorWell?
 
 private final class RulerTitlebarMaterialView: UtilityMaterialView {
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        nil
+    override var mouseDownCanMoveWindow: Bool {
+        true
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
     }
 }
 

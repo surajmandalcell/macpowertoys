@@ -1262,7 +1262,7 @@ final class RulerCoreTests: XCTestCase {
             )
             XCTAssertEqual(titlebarMaterial.material, .hudWindow)
             XCTAssertEqual(titlebarMaterial.state, .active)
-            XCTAssertNil(titlebarMaterial.hitTest(NSPoint(x: 1, y: 1)))
+            XCTAssertTrue(titlebarMaterial.mouseDownCanMoveWindow)
         }
 
         XCTAssertEqual(settingsController.resetDefaultsButton.frame.height, 28, accuracy: 0.5)
