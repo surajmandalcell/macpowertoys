@@ -119,6 +119,28 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testQuitCommandClosesEveryRulerInTheToolScope() {
+        let appDelegate = AppDelegate()
+        let layout = RulerLayoutState(
+            zeroPoint: NSPoint(x: 100, y: 100),
+            horizontalLength: 400,
+            verticalLength: 300
+        )
+        appDelegate.rulerManager.addRuler(state: RulerInstanceState(
+            settings: RulerSettings(),
+            layout: layout
+        ))
+        appDelegate.rulerManager.addRuler(state: RulerInstanceState(
+            settings: RulerSettings(),
+            layout: layout
+        ))
+
+        XCTAssertEqual(appDelegate.rulerManager.controllers.count, 2)
+        appDelegate.closeFreeRulerToolWindows()
+        XCTAssertFalse(appDelegate.rulerManager.hasRulers)
+    }
+
+    @MainActor
     func testStatusItemContextMenuContainsOnlyOpenAndQuit() {
         let menu = AppDelegate().statusItemContextMenu()
 
