@@ -122,7 +122,10 @@ changes. Never replace a running installation during a transfer.
 - macOS can restore a window's size, position, and display. It cannot assign a
   reopened window to its former Space with a public API.
 - Cloud Sync cannot change one file's priority during a directory transfer.
-  Use **Pause**, **Resume**, **Retry**, or **Recalculate** when needed.
+  Use **Pause**, **Resume**, **Retry**, or **Recalculate** when needed. Finished
+  files stay complete, but the active file can restart after a pause.
+- Google Drive setup needs your own OAuth client ID. rclone's shared Google
+  client ID is being retired during 2026.
 - Input Devices uses macOS event metadata to separate mouse and trackpad
   scrolling. macOS does not give each general scroll event a device identity.
 - NetToys IP Scanner and SSH Anchor currently use IPv4. SSH Anchor changes only
