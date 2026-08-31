@@ -168,8 +168,7 @@ actor NetToysHelperRuntime {
             at: date
         )
         if localIsOpen,
-           (action == .useLocal || tailscaleProbe.state != .open
-                || anchor.tailscaleFallback?.isEnabled != true),
+           action == .useLocal,
            let localHostName = anchor.localHostName {
             recovered = await verifiedLocalCandidate(anchor, hostName: localHostName)
             if recovered == nil {
