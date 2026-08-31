@@ -28,12 +28,22 @@ already public at `surajmandalcell/macpowertoys`.
 
 ## Verification
 
-- Run macOS unit, rclone integration, and UI smoke tests locally.
-- Run the complete suite on a clean supported Mac account.
-- Verify every tool's Dock icon in light and dark appearance at 32 px and full Dock size.
-- Verify both `macpowertoys://` and legacy `powertoys://` links.
-- Test at least one OAuth remote and one key-based or configuration-only rclone remote.
-- Test pause and restart with a backend that supports partial continuation and one that restarts the active object.
+- [x] Run local unit, rclone, and signed UI smoke checks. On 2026-08-31,
+  539 of 539 tests passed, a controlled local rclone transfer passed, and the
+  signed app completed 275 sub-app open and close cycles without an error.
+- [ ] Run the complete suite on a clean supported Mac account.
+- [ ] Verify every tool's Dock icon in light and dark appearance at 32 px and
+  full Dock size.
+- [x] Verify both `macpowertoys://` and legacy `powertoys://` links. In exact
+  installed build `327ebb1`, both schemes opened the main window. One
+  background matrix opened all 11 sub-app windows through each scheme; the
+  WindowServer showed the expected AI History, Cloud Sync, Logs, Ruler,
+  Awake, Color Picker, Text Extractor, Input Devices, System Care, System
+  Monitor, and NetToys windows without bringing the app forward.
+- [ ] Test at least one OAuth remote and one key-based or configuration-only
+  rclone remote.
+- [ ] Test pause and restart with a backend that supports partial continuation
+  and one that restarts the active object.
 - [x] Run the Raycast Store lint with the owner's valid username. The package
   uses `surajmandalcell`, and `npm --prefix raycast run lint:store` passed on
   2026-08-31.

@@ -536,8 +536,9 @@
   normalizes number-row key codes to `0` through `9` before persisting and
   displaying the shortcut. Color Picker defaults to `⇧⌘3`; Text Extractor
   defaults to `⇧⌘2`. Reserved screenshot chords use a suppressing session event
-  tap. When Accessibility permission is missing, show an explicit access action
-  beside the recorder instead of silently accepting a nonfunctional shortcut.
+  tap and never register through Carbon. When Accessibility permission is
+  missing, show an explicit access action beside the recorder, leave the native
+  screenshot action unchanged, and do not run the app shortcut.
 - **Check:** Feed the shared recorder a Command-Shift key event whose characters
   contain the shifted symbol and confirm its shortcut retains the physical
   number label. Then record shortcuts in both applet settings pages and invoke
