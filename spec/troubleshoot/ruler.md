@@ -26,6 +26,9 @@
   truth after settings chrome moved to MacPowerToys utility tokens, or Ruler
   Settings kept only part of the working Ruler Defaults window pattern. A plain
   `NSWindow` with a different native titlebar style mask is not the same pattern.
+  Ruler Settings also changed the ruler panel's floating state after it ordered
+  itself frontmost. That late Ruler-only change could reorder the ruler above
+  Settings and block the native titlebar.
 - **Invariant:** Both fixed 420pt windows use active HUD material in the body
   and opaque native titlebars. Both XIBs instantiate plain `NSWindow` objects
   with the same titled, closable, and miniaturizable native titlebar style.
@@ -37,6 +40,8 @@
   destructive action. Both windows keep their autosaved positions and displays.
   Settings never attaches to or follows a ruler. It keeps a target reference so
   controls update the intended ruler. Closing Settings leaves the ruler open.
+  Suspend the target ruler before Settings makes itself key and frontmost. Do
+  not mutate the ruler panel level after the final native window ordering.
   The native color panel can remain a child of Settings.
 - **Check:** Compile all three XIBs. Run `RulerCoreTests` and the focused signed
   Ruler UI flow. Inspect light, dark, increased-contrast, reduced-transparency,
@@ -45,6 +50,8 @@
   the complete key loop, Command-W dismissal, and focus return to the ruler.
   Move Settings from the native titlebar, move the ruler, and confirm that the
   Settings window stays in place.
+  The ordering regression must prove the target ruler is suspended before
+  Settings calls `makeKeyAndOrderFront`.
   Close Settings and confirm that the ruler stays open.
 
 ## Ruler Border And Shadow Defaults

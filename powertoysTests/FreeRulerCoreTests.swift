@@ -1372,6 +1372,43 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertTrue(second.rulerWindow.isFloatingPanel)
     }
 
+    func testRulerSettingsSuspendsAttachedRulerBeforeSettingsBecomesKey() throws {
+        let controller = RulerController(
+            state: RulerInstanceState(
+                settings: RulerSettings(floatRulers: true),
+                layout: RulerLayoutState(
+                    zeroPoint: NSPoint(x: 240, y: 320),
+                    horizontalLength: 260,
+                    verticalLength: 180
+                )
+            )
+        )
+        let settingsController = RulerSettingsController(rulerController: controller)
+        let nibWindow = try XCTUnwrap(settingsController.window)
+        let settingsWindow = RulerSettingsPresentationTrackingWindow(
+            contentRect: nibWindow.contentView!.bounds,
+            styleMask: nibWindow.styleMask,
+            backing: .buffered,
+            defer: false
+        )
+        settingsWindow.contentView = nibWindow.contentView
+        settingsController.window = settingsWindow
+        settingsWindow.onMakeKeyAndOrderFront = { [weak settingsWindow, weak controller] in
+            settingsWindow?.rulerWasSuspendedWhenOrdered = controller?.isRulerInteractionSuspended
+        }
+        defer {
+            settingsController.close()
+            controller.hide()
+        }
+
+        controller.show()
+        settingsController.show(attachedTo: controller, sender: self)
+
+        XCTAssertEqual(settingsWindow.rulerWasSuspendedWhenOrdered, true)
+        XCTAssertTrue(settingsWindow.isVisible)
+        XCTAssertFalse(controller.rulerWindow.isFloatingPanel)
+    }
+
     func testRulerControllerPassesArrowKeysThroughWhileInteractionSuspended() {
         let controller = RulerController(
             state: RulerInstanceState(
@@ -4222,6 +4259,16 @@ private final class TestableZeroCornerHorizontalRule: HorizontalRule {
 
     override var zeroCorner: ZeroCorner {
         return testZeroCorner
+    }
+}
+
+private final class RulerSettingsPresentationTrackingWindow: NSWindow {
+    var onMakeKeyAndOrderFront: (() -> Void)?
+    var rulerWasSuspendedWhenOrdered: Bool?
+
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        onMakeKeyAndOrderFront?()
+        super.makeKeyAndOrderFront(sender)
     }
 }
 
