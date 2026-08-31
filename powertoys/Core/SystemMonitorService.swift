@@ -401,6 +401,24 @@ nonisolated enum SystemMonitorMenuSchedule {
             return now.timeIntervalSince(last) >= item.effectiveInterval(global: settings.interval) ? item.metric : nil
         })
     }
+
+    static func nextInterval(
+        settings: SystemMonitorMenuSettings,
+        lastSampled: [SystemMonitorMenuMetric: Date],
+        unavailableMetrics: Set<SystemMonitorMenuMetric> = [],
+        detailed: Bool,
+        now: Date
+    ) -> TimeInterval? {
+        if detailed { return 1 }
+        guard settings.enabled else { return nil }
+        return settings.enabledItems
+            .filter { !unavailableMetrics.contains($0.metric) }
+            .map { item in
+                guard let last = lastSampled[item.metric] else { return 0 }
+                return max(item.effectiveInterval(global: settings.interval) - now.timeIntervalSince(last), 0)
+            }
+            .min()
+    }
 }
 
 nonisolated enum SystemMonitorStatusItemOrder {
@@ -525,6 +543,21 @@ nonisolated private final class SystemMonitorDueTracker: @unchecked Sendable {
         )
         for metric in due { lastSampled[metric] = now }
         return due
+    }
+
+    func nextInterval(
+        settings: SystemMonitorMenuSettings,
+        unavailableMetrics: Set<SystemMonitorMenuMetric>,
+        detailed: Bool,
+        now: Date
+    ) -> TimeInterval? {
+        SystemMonitorMenuSchedule.nextInterval(
+            settings: settings,
+            lastSampled: lastSampled,
+            unavailableMetrics: unavailableMetrics,
+            detailed: detailed,
+            now: now
+        )
     }
 }
 
@@ -813,11 +846,11 @@ final class SystemMonitorService {
         settings.enabled = menuActive
         menuController.configure(settings: settings)
         guard toolEnabled,
-              let interval = SystemMonitorMenuSchedule.timerInterval(
+              SystemMonitorMenuSchedule.timerInterval(
                 settings: settings,
                 detailed: detailedActive,
                 unavailableMetrics: unavailableMenuMetrics
-              ) else { return }
+              ) != nil else { return }
 
         let detailed = detailedActive
         let unavailableMetrics = unavailableMenuMetrics
@@ -825,18 +858,31 @@ final class SystemMonitorService {
         let currentGeneration = generation
         samplingQueue.sync { sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
-        source.schedule(deadline: .now(), repeating: interval,
-                        leeway: .milliseconds(Int(interval * 150)))
+        source.schedule(deadline: .now())
         source.setEventHandler { [weak self, sampler] in
+            let now = Date()
             let due = dueTracker.dueMetrics(
                 settings: settings,
                 unavailableMetrics: unavailableMetrics,
-                now: Date()
+                now: now
             )
-            guard detailed || !due.isEmpty else { return }
-            let sample = sampler.sample(detailed: detailed, metrics: due)
-            Task { @MainActor [weak self] in
-                self?.receive(sample, detailed: detailed, dueMetrics: due, generation: currentGeneration)
+            if detailed || !due.isEmpty {
+                let sample = sampler.sample(detailed: detailed, metrics: due)
+                Task { @MainActor [weak self] in
+                    self?.receive(sample, detailed: detailed, dueMetrics: due, generation: currentGeneration)
+                }
+            }
+            if let interval = dueTracker.nextInterval(
+                settings: settings,
+                unavailableMetrics: unavailableMetrics,
+                detailed: detailed,
+                now: now
+            ) {
+                let delay = max(interval - Date().timeIntervalSince(now), 0.001)
+                source.schedule(
+                    deadline: .now() + delay,
+                    leeway: .milliseconds(min(Int(interval * 150), 150))
+                )
             }
         }
         timer = source
