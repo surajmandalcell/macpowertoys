@@ -239,7 +239,12 @@ final class GlobalShortcutManager {
 
     private func register(_ action: GlobalShortcutAction) {
         let shortcut = shortcut(for: action)
+        guard Self.usesCarbonHotKey(for: shortcut) else { return }
         register(id: action.rawValue, keyCode: shortcut.keyCode, modifiers: shortcut.carbonModifiers)
+    }
+
+    static func usesCarbonHotKey(for shortcut: GlobalShortcut) -> Bool {
+        !shortcut.overridesSystemScreenshotShortcut
     }
 
     private func register(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
