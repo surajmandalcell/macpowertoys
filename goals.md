@@ -7,8 +7,6 @@ evidence, and remaining work.
 
 ## Current work
 
-- Verify that every workspace sidebar meets its body without a visible seam in
-  the latest normal signed build.
 - Verify the full-width Awake tray controls in the latest normal signed build.
 - Verify None, Combined, and Separate menu-bar modes, compact icon-only
   navigation above two combined tools, saved tab selection, separate-item
