@@ -46,6 +46,11 @@ evidence, and remaining work.
   local Raycast extension.
 - Verify that Input Devices keeps scroll control active through sustained wheel
   input and a session lock and unlock.
+- Complete the seven-metric System Monitor menu, per-item settings, due-driven
+  sampling, change-gated writes, and owner-level resource lifecycle tests.
+- Verify that repeated tool and window lifecycles return timers, status items,
+  observers, event taps, watchers, tasks, helpers, CPU-time growth, and RSS to
+  their allowed baseline.
 - Verify that a signed NetToys subnet scan fills rows and later fetcher fields
   live at its 1,280 by 800 default and 1,100 by 700 minimum sizes.
 - Complete the live checks in the request lists.

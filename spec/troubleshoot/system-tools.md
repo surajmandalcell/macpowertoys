@@ -296,14 +296,81 @@
 
 ## System Monitor
 
-- **Symptom:** Monitoring continues after the window closes, ignores the menu
-  interval, or leaves status items after disablement.
-- **Cause:** Detailed and menu sampling used separate unbounded timers or shared
-  one lifecycle without a menu update gate.
-- **Invariant:** Use one sampler and one timer. Collect detailed data only while
-  the System Monitor window is open. When enabled, collect only selected lightweight
-  menu metrics at the saved 1, 2, 3, or 5 second rate. Keep at most 120 samples.
-  Remove the timer and all status items when neither surface needs them.
-- **Check:** Close the window with the menu disabled and confirm sampling stops.
-  Enable the menu, confirm its saved cadence, then disable it and confirm all
-  System Monitor status items disappear.
+- **Symptom:** Monitoring continues after the window closes, ignores a menu
+  item's interval, or leaves status items after disablement.
+- **Cause:** Detailed and menu sampling had separate lifecycles, or menu-only
+  work sampled every metric on each wake. Settings and rendered menu state were
+  also applied without a change check.
+- **Invariant:** Use one sampler and exactly one utility-queue timer while a
+  visible System Monitor surface needs data. The open detailed window takes one
+  full snapshot each second. In menu-only mode, the timer wakes for the earliest
+  due metric and samples only enabled metrics that are due. Take the first sample
+  immediately.
+- **Invariant:** When System Monitor is disabled, or when its window is closed
+  and its menu is off, keep zero System Monitor timers and zero System Monitor
+  status items. Increment a generation before stop. An in-flight sample may
+  finish, but it must not change the snapshot, history, or menu after stop.
+  Teardown is part of every close and disable path. `deinit` is only a backstop.
+- **Invariant:** Let the user enable, disable, and reorder CPU, memory, GPU,
+  disk, network, battery, and thermal items independently. Permit no selected
+  items. Preserve saved order exactly inside a grouped item. Use the saved order
+  when separate items are created, but let macOS and the user control their
+  final menu-bar positions. Give each separate item a stable autosave name.
+- **Invariant:** Store each item's icon, Icon and Value, Icon Only, or Value Only
+  style, interval, and custom format. Support memory percentage, used, or
+  available; disk percentage, used, or free; network download, upload, or both
+  in bits or bytes; battery percentage or charging state; and compact or full
+  thermal state. Use a versioned schema and preserve old global-interval and
+  metric-selection settings during migration.
+- **Invariant:** Default CPU, memory, and network to 2 seconds, GPU to 5 seconds,
+  and disk, battery, and thermal to 30 seconds. Offer 1, 2, 3, 5, 10, 30, and
+  60 seconds only where the source supports the rate. In menu-only mode, do not
+  poll disk more often than every 15 seconds. Do not poll battery or thermal
+  more often than every 10 seconds. Mark a metric that is not available for the
+  current session. Do not keep a timer alive only to retry it. Retry after a
+  relevant system event, wake, or explicit refresh.
+- **Invariant:** CPU and network need a prior counter sample. Show a waiting
+  state for the first delta. Compute the next rate over the real elapsed time.
+  Do not synthesize a spike after an interval or sleep change. Keep at most 120
+  timestamped detailed snapshots. Menu-only updates do not add chart history.
+- **Invariant:** Compare normalized settings before writing UserDefaults or
+  restarting the timer. Compare the full rendered title, image, tooltip,
+  accessibility label, and length before writing an AppKit status item. Change
+  status-item ownership only when the enabled set, order, or grouped or
+  individual mode changes.
+- **Check:** Test the service with no surface, each surface alone, and both
+  surfaces together. Use at least one enabled menu metric. Require timer counts
+  of 0, 1, 1, and 1. Also require zero timers and status items when the menu is
+  on but no metric is selected. Disable the tool during a sample and confirm the
+  generation guard rejects the result. Advance a test clock across mixed
+  per-item intervals and confirm only due metrics run. Run past 120 chart
+  updates and confirm the cap. Apply the same settings and same rendered value
+  twice and confirm the second pass makes no UserDefaults or AppKit write.
+
+## Background Resource Ownership
+
+- **Symptom:** Reopening a window or enabling a tool several times increases
+  timers, watchers, event taps, helpers, status items, or idle resource use.
+- **Cause:** Start paths were not idempotent, or a close and disable path did not
+  release the owner that its start path created.
+- **Invariant:** Every repeating task and external handle has one named owner,
+  one need condition, and one matching stop path. A disabled or closed tool owns
+  no repeating task, file watcher, event tap, child process, helper, status item,
+  or active system handle unless the user independently enabled that background
+  feature. One bounded idle hardware handle may stay cached when reuse costs less
+  than repeated acquisition and `deinit` releases it. Event-driven app-lifetime
+  observers and one-shot debounce work are not polling loops.
+- **Invariant:** Allowed background work is limited to the enabled menu-bar
+  surfaces, Awake activity, Input Devices scroll control, the NetToys login
+  helper, Settings Sync observers, a visible Cloud Sync window, active or
+  continuous Cloud Sync jobs, the saved Cloud Sync start-at-login mode, global
+  shortcuts, visible Ruler work, and visible AI History file watching. Each
+  owner must still stop when its own need condition ends. Repeated start calls
+  must not increase its owner count.
+- **Check:** Expose test-only owner counts instead of inferring them from process
+  CPU or memory. Run at least 25 open and close or enable and disable cycles.
+  After a 30-second settle, require every owner count to return to its baseline
+  and CPU-time growth to return to the baseline range. Confirm that the final
+  ten RSS samples form a stable band with no cycle-by-cycle growth. Do not
+  require process-wide zero CPU or an exact RSS return because allocators and
+  other enabled tools share the process.
