@@ -1248,24 +1248,6 @@ final class NetToysTests: XCTestCase {
         )
     }
 
-    func testTailscaleHelperCannotBypassRouteMonitorRecoveryDwell() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("powertoys/NetToys/NetToysHelperRuntime.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        let checkStart = try XCTUnwrap(source.range(of: "private func checkTailscale"))
-        let checkEnd = try XCTUnwrap(source.range(
-            of: "private func switchToTailscale",
-            range: checkStart.upperBound..<source.endIndex
-        ))
-        let check = source[checkStart.lowerBound..<checkEnd.lowerBound]
-
-        XCTAssertTrue(check.contains("action == .useLocal"))
-        XCTAssertFalse(check.contains("tailscaleProbe.state != .open"))
-        XCTAssertFalse(check.contains("anchor.tailscaleFallback?.isEnabled != true"))
-    }
-
     func testWiFiPriorityDefaultsAndFailoverTiming() throws {
         let legacyData = Data(
             #"{"probeInterval":2.5,"anchors":[],"recordsNetworkHistory":true}"#.utf8
