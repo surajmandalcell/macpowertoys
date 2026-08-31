@@ -220,70 +220,7 @@ struct SystemMonitorWindowView: View {
 
     private var menuBarPage: some View {
         WorkspacePage("Menu Bar", subtitle: "Optional lightweight status") {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 12)], alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("DISPLAY").utilitySectionHeader()
-                    HStack {
-                        Text("Show in menu bar")
-                        Spacer()
-                        Toggle("Show in menu bar", isOn: menuSetting(
-                            get: { $0.enabled },
-                            set: { $0.enabled = $1 }
-                        ))
-                        .labelsHidden()
-                    }
-
-                    HStack {
-                        Text("Layout")
-                        Spacer()
-                        Picker("Layout", selection: menuSetting(
-                            get: { $0.mode },
-                            set: { $0.mode = $1 }
-                        )) {
-                            ForEach(SystemMonitorMenuMode.allCases) { Text($0.title).tag($0) }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(width: 160, alignment: .leading)
-                    }
-
-                    HStack {
-                        Text("Update every")
-                        Spacer()
-                        Picker("Update every", selection: menuSetting(
-                            get: { $0.interval },
-                            set: { $0.interval = $1 }
-                        )) {
-                            Text("1 second").tag(1.0)
-                            Text("2 seconds").tag(2.0)
-                            Text("3 seconds").tag(3.0)
-                            Text("5 seconds").tag(5.0)
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(width: 160, alignment: .leading)
-                    }
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .background(Color.primary.opacity(0.03))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("METRICS").utilitySectionHeader()
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 10) {
-                        ForEach(SystemMonitorMenuMetric.allCases) { metric in
-                            Toggle(metric.title, isOn: metricBinding(metric)).toggleStyle(.checkbox)
-                        }
-                    }
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .background(Color.primary.opacity(0.03))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-            .font(.system(size: 12))
-            .controlSize(.small)
+            SystemMonitorMenuSettingsView(showsContainerScroll: false)
         }
     }
 
@@ -312,6 +249,308 @@ struct SystemMonitorWindowView: View {
         return service.snapshot?.batteryCharging == true ? "Connected to power" : "On battery"
     }
 
+    nonisolated private static func rate(_ bytes: Double) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(max(bytes, 0)), countStyle: .file)
+    }
+}
+
+struct SystemMonitorMenuSettingsView: View {
+    @State private var service = SystemMonitorService.shared
+    let showsContainerScroll: Bool
+
+    init(showsContainerScroll: Bool = true) {
+        self.showsContainerScroll = showsContainerScroll
+    }
+
+    @ViewBuilder
+    var body: some View {
+        if showsContainerScroll {
+            ScrollView {
+                settingsContent
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.vertical, 12)
+            }
+            .thinScrollIndicators()
+        } else {
+            settingsContent
+        }
+    }
+
+    private var settingsContent: some View {
+        VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+            displaySection
+            itemsSection
+        }
+        .font(.system(size: 12))
+        .controlSize(.small)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var displaySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("DISPLAY").utilitySectionHeader()
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 20) {
+                    menuToggle
+                    Spacer(minLength: 12)
+                    layoutControl
+                    globalIntervalControl
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    menuToggle
+                    HStack(spacing: 16) {
+                        layoutControl
+                        globalIntervalControl
+                    }
+                }
+            }
+        }
+        .utilitySectionCard()
+    }
+
+    private var menuToggle: some View {
+        Toggle("Show in menu bar", isOn: menuSetting(
+            get: { $0.enabled },
+            set: { $0.enabled = $1 }
+        ))
+        .toggleStyle(.switch)
+        .accessibilityIdentifier("system-monitor.menu.enabled")
+    }
+
+    private var layoutControl: some View {
+        settingControl("LAYOUT", width: 112) {
+            Picker("Layout", selection: menuSetting(
+                get: { $0.mode },
+                set: { $0.mode = $1 }
+            )) {
+                ForEach(SystemMonitorMenuMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .accessibilityLabel("Menu bar layout")
+            .accessibilityIdentifier("system-monitor.menu.layout")
+        }
+    }
+
+    private var globalIntervalControl: some View {
+        settingControl("GLOBAL INTERVAL", width: 112) {
+            Picker("Global interval", selection: menuSetting(
+                get: { $0.interval },
+                set: { $0.interval = $1 }
+            )) {
+                ForEach(SystemMonitorMenuInterval.allowedSeconds, id: \.self) { seconds in
+                    Text(Self.intervalTitle(seconds)).tag(seconds)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .accessibilityIdentifier("system-monitor.menu.global-interval")
+        }
+    }
+
+    private var itemsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("MENU BAR ITEMS").utilitySectionHeader()
+                Text("Drag to reorder")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(service.menuSettings.items) { item in
+                    itemRow(item)
+                    if item.metric != service.menuSettings.items.last?.metric {
+                        QuietDivider()
+                    }
+                }
+            }
+            .background(Color.primary.opacity(0.03))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func itemRow(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                itemIdentity(item)
+                Spacer(minLength: 12)
+                itemControls(item)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                itemIdentity(item)
+                itemControls(item)
+                    .padding(.leading, 50)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .draggable(item.metric.rawValue)
+        .dropDestination(for: String.self) { values, _ in
+            guard let rawValue = values.first,
+                  let source = SystemMonitorMenuMetric(rawValue: rawValue) else { return false }
+            move(source, to: item.metric)
+            return true
+        }
+        .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue)")
+    }
+
+    private func itemIdentity(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        HStack(spacing: 8) {
+            reorderMenu(item.metric)
+
+            Toggle(item.metric.title, isOn: itemSetting(
+                item,
+                get: { $0.enabled },
+                set: { $0.enabled = $1 }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .accessibilityLabel("Show \(item.metric.title) in the menu bar")
+            .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).enabled")
+
+            Label(item.metric.title, systemImage: item.symbol)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 104, alignment: .leading)
+                .lineLimit(1)
+        }
+    }
+
+    private func itemControls(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            settingControl("STYLE", width: 92) {
+                Picker("Style", selection: itemSetting(
+                    item,
+                    get: { $0.style },
+                    set: { $0.style = $1 }
+                )) {
+                    ForEach(SystemMonitorMenuItemStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("\(item.metric.title) style")
+                .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).style")
+            }
+
+            settingControl("ICON", width: 82) {
+                Picker("Icon", selection: itemSetting(
+                    item,
+                    get: { $0.symbol },
+                    set: { $0.symbol = $1 }
+                )) {
+                    ForEach(item.metric.symbols, id: \.self) { symbol in
+                        Label(Self.iconTitle(symbol, for: item.metric), systemImage: symbol).tag(symbol)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("\(item.metric.title) icon")
+                .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).icon")
+            }
+
+            settingControl("INTERVAL", width: 94) {
+                Picker("Interval", selection: itemSetting(
+                    item,
+                    get: { $0.interval },
+                    set: { $0.interval = $1 }
+                )) {
+                    ForEach(SystemMonitorMenuInterval.allCases) { interval in
+                        Text(interval.title).tag(interval)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("\(item.metric.title) interval")
+                .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).interval")
+            }
+
+            itemSpecificControl(item)
+        }
+    }
+
+    @ViewBuilder
+    private func itemSpecificControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        switch item.metric {
+        case .memory:
+            settingControl("UNIT", width: 88) {
+                Picker("Unit", selection: itemSetting(
+                    item,
+                    get: { $0.memoryUnit },
+                    set: { $0.memoryUnit = $1 }
+                )) {
+                    ForEach(SystemMonitorMemoryUnit.allCases) { unit in
+                        Text(unit.title).tag(unit)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("Memory unit")
+                .accessibilityIdentifier("system-monitor.menu.item.memory.unit")
+            }
+        case .network:
+            settingControl("DIRECTION", width: 100) {
+                Picker("Direction", selection: itemSetting(
+                    item,
+                    get: { $0.networkDirection },
+                    set: { $0.networkDirection = $1 }
+                )) {
+                    ForEach(SystemMonitorNetworkDirection.allCases) { direction in
+                        Text(direction.title).tag(direction)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .accessibilityLabel("Network direction")
+                .accessibilityIdentifier("system-monitor.menu.item.network.direction")
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    private func reorderMenu(_ metric: SystemMonitorMenuMetric) -> some View {
+        let index = service.menuSettings.items.firstIndex { $0.metric == metric }
+        return Menu {
+            Button("Move Up") { move(metric, by: -1) }
+                .disabled(index == service.menuSettings.items.startIndex)
+            Button("Move Down") { move(metric, by: 1) }
+                .disabled(index == service.menuSettings.items.indices.last)
+        } label: {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.secondary)
+                .frame(width: 16, height: 20)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .focusEffectDisabled()
+        .fixedSize()
+        .help("Reorder \(metric.title)")
+        .accessibilityLabel("Reorder \(metric.title)")
+        .accessibilityIdentifier("system-monitor.menu.item.\(metric.rawValue).reorder")
+    }
+
+    private func settingControl<Content: View>(
+        _ label: String,
+        width: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.secondary)
+            content()
+        }
+        .frame(width: width, alignment: .leading)
+    }
+
     private func menuSetting<Value>(
         get: @escaping (SystemMonitorMenuSettings) -> Value,
         set: @escaping (inout SystemMonitorMenuSettings, Value) -> Void
@@ -322,20 +561,55 @@ struct SystemMonitorWindowView: View {
         )
     }
 
-    private func metricBinding(_ metric: SystemMonitorMenuMetric) -> Binding<Bool> {
+    private func itemSetting<Value>(
+        _ item: SystemMonitorMenuItemConfiguration,
+        get: @escaping (SystemMonitorMenuItemConfiguration) -> Value,
+        set: @escaping (inout SystemMonitorMenuItemConfiguration, Value) -> Void
+    ) -> Binding<Value> {
         Binding(
-            get: { service.menuSettings.metrics.contains(metric) },
-            set: { enabled in
-                service.updateMenuSettings {
-                    if enabled { $0.metrics.insert(metric) }
-                    else { $0.metrics.remove(metric) }
+            get: {
+                service.menuSettings.items.first { $0.metric == item.metric }.map(get) ?? get(item)
+            },
+            set: { value in
+                service.updateMenuSettings { settings in
+                    guard let index = settings.items.firstIndex(where: { $0.metric == item.metric }) else { return }
+                    set(&settings.items[index], value)
                 }
             }
         )
     }
 
-    nonisolated private static func rate(_ bytes: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(max(bytes, 0)), countStyle: .file)
+    private func move(_ metric: SystemMonitorMenuMetric, by offset: Int) {
+        service.updateMenuSettings { settings in
+            guard let source = settings.items.firstIndex(where: { $0.metric == metric }) else { return }
+            let destination = source + offset
+            guard settings.items.indices.contains(destination) else { return }
+            settings.items.move(
+                fromOffsets: IndexSet(integer: source),
+                toOffset: offset > 0 ? destination + 1 : destination
+            )
+        }
+    }
+
+    private func move(_ sourceMetric: SystemMonitorMenuMetric, to destinationMetric: SystemMonitorMenuMetric) {
+        guard sourceMetric != destinationMetric else { return }
+        service.updateMenuSettings { settings in
+            guard let source = settings.items.firstIndex(where: { $0.metric == sourceMetric }),
+                  let destination = settings.items.firstIndex(where: { $0.metric == destinationMetric }) else { return }
+            settings.items.move(
+                fromOffsets: IndexSet(integer: source),
+                toOffset: destination > source ? destination + 1 : destination
+            )
+        }
+    }
+
+    private static func intervalTitle(_ seconds: TimeInterval) -> String {
+        "\(Int(seconds)) \(seconds == 1 ? "second" : "seconds")"
+    }
+
+    private static func iconTitle(_ symbol: String, for metric: SystemMonitorMenuMetric) -> String {
+        guard let index = metric.symbols.firstIndex(of: symbol), index > 0 else { return metric.title }
+        return "Alternate \(index)"
     }
 }
 
