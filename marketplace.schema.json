@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/surajmandalcell/powertoys/main/marketplace.schema.json",
+  "$id": "https://raw.githubusercontent.com/surajmandalcell/macpowertoys/main/marketplace.schema.json",
   "title": "MacPowerToys Marketplace Catalog",
-  "description": "A catalog of independently signed and notarized companion apps installable through MacPowerToys. Catalogs are fetched from raw GitHub URLs. Tool IDs must be unique within a catalog and must not reuse a built-in MacPowerToys tool ID (cc-history, rclone, logs, ruler, awake, color-picker, text-extractor). When the same tool ID appears in multiple saved sources, the first-added source owns it.",
+  "description": "A catalog of independently signed and notarized companion apps that MacPowerToys can install. Catalogs are fetched from raw GitHub URLs. Tool IDs must be unique within a catalog. A tool ID must not match a built-in MacPowerToys tool ID. Built-in IDs are: cc-history, rclone, logs, ruler, awake, color-picker, text-extractor, input-devices, system-care, system-monitor, and nettoys. When the same tool ID appears in multiple saved sources, the first-added source owns it.",
   "type": "object",
   "additionalProperties": false,
   "required": ["formatVersion", "source", "tools"],

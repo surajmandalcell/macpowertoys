@@ -13,8 +13,11 @@ already public at `surajmandalcell/macpowertoys`.
   conversations, identifiers, and a home path. Normal commits cannot remove
   these blobs. Create a clean repository or explicitly approve a history
   rewrite and force-push.
-- [x] Use the current `macpowertoys` repository name in badges, clone URLs, and
-  release links.
+- [x] Use the current `macpowertoys` repository name in badges, clone URLs,
+  schema IDs, security links, and release links. A repository search found no
+  old public repository URL on 2026-08-31.
+- [x] List all 11 built-in tools in the README and marketplace schema. On
+  2026-08-31, both lists matched `ToolRegistry.builtInTools`.
 - [x] Enable private vulnerability reporting, secret scanning, push
   protection, and Dependabot security updates.
 - [ ] Protect `main`. The GitHub API reported no branch protection on
