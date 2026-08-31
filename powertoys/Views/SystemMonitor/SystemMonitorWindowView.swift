@@ -81,7 +81,7 @@ struct SystemMonitorWindowView: View {
             metricGrid
             VStack(alignment: .leading, spacing: 10) {
                 Text("LAST TWO MINUTES").utilitySectionHeader()
-                LazyVGrid(columns: metricColumns, spacing: 12) {
+                LazyVGrid(columns: chartColumns, spacing: 12) {
                     chartCard(title: "CPU", suffix: "%", values: service.history.compactMap(\.cpuUsage))
                     chartCard(title: "Memory", suffix: "%", values: service.history.compactMap(\.memoryUsage))
                     chartCard(
