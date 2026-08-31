@@ -86,6 +86,7 @@ struct RemoteConfigurationPrompt: Equatable {
 @Observable
 final class RcloneJobManager {
     static let shared = RcloneJobManager()
+    static weak var current: RcloneJobManager?
 
     private(set) var remotes: [RcloneRemote] = []
     private(set) var providers: [RcloneProvider] = []
@@ -178,6 +179,21 @@ final class RcloneJobManager {
 
     var pollingOwnerCount: Int { pollTask == nil ? 0 : 1 }
     var visibleWindowOwnerCount: Int { windowOwners.count }
+    var volumeObserverOwnerCount: Int { volumeObservers.count }
+    var fileWatcherOwnerCount: Int { sourceWatchers.count }
+    var longLivedTaskOwnerCount: Int {
+        (authTask == nil ? 0 : 1)
+            + (engineRetryTask == nil ? 0 : 1)
+            + (persistJobsTask == nil ? 0 : 1)
+            + (idleShutdownTask == nil ? 0 : 1)
+            + settingsApplyTasks.count
+            + continuousSyncTasks.count
+    }
+    var daemonOwnerCount: Int { isDaemonRunning ? 1 : 0 }
+
+    init() {
+        Self.current = self
+    }
 
     private var runtimeIsNeeded: Bool {
         Self.needsRuntime(

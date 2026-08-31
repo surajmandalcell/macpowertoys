@@ -11,12 +11,16 @@ import CoreGraphics
 @MainActor
 final class WindowStateManager {
     static let shared = WindowStateManager()
+    static weak var current: WindowStateManager?
 
     private let userDefaultsPrefix = "windowState"
     private var observers: [NSObjectProtocol] = []
     private let restoredWindows = NSHashTable<NSWindow>.weakObjects()
 
+    var observerOwnerCount: Int { observers.count }
+
     private init() {
+        Self.current = self
         setupObservers()
     }
 
