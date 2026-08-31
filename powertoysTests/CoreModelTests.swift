@@ -94,9 +94,11 @@ final class CoreModelTests: XCTestCase {
             pasteboard.clearContents()
         }
         var cueText: String?
-        let service = TextExtractorService(defaults: defaults, pasteboard: pasteboard) {
-            cueText = pasteboard.string(forType: .string)
-        }
+        let service = TextExtractorService(
+            defaults: defaults,
+            pasteboard: pasteboard,
+            playCompletionCue: { cueText = pasteboard.string(forType: .string) }
+        )
 
         service.finishRecognition("Recognized text")
 
