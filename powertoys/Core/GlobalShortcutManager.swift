@@ -359,14 +359,32 @@ final class GlobalShortcutManager {
 
     nonisolated private static let handleReservedShortcutEvent: CGEventTapCallBack = {
         _, type, event, userData in
-        guard type == .keyDown, let userData else { return Unmanaged.passUnretained(event) }
+        guard let userData else { return Unmanaged.passUnretained(event) }
         let manager = Unmanaged<GlobalShortcutManager>.fromOpaque(userData).takeUnretainedValue()
-        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        let action = MainActor.assumeIsolated {
-            manager.reservedAction(keyCode: keyCode, flags: event.flags)
+        return MainActor.assumeIsolated {
+            manager.processReservedShortcutEvent(
+                type: type,
+                event: event,
+                eventTap: manager.reservedShortcutTap
+            )
         }
+    }
+
+    func processReservedShortcutEvent(
+        type: CGEventType,
+        event: CGEvent,
+        eventTap: CFMachPort?,
+        enableTap: (CFMachPort) -> Void = { CGEvent.tapEnable(tap: $0, enable: true) }
+    ) -> Unmanaged<CGEvent>? {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let eventTap { enableTap(eventTap) }
+            return Unmanaged.passUnretained(event)
+        }
+        guard type == .keyDown else { return Unmanaged.passUnretained(event) }
+        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
+        let action = reservedAction(keyCode: keyCode, flags: event.flags)
         guard let action else { return Unmanaged.passUnretained(event) }
-        Task { @MainActor in manager.run(id: action.rawValue) }
+        Task { @MainActor in run(id: action.rawValue) }
         return nil
     }
 }

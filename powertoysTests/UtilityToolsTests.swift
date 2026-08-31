@@ -1,3 +1,4 @@
+import ApplicationServices
 import Carbon.HIToolbox
 import SwiftUI
 import XCTest
@@ -216,6 +217,32 @@ final class UtilityToolsTests: XCTestCase {
             flags: [.maskCommand, .maskShift, .maskControl]
         ))
         XCTAssertFalse(textExtractor.overridesSystemScreenshotShortcut)
+    }
+
+    func testReservedShortcutTapRecoversFromSystemDisableEvents() throws {
+        let event = try XCTUnwrap(CGEvent(
+            keyboardEventSource: nil,
+            virtualKey: UInt16(kVK_ANSI_3),
+            keyDown: true
+        ))
+        let callback: CFMachPortCallBack = { _, _, _, _ in }
+        let eventTap = try XCTUnwrap(CFMachPortCreate(kCFAllocatorDefault, callback, nil, nil))
+        defer { CFMachPortInvalidate(eventTap) }
+        let disabledTypes: [CGEventType] = [.tapDisabledByTimeout, .tapDisabledByUserInput]
+        var recoveredTypes: [CGEventType] = []
+
+        for type in disabledTypes {
+            _ = GlobalShortcutManager.shared.processReservedShortcutEvent(
+                type: type,
+                event: event,
+                eventTap: eventTap
+            ) { recoveredTap in
+                XCTAssertTrue(recoveredTap === eventTap)
+                recoveredTypes.append(type)
+            }
+        }
+
+        XCTAssertEqual(recoveredTypes, disabledTypes)
     }
 
     func testShortcutRecorderUsesPhysicalNumberKeyLabelWithShift() throws {
