@@ -24,9 +24,9 @@
   title.
 - **Cause:** The pinned FreeRuler settings nib was treated as a visual source of
   truth after settings chrome moved to MacPowerToys utility tokens.
-- **Invariant:** Both fixed 420pt windows use active HUD material through the
-  body and behind their transparent native titlebars; never substitute a generic
-  window-background slab. They use 20pt outer edges, 16pt section gaps, 8pt
+- **Invariant:** Both fixed 420pt windows use active HUD material in the body
+  and opaque native titlebars. Do not add a custom titlebar material or drag
+  overlay. They use 20pt outer edges, 16pt section gaps, 8pt
   heading gaps, and 14pt card insets. Cards use a 10pt radius and dynamic label
   color at 5%.
   Settings uses trailing secondary and primary actions. Defaults uses one quiet
@@ -37,11 +37,10 @@
 - **Check:** Compile all three XIBs. Run `RulerCoreTests` and the focused signed
   Ruler UI flow. Inspect light, dark, increased-contrast, reduced-transparency,
   English, German, and Japanese states. Confirm each native titlebar remains
-  visibly distinct from the HUD body, with no overlap, 24pt hit frames,
+  opaque and visibly distinct from the HUD body, with no overlap, 24pt hit frames,
   the complete key loop, Command-W dismissal, and focus return to the ruler.
-  The decorative titlebar material must pass mouse-down events to
-  `NSWindow.performDrag(with:)` so the titlebar remains draggable.
-  Move Settings, move the ruler, and confirm that the panel stays in place.
+  Move Settings from the native titlebar, move the ruler, and confirm that the
+  Settings window stays in place.
   Close Settings and confirm that the ruler stays open.
 
 ## Ruler Border And Shadow Defaults
