@@ -17,6 +17,24 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum IndividualMenuBarActivation: Equatable {
+    case openTool(String)
+    case execute(ToolActionID)
+}
+
+struct IndividualMenuBarRefreshPlan: Equatable {
+    let insertions: [IndividualMenuBarTool]
+    let removals: [IndividualMenuBarTool]
+
+    init(current: Set<IndividualMenuBarTool>, desired: [IndividualMenuBarTool]) {
+        let desiredSet = Set(desired)
+        insertions = desired.filter { !current.contains($0) }
+        removals = IndividualMenuBarTool.allCases.filter {
+            current.contains($0) && !desiredSet.contains($0)
+        }
+    }
+}
+
 enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
     case cloudSync = "rclone"
     case awake
@@ -38,6 +56,14 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
             return .separate
         }
         return self == .cloudSync || self == .awake ? .combined : .none
+    }
+
+    func usesMenuBarMode(
+        _ mode: MenuBarDisplayMode,
+        enabled: Bool,
+        in defaults: UserDefaults = .standard
+    ) -> Bool {
+        enabled && displayMode(in: defaults) == mode
     }
 
     var title: String {
@@ -74,6 +100,10 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
         case .textExtractor: "Extract Text"
         default: nil
         }
+    }
+
+    var activation: IndividualMenuBarActivation {
+        quickAction.map(IndividualMenuBarActivation.execute) ?? .openTool(id)
     }
 }
 
@@ -121,12 +151,19 @@ final class IndividualMenuBarController: NSObject {
     }
 
     func refresh() {
-        for tool in IndividualMenuBarTool.allCases {
-            let shouldShow = tool.displayMode(in: defaults) == .separate
-                && SettingsManager.shared.isToolEnabled(tool.id)
-            if shouldShow, statusItems[tool] == nil {
-                statusItems[tool] = makeStatusItem(for: tool)
-            } else if !shouldShow, let item = statusItems.removeValue(forKey: tool) {
+        let desired = IndividualMenuBarTool.allCases.filter {
+            $0.usesMenuBarMode(
+                .separate,
+                enabled: SettingsManager.shared.isToolEnabled($0.id),
+                in: defaults
+            )
+        }
+        let plan = IndividualMenuBarRefreshPlan(current: Set(statusItems.keys), desired: desired)
+        for tool in plan.insertions {
+            statusItems[tool] = makeStatusItem(for: tool)
+        }
+        for tool in plan.removals {
+            if let item = statusItems.removeValue(forKey: tool) {
                 NSStatusBar.system.removeStatusItem(item)
             }
         }
@@ -155,10 +192,11 @@ final class IndividualMenuBarController: NSObject {
                   identifier == "individual-menu.\($0.id)"
               }) else { return }
 
-        if let action = tool.quickAction {
+        switch tool.activation {
+        case .execute(let action):
             ToolActionRouter.shared.execute(ToolActionRequest(action: action))
-        } else {
-            ToolActionRouter.shared.open(toolID: tool.id)
+        case .openTool(let toolID):
+            ToolActionRouter.shared.open(toolID: toolID)
         }
     }
 }

@@ -214,6 +214,50 @@ final class SystemMonitorTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testMenuModesKeepStableAutosaveNamesAndDoNotRecreateForStyleChanges() throws {
+        let suiteName = "SystemMonitorMenuIdentityTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let service = SystemMonitorService(
+            menuSettings: SystemMonitorMenuSettings(
+                enabled: true,
+                mode: .grouped,
+                items: SystemMonitorMenuMetric.allCases.map {
+                    SystemMonitorMenuItemConfiguration(metric: $0, enabled: true)
+                }
+            ),
+            toolEnabled: false,
+            observesWake: false,
+            defaults: defaults
+        )
+
+        service.setToolEnabled(true)
+        let groupedIdentities = service.statusItemIdentities
+        XCTAssertEqual(service.statusItemAutosaveNames, ["system-monitor.grouped"])
+
+        service.updateMenuSettings { $0.items[0].style = .iconOnly }
+        XCTAssertEqual(service.statusItemIdentities, groupedIdentities)
+
+        service.updateMenuSettings { $0.mode = .direct }
+        XCTAssertEqual(
+            service.statusItemAutosaveNames,
+            Set(SystemMonitorMenuMetric.allCases.map {
+                "system-monitor.\($0.rawValue)"
+            })
+        )
+        let directIdentities = service.statusItemIdentities
+
+        service.updateMenuSettings { $0.items[1].interval = .seconds5 }
+        XCTAssertEqual(service.statusItemIdentities, directIdentities)
+
+        service.updateMenuSettings {
+            for index in $0.items.indices { $0.items[index].enabled = false }
+        }
+        XCTAssertTrue(service.statusItemIdentities.isEmpty)
+        XCTAssertTrue(service.statusItemAutosaveNames.isEmpty)
+    }
+
     func testLifecycleReconfiguresOnlyForStateChanges() {
         XCTAssertFalse(SystemMonitorLifecycle.changesState(from: false, to: false))
         XCTAssertFalse(SystemMonitorLifecycle.changesState(from: true, to: true))
