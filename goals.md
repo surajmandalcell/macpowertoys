@@ -18,17 +18,16 @@ evidence, and remaining work.
   and selected states; focus and keyboard use; compact and dark appearance;
   contrast; tab-group, body, and footer rhythm; native clicks; and Cloud Sync
   Pause and Resume.
-- Verify compact top-aligned launcher introductions.
-- Verify large sidebar search fields and thin native content search fields,
-  including the Cloud Sync connector picker.
 - Verify adaptive multi-column layouts, compact inline metadata, and readable
   narrow-width fallbacks.
 - Verify that physical Command-Shift-3 opens Color Picker and suppresses the
   macOS screenshot action.
 - Verify visible Raycast icon rendering and the NetToys cold launch. NetToys
   prefill routing and saved-frame restoration are already complete.
-- Verify SSH Anchor at minimum width and across real address changes, key-only
-  setup for `win1`, Tailscale fallback and recovery, and host-key safety.
+- Verify SSH Anchor at minimum width and across real address changes, retained
+  key-only access for `win1`, Tailscale fallback and recovery, and host-key
+  safety. Current key-only access to `win1` is confirmed; `win1` is not yet an
+  enrolled anchor.
 - Verify that a signed NetToys subnet scan streams rows and enrichment fields
   at its minimum window size. The default-size signed scan is complete.
 - Verify Input Devices with real mouse and trackpad hardware, sustained wheel
