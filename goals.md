@@ -8,8 +8,7 @@ evidence, and remaining work.
 ## Current work
 
 - Verify Ruler Settings and Ruler Defaults titlebar dragging, independent
-  placement and display restoration, non-obstructing behavior, saved shadow,
-  and live Border Opacity behavior.
+  placement and display restoration, and non-obstructing behavior.
 - Verify the shared modal Close control in both SSH Anchor sheets.
 - Verify the compact Tailscale device chooser with short and scrolling lists,
   including peer-row hover and pressed feedback.
