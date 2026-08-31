@@ -101,6 +101,7 @@ struct AwakeSettingsView: View {
                     modeButton(.timed) {
                         service.setMode(.timed, duration: TimeInterval(hours * 3600 + minutes * 60))
                     }
+                    .disabled(hours == 0 && minutes == 0)
                     Stepper("\(hours) h", value: $hours, in: 0...168)
                         .contentShape(Rectangle())
                     Stepper("\(minutes) min", value: $minutes, in: 0...59, step: 5)
