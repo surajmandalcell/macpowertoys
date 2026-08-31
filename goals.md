@@ -7,55 +7,45 @@ evidence, and remaining work.
 
 ## Current work
 
-- Verify that Ruler Settings and Ruler Defaults drag from their native titlebars
-  and that both SSH Anchor sheets expose the shared Close control.
-- Verify that Ruler Settings restores its independent position and display,
-  stays clear of the ruler, and keeps the ruler open when Settings closes.
-- Verify the live Border Opacity control, its 25% default, the default disabled
-  shadow, and a saved enabled shadow choice in the final installed build.
-- Verify Command-Q closes only the active sub-app tool scope. Confirm the
-  launcher quits only after a second press within two seconds and Command-W is
-  unchanged.
-- Verify the full-width Awake tray controls in the latest normal signed build.
-- Verify None, Combined, and Separate menu-bar modes, compact icon-only
-  navigation above two combined tools, saved tab selection, separate-item
-  position restoration, and actions for every eligible background tool.
-- Verify the compact top-aligned launcher introduction for Input Devices and
-  the other menu-bar-capable tools.
-- Verify large search fields stay in sidebars and every content search uses the
-  thin native control across apps and sub-apps.
-- Verify focus appearance and keyboard activation in the menu-bar panels with
-  a physical menu-bar click. All other built-in surfaces passed.
-- Verify compact inline metadata and adaptive two-column pages in the latest
-  normal installed build at default and minimum widths.
-- Verify automatic SSH Anchor setup at the minimum window width, then change
-  connections and confirm the signed helper repairs the enrolled host's IP
-  without a host-key prompt or changed-identification failure.
-- Complete the one-time in-app key setup for `win1`, then verify key-only SSH
-  before and after SSH Anchor changes its address.
-- Verify one signed SSH Anchor falls back through its pinned Tailscale device
-  and returns to the local endpoint without changing an unrelated SSH stanza.
-- Verify content-sized menu-bar tabs and selected Awake controls in the latest
-  normal installed build.
-- Verify the darker menu-bar popover, equal tab-group edges, shorter body gap,
-  added body-bottom space, footer rhythm, and native single-click in the latest
-  normal signed installed build.
-- Verify the 18pt by 6pt launcher-detail tab inset in the latest normal
-  installed build.
-- Verify representative updated tool icons and launchers in the refreshed
-  local Raycast extension.
-- Verify that Input Devices keeps scroll control active through sustained wheel
-  input and a session lock and unlock.
-- Verify the seven-metric System Monitor menu, per-item formats and intervals,
-  saved order, due-driven sampling, and change-gated updates in the installed
-  build.
-- Verify that repeated tool and window lifecycles return timers, status items,
-  observers, event taps, watchers, tasks, helpers, CPU-time growth, and RSS to
-  their allowed baseline. Include the Cloud Sync daemon and polling owner.
-- Verify that a signed NetToys subnet scan fills rows and later fetcher fields
-  live at its 1,280 by 800 default and 1,100 by 700 minimum sizes.
-- Complete the live checks in the request lists.
-- Complete the public release checklist only after product work is complete.
+- Verify Ruler Settings and Ruler Defaults titlebar dragging, independent
+  placement and display restoration, non-obstructing behavior, saved shadow,
+  and live Border Opacity behavior.
+- Verify the shared modal Close control in both SSH Anchor sheets.
+- Verify Command-Q and Command-W across the remaining sub-apps, sheets, and the
+  launcher timeout path.
+- Verify None, Combined, and Separate menu-bar modes for every eligible tool,
+  including compact combined navigation, saved selection, action routing, and
+  separate-item position restoration.
+- Verify Awake tray sizing, selected states, content-sized tabs, and failure
+  presentation.
+- Verify menu-bar focus, keyboard use, compact layout, darker appearance,
+  contrast, tab-group edges, body and footer rhythm, native single-click, and
+  Cloud Sync Pause and Resume.
+- Verify compact top-aligned launcher introductions and the 18pt by 6pt detail
+  tab inset.
+- Verify large sidebar search fields and thin native content search fields,
+  including the Cloud Sync connector picker.
+- Verify adaptive multi-column layouts, compact inline metadata, and readable
+  narrow-width fallbacks.
+- Verify that physical Command-Shift-3 opens Color Picker and suppresses the
+  macOS screenshot action.
+- Verify the refreshed Raycast icons and every launcher, including NetToys
+  prefill routing, cold launch, saved frame, and embedded source commit.
+- Verify SSH Anchor at minimum width and across real address changes, key-only
+  setup for `win1`, Tailscale fallback and recovery, host-key safety, helper
+  repair, and preservation of unrelated SSH configuration.
+- Verify that a signed NetToys subnet scan streams rows and enrichment fields
+  at its default and minimum window sizes.
+- Verify Input Devices with real mouse and trackpad hardware, sustained wheel
+  input, and session lock and unlock.
+- Verify all seven System Monitor menu metrics, zero selection, ordering,
+  dragged-position preservation, per-item display settings, saved exact
+  cadences, unavailable-metric suspension, and change-gated updates.
+- Run the installed 25-cycle cross-tool resource soak. Verify owner counts,
+  timers, status items, event taps, observers, watchers, tasks, helpers, Cloud
+  Sync polling, CPU-time growth, and RSS against their allowed baselines.
+- Complete the public release checklist only after every product and live
+  verification item above passes.
 
 ## Request lists
 
