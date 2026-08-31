@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var didStartApplication = false
     private var applicationStartup: (@MainActor () async -> Void)?
     private var ownsInstance = true
+    private var quitCommandCoordinator = QuitCommandCoordinator()
 
     static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?) -> Bool {
         userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool == true
@@ -218,6 +219,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
+    @MainActor
+    @objc func handleQuitCommand() {
+        let activeWindow = NSApp.keyWindow ?? NSApp.mainWindow
+        switch quitCommandCoordinator.action(
+            toolID: Self.quitCommandToolID(for: activeWindow),
+            now: ProcessInfo.processInfo.systemUptime
+        ) {
+        case let .closeToolWindows(toolID):
+            NSApp.windows
+                .filter { $0.isVisible && Self.window($0, belongsTo: toolID) }
+                .forEach { $0.performClose(nil) }
+        case .awaitMainWindowRepeat:
+            hotkeyBezel.show("Press ⌘Q again to quit", on: activeWindow?.screen)
+        case .terminate:
+            NSApp.terminate(nil)
+        }
+    }
+
+    static func quitCommandToolID(for window: NSWindow?) -> String? {
+        var candidate = window
+        while let current = candidate {
+            if let toolID = quitCommandToolID(for: current.identifier?.rawValue) {
+                return toolID
+            }
+            candidate = current.sheetParent
+        }
+        return nil
+    }
+
+    static func quitCommandToolID(for identifier: String?) -> String? {
+        if isFreeRulerWindowIdentifier(identifier) { return "ruler" }
+        return nativeSceneToolIDs
+            .filter { $0 != "main" }
+            .first { ToolActionRouter.windowIdentifier(identifier, matches: $0) }
+    }
+
+    static func window(_ window: NSWindow, belongsTo toolID: String) -> Bool {
+        if toolID == "ruler" {
+            return isFreeRulerWindowIdentifier(window.identifier?.rawValue)
+        }
+        return ToolActionRouter.windowIdentifier(window.identifier?.rawValue, matches: toolID)
+    }
+
     private static func statusItemButton(containing view: NSView?) -> NSStatusBarButton? {
         var candidate = view
         while let current = candidate {
@@ -327,6 +371,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+}
+
+struct QuitCommandCoordinator {
+    enum Action: Equatable {
+        case closeToolWindows(String)
+        case awaitMainWindowRepeat
+        case terminate
+    }
+
+    static let repeatInterval: TimeInterval = 2
+    private var mainWindowDeadline: TimeInterval?
+
+    mutating func action(
+        toolID: String?,
+        now: TimeInterval
+    ) -> Action {
+        if let toolID {
+            mainWindowDeadline = nil
+            return .closeToolWindows(toolID)
+        }
+        if let mainWindowDeadline, now <= mainWindowDeadline {
+            self.mainWindowDeadline = nil
+            return .terminate
+        }
+        mainWindowDeadline = now + Self.repeatInterval
+        return .awaitMainWindowRepeat
     }
 }
 

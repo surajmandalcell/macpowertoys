@@ -7,6 +7,9 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify Command-Q closes only the active sub-app tool scope. Confirm the
+  launcher quits only after a second press within two seconds and Command-W is
+  unchanged.
 - Verify the full-width Awake tray controls in the latest normal signed build.
 - Verify None, Combined, and Separate menu-bar modes, compact icon-only
   navigation above two combined tools, saved tab selection, separate-item

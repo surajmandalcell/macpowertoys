@@ -54,6 +54,58 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertEqual(AppDelegate.openMainWindowSymbol, "arrow.up.forward.square")
     }
 
+    func testQuitCommandClosesSubAppAndRequiresTwoLauncherPresses() {
+        var coordinator = QuitCommandCoordinator()
+
+        XCTAssertEqual(
+            coordinator.action(toolID: "nettoys", now: 0),
+            .closeToolWindows("nettoys")
+        )
+        XCTAssertEqual(
+            coordinator.action(toolID: nil, now: 1),
+            .awaitMainWindowRepeat
+        )
+        XCTAssertEqual(
+            coordinator.action(
+                toolID: nil,
+                now: 1 + QuitCommandCoordinator.repeatInterval
+            ),
+            .terminate
+        )
+    }
+
+    func testQuitCommandRepeatExpiresAndOtherWindowsClearIt() {
+        var coordinator = QuitCommandCoordinator()
+
+        XCTAssertEqual(
+            coordinator.action(toolID: nil, now: 0),
+            .awaitMainWindowRepeat
+        )
+        XCTAssertEqual(
+            coordinator.action(
+                toolID: nil,
+                now: QuitCommandCoordinator.repeatInterval + 0.01
+            ),
+            .awaitMainWindowRepeat
+        )
+        XCTAssertEqual(
+            coordinator.action(toolID: "ruler", now: 3),
+            .closeToolWindows("ruler")
+        )
+        XCTAssertEqual(
+            coordinator.action(toolID: nil, now: 3.1),
+            .awaitMainWindowRepeat
+        )
+    }
+
+    func testQuitCommandMapsOnlyKnownSubAppWindows() {
+        XCTAssertNil(AppDelegate.quitCommandToolID(for: "main"))
+        XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
+        XCTAssertEqual(AppDelegate.quitCommandToolID(for: "nettoys"), "nettoys")
+        XCTAssertEqual(AppDelegate.quitCommandToolID(for: "nettoys-settings"), "nettoys")
+        XCTAssertEqual(AppDelegate.quitCommandToolID(for: "ruler-settings-window"), "ruler")
+    }
+
     @MainActor
     func testStatusItemContextMenuContainsOnlyOpenAndQuit() {
         let menu = AppDelegate().statusItemContextMenu()

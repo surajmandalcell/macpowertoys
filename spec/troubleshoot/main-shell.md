@@ -111,6 +111,23 @@
   5 ms while opening one native sub-app and Ruler. No positive-size main window
   may appear. Only the requested sub-app may draw.
 
+## Command-Q Window Routing
+
+- **Symptom:** Command-Q in one sub-app quits MacPowerToys and closes every
+  other tool that shares the process.
+- **Cause:** The standard application termination command went directly to
+  `NSApplication.terminate` without checking the active window scope.
+- **Invariant:** Replace only the app termination command. In a known sub-app,
+  close every visible window in that tool scope through `performClose`. On the
+  launcher, an unknown window, or no window, require two Command-Q presses
+  within two seconds and show `Press ⌘Q again to quit` after the first press.
+  Keep explicit status-item Quit, Dock Quit, logout termination, and Command-W
+  on their native paths. Resolve an unidentified sheet through its parent chain.
+- **Check:** In a normal signed build, press Command-Q in each sub-app and
+  confirm only that tool closes. On the launcher, confirm one press keeps the
+  app open, a second press within two seconds quits, and an expired press starts
+  a new confirmation. Confirm Command-W behavior does not change.
+
 ## Window Space Restoration
 
 - **Symptom:** A reopened utility returns to its saved frame and display but not
