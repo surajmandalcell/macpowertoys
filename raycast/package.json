@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "macpowertoys",
   "title": "MacPowerToys",
-  "author": "surajmandal",
+  "author": "surajmandalcell",
   "description": "Launch focused MacPowerToys utilities from Raycast.",
   "icon": "extension-icon.png",
   "platforms": [
