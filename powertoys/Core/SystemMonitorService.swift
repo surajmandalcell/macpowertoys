@@ -289,11 +289,28 @@ nonisolated enum SystemMonitorMenuSchedule {
     }
 }
 
+nonisolated enum SystemMonitorStatusItemOrder {
+    static func preferredPositionKeys(
+        previous: [SystemMonitorMenuMetric]?,
+        current: [SystemMonitorMenuMetric],
+        mode: SystemMonitorMenuMode
+    ) -> [String] {
+        guard mode == .direct, let previous, previous != current else { return [] }
+        return current.map { "NSStatusItem Preferred Position system-monitor.\($0.rawValue)" }
+    }
+}
+
 nonisolated struct SystemMonitorRenderedItem: Equatable {
     let metric: SystemMonitorMenuMetric
     let style: SystemMonitorMenuItemStyle
     let symbol: String
     let value: String
+}
+
+nonisolated enum SystemMonitorLifecycle {
+    static func changesState(from current: Bool, to requested: Bool) -> Bool {
+        current != requested
+    }
 }
 
 nonisolated enum SystemMonitorMenuRenderer {
@@ -554,10 +571,12 @@ final class SystemMonitorService {
         reconfigure()
     }
     func startDetailed() {
+        guard SystemMonitorLifecycle.changesState(from: detailedActive, to: true) else { return }
         detailedActive = true
         reconfigure()
     }
     func stopDetailed() {
+        guard SystemMonitorLifecycle.changesState(from: detailedActive, to: false) else { return }
         detailedActive = false
         reconfigure()
     }
@@ -570,6 +589,7 @@ final class SystemMonitorService {
         reconfigure()
     }
     func setToolEnabled(_ enabled: Bool) {
+        guard SystemMonitorLifecycle.changesState(from: toolEnabled, to: enabled) else { return }
         toolEnabled = enabled
         if !enabled { detailedActive = false }
         reconfigure()
@@ -579,9 +599,9 @@ final class SystemMonitorService {
         stopTimer()
         generation += 1
         let menuActive = toolEnabled && menuSettings.enabled
-        menuController.configure(settings: menuActive ? menuSettings : SystemMonitorMenuSettings())
         var settings = menuSettings
         settings.enabled = menuActive
+        menuController.configure(settings: settings)
         guard toolEnabled,
               let interval = SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: detailedActive) else { return }
 
@@ -632,9 +652,18 @@ private final class SystemMonitorMenuController: NSObject {
     private var latestValues: [SystemMonitorMenuMetric: String] = [:]
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
+    private var lastDirectOrder: [SystemMonitorMenuMetric]?
 
     func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
+        let order = settings.items.map(\.metric)
+        let positionKeys = SystemMonitorStatusItemOrder.preferredPositionKeys(
+            previous: lastDirectOrder,
+            current: order,
+            mode: settings.mode
+        )
+        positionKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+        if settings.mode == .direct || lastDirectOrder == nil { lastDirectOrder = order }
         let oldLayout = layoutSignature(for: self.settings)
         self.settings = settings
         renderedStateCache.removeAll()
