@@ -231,10 +231,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 closeFreeRulerToolWindows()
                 return
             }
-            Self.endAttachedSheet(for: activeWindow)
-            NSApp.windows
-                .filter { $0.isVisible && Self.window($0, belongsTo: toolID) }
-                .forEach { $0.performClose(nil) }
+            Self.closeToolWindows(
+                toolID,
+                activeWindow: activeWindow,
+                windows: NSApp.windows.filter(\.isVisible)
+            )
         case .awaitMainWindowRepeat:
             hotkeyBezel.show("Press ⌘Q again to quit", on: activeWindow?.screen)
         case .terminate:
@@ -271,6 +272,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let sheet = window?.sheetParent == nil ? window?.attachedSheet : window,
               let parent = sheet.sheetParent else { return }
         parent.endSheet(sheet)
+    }
+
+    static func closeToolWindows(
+        _ toolID: String,
+        activeWindow: NSWindow?,
+        windows: [NSWindow]
+    ) {
+        endAttachedSheet(for: activeWindow)
+        windows
+            .filter { window($0, belongsTo: toolID) }
+            .forEach { $0.performClose(nil) }
     }
 
     private static func statusItemButton(containing view: NSView?) -> NSStatusBarButton? {

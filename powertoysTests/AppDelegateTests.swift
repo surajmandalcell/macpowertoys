@@ -112,6 +112,32 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testQuitCommandClosesEachNativeSubAppScope() {
+        for toolID in [
+            "cc-history", "rclone", "logs", "awake", "color-picker",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+        ] {
+            let toolWindow = CloseTrackingWindow(identifier: toolID)
+            let settingsWindow = CloseTrackingWindow(identifier: "\(toolID)-settings")
+            let otherWindow = CloseTrackingWindow(
+                identifier: toolID == "logs" ? "awake" : "logs"
+            )
+
+            AppDelegate.closeToolWindows(
+                toolID,
+                activeWindow: toolWindow,
+                windows: [toolWindow, settingsWindow, otherWindow]
+            )
+
+            XCTAssertEqual(toolWindow.performCloseCount, 1, toolID)
+            XCTAssertEqual(settingsWindow.performCloseCount, 1, toolID)
+            XCTAssertEqual(otherWindow.performCloseCount, 0, toolID)
+
+            [toolWindow, settingsWindow, otherWindow].forEach { $0.close() }
+        }
+    }
+
+    @MainActor
     func testQuitCommandEndsAttachedSheetBeforeClosingToolWindows() {
         let parent = NSWindow()
         parent.identifier = NSUserInterfaceItemIdentifier("nettoys")
@@ -120,7 +146,11 @@ final class AppDelegateTests: XCTestCase {
 
         XCTAssertTrue(parent.attachedSheet === sheet)
         XCTAssertEqual(AppDelegate.quitCommandToolID(for: sheet), "nettoys")
-        AppDelegate.endAttachedSheet(for: sheet)
+        AppDelegate.closeToolWindows(
+            "nettoys",
+            activeWindow: sheet,
+            windows: []
+        )
         XCTAssertNil(sheet.sheetParent)
         XCTAssertNil(parent.attachedSheet)
     }
@@ -386,6 +416,26 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testNativeCommandWActionRemainsOnTheWindowClosePath() throws {
+        let activeWindow = CloseTrackingWindow(identifier: "system-monitor")
+        let otherWindow = CloseTrackingWindow(identifier: "nettoys")
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Core/AppCommands.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("CommandGroup(replacing: .appTermination)"))
+        XCTAssertFalse(source.contains("CommandGroup(replacing: .windowClose)"))
+        activeWindow.performClose(nil)
+        XCTAssertEqual(activeWindow.performCloseCount, 1)
+        XCTAssertEqual(otherWindow.performCloseCount, 0)
+
+        activeWindow.close()
+        otherWindow.close()
+    }
+
+    @MainActor
     func testHostKeyWindowCommandWClosesRulerOnlyDuringActiveRulerTransition() throws {
         let delegate = AppDelegate()
         let hostWindow = NSWindow()
@@ -487,5 +537,25 @@ final class AppDelegateTests: XCTestCase {
         try await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(singleClicks, 1)
+    }
+}
+
+@MainActor
+private final class CloseTrackingWindow: NSWindow {
+    private(set) var performCloseCount = 0
+
+    convenience init(identifier: String) {
+        self.init(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        self.identifier = NSUserInterfaceItemIdentifier(identifier)
+        isReleasedWhenClosed = false
+    }
+
+    override func performClose(_ sender: Any?) {
+        performCloseCount += 1
     }
 }
