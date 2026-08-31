@@ -174,6 +174,9 @@
   that ID. Prefer the local endpoint, fall back after two local failures, and
   return only after three verified local successes and a 30-second minimum
   Tailscale dwell. Accept a cached local address only on the active subnet.
+  Apply the same route decision to newly discovered local candidates. Never
+  switch to a cached or discovered local endpoint unless the route monitor
+  returns `useLocal`.
   Every route change uses the existing verified, atomic `HostName` update and
   rollback path. Keep the existing bounded local-scan backoff and a 30-second
   Tailscale retry gate. Initial peer matching must inspect the scanner-selected
@@ -290,6 +293,8 @@
   Scan as the primary visible action on Overview and Cleanup before results.
   Keep one work-status surface in the bottom content inset on every System Care
   page. Keep top-strip menus and buttons at the shared 24pt action height.
+  Only directory rows are actionable in Storage. File rows are informational
+  and do not use hover, pressed, or button treatment.
 - **Check:** Reject a cleanup target outside the allowed roots. Preview each
   destructive Mole action before opening its command in Terminal. Start a scan
   from each page and confirm the status stays at the bottom of the pane.

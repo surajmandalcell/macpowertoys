@@ -263,7 +263,10 @@
   `UtilityInteractionButtonStyle`. The shared style uses a 0.06 primary hover
   fill and a 0.1 pressed fill. Disabled controls do not react. Native controls,
   icon actions, disclosure controls, breadcrumbs, and destructive text actions
-  keep their purpose-specific interaction treatment.
+  keep their purpose-specific interaction treatment. Informational rows do not
+  use a button style. A filled selected tab keeps its accent opaque, applies a
+  0.10 primary hover overlay and a 0.18 pressed overlay, and uses the system's
+  contrast-aware selected-control text color.
 - **Check:** Inspect the Tailscale chooser, System Care overview and lists,
   Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
   History bookmark chips. Every enabled item shows hover and pressed feedback.
@@ -538,7 +541,9 @@
   defaults to `⇧⌘2`. Reserved screenshot chords use a suppressing session event
   tap and never register through Carbon. When Accessibility permission is
   missing, show an explicit access action beside the recorder, leave the native
-  screenshot action unchanged, and do not run the app shortcut.
+  screenshot action unchanged, and do not run the app shortcut. If macOS sends
+  either tap-disabled event, re-enable the retained event tap before the
+  callback returns.
 - **Check:** Feed the shared recorder a Command-Shift key event whose characters
   contain the shifted symbol and confirm its shortcut retains the physical
   number label. Then record shortcuts in both applet settings pages and invoke
@@ -555,7 +560,9 @@
   internal `.passive` case is always labeled `Off` in user-facing copy. Its
   existing `Keep Display On` titlebar switch remains configurable while off;
   do not add a separate titlebar on/off action. The tray's four modes fill the
-  available width at regular native control size.
+  available width at regular native control size. Selecting Timed or Until
+  activates the current interval or date. A zero timed interval disables both
+  the Timed row and Start.
 - **Check:** With Off selected, toggle `Keep Display On` on and off, confirm all
   four tray segments share the available width, then drag a
   window edge and confirm the content size remains unchanged.

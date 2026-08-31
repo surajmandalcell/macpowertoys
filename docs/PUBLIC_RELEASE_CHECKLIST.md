@@ -5,7 +5,8 @@ already public at `surajmandalcell/macpowertoys`.
 
 ## Repository
 
-- [ ] Confirm `git status` contains only intentional files.
+- [x] Confirm `git status` contains only intentional files. The tree was clean
+  after the 2026-08-31 combined suite.
 - [x] Scan the full Git history for credentials. Gitleaks 8.30.1 found zero
   findings on 2026-08-31.
 - [ ] Remove private UI data from public history. Old versions of
@@ -24,13 +25,16 @@ already public at `surajmandalcell/macpowertoys`.
   2026-08-31.
 - [x] Add repository topics, the project description, and README privacy and
   security links.
-- [ ] Verify the GitHub social preview.
+- [x] Verify the GitHub social preview. The live 1,200 by 600 repository card
+  was readable and contained no private app data on 2026-08-31.
 
 ## Verification
 
 - [x] Run local unit, rclone, and signed UI smoke checks. On 2026-08-31,
-  539 of 539 tests passed, a controlled local rclone transfer passed, and the
+  543 of 543 tests passed, a controlled local rclone transfer passed, and the
   signed app completed 275 sub-app open and close cycles without an error.
+- [x] Validate all seven marketplace fixtures. The executable pinned `uv`
+  validator passed all seven fixtures on 2026-08-31.
 - [ ] Run the complete suite on a clean supported Mac account.
 - [ ] Verify every tool's Dock icon in light and dark appearance at 32 px and
   full Dock size.
