@@ -39,8 +39,8 @@
   English, German, and Japanese states. Confirm each native titlebar remains
   visibly distinct from the HUD body, with no overlap, 24pt hit frames,
   the complete key loop, Command-W dismissal, and focus return to the ruler.
-  The decorative titlebar material must ignore mouse events so the native
-  titlebar remains draggable.
+  The decorative titlebar material must pass mouse-down events to
+  `NSWindow.performDrag(with:)` so the titlebar remains draggable.
   Move Settings, move the ruler, and confirm that the panel stays in place.
   Close Settings and confirm that the ruler stays open.
 
