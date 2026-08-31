@@ -131,6 +131,21 @@ final class RcloneJobManagerLogicTests: XCTestCase {
         ))
     }
 
+    func testVolumeObserversReturnToBaselineAcrossRepeatedLifecycleCycles() async {
+        let manager = RcloneJobManager()
+
+        XCTAssertEqual(manager.volumeObserverOwnerCount, 0)
+        for _ in 0..<25 {
+            manager.startVolumeWatch()
+            XCTAssertEqual(manager.volumeObserverOwnerCount, 3)
+            manager.startVolumeWatch()
+            XCTAssertEqual(manager.volumeObserverOwnerCount, 3)
+
+            await manager.shutdown()
+            XCTAssertEqual(manager.volumeObserverOwnerCount, 0)
+        }
+    }
+
     private func makeJob(
         source: String = "/source",
         destination: String = "remote:backup",
