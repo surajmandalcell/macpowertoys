@@ -227,6 +227,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             now: ProcessInfo.processInfo.systemUptime
         ) {
         case let .closeToolWindows(toolID):
+            Self.endAttachedSheet(for: activeWindow)
             NSApp.windows
                 .filter { $0.isVisible && Self.window($0, belongsTo: toolID) }
                 .forEach { $0.performClose(nil) }
@@ -260,6 +261,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return isFreeRulerWindowIdentifier(window.identifier?.rawValue)
         }
         return ToolActionRouter.windowIdentifier(window.identifier?.rawValue, matches: toolID)
+    }
+
+    static func endAttachedSheet(for window: NSWindow?) {
+        guard let sheet = window?.sheetParent == nil ? window?.attachedSheet : window,
+              let parent = sheet.sheetParent else { return }
+        parent.endSheet(sheet)
     }
 
     private static func statusItemButton(containing view: NSView?) -> NSStatusBarButton? {
