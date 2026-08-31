@@ -205,6 +205,8 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(colorPicker.carbonModifiers, UInt32(shiftKey | cmdKey))
         XCTAssertEqual(colorPicker.display, "⇧⌘3")
         XCTAssertTrue(colorPicker.overridesSystemScreenshotShortcut)
+        XCTAssertFalse(GlobalShortcutManager.usesCarbonHotKey(for: colorPicker))
+        XCTAssertTrue(GlobalShortcutManager.usesCarbonHotKey(for: textExtractor))
         XCTAssertTrue(colorPicker.matches(
             keyCode: UInt32(kVK_ANSI_3),
             flags: [.maskCommand, .maskShift]
