@@ -51,6 +51,8 @@ final class SystemMonitorTests: XCTestCase {
             XCTAssertEqual(detailService.timerOwnerCount, 0)
         }
         try await Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(menuService.history.isEmpty)
+        XCTAssertNil(menuService.snapshot)
         XCTAssertEqual(detailService.history.count, baselineHistoryCount)
         XCTAssertNil(detailService.snapshot)
         XCTAssertEqual(detailService.statusItemOwnerCount, 0)
