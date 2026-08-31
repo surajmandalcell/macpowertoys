@@ -65,6 +65,8 @@ already public at `surajmandalcell/macpowertoys`.
   stapling, and SHA-256 verification. Gatekeeper rejected the current Apple
   Development build as expected on 2026-08-31.
 - [ ] Verify the archive on a clean account before publishing the tag.
-- [ ] Publish explicit pre-release limitations and recovery instructions.
+- [x] Publish explicit pre-release limitations and recovery instructions. The
+  public README lists signing, Spaces, Cloud Sync, input, IPv4, SSH Anchor,
+  cleanup, Mole, and permission limits with the matching recovery action.
 
 Never replace or relaunch an installed MacPowerToys build while Cloud Sync is actively transferring data.
