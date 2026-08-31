@@ -17,7 +17,7 @@
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <window title="Ruler Settings" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" releasedWhenClosed="NO" frameAutosaveName="rulerSettingsWindow" animationBehavior="default" titlebarAppearsTransparent="NO" id="RSET-window">
-            <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <rect key="contentRect" x="602" y="400" width="420" height="571"/>
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1415"/>
             <customView key="contentView" id="RSET-content" customClass="UtilityMaterialView" customModule="powertoys" customModuleProvider="target">

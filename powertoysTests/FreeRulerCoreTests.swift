@@ -1236,6 +1236,7 @@ final class RulerCoreTests: XCTestCase {
             NSStringFromClass(type(of: settingsWindow)),
             NSStringFromClass(type(of: preferencesWindow))
         )
+        XCTAssertEqual(settingsWindow.styleMask, preferencesWindow.styleMask)
         XCTAssertEqual(settingsWindow.frameAutosaveName, "rulerSettingsWindow")
         XCTAssertEqual(preferencesWindow.frameAutosaveName, "preferencesWindow")
         for (window, controlsView) in [
