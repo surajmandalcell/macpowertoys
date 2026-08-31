@@ -337,6 +337,7 @@ final class RcloneJobManager {
             task.cancel()
         }
         continuousSyncTasks.removeAll()
+        stopVolumeWatch()
         await LocalChangeHistory.shared.flush()
         for job in jobs where job.state.isActive && !job.state.isTerminal {
             let jobid = job.rcJobId
@@ -1063,7 +1064,7 @@ final class RcloneJobManager {
 
     // MARK: Volume watch (external drives)
 
-    private func startVolumeWatch() {
+    func startVolumeWatch() {
         guard volumeObservers.isEmpty else { return }
         let center = NSWorkspace.shared.notificationCenter
 
@@ -1086,6 +1087,12 @@ final class RcloneJobManager {
                 }
             }
         })
+    }
+
+    private func stopVolumeWatch() {
+        let center = NSWorkspace.shared.notificationCenter
+        volumeObservers.forEach { center.removeObserver($0) }
+        volumeObservers.removeAll()
     }
 
     private func handleVolumeUnmounted(_ volumePath: String) {
