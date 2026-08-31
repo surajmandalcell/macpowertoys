@@ -443,7 +443,7 @@
   SSID row per saved network, and the system-managed iPhone Personal Hotspot as
   the final row. Use SSID-only labels. Use native move, remove, add, and Settings
   actions with text or help labels. Opening the page must not change networks.
-- **Check:** Inspect the empty and configured states at 860pt and default width.
+- **Check:** Inspect the empty and configured states at 1,100pt and default width.
   Confirm row actions stay aligned, Connected is not color-only, keyboard focus
   reaches every control, and Wi-Fi Settings opens the system Wi-Fi pane.
 
@@ -482,21 +482,26 @@
   indicator while the rest of the app uses thin overlay scrollbars.
 - **Cause:** A scrolling surface bypassed the shared configuration, the SwiftUI
   bridge selected the first sibling scroll view instead of the surface under
-  its own frame, or the implementation assumed `.mini` reduced the current
-  macOS overlay thumb below its 15pt native width.
+  its own frame, sibling lookup ran only in a deferred main-queue block before
+  AppKit finalized sibling geometry, or the implementation assumed `.mini`
+  reduced the current macOS overlay thumb below its 15pt native width.
 - **Invariant:** Every SwiftUI `ScrollView`, `Form`, `TextEditor`, `List`, and
   `Table` uses `.thinScrollIndicators()`. Native scroll views call
   `configureThinScrollIndicators()`. The shared AppKit scroller draws a 4pt
   thumb, or 6pt with Increased Contrast, over the content with no track. It
   stays hidden while idle, appears during scrolling or edge hover, and fades
   after 0.9 seconds. Keep its native-width hit region. Do not remove the
-  indicator or disable scrolling.
+  indicator or disable scrolling. Resolve the matching sibling synchronously
+  when possible and again from AppKit layout; use a deferred lookup only as a
+  fallback.
 - **Check:** Inventory every scrolling source with `rg`. The surface count must
   equal the shared-modifier count, and `showsIndicators: false` must be absent.
   Exercise long content in every app family, sheet, editor, and horizontal
   strip. In a signed installed launcher, confirm no idle thumb, a thin thumb
   during scrolling, and no thumb after the fade delay. Use a two-sibling hosted
-  test to confirm that the modifier configures the surface under its own frame.
+  test to confirm immediately after layout that the modifier configures the
+  surface under its own frame. Do not make this regression depend on a fixed
+  main-queue delay.
 
 ## Workspace Pane Seams
 
