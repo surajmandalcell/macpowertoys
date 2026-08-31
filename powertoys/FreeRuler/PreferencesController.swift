@@ -18,7 +18,6 @@ func configureOpaqueColorPicking() {
     if UITestSupport.isEnabled {
         colorPanel.setAccessibilityValue(rulerColorPanelOpaqueAccessibilityValue)
     }
-    setColorPickingIgnoresAlpha(true)
     colorPanel.showsAlpha = false
     colorPanel.isContinuous = true
     colorPanel.animationBehavior = .none
@@ -35,11 +34,6 @@ private func configureOpaqueColorPickingAfterPanelUpdates() {
             configureOpaqueColorPicking()
         }
     }
-}
-
-private func setColorPickingIgnoresAlpha(_ ignoresAlpha: Bool) {
-    // AppKit still consults this deprecated global switch when deciding whether color wells support alpha.
-    NSColor.ignoresAlpha = ignoresAlpha
 }
 
 class RulerColorWell: NSColorWell {

@@ -34,7 +34,9 @@ already public at `surajmandalcell/macpowertoys`.
 - Verify both `macpowertoys://` and legacy `powertoys://` links.
 - Test at least one OAuth remote and one key-based or configuration-only rclone remote.
 - Test pause and restart with a backend that supports partial continuation and one that restarts the active object.
-- Run `npm run lint:store` after adding the owner's valid Raycast username.
+- [x] Run the Raycast Store lint with the owner's valid username. The package
+  uses `surajmandalcell`, and `npm --prefix raycast run lint:store` passed on
+  2026-08-31.
 
 ## Distribution
 
