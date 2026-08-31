@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["jsonschema==4.25.1"]
+# ///
 """Validate marketplace.schema.json and the spec/marketplace fixtures.
 
 Fixtures named invalid-*.json must fail schema validation; every other
