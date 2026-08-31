@@ -26,8 +26,8 @@ evidence, and remaining work.
   prefill routing and saved-frame restoration are already complete.
 - Verify SSH Anchor at minimum width and across real address changes, retained
   key-only access for `win1`, Tailscale fallback and recovery, and host-key
-  safety. Current key-only access to `win1` is confirmed; `win1` is not yet an
-  enrolled anchor.
+  safety. `win1` is enrolled, healthy, key-verified, and Tailscale-enabled;
+  current key-only access is confirmed.
 - Verify that a signed NetToys subnet scan streams rows and enrichment fields
   at its minimum window size. The default-size signed scan is complete.
 - Verify Input Devices with real mouse and trackpad hardware, sustained wheel
