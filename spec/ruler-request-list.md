@@ -10,7 +10,7 @@ Update this list whenever Ruler requirements or verification results change.
 |---|---|---|---|
 | Done | Keep the native titlebar visible and aesthetically continuous in Ruler Settings and Defaults. | Both AppKit controllers install the same active HUD material behind their transparent native titlebars instead of a generic window-background slab. The exact signed `7903fb9` build showed one continuous HUD surface with native traffic lights and title text in both windows. | None. |
 | Done | Replace the custom MacPowerToys Ruler with FreeRuler while fitting the host architecture. | The pinned MIT source, localization catalog, and notices are vendored under `powertoys/FreeRuler`; MacPowerToys adapts host ownership, launch, routing, branding, and settings-window chrome. | None. |
-| Done | Match FreeRuler overlay geometry and visual styling. | Ten product Swift files are byte-identical. Four files differ only in the host-delegate lookup. `PreferencesController.swift` contains the intentional MacPowerToys settings chrome. The core suite covers the 40pt L shape, ticks, labels, colors, zero corners, handles, opacity, shadow, and layout. A same-machine comparison matched the pinned build and the signed host build. | None. |
+| Done | Match FreeRuler overlay geometry and visual styling except for current MacPowerToys settings. | The 40pt L shape, ticks, labels, colors, zero corners, and handles follow the pinned build. Host adapters add the independent settings panel, adjustable border opacity, and the default disabled shadow. The core suite covers geometry, drawing, controls, persistence, and reset behavior. | None. |
 | Done | Match pixel, millimeter, and inch units. | Core coverage checks tick scales and labels; the signed UI flow cycles `px` → `mm` → `in` → `px`. | None. |
 | Done | Match moving and keyboard nudging. | The pinned controller and interaction tests cover direct and grouped drag. In the signed app, Right changed the saved X coordinate by `+1`, and Shift-Down changed the saved Y coordinate by `-10`. | None. |
 | Done | Match end and corner resizing. | The upstream resize-handle and cursor code is byte-identical except for the host-delegate lookup. Focused tests cover horizontal and vertical drag, minimum and maximum clamping, cursor behavior, child-window handling, and all four zero corners. | None. |
@@ -18,12 +18,14 @@ Update this list whenever Ruler requirements or verification results change.
 | Done | Match grouped and ungrouped ruler behavior. | Upstream tests cover grouping, stack order, follower attachment, grouped dragging, and persistence. The signed app toggled grouping without changing the ruler count and completed a grouped drag. | None. |
 | Done | Match FreeRuler persistence. | Tests cover the versioned ruler set, active ruler, per-ruler settings, defaults, frame capture, and corrupt-data fallback. A signed ruler kept the same ID, built-in-display coordinates `[-2267, 1260]`, and `1920 × 1080` lengths through two full quit and relaunch cycles. Settings and Defaults also keep their own frames and display. | None. |
 | Done | Match FreeRuler commands and shortcuts. | Host menus reproduce the Ruler, Unit, and Options commands. Core and signed checks cover wing visibility, unit cycling, grouping, floating, shadow, zero-corner flips, reset, new ruler, active-ruler cycling, Settings, Defaults, and close routing. Exact Command-W closes the focused ruler once and keeps the host running. | None. |
-| Done | Preserve the attached per-ruler Settings behavior and align its chrome with MacPowerToys. | The fixed 420pt panel uses the shared section, card, row, typography, and spacing system. Core coverage preserves attachment, anchoring, suspension, controls, reset/defaults, color, opacity, dimensions, float, shadow, accessibility, and localization-safe layout. Signed checks cover the full key loop and focus return. | None. |
+| Verify | Keep per-ruler Settings independent from the ruler and align its chrome with MacPowerToys. | The fixed 420pt panel uses the shared section, card, row, typography, and spacing system. It restores its own frame and display. It does not attach to, follow, or obstruct the ruler. Closing Settings leaves the ruler open. Core coverage preserves target-scoped interaction suspension, controls, reset and default actions, color, opacity, dimensions, floating behavior, shadow, accessibility, localization-safe layout, and independent window placement. | Verify the final installed build on each connected display. |
+| Verify | Disable the ruler shadow by default without changing saved user choices. | The registered and factory-reset default is off. Existing `true` values still load as true. Focused tests cover both paths. | Verify a fresh default and a saved enabled choice in the final installed build. |
+| Verify | Add Border Opacity to Ruler Settings and Defaults. | Both native windows provide a localized 0% to 100% slider. The default is 25%, which is half the former 50% border. Per-ruler JSON, global defaults, save-as-default, reset-to-default, factory reset, drawing, keyboard order, and accessibility relationships use the same value. Legacy per-ruler JSON falls back to 25%. | Verify the live border update and 25% default in the final installed build. |
 | Done | Preserve Ruler Defaults behavior and align its chrome with MacPowerToys. | The fixed 420pt window removes the duplicate headline and border. It keeps factory reset as one quiet destructive action. Core coverage preserves live default edits, persistence, and reset behavior. The launcher opened the native Defaults window. | None. |
 | Done | Match the FreeRuler color panel. | Focused tests cover color-well activation, zero-corner anchoring, display clamping, restored-frame ordering, and hidden alpha controls. The signed Settings window exposes the native color well and keeps it in the complete key loop. The current target-scoped bridge could not deliver the custom color-well activation event. | None. |
 | Done | Preserve FreeRuler localizations. | The upstream `Localizable.xcstrings` catalog is vendored intact. Signed German and Japanese Ruler Settings checks showed complete labels with no overlap. | None. |
 | Done | Launch on demand through MacPowerToys without a SwiftUI Ruler scene. | The launcher, `macpowertoys://open/ruler`, `powertoys://open/ruler`, the Raycast command, and the `Ruler` App Intent each opened or raised one AppKit `ruler-window`. Normal app startup opened no ruler. | None. |
-| Done | Show Ruler settings from its launcher detail without duplicating the native implementation. | `Open Ruler Settings` opened the native attached panel. `Open Defaults` opened the native `preferences-window`. | None. |
+| Done | Show Ruler settings from its launcher detail without duplicating the native implementation. | `Open Ruler Settings` opens the native independent Settings panel. `Open Defaults` opens the native `preferences-window`. | None. |
 | Done | Keep Ruler focused so shortcuts do not reach the previously focused app. | Ruler activation makes its borderless AppKit window key and the signed UI suite successfully drives ruler-local shortcuts. In the normal signed `4662560` build, Raycast launched the MacPowerToys Ruler from its focused `Ruler` query. macOS then reported MacPowerToys as frontmost with `ruler-window` as the focused window. The following `H` key hid only the horizontal ruler wing, and a second `H` restored it. | None. |
 | Done | Make `Ruler` appear when searching in Raycast. | The Raycast extension builds successfully. A live search on 2026-08-23 showed `Ruler` from MacPowerToys as the first result after the development process stopped. | None. |
 
@@ -36,21 +38,22 @@ Update this list whenever Ruler requirements or verification results change.
 | Superseded | Add guides, region measurement/capture, and developer copy formats. | Those custom SwiftUI features were deleted; the pinned FreeRuler surface is the product. |
 | Superseded | Calibrate each display or expose points as a unit. | FreeRuler provides pixels, millimeters, and inches with its native conversion behavior. |
 | Superseded | Default length to 30% of the screen and expose `defaultSizeFraction`. | FreeRuler owns its default dimensions and Defaults window. |
-| Superseded | Use a compact 560×600 SwiftUI applet with `New Ruler` and `Measure Region` titlebar actions. | Ruler uses FreeRuler's borderless AppKit overlay plus attached Settings and separate Defaults windows. |
+| Superseded | Use a compact 560×600 SwiftUI applet with `New Ruler` and `Measure Region` titlebar actions. | Ruler uses FreeRuler's borderless AppKit overlay plus independent Settings and Defaults windows. |
 | Superseded | Make Command-Q close only Ruler inside the shared process. | Command-Q retains standard app Quit behavior; focused ruler windows close with Command-W. |
-| Superseded | Apply MacPowerToys-specific 48pt thickness, thin ticks, reduced borders, 75% fill, migrations, and custom state models. | FreeRuler's exact 40pt geometry, drawing, defaults, and persistence own those contracts. |
+| Superseded | Apply MacPowerToys-specific 48pt thickness, thin ticks, reduced borders, 75% fill, migrations, and custom state models. | FreeRuler's 40pt geometry, ticks, fill, and state model remain. The current Border Opacity control is the only requested border adjustment. |
 
 ## Verification record
 
 - A fresh pinned upstream run passed 125 tests with zero failures or skipped
   tests.
-- Ten product Swift files are byte-identical to the pinned source. Four files
-  differ only in host-delegate lookup. `PreferencesController.swift` contains
-  the intentional MacPowerToys chrome and accessibility work.
-- All 126 focused Ruler tests pass. They cover 420pt utility windows, section
-  rhythm, card geometry, 12pt row typography, accessibility relationships, the
-  complete key order, 24pt minimum controls, and collision-free English,
-  German, and Japanese labels.
+- The host adapters add on-demand routing, independent Settings placement,
+  adjustable border opacity, and the default disabled shadow to the pinned
+  FreeRuler implementation.
+- All 128 focused Ruler tests pass. They cover 420pt utility windows,
+  independent Settings placement, border opacity, shadow preference
+  preservation, section rhythm, card geometry, 12pt row typography,
+  accessibility relationships, the complete key order, 24pt minimum controls,
+  and collision-free English, German, and Japanese labels.
 - The complete host unit suite passed 400 tests with zero failures or skipped
   tests.
 - All five localized controls XIBs compile. Focused tests also verify opaque

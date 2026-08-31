@@ -7,6 +7,10 @@ evidence, and remaining work.
 
 ## Current work
 
+- Verify that Ruler Settings restores its independent position and display,
+  stays clear of the ruler, and keeps the ruler open when Settings closes.
+- Verify the live Border Opacity control, its 25% default, the default disabled
+  shadow, and a saved enabled shadow choice in the final installed build.
 - Verify Command-Q closes only the active sub-app tool scope. Confirm the
   launcher quits only after a second press within two seconds and Command-W is
   unchanged.

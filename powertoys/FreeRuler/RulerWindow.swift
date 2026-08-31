@@ -388,6 +388,7 @@ final class RulerWindow: NSPanel {
         horizontalRule.settingsOverride = settings
         verticalRule.settingsOverride = settings
         rulerContentView.color = RulerColors(customFill: settings.rulerColor)
+        rulerContentView.borderOpacity = settings.borderOpacity
         updateLayoutForCurrentZeroCorner()
     }
 
@@ -572,7 +573,6 @@ private final class RulerClipView: NSView {
 
 private final class RulerWindowBorderView: RulerBorderView {
     private static let activeBorderCenterInset = borderCenterInset + borderWidth
-    private static let activeBorderColor = NSColor(calibratedWhite: 0, alpha: 0.25)
 
     var zeroCorner = prefs.zeroCorner {
         didSet {
@@ -607,7 +607,10 @@ private final class RulerWindowBorderView: RulerBorderView {
         path.lineWidth = Self.borderWidth
         path.lineJoinStyle = .miter
         path.lineCapStyle = .butt
-        Self.activeBorderColor.setStroke()
+        NSColor(
+            calibratedWhite: 0,
+            alpha: windowAlphaValue(borderOpacity) / 2
+        ).setStroke()
         path.stroke()
     }
 
@@ -846,6 +849,12 @@ final class RulerContentView: NSView {
     var drawsActiveBorder = false {
         didSet {
             borderView.drawsActiveBorder = drawsActiveBorder
+        }
+    }
+
+    var borderOpacity = Prefs.defaultBorderOpacity {
+        didSet {
+            borderView.borderOpacity = borderOpacity
         }
     }
 

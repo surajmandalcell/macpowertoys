@@ -41,6 +41,7 @@ class Prefs: NSObject {
     @objc dynamic var rulerShadow       : Bool
     @objc dynamic var foregroundOpacity : Int
     @objc dynamic var backgroundOpacity : Int
+    @objc dynamic var borderOpacity     : Int
     @objc dynamic var rulerColor        : NSColor
     @objc dynamic var unit              : Unit
     @objc dynamic var defaultHorizontalLength: Double
@@ -96,6 +97,7 @@ class Prefs: NSObject {
             "rulerShadow":       defaultRulerShadow,
             "foregroundOpacity": defaultForegroundOpacity,
             "backgroundOpacity": defaultBackgroundOpacity,
+            "borderOpacity":     defaultBorderOpacity,
             "unit":              defaultUnit.rawValue,
             "defaultHorizontalLength": unsetDefaultRulerLength,
             "defaultVerticalLength": unsetDefaultRulerLength,
@@ -118,6 +120,7 @@ class Prefs: NSObject {
         rulerShadow       = defaults.bool(forKey: "rulerShadow")
         foregroundOpacity = defaults.integer(forKey: "foregroundOpacity")
         backgroundOpacity = defaults.integer(forKey: "backgroundOpacity")
+        borderOpacity     = defaults.integer(forKey: "borderOpacity")
         rulerColor        = Prefs.rulerFillColor(fromArchivedData: defaults.data(forKey: "rulerColor"))
         unit              = Unit(rawValue: defaults.integer(forKey: "unit")) ?? .pixels
         defaultHorizontalLength = defaults.double(forKey: "defaultHorizontalLength")
@@ -147,6 +150,9 @@ class Prefs: NSObject {
             },
             observe(\Prefs.backgroundOpacity, options: .new) { prefs, changed in
                 self.defaults.set(changed.newValue, forKey: "backgroundOpacity")
+            },
+            observe(\Prefs.borderOpacity, options: .new) { prefs, changed in
+                self.defaults.set(changed.newValue, forKey: "borderOpacity")
             },
             observe(\Prefs.rulerColor, options: .new) { prefs, changed in
                 guard let color = changed.newValue else { return }
@@ -203,6 +209,10 @@ extension Prefs {
         return 50
     }
 
+    static var defaultBorderOpacity: Int {
+        return 25
+    }
+
     static var defaultFloatRulers: Bool {
         return true
     }
@@ -220,6 +230,7 @@ extension Prefs {
         rulerColor = settings.rulerColor
         foregroundOpacity = settings.foregroundOpacity
         backgroundOpacity = settings.backgroundOpacity
+        borderOpacity = settings.borderOpacity
         floatRulers = settings.floatRulers
         rulerShadow = settings.rulerShadow
         zeroCorner = settings.zeroCorner
@@ -235,6 +246,7 @@ extension Prefs {
         rulerColor = Self.defaultRulerFillColor
         foregroundOpacity = Self.defaultForegroundOpacity
         backgroundOpacity = Self.defaultBackgroundOpacity
+        borderOpacity = Self.defaultBorderOpacity
         floatRulers = Self.defaultFloatRulers
         rulerShadow = Self.defaultRulerShadow
         groupRulers = Self.defaultGroupRulers

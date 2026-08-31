@@ -77,6 +77,7 @@ struct RulerSettings: Equatable, Codable {
     var rulerColor: NSColor
     var foregroundOpacity: Int
     var backgroundOpacity: Int
+    var borderOpacity: Int
     var floatRulers: Bool
     var rulerShadow: Bool
     var zeroCorner: ZeroCorner
@@ -86,6 +87,7 @@ struct RulerSettings: Equatable, Codable {
         rulerColor: NSColor = Prefs.defaultRulerFillColor,
         foregroundOpacity: Int = 90,
         backgroundOpacity: Int = 50,
+        borderOpacity: Int = Prefs.defaultBorderOpacity,
         floatRulers: Bool = true,
         rulerShadow: Bool = false,
         zeroCorner: ZeroCorner = Prefs.defaultZeroCorner
@@ -94,6 +96,7 @@ struct RulerSettings: Equatable, Codable {
         self.rulerColor = RulerSettings.normalizedColor(rulerColor)
         self.foregroundOpacity = foregroundOpacity
         self.backgroundOpacity = backgroundOpacity
+        self.borderOpacity = borderOpacity
         self.floatRulers = floatRulers
         self.rulerShadow = rulerShadow
         self.zeroCorner = zeroCorner
@@ -105,6 +108,7 @@ struct RulerSettings: Equatable, Codable {
             rulerColor: defaults.rulerColor,
             foregroundOpacity: defaults.foregroundOpacity,
             backgroundOpacity: defaults.backgroundOpacity,
+            borderOpacity: defaults.borderOpacity,
             floatRulers: defaults.floatRulers,
             rulerShadow: defaults.rulerShadow,
             zeroCorner: defaults.zeroCorner
@@ -116,6 +120,7 @@ struct RulerSettings: Equatable, Codable {
             && Prefs.colorsMatch(lhs.rulerColor, rhs.rulerColor)
             && lhs.foregroundOpacity == rhs.foregroundOpacity
             && lhs.backgroundOpacity == rhs.backgroundOpacity
+            && lhs.borderOpacity == rhs.borderOpacity
             && lhs.floatRulers == rhs.floatRulers
             && lhs.rulerShadow == rhs.rulerShadow
             && lhs.zeroCorner == rhs.zeroCorner
@@ -126,6 +131,7 @@ struct RulerSettings: Equatable, Codable {
         case rulerColor
         case foregroundOpacity
         case backgroundOpacity
+        case borderOpacity
         case floatRulers
         case rulerShadow
         case zeroCorner
@@ -143,6 +149,8 @@ struct RulerSettings: Equatable, Codable {
             rulerColor: colorComponents?.color ?? Prefs.defaultRulerFillColor,
             foregroundOpacity: try container.decodeIfPresent(Int.self, forKey: .foregroundOpacity) ?? 90,
             backgroundOpacity: try container.decodeIfPresent(Int.self, forKey: .backgroundOpacity) ?? 50,
+            borderOpacity: try container.decodeIfPresent(Int.self, forKey: .borderOpacity)
+                ?? Prefs.defaultBorderOpacity,
             floatRulers: try container.decodeIfPresent(Bool.self, forKey: .floatRulers) ?? true,
             rulerShadow: try container.decodeIfPresent(Bool.self, forKey: .rulerShadow) ?? false,
             zeroCorner: Prefs.zeroCorner(fromRawValue: zeroCornerRawValue)
@@ -156,6 +164,7 @@ struct RulerSettings: Equatable, Codable {
         try container.encode(RulerColorComponents(color: rulerColor), forKey: .rulerColor)
         try container.encode(foregroundOpacity, forKey: .foregroundOpacity)
         try container.encode(backgroundOpacity, forKey: .backgroundOpacity)
+        try container.encode(borderOpacity, forKey: .borderOpacity)
         try container.encode(floatRulers, forKey: .floatRulers)
         try container.encode(rulerShadow, forKey: .rulerShadow)
         try container.encode(zeroCorner.rawValue, forKey: .zeroCorner)

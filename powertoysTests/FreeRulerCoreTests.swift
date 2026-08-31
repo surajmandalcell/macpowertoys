@@ -122,6 +122,7 @@ final class RulerCoreTests: XCTestCase {
                 rulerColor: NSColor(deviceRed: 0.1, green: 0.2, blue: 0.3, alpha: 1),
                 foregroundOpacity: 70,
                 backgroundOpacity: 25,
+                borderOpacity: 40,
                 floatRulers: false,
                 rulerShadow: true,
                 zeroCorner: .bottomLeft
@@ -142,6 +143,29 @@ final class RulerCoreTests: XCTestCase {
             decoded.settings.rulerColor,
             equals: NSColor(deviceRed: 0.1, green: 0.2, blue: 0.3, alpha: 1)
         )
+    }
+
+    func testLegacyRulerSettingsUseQuarterOpacityBorder() throws {
+        XCTAssertEqual(Prefs.defaultBorderOpacity, 25)
+
+        let encoded = try JSONEncoder().encode(RulerSettings(borderOpacity: 80))
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "borderOpacity")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try JSONDecoder().decode(RulerSettings.self, from: legacyData)
+
+        XCTAssertEqual(decoded.borderOpacity, 25)
+    }
+
+    func testRulerShadowDefaultsOffWithoutOverwritingSavedChoice() {
+        withRestoredRulerPreferences {
+            XCTAssertFalse(Prefs.defaultRulerShadow)
+
+            prefs.rulerShadow = true
+
+            XCTAssertTrue(RulerSettings(defaults: prefs).rulerShadow)
+            XCTAssertEqual(persistentPreferenceValue(forKey: "rulerShadow") as? Bool, true)
+        }
     }
 
     func testRulerManagerCreatesTracksActivatesAndClosesRulers() {
@@ -437,6 +461,7 @@ final class RulerCoreTests: XCTestCase {
             rulerColor: color,
             foregroundOpacity: 73,
             backgroundOpacity: 31,
+            borderOpacity: 42,
             floatRulers: false,
             rulerShadow: true,
             zeroCorner: .bottomRight
@@ -464,6 +489,10 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(controller.rulerWindow.alphaValue, 0.73, accuracy: 0.0001)
         XCTAssertFalse(controller.rulerWindow.isFloatingPanel)
         XCTAssertTrue(controller.rulerWindow.hasShadow)
+        let borderView = rulerSettingsDescendants(in: controller.rulerWindow.contentView!)
+            .compactMap { $0 as? RulerBorderView }
+            .first
+        XCTAssertEqual(borderView?.borderOpacity, 42)
 
         controller.background()
 
@@ -520,6 +549,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.rulerColor = defaultColor
             prefs.foregroundOpacity = 90
             prefs.backgroundOpacity = 50
+            prefs.borderOpacity = 25
             prefs.floatRulers = true
             prefs.rulerShadow = false
             prefs.defaultHorizontalLength = 640
@@ -532,6 +562,7 @@ final class RulerCoreTests: XCTestCase {
                         rulerColor: NSColor(deviceRed: 0.4, green: 0.5, blue: 0.6, alpha: 1),
                         foregroundOpacity: 80,
                         backgroundOpacity: 45,
+                        borderOpacity: 60,
                         floatRulers: false,
                         rulerShadow: false
                     ),
@@ -609,6 +640,13 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(settingsController.backgroundOpacityLabel.stringValue, "35%")
             XCTAssertEqual(prefs.backgroundOpacity, 50)
 
+            settingsController.borderOpacitySlider.integerValue = 35
+            settingsController.setBorderOpacity(settingsController.borderOpacitySlider)
+
+            XCTAssertEqual(controller.state.settings.borderOpacity, 35)
+            XCTAssertEqual(settingsController.borderOpacityLabel.stringValue, "35%")
+            XCTAssertEqual(prefs.borderOpacity, 25)
+
             settingsController.floatRulersCheckbox.state = .on
             settingsController.setFloatRulers(settingsController.floatRulersCheckbox)
 
@@ -640,6 +678,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.rulerColor = NSColor(deviceRed: 0.1, green: 0.2, blue: 0.3, alpha: 1)
             prefs.foregroundOpacity = 90
             prefs.backgroundOpacity = 50
+            prefs.borderOpacity = 25
             prefs.floatRulers = true
             prefs.rulerShadow = false
             prefs.zeroCorner = .topLeft
@@ -654,6 +693,7 @@ final class RulerCoreTests: XCTestCase {
                         rulerColor: rulerColor,
                         foregroundOpacity: 63,
                         backgroundOpacity: 37,
+                        borderOpacity: 30,
                         floatRulers: false,
                         rulerShadow: true,
                         zeroCorner: .bottomRight
@@ -677,6 +717,7 @@ final class RulerCoreTests: XCTestCase {
             assertColor(prefs.rulerColor, equals: rulerColor)
             XCTAssertEqual(prefs.foregroundOpacity, 63)
             XCTAssertEqual(prefs.backgroundOpacity, 37)
+            XCTAssertEqual(prefs.borderOpacity, 30)
             XCTAssertFalse(prefs.floatRulers)
             XCTAssertTrue(prefs.rulerShadow)
             XCTAssertEqual(prefs.zeroCorner, .bottomRight)
@@ -692,6 +733,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.rulerColor = defaultColor
             prefs.foregroundOpacity = 88
             prefs.backgroundOpacity = 44
+            prefs.borderOpacity = 22
             prefs.floatRulers = true
             prefs.rulerShadow = false
             prefs.zeroCorner = .topRight
@@ -705,6 +747,7 @@ final class RulerCoreTests: XCTestCase {
                         rulerColor: NSColor(deviceRed: 0.8, green: 0.2, blue: 0.4, alpha: 1),
                         foregroundOpacity: 63,
                         backgroundOpacity: 37,
+                        borderOpacity: 65,
                         floatRulers: false,
                         rulerShadow: true,
                         zeroCorner: .bottomLeft
@@ -728,6 +771,7 @@ final class RulerCoreTests: XCTestCase {
             assertColor(controller.state.settings.rulerColor, equals: defaultColor)
             XCTAssertEqual(controller.state.settings.foregroundOpacity, 88)
             XCTAssertEqual(controller.state.settings.backgroundOpacity, 44)
+            XCTAssertEqual(controller.state.settings.borderOpacity, 22)
             XCTAssertTrue(controller.state.settings.floatRulers)
             XCTAssertFalse(controller.state.settings.rulerShadow)
             XCTAssertEqual(controller.state.settings.zeroCorner, .topRight)
@@ -737,6 +781,7 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(settingsController.settingsControlsView.selectedVerticalLength, 220, accuracy: 0.1)
             XCTAssertEqual(settingsController.foregroundOpacityLabel.stringValue, "88%")
             XCTAssertEqual(settingsController.backgroundOpacityLabel.stringValue, "44%")
+            XCTAssertEqual(settingsController.borderOpacityLabel.stringValue, "22%")
             XCTAssertEqual(controller.opacity, 88)
             XCTAssertEqual(controller.rulerWindow.alphaValue, windowAlphaValue(88), accuracy: 0.0001)
             XCTAssertEqual(prefs.foregroundOpacity, 88)
@@ -812,6 +857,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.rulerColor = NSColor(deviceRed: 0.7, green: 0.3, blue: 0.2, alpha: 1)
             prefs.foregroundOpacity = 42
             prefs.backgroundOpacity = 21
+            prefs.borderOpacity = 65
             prefs.floatRulers = false
             prefs.groupRulers = true
             prefs.rulerShadow = true
@@ -831,6 +877,7 @@ final class RulerCoreTests: XCTestCase {
             assertColor(prefs.rulerColor, equals: Prefs.defaultRulerFillColor)
             XCTAssertEqual(prefs.foregroundOpacity, Prefs.defaultForegroundOpacity)
             XCTAssertEqual(prefs.backgroundOpacity, Prefs.defaultBackgroundOpacity)
+            XCTAssertEqual(prefs.borderOpacity, Prefs.defaultBorderOpacity)
             XCTAssertEqual(prefs.floatRulers, Prefs.defaultFloatRulers)
             XCTAssertEqual(prefs.groupRulers, Prefs.defaultGroupRulers)
             XCTAssertEqual(prefs.rulerShadow, Prefs.defaultRulerShadow)
@@ -839,6 +886,7 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(prefs.defaultVerticalLength, Prefs.unsetDefaultRulerLength)
             XCTAssertEqual(preferencesController.foregroundOpacityLabel.stringValue, "\(Prefs.defaultForegroundOpacity)%")
             XCTAssertEqual(preferencesController.backgroundOpacityLabel.stringValue, "\(Prefs.defaultBackgroundOpacity)%")
+            XCTAssertEqual(preferencesController.borderOpacityLabel.stringValue, "\(Prefs.defaultBorderOpacity)%")
             XCTAssertEqual(
                 preferencesController.dimensionWidthField.integerValue,
                 Int(RulerLayoutState.defaultLengths().horizontal.rounded())
@@ -934,7 +982,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControlsUseUtilitySectionsAndAlignedRows() throws {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 434))
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 491))
         controlsView.configureForRulerSettings()
 
         controlsView.update(
@@ -971,8 +1019,8 @@ final class RulerCoreTests: XCTestCase {
         let cardHeight = cards.reduce(CGFloat.zero) { $0 + $1.frame.height }
         let requiredHeight = headingHeight + cardHeight + (3 * 8) + (2 * 16)
         XCTAssertEqual(headingHeight, 36, accuracy: 0.5)
-        XCTAssertEqual(cards.map(\.frame.height), [86, 172, 84])
-        XCTAssertEqual(requiredHeight, 434, accuracy: 0.5)
+        XCTAssertEqual(cards.map(\.frame.height), [86, 229, 84])
+        XCTAssertEqual(requiredHeight, 491, accuracy: 0.5)
         XCTAssertEqual(controlsView.contentView.bounds.height, requiredHeight, accuracy: 0.5)
 
         XCTAssertEqual(measurementHeading.frame.minY - measurementCard.frame.maxY, 8, accuracy: 0.5)
@@ -990,6 +1038,8 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.rulerColorWell.frame.maxX, 14, accuracy: 0.5)
         XCTAssertEqual(controlsView.foregroundOpacitySlider.frame.minX, 14, accuracy: 0.5)
         XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.foregroundOpacitySlider.frame.maxX, 14, accuracy: 0.5)
+        XCTAssertEqual(controlsView.borderOpacitySlider.frame.minX, 14, accuracy: 0.5)
+        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.borderOpacitySlider.frame.maxX, 14, accuracy: 0.5)
         XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minX, 14, accuracy: 0.5)
         XCTAssertEqual(try XCTUnwrap(measurementCard.layer).cornerRadius, 10, accuracy: 0.5)
 
@@ -1001,6 +1051,8 @@ final class RulerCoreTests: XCTestCase {
             controlsView.foregroundOpacityLabel,
             controlsView.backgroundOpacityTitleLabel,
             controlsView.backgroundOpacityLabel,
+            controlsView.borderOpacityTitleLabel,
+            controlsView.borderOpacityLabel,
         ]
         for label in rowLabels {
             XCTAssertEqual(try XCTUnwrap(label.font).pointSize, 12, accuracy: 0.1)
@@ -1019,16 +1071,17 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(firstBaselineY(controlsView.dimensionsSeparatorLabel), firstBaselineY(controlsView.dimensionHeightField), accuracy: 1)
         XCTAssertEqual(firstBaselineY(controlsView.foregroundOpacityTitleLabel), firstBaselineY(controlsView.foregroundOpacityLabel), accuracy: 1)
         XCTAssertEqual(firstBaselineY(controlsView.backgroundOpacityTitleLabel), firstBaselineY(controlsView.backgroundOpacityLabel), accuracy: 1)
+        XCTAssertEqual(firstBaselineY(controlsView.borderOpacityTitleLabel), firstBaselineY(controlsView.borderOpacityLabel), accuracy: 1)
     }
 
     func testRulerSettingsControlsDoNotIntersectAcrossSupportedLocalizations() {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 434))
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 491))
         controlsView.configureForRulerSettings()
 
         let localizations = [
-            ["Unit", "Dimensions", "Ruler Color", "Foreground Opacity", "Background Opacity", "Float ruler above other applications", "Show ruler shadow"],
-            ["Einheit", "Abmessungen", "Linealfarbe", "Deckkraft im Vordergrund", "Deckkraft im Hintergrund", "Lineal über anderen Programmen schweben lassen", "Linealschatten anzeigen"],
-            ["単位", "寸法", "定規の色", "前景の不透明度", "背景の不透明度", "定規を常に手前に表示", "定規の影を表示"],
+            ["Unit", "Dimensions", "Ruler Color", "Foreground Opacity", "Background Opacity", "Border Opacity", "Float ruler above other applications", "Show ruler shadow"],
+            ["Einheit", "Abmessungen", "Linealfarbe", "Deckkraft im Vordergrund", "Deckkraft im Hintergrund", "Deckkraft des Rahmens", "Lineal über anderen Programmen schweben lassen", "Linealschatten anzeigen"],
+            ["単位", "寸法", "定規の色", "前景の不透明度", "背景の不透明度", "境界線の不透明度", "定規を常に手前に表示", "定規の影を表示"],
         ]
 
         for titles in localizations {
@@ -1037,8 +1090,9 @@ final class RulerCoreTests: XCTestCase {
             controlsView.rulerColorLabel.stringValue = titles[2]
             controlsView.foregroundOpacityTitleLabel.stringValue = titles[3]
             controlsView.backgroundOpacityTitleLabel.stringValue = titles[4]
-            controlsView.floatRulersCheckbox.title = titles[5]
-            controlsView.rulerShadowCheckbox.title = titles[6]
+            controlsView.borderOpacityTitleLabel.stringValue = titles[5]
+            controlsView.floatRulersCheckbox.title = titles[6]
+            controlsView.rulerShadowCheckbox.title = titles[7]
             controlsView.layoutSubtreeIfNeeded()
             controlsView.contentView.layoutSubtreeIfNeeded()
 
@@ -1048,6 +1102,7 @@ final class RulerCoreTests: XCTestCase {
                 [controlsView.rulerColorLabel, controlsView.resetRulerColorButton, controlsView.rulerColorWell],
                 [controlsView.foregroundOpacityTitleLabel, controlsView.foregroundOpacityLabel],
                 [controlsView.backgroundOpacityTitleLabel, controlsView.backgroundOpacityLabel],
+                [controlsView.borderOpacityTitleLabel, controlsView.borderOpacityLabel],
                 [controlsView.floatRulersCheckbox, controlsView.rulerShadowCheckbox],
             ]
             for row in nonIntersectingRows {
@@ -1070,6 +1125,7 @@ final class RulerCoreTests: XCTestCase {
             controlsView.rulerColorWell,
             controlsView.foregroundOpacitySlider,
             controlsView.backgroundOpacitySlider,
+            controlsView.borderOpacitySlider,
             controlsView.floatRulersCheckbox,
             controlsView.rulerShadowCheckbox,
         ]
@@ -1124,7 +1180,8 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertTrue(controlsView.dimensionHeightField.nextKeyView === controlsView.rulerColorWell)
         XCTAssertTrue(controlsView.rulerColorWell.nextKeyView === controlsView.foregroundOpacitySlider)
         XCTAssertTrue(controlsView.foregroundOpacitySlider.nextKeyView === controlsView.backgroundOpacitySlider)
-        XCTAssertTrue(controlsView.backgroundOpacitySlider.nextKeyView === controlsView.floatRulersCheckbox)
+        XCTAssertTrue(controlsView.backgroundOpacitySlider.nextKeyView === controlsView.borderOpacitySlider)
+        XCTAssertTrue(controlsView.borderOpacitySlider.nextKeyView === controlsView.floatRulersCheckbox)
         XCTAssertTrue(controlsView.floatRulersCheckbox.nextKeyView === controlsView.rulerShadowCheckbox)
         XCTAssertTrue(controlsView.rulerShadowCheckbox.nextKeyView === controlsView.unitSegmentedControl)
 
@@ -1148,6 +1205,7 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertTrue((controlsView.rulerColorWell.accessibilityTitleUIElement() as? NSView) === controlsView.rulerColorLabel)
         XCTAssertTrue((controlsView.foregroundOpacitySlider.accessibilityTitleUIElement() as? NSView) === controlsView.foregroundOpacityTitleLabel)
         XCTAssertTrue((controlsView.backgroundOpacitySlider.accessibilityTitleUIElement() as? NSView) === controlsView.backgroundOpacityTitleLabel)
+        XCTAssertTrue((controlsView.borderOpacitySlider.accessibilityTitleUIElement() as? NSView) === controlsView.borderOpacityTitleLabel)
         XCTAssertEqual(controlsView.unitSegmentedControl.identifier?.rawValue, "ruler-settings-unit-segmented-control")
         XCTAssertEqual(controlsView.rulerColorWell.identifier?.rawValue, "ruler-settings-color-well")
         XCTAssertEqual(controlsView.floatRulersCheckbox.identifier?.rawValue, "ruler-settings-float-rulers-checkbox")
@@ -1182,7 +1240,7 @@ final class RulerCoreTests: XCTestCase {
         ] {
             window.contentView?.layoutSubtreeIfNeeded()
             XCTAssertEqual(window.frame.width, 420, accuracy: 0.5)
-            XCTAssertEqual(window.contentView!.bounds.height, 514, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.height, 571, accuracy: 0.5)
             XCTAssertFalse(window.styleMask.contains(.resizable))
             XCTAssertFalse(window.isOpaque)
             XCTAssertEqual(window.backgroundColor, .clear)
@@ -1190,7 +1248,7 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)
             XCTAssertEqual(window.contentView!.bounds.maxY - controlsView.frame.maxY, 16, accuracy: 0.5)
-            XCTAssertEqual(controlsView.frame.height, 434, accuracy: 0.5)
+            XCTAssertEqual(controlsView.frame.height, 491, accuracy: 0.5)
             XCTAssertTrue(
                 rulerSettingsDescendants(in: window.contentView!)
                     .contains { NSStringFromClass(type(of: $0)).hasSuffix("UtilityMaterialView") }
@@ -1224,7 +1282,7 @@ final class RulerCoreTests: XCTestCase {
         }
     }
 
-    func testRulerSettingsControllerPresentsAsAttachedSheetOnRulerWindow() {
+    func testRulerSettingsControllerPreservesIndependentWindowPosition() {
         let controller = RulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
@@ -1241,14 +1299,18 @@ final class RulerCoreTests: XCTestCase {
             controller.hide()
         }
 
-        controller.show()
-        settingsController.show(attachedTo: controller, sender: self)
-
         guard let settingsWindow = settingsController.window else {
             XCTFail("Expected settings window")
             return
         }
-        XCTAssertTrue(controller.rulerWindow.childWindows?.contains(settingsWindow) ?? false)
+        let savedFrame = NSRect(x: 96, y: 128, width: 420, height: 571)
+        settingsWindow.setFrame(savedFrame, display: false)
+
+        controller.show()
+        settingsController.show(attachedTo: controller, sender: self)
+
+        XCTAssertEqual(settingsWindow.frame, savedFrame)
+        XCTAssertNil(settingsWindow.parent)
         XCTAssertNil(settingsWindow.sheetParent)
     }
 
@@ -1332,16 +1394,13 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(controller.rulerWindow.frame, initialFrame)
     }
 
-    func testRulerSettingsControllerAnchorsPanelCornerToRulerZeroPoint() {
-        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 900)
-        let zeroPoint = NSPoint(x: visibleFrame.midX, y: visibleFrame.midY)
-
+    func testRulerSettingsControllerDoesNotFollowRulerZeroCorner() {
         for zeroCorner in [ZeroCorner.topLeft, .topRight, .bottomLeft, .bottomRight] {
             let controller = RulerController(
                 state: RulerInstanceState(
                     settings: RulerSettings(zeroCorner: zeroCorner),
                     layout: RulerLayoutState(
-                        zeroPoint: zeroPoint,
+                        zeroPoint: NSPoint(x: 480, y: 480),
                         horizontalLength: 260,
                         verticalLength: 180
                     )
@@ -1353,29 +1412,18 @@ final class RulerCoreTests: XCTestCase {
                 controller.hide()
             }
 
-            controller.show()
-            settingsController.show(attachedTo: controller, sender: self)
-
             guard let settingsWindow = settingsController.window else {
                 XCTFail("Expected settings window")
                 return
             }
+            let savedFrame = NSRect(x: 80, y: 100, width: 420, height: 571)
+            settingsWindow.setFrame(savedFrame, display: false)
 
-            let rulerZeroPoint = controller.rulerWindow.zeroPoint()
-            switch zeroCorner {
-            case .topLeft:
-                XCTAssertEqual(settingsWindow.frame.minX, rulerZeroPoint.x, accuracy: 1)
-                XCTAssertEqual(settingsWindow.frame.maxY, rulerZeroPoint.y, accuracy: 1)
-            case .topRight:
-                XCTAssertEqual(settingsWindow.frame.maxX, rulerZeroPoint.x, accuracy: 1)
-                XCTAssertEqual(settingsWindow.frame.maxY, rulerZeroPoint.y, accuracy: 1)
-            case .bottomLeft:
-                XCTAssertEqual(settingsWindow.frame.minX, rulerZeroPoint.x, accuracy: 1)
-                XCTAssertEqual(settingsWindow.frame.minY, rulerZeroPoint.y, accuracy: 1)
-            case .bottomRight:
-                XCTAssertEqual(settingsWindow.frame.maxX, rulerZeroPoint.x, accuracy: 1)
-                XCTAssertEqual(settingsWindow.frame.minY, rulerZeroPoint.y, accuracy: 1)
-            }
+            controller.show()
+            settingsController.show(attachedTo: controller, sender: self)
+
+            XCTAssertEqual(settingsWindow.frame, savedFrame)
+            XCTAssertNil(settingsWindow.parent)
         }
     }
 
@@ -1468,7 +1516,7 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(controller.rulerWindow.alphaValue, 0.8, accuracy: 0.0001)
     }
 
-    func testRulerSettingsControllerTitlebarCloseClosesAttachedSheet() {
+    func testRulerSettingsControllerTitlebarCloseClosesIndependentWindow() {
         let controller = RulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
@@ -1496,11 +1544,11 @@ final class RulerCoreTests: XCTestCase {
 
         settingsWindow.performClose(self)
 
-        XCTAssertFalse(controller.rulerWindow.childWindows?.contains(settingsWindow) ?? false)
+        XCTAssertNil(settingsWindow.parent)
         XCTAssertFalse(settingsWindow.isVisible)
     }
 
-    func testRulerSettingsControllerReanchorsWhenRulerZeroCornerChanges() {
+    func testRulerSettingsControllerPositionDoesNotChangeWithRulerZeroCorner() {
         withRestoredRulerPreferences {
             withRestoredRulerSetState {
                 let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 900)
@@ -1528,17 +1576,14 @@ final class RulerCoreTests: XCTestCase {
                     XCTFail("Expected settings window")
                     return
                 }
-
-                let initialZeroPoint = controller.rulerWindow.zeroPoint()
-                XCTAssertEqual(settingsWindow.frame.minX, initialZeroPoint.x, accuracy: 1)
-                XCTAssertEqual(settingsWindow.frame.maxY, initialZeroPoint.y, accuracy: 1)
+                let savedFrame = NSRect(x: 88, y: 112, width: 420, height: 571)
+                settingsWindow.setFrame(savedFrame, display: false)
 
                 appDelegate.flipRulers(along: .horizontal)
 
-                let flippedZeroPoint = controller.rulerWindow.zeroPoint()
                 XCTAssertEqual(controller.state.settings.zeroCorner, .topRight)
-                XCTAssertEqual(settingsWindow.frame.maxX, flippedZeroPoint.x, accuracy: 1)
-                XCTAssertEqual(settingsWindow.frame.maxY, flippedZeroPoint.y, accuracy: 1)
+                XCTAssertEqual(settingsWindow.frame, savedFrame)
+                XCTAssertNil(settingsWindow.parent)
             }
         }
     }
@@ -3963,6 +4008,7 @@ final class RulerCoreTests: XCTestCase {
         let previousColor = prefs.rulerColor
         let previousForegroundOpacity = prefs.foregroundOpacity
         let previousBackgroundOpacity = prefs.backgroundOpacity
+        let previousBorderOpacity = prefs.borderOpacity
         let previousFloatRulers = prefs.floatRulers
         let previousGroupRulers = prefs.groupRulers
         let previousRulerShadow = prefs.rulerShadow
@@ -3975,6 +4021,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.rulerColor = previousColor
             prefs.foregroundOpacity = previousForegroundOpacity
             prefs.backgroundOpacity = previousBackgroundOpacity
+            prefs.borderOpacity = previousBorderOpacity
             prefs.floatRulers = previousFloatRulers
             prefs.groupRulers = previousGroupRulers
             prefs.rulerShadow = previousRulerShadow

@@ -356,9 +356,14 @@ struct MouseTickLabelLayout {
 }
 
 class RulerBorderView: NSView {
-    static let borderColor = NSColor(calibratedWhite: 0, alpha: 0.5)
     static let borderWidth: CGFloat = 1
     static let borderCenterInset: CGFloat = borderWidth / 2
+
+    var borderOpacity = Prefs.defaultBorderOpacity {
+        didSet {
+            needsDisplay = true
+        }
+    }
 
     override var isOpaque: Bool {
         return false
@@ -375,7 +380,10 @@ class RulerBorderView: NSView {
         path.lineWidth = Self.borderWidth
         path.lineJoinStyle = .miter
         path.lineCapStyle = .butt
-        Self.borderColor.setStroke()
+        NSColor(
+            calibratedWhite: 0,
+            alpha: windowAlphaValue(borderOpacity)
+        ).setStroke()
         path.stroke()
     }
 
@@ -500,6 +508,7 @@ class RuleView: NSView {
     func installWindowBorder() {
         if borderView == nil {
             let view = RulerBorderView(frame: bounds)
+            view.borderOpacity = settingsOverride?.borderOpacity ?? prefs.borderOpacity
             view.autoresizingMask = [.width, .height]
             addSubview(view, positioned: .above, relativeTo: nil)
             borderView = view
@@ -542,6 +551,7 @@ class RuleView: NSView {
     var settingsOverride: RulerSettings? {
         didSet {
             color = RulerColors(customFill: settingsOverride?.rulerColor)
+            borderView?.borderOpacity = settingsOverride?.borderOpacity ?? prefs.borderOpacity
             redrawForPreferenceChange()
         }
     }
