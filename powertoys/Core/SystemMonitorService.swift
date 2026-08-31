@@ -936,13 +936,14 @@ final class SystemMonitorService {
 }
 
 @MainActor
-private final class SystemMonitorMenuController: NSObject {
+final class SystemMonitorMenuController: NSObject {
     private var statusItems: [String: NSStatusItem] = [:]
     private var latestValues: [SystemMonitorMenuMetric: String] = [:]
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
     private let defaults: UserDefaults
+    private(set) var renderedWriteCount = 0
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -999,6 +1000,7 @@ private final class SystemMonitorMenuController: NSObject {
             let state = settings.enabledItems.map(renderedItem)
             guard renderedStateCache.shouldApply(state, for: "group"),
                   let button = statusItems["group"]?.button else { return }
+            renderedWriteCount += 1
             button.image = nil
             button.attributedTitle = attributedTitle(for: state)
             button.setAccessibilityLabel(accessibilityLabel(for: state))
@@ -1020,6 +1022,7 @@ private final class SystemMonitorMenuController: NSObject {
     }
 
     private func apply(_ state: SystemMonitorRenderedItem, to button: NSStatusBarButton) {
+        renderedWriteCount += 1
         button.attributedTitle = NSAttributedString(string: "")
         switch state.style {
         case .iconAndValue:
