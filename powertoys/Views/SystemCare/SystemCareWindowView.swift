@@ -160,7 +160,7 @@ struct SystemCareWindowView: View {
             .background(Color.primary.opacity(0.03))
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 12))
         .focusEffectDisabled()
     }
 
@@ -254,7 +254,7 @@ struct SystemCareWindowView: View {
                                             .padding(.vertical, 7)
                                             .contentShape(Rectangle())
                                         }
-                                        .buttonStyle(.plain)
+                                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                                         .focusEffectDisabled()
                                     }
                                 }
@@ -426,7 +426,7 @@ struct SystemCareWindowView: View {
                                 .background(Color.primary.opacity(selectedApplication == application ? 0.06 : 0))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(UtilityInteractionButtonStyle())
                             .focusEffectDisabled()
                         }
                     }

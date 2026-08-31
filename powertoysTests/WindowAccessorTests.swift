@@ -285,6 +285,41 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertNil(UtilityMotion.animation(reduceMotion: true))
     }
 
+    func testUtilityInteractionButtonStates() {
+        XCTAssertEqual(
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: true,
+                isHovering: false,
+                isPressed: false
+            ),
+            0
+        )
+        XCTAssertEqual(
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: true,
+                isHovering: true,
+                isPressed: false
+            ),
+            0.06
+        )
+        XCTAssertEqual(
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: true,
+                isHovering: true,
+                isPressed: true
+            ),
+            0.1
+        )
+        XCTAssertEqual(
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: false,
+                isHovering: true,
+                isPressed: true
+            ),
+            0
+        )
+    }
+
     private func firstSearchField(in view: NSView) -> NSSearchField? {
         if let searchField = view as? NSSearchField { return searchField }
         return view.subviews.lazy.compactMap(firstSearchField(in:)).first

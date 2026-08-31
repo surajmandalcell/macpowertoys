@@ -172,10 +172,10 @@ struct AwakeSettingsView: View {
                 Image(systemName: service.configuration.mode == mode ? "record.circle.fill" : "circle")
                 Text(mode.title)
             }
+            .frame(minWidth: 180, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
-        .contentShape(Rectangle())
-        .frame(minWidth: 180, alignment: .leading)
     }
 }

@@ -199,7 +199,7 @@ private struct BookmarksSection: View {
                             .background(Color.accentColor.opacity(0.1))
                             .clipShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 12))
                         .focusEffectDisabled()
                     }
                 }
