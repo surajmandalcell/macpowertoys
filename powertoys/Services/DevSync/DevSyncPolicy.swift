@@ -9,6 +9,8 @@ nonisolated struct DevPolicyInput: Sendable {
 }
 
 nonisolated final class DevFilePolicyEngine: Sendable {
+    private static let largeFileThresholdBytes: Int64 = 1_073_741_824
+
     private let policy: DevSyncConfiguration.Policy
     private let projectKind: DevProjectKind
     private let gitDirectoryRelativePath: String?
@@ -41,10 +43,16 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         let sensitive = policy.sensitivePatterns.contains { DevRelativePath.matchesGlob($0, name: name) }
         let diskImage = DevSyncDefaults.diskImagePatterns.contains { DevRelativePath.matchesGlob($0, name: name) }
         let volatile = diskImage || DevSyncDefaults.volatileFilePatterns.contains { DevRelativePath.matchesGlob($0, name: name) }
-        let requiresStableWindow = volatile || diskImage || input.size > 1_073_741_824
+        let requiresStableWindow = volatile || input.size > Self.largeFileThresholdBytes
 
         guard input.kind != .unsupported else { return .exclude(.unsupportedObjectType) }
         guard !DevRelativePath.isCloudSyncSystemPath(path) else { return .exclude(.cloudSyncInternalPath) }
+        guard !name.hasSuffix(".icloud") else { return .exclude(.datalessPlaceholder) }
+
+        let gitPath = input.isInsideGitDirectory ? pathInsideGitDirectory(path) : ""
+        if input.isInsideGitDirectory, DevGit.isTransientGitPath(gitPath) {
+            return .exclude(.transientGitLock)
+        }
 
         let explicitInclude = policy.explicitIncludes.contains { matches($0, path: path, name: name) }
         let explicitExclude = policy.explicitExcludes.contains { matches($0, path: path, name: name) }
@@ -60,30 +68,28 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             )
         }
 
-        if input.isInsideGitDirectory {
-            let gitPath = pathInsideGitDirectory(path)
-            if DevGit.isTransientGitPath(gitPath) {
-                return .exclude(.transientGitLock)
+        let inCache = policy.skipCommonCaches && Self.isCommonCachePath(path)
+        if sensitive && !inCache {
+            guard input.size <= policy.sensitiveSizeGuardBytes else {
+                return .exclude(.sensitiveSizeGuard)
             }
+            if policy.includeIgnoredSensitiveFiles {
+                return .include(
+                    .sensitiveOverride,
+                    sensitive: true,
+                    volatile: volatile,
+                    requiresStableWindow: requiresStableWindow
+                )
+            }
+        }
+
+        if input.isInsideGitDirectory {
             if !policy.includeGitMetadata || (!policy.includeGitLFSObjects && isGitLFSPath(gitPath)) {
                 return .exclude(.commonExclusion)
             }
             return .include(
                 .requiredGitMetadata,
                 sensitive: sensitive,
-                volatile: volatile,
-                requiresStableWindow: requiresStableWindow
-            )
-        }
-
-        let inCache = policy.skipCommonCaches && Self.isCommonCachePath(path)
-        if sensitive && policy.includeIgnoredSensitiveFiles && !inCache {
-            guard input.size <= policy.sensitiveSizeGuardBytes else {
-                return .exclude(.sensitiveSizeGuard)
-            }
-            return .include(
-                .sensitiveOverride,
-                sensitive: true,
                 volatile: volatile,
                 requiresStableWindow: requiresStableWindow
             )
@@ -108,9 +114,6 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         if isHardExcluded(path: path, name: name) {
             return .exclude(.commonExclusion)
         }
-        if name.hasSuffix(".icloud") {
-            return .exclude(.datalessPlaceholder)
-        }
         if policy.skipCommonCaches && Self.isCommonCachePath(path) {
             return .exclude(.commonExclusion)
         }
@@ -126,25 +129,43 @@ nonisolated final class DevFilePolicyEngine: Sendable {
     }
 
     func fingerprint() -> String {
-        let value = [
+        var hasher = SHA256()
+        let values = [
             projectKind.rawValue,
-            gitDirectoryRelativePath ?? "-",
+            gitDirectoryRelativePath.map { "gitdir:\($0)" } ?? "gitdir:nil",
             gitAvailable ? "1" : "0",
             policy.followGitIgnore ? "1" : "0",
             policy.includeIgnoredSensitiveFiles ? "1" : "0",
-            policy.sensitivePatterns.joined(separator: "\u{1f}"),
             String(policy.sensitiveSizeGuardBytes),
             policy.skipCommonCaches ? "1" : "0",
             policy.skipUnignoredBuildOutputs ? "1" : "0",
             policy.includeGitMetadata ? "1" : "0",
-            policy.includeGitLFSObjects ? "1" : "0",
-            policy.explicitIncludes.joined(separator: "\u{1f}"),
-            policy.explicitExcludes.joined(separator: "\u{1f}"),
-            (gitTracked ?? []).sorted().joined(separator: "\u{1f}"),
-            (gitIgnored ?? []).sorted().joined(separator: "\u{1f}"),
-            projectIgnoreRules.joined(separator: "\u{1f}")
-        ].joined(separator: "\u{1e}")
-        return SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
+            policy.includeGitLFSObjects ? "1" : "0"
+        ]
+        for value in values {
+            Self.updateFingerprint(&hasher, with: value)
+        }
+        for pattern in policy.sensitivePatterns.sorted() {
+            Self.updateFingerprint(&hasher, with: "sensitive:\(pattern)")
+        }
+        for pattern in policy.explicitIncludes.sorted() {
+            Self.updateFingerprint(&hasher, with: "include:\(pattern)")
+        }
+        for pattern in policy.explicitExcludes.sorted() {
+            Self.updateFingerprint(&hasher, with: "exclude:\(pattern)")
+        }
+        for rule in projectIgnoreRules {
+            Self.updateFingerprint(&hasher, with: "project:\(rule)")
+        }
+        Self.updateFingerprint(&hasher, with: gitTracked == nil ? "tracked:nil" : "tracked:set")
+        for path in (gitTracked ?? []).sorted() {
+            Self.updateFingerprint(&hasher, with: path)
+        }
+        Self.updateFingerprint(&hasher, with: gitIgnored == nil ? "ignored:nil" : "ignored:set")
+        for path in (gitIgnored ?? []).sorted() {
+            Self.updateFingerprint(&hasher, with: path)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     static func parseProjectIgnoreRules(_ text: String) -> [String] {
@@ -230,6 +251,13 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             }
         }
         return false
+    }
+
+    private static func updateFingerprint(_ hasher: inout SHA256, with value: String) {
+        let data = Data(value.utf8)
+        var byteCount = UInt64(data.count).bigEndian
+        withUnsafeBytes(of: &byteCount) { hasher.update(data: Data($0)) }
+        hasher.update(data: data)
     }
 
     private func normalizedPattern(_ pattern: String) -> String {

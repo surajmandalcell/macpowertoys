@@ -32,7 +32,7 @@ nonisolated enum DevProjectDiscovery {
         managedLinkPaths: Set<String>,
         otherRoot: URL?
     ) async -> DevDiscoveryResult {
-        let scan = await Task.detached(priority: .utility) {
+        let scanTask = Task.detached(priority: .utility) {
             var scanner = DevDiscoveryScanner(
                 root: root.standardizedFileURL,
                 side: side,
@@ -41,17 +41,36 @@ nonisolated enum DevProjectDiscovery {
                 otherRoot: otherRoot?.standardizedFileURL
             )
             return scanner.scan()
-        }.value
+        }
+        var scan = await withTaskCancellationHandler {
+            await scanTask.value
+        } onCancel: {
+            scanTask.cancel()
+        }
+        if Task.isCancelled {
+            scan.complete = false
+        }
 
         let internalRoot = side == .internal ? root : (otherRoot ?? root)
         let externalRoot = side == .external ? root : (otherRoot ?? root)
         var projects: [DevDiscoveredProject] = []
+        var submoduleRoots = Set<String>()
         for found in scan.projects {
+            guard !Task.isCancelled else {
+                scan.complete = false
+                break
+            }
             let topology = await DevGit.topology(
                 projectURL: found.url,
                 internalRoot: internalRoot,
                 externalRoot: externalRoot
             )
+            for submodulePath in topology.submodulePaths where DevRelativePath.isSafe(submodulePath) {
+                let relativePath = found.relativePath.isEmpty
+                    ? submodulePath
+                    : "\(found.relativePath)/\(submodulePath)"
+                submoduleRoots.insert(relativePath)
+            }
             projects.append(
                 DevDiscoveredProject(
                     relativePath: found.relativePath,
@@ -64,7 +83,9 @@ nonisolated enum DevProjectDiscovery {
         }
         return DevDiscoveryResult(
             projects: projects.sorted { $0.relativePath < $1.relativePath },
-            candidates: scan.candidates.sorted { $0.id < $1.id },
+            candidates: scan.candidates.filter { candidate in
+                !isInsideSubmodule(candidate.relativePath, submoduleRoots: submoduleRoots)
+            }.sorted { $0.id < $1.id },
             unreadablePaths: scan.unreadablePaths.sorted(),
             complete: scan.complete,
             symlinksToExternal: scan.symlinksToExternal
@@ -74,23 +95,38 @@ nonisolated enum DevProjectDiscovery {
     static func matchRenames(
         previous: [DevProject],
         current: [DevDiscoveredProject],
-        side: DevSyncSide
+        side: DevSyncSide,
+        identitiesByRelativePath: [String: DevProjectIdentity]? = nil
     ) -> [DevRenameCandidate] {
         let currentPaths = Set(current.filter { $0.side == side }.map(\.relativePath))
         let previousOnSide = previous.filter { wasPresent($0, on: side) }
         let previousPaths = Set(previousOnSide.map(\.relativePath))
         let missing = previousOnSide.filter { !currentPaths.contains($0.relativePath) }
         let additions = current.filter { $0.side == side && !previousPaths.contains($0.relativePath) }
+        var missingByResourceIdentifier: [Data: [DevProject]] = [:]
+        var missingByFingerprint: [String: [DevProject]] = [:]
+        var missingByKindAndName: [String: [DevProject]] = [:]
+        for project in missing {
+            let resourceIdentifier = side == .internal
+                ? project.internalResourceIdentifier
+                : project.externalResourceIdentifier
+            if let resourceIdentifier {
+                missingByResourceIdentifier[resourceIdentifier, default: []].append(project)
+            }
+            if let fingerprint = project.identity?.fingerprint {
+                missingByFingerprint[fingerprint, default: []].append(project)
+            }
+            missingByKindAndName["\(project.kind.rawValue)\0\(project.name)", default: []].append(project)
+        }
         var usedPrevious = Set<UUID>()
         var matches: [DevRenameCandidate] = []
 
         for candidate in additions.sorted(by: { $0.relativePath < $1.relativePath }) {
-            let resourceMatches = missing.filter { project in
-                guard !usedPrevious.contains(project.id) else { return false }
-                let resourceIdentifier = side == .internal ? project.internalResourceIdentifier : project.externalResourceIdentifier
-                return resourceIdentifier != nil && resourceIdentifier == candidate.resourceIdentifier
-            }
-            if resourceMatches.count == 1, let previousProject = resourceMatches.first {
+            if let resourceIdentifier = candidate.resourceIdentifier,
+               let resourceMatches = missingByResourceIdentifier[resourceIdentifier],
+               resourceMatches.count == 1,
+               let previousProject = resourceMatches.first,
+               !usedPrevious.contains(previousProject.id) {
                 usedPrevious.insert(previousProject.id)
                 matches.append(
                     DevRenameCandidate(
@@ -103,11 +139,30 @@ nonisolated enum DevProjectDiscovery {
                 continue
             }
 
-            let nameMatches = missing.filter { project in
-                guard !usedPrevious.contains(project.id), project.kind == candidate.kind else { return false }
-                return project.name == candidate.relativePath.split(separator: "/").last.map(String.init)
+            if let fingerprint = identitiesByRelativePath?[candidate.relativePath]?.fingerprint {
+                if let identityMatches = missingByFingerprint[fingerprint],
+                   identityMatches.count == 1,
+                   let previousProject = identityMatches.first,
+                   !usedPrevious.contains(previousProject.id) {
+                    usedPrevious.insert(previousProject.id)
+                    matches.append(
+                        DevRenameCandidate(
+                            previous: previousProject,
+                            current: candidate,
+                            confidence: 0.9,
+                            evidence: "Matching project identity"
+                        )
+                    )
+                    continue
+                }
             }
-            guard nameMatches.count == 1, let previousProject = nameMatches.first else { continue }
+
+            guard let name = candidate.relativePath.split(separator: "/").last.map(String.init),
+                  let nameMatches = missingByKindAndName["\(candidate.kind.rawValue)\0\(name)"],
+                  nameMatches.count == 1,
+                  let previousProject = nameMatches.first,
+                  !usedPrevious.contains(previousProject.id)
+            else { continue }
             usedPrevious.insert(previousProject.id)
             matches.append(
                 DevRenameCandidate(
@@ -134,6 +189,15 @@ nonisolated enum DevProjectDiscovery {
             return false
         }
     }
+
+    private static func isInsideSubmodule(_ path: String, submoduleRoots: Set<String>) -> Bool {
+        var current: String? = path
+        while let value = current {
+            if submoduleRoots.contains(value) { return true }
+            current = DevRelativePath.parent(value)
+        }
+        return false
+    }
 }
 
 private nonisolated struct DevDiscoveryFoundProject: Sendable {
@@ -151,6 +215,11 @@ private nonisolated struct DevDiscoveryScan: Sendable {
 }
 
 private nonisolated struct DevDiscoveryScanner {
+    private static let maximumDepth = 32
+    private static let maximumDirectoryCount = 50_000
+    private static let maximumMarkerBytes = 1_048_576
+    private static let markerReadChunkBytes = 64 * 1_024
+
     let root: URL
     let side: DevSyncSide
     let configuration: DevSyncConfiguration.Discovery
@@ -233,7 +302,7 @@ private nonisolated struct DevDiscoveryScanner {
                 continue
             }
             guard mode & S_IFMT == S_IFDIR else { continue }
-            if isCommonCachePath(childRelativePath) { continue }
+            if DevFilePolicyEngine.isCommonCachePath(childRelativePath) { continue }
             visit(directory: entry, relativePath: childRelativePath, depth: depth + 1)
         }
     }
@@ -266,15 +335,17 @@ private nonisolated struct DevDiscoveryScanner {
                 continue
             }
             guard mode & S_IFMT == S_IFDIR else { continue }
-            if isCommonCachePath(childRelativePath) { continue }
+            if DevFilePolicyEngine.isCommonCachePath(childRelativePath) { continue }
             guard enterDirectory(entry, relativePath: childRelativePath, depth: depth + 1) else { continue }
 
             let relativeToOuter = projectRootRelativePath.isEmpty
                 ? childRelativePath
                 : String(childRelativePath.dropFirst(projectRootRelativePath.count + 1))
             let isSubmodule = submodulePaths.contains { relativeToOuter == $0 || relativeToOuter.hasPrefix($0 + "/") }
+            if submodulePaths.contains(relativeToOuter) { continue }
             if hasGitProjectMarker(at: entry), !isSubmodule {
                 addCandidate(relativePath: childRelativePath, kind: .nestedRepository)
+                continue
             } else if isBareRepository(at: entry), !isSubmodule {
                 addCandidate(relativePath: childRelativePath, kind: .bareRepository)
                 continue
@@ -290,12 +361,16 @@ private nonisolated struct DevDiscoveryScanner {
     }
 
     private mutating func enterDirectory(_ directory: URL, relativePath: String, depth: Int) -> Bool {
-        guard depth <= 32 else {
+        guard !Task.isCancelled else {
+            result.complete = false
+            return false
+        }
+        guard depth <= Self.maximumDepth else {
             result.complete = false
             result.unreadablePaths.append(relativePath)
             return false
         }
-        guard visitedDirectories < 50_000 else {
+        guard visitedDirectories < Self.maximumDirectoryCount else {
             result.complete = false
             return false
         }
@@ -369,31 +444,11 @@ private nonisolated struct DevDiscoveryScanner {
         return mode & 0o444 != 0 && mode & 0o111 != 0
     }
 
-    private func isCommonCachePath(_ path: String) -> Bool {
-        let normalized = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return DevSyncDefaults.commonCacheDirectories.contains { pattern in
-            normalized == pattern || normalized.hasSuffix("/\(pattern)") ||
-                containsPathPattern(pattern, in: normalized) ||
-            normalized.split(separator: "/").contains { DevRelativePath.matchesGlob(pattern, name: String($0)) }
-        }
-    }
-
-    private func containsPathPattern(_ pattern: String, in path: String) -> Bool {
-        let patternComponents = pattern.split(separator: "/").map(String.init)
-        let pathComponents = path.split(separator: "/").map(String.init)
-        guard !patternComponents.isEmpty, patternComponents.count <= pathComponents.count else { return false }
-        for start in 0...(pathComponents.count - patternComponents.count) {
-            if zip(patternComponents, pathComponents[start...]).allSatisfy({ pattern, component in
-                DevRelativePath.matchesGlob(pattern, name: component)
-            }) {
-                return true
-            }
-        }
-        return false
-    }
-
     private static func normalizedPath(_ path: String) -> String {
-        path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).split(separator: "/").joined(separator: "/").lowercased()
+        path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .split(separator: "/")
+            .joined(separator: "/")
+            .precomposedStringWithCanonicalMapping
     }
 
     private func directoryContents(_ url: URL) -> [URL]? {
@@ -404,23 +459,26 @@ private nonisolated struct DevDiscoveryScanner {
         guard isRegularFile(at: url), let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         var data = Data()
-        while let chunk = try? handle.read(upToCount: 64 * 1024), !chunk.isEmpty {
-            data.append(chunk)
+        do {
+            while let chunk = try handle.read(upToCount: min(Self.markerReadChunkBytes, Self.maximumMarkerBytes - data.count + 1)) {
+                guard !chunk.isEmpty else { break }
+                data.append(chunk)
+                guard data.count <= Self.maximumMarkerBytes else { return nil }
+            }
+        } catch {
+            return nil
         }
         return String(data: data, encoding: .utf8)
     }
 
     private func resourceIdentifier(at url: URL) -> Data? {
-        guard fileType(at: url) != .symlink,
-              let values = try? url.resourceValues(forKeys: [.fileResourceIdentifierKey]),
-              let identifier = values.fileResourceIdentifier
-        else { return nil }
-        if let data = identifier as? Data { return data }
-        if let number = identifier as? NSNumber {
-            var value = number.uint64Value.bigEndian
-            return Data(bytes: &value, count: MemoryLayout<UInt64>.size)
-        }
-        return String(describing: identifier).data(using: .utf8)
+        guard let value = lstatValue(at: url), value.st_mode & S_IFMT != S_IFLNK else { return nil }
+        var device = UInt64(truncatingIfNeeded: value.st_dev).bigEndian
+        var inode = UInt64(truncatingIfNeeded: value.st_ino).bigEndian
+        var identifier = Data()
+        withUnsafeBytes(of: &device) { identifier.append(contentsOf: $0) }
+        withUnsafeBytes(of: &inode) { identifier.append(contentsOf: $0) }
+        return identifier
     }
 
     private nonisolated enum FileType {
@@ -449,11 +507,15 @@ private nonisolated struct DevDiscoveryScanner {
     }
 
     private func lstatMode(at url: URL) -> UInt16? {
+        lstatValue(at: url)?.st_mode
+    }
+
+    private func lstatValue(at url: URL) -> stat? {
         url.withUnsafeFileSystemRepresentation { path in
             guard let path else { return nil }
             var value = stat()
             guard lstat(path, &value) == 0 else { return nil }
-            return value.st_mode
+            return value
         }
     }
 
@@ -463,5 +525,5 @@ private nonisolated struct DevDiscoveryScanner {
 }
 
 private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
+    nonisolated var nilIfEmpty: String? { isEmpty ? nil : self }
 }
