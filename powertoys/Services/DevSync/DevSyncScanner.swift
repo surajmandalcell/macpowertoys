@@ -24,9 +24,14 @@ nonisolated enum DevSnapshotScanner {
         var kind: DevEntryKind
         var size: UInt64
         var modificationTimeNanoseconds: Int64
+        var changeTimeNanoseconds: Int64
         var mode: UInt16
         var symlinkTarget: String?
-        var resourceIdentifier: Data
+        var resourceIdentifier: Data?
+    }
+
+    nonisolated private enum ScannerError: Error {
+        case changedDuringScan
     }
 
     nonisolated private struct ScanState {
@@ -71,6 +76,7 @@ nonisolated enum DevSnapshotScanner {
     }
 
     static func hash(url: URL) throws -> Data {
+        try Task.checkCancellation()
         let descriptor = url.withUnsafeFileSystemRepresentation { path in
             guard let path else { return Int32(-1) }
             return Darwin.open(path, O_RDONLY | O_NOFOLLOW)
@@ -79,8 +85,9 @@ nonisolated enum DevSnapshotScanner {
 
         var fileStatus = Darwin.stat()
         guard Darwin.fstat(descriptor, &fileStatus) == 0 else {
+            let error = posixError()
             Darwin.close(descriptor)
-            throw posixError()
+            throw error
         }
         guard fileStatus.st_mode & S_IFMT == S_IFREG else {
             Darwin.close(descriptor)
@@ -104,7 +111,8 @@ nonisolated enum DevSnapshotScanner {
             else { return false }
 
             if windowSeconds > 0 {
-                let nanoseconds = UInt64(min(windowSeconds, Double(UInt64.max) / 1_000_000_000) * 1_000_000_000)
+                let maximumSeconds = Double(UInt64.max / 1_000_000_000)
+                let nanoseconds = UInt64(min(windowSeconds, maximumSeconds) * 1_000_000_000)
                 do {
                     try await Task.sleep(nanoseconds: nanoseconds)
                 } catch {
@@ -124,7 +132,8 @@ nonisolated enum DevSnapshotScanner {
 
     static func collisions(paths: [String], caseInsensitive: Bool) -> [[String]] {
         var groups: [String: [String]] = [:]
-        for path in paths {
+        var seenPaths: Set<Data> = []
+        for path in paths where seenPaths.insert(Data(path.utf8)).inserted {
             let key = caseInsensitive
                 ? DevRelativePath.normalizedKey(path)
                 : path.precomposedStringWithCanonicalMapping
@@ -158,26 +167,31 @@ nonisolated enum DevSnapshotScanner {
         compareMode: Bool,
         requireHash: Bool
     ) throws -> Bool {
-        guard let destination = try? signature(of: destinationURL, includeHash: requireHash),
-              destination.kind == plannedSource.kind
+        let destination: DevFileSignature
+        do {
+            destination = try signature(of: destinationURL, includeHash: requireHash)
+        } catch let error as NSError {
+            if error.domain == NSPOSIXErrorDomain, error.code == Int(ENOENT) || error.code == Int(ENOTDIR) {
+                return false
+            }
+            throw error
+        }
+        guard destination.kind == plannedSource.kind,
+              destination.size == plannedSource.size,
+              timesMatch(
+                  plannedSource.modificationTimeNanoseconds,
+                  destination.modificationTimeNanoseconds,
+                  toleranceNanoseconds: toleranceNanoseconds
+              )
         else { return false }
 
-        switch plannedSource.kind {
-        case .file:
-            guard destination.size == plannedSource.size,
-                  timesMatch(plannedSource.modificationTimeNanoseconds, destination.modificationTimeNanoseconds, toleranceNanoseconds: toleranceNanoseconds)
-            else { return false }
-        case .symlink:
-            guard destination.size == plannedSource.size,
-                  timesMatch(plannedSource.modificationTimeNanoseconds, destination.modificationTimeNanoseconds, toleranceNanoseconds: toleranceNanoseconds),
-                  destination.symlinkTarget == plannedSource.symlinkTarget
-            else { return false }
-        case .directory, .unsupported:
-            break
+        if plannedSource.kind == .symlink,
+           destination.symlinkTarget != plannedSource.symlinkTarget {
+            return false
         }
 
         if compareMode, destination.mode != plannedSource.mode { return false }
-        if requireHash {
+        if requireHash, plannedSource.kind == .file {
             guard let plannedHash = plannedSource.contentHash,
                   destination.contentHash == plannedHash
             else { return false }
@@ -196,27 +210,33 @@ nonisolated enum DevSnapshotScanner {
     ) -> DevSnapshot {
         var state = ScanState()
         do {
+            try Task.checkCancellation()
             let root = try fileSystemEntry(at: projectURL)
             guard root.kind == .directory else {
                 state.complete = false
-                state.unreadablePaths.append(projectURL.path)
+                state.unreadablePaths.append("")
                 return snapshot(from: state, caseInsensitive: collisionKeyCaseInsensitive)
             }
+            let limitTargets = limitToPaths.map { Set($0.filter(DevRelativePath.isSafe)) }
+            let limitMembers = limitTargets.map { Set(manifest(paths: $0)) }
             try walk(
                 directoryURL: projectURL,
                 relativeDirectoryPath: "",
+                expectedDirectoryEntry: root,
                 policy: policy,
                 gitDirectoryRelativePath: gitDirectoryRelativePath,
                 managedLinkPaths: managedLinkPaths,
                 hashPaths: hashPaths,
-                limitToPaths: limitToPaths,
+                limitTargets: limitTargets,
+                limitMembers: limitMembers,
+                scanAllDescendants: limitToPaths == nil,
                 state: &state
             )
         } catch is CancellationError {
             state.complete = false
         } catch {
             state.complete = false
-            state.unreadablePaths.append(projectURL.path)
+            state.unreadablePaths.append("")
         }
         return snapshot(from: state, caseInsensitive: collisionKeyCaseInsensitive)
     }
@@ -224,11 +244,14 @@ nonisolated enum DevSnapshotScanner {
     private static func walk(
         directoryURL: URL,
         relativeDirectoryPath: String,
+        expectedDirectoryEntry: FileSystemEntry,
         policy: DevPathPolicy,
         gitDirectoryRelativePath: String?,
         managedLinkPaths: Set<String>,
         hashPaths: Set<String>,
-        limitToPaths: Set<String>?,
+        limitTargets: Set<String>?,
+        limitMembers: Set<String>?,
+        scanAllDescendants: Bool,
         state: inout ScanState
     ) throws {
         try Task.checkCancellation()
@@ -237,15 +260,17 @@ nonisolated enum DevSnapshotScanner {
             children = try FileManager.default.contentsOfDirectory(at: directoryURL, includingPropertiesForKeys: nil, options: [])
         } catch {
             state.complete = false
-            state.unreadablePaths.append(relativeDirectoryPath.isEmpty ? directoryURL.path : relativeDirectoryPath)
+            state.unreadablePaths.append(relativeDirectoryPath)
             return
         }
+        try Task.checkCancellation()
 
         for childURL in children {
             try Task.checkCancellation()
             let name = childURL.lastPathComponent
             let relativePath = relativeDirectoryPath.isEmpty ? name : relativeDirectoryPath + "/" + name
-            guard shouldVisit(relativePath, limitToPaths: limitToPaths) else { continue }
+            let childScansAllDescendants = scanAllDescendants || limitTargets?.contains(relativePath) == true
+            guard childScansAllDescendants || limitMembers?.contains(relativePath) == true else { continue }
 
             let entry: FileSystemEntry
             do {
@@ -272,13 +297,13 @@ nonisolated enum DevSnapshotScanner {
 
             if !decision.included {
                 state.excluded[relativePath] = decision.reason
-                state.excludedBytes += signedSize(entry.size)
+                addBytes(signedSize(entry.size), to: &state.excludedBytes)
                 continue
             }
 
             do {
                 state.entries[relativePath] = try signature(of: childURL, entry: entry, includeHash: hashPaths.contains(relativePath))
-                state.includedBytes += signedSize(entry.size)
+                addBytes(signedSize(entry.size), to: &state.includedBytes)
             } catch {
                 state.complete = false
                 state.unreadablePaths.append(relativePath)
@@ -289,14 +314,28 @@ nonisolated enum DevSnapshotScanner {
                 try walk(
                     directoryURL: childURL,
                     relativeDirectoryPath: relativePath,
+                    expectedDirectoryEntry: entry,
                     policy: policy,
                     gitDirectoryRelativePath: gitDirectoryRelativePath,
                     managedLinkPaths: managedLinkPaths,
                     hashPaths: hashPaths,
-                    limitToPaths: limitToPaths,
+                    limitTargets: limitTargets,
+                    limitMembers: limitMembers,
+                    scanAllDescendants: childScansAllDescendants,
                     state: &state
                 )
             }
+        }
+
+        do {
+            let currentDirectoryEntry = try fileSystemEntry(at: directoryURL)
+            if !sameFileSystemEntry(expectedDirectoryEntry, currentDirectoryEntry) {
+                state.complete = false
+            }
+        } catch {
+            state.complete = false
+            let path = relativeDirectoryPath.isEmpty ? "" : relativeDirectoryPath
+            state.unreadablePaths.append(path)
         }
     }
 
@@ -314,15 +353,23 @@ nonisolated enum DevSnapshotScanner {
     }
 
     private static func signature(of url: URL, entry: FileSystemEntry, includeHash: Bool) throws -> DevFileSignature {
-        DevFileSignature(
+        let contentHash = includeHash && entry.kind == .file ? try hash(url: url) : nil
+        let xattrDigest = xattrDigest(of: url)
+        if contentHash != nil {
+            let currentEntry = try fileSystemEntry(at: url)
+            guard sameFileSystemEntry(entry, currentEntry) else {
+                throw ScannerError.changedDuringScan
+            }
+        }
+        return DevFileSignature(
             kind: entry.kind,
             size: entry.kind == .directory ? nil : entry.size,
             modificationTimeNanoseconds: entry.modificationTimeNanoseconds,
             mode: entry.mode,
             symlinkTarget: entry.symlinkTarget,
             resourceIdentifier: entry.resourceIdentifier,
-            contentHash: includeHash && entry.kind == .file ? try hash(url: url) : nil,
-            xattrDigest: xattrDigest(of: url)
+            contentHash: contentHash,
+            xattrDigest: xattrDigest
         )
     }
 
@@ -343,32 +390,46 @@ nonisolated enum DevSnapshotScanner {
         default: kind = .unsupported
         }
 
-        var device = UInt64(fileStatus.st_dev)
-        var inode = UInt64(fileStatus.st_ino)
-        var resourceIdentifier = Data()
-        withUnsafeBytes(of: &device) { resourceIdentifier.append(contentsOf: $0) }
-        withUnsafeBytes(of: &inode) { resourceIdentifier.append(contentsOf: $0) }
+        let symlinkTarget = kind == .symlink ? try symlinkTarget(of: url, size: fileStatus.st_size) : nil
+        let resourceIdentifier = resourceIdentifier(of: url, kind: kind, fileStatus: fileStatus)
+        var confirmedStatus = Darwin.stat()
+        let confirmationResult = url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return Darwin.lstat(path, &confirmedStatus)
+        }
+        guard confirmationResult == 0 else { throw posixError() }
+        guard sameFileStatus(fileStatus, confirmedStatus) else { throw ScannerError.changedDuringScan }
 
         return FileSystemEntry(
             kind: kind,
             size: fileStatus.st_size >= 0 ? UInt64(fileStatus.st_size) : 0,
             modificationTimeNanoseconds: Int64(fileStatus.st_mtimespec.tv_sec) * 1_000_000_000 + Int64(fileStatus.st_mtimespec.tv_nsec),
+            changeTimeNanoseconds: Int64(fileStatus.st_ctimespec.tv_sec) * 1_000_000_000 + Int64(fileStatus.st_ctimespec.tv_nsec),
             mode: UInt16(fileStatus.st_mode & 0o7777),
-            symlinkTarget: kind == .symlink ? try symlinkTarget(of: url, size: fileStatus.st_size) : nil,
+            symlinkTarget: symlinkTarget,
             resourceIdentifier: resourceIdentifier
         )
     }
 
     private static func symlinkTarget(of url: URL, size: off_t) throws -> String {
-        let capacity = max(Int(size), 1) + 1
-        var buffer = [CChar](repeating: 0, count: capacity)
-        let count = url.withUnsafeFileSystemRepresentation { path in
-            guard let path else { return -1 }
-            return Darwin.readlink(path, &buffer, buffer.count)
+        let maximumCapacity = Int(PATH_MAX)
+        var capacity = size > 0 && size < off_t(maximumCapacity) ? Int(size) + 1 : min(256, maximumCapacity)
+        while true {
+            var buffer = [CChar](repeating: 0, count: capacity)
+            let count = url.withUnsafeFileSystemRepresentation { path in
+                guard let path else { return -1 }
+                return Darwin.readlink(path, &buffer, buffer.count)
+            }
+            guard count >= 0 else { throw posixError() }
+            if count < capacity {
+                let bytes = buffer.prefix(count).map { UInt8(bitPattern: $0) }
+                return String(decoding: bytes, as: UTF8.self)
+            }
+            guard capacity < maximumCapacity else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(ENAMETOOLONG))
+            }
+            capacity = min(capacity * 2, maximumCapacity)
         }
-        guard count >= 0 else { throw posixError() }
-        let bytes = buffer.prefix(count).map { UInt8(bitPattern: $0) }
-        return String(decoding: bytes, as: UTF8.self)
     }
 
     private static func xattrDigest(of url: URL) -> Data? {
@@ -395,7 +456,9 @@ nonisolated enum DevSnapshotScanner {
         var payload = Data()
         for name in names.sorted(by: bytewisePrecedes) {
             guard let value = xattrValue(of: path, name: name) else { continue }
+            appendLength(name.utf8.count, to: &payload)
             payload.append(contentsOf: name.utf8)
+            appendLength(value.count, to: &payload)
             payload.append(value)
         }
         return Data(SHA256.hash(data: payload))
@@ -421,11 +484,24 @@ nonisolated enum DevSnapshotScanner {
         return value
     }
 
-    private static func shouldVisit(_ path: String, limitToPaths: Set<String>?) -> Bool {
-        guard let limitToPaths else { return true }
-        return limitToPaths.contains { target in
-            path == target || path.hasPrefix(target + "/") || target.hasPrefix(path + "/")
+    private static func resourceIdentifier(of url: URL, kind: DevEntryKind, fileStatus: stat) -> Data? {
+        if kind != .symlink,
+           let values = try? url.resourceValues(forKeys: [.fileResourceIdentifierKey]),
+           let identifier = values.fileResourceIdentifier {
+            if let data = identifier as? Data { return data }
+            if let number = identifier as? NSNumber {
+                var value = number.uint64Value.bigEndian
+                return Data(bytes: &value, count: MemoryLayout<UInt64>.size)
+            }
+            return Data(String(describing: identifier).utf8)
         }
+
+        var device = UInt64(fileStatus.st_dev).bigEndian
+        var inode = UInt64(fileStatus.st_ino).bigEndian
+        var data = Data()
+        withUnsafeBytes(of: &device) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &inode) { data.append(contentsOf: $0) }
+        return data
     }
 
     private static func isInsideGitDirectory(_ path: String, gitDirectoryRelativePath: String?) -> Bool {
@@ -435,6 +511,16 @@ nonisolated enum DevSnapshotScanner {
 
     private static func signedSize(_ size: UInt64) -> Int64 {
         size > UInt64(Int64.max) ? Int64.max : Int64(size)
+    }
+
+    private static func addBytes(_ bytes: Int64, to total: inout Int64) {
+        let result = total.addingReportingOverflow(bytes)
+        total = result.overflow ? Int64.max : result.partialValue
+    }
+
+    private static func appendLength(_ length: Int, to data: inout Data) {
+        var value = UInt64(length).bigEndian
+        withUnsafeBytes(of: &value) { data.append(contentsOf: $0) }
     }
 
     private static func timesMatch(_ lhs: Int64?, _ rhs: Int64?, toleranceNanoseconds: Int64) -> Bool {
@@ -448,6 +534,27 @@ nonisolated enum DevSnapshotScanner {
     private static func stableMatches(_ lhs: DevFileSignature, _ rhs: DevFileSignature) -> Bool {
         lhs.resourceIdentifier == rhs.resourceIdentifier
             && lhs.quickMatches(rhs, toleranceNanoseconds: 0, compareMode: true)
+    }
+
+    private static func sameFileSystemEntry(_ lhs: FileSystemEntry, _ rhs: FileSystemEntry) -> Bool {
+        lhs.kind == rhs.kind
+            && lhs.size == rhs.size
+            && lhs.modificationTimeNanoseconds == rhs.modificationTimeNanoseconds
+            && lhs.changeTimeNanoseconds == rhs.changeTimeNanoseconds
+            && lhs.mode == rhs.mode
+            && lhs.symlinkTarget == rhs.symlinkTarget
+            && lhs.resourceIdentifier == rhs.resourceIdentifier
+    }
+
+    private static func sameFileStatus(_ lhs: stat, _ rhs: stat) -> Bool {
+        lhs.st_dev == rhs.st_dev
+            && lhs.st_ino == rhs.st_ino
+            && lhs.st_mode == rhs.st_mode
+            && lhs.st_size == rhs.st_size
+            && lhs.st_mtimespec.tv_sec == rhs.st_mtimespec.tv_sec
+            && lhs.st_mtimespec.tv_nsec == rhs.st_mtimespec.tv_nsec
+            && lhs.st_ctimespec.tv_sec == rhs.st_ctimespec.tv_sec
+            && lhs.st_ctimespec.tv_nsec == rhs.st_ctimespec.tv_nsec
     }
 
     private static func bytewisePrecedes(_ lhs: String, _ rhs: String) -> Bool {
