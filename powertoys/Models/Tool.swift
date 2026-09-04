@@ -123,6 +123,12 @@ struct RcloneTool: Tool {
             "Open Settings from the sidebar (⌘,) to edit ignore patterns. Add one glob per line. MacPowerToys applies each pattern to every transfer.",
             "System junk like .DS_Store, .fseventsd, and System Volume Information is ignored by default.",
             "Parallel transfers, bandwidth limits, and retry counts live on the same page."
+        ]),
+        ToolManualSection(title: "Dev Sync", points: [
+            "Open Dev Sync in the sidebar and choose Set Up Dev Sync. Pick your internal dev folder and the matching folder on an external drive.",
+            "Dev One-Way copies internal projects to the drive. Dev Bidirectional syncs changes both ways. Projects that live only on the drive stay there and appear as links in your internal folder.",
+            "Review the preview before anything changes. Git ignore rules decide what is copied; ignored secrets such as .env files are still backed up unless you turn that off.",
+            "Every overwrite and deletion is kept in the safety store for a retention period. Conflicts never pick a winner; resolve them from the pair page."
         ])
     ]
 
