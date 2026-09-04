@@ -65,14 +65,15 @@ nonisolated enum DevSyncRoots {
 
             let candidateRoots = [internalURL, externalURL]
             for pair in existingPairs {
-                let existingRoots = [pair.internalRoot.url, pair.externalRoot.url]
+                let existingRoots = [pair.internalRoot, pair.externalRoot]
                 for candidate in candidateRoots {
                     for existing in existingRoots {
-                        guard let existingCanonical = try? canonicalURL(existing) else { continue }
-                        guard pathsOverlap(candidate.path, existingCanonical.path) else { continue }
-                        let offendingPath = isDescendant(candidate.path, of: existingCanonical.path) || candidate.path == existingCanonical.path
+                        let existingPath = (try? canonicalURL(existing.url).path)
+                            ?? normalizedPath(existing.url.standardizedFileURL.path)
+                        guard pathsOverlap(candidate.path, existingPath) else { continue }
+                        let offendingPath = isDescendant(candidate.path, of: existingPath) || candidate.path == existingPath
                             ? candidate.path
-                            : existingCanonical.path
+                            : existingPath
                         appendIfMissing(
                             .overlapsExistingPair(pairName: pair.displayName, path: offendingPath),
                             to: &issues
@@ -276,7 +277,9 @@ nonisolated enum DevVolumeProbe {
         let initialHardLinks = values?.volumeSupportsHardLinks ?? true
         let initialPermissions = values?.volumeSupportsExtendedSecurity ?? true
         let initialPersistentIDs = values?.volumeSupportsPersistentIDs ?? false
-        let initialAvailable = Int64(values?.volumeAvailableCapacityForImportantUsage ?? 0)
+        let importantCapacity: Int64? = values?.volumeAvailableCapacityForImportantUsage
+        let fallbackCapacity = Int64(values?.volumeAvailableCapacity ?? 0)
+        let initialAvailable = importantCapacity ?? fallbackCapacity
         var notes: [String] = []
         var probeResult = ProbeResult(
             supportsSymbolicLinks: initialSymlinks,
@@ -286,16 +289,32 @@ nonisolated enum DevVolumeProbe {
             isCasePreserving: initialCasePreserving
         )
         var probeSucceeded = false
-        let temporaryProbe = (probeDirectory ?? root.appendingPathComponent(".cloudsync-system", isDirectory: true))
+        let requestedProbeDirectory = probeDirectory ?? root.appendingPathComponent(".cloudsync-system", isDirectory: true)
+        let probeBase: URL
+        if let canonicalProbeDirectory = try? DevSyncRoots.canonicalURL(requestedProbeDirectory) {
+            probeBase = canonicalProbeDirectory
+        } else if let canonicalProbeParent = try? DevSyncRoots.canonicalURL(requestedProbeDirectory.deletingLastPathComponent()) {
+            probeBase = canonicalProbeParent.appendingPathComponent(requestedProbeDirectory.lastPathComponent, isDirectory: true)
+        } else {
+            probeBase = requestedProbeDirectory.standardizedFileURL
+        }
+        let probeIsInsideRoot = probeBase.path == root.path || probeBase.path.hasPrefix(root.path == "/" ? "/" : root.path + "/")
+        let temporaryProbe = probeBase
             .appendingPathComponent("probe-\(UUID().uuidString)", isDirectory: true)
+        var temporaryProbeCreated = false
 
         defer {
-            try? FileManager.default.removeItem(at: temporaryProbe)
+            if temporaryProbeCreated {
+                try? FileManager.default.removeItem(at: temporaryProbe)
+            }
         }
 
-        if !initialReadOnly, access(root.path, W_OK | X_OK) == 0 {
+        if !probeIsInsideRoot {
+            notes.append("Temporary volume probe is outside the root")
+        } else if !initialReadOnly, access(root.path, W_OK | X_OK) == 0 {
             do {
                 try FileManager.default.createDirectory(at: temporaryProbe, withIntermediateDirectories: true)
+                temporaryProbeCreated = true
                 chmod(temporaryProbe.path, mode_t(0o700))
                 probeResult = runProbe(in: temporaryProbe, initial: probeResult)
                 probeSucceeded = true
@@ -313,12 +332,15 @@ nonisolated enum DevVolumeProbe {
         if !probeResult.supportsUnixPermissions { notes.append("Executable bits are not preserved") }
         if !probeResult.supportsExtendedAttributes { notes.append("Extended attributes are not preserved") }
         if !probeResult.supportsHardLinks { notes.append("Hard links are copied as separate files") }
+        if probeSucceeded, probeResult.maximumPathComponentLength < 255 {
+            notes.append("255-byte names are not supported")
+        }
         if probeResult.timestampResolutionNanoseconds > 1 {
             let seconds = Double(probeResult.timestampResolutionNanoseconds) / 1_000_000_000
             notes.append("Timestamps use a \(seconds.formatted(.number.precision(.fractionLength(0...3)))) s modify window")
         }
 
-        let blocked = initialReadOnly || !probeSucceeded
+        let blocked = initialReadOnly || !probeSucceeded || probeResult.maximumPathComponentLength < 255
         let fidelity: DevFileSystemFidelity = blocked ? .blocked : (notes.isEmpty ? .full : .portable)
         return DevVolumeCapabilities(
             volumeIdentifier: volumeIdentifier,
@@ -380,13 +402,13 @@ nonisolated enum DevVolumeProbe {
         result.supportsHardLinks = link(file.path, hardLink.path) == 0
             && sameInode(file.path, hardLink.path)
 
-        _ = fileManager.createFile(atPath: upper.path, contents: Data("upper".utf8))
+        let upperCreated = fileManager.createFile(atPath: upper.path, contents: Data("upper".utf8))
         let lowerCreated = fileManager.createFile(atPath: lower.path, contents: Data("lower".utf8))
-        result.isCaseSensitive = lowerCreated
-        if !lowerCreated {
+        if upperCreated, lowerCreated {
             result.isCaseSensitive = !sameInode(upper.path, lower.path)
+            let storedNames = (try? fileManager.contentsOfDirectory(atPath: directory.path)) ?? []
+            result.isCasePreserving = storedNames.contains("CaseProbe")
         }
-        result.isCasePreserving = fileManager.fileExists(atPath: upper.path)
 
         result.timestampResolutionNanoseconds = timestampResolution(for: file)
         let component = String(repeating: "a", count: 255)
