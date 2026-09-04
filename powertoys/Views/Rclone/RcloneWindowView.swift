@@ -10,6 +10,7 @@ enum RSyncContent: Hashable {
     case transfers
     case browse(RcloneRemote)
     case activity
+    case devSync
     case settings
 }
 
@@ -70,6 +71,7 @@ struct RcloneWindowView: View {
             switch content {
             case .transfers: lastContent = "transfers"
             case .activity: lastContent = "activity"
+            case .devSync: lastContent = "devSync"
             case .settings: lastContent = "settings"
             case .browse: lastContent = "transfers"
             }
@@ -85,6 +87,7 @@ struct RcloneWindowView: View {
         }
         switch lastContent {
         case "activity": content = .activity
+        case "devSync": content = .devSync
         case "settings": content = .settings
         default: content = .transfers
         }
@@ -99,6 +102,8 @@ struct RcloneWindowView: View {
             RemoteBrowserView(remote: remote)
         case .activity:
             ActivityView()
+        case .devSync:
+            DevSyncPage()
         case .settings:
             RcloneSettingsPage()
         }

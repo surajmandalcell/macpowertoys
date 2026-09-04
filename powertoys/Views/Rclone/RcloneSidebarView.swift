@@ -10,6 +10,8 @@ struct RcloneSidebarView: View {
     @Binding var content: RSyncContent
     @Binding var showAddRemote: Bool
 
+    private var devSyncManager: DevSyncManager { .shared }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             sidebarBody
@@ -89,6 +91,16 @@ struct RcloneSidebarView: View {
                         isSelected: content == .activity
                     ) {
                         content = .activity
+                    }
+                    .padding(.top, 8)
+
+                    NavRow(
+                        icon: "externaldrive.badge.plus",
+                        title: "Dev Sync",
+                        count: devSyncManager.attentionCount,
+                        isSelected: content == .devSync
+                    ) {
+                        content = .devSync
                     }
                     .padding(.top, 8)
 
@@ -230,6 +242,7 @@ private struct FilterRow: View {
 private struct NavRow: View {
     let icon: String
     let title: String
+    var count: Int = 0
     let isSelected: Bool
     let action: () -> Void
 
@@ -248,6 +261,20 @@ private struct NavRow: View {
                     .foregroundStyle(isSelected ? .white : .primary.opacity(0.75))
 
                 Spacer()
+
+                if let badge = DevSyncSidebarBadge.text(count) {
+                    Text(badge)
+                        .font(.system(size: 11))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? Color.white.opacity(0.2) : Color.primary.opacity(0.06))
+                        )
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
