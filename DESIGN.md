@@ -532,7 +532,7 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | Workspace | Default / sidebar | y=44 control and navigation | Primary content |
 |---|---|---|---|
 | Logs | 900×600 / 220pt | Search; level filters; Settings | Selectable dense log stream |
-| Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, remotes, Settings | Transfer rows, remote browser, or activity ledger |
+| Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
 | AI History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |

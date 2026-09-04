@@ -1328,6 +1328,26 @@ nonisolated struct DevRsyncCapabilities: Codable, Equatable, Sendable {
     }
 }
 
+nonisolated enum DevRootIssue: Equatable, Sendable {
+    case sameDirectory
+    case nested(outer: String, inner: String)
+    case notADirectory(String)
+    case unreadable(String)
+    case overlapsExistingPair(pairName: String, path: String)
+    case isManagedLink(String)
+
+    var message: String {
+        switch self {
+        case .sameDirectory: return "Roots must not be the same folder"
+        case .nested: return "Roots must not overlap"
+        case .notADirectory(let path): return "\(path) is not a folder"
+        case .unreadable(let path): return "\(path) cannot be read"
+        case .overlapsExistingPair(let pairName, let path): return "\(path) is already owned by pair \(pairName)"
+        case .isManagedLink(let path): return "\(path) is a managed link"
+        }
+    }
+}
+
 nonisolated struct DevPairCapabilities: Codable, Equatable, Sendable {
     var internalVolume: DevVolumeCapabilities?
     var externalVolume: DevVolumeCapabilities?

@@ -6,6 +6,10 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Added
 
+- Added Dev Sync to Cloud Sync: Dev One-Way and Dev Bidirectional pairs
+  between an internal dev folder and an external drive, with Git-aware
+  filtering, sensitive-file backup, managed links for drive-only projects,
+  debounced batches, safety retention, and conflict resolution.
 - Added Input Devices with separate mouse and trackpad profiles for direction,
   horizontal scrolling, speed, wheel smoothing, and available hardware details.
 - Added System Care with storage drill-down, reviewed cleanup to Trash, app
