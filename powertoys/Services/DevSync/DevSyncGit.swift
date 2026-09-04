@@ -6,7 +6,40 @@ nonisolated enum DevGitError: Error, Equatable {
     case failed(exitCode: Int32, stderr: String)
 }
 
+private nonisolated final class DevGitProcessHandle: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var cancelled = false
+
+    func install(_ process: Process) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !cancelled else { return false }
+        self.process = process
+        return true
+    }
+
+    func clear() {
+        lock.lock()
+        process = nil
+        lock.unlock()
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        let process = process
+        lock.unlock()
+        if process?.isRunning == true {
+            process?.terminate()
+        }
+    }
+}
+
 nonisolated enum DevGit {
+    private static let maximumTextBytes = 1_048_576
+    private static let textReadChunkBytes = 64 * 1_024
+
     private static let developerDirectoryPath: URL? = {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcode-select")
@@ -41,7 +74,9 @@ nonisolated enum DevGit {
     }
 
     static func run(_ arguments: [String], in directory: URL, input: Data? = nil) async throws -> Data {
-        guard isAvailable, let executable else { throw DevGitError.unavailable }
+        guard !directory.path.contains("\0"), arguments.allSatisfy({ !$0.contains("\0") }) else {
+            throw DevGitError.failed(exitCode: -1, stderr: "Invalid Git path or argument")
+        }
         let environment = ProcessInfo.processInfo.environment.merging(
             [
                 "GIT_OPTIONAL_LOCKS": "0",
@@ -50,7 +85,15 @@ nonisolated enum DevGit {
             ],
             uniquingKeysWith: { _, new in new }
         )
-        return try await Task.detached(priority: .utility) {
+        let processHandle = DevGitProcessHandle()
+        let operation = Task.detached(priority: .utility) {
+            try Task.checkCancellation()
+            guard let executable, fileType(at: executable) == .regular else {
+                throw DevGitError.unavailable
+            }
+            guard fileType(at: directory) == .directory else {
+                throw DevGitError.failed(exitCode: -1, stderr: "Invalid Git working directory")
+            }
             let process = Process()
             process.executableURL = executable
             process.arguments = arguments
@@ -62,7 +105,10 @@ nonisolated enum DevGit {
             let inputPipe = input.map { _ in Pipe() }
             process.standardOutput = outputPipe
             process.standardError = errorPipe
-            process.standardInput = inputPipe
+            process.standardInput = inputPipe ?? FileHandle.nullDevice
+
+            guard processHandle.install(process) else { throw CancellationError() }
+            defer { processHandle.clear() }
 
             let outputReader = Task.detached(priority: .utility) {
                 (try? outputPipe.fileHandleForReading.readToEnd()) ?? Data()
@@ -73,14 +119,21 @@ nonisolated enum DevGit {
 
             do {
                 try process.run()
+                if Task.isCancelled {
+                    process.terminate()
+                }
                 if let input, let inputPipe {
                     try inputPipe.fileHandleForWriting.write(contentsOf: input)
                     try inputPipe.fileHandleForWriting.close()
                 }
                 process.waitUntilExit()
             } catch {
-                try? outputPipe.fileHandleForReading.close()
-                try? errorPipe.fileHandleForReading.close()
+                if process.isRunning {
+                    process.terminate()
+                    process.waitUntilExit()
+                }
+                try? outputPipe.fileHandleForWriting.close()
+                try? errorPipe.fileHandleForWriting.close()
                 _ = await outputReader.value
                 _ = await errorReader.value
                 throw DevGitError.failed(exitCode: -1, stderr: error.localizedDescription)
@@ -88,6 +141,7 @@ nonisolated enum DevGit {
 
             let output = await outputReader.value
             let error = await errorReader.value
+            try Task.checkCancellation()
             guard process.terminationStatus == 0 else {
                 throw DevGitError.failed(
                     exitCode: process.terminationStatus,
@@ -95,11 +149,24 @@ nonisolated enum DevGit {
                 )
             }
             return output
-        }.value
+        }
+        return try await withTaskCancellationHandler {
+            try await operation.value
+        } onCancel: {
+            operation.cancel()
+            processHandle.cancel()
+        }
     }
 
     static func workingTreeManifest(projectURL: URL) async throws -> [String] {
-        try await workingTreeManifest(projectURL: projectURL, visited: [])
+        let operation = Task.detached(priority: .utility) {
+            try await workingTreeManifest(projectURL: projectURL, visited: [])
+        }
+        return try await withTaskCancellationHandler {
+            try await operation.value
+        } onCancel: {
+            operation.cancel()
+        }
     }
 
     private static func workingTreeManifest(projectURL: URL, visited: Set<String>) async throws -> [String] {
@@ -112,38 +179,25 @@ nonisolated enum DevGit {
             ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
             in: projectURL
         )
-        var manifest = nulSeparatedStrings(data)
+        var manifest = nulSeparatedStrings(data).filter(DevRelativePath.isSafe)
 
-        let submoduleData = try? await run(["submodule", "status", "--recursive"], in: projectURL)
-        var submodules = submoduleData.map { initializedSubmodules(from: String(decoding: $0, as: UTF8.self)) } ?? []
-        if submodules.isEmpty,
-           let text = readText(at: projectURL.appendingPathComponent(".gitmodules")) {
-            submodules = parseGitModulePaths(text).compactMap { path in
-                let url = projectURL.appendingPathComponent(path)
-                guard let mode = lstatMode(at: url.appendingPathComponent(".git")),
-                      mode & S_IFMT != S_IFLNK
-                else { return nil }
-                return (path, Character(" "))
-            }
-        }
-        for submodule in submodules where submodule.state != "-" {
-            guard DevRelativePath.isSafe(submodule.path),
-                  let mode = lstatMode(at: projectURL.appendingPathComponent(submodule.path)),
-                  mode & S_IFMT != S_IFLNK,
-                  mode & S_IFMT == S_IFDIR
-            else { continue }
-            let submoduleURL = projectURL.appendingPathComponent(submodule.path, isDirectory: true)
+        for submodulePath in await configuredSubmodulePaths(projectURL: projectURL) {
+            guard isInitializedSubmodule(submodulePath, in: projectURL) else { continue }
+            let submoduleURL = projectURL.appendingPathComponent(submodulePath, isDirectory: true)
             let nested = try await workingTreeManifest(projectURL: submoduleURL, visited: visited)
             manifest.append(contentsOf: nested.compactMap { nestedPath in
                 guard DevRelativePath.isSafe(nestedPath) else { return nil }
-                return "\(submodule.path)/\(nestedPath)"
+                return "\(submodulePath)/\(nestedPath)"
             })
         }
-        return manifest
+        return Array(Set(manifest)).sorted()
     }
 
     static func ignoredPaths(projectURL: URL, candidates: [String]) async throws -> Set<String> {
         guard !candidates.isEmpty else { return [] }
+        guard candidates.allSatisfy(DevRelativePath.isSafe) else {
+            throw DevGitError.failed(exitCode: -1, stderr: "Invalid Git ignore candidate")
+        }
         let input = candidates.reduce(into: Data()) { result, candidate in
             result.append(contentsOf: candidate.utf8)
             result.append(0)
@@ -158,6 +212,17 @@ nonisolated enum DevGit {
     }
 
     static func topology(projectURL: URL, internalRoot: URL, externalRoot: URL) async -> DevGitTopology {
+        let operation = Task.detached(priority: .utility) {
+            await topologyOffMain(projectURL: projectURL, internalRoot: internalRoot, externalRoot: externalRoot)
+        }
+        return await withTaskCancellationHandler {
+            await operation.value
+        } onCancel: {
+            operation.cancel()
+        }
+    }
+
+    private static func topologyOffMain(projectURL: URL, internalRoot: URL, externalRoot: URL) async -> DevGitTopology {
         let gitURL = projectURL.appendingPathComponent(".git", isDirectory: true)
         let gitMode = lstatMode(at: gitURL)
         let validGitFile = gitMode.map { $0 & S_IFMT == S_IFREG } == true ? gitDirectoryFromPointer(at: gitURL, projectURL: projectURL) : nil
@@ -169,7 +234,7 @@ nonisolated enum DevGit {
         }
         guard localKind != .nonGit else { return DevGitTopology(kind: .nonGit) }
 
-        var actualGitDirectory = hasGitDirectory ? gitURL : validGitFile
+        var actualGitDirectory = isBare ? projectURL : (hasGitDirectory ? gitURL : validGitFile)
         var commonDirectory = actualGitDirectory
         if localKind != .gitBareRepository {
             if let output = try? await run(["rev-parse", "--git-dir"], in: projectURL),
@@ -215,7 +280,6 @@ nonisolated enum DevGit {
     }
 
     static func identity(projectURL: URL) async -> DevProjectIdentity? {
-        guard isAvailable else { return nil }
         let topology = await topology(projectURL: projectURL, internalRoot: projectURL, externalRoot: projectURL)
         guard topology.kind != .nonGit, topology.kind != .gitBareRepository else {
             return topology.kind == .gitBareRepository ? await bareIdentity(projectURL: projectURL, topology: topology) : nil
@@ -288,9 +352,19 @@ nonisolated enum DevGit {
     }
 
     static func globalIgnoreIdentity() async -> (path: String, modificationDate: Date)? {
-        guard isAvailable else { return nil }
+        let operation = Task.detached(priority: .utility) {
+            await globalIgnoreIdentityOffMain()
+        }
+        return await withTaskCancellationHandler {
+            await operation.value
+        } onCancel: {
+            operation.cancel()
+        }
+    }
+
+    private static func globalIgnoreIdentityOffMain() async -> (path: String, modificationDate: Date)? {
         let directory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
-        guard let output = try? await run(["config", "--global", "--path", "--get", "core.excludesFile"], in: directory),
+        guard let output = try? await run(["config", "--path", "--get", "core.excludesFile"], in: directory),
               let path = firstLine(output), !path.isEmpty
         else { return nil }
         let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL
@@ -309,8 +383,14 @@ nonisolated enum DevGit {
         guard fileType(at: url) == .regular, let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         var data = Data()
-        while let chunk = try? handle.read(upToCount: 64 * 1024), !chunk.isEmpty {
-            data.append(chunk)
+        do {
+            while let chunk = try handle.read(upToCount: min(textReadChunkBytes, maximumTextBytes - data.count + 1)) {
+                guard !chunk.isEmpty else { break }
+                data.append(chunk)
+                guard data.count <= maximumTextBytes else { return nil }
+            }
+        } catch {
+            return nil
         }
         return String(data: data, encoding: .utf8)
     }
@@ -343,37 +423,47 @@ nonisolated enum DevGit {
         text.split(whereSeparator: \.isNewline).first.map(String.init)
     }
 
-    private static func initializedSubmodules(from text: String) -> [(path: String, state: Character)] {
-        text.split(whereSeparator: \.isNewline).compactMap { line in
-            guard line.count > 42 else { return nil }
-            let state = line.first!
-            let withoutState = line.dropFirst()
-            guard let hashEnd = withoutState.firstIndex(of: " ") else { return nil }
-            let remainder = withoutState[hashEnd...].drop(while: { $0 == " " || $0 == "\t" })
-            guard !remainder.isEmpty else { return nil }
-            let path = remainder.split(separator: " (").first.map(String.init) ?? String(remainder)
-            guard !path.isEmpty else { return nil }
-            return (path, state)
-        }
-    }
-
     private static func submodulePaths(projectURL: URL) async -> [String] {
-        if let output = try? await run(["submodule", "status", "--recursive"], in: projectURL) {
-            let paths = initializedSubmodules(from: String(decoding: output, as: UTF8.self)).map(\.path)
-            if !paths.isEmpty { return Array(Set(paths)).sorted() }
-        }
-        guard let text = readText(at: projectURL.appendingPathComponent(".gitmodules")) else { return [] }
-        return parseGitModulePaths(text)
+        await submodulePaths(projectURL: projectURL, visited: [])
     }
 
-    private static func parseGitModulePaths(_ text: String) -> [String] {
-        var paths: [String] = []
-        for line in text.split(whereSeparator: \.isNewline) {
-            let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-            guard parts.count == 2, parts[0] == "path", DevRelativePath.isSafe(String(parts[1])) else { continue }
-            paths.append(String(parts[1]))
+    private static func submodulePaths(projectURL: URL, visited: Set<String>) async -> [String] {
+        let canonicalProjectPath = canonicalPath(projectURL)
+        guard !visited.contains(canonicalProjectPath) else { return [] }
+        var visited = visited
+        visited.insert(canonicalProjectPath)
+        let directPaths = await configuredSubmodulePaths(projectURL: projectURL)
+        var paths = directPaths
+        for directPath in directPaths where isInitializedSubmodule(directPath, in: projectURL) {
+            let submoduleURL = projectURL.appendingPathComponent(directPath, isDirectory: true)
+            let nestedPaths = await submodulePaths(projectURL: submoduleURL, visited: visited)
+            paths.append(contentsOf: nestedPaths.map { "\(directPath)/\($0)" })
         }
         return Array(Set(paths)).sorted()
+    }
+
+    private static func configuredSubmodulePaths(projectURL: URL) async -> [String] {
+        let configurationURL = projectURL.appendingPathComponent(".gitmodules")
+        guard fileType(at: configurationURL) == .regular,
+              let output = try? await run(
+                ["config", "--null", "--no-includes", "--file", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$"],
+                in: projectURL
+              )
+        else { return [] }
+        let paths = output.split(separator: 0).compactMap { record -> String? in
+            guard let separator = record.firstIndex(of: 10) else { return nil }
+            let value = String(decoding: record[record.index(after: separator)...], as: UTF8.self)
+            return DevRelativePath.isSafe(value) ? value : nil
+        }
+        return Array(Set(paths)).sorted()
+    }
+
+    private static func isInitializedSubmodule(_ path: String, in projectURL: URL) -> Bool {
+        guard DevRelativePath.isSafe(path),
+              fileType(at: projectURL.appendingPathComponent(path, isDirectory: true)) == .directory
+        else { return false }
+        let markerType = fileType(at: projectURL.appendingPathComponent(path).appendingPathComponent(".git"))
+        return markerType == .directory || markerType == .regular
     }
 
     private static func isLinkedWorktree(gitDirectory: URL, commonDirectory: URL) -> Bool {
@@ -483,7 +573,7 @@ nonisolated enum DevGit {
     }
 
     private static func remoteURLs(from text: String) -> [String] {
-        var values: [String] = []
+        var values = Set<String>()
         for line in text.split(whereSeparator: \.isNewline) {
             let value = String(line)
             guard let tab = value.firstIndex(of: "\t") else { continue }
@@ -491,7 +581,7 @@ nonisolated enum DevGit {
             guard let suffix = remainder.range(of: " (") else { continue }
             let url = String(remainder[..<suffix.lowerBound])
             let stripped = stripCredentials(from: url)
-            if !stripped.isEmpty, !values.contains(stripped) { values.append(stripped) }
+            if !stripped.isEmpty { values.insert(stripped) }
         }
         return values.sorted()
     }
@@ -510,5 +600,5 @@ nonisolated enum DevGit {
 }
 
 private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
+    nonisolated var nilIfEmpty: String? { isEmpty ? nil : self }
 }
