@@ -69,7 +69,7 @@ actor DevSafetyStore {
         }
         let permissionRoot = side == .internal
             ? stateStore.rootURL
-            : projectRoot.appendingPathComponent(DevSyncDefaults.systemDirectoryName, isDirectory: true)
+            : projectRoot
         try createDirectory(root, below: permissionRoot)
         let directory = root.appendingPathComponent(kind.rawValue, isDirectory: true)
         try createDirectory(directory, below: root)
@@ -88,7 +88,7 @@ actor DevSafetyStore {
         do {
             let permissionRoot = side == .internal
                 ? stateStore.rootURL
-                : rootURL(for: side).appendingPathComponent(DevSyncDefaults.systemDirectoryName, isDirectory: true)
+                : rootURL(for: side)
             try createDirectory(root, below: permissionRoot)
         } catch {
             return false
@@ -546,7 +546,8 @@ actor DevSafetyStore {
     }
 
     private func isSymbolicLink(_ url: URL) -> Bool {
-        (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+        guard let info = fileInfo(url) else { return false }
+        return info.st_mode & S_IFMT == S_IFLNK
     }
 
     private func isDirectory(_ mode: mode_t) -> Bool {
@@ -564,23 +565,31 @@ actor DevSafetyStore {
     }
 
     private func isWithin(_ candidate: URL, root: URL) -> Bool {
-        let rootPath = root.standardizedFileURL.path
-        let candidatePath = candidate.standardizedFileURL.path
-        return candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/")
+        let rootPath = lexicalPath(root)
+        let candidatePath = lexicalPath(candidate)
+        if candidatePath == rootPath { return true }
+        guard candidatePath.hasPrefix(rootPath + "/") else { return false }
+        return DevRelativePath.isSafe(String(candidatePath.dropFirst(rootPath.count + 1)))
     }
 
     private func hasSymbolicLinkBelowRoot(_ url: URL, root: URL) -> Bool {
-        let rootPath = root.standardizedFileURL.path
-        let candidatePath = url.standardizedFileURL.path
+        let rootPath = lexicalPath(root)
+        let candidatePath = lexicalPath(url)
         if isSymbolicLink(root) { return true }
         guard candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/") else { return true }
         let relative = String(candidatePath.dropFirst(rootPath.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !relative.isEmpty else { return isSymbolicLink(root) }
+        guard DevRelativePath.isSafe(relative) else { return true }
         var current = root
         for component in relative.split(separator: "/") {
             current.appendPathComponent(String(component))
             if isSymbolicLink(current) { return true }
         }
         return false
+    }
+
+    private func lexicalPath(_ url: URL) -> String {
+        let path = url.path
+        return path == "/var" || path.hasPrefix("/var/") ? "/private\(path)" : path
     }
 }
