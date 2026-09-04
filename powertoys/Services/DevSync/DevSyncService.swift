@@ -186,6 +186,15 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         let engine = makeEngine(pair: pair, executable: executable)
         await engines.set(engine, id: pair.id)
         lock.withLock { activePairCount += 1 }
+        if draft.configuration.policy.includeIgnoredSensitiveFiles,
+           probe.capabilities.externalVolume?.isEncrypted == false {
+            yield(.notification(DevSyncNotification(
+                kind: .sensitiveOnUnencryptedDrive,
+                pairID: pair.id,
+                title: "Dev Sync drive is not encrypted",
+                body: "Secrets and history are stored in clear."
+            )))
+        }
         await engine.start()
         if let current = await stateStore.loadPairs().first(where: { $0.id == pair.id }) { pair = current }
         yield(.pairs(await stateStore.loadPairs()))
