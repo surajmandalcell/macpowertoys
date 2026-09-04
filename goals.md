@@ -16,10 +16,10 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [████████░░░░░░░░░░░░] 25/62
-G1 Foundation               [████████████████░░░░] 12/15
+Dev Sync overall            [██████████░░░░░░░░░░] 30/62
+G1 Foundation               [███████████████████░] 14/15
 G2 Dev One-Way              [████░░░░░░░░░░░░░░░░]  3/14
-G3 Dev Bidirectional        [░░░░░░░░░░░░░░░░░░░░]  0/10
+G3 Dev Bidirectional        [██████░░░░░░░░░░░░░░]  3/10
 G4 Interface                [██████████████████░░] 10/11
 G5 Hardening and release    [░░░░░░░░░░░░░░░░░░░░]  0/12
 ```
@@ -69,10 +69,10 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
   flags; dirty scheduler with sliding debounce, checkpoint, storm collapse,
   and persisted dirty work; self-event ledger. Needs: 1.2.
   Check: scheduler tests for scenarios 22, 23, 24, 83, 86.
-- [~] 1.12 Reconciliation planner for Dev One-Way with preconditions and an
+- [x] 1.12 Reconciliation planner for Dev One-Way with preconditions and an
   immutable plan. Needs: 1.9, 1.10. Check: every row of the one-way decision
   table and the ten planner properties.
-- [~] 1.13 First-run planner: project catalog merge, file merge, and preview
+- [x] 1.13 First-run planner: project catalog merge, file merge, and preview
   summary. Needs: 1.8, 1.12. Check: first-run tables and scenarios 1 to 5.
 - [x] 1.14 Managed link manager: create, validate, repair, adopt, remove,
   offline handling, and exclusion from scans. Needs: 1.4.
@@ -115,16 +115,16 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 
 ### G3 Dev Bidirectional: no simultaneous change causes a silent overwrite
 
-- [ ] 3.1 Baseline comparator with tolerance and hash escalation. Needs: 2.3.
-- [ ] 3.2 Tombstone lifecycle. Needs: 2.5. Check: resurrection property.
-- [~] 3.3 Two-side planner for every row of the bidirectional table.
+- [x] 3.1 Baseline comparator with tolerance and hash escalation. Needs: 2.3.
+- [~] 3.2 Tombstone lifecycle. Needs: 2.5. Check: resurrection property.
+- [x] 3.3 Two-side planner for every row of the bidirectional table.
   Needs: 3.1, 3.2.
 - [ ] 3.4 Conflict store with both versions preserved. Needs: 2.1, 3.3.
   Check: scenario 27.
 - [ ] 3.5 Six conflict resolutions with verified baseline updates. Needs: 3.4.
-- [ ] 3.6 Rename detection and same-volume counterpart moves. Needs: 3.3.
+- [~] 3.6 Rename detection and same-volume counterpart moves. Needs: 3.3.
   Check: scenarios 10, 11.
-- [ ] 3.7 First-run bidirectional merge. Needs: 3.3, 1.13.
+- [x] 3.7 First-run bidirectional merge. Needs: 3.3, 1.13.
 - [ ] 3.8 Internal-side deletions to history with the external store online
   guard. Needs: 3.3.
 - [ ] 3.9 Interrupted two-way operation recovery. Needs: 2.11, 3.3.
