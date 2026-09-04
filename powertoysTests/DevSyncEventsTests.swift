@@ -191,16 +191,22 @@ final class DevSyncEventsTests: XCTestCase {
     }
 
     func testScenario83DroppedFlagBatchRequiresRootRescan() {
-        let flags = UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped)
-        let batch = DevEventBatch(
-            events: [DevFileEvent(path: "/tmp/project", flags: flags, eventID: 42)],
-            lastEventID: 42,
-            mustRescanRoot: true,
-            rescanSubtrees: [],
-            mountChanged: false
+        let root = "/tmp/project"
+        let subtree = root + "/Sources"
+        let subtreeFlags = UInt32(kFSEventStreamEventFlagMustScanSubDirs)
+        let droppedFlags = UInt32(kFSEventStreamEventFlagUserDropped)
+        let batch = DevEventBatch.classify(
+            events: [
+                DevFileEvent(path: subtree, flags: subtreeFlags, eventID: 41),
+                DevFileEvent(path: root, flags: droppedFlags, eventID: 42)
+            ],
+            rootPath: root,
+            isReplay: false
         )
+
         XCTAssertTrue(batch.mustRescanRoot)
-        XCTAssertEqual(batch.events.first?.flags, flags)
+        XCTAssertTrue(batch.rescanSubtrees.isEmpty)
+        XCTAssertEqual(batch.lastEventID, 42)
     }
 
     func testScenario48SelfEventLedgerSuppressesMatchingAndDetectsDrift() async {

@@ -13,6 +13,46 @@ nonisolated struct DevEventBatch: Equatable, Sendable {
     var mustRescanRoot: Bool
     var rescanSubtrees: [String]
     var mountChanged: Bool
+
+    static func classify(events: [DevFileEvent], rootPath: String, isReplay: Bool) -> DevEventBatch {
+        let comparableRoot = comparablePath(URL(fileURLWithPath: rootPath).standardizedFileURL.path)
+        var rescanSubtrees: [String] = []
+        var seenSubtrees = Set<String>()
+        var mustRescanRoot = false
+        var mountChanged = false
+
+        for event in events {
+            let flags = event.flags
+            let comparableEventPath = comparablePath(URL(fileURLWithPath: event.path).standardizedFileURL.path)
+            let mustScan = flags & UInt32(kFSEventStreamEventFlagMustScanSubDirs) != 0
+            let dropped = flags & UInt32(kFSEventStreamEventFlagUserDropped | kFSEventStreamEventFlagKernelDropped) != 0
+            let wrapped = flags & UInt32(kFSEventStreamEventFlagEventIdsWrapped) != 0
+            let rootChanged = flags & UInt32(kFSEventStreamEventFlagRootChanged) != 0
+            let historyDone = isReplay && flags & UInt32(kFSEventStreamEventFlagHistoryDone) != 0
+
+            if dropped || wrapped || rootChanged || historyDone || (mustScan && comparableEventPath == comparableRoot) {
+                mustRescanRoot = true
+            } else if mustScan, seenSubtrees.insert(event.path).inserted {
+                rescanSubtrees.append(event.path)
+            }
+
+            if flags & UInt32(kFSEventStreamEventFlagMount | kFSEventStreamEventFlagUnmount) != 0 {
+                mountChanged = true
+            }
+        }
+
+        return DevEventBatch(
+            events: events,
+            lastEventID: events.last?.eventID ?? 0,
+            mustRescanRoot: mustRescanRoot,
+            rescanSubtrees: mustRescanRoot ? [] : rescanSubtrees,
+            mountChanged: mountChanged
+        )
+    }
+
+    private static func comparablePath(_ path: String) -> String {
+        path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path
+    }
 }
 
 nonisolated final class DevEventStream: @unchecked Sendable {
@@ -140,56 +180,16 @@ nonisolated final class DevEventStream: @unchecked Sendable {
         let count = min(eventCount, paths.count)
         guard count > 0 else { return }
 
-        let rootPaths = Set([
-            eventComparablePath(rootURL.standardizedFileURL.path)
-        ])
         var events: [DevFileEvent] = []
-        var rescanSubtrees: [String] = []
-        var rescanSubtreePaths = Set<String>()
-        var mustRescanRoot = false
-        var mountChanged = false
 
         for index in 0..<count {
             let path = paths[index]
             let flags = UInt32(eventFlags[index])
             let eventID = UInt64(eventIDs[index])
             events.append(DevFileEvent(path: path, flags: flags, eventID: eventID))
-
-            let eventPath = eventComparablePath(URL(fileURLWithPath: path).standardizedFileURL.path)
-            let isRoot = rootPaths.contains(eventPath)
-            let mustScan = flags & UInt32(kFSEventStreamEventFlagMustScanSubDirs) != 0
-            let dropped = flags & UInt32(kFSEventStreamEventFlagUserDropped | kFSEventStreamEventFlagKernelDropped) != 0
-            let wrapped = flags & UInt32(kFSEventStreamEventFlagEventIdsWrapped) != 0
-            let rootChanged = flags & UInt32(kFSEventStreamEventFlagRootChanged) != 0
-            let historyDone = isReplay && flags & UInt32(kFSEventStreamEventFlagHistoryDone) != 0
-
-            if dropped || wrapped || rootChanged || historyDone || (mustScan && isRoot) {
-                mustRescanRoot = true
-            } else if mustScan {
-                if rescanSubtreePaths.insert(path).inserted {
-                    rescanSubtrees.append(path)
-                }
-            }
-
-            if flags & UInt32(kFSEventStreamEventFlagMount | kFSEventStreamEventFlagUnmount) != 0 {
-                mountChanged = true
-            }
         }
 
-        let lastEventID = events.map { $0.eventID }.max() ?? 0
-        handler(
-            DevEventBatch(
-                events: events,
-                lastEventID: lastEventID,
-                mustRescanRoot: mustRescanRoot,
-                rescanSubtrees: rescanSubtrees,
-                mountChanged: mountChanged
-            )
-        )
-    }
-
-    private func eventComparablePath(_ path: String) -> String {
-        path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path
+        handler(DevEventBatch.classify(events: events, rootPath: rootURL.path, isReplay: isReplay))
     }
 }
 
