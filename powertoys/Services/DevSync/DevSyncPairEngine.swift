@@ -48,6 +48,7 @@ actor DevSyncPairEngine {
     private var paused = false
     private var volumeOnline = false
     private var unmounting = false
+    private var notifiedKinds: Set<String> = []
     private var lastRetentionAt: Date?
     private var bytesDay = Calendar.current.startOfDay(for: Date())
     private let ledger = DevSelfEventLedger()
@@ -219,7 +220,7 @@ actor DevSyncPairEngine {
     }
 
     func previewPending() async -> DevSyncPlan? {
-        guard let generation = await scheduler.due().first else { return nil }
+        guard let generation = nextGeneration(await scheduler.due()) else { return nil }
         return await plan(for: generation.projectID, paths: generation.paths, fullScan: generation.requiresFullScan)?.plan
     }
 
@@ -570,6 +571,9 @@ actor DevSyncPairEngine {
             linkValues = await linkManager.links()
         }
         emit(.links(pairID: pair.id, linkValues))
+        if linkValues.contains(where: { $0.state != .healthy && $0.state != .offline }) {
+            notifyOnce(.managedLinkBroken, title: "A Dev Sync link needs repair", body: "Open Dev Sync to review the managed link.")
+        }
     }
 
     private func startEventStreams() {
@@ -623,17 +627,17 @@ actor DevSyncPairEngine {
 
     private func processNextDue() async {
         guard running, !paused, volumeOnline, activeRunner == nil else { return }
-        if pair.configuration.power.pauseOnLowPowerMode,
-           ProcessInfo.processInfo.isLowPowerModeEnabled,
-           await scheduler.due().first?.reason != .userRequested {
-            setPairState(.paused, detail: "Low Power Mode")
-            return
-        }
-        guard let due = await scheduler.due().first,
-              let generation = await scheduler.begin(projectID: due.projectID) else {
+        guard let due = nextGeneration(await scheduler.due()) else {
             if statusValue.state == .debouncing { setPairState(.idle) }
             return
         }
+        if pair.configuration.power.pauseOnLowPowerMode,
+           ProcessInfo.processInfo.isLowPowerModeEnabled,
+           due.reason != .userRequested {
+            setPairState(.paused, detail: "Low Power Mode")
+            return
+        }
+        guard let generation = await scheduler.begin(projectID: due.projectID) else { return }
         if generation.projectID == DevDirtyScheduler.discoveryProjectID {
             await refreshCatalog()
             await scheduler.complete(projectID: generation.projectID)
@@ -658,6 +662,9 @@ actor DevSyncPairEngine {
             await finish(generation: generation, project: project, outcome: outcome, output: output)
         } else {
             updateProject(project.id, state: output.projectState, output: output, error: nil)
+            if output.projectState == .conflict {
+                notifyOnce(.blockedByConflict, title: "Dev Sync needs a decision", body: "A conflict is blocking automatic synchronization.")
+            }
             await scheduler.complete(projectID: generation.projectID)
             pair.lastFullReconcileAt = generation.requiresFullScan ? now() : pair.lastFullReconcileAt
             try? await savePair()
@@ -831,17 +838,20 @@ actor DevSyncPairEngine {
             pair.lastFullReconcileAt = generation.requiresFullScan ? now() : pair.lastFullReconcileAt
             if !pair.hasCompletedFirstRun {
                 pair.hasCompletedFirstRun = true
-                emit(.notification(DevSyncNotification(kind: .firstRunComplete, pairID: pair.id, title: "Dev Sync is ready", body: "The first synchronization completed.")))
+                notifyOnce(.firstRunComplete, title: "Dev Sync is ready", body: "The first synchronization completed.")
             }
             await runRetentionIfDue()
             setPairState(.idle)
         } else if outcome.projectState == .blockedByFileSystem {
             setPairState(.blocked, detail: outcome.error, error: outcome.error)
+            if outcome.error?.contains("Not enough space") == true {
+                notifyOnce(.diskAlmostFull, title: "Dev Sync needs more space", body: outcome.error ?? "The destination is full.")
+            }
         } else if outcome.operation.state == .cancelled && paused {
             setPairState(.paused)
         } else {
             setPairState(.error, detail: outcome.error, error: outcome.error)
-            emit(.notification(DevSyncNotification(kind: .operationFailed, pairID: pair.id, title: "Dev Sync operation failed", body: outcome.error ?? "The operation could not finish.")))
+            notifyOnce(.operationFailed, title: "Dev Sync operation failed", body: outcome.error ?? "The operation could not finish.")
         }
         try? await savePair()
     }
@@ -922,6 +932,24 @@ actor DevSyncPairEngine {
         return result
     }
 
+    private func nextGeneration(_ generations: [DevDirtyGeneration]) -> DevDirtyGeneration? {
+        generations.min { left, right in
+            let leftPriority = generationPriority(left.reason)
+            let rightPriority = generationPriority(right.reason)
+            if leftPriority != rightPriority { return leftPriority < rightPriority }
+            if left.firstEventAt != right.firstEventAt { return left.firstEventAt < right.firstEventAt }
+            return left.projectID.uuidString < right.projectID.uuidString
+        }
+    }
+
+    private func generationPriority(_ reason: DevDirtyReason) -> Int {
+        switch reason {
+        case .userRequested: 0
+        case .recovery, .mount: 1
+        default: 2
+        }
+    }
+
     private func emptyOutput(plan: DevSyncPlan, state: DevProjectState = .clean) -> DevPlannerOutput {
         DevPlannerOutput(plan: plan, newConflicts: [], newTombstones: [], driftPaths: [], externalOnlyPaths: [], needsHashes: [], projectState: state, warnings: [])
     }
@@ -983,15 +1011,19 @@ actor DevSyncPairEngine {
     }
 
     private func scheduleDriveMissingNotification() {
-        let pairID = pair.id
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(600))
             guard let self, await !self.volumeOnline else { return }
-            await self.emitDriveMissing(pairID: pairID)
+            await self.emitDriveMissing()
         }
     }
 
-    private func emitDriveMissing(pairID: UUID) {
-        emit(.notification(DevSyncNotification(kind: .driveMissing, pairID: pairID, title: "Dev Sync drive is missing", body: "Reconnect the configured external drive to continue.")))
+    private func emitDriveMissing() {
+        notifyOnce(.driveMissing, title: "Dev Sync drive is missing", body: "Reconnect the configured external drive to continue.")
+    }
+
+    private func notifyOnce(_ kind: DevSyncNotificationKind, title: String, body: String) {
+        guard notifiedKinds.insert(kind.rawValue).inserted else { return }
+        emit(.notification(DevSyncNotification(kind: kind, pairID: pair.id, title: title, body: body)))
     }
 }
