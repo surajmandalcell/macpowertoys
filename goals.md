@@ -16,65 +16,65 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [░░░░░░░░░░░░░░░░░░░░]  0/62
-G1 Foundation               [░░░░░░░░░░░░░░░░░░░░]  0/15
-G2 Dev One-Way              [░░░░░░░░░░░░░░░░░░░░]  0/14
+Dev Sync overall            [████████░░░░░░░░░░░░] 25/62
+G1 Foundation               [████████████████░░░░] 12/15
+G2 Dev One-Way              [████░░░░░░░░░░░░░░░░]  3/14
 G3 Dev Bidirectional        [░░░░░░░░░░░░░░░░░░░░]  0/10
-G4 Interface                [░░░░░░░░░░░░░░░░░░░░]  0/11
+G4 Interface                [██████████████████░░] 10/11
 G5 Hardening and release    [░░░░░░░░░░░░░░░░░░░░]  0/12
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
 
-- [ ] 1.1 Shared models in `powertoys/Models/DevSyncModels.swift`: pair, root,
+- [x] 1.1 Shared models in `powertoys/Models/DevSyncModels.swift`: pair, root,
   project, residency, identity, states, signature, baseline, tombstone, link,
   conflict, dirty entry, cursor, action, preconditions, plan, operation,
   policy decision, configuration, `rsync` and volume capabilities.
   Check: the app target builds and a model round-trip test passes.
-- [ ] 1.2 State store: atomic JSON documents under
+- [x] 1.2 State store: atomic JSON documents under
   `Application Support/MacPowerToys/DevSync/`, per-project baselines,
   operation journal, backups, and corruption fallback. Needs: 1.1.
   Check: store tests cover round trip, atomic replace, backup restore, and a
   corrupt document.
-- [ ] 1.3 Roots: bookmark resolution, canonical real paths, same, nested, and
+- [x] 1.3 Roots: bookmark resolution, canonical real paths, same, nested, and
   aliased root rejection, and pair overlap rejection. Needs: 1.1.
   Check: tests for scenarios 20 and 21.
-- [ ] 1.4 Volumes: UUID identity, mount and unmount observation, read-only and
+- [x] 1.4 Volumes: UUID identity, mount and unmount observation, read-only and
   capacity reads, and the capability probe with a real temporary probe.
   Needs: 1.1. Check: probe test on the internal volume and a simulated
   capability record for exFAT.
-- [ ] 1.5 `rsync` capability probe: `--version`, `--help` option parsing,
+- [x] 1.5 `rsync` capability probe: `--version`, `--help` option parsing,
   self-test, capability record, fingerprint invalidation. Needs: 1.1.
   Check: the probe passes against `/usr/bin/rsync` and the record shows
   `-0`, `--files-from`, `--backup-dir`, no ACL flag.
-- [ ] 1.6 `rsync` argument builder and exit-code classes. Needs: 1.5.
+- [x] 1.6 `rsync` argument builder and exit-code classes. Needs: 1.5.
   Check: builder tests for full fidelity, portable, and unsupported binaries;
   exit classes for 0, 20, 23, 24, 25, other.
-- [ ] 1.7 Git availability check without the installer dialog, `ls-files`
+- [x] 1.7 Git availability check without the installer dialog, `ls-files`
   manifest, `check-ignore` batch, global ignore identity, lock detection,
   topology analysis for `.git` files, submodules, linked worktrees, bare
   repositories, and alternates. Needs: 1.1. Check: Git matrix fixtures in a
   temporary directory.
-- [ ] 1.8 Project discovery with `lstat` walk, outermost repository rule,
+- [x] 1.8 Project discovery with `lstat` walk, outermost repository rule,
   unmanaged candidates, identity fingerprint, and rename candidates.
   Needs: 1.7. Check: scenarios 12 to 19.
-- [ ] 1.9 File policy engine with nine-level precedence, sensitive overrides,
+- [x] 1.9 File policy engine with nine-level precedence, sensitive overrides,
   size guard, common exclusions, transient Git locks, Cloud Sync system paths,
   and a reason for every decision. Needs: 1.7. Check: precedence tests and
   scenarios 25, 40, 50, 51, 52.
-- [ ] 1.10 Snapshot scanner, quick signatures, streaming SHA-256, stability
+- [x] 1.10 Snapshot scanner, quick signatures, streaming SHA-256, stability
   probes, and collision detection. Needs: 1.1. Check: path matrix and
   scenarios 33, 34, 35, 36.
-- [ ] 1.11 FSEvents monitor with event IDs, root watching, and dropped-event
+- [x] 1.11 FSEvents monitor with event IDs, root watching, and dropped-event
   flags; dirty scheduler with sliding debounce, checkpoint, storm collapse,
   and persisted dirty work; self-event ledger. Needs: 1.2.
   Check: scheduler tests for scenarios 22, 23, 24, 83, 86.
-- [ ] 1.12 Reconciliation planner for Dev One-Way with preconditions and an
+- [~] 1.12 Reconciliation planner for Dev One-Way with preconditions and an
   immutable plan. Needs: 1.9, 1.10. Check: every row of the one-way decision
   table and the ten planner properties.
-- [ ] 1.13 First-run planner: project catalog merge, file merge, and preview
+- [~] 1.13 First-run planner: project catalog merge, file merge, and preview
   summary. Needs: 1.8, 1.12. Check: first-run tables and scenarios 1 to 5.
-- [ ] 1.14 Managed link manager: create, validate, repair, adopt, remove,
+- [x] 1.14 Managed link manager: create, validate, repair, adopt, remove,
   offline handling, and exclusion from scans. Needs: 1.4.
   Check: scenarios 2, 6, 55, 66, 67, 68.
 - [ ] 1.15 Read-only preview end to end on a temporary pair: discovery,
@@ -83,13 +83,13 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 
 ### G2 Dev One-Way: every one-way scenario passes on a real pair
 
-- [ ] 2.1 Safety store on the external root and internal history: staging,
+- [x] 2.1 Safety store on the external root and internal history: staging,
   history, conflicts, partial, restrictive permissions, retention limits.
   Needs: 1.2. Check: retention tests and scenario 65.
-- [ ] 2.2 `rsync` transfer engine: `Process` with argument arrays, NUL
+- [x] 2.2 `rsync` transfer engine: `Process` with argument arrays, NUL
   manifest on stdin, concurrent output capture, progress, cancellation.
   Needs: 1.6. Check: a real transfer of the path matrix through openrsync.
-- [ ] 2.3 Verifier: post-transfer signature check, source stability, atomic
+- [~] 2.3 Verifier: post-transfer signature check, source stability, atomic
   baseline commit. Needs: 2.2. Check: scenario 47.
 - [ ] 2.4 Operation runner with the fifteen-step transaction and journal.
   Needs: 2.1, 2.3. Check: failure injected after every step leaves a
@@ -106,9 +106,9 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 - [ ] 2.10 Mount and unmount handling with recovery-required operations.
   Needs: 2.9. Check: scenarios 53, 54, 56, 57, 58.
 - [ ] 2.11 Crash recovery at launch. Needs: 2.9. Check: scenarios 79, 80, 81.
-- [ ] 2.12 Residency conversion when an internal project disappears.
+- [~] 2.12 Residency conversion when an internal project disappears.
   Needs: 2.9, 1.14. Check: scenario 7.
-- [ ] 2.13 Move to External and Bring Internal transactions. Needs: 2.12.
+- [x] 2.13 Move to External and Bring Internal transactions. Needs: 2.12.
   Check: scenarios 70 to 73.
 - [ ] 2.14 Real pair soak: a disposable internal root and a disposable
   external volume image, all one-way scenarios, zero data loss. Needs: 2.13.
@@ -117,7 +117,7 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 
 - [ ] 3.1 Baseline comparator with tolerance and hash escalation. Needs: 2.3.
 - [ ] 3.2 Tombstone lifecycle. Needs: 2.5. Check: resurrection property.
-- [ ] 3.3 Two-side planner for every row of the bidirectional table.
+- [~] 3.3 Two-side planner for every row of the bidirectional table.
   Needs: 3.1, 3.2.
 - [ ] 3.4 Conflict store with both versions preserved. Needs: 2.1, 3.3.
   Check: scenario 27.
@@ -133,22 +133,22 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 
 ### G4 Interface: reads as part of Cloud Sync, fast, native
 
-- [ ] 4.1 `DevSyncManager` published state and the `Dev Sync` sidebar row with
+- [x] 4.1 `DevSyncManager` published state and the `Dev Sync` sidebar row with
   a conflict and blocked count badge. Needs: 2.9.
-- [ ] 4.2 Empty state with `Set Up Dev Sync`. Needs: 4.1.
-- [ ] 4.3 Setup sheet steps Roots and Compatibility. Needs: 1.3, 1.4, 1.5.
-- [ ] 4.4 Setup sheet steps Projects and Rules. Needs: 1.13.
-- [ ] 4.5 Setup sheet steps Activity and Preview with a literal primary
+- [x] 4.2 Empty state with `Set Up Dev Sync`. Needs: 4.1.
+- [x] 4.3 Setup sheet steps Roots and Compatibility. Needs: 1.3, 1.4, 1.5.
+- [x] 4.4 Setup sheet steps Projects and Rules. Needs: 1.13.
+- [x] 4.5 Setup sheet steps Activity and Preview with a literal primary
   action. Needs: 1.15.
-- [ ] 4.6 Pair page strip with state subtitle, Sync Now, Pause or Resume,
+- [x] 4.6 Pair page strip with state subtitle, Sync Now, Pause or Resume,
   and the actions menu. Needs: 4.1.
-- [ ] 4.7 Status card. Needs: 4.6.
-- [ ] 4.8 Project rows as operational cards with residency and state badges,
+- [x] 4.7 Status card. Needs: 4.6.
+- [x] 4.8 Project rows as operational cards with residency and state badges,
   sizes, warnings, and every row action. Needs: 4.6.
-- [ ] 4.9 Conflict cards with metadata, optional diff, and six actions.
+- [x] 4.9 Conflict cards with metadata, optional diff, and six actions.
   Needs: 3.5.
 - [ ] 4.10 Notifications for the seven listed events only. Needs: 2.10.
-- [ ] 4.11 Pair settings replacement page and `DESIGN.md`, `Tool.swift`
+- [x] 4.11 Pair settings replacement page and `DESIGN.md`, `Tool.swift`
   manual, and `CHANGELOG.md` updates. Needs: 4.8.
 
 ### G5 Hardening and release
@@ -164,7 +164,7 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 - [ ] 5.7 Power and quality-of-service policies.
 - [ ] 5.8 Log redaction audit: no contents, secrets, bookmarks, or credentials.
 - [ ] 5.9 Retention cleanup ordering.
-- [ ] 5.10 `docs/DEV_SYNC.md` extension guide.
+- [~] 5.10 `docs/DEV_SYNC.md` extension guide.
 - [ ] 5.11 Complete unit suite green, Raycast build green, signed Release
   build, and local installation when no transfer is active.
 - [ ] 5.12 Live check in the installed build: setup, preview, first sync,
