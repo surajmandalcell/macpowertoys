@@ -823,8 +823,10 @@ Base profile, built from capabilities:
 
 Conditional options: `-p` when both volumes support Unix permissions and
 metadata fidelity is enabled, `-X` when both volumes support extended
-attributes, `-H` when hard links are enabled, and `--modify-window=<detected
-tolerance>` only when required.
+attributes and the self-test proves it, `-H` when hard links are enabled,
+`--crtimes` when the self-test proves it and both volumes support creation
+times, and `--modify-window=<detected tolerance>` only when required. ACL
+support is recorded for diagnostics and never emitted as `-A`.
 
 Rules: preserve symbolic links as links, never follow source links, preserve
 the executable bit when the target supports it, never preserve owner, group,
@@ -1368,7 +1370,7 @@ sees. Rows also define acceptance tests; the test name is the row number.
 |---|---|---|---|
 | 74 | Xcode Command Line Tools are not installed. | Detects it before the first Git call. Uses the non-Git policy with a warning. Never triggers the installer dialog. | Setup warning `Git is not available. Ignore rules use the common profile.` |
 | 75 | The system `rsync` has no ACL support. | Records the capability and never passes the flag. | Compatibility note `ACLs not preserved`. |
-| 76 | Homebrew `rsync` 3.x is selected. | Re-probes, enables `--crtimes` and `-A` when the self-test passes. | Compatibility note updates. |
+| 76 | Homebrew `rsync` 3.x is selected. | Re-probes. Emits `--crtimes` only when the self-test proves it and both volumes support creation times. Records ACL support but never emits `-A`. | Compatibility note updates. |
 | 77 | `rsync` exits 23 (partial). | Verifies copied paths. Never commits the batch. Retries the rest. | Row `Retrying · 2 files`. |
 | 78 | `rsync` exits 24 (a source vanished). | Rescans and retries after debounce. | Row `Scanning`. |
 | 79 | The app is force-quit between `rsync` completion and baseline commit. | At launch, reads the journal, verifies the destination, commits or replans. | Pair `Recovering`, then `Idle`. |
