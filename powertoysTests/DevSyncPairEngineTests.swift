@@ -82,6 +82,23 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(operations.count, 0)
     }
 
+    func testVerifyNowFindsSilentSameSizeSameTimeDifference() async throws {
+        let fixture = try await makeFixture()
+        await fixture.engine.start()
+        let internalFile = fixture.internalProject.appendingPathComponent("source.swift")
+        let externalFile = fixture.externalProject.appendingPathComponent("source.swift")
+        let modificationDate = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: internalFile.path)[.modificationDate] as? Date
+        )
+        try Data("change".utf8).write(to: externalFile)
+        try FileManager.default.setAttributes([.modificationDate: modificationDate], ofItemAtPath: externalFile.path)
+
+        await fixture.engine.verifyNow()
+
+        let projectState = await fixture.engine.projects().first?.state
+        XCTAssertEqual(projectState, .destinationDrift)
+    }
+
     func testScenario30AllDriftResolutionsConverge() async throws {
         let overwrite = try await makeFixture(name: "overwrite")
         await overwrite.engine.start()
