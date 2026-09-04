@@ -5,9 +5,18 @@ import XCTest
 
 @MainActor
 final class DevSyncEventsTests: XCTestCase {
+    private var temporaryDirectories: [URL] = []
+
+    override func tearDownWithError() throws {
+        for directory in temporaryDirectories {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        temporaryDirectories = []
+        try super.tearDownWithError()
+    }
+
     func testStreamReceivesCreatedAndModifiedEventsWithIncreasingIDs() async throws {
         let root = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
         let collector = EventCollector()
         let stream = DevEventStream(
             rootURL: root,
@@ -18,18 +27,25 @@ final class DevSyncEventsTests: XCTestCase {
         )
 
         XCTAssertTrue(stream.start())
+        defer { stream.stop() }
         let file = root.appendingPathComponent("note.txt")
         try Data("first".utf8).write(to: file)
-        try await Task.sleep(nanoseconds: 200_000_000)
-        try Data("second".utf8).write(to: file)
-        collector.wait(timeout: 5)
-        stream.stop()
+        let created = try await waitForEvent(in: collector) {
+            self.pathsReferToSameLocation($0.path, file.path)
+                && $0.flags & UInt32(kFSEventStreamEventFlagItemCreated) != 0
+        }
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("second".utf8))
+        try handle.close()
+        _ = try await waitForEvent(in: collector) {
+            self.pathsReferToSameLocation($0.path, file.path)
+                && $0.eventID > created.eventID
+                && $0.flags & UInt32(kFSEventStreamEventFlagItemModified) != 0
+        }
 
-        let events = collector.events
-        XCTAssertTrue(events.contains { $0.flags & UInt32(kFSEventStreamEventFlagItemCreated) != 0 }, events.description)
-        XCTAssertTrue(events.contains { $0.flags & UInt32(kFSEventStreamEventFlagItemModified) != 0 }, events.description)
-        XCTAssertEqual(events.map { $0.eventID }, events.map { $0.eventID }.sorted())
-        XCTAssertTrue(events.contains { $0.path.hasSuffix("/note.txt") }, events.description)
+        let fileEvents = collector.events.filter { pathsReferToSameLocation($0.path, file.path) }
+        XCTAssertTrue(zip(fileEvents, fileEvents.dropFirst()).allSatisfy { $0.eventID < $1.eventID })
     }
 
     func testScenario22EditorSavesFiftyTimesProducesOneDueGeneration() async throws {
@@ -57,7 +73,7 @@ final class DevSyncEventsTests: XCTestCase {
         timing.minimumProjectIntervalSeconds = 0
         timing.continuousCheckpointSeconds = 20
         let scheduler = DevDirtyScheduler(timing: timing, performance: .init())
-        for offset in stride(from: 0.0, through: 21.0, by: 3.0) {
+        for offset in stride(from: 0.0, through: 18.0, by: 3.0) {
             await scheduler.noteEvents(
                 side: .internal,
                 relativePaths: ["Sources/main.swift"],
@@ -66,10 +82,12 @@ final class DevSyncEventsTests: XCTestCase {
             )
         }
 
+        let beforeCheckpoint = await scheduler.due(at: start.addingTimeInterval(19.99))
         let checkpoint = await scheduler.due(at: start.addingTimeInterval(20))
+        XCTAssertTrue(beforeCheckpoint.isEmpty)
         XCTAssertEqual(checkpoint.count, 1)
         XCTAssertEqual(checkpoint[0].firstEventAt, start)
-        XCTAssertEqual(checkpoint[0].lastEventAt, start.addingTimeInterval(21))
+        XCTAssertEqual(checkpoint[0].lastEventAt, start.addingTimeInterval(18))
     }
 
     func testScenario24EventStormCollapsesToWholeProjectScan() async {
@@ -154,16 +172,38 @@ final class DevSyncEventsTests: XCTestCase {
         timing.quietPeriodSeconds = 1
         timing.continuousCheckpointSeconds = 0
         let projectID = UUID()
-        let scheduler = DevDirtyScheduler(timing: timing, performance: .init())
         let start = Date(timeIntervalSince1970: 7_000)
-        await scheduler.noteEvents(side: .internal, relativePaths: ["first"], projectResolver: { _ in projectID }, at: start)
+        let scheduler = DevDirtyScheduler(timing: timing, performance: .init(), now: { start })
+        await scheduler.noteEvents(side: .internal, relativePaths: ["active"], projectResolver: { _ in projectID }, at: start)
+        let activeGeneration = await scheduler.begin(projectID: projectID)
+        XCTAssertEqual(activeGeneration?.paths, ["active"])
+        await scheduler.noteEvents(side: .internal, relativePaths: ["next"], projectResolver: { _ in projectID }, at: start)
         await scheduler.requestNow(projectID: projectID, reason: .userRequested)
         let nextCandidates = await scheduler.due(at: start.addingTimeInterval(0.1))
         let next = try XCTUnwrap(nextCandidates.first)
         XCTAssertEqual(next.reason, .userRequested)
-        XCTAssertEqual(next.paths, ["first"])
+        XCTAssertEqual(next.paths, ["next"])
         let consumed = await scheduler.begin(projectID: projectID)
         XCTAssertNotNil(consumed)
+    }
+
+    func testUnknownPathMarksDiscoveryDirtyAndSystemPathIsDiscarded() async throws {
+        let start = Date(timeIntervalSince1970: 7_500)
+        let scheduler = makeScheduler()
+        await scheduler.noteEvents(
+            side: .external,
+            relativePaths: ["unknown/file", ".cloudsync-system/state"],
+            projectResolver: { path in path == "unknown/file" ? nil : UUID() },
+            at: start
+        )
+
+        let generations = await scheduler.due(at: start.addingTimeInterval(10))
+        let generation = try XCTUnwrap(generations.first)
+        XCTAssertEqual(generations.count, 1)
+        XCTAssertEqual(generation.projectID, DevDirtyScheduler.discoveryProjectID)
+        XCTAssertEqual(generation.reason, .unknownPath)
+        XCTAssertNil(generation.paths)
+        XCTAssertTrue(generation.requiresFullScan)
     }
 
     func testExportImportRoundTripPreservesDirtyEntries() async {
@@ -209,6 +249,34 @@ final class DevSyncEventsTests: XCTestCase {
         XCTAssertEqual(batch.lastEventID, 42)
     }
 
+    func testEventBatchClassifiesSubtreeReplayAndMountFlags() {
+        let root = "/tmp/project"
+        let subtree = root + "/Sources"
+        let subtreeBatch = DevEventBatch.classify(
+            events: [
+                DevFileEvent(
+                    path: subtree,
+                    flags: UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagMount),
+                    eventID: 10
+                )
+            ],
+            rootPath: root,
+            isReplay: false
+        )
+        XCTAssertFalse(subtreeBatch.mustRescanRoot)
+        XCTAssertEqual(subtreeBatch.rescanSubtrees, [subtree])
+        XCTAssertTrue(subtreeBatch.mountChanged)
+
+        let replayBatch = DevEventBatch.classify(
+            events: [
+                DevFileEvent(path: root, flags: UInt32(kFSEventStreamEventFlagHistoryDone), eventID: 11)
+            ],
+            rootPath: root,
+            isReplay: true
+        )
+        XCTAssertTrue(replayBatch.mustRescanRoot)
+    }
+
     func testScenario48SelfEventLedgerSuppressesMatchingAndDetectsDrift() async {
         let ledger = DevSelfEventLedger()
         let operationID = UUID()
@@ -243,13 +311,32 @@ final class DevSyncEventsTests: XCTestCase {
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        temporaryDirectories.append(url)
         return url
+    }
+
+    private func waitForEvent(
+        in collector: EventCollector,
+        matching predicate: (DevFileEvent) -> Bool
+    ) async throws -> DevFileEvent {
+        for _ in 0..<250 {
+            if let event = collector.events.first(where: predicate) { return event }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTFail("Timed out waiting for FSEvents")
+        throw CocoaError(.fileReadUnknown)
+    }
+
+    private func pathsReferToSameLocation(_ lhs: String, _ rhs: String) -> Bool {
+        func comparable(_ path: String) -> Substring {
+            path.hasPrefix("/private/") ? path.dropFirst("/private".count) : path[...]
+        }
+        return comparable(lhs) == comparable(rhs)
     }
 }
 
-private final class EventCollector: @unchecked Sendable {
+nonisolated private final class EventCollector: @unchecked Sendable {
     private let lock = NSLock()
-    private let expectation = XCTestExpectation(description: "FSEvents callback")
     private var storedEvents: [DevFileEvent] = []
 
     var events: [DevFileEvent] {
@@ -261,12 +348,6 @@ private final class EventCollector: @unchecked Sendable {
     func append(_ batch: DevEventBatch) {
         lock.lock()
         storedEvents.append(contentsOf: batch.events)
-        let count = storedEvents.count
         lock.unlock()
-        if count >= 2 { expectation.fulfill() }
-    }
-
-    func wait(timeout: TimeInterval) {
-        XCTWaiter().wait(for: [expectation], timeout: timeout)
     }
 }
