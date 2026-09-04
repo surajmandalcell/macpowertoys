@@ -58,6 +58,7 @@ struct RcloneWindowView: View {
                 .environment(manager)
         }
         .task {
+            DevSyncManager.shared.engine = DevSyncService.shared
             manager.modelContext = modelContext
             restoreUIState()
             if SettingsManager.shared.isToolEnabled("rclone") {
