@@ -245,7 +245,7 @@ actor DevOperationRunner {
                 requeuedPaths: mutationPaths(in: plan),
                 deferredPaths: deferredPaths,
                 projectState: projectState,
-                error: (error as? LocalizedError)?.errorDescription ?? "Dev Sync operation failed."
+                error: (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             )
         }
     }
@@ -320,10 +320,12 @@ actor DevOperationRunner {
         }
         for (side, required) in requiredBySide where required > 0 {
             let root = side == .internal ? context.internalRoot : context.externalRoot
-            let available = await Task.detached(priority: .utility) {
+            let measured = await Task.detached(priority: .utility) {
                 (try? root.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]))?
                     .volumeAvailableCapacityForImportantUsage
-            }.value ?? context.capabilitiesVolume(side)?.availableCapacity ?? 0
+            }.value
+            let probed = context.capabilitiesVolume(side)?.availableCapacity
+            let available = [measured, probed].compactMap { $0 }.min() ?? 0
             let reserve = max(0, context.pair.configuration.safety.minimumFreeSpaceReserveBytes)
             let usable = max(0, available - reserve)
             guard required <= usable else {
@@ -460,7 +462,7 @@ actor DevOperationRunner {
                 guard try DevSnapshotScanner.verify(
                     plannedSource: plannedSource,
                     destinationURL: destinationURL,
-                    toleranceNanoseconds: context.capabilities.timestampToleranceNanoseconds,
+                    toleranceNanoseconds: timestampToleranceNanoseconds,
                     compareMode: compareMode,
                     requireHash: requireHash
                 ) else {
@@ -468,7 +470,7 @@ actor DevOperationRunner {
                     continue
                 }
                 let sourceNow = try DevSnapshotScanner.signature(of: sourceURL, includeHash: requireHash)
-                guard Self.signaturesMatch(plannedSource, sourceNow, tolerance: context.capabilities.timestampToleranceNanoseconds, compareMode: compareMode) else {
+                guard Self.signaturesMatch(plannedSource, sourceNow, tolerance: timestampToleranceNanoseconds, compareMode: compareMode) else {
                     requeued.append(action.relativePath)
                     continue
                 }
@@ -566,7 +568,7 @@ actor DevOperationRunner {
         guard Self.signaturesMatch(
             internalSignature,
             externalSignature,
-            tolerance: context.capabilities.timestampToleranceNanoseconds,
+            tolerance: timestampToleranceNanoseconds,
             compareMode: compareMode
         ) else { throw DevOperationRunnerError.verificationFailed }
         return internalSignature
@@ -679,6 +681,12 @@ actor DevOperationRunner {
     private var compareMode: Bool {
         context.capabilities.internalVolume?.supportsUnixPermissions == true
             && context.capabilities.externalVolume?.supportsUnixPermissions == true
+    }
+
+    private var timestampToleranceNanoseconds: Int64 {
+        context.capabilities.rsync?.protocolVersion.map { $0 < 30 } == true
+            ? max(1_000_000_000, context.capabilities.timestampToleranceNanoseconds)
+            : context.capabilities.timestampToleranceNanoseconds
     }
 
     private func mutationPaths(in plan: DevSyncPlan) -> [String] {
@@ -818,7 +826,7 @@ nonisolated enum DevRecovery {
                 guard (try? DevSnapshotScanner.verify(
                     plannedSource: signature,
                     destinationURL: destinationRoot.appendingPathComponent(action.relativePath),
-                    toleranceNanoseconds: context.capabilities.timestampToleranceNanoseconds,
+                    toleranceNanoseconds: timestampTolerance(context),
                     compareMode: true,
                     requireHash: requireHash
                 )) == true,
@@ -829,7 +837,7 @@ nonisolated enum DevRecovery {
                 DevOperationRunner.signaturesMatch(
                     signature,
                     currentSource,
-                    tolerance: context.capabilities.timestampToleranceNanoseconds,
+                    tolerance: timestampTolerance(context),
                     compareMode: true
                 ) else { continue }
                 verified.append(action.relativePath)
@@ -865,6 +873,12 @@ nonisolated enum DevRecovery {
         } catch {
             return .leaveForUser("Safety data could not be restored automatically.")
         }
+    }
+
+    private static func timestampTolerance(_ context: DevOperationContext) -> Int64 {
+        context.capabilities.rsync?.protocolVersion.map { $0 < 30 } == true
+            ? max(1_000_000_000, context.capabilities.timestampToleranceNanoseconds)
+            : context.capabilities.timestampToleranceNanoseconds
     }
 }
 
