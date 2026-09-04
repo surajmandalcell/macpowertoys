@@ -18,11 +18,9 @@ nonisolated private final class DevSyncISO8601Formatter: @unchecked Sendable {
 }
 
 actor DevSyncStateStore {
-    static let shared = DevSyncStateStore(
-        rootURL: MainActor.assumeIsolated {
-            AppDataLocation.directory.appendingPathComponent("DevSync", isDirectory: true)
-        }
-    )
+    nonisolated private static let maximumBackupCount = 5
+
+    static let shared = DevSyncStateStore(rootURL: defaultRootURL)
 
     nonisolated let rootURL: URL
     private let fileManager = FileManager.default
@@ -45,8 +43,16 @@ actor DevSyncStateStore {
 
     private static let dateFormatter = DevSyncISO8601Formatter(options: [.withInternetDateTime])
 
+    nonisolated private static var defaultRootURL: URL {
+        let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let applicationDirectory = AppRuntime.isRunningTests ? "MacPowerToys-Tests" : "MacPowerToys"
+        return applicationSupport
+            .appendingPathComponent(applicationDirectory, isDirectory: true)
+            .appendingPathComponent("DevSync", isDirectory: true)
+    }
+
     init(rootURL: URL) {
-        self.rootURL = rootURL
+        self.rootURL = rootURL.standardizedFileURL
     }
 
     var issues: [DevStateStoreIssue] {
@@ -74,7 +80,7 @@ actor DevSyncStateStore {
     func removePair(_ pairID: UUID) throws {
         _ = try backup(pairID: pairID)
         let directory = pairDirectory(pairID)
-        guard !isSymbolicLink(directory), fileManager.fileExists(atPath: directory.path) else { return }
+        guard isDirectory(directory) else { return }
         try fileManager.removeItem(at: directory)
     }
 
@@ -97,15 +103,18 @@ actor DevSyncStateStore {
     }
 
     func saveBaseline(_ baseline: DevBaseline, pairID: UUID) throws {
+        try Task.checkCancellation()
         let url = pairFile(pairID, "baselines/\(baseline.projectID.uuidString).json")
         let data = try encode(baseline, preserveDatePrecision: false)
+        try Task.checkCancellation()
         // ponytail: JSON baseline documents; move to SQLite if load time exceeds budget
         try write(data, to: url)
     }
 
     func deleteBaseline(projectID: UUID, pairID: UUID) throws {
         let url = pairFile(pairID, "baselines/\(projectID.uuidString).json")
-        guard !isSymbolicLink(url), fileManager.fileExists(atPath: url.path) else { return }
+        guard !hasSymbolicLinkBelowRoot(url) else { throw CocoaError(.fileWriteNoPermission) }
+        guard fileManager.fileExists(atPath: url.path) else { return }
         try fileManager.removeItem(at: url)
     }
 
@@ -165,6 +174,27 @@ actor DevSyncStateStore {
         try save(records, at: pairFile(pairID, "safety-records.json"))
     }
 
+    func appendSafetyRecord(_ record: DevSafetyRecord, pairID: UUID) throws {
+        var records = loadSafetyRecords(pairID: pairID)
+        records.append(record)
+        try saveSafetyRecords(records, pairID: pairID)
+    }
+
+    func applySafetyRecordChanges(
+        pairID: UUID,
+        removing removedRecordIDs: Set<UUID>,
+        expirations: [UUID: Date]
+    ) throws {
+        var records = loadSafetyRecords(pairID: pairID)
+        records.removeAll { removedRecordIDs.contains($0.id) }
+        for index in records.indices where records[index].expiresAt == nil {
+            if let expiration = expirations[records[index].id] {
+                records[index].expiresAt = expiration
+            }
+        }
+        try write(encode(records), to: pairFile(pairID, "safety-records.json"))
+    }
+
     func saveOperation(_ operation: DevOperation) throws {
         try save(operation, at: pairFile(operation.pairID, "operations/\(operation.id.uuidString).json"))
     }
@@ -190,7 +220,7 @@ actor DevSyncStateStore {
         }
 
         return files
-            .filter { $0.pathExtension == "json" && !isSymbolicLink($0) }
+            .filter { isOperationDocument($0) && !isSymbolicLink($0) }
             .compactMap { file in
                 load(
                     DevOperation.self,
@@ -209,11 +239,13 @@ actor DevSyncStateStore {
 
     func deleteOperation(id: UUID, pairID: UUID) throws {
         let url = pairFile(pairID, "operations/\(id.uuidString).json")
+        guard !hasSymbolicLinkBelowRoot(url) else { throw CocoaError(.fileWriteNoPermission) }
         guard fileManager.fileExists(atPath: url.path) else { return }
         try fileManager.removeItem(at: url)
     }
 
     func backup(pairID: UUID) throws -> URL {
+        try Task.checkCancellation()
         let pairDirectory = self.pairDirectory(pairID)
         try createDirectory(pairDirectory)
         let backupsDirectory = pairDirectory.appendingPathComponent("backups", isDirectory: true)
@@ -223,27 +255,39 @@ actor DevSyncStateStore {
         var backupDirectory = backupsDirectory.appendingPathComponent(timestamp, isDirectory: true)
         var suffix = 1
         while isSymbolicLink(backupDirectory) || fileManager.fileExists(atPath: backupDirectory.path) {
+            try Task.checkCancellation()
             backupDirectory = backupsDirectory.appendingPathComponent("\(timestamp)-\(suffix)", isDirectory: true)
             suffix += 1
         }
-        try createDirectory(backupDirectory)
+        let pendingDirectory = backupsDirectory.appendingPathComponent(".pending-\(UUID().uuidString)", isDirectory: true)
+        try createDirectory(pendingDirectory)
+        do {
+            for source in try backupSources(pairID: pairID) where !hasSymbolicLinkBelowRoot(source.source) {
+                try Task.checkCancellation()
+                guard fileManager.fileExists(atPath: source.source.path) else { continue }
+                let data = try readDocument(source.source)
+                try Task.checkCancellation()
+                try write(data, to: pendingDirectory.appendingPathComponent(source.relativePath))
+            }
+            try fileManager.moveItem(at: pendingDirectory, to: backupDirectory)
 
-        for source in backupSources(pairID: pairID) where !isSymbolicLink(source.source) {
-            guard fileManager.fileExists(atPath: source.source.path), let data = try? Data(contentsOf: source.source) else { continue }
-            try write(data, to: backupDirectory.appendingPathComponent(source.relativePath))
+            let backupDirectories = validBackupDirectories(in: backupsDirectory)
+            for oldBackup in backupDirectories.dropFirst(Self.maximumBackupCount) {
+                try Task.checkCancellation()
+                try fileManager.removeItem(at: oldBackup)
+            }
+            return backupDirectory
+        } catch {
+            try? fileManager.removeItem(at: pendingDirectory)
+            throw error
         }
-
-        let backupDirectories = directories(in: backupsDirectory).sorted { $0.lastPathComponent > $1.lastPathComponent }
-        for oldBackup in backupDirectories.dropFirst(5) {
-            try fileManager.removeItem(at: oldBackup)
-        }
-        return backupDirectory
     }
 
     func restoreLatestBackup(pairID: UUID) throws -> Bool {
+        try Task.checkCancellation()
         guard let backupDirectory = latestBackupDirectory(pairID: pairID) else { return false }
-        for source in backupSources(in: backupDirectory) where !isSymbolicLink(source.source) {
-            guard let data = try? Data(contentsOf: source.source) else { continue }
+        for source in try backupSources(in: backupDirectory) where !hasSymbolicLinkBelowRoot(source.source) {
+            let data = try readDocument(source.source)
             let destination = source.relativePath == "pairs.json"
                 ? rootURL.appendingPathComponent(source.relativePath)
                 : pairDirectory(pairID).appendingPathComponent(source.relativePath)
@@ -257,7 +301,10 @@ actor DevSyncStateStore {
     }
 
     private func save<T: Encodable>(_ value: T, at url: URL) throws {
-        try write(encode(value), to: url)
+        try Task.checkCancellation()
+        let data = try encode(value)
+        try Task.checkCancellation()
+        try write(data, to: url)
     }
 
     private func encode<T: Encodable>(_ value: T, preserveDatePrecision: Bool = true) throws -> Data {
@@ -298,22 +345,32 @@ actor DevSyncStateStore {
         pairID: UUID? = nil,
         preserveDatePrecision: Bool = true
     ) -> T? {
-        guard !isSymbolicLink(url), fileManager.fileExists(atPath: url.path) else { return nil }
-        guard let data = try? Data(contentsOf: url) else {
+        guard !hasSymbolicLinkBelowRoot(url), fileManager.fileExists(atPath: url.path) else { return nil }
+        guard let data = try? readDocument(url) else {
             recordIssue(document: document, detail: "Document could not be read", recoveredFromBackup: false)
             return nil
         }
         do {
             return try decoder(preserveDatePrecision: preserveDatePrecision).decode(type, from: data)
         } catch {
-            moveAside(url)
+            let movedAside = moveAside(url)
             guard let backupData = latestBackupData(document: document, pairID: pairID),
                   let recovered = try? decoder(preserveDatePrecision: preserveDatePrecision).decode(type, from: backupData) else {
-                recordIssue(document: document, detail: "Document failed to decode", recoveredFromBackup: false)
+                recordIssue(
+                    document: document,
+                    detail: movedAside ? "Document failed to decode" : "Document failed to decode and could not be moved aside",
+                    recoveredFromBackup: false
+                )
                 return nil
             }
-            try? write(backupData, to: url)
-            recordIssue(document: document, detail: "Document failed to decode", recoveredFromBackup: true)
+            if movedAside {
+                try? write(backupData, to: url)
+            }
+            recordIssue(
+                document: document,
+                detail: movedAside ? "Document failed to decode" : "Document failed to decode and could not be moved aside",
+                recoveredFromBackup: true
+            )
             return recovered
         }
     }
@@ -393,7 +450,7 @@ actor DevSyncStateStore {
     }
 
     private func isDirectory(_ url: URL) -> Bool {
-        guard !isSymbolicLink(url) else { return false }
+        guard !hasSymbolicLinkBelowRoot(url) else { return false }
         return (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
     }
 
@@ -421,7 +478,7 @@ actor DevSyncStateStore {
         return children.filter { isDirectory($0) }
     }
 
-    private func backupSources(pairID: UUID) -> [(source: URL, relativePath: String)] {
+    private func backupSources(pairID: UUID) throws -> [(source: URL, relativePath: String)] {
         var sources: [(source: URL, relativePath: String)] = [
             (rootURL.appendingPathComponent("pairs.json"), "pairs.json")
         ]
@@ -431,57 +488,69 @@ actor DevSyncStateStore {
         })
 
         let operations = pairDirectory.appendingPathComponent("operations", isDirectory: true)
-        if let files = try? fileManager.contentsOfDirectory(at: operations, includingPropertiesForKeys: nil) {
+        if isDirectory(operations) {
+            let files = try fileManager.contentsOfDirectory(at: operations, includingPropertiesForKeys: nil)
             sources.append(contentsOf: files
-                .filter { $0.pathExtension == "json" }
+                .filter(isOperationDocument)
                 .map { ($0, "operations/\($0.lastPathComponent)") })
         }
         return sources
     }
 
-    private func backupSources(in backupDirectory: URL) -> [(source: URL, relativePath: String)] {
-        var sources: [(source: URL, relativePath: String)] = []
-        if let files = try? fileManager.contentsOfDirectory(at: backupDirectory, includingPropertiesForKeys: nil) {
-            sources.append(contentsOf: files
-                .filter { $0.pathExtension == "json" }
-                .map { ($0, $0.lastPathComponent) })
-            let operations = backupDirectory.appendingPathComponent("operations", isDirectory: true)
-            if let operationFiles = try? fileManager.contentsOfDirectory(at: operations, includingPropertiesForKeys: nil) {
-                sources.append(contentsOf: operationFiles
-                    .filter { $0.pathExtension == "json" }
-                    .map { ($0, "operations/\($0.lastPathComponent)") })
-            }
+    private func backupSources(in backupDirectory: URL) throws -> [(source: URL, relativePath: String)] {
+        let metadataFileNames = ["pairs.json"] + Self.metadataFileNames
+        var sources = metadataFileNames.compactMap { fileName -> (source: URL, relativePath: String)? in
+            let source = backupDirectory.appendingPathComponent(fileName)
+            return fileManager.fileExists(atPath: source.path) ? (source, fileName) : nil
+        }
+        let operations = backupDirectory.appendingPathComponent("operations", isDirectory: true)
+        if isDirectory(operations) {
+            let operationFiles = try fileManager.contentsOfDirectory(at: operations, includingPropertiesForKeys: nil)
+            sources.append(contentsOf: operationFiles
+                .filter(isOperationDocument)
+                .map { ($0, "operations/\($0.lastPathComponent)") })
         }
         return sources
     }
 
     private func latestBackupDirectory(pairID: UUID) -> URL? {
-        directories(in: pairDirectory(pairID).appendingPathComponent("backups", isDirectory: true))
-            .sorted { $0.lastPathComponent > $1.lastPathComponent }
-            .first
+        validBackupDirectories(in: pairDirectory(pairID).appendingPathComponent("backups", isDirectory: true)).first
     }
 
     private func latestBackupData(document: String, pairID: UUID?) -> Data? {
         let backupDirectories: [URL]
         if let pairID {
-            backupDirectories = directories(in: pairDirectory(pairID).appendingPathComponent("backups", isDirectory: true))
-                .sorted { $0.lastPathComponent > $1.lastPathComponent }
+            backupDirectories = validBackupDirectories(in: pairDirectory(pairID).appendingPathComponent("backups", isDirectory: true))
         } else {
             let pairDirectories = directories(in: rootURL).filter { UUID(uuidString: $0.lastPathComponent) != nil }
             backupDirectories = pairDirectories.flatMap {
-                directories(in: $0.appendingPathComponent("backups", isDirectory: true))
+                validBackupDirectories(in: $0.appendingPathComponent("backups", isDirectory: true))
             }.sorted { $0.lastPathComponent > $1.lastPathComponent }
         }
 
         for backupDirectory in backupDirectories {
             let source = backupDirectory.appendingPathComponent(document)
-            guard !isSymbolicLink(source), fileManager.fileExists(atPath: source.path) else { continue }
-            if let data = try? Data(contentsOf: source) { return data }
+            guard !hasSymbolicLinkBelowRoot(source), fileManager.fileExists(atPath: source.path) else { continue }
+            if let data = try? readDocument(source) { return data }
         }
         return nil
     }
 
-    private func moveAside(_ url: URL) {
+    private func validBackupDirectories(in backupsDirectory: URL) -> [URL] {
+        directories(in: backupsDirectory)
+            .filter { !$0.lastPathComponent.hasPrefix(".pending-") }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }
+    }
+
+    private func readDocument(_ url: URL) throws -> Data {
+        try Data(contentsOf: url, options: .mappedIfSafe)
+    }
+
+    private func isOperationDocument(_ url: URL) -> Bool {
+        url.pathExtension == "json" && UUID(uuidString: url.deletingPathExtension().lastPathComponent) != nil
+    }
+
+    private func moveAside(_ url: URL) -> Bool {
         let stamp = Self.backupDateFormatter.value.string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
         let base = url.deletingPathExtension()
@@ -491,7 +560,13 @@ actor DevSyncStateStore {
             destination = base.appendingPathExtension("corrupt-\(stamp)-\(suffix).json")
             suffix += 1
         }
-        try? fileManager.moveItem(at: url, to: destination)
+        do {
+            try fileManager.moveItem(at: url, to: destination)
+            try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func recordIssue(document: String, detail: String, recoveredFromBackup: Bool) {

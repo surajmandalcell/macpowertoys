@@ -121,6 +121,7 @@ final class DevSyncStateStoreTests: XCTestCase {
     func testMissingDocumentsReturnEmptyValues() async throws {
         let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
         let pairID = UUID()
+        let pairs = await store.loadPairs()
         let projects = await store.loadProjects(pairID: pairID)
         let tombstones = await store.loadTombstones(pairID: pairID)
         let conflicts = await store.loadConflicts(pairID: pairID)
@@ -131,7 +132,10 @@ final class DevSyncStateStoreTests: XCTestCase {
         let records = await store.loadSafetyRecords(pairID: pairID)
         let baseline = await store.loadBaseline(projectID: UUID(), pairID: pairID)
         let operations = await store.loadOperations(pairID: pairID, limit: 10)
+        let openOperations = await store.loadOpenOperations(pairID: pairID)
+        let operation = await store.loadOperation(id: UUID(), pairID: pairID)
 
+        XCTAssertTrue(pairs.isEmpty)
         XCTAssertTrue(projects.isEmpty)
         XCTAssertTrue(tombstones.isEmpty)
         XCTAssertTrue(conflicts.isEmpty)
@@ -142,6 +146,8 @@ final class DevSyncStateStoreTests: XCTestCase {
         XCTAssertTrue(records.isEmpty)
         XCTAssertNil(baseline)
         XCTAssertTrue(operations.isEmpty)
+        XCTAssertTrue(openOperations.isEmpty)
+        XCTAssertNil(operation)
     }
 
     func testScenario81CorruptProjectsMoveAsideAndRecoverFromBackup() async throws {
@@ -158,6 +164,71 @@ final class DevSyncStateStoreTests: XCTestCase {
         XCTAssertEqual(loadedProjects, [project])
         let issues = await store.issues
         XCTAssertTrue(issues.contains { $0.document == "projects.json" && $0.recoveredFromBackup })
+        let corruptCopies = try fileManager.contentsOfDirectory(at: store.pairDirectory(pair.id), includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("projects.corrupt-") }
+        XCTAssertEqual(corruptCopies.count, 1)
+        XCTAssertEqual(permissions(at: corruptCopies[0]), 0o600)
+    }
+
+    func testScenario81CorruptOperationIsQuarantinedOnlyOnce() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let pair = makePair()
+        let operation = DevOperation(pairID: pair.id, projectID: nil, kind: .reconcile, plan: DevSyncPlan(pairID: pair.id))
+        try await store.saveOperation(operation)
+        let operationsDirectory = store.pairDirectory(pair.id).appendingPathComponent("operations", isDirectory: true)
+        let operationURL = operationsDirectory.appendingPathComponent("\(operation.id.uuidString).json")
+        try Data("not-json".utf8).write(to: operationURL, options: .atomic)
+
+        let firstLoad = await store.loadOperations(pairID: pair.id, limit: 10)
+        let firstIssues = await store.issues
+        let secondLoad = await store.loadOperations(pairID: pair.id, limit: 10)
+        let secondIssues = await store.issues
+
+        XCTAssertTrue(firstLoad.isEmpty)
+        XCTAssertTrue(secondLoad.isEmpty)
+        XCTAssertEqual(firstIssues.count, 1)
+        XCTAssertEqual(secondIssues.count, 1)
+        let corruptCopies = try fileManager.contentsOfDirectory(at: operationsDirectory, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("\(operation.id.uuidString).corrupt-") }
+        XCTAssertEqual(corruptCopies.count, 1)
+    }
+
+    func testScenario81StateStoreNeverReadsThroughSymlinkedPairDirectory() async throws {
+        let pair = makePair()
+        let project = DevProject(pairID: pair.id, relativePath: "outside", residency: .mirrored, kind: .gitRepository)
+        let outsideStore = DevSyncStateStore(rootURL: root.appendingPathComponent("outside-store", isDirectory: true))
+        try await outsideStore.saveProjects([project], pairID: pair.id)
+        let storeRoot = root.appendingPathComponent("store", isDirectory: true)
+        try fileManager.createDirectory(at: storeRoot, withIntermediateDirectories: true)
+        try fileManager.createSymbolicLink(
+            at: storeRoot.appendingPathComponent(pair.id.uuidString, isDirectory: true),
+            withDestinationURL: outsideStore.pairDirectory(pair.id)
+        )
+        let store = DevSyncStateStore(rootURL: storeRoot)
+
+        let loadedProjects = await store.loadProjects(pairID: pair.id)
+
+        XCTAssertTrue(loadedProjects.isEmpty)
+        do {
+            try await store.saveProjects([], pairID: pair.id)
+            XCTFail("Expected a symbolic link write to fail")
+        } catch {}
+        let outsideProjects = await outsideStore.loadProjects(pairID: pair.id)
+        XCTAssertEqual(outsideProjects, [project])
+    }
+
+    func testScenario81UnrecoverableCorruptProjectsReturnEmpty() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let pair = makePair()
+        try await store.saveProjects([], pairID: pair.id)
+        let projectsURL = store.pairDirectory(pair.id).appendingPathComponent("projects.json")
+        try Data("not-json".utf8).write(to: projectsURL, options: .atomic)
+
+        let loadedProjects = await store.loadProjects(pairID: pair.id)
+
+        XCTAssertTrue(loadedProjects.isEmpty)
+        let issues = await store.issues
+        XCTAssertTrue(issues.contains { $0.document == "projects.json" && !$0.recoveredFromBackup })
         let corruptCopies = try fileManager.contentsOfDirectory(at: store.pairDirectory(pair.id), includingPropertiesForKeys: nil)
             .filter { $0.lastPathComponent.hasPrefix("projects.corrupt-") }
         XCTAssertEqual(corruptCopies.count, 1)
@@ -183,6 +254,8 @@ final class DevSyncStateStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded?.entries.count, 100_000)
         XCTAssertLessThan(elapsed, 4)
+        let baselineURL = store.pairDirectory(pair.id).appendingPathComponent("baselines/\(projectID.uuidString).json")
+        XCTAssertFalse(try Data(contentsOf: baselineURL).contains(0x0A))
     }
 
     func testBackupsKeepOnlyNewestFive() async throws {
@@ -199,16 +272,35 @@ final class DevSyncStateStoreTests: XCTestCase {
         XCTAssertEqual(backups.count, 5)
     }
 
-    func testScenario49BackupsContainMetadataButNeverBaselines() async throws {
+    func testRestoreLatestBackupReplacesCurrentMetadata() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let pair = makePair()
+        let backedUpProject = DevProject(pairID: pair.id, relativePath: "backed-up", residency: .mirrored, kind: .gitRepository)
+        let currentProject = DevProject(pairID: pair.id, relativePath: "current", residency: .mirrored, kind: .gitRepository)
+        try await store.saveProjects([backedUpProject], pairID: pair.id)
+        _ = try await store.backup(pairID: pair.id)
+        try await store.saveProjects([currentProject], pairID: pair.id)
+
+        let restored = try await store.restoreLatestBackup(pairID: pair.id)
+
+        XCTAssertTrue(restored)
+        let projects = await store.loadProjects(pairID: pair.id)
+        XCTAssertEqual(projects, [backedUpProject])
+    }
+
+    func testBackupsContainMetadataButNeverBaselines() async throws {
         let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
         let pair = makePair()
         let projectID = UUID()
+        let operation = DevOperation(pairID: pair.id, projectID: projectID, kind: .reconcile, plan: DevSyncPlan(pairID: pair.id, projectID: projectID))
         try await store.saveProjects([], pairID: pair.id)
         try await store.saveBaseline(DevBaseline(projectID: projectID), pairID: pair.id)
+        try await store.saveOperation(operation)
 
         let backup = try await store.backup(pairID: pair.id)
 
         XCTAssertTrue(fileManager.fileExists(atPath: backup.appendingPathComponent("projects.json").path))
+        XCTAssertTrue(fileManager.fileExists(atPath: backup.appendingPathComponent("operations/\(operation.id.uuidString).json").path))
         XCTAssertFalse(fileManager.fileExists(atPath: backup.appendingPathComponent("baselines").path))
     }
 
@@ -237,6 +329,68 @@ final class DevSyncStateStoreTests: XCTestCase {
         XCTAssertEqual(openOperations.count, 1)
     }
 
+    func testOperationsLoadNewestFirstAndCanBeDeleted() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let pair = makePair()
+        var oldOperation = DevOperation(pairID: pair.id, projectID: nil, kind: .reconcile, plan: DevSyncPlan(pairID: pair.id))
+        oldOperation.state = .committed
+        oldOperation.updatedAt = Date(timeIntervalSince1970: 100)
+        var newOperation = DevOperation(pairID: pair.id, projectID: nil, kind: .reconcile, plan: DevSyncPlan(pairID: pair.id))
+        newOperation.state = .verifying
+        newOperation.updatedAt = Date(timeIntervalSince1970: 200)
+        try await store.saveOperation(oldOperation)
+        try await store.saveOperation(newOperation)
+
+        let newest = await store.loadOperations(pairID: pair.id, limit: 1)
+        let open = await store.loadOpenOperations(pairID: pair.id)
+        XCTAssertEqual(newest, [newOperation])
+        XCTAssertEqual(open, [newOperation])
+
+        try await store.deleteOperation(id: newOperation.id, pairID: pair.id)
+        let deleted = await store.loadOperation(id: newOperation.id, pairID: pair.id)
+        XCTAssertNil(deleted)
+    }
+
+    func testBaselineCanBeDeleted() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let pair = makePair()
+        let baseline = DevBaseline(projectID: UUID())
+        try await store.saveBaseline(baseline, pairID: pair.id)
+
+        try await store.deleteBaseline(projectID: baseline.projectID, pairID: pair.id)
+
+        let deleted = await store.loadBaseline(projectID: baseline.projectID, pairID: pair.id)
+        XCTAssertNil(deleted)
+    }
+
+    func testRemovePairDeletesOnlyTheSelectedPairDirectory() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let firstPair = makePair()
+        let secondPair = makePair()
+        try await store.saveProjects([], pairID: firstPair.id)
+        try await store.saveProjects([], pairID: secondPair.id)
+
+        try await store.removePair(firstPair.id)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: store.pairDirectory(firstPair.id).path))
+        XCTAssertTrue(fileManager.fileExists(atPath: store.pairDirectory(secondPair.id).path))
+    }
+
+    func testStateDocumentsAndDirectoriesUseRestrictivePermissions() async throws {
+        let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
+        let pair = makePair()
+        try await store.savePairs([pair])
+        try await store.saveProjects([], pairID: pair.id)
+
+        let pairsURL = store.rootURL.appendingPathComponent("pairs.json")
+        let pairDirectory = store.pairDirectory(pair.id)
+        let projectsURL = pairDirectory.appendingPathComponent("projects.json")
+        XCTAssertEqual(permissions(at: store.rootURL), 0o700)
+        XCTAssertEqual(permissions(at: pairDirectory), 0o700)
+        XCTAssertEqual(permissions(at: pairsURL), 0o600)
+        XCTAssertEqual(permissions(at: projectsURL), 0o600)
+    }
+
     private func makePair() -> DevSyncPair {
         DevSyncPair(
             displayName: "DevSSD",
@@ -256,5 +410,10 @@ final class DevSyncStateStoreTests: XCTestCase {
                 fileSystemType: "apfs"
             )
         )
+    }
+
+    private func permissions(at url: URL) -> Int? {
+        let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+        return (attributes?[.posixPermissions] as? NSNumber)?.intValue
     }
 }

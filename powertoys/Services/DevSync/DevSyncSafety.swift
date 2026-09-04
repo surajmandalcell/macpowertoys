@@ -28,6 +28,8 @@ nonisolated enum DevSafetyError: Error, Equatable, Sendable {
 }
 
 actor DevSafetyStore {
+    nonisolated private static let secondsPerDay: TimeInterval = 86_400
+
     nonisolated let pair: DevSyncPair
     nonisolated let stateStore: DevSyncStateStore
     private let fileManager = FileManager.default
@@ -35,6 +37,15 @@ actor DevSafetyStore {
     init(pair: DevSyncPair, stateStore: DevSyncStateStore) {
         self.pair = pair
         self.stateStore = stateStore
+    }
+
+    nonisolated static func retentionPriority(for kind: DevSafetyRecordKind) -> Int {
+        switch kind {
+        case .staging: 0
+        case .overwritten: 1
+        case .deleted, .projectRetired: 2
+        case .conflictCopy: 3
+        }
     }
 
     nonisolated func systemRoot(for side: DevSyncSide) -> URL {
@@ -85,6 +96,7 @@ actor DevSafetyStore {
         let probe = root.appendingPathComponent(".cloudsync-availability-\(UUID().uuidString)")
         do {
             try Data().write(to: probe, options: .atomic)
+            try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: probe.path)
             try fileManager.removeItem(at: probe)
             return true
         } catch {
@@ -114,26 +126,16 @@ actor DevSafetyStore {
         retainDays: Int
     ) async throws -> DevSafetyRecord {
         let source = try validateSource(fileURL, side: side, relativePath: relativePath)
-        let history = try backupDirectory(side: side, operationID: operationID)
-        let destination = try uniqueDestination(history.appendingPathComponent(relativePath))
-        try createDirectory(destination.deletingLastPathComponent(), below: history)
-        try ensureSameVolume(source, destinationParent: destination.deletingLastPathComponent())
-        let bytes = try byteCount(source)
-        try fileManager.moveItem(at: source, to: destination)
-        try restrictPermissions(destination)
-        let safetyRecord = DevSafetyRecord(
-            operationID: operationID,
-            projectID: projectID,
-            kind: .deleted,
+        return try await retainByMoving(
+            source,
             side: side,
-            originalRelativePath: relativePath,
-            safetyPath: destination.path,
-            bytes: bytes,
-            createdAt: now,
-            expiresAt: expiry(from: now, days: retainDays)
+            relativePath: relativePath,
+            projectID: projectID,
+            operationID: operationID,
+            kind: .deleted,
+            now: now,
+            retainDays: retainDays
         )
-        try await record(safetyRecord)
-        return safetyRecord
     }
 
     func retainConflictCopy(
@@ -153,7 +155,6 @@ actor DevSafetyStore {
         try createDirectory(destination.deletingLastPathComponent(), below: conflicts)
         let bytes = try byteCount(source)
         try fileManager.copyItem(at: source, to: destination)
-        try restrictPermissions(destination)
         let safetyRecord = DevSafetyRecord(
             operationID: conflictID,
             projectID: projectID,
@@ -165,8 +166,14 @@ actor DevSafetyStore {
             createdAt: Date(),
             expiresAt: nil
         )
-        try await record(safetyRecord)
-        return safetyRecord
+        do {
+            try restrictPermissions(destination)
+            try await record(safetyRecord)
+            return safetyRecord
+        } catch {
+            try? fileManager.removeItem(at: destination)
+            throw error
+        }
     }
 
     func retireProject(
@@ -179,18 +186,37 @@ actor DevSafetyStore {
     ) async throws -> DevSafetyRecord {
         let source = try validateSource(projectURL, side: side, relativePath: relativePath)
         guard isDirectory(source) else { throw DevSafetyError.notDirectory }
+        return try await retainByMoving(
+            source,
+            side: side,
+            relativePath: relativePath,
+            projectID: projectID,
+            operationID: operationID,
+            kind: .projectRetired,
+            now: Date(),
+            retainDays: retainDays
+        )
+    }
+
+    private func retainByMoving(
+        _ source: URL,
+        side: DevSyncSide,
+        relativePath: String,
+        projectID: UUID?,
+        operationID: UUID,
+        kind: DevSafetyRecordKind,
+        now: Date,
+        retainDays: Int
+    ) async throws -> DevSafetyRecord {
         let history = try backupDirectory(side: side, operationID: operationID)
         let destination = try uniqueDestination(history.appendingPathComponent(relativePath))
         try createDirectory(destination.deletingLastPathComponent(), below: history)
         try ensureSameVolume(source, destinationParent: destination.deletingLastPathComponent())
         let bytes = try byteCount(source)
-        try fileManager.moveItem(at: source, to: destination)
-        try restrictPermissions(destination)
-        let now = Date()
         let safetyRecord = DevSafetyRecord(
             operationID: operationID,
             projectID: projectID,
-            kind: .projectRetired,
+            kind: kind,
             side: side,
             originalRelativePath: relativePath,
             safetyPath: destination.path,
@@ -199,13 +225,27 @@ actor DevSafetyStore {
             expiresAt: expiry(from: now, days: retainDays)
         )
         try await record(safetyRecord)
-        return safetyRecord
+        do {
+            try Task.checkCancellation()
+            try moveItem(at: source, to: destination)
+            try restrictPermissions(destination)
+            return safetyRecord
+        } catch {
+            if !pathExists(source) {
+                try? fileManager.moveItem(at: destination, to: source)
+            }
+            try? await stateStore.applySafetyRecordChanges(
+                pairID: pair.id,
+                removing: [safetyRecord.id],
+                expirations: [:]
+            )
+            throw error
+        }
     }
 
     func record(_ record: DevSafetyRecord) async throws {
-        var records = await stateStore.loadSafetyRecords(pairID: pair.id)
-        records.append(record)
-        try await stateStore.saveSafetyRecords(records, pairID: pair.id)
+        try Task.checkCancellation()
+        try await stateStore.appendSafetyRecord(record, pairID: pair.id)
     }
 
     func usageBytes(side: DevSyncSide) -> Int64 {
@@ -218,35 +258,38 @@ actor DevSafetyStore {
         unresolvedConflictIDs: Set<UUID>,
         openOperationIDs: Set<UUID>
     ) async throws -> DevRetentionResult {
-        let records = await stateStore.loadSafetyRecords(pairID: pair.id)
-        var kept = records
+        try Task.checkCancellation()
+        var records = await stateStore.loadSafetyRecords(pairID: pair.id)
         var removedRecordIDs = Set<UUID>()
         var skippedUnresolvedIDs = Set<UUID>()
         var skippedOpenOperationIDs = Set<UUID>()
+        var expirationUpdates: [UUID: Date] = [:]
         var removedBytes: Int64 = 0
 
-        let groups: [[DevSafetyRecord]] = [
-            records.filter { $0.kind == .staging },
-            records.filter { $0.kind == .overwritten },
-            records.filter { $0.kind == .deleted || $0.kind == .projectRetired },
-            records.filter { $0.kind == .conflictCopy }
-        ]
+        for index in records.indices where records[index].kind == .conflictCopy && records[index].expiresAt == nil {
+            try Task.checkCancellation()
+            let record = records[index]
+            guard !isUnresolvedConflict(record, IDs: unresolvedConflictIDs),
+                  !openOperationIDs.contains(record.operationID) else { continue }
+            let expiration = expiry(from: now, days: safety.retainResolvedConflictsDays)
+            records[index].expiresAt = expiration
+            expirationUpdates[record.id] = expiration
+        }
 
-        for group in groups {
-            for record in group.sorted(by: retentionOrder) {
-                guard !removedRecordIDs.contains(record.id), isExpired(record, now: now, safety: safety) else { continue }
-                if isUnresolvedConflict(record, IDs: unresolvedConflictIDs) {
-                    skippedUnresolvedIDs.insert(record.id)
-                    continue
-                }
-                if openOperationIDs.contains(record.operationID) {
-                    skippedOpenOperationIDs.insert(record.id)
-                    continue
-                }
-                if let bytes = try removeSafetyPath(record, side: record.side) {
-                    removedBytes += bytes
-                    removedRecordIDs.insert(record.id)
-                }
+        for record in records.sorted(by: cleanupOrder) {
+            try Task.checkCancellation()
+            guard isExpired(record, now: now) else { continue }
+            if isUnresolvedConflict(record, IDs: unresolvedConflictIDs) {
+                skippedUnresolvedIDs.insert(record.id)
+                continue
+            }
+            if openOperationIDs.contains(record.operationID) {
+                skippedOpenOperationIDs.insert(record.id)
+                continue
+            }
+            if let bytes = try removeSafetyPath(record) {
+                removedBytes += bytes
+                removedRecordIDs.insert(record.id)
             }
         }
 
@@ -256,6 +299,7 @@ actor DevSafetyStore {
                 .filter { !removedRecordIDs.contains($0.id) }
                 .sorted(by: retentionOrder)
             for record in candidates where currentUsage > maximum {
+                try Task.checkCancellation()
                 if isUnresolvedConflict(record, IDs: unresolvedConflictIDs) {
                     skippedUnresolvedIDs.insert(record.id)
                     continue
@@ -264,7 +308,7 @@ actor DevSafetyStore {
                     skippedOpenOperationIDs.insert(record.id)
                     continue
                 }
-                if let bytes = try removeSafetyPath(record, side: record.side) {
+                if let bytes = try removeSafetyPath(record) {
                     removedBytes += bytes
                     currentUsage = max(0, currentUsage - bytes)
                     removedRecordIDs.insert(record.id)
@@ -272,9 +316,12 @@ actor DevSafetyStore {
             }
         }
 
-        if !removedRecordIDs.isEmpty {
-            kept.removeAll { removedRecordIDs.contains($0.id) }
-            try await stateStore.saveSafetyRecords(kept, pairID: pair.id)
+        if !removedRecordIDs.isEmpty || !expirationUpdates.isEmpty {
+            try await stateStore.applySafetyRecordChanges(
+                pairID: pair.id,
+                removing: removedRecordIDs,
+                expirations: expirationUpdates
+            )
         }
 
         return DevRetentionResult(
@@ -288,11 +335,16 @@ actor DevSafetyStore {
     func cleanStalePartials(openOperationIDs: Set<UUID>) async throws -> Int {
         var removed = 0
         for side in DevSyncSide.allCases {
-            guard let partial = try? partialDirectory(side: side),
-                  let entries = try? fileManager.contentsOfDirectory(at: partial, includingPropertiesForKeys: nil) else {
+            try Task.checkCancellation()
+            let partial: URL
+            do {
+                partial = try partialDirectory(side: side)
+            } catch DevSafetyError.unavailable {
                 continue
             }
+            let entries = try fileManager.contentsOfDirectory(at: partial, includingPropertiesForKeys: nil)
             for entry in entries {
+                try Task.checkCancellation()
                 if let operationID = UUID(uuidString: entry.lastPathComponent), openOperationIDs.contains(operationID) {
                     continue
                 }
@@ -316,6 +368,7 @@ actor DevSafetyStore {
         guard !hasSymbolicLinkBelowRoot(source.deletingLastPathComponent(), root: root) else {
             throw DevSafetyError.symbolicLink
         }
+        guard !isSymbolicLink(source) else { throw DevSafetyError.symbolicLink }
         guard pathExists(source) else { throw DevSafetyError.sourceMissing }
         return source
     }
@@ -348,6 +401,7 @@ actor DevSafetyStore {
         var destination = base
         var suffix = 1
         while pathExists(destination) {
+            try Task.checkCancellation()
             destination = base.deletingLastPathComponent()
                 .appendingPathComponent("\(base.lastPathComponent)-\(suffix)")
             suffix += 1
@@ -362,11 +416,26 @@ actor DevSafetyStore {
         guard sourceDevice == destinationDevice else { throw DevSafetyError.crossVolumeMove }
     }
 
+    private func moveItem(at source: URL, to destination: URL) throws {
+        do {
+            try fileManager.moveItem(at: source, to: destination)
+        } catch {
+            let failure = error as NSError
+            let underlying = failure.userInfo[NSUnderlyingErrorKey] as? NSError
+            if (failure.domain == NSPOSIXErrorDomain && failure.code == Int(EXDEV))
+                || (underlying?.domain == NSPOSIXErrorDomain && underlying?.code == Int(EXDEV)) {
+                throw DevSafetyError.crossVolumeMove
+            }
+            throw error
+        }
+    }
+
     private func expiry(from date: Date, days: Int) -> Date {
-        date.addingTimeInterval(TimeInterval(max(0, days)) * 86_400)
+        date.addingTimeInterval(TimeInterval(max(0, days)) * Self.secondsPerDay)
     }
 
     private func byteCount(_ url: URL) throws -> Int64 {
+        try Task.checkCancellation()
         guard let info = fileInfo(url) else { throw DevSafetyError.sourceMissing }
         if isDirectory(info.st_mode) {
             guard let children = try? fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else {
@@ -391,6 +460,7 @@ actor DevSafetyStore {
     }
 
     private func restrictPermissions(_ url: URL) throws {
+        try Task.checkCancellation()
         guard let info = fileInfo(url), !isSymbolicLink(url) else { return }
         let permissions: Int = isDirectory(info.st_mode) ? 0o700 : 0o600
         try fileManager.setAttributes([.posixPermissions: permissions], ofItemAtPath: url.path)
@@ -401,45 +471,69 @@ actor DevSafetyStore {
         }
     }
 
-    private func removeSafetyPath(_ record: DevSafetyRecord, side: DevSyncSide) throws -> Int64? {
-        guard let url = safetyURL(record.safetyPath, side: side) else { return nil }
+    private func removeSafetyPath(_ record: DevSafetyRecord) throws -> Int64? {
+        guard let url = safetyURL(for: record) else { return nil }
         guard pathExists(url) else { return 0 }
         let bytes = byteCountIfPresent(url)
         try fileManager.removeItem(at: url)
         return bytes
     }
 
-    private func safetyURL(_ path: String, side: DevSyncSide) -> URL? {
-        let root = systemRoot(for: side).standardizedFileURL
-        let candidate = path.hasPrefix("/")
-            ? URL(fileURLWithPath: path).standardizedFileURL
-            : root.appendingPathComponent(path).standardizedFileURL
-        guard isWithin(candidate, root: root), !hasSymbolicLinkBelowRoot(candidate, root: root) else { return nil }
+    private func safetyURL(for record: DevSafetyRecord) -> URL? {
+        let root = systemRoot(for: record.side).standardizedFileURL
+        let candidate = record.safetyPath.hasPrefix("/")
+            ? URL(fileURLWithPath: record.safetyPath).standardizedFileURL
+            : root.appendingPathComponent(record.safetyPath).standardizedFileURL
+        let recordRoot: URL
+        switch record.kind {
+        case .staging:
+            recordRoot = root
+                .appendingPathComponent(DevSafetyDirectory.staging.rawValue, isDirectory: true)
+                .appendingPathComponent(record.operationID.uuidString, isDirectory: true)
+        case .overwritten, .deleted, .projectRetired:
+            recordRoot = root
+                .appendingPathComponent(DevSafetyDirectory.history.rawValue, isDirectory: true)
+                .appendingPathComponent(record.operationID.uuidString, isDirectory: true)
+        case .conflictCopy:
+            recordRoot = root
+                .appendingPathComponent(DevSafetyDirectory.conflicts.rawValue, isDirectory: true)
+                .appendingPathComponent(record.operationID.uuidString, isDirectory: true)
+                .appendingPathComponent(record.side.rawValue, isDirectory: true)
+        }
+        guard isWithin(candidate, root: recordRoot),
+              record.kind == .staging || candidate != recordRoot,
+              record.kind == .staging || matchesRecordedPath(candidate, record: record, root: recordRoot),
+              !hasSymbolicLinkBelowRoot(candidate, root: root) else { return nil }
         return candidate
     }
 
-    private func isExpired(_ record: DevSafetyRecord, now: Date, safety: DevSyncConfiguration.Safety) -> Bool {
-        if record.kind == .conflictCopy {
-            return (record.expiresAt ?? record.createdAt.addingTimeInterval(TimeInterval(max(0, safety.retainResolvedConflictsDays)) * 86_400)) <= now
-        }
+    private func matchesRecordedPath(_ candidate: URL, record: DevSafetyRecord, root: URL) -> Bool {
+        guard DevRelativePath.isSafe(record.originalRelativePath) else { return false }
+        let expected = root.appendingPathComponent(record.originalRelativePath).standardizedFileURL
+        guard candidate.deletingLastPathComponent() == expected.deletingLastPathComponent() else { return false }
+        if candidate == expected { return true }
+        let prefix = expected.lastPathComponent + "-"
+        return candidate.lastPathComponent.hasPrefix(prefix)
+            && Int(candidate.lastPathComponent.dropFirst(prefix.count)).map { $0 > 0 } == true
+    }
+
+    private func isExpired(_ record: DevSafetyRecord, now: Date) -> Bool {
         return record.expiresAt.map { $0 <= now } ?? false
     }
 
     private func isUnresolvedConflict(_ record: DevSafetyRecord, IDs: Set<UUID>) -> Bool {
-        guard record.kind == .conflictCopy else { return false }
-        if IDs.contains(record.operationID) { return true }
-        let components = URL(fileURLWithPath: record.safetyPath).pathComponents
-        guard let index = components.lastIndex(of: DevSafetyDirectory.conflicts.rawValue),
-              components.indices.contains(index + 1),
-              let conflictID = UUID(uuidString: components[index + 1]) else {
-            return false
-        }
-        return IDs.contains(conflictID)
+        record.kind == .conflictCopy && IDs.contains(record.operationID)
     }
 
     private func retentionOrder(_ lhs: DevSafetyRecord, _ rhs: DevSafetyRecord) -> Bool {
         if lhs.createdAt != rhs.createdAt { return lhs.createdAt < rhs.createdAt }
         return lhs.id.uuidString < rhs.id.uuidString
+    }
+
+    private func cleanupOrder(_ lhs: DevSafetyRecord, _ rhs: DevSafetyRecord) -> Bool {
+        let lhsPriority = Self.retentionPriority(for: lhs.kind)
+        let rhsPriority = Self.retentionPriority(for: rhs.kind)
+        return lhsPriority == rhsPriority ? retentionOrder(lhs, rhs) : lhsPriority < rhsPriority
     }
 
     private func pathExists(_ url: URL) -> Bool {
