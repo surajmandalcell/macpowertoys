@@ -386,13 +386,19 @@ actor DevDirtyScheduler {
             if generation.paths == nil {
                 generation.requiresFullScan = true
             }
-            pending[projectID] = Pending(generation: generation, eventSamples: [], dueNow: false)
+            pending[projectID] = Pending(
+                generation: generation,
+                eventSamples: [],
+                dueNow: generation.reason == .userRequested
+            )
             return
         }
 
         item.generation.firstEventAt = min(item.generation.firstEventAt, generation.firstEventAt)
         item.generation.lastEventAt = max(item.generation.lastEventAt, generation.lastEventAt)
-        item.generation.reason = generation.reason
+        if generation.reason == .userRequested || item.generation.reason != .userRequested {
+            item.generation.reason = generation.reason
+        }
         item.generation.requiresFullScan = item.generation.requiresFullScan || generation.requiresFullScan
         if item.generation.side != generation.side {
             item.generation.paths = nil
@@ -405,6 +411,7 @@ actor DevDirtyScheduler {
         } else {
             item.generation.paths = nil
         }
+        item.dueNow = item.dueNow || generation.reason == .userRequested
         pending[projectID] = item
     }
 
