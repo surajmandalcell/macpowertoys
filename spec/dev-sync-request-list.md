@@ -1,35 +1,36 @@
 # Dev Sync Request List
 
-Reviewed against `spec/cloud-sync-dev-sync-spec.md` on 2026-09-05. Update a
-status only after checking current source and, for visible behavior, the
-latest normal signed build. Scenario numbers refer to the scenario catalog in
-the spec.
+Reviewed against `spec/cloud-sync-dev-sync-spec.md` and current source on
+2026-09-05. Update a status only after checking current source and, for
+visible behavior, the latest normal signed build. Scenario numbers refer to
+the scenario catalog in the spec. The complete unit suite passed 827 tests
+with zero failures on the integrated tree at `24be686`.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Open | Add Dev One-Way and Dev Bidirectional as explicit Cloud Sync destinations. | None yet. | Sidebar row, page, and setup sheet. |
-| Open | Keep existing Copy, Sync, and Move transfers unchanged. | None yet. | Separate state store; no migration; regression on the 543-test suite. |
-| Open | Show a mandatory first-run preview before any mutation. | None yet. | Preview step with counts, bytes, conflicts, warnings, and a literal primary action. |
-| Open | Use Git as the source of truth for ignore rules. | None yet. | `git ls-files -z` manifests and `git check-ignore --stdin -z` with `GIT_OPTIONAL_LOCKS=0`. |
-| Open | Include ignored sensitive files by default. | None yet. | Sensitive override with size guard and unencrypted-drive warning (scenarios 25, 61). |
-| Open | Copy Git administration data with active-lock safety. | None yet. | Lock detection and deferred `.git` batch (scenario 26). |
-| Open | Debounce FSEvents and collapse event storms. | None yet. | Sliding debounce, checkpoint, and storm thresholds (scenarios 22, 23, 24, 83). |
-| Open | Never start one `rsync` per path. | None yet. | Manifest batches; one mutation per external volume (scenario 86). |
-| Open | Give external-only projects managed internal links. | None yet. | Link creation, validation, repair, adoption, and removal (scenarios 2, 6, 55, 66, 67, 68). |
-| Open | Never follow managed links during scanning or transfer. | None yet. | `lstat` discovery and manifest rejection of link traversal. |
-| Open | Survive mount-path changes through volume identity. | None yet. | UUID identity and link text repair (scenario 55). |
-| Open | Block transfer on a wrong volume. | None yet. | Identity mismatch state (scenario 54). |
-| Open | Use a stored baseline for bidirectional decisions. | None yet. | Per-project baseline documents and the bidirectional decision table. |
-| Open | Turn simultaneous changes into conflicts. | None yet. | Conflict store, conflict cards, and six resolutions (scenario 27). |
-| Open | Require a complete healthy scan before any deletion. | None yet. | Incomplete-scan and offline-root deletion guards (scenarios 53, 62). |
-| Open | Never propagate whole-project deletion automatically. | None yet. | Residency conversion and project-level decision (scenarios 7, 8). |
-| Open | Retain every destructive change. | None yet. | `--backup-dir` overwrites, same-volume delete moves, retention cleanup (scenarios 31, 49, 65). |
-| Open | Never advance an unverified baseline after interruption. | None yet. | Operation journal and crash recovery (scenarios 53, 79, 80). |
-| Open | Block affected projects on case and Unicode collisions. | None yet. | Collision detector (scenarios 35, 36). |
-| Open | Let file-system capabilities control metadata flags. | None yet. | Volume probe, `rsync` probe, and fidelity levels (scenarios 42, 43, 59, 60, 75, 76). |
-| Open | Never build a shell command string. | None yet. | `Process` with argument arrays; source audit for `/bin/sh`. |
-| Open | Pass unusual names through NUL manifests. | None yet. | `--files-from=- -0` and the path matrix (scenarios 37, 38). |
-| Open | Probe `rsync` capabilities instead of assuming them. | None yet. | Capability record and self-test. |
-| Open | Pass the failure and acceptance matrices. | None yet. | Tests named by scenario number. |
-| Open | Distinguish mirrored and external-resident projects in the UI. | None yet. | Residency badges and Open Real Location. |
-| Open | Explain how to add a file policy or an `rsync` capability without changing reconciliation. | None yet. | `docs/DEV_SYNC.md`. |
+| Verify | Add Dev One-Way and Dev Bidirectional as explicit Cloud Sync destinations. | `b1dc6bc` adds the `Dev Sync` sidebar row with an attention badge, the `.devSync` route, the pair page, the six-step setup sheet, project rows, conflict cards, and the pair settings page. `DevSyncMode` carries the exact spec copy. 17 interface tests pass. | Open the sidebar row, the empty state, and the setup sheet in the installed build. |
+| Verify | Keep existing Copy, Sync, and Move transfers unchanged. | Dev Sync uses its own `DevSync/` state directory, its own `rsync` process, and joins the Cloud Sync runtime-need predicate only through `hasActivePairs` (`9efc61d`). All 543 pre-existing tests still pass inside the 827-test suite. | Confirm an existing transfer row and the Activity ledger are unchanged in the installed build. |
+| Verify | Show a mandatory first-run preview before any mutation. | `DevSyncService.preview` runs discovery, policy, scans, and both planners on an in-memory pair; service tests assert directory listings are identical before and after. `createPair` requires `scanComplete` and the approved preview. The Preview step titles its primary action from `DevPlanSummary.primaryActionTitle`. | Run a first-run preview on a disposable pair in the installed build. |
+| Done | Use Git as the source of truth for ignore rules. | `DevGit.workingTreeManifest` uses `git ls-files -z --cached --others --exclude-standard` including initialized submodules; `ignoredPaths` uses `git check-ignore --stdin -z`; every call sets `GIT_OPTIONAL_LOCKS=0`. 44 Git, discovery, and policy tests pass, including scenario 24. | None. |
+| Done | Include ignored sensitive files by default. | `DevFilePolicyEngine` applies the sensitive override above Git ignore with a size guard (scenario 25). `24be686` emits the unencrypted-drive warning. | None. |
+| Done | Copy Git administration data with active-lock safety. | `DevGit.activeLocks` and `isTransientGitPath` exclude transient locks; the engine defers the batch while a lock exists (scenario 26). | Hardening may narrow the deferral to Git metadata paths. |
+| Done | Debounce FSEvents and collapse event storms. | `DevDirtyScheduler` implements the sliding quiet window, checkpoint, storm collapse, path collapse, manual retries, and persisted generations (scenarios 22, 23, 24, 83, 86). 32 event and scanner tests pass. | None. |
+| Done | Never start one `rsync` per path. | Manifest batches per project; `DevVolumeMutationGate` serializes one mutation per external volume identifier; Sync Now merges into the next generation. | None. |
+| Done | Give external-only projects managed internal links. | `DevManagedLinkManager` creates, validates, repairs, adopts, and removes links (scenarios 2, 6, 55, 66, 67, 68). 16 link and residency tests pass. | None. |
+| Done | Never follow managed links during scanning or transfer. | Discovery and the scanner use `lstat` semantics and skip managed link paths; `DevRsyncTransfer.validateManifest` rejects link traversal and system paths. | None. |
+| Done | Survive mount-path changes through volume identity. | Roots store `uuid:` identifiers; `repair` rewrites link text only for the same volume (scenario 55). | None. |
+| Done | Block transfer on a wrong volume. | `DevSyncRoots.resolve` returns `identityMismatch`; the engine sets `.blocked` with a wrong-drive detail (scenario 54). | None. |
+| Done | Use a stored baseline for bidirectional decisions. | Per-project baseline documents load and save 100,000 entries in about 0.9 s; the planner implements every row of the bidirectional table. 89 planner tests pass. | None. |
+| Done | Turn simultaneous changes into conflicts. | Content, add/add, delete/modify, modify/delete, type, collision, identity, path, rename, and drift conflicts are planned with both signatures; conflict cards offer the six resolutions (scenario 27). | None. |
+| Done | Require a complete healthy scan before any deletion. | The planner emits deletions only when both scans are complete and both roots were available; incomplete scans set `deletionsAllowed = false` (property tests 3 and 5). | None. |
+| Done | Never propagate whole-project deletion automatically. | Missing internal projects convert to external-resident in Dev One-Way and wait for `decideMissingProject` in Dev Bidirectional (scenarios 7, 8). | None. |
+| Done | Retain every destructive change. | Overwrites use `--backup-dir`; deletions and retired projects move into history through `DevSafetyStore`; retention keeps unresolved conflicts and open operations (scenarios 31, 49, 65). 29 store and safety tests pass. | None. |
+| Done | Never advance an unverified baseline after interruption. | The operation runner commits only verified paths and marks interrupted operations recovery-required; `DevRecovery` inspects the journal at launch (scenarios 53, 79, 80). | None. |
+| Done | Block affected projects on case and Unicode collisions. | The scanner detects collisions from raw UTF-8 bytes before building its dictionary; the planner blocks the project (scenarios 35, 36). | None. |
+| Done | Let file-system capabilities control metadata flags. | `DevVolumeProbe` runs real round trips; `DevRsyncOptions.resolve` emits `-p`, `-X`, `-H`, and `--crtimes` only when proven (scenarios 42, 43, 59, 60, 75, 76). 23 roots and rsync tests pass. | None. |
+| Done | Never build a shell command string. | Every process uses `Process` with `executableURL` and an argument array; no `/bin/sh` appears in the Dev Sync sources. | None. |
+| Done | Pass unusual names through NUL manifests. | `--files-from=- -0` with sorted byte-order manifests; a real transfer of the path matrix through openrsync keeps names, symlinks, and executable bits (scenarios 37, 38). | None. |
+| Done | Probe `rsync` capabilities instead of assuming them. | `DevRsyncProbe` parses `--help`, runs a self-test, and records a fingerprint; the local openrsync rejects `-X` in the self-test, so xattrs are disabled by evidence. | None. |
+| Open | Pass the failure and acceptance matrices. | Scenario tests exist per module; the failure, file-system, Git, path, and scale matrices are in progress. | Land the hardening matrices and record the scale measurements. |
+| Verify | Distinguish mirrored and external-resident projects in the UI. | Project rows show residency and state badges with SF Symbols and text, plus Open Real Location. | Inspect the rows in the installed build. |
+| Done | Explain how to add a file policy or an `rsync` capability without changing reconciliation. | `docs/DEV_SYNC.md` (`d79127f`). | None. |
