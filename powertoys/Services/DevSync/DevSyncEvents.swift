@@ -206,9 +206,20 @@ nonisolated struct DevDirtyGeneration: Equatable, Sendable {
 actor DevDirtyScheduler {
     static let discoveryProjectID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
+    private struct EventGroup: Sendable {
+        var paths: Set<String> = []
+        var count = 0
+        var isUnknown = false
+    }
+
+    private struct EventSample: Sendable {
+        var date: Date
+        var count: Int
+    }
+
     private struct Pending: Sendable {
         var generation: DevDirtyGeneration
-        var eventTimes: [Date]
+        var eventSamples: [EventSample]
         var dueNow: Bool
     }
 
@@ -237,22 +248,32 @@ actor DevDirtyScheduler {
     ) {
         guard !relativePaths.isEmpty else { return }
         let eventDate = date ?? now()
+        var groups: [UUID: EventGroup] = [:]
 
         for relativePath in relativePaths {
-            let resolvedProject = projectResolver(relativePath)
+            guard !DevRelativePath.isCloudSyncSystemPath(relativePath) else { continue }
+            let resolvedProject = DevRelativePath.isSafe(relativePath) ? projectResolver(relativePath) : nil
             let projectID = resolvedProject ?? Self.discoveryProjectID
-            let reason: DevDirtyReason = resolvedProject == nil ? .unknownPath : .fileEvent
+            groups[projectID, default: EventGroup()].count += 1
+            if resolvedProject == nil {
+                groups[projectID]?.isUnknown = true
+            } else {
+                groups[projectID]?.paths.insert(relativePath)
+            }
+        }
+
+        for (projectID, group) in groups {
             var item = pending[projectID] ?? Pending(
                 generation: DevDirtyGeneration(
                     projectID: projectID,
                     side: side,
-                    paths: [],
+                    paths: group.isUnknown ? nil : group.paths,
                     firstEventAt: eventDate,
                     lastEventAt: eventDate,
-                    reason: reason,
-                    requiresFullScan: resolvedProject == nil
+                    reason: group.isUnknown ? .unknownPath : .fileEvent,
+                    requiresFullScan: group.isUnknown
                 ),
-                eventTimes: [],
+                eventSamples: [],
                 dueNow: false
             )
 
@@ -262,25 +283,24 @@ actor DevDirtyScheduler {
                 item.generation.paths = nil
                 item.generation.requiresFullScan = true
             }
-            if item.generation.paths != nil, resolvedProject != nil {
-                item.generation.paths?.insert(relativePath)
-            }
-            if resolvedProject == nil {
+            if group.isUnknown {
                 item.generation.paths = nil
                 item.generation.requiresFullScan = true
+            } else if item.generation.paths != nil {
+                item.generation.paths?.formUnion(group.paths)
             }
-            if reason == .unknownPath || item.generation.reason == .unknownPath {
-                item.generation.reason = reason
+            if item.generation.reason == .fileEvent || group.isUnknown {
+                item.generation.reason = group.isUnknown ? .unknownPath : .fileEvent
             }
-            item.eventTimes.append(eventDate)
-            item.eventTimes = recentEventTimes(item.eventTimes, relativeTo: eventDate)
-            if item.eventTimes.count > performance.eventStormThreshold {
+            if item.generation.paths != nil, recordEvents(group.count, at: eventDate, in: &item.eventSamples) {
                 item.generation.paths = nil
                 item.generation.requiresFullScan = true
+                item.eventSamples = []
             }
             if let paths = item.generation.paths, paths.count > performance.pathCollapseThreshold {
                 item.generation.paths = nil
                 item.generation.requiresFullScan = true
+                item.eventSamples = []
             }
             pending[projectID] = item
         }
@@ -299,7 +319,7 @@ actor DevDirtyScheduler {
                 reason: reason,
                 requiresFullScan: true
             ),
-            eventTimes: [],
+            eventSamples: [],
             dueNow: false
         )
         item.generation.firstEventAt = min(item.generation.firstEventAt, eventDate)
@@ -307,8 +327,7 @@ actor DevDirtyScheduler {
         item.generation.paths = nil
         item.generation.reason = reason
         item.generation.requiresFullScan = true
-        item.eventTimes.append(eventDate)
-        item.eventTimes = recentEventTimes(item.eventTimes, relativeTo: eventDate)
+        item.eventSamples = []
         pending[projectID] = item
     }
 
@@ -324,7 +343,7 @@ actor DevDirtyScheduler {
                 reason: reason,
                 requiresFullScan: true
             ),
-            eventTimes: [],
+            eventSamples: [],
             dueNow: true
         )
         item.generation.lastEventAt = max(item.generation.lastEventAt, eventDate)
@@ -367,7 +386,7 @@ actor DevDirtyScheduler {
             if generation.paths == nil {
                 generation.requiresFullScan = true
             }
-            pending[projectID] = Pending(generation: generation, eventTimes: [generation.firstEventAt, generation.lastEventAt], dueNow: false)
+            pending[projectID] = Pending(generation: generation, eventSamples: [], dueNow: false)
             return
         }
 
@@ -386,8 +405,6 @@ actor DevDirtyScheduler {
         } else {
             item.generation.paths = nil
         }
-        item.eventTimes.append(contentsOf: [generation.firstEventAt, generation.lastEventAt])
-        item.eventTimes = recentEventTimes(item.eventTimes, relativeTo: item.generation.lastEventAt)
         pending[projectID] = item
     }
 
@@ -419,32 +436,33 @@ actor DevDirtyScheduler {
 
     func importEntries(_ entries: [DevDirtyEntry]) {
         for entry in entries {
+            guard entry.relativePath.map({ !DevRelativePath.isCloudSyncSystemPath($0) }) ?? true else { continue }
             let projectID = entry.projectID ?? Self.discoveryProjectID
+            let relativePath = entry.relativePath.flatMap { DevRelativePath.isSafe($0) ? $0 : nil }
+            let requiresFullScan = entry.requiresFullScan || entry.relativePath != relativePath
             var item = pending[projectID] ?? Pending(
                 generation: DevDirtyGeneration(
                     projectID: projectID,
                     side: entry.side,
-                    paths: entry.relativePath.map { [$0] },
+                    paths: requiresFullScan ? nil : relativePath.map { [$0] },
                     firstEventAt: entry.firstEventAt,
                     lastEventAt: entry.lastEventAt,
                     reason: entry.reason,
-                    requiresFullScan: entry.requiresFullScan
+                    requiresFullScan: requiresFullScan
                 ),
-                eventTimes: [entry.firstEventAt, entry.lastEventAt],
+                eventSamples: [],
                 dueNow: entry.reason == .userRequested
             )
             item.generation.firstEventAt = min(item.generation.firstEventAt, entry.firstEventAt)
             item.generation.lastEventAt = max(item.generation.lastEventAt, entry.lastEventAt)
             item.generation.reason = entry.reason
-            item.generation.requiresFullScan = item.generation.requiresFullScan || entry.requiresFullScan
-            if item.generation.side != entry.side || entry.relativePath == nil {
+            item.generation.requiresFullScan = item.generation.requiresFullScan || requiresFullScan
+            if item.generation.side != entry.side || relativePath == nil {
                 item.generation.paths = nil
                 item.generation.requiresFullScan = true
-            } else {
-                item.generation.paths?.insert(entry.relativePath!)
+            } else if item.generation.paths != nil, let relativePath {
+                item.generation.paths?.insert(relativePath)
             }
-            item.eventTimes.append(contentsOf: [entry.firstEventAt, entry.lastEventAt])
-            item.eventTimes = recentEventTimes(item.eventTimes, relativeTo: item.generation.lastEventAt)
             item.dueNow = item.dueNow || entry.reason == .userRequested
             attemptCounts[projectID] = max(attemptCounts[projectID, default: 0], entry.attemptCount)
             pending[projectID] = item
@@ -479,9 +497,14 @@ actor DevDirtyScheduler {
         return dueDate
     }
 
-    private func recentEventTimes(_ dates: [Date], relativeTo date: Date) -> [Date] {
-        guard performance.eventStormWindowSeconds >= 0 else { return [] }
-        return dates.filter { abs($0.timeIntervalSince(date)) <= performance.eventStormWindowSeconds }
+    private func recordEvents(_ count: Int, at date: Date, in samples: inout [EventSample]) -> Bool {
+        guard performance.eventStormWindowSeconds >= 0 else { return false }
+        samples.removeAll { abs($0.date.timeIntervalSince(date)) > performance.eventStormWindowSeconds }
+        let currentCount = samples.reduce(0) { $0 + $1.count }
+        let threshold = max(0, performance.eventStormThreshold)
+        if count > threshold - currentCount { return true }
+        samples.append(EventSample(date: date, count: count))
+        return false
     }
 
     private func generationPrecedes(_ lhs: DevDirtyGeneration, _ rhs: DevDirtyGeneration) -> Bool {
