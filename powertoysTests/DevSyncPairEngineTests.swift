@@ -52,7 +52,7 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(operations.count, 0)
     }
 
-    func testScenario26GitLockDefersBatch() async throws {
+    func testScenario26GitLockDefersOnlyGitMetadata() async throws {
         let fixture = try await makeFixture(gitRepository: true)
         await fixture.engine.start()
         let lock = fixture.internalProject.appendingPathComponent(".git/index.lock")
@@ -63,9 +63,10 @@ final class DevSyncPairEngineTests: XCTestCase {
         await fixture.engine.noteEvents(side: .internal, relativePaths: ["app/source.swift"])
         try await waitUntil { await fixture.engine.projects().first?.state == .waitingForGit }
 
-        XCTAssertEqual(try Data(contentsOf: fixture.externalProject.appendingPathComponent("source.swift")), Data("source".utf8))
+        XCTAssertEqual(try Data(contentsOf: fixture.externalProject.appendingPathComponent("source.swift")), Data("locked change".utf8))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.externalProject.appendingPathComponent(".git/index.lock").path))
         let operations = await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20)
-        XCTAssertEqual(operations.count, 0)
+        XCTAssertEqual(operations.first?.state, .committed)
     }
 
     func testScenario29OneWayDriftNeverOverwritesAutomatically() async throws {
@@ -194,6 +195,25 @@ final class DevSyncPairEngineTests: XCTestCase {
 
         let records = await fixture.store.loadSafetyRecords(pairID: fixture.pair.id)
         XCTAssertFalse(records.contains { $0.id == expired.id })
+    }
+
+    func testScenario44VolatileFileWaitsForStableWindow() async throws {
+        let fixture = try await makeFixture(configure: { $0.timing.largeFileQuietSeconds = 0.2 })
+        await fixture.engine.start()
+        let source = fixture.internalProject.appendingPathComponent("active.sqlite")
+        try Data("first".utf8).write(to: source)
+
+        let unstablePreview = Task { await fixture.engine.previewProject(fixture.project.id) }
+        try await Task.sleep(for: .milliseconds(50))
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(" second".utf8))
+        try handle.close()
+        let deferredPlan = await unstablePreview.value
+
+        XCTAssertFalse(deferredPlan?.manifestToExternal.contains("active.sqlite") == true)
+        let settledPlan = await fixture.engine.previewProject(fixture.project.id)
+        XCTAssertTrue(settledPlan?.manifestToExternal.contains("active.sqlite") == true)
     }
 
     func testScenario84VolumeGateSerializesSameDriveAndParallelizesDistinctDrives() async {

@@ -689,15 +689,20 @@ actor DevSyncPairEngine {
             activeGeneration = nil
             return
         }
-        if output.projectState == .waitingForGit {
+        let hasExecutablePlan = output.plan.hasMutations || output.plan.actions.contains(where: { $0.kind == .establishBaseline })
+        if [.waitingForGit, .waitingForQuiet].contains(output.projectState), !hasExecutablePlan {
             await scheduler.requeue(generation)
             activeGeneration = nil
             return
         }
-        if output.plan.hasMutations || output.plan.actions.contains(where: { $0.kind == .establishBaseline }) {
+        if hasExecutablePlan {
             let kind: DevOperationKind = pair.hasCompletedFirstRun ? .reconcile : .firstRun
             let outcome = await run(plan: output.plan, output: output, project: project, kind: kind)
             await finish(generation: generation, project: project, outcome: outcome, output: output)
+            if [.waitingForGit, .waitingForQuiet].contains(output.projectState) {
+                updateProject(project.id, state: output.projectState, output: output, error: nil)
+                await scheduler.requeue(generation)
+            }
         } else {
             updateProject(project.id, state: output.projectState, output: output, error: nil)
             if output.projectState == .conflict {
@@ -718,13 +723,11 @@ actor DevSyncPairEngine {
               let internalRoot, let externalRoot else { return nil }
         let internalProject = internalRoot.appendingPathComponent(project.relativePath)
         let externalProject = externalRoot.appendingPathComponent(project.relativePath)
-        if project.kind != .nonGit {
-            let gitDirectory = internalProject.appendingPathComponent(project.topology?.gitDirectory ?? ".git")
-            if !DevGit.activeLocks(projectURL: internalProject, gitDirectory: gitDirectory).isEmpty {
-                updateProject(project.id, state: .waitingForGit, output: nil, error: nil)
-                return emptyOutput(plan: DevSyncPlan(pairID: pair.id, projectID: project.id), state: .waitingForGit)
-            }
-        }
+        let gitDirectoryRelativePath = project.topology?.gitDirectory ?? ".git"
+        let hasGitLock = project.kind != .nonGit && !DevGit.activeLocks(
+            projectURL: internalProject,
+            gitDirectory: internalProject.appendingPathComponent(gitDirectoryRelativePath)
+        ).isEmpty
         setPairState(.planning, detail: project.name)
         let baseline = await stateStore.loadBaseline(projectID: project.id, pairID: pair.id)
         let limited = fullScan ? nil : projectPaths(paths, project: project)
@@ -733,6 +736,14 @@ actor DevSyncPairEngine {
         async let externalScan = scan(projectURL: externalProject, project: project, policy: policy, baseline: baseline, limit: limited, hashPaths: [])
         var internalSnapshot = await internalScan
         var externalSnapshot = await externalScan
+        if hasGitLock {
+            internalSnapshot = deferringGitMetadata(internalSnapshot, baseline: baseline, gitDirectory: gitDirectoryRelativePath)
+            externalSnapshot = deferringGitMetadata(externalSnapshot, baseline: baseline, gitDirectory: gitDirectoryRelativePath)
+        }
+        async let unstableInternal = unstablePaths(projectURL: internalProject, project: project, snapshot: internalSnapshot, policy: policy)
+        async let unstableExternal = unstablePaths(projectURL: externalProject, project: project, snapshot: externalSnapshot, policy: policy)
+        let unstableSets = await (unstableInternal, unstableExternal)
+        let unstablePaths = unstableSets.0.union(unstableSets.1)
         let tombstones = await stateStore.loadTombstones(pairID: pair.id).filter { $0.projectID == project.id }
         let conflicts = conflictValues.filter { $0.projectID == project.id && $0.resolvedAt == nil }
         var output = DevReconciliationPlanner.plan(DevPlannerInput(
@@ -744,7 +755,7 @@ actor DevSyncPairEngine {
             tombstones: tombstones,
             unresolvedConflicts: conflicts,
             capabilities: capabilityValue,
-            unstablePaths: [],
+            unstablePaths: unstablePaths,
             now: now()
         ))
         if !output.needsHashes.isEmpty {
@@ -752,6 +763,10 @@ actor DevSyncPairEngine {
             async let hashedExternal = scan(projectURL: externalProject, project: project, policy: policy, baseline: baseline, limit: limited, hashPaths: output.needsHashes)
             internalSnapshot = await hashedInternal
             externalSnapshot = await hashedExternal
+            if hasGitLock {
+                internalSnapshot = deferringGitMetadata(internalSnapshot, baseline: baseline, gitDirectory: gitDirectoryRelativePath)
+                externalSnapshot = deferringGitMetadata(externalSnapshot, baseline: baseline, gitDirectory: gitDirectoryRelativePath)
+            }
             output = DevReconciliationPlanner.plan(DevPlannerInput(
                 pair: pair,
                 project: project,
@@ -761,11 +776,59 @@ actor DevSyncPairEngine {
                 tombstones: tombstones,
                 unresolvedConflicts: conflicts,
                 capabilities: capabilityValue,
-                unstablePaths: [],
+                unstablePaths: unstablePaths,
                 now: now()
             ))
         }
+        if hasGitLock { output.projectState = .waitingForGit }
         return output
+    }
+
+    private func deferringGitMetadata(
+        _ snapshot: DevSnapshot?,
+        baseline: DevBaseline?,
+        gitDirectory: String
+    ) -> DevSnapshot? {
+        guard var snapshot else { return nil }
+        let isGitPath: (String) -> Bool = { $0 == gitDirectory || $0.hasPrefix(gitDirectory + "/") }
+        snapshot.entries = snapshot.entries.filter { !isGitPath($0.key) }
+        snapshot.excluded = snapshot.excluded.filter { !isGitPath($0.key) }
+        for (path, entry) in baseline?.entries ?? [:] where isGitPath(path) {
+            snapshot.entries[path] = entry.signature
+        }
+        snapshot.collisions.removeAll { $0.contains(where: isGitPath) }
+        return snapshot
+    }
+
+    private func unstablePaths(
+        projectURL: URL,
+        project: DevProject,
+        snapshot: DevSnapshot?,
+        policy: DevFilePolicyEngine
+    ) async -> Set<String> {
+        guard let snapshot else { return [] }
+        let gitDirectory = project.topology?.gitDirectory
+        let stableWindow = pair.configuration.timing.largeFileQuietSeconds
+        return await withTaskGroup(of: String?.self, returning: Set<String>.self) { group in
+            for (path, signature) in snapshot.entries where signature.kind == .file {
+                let insideGit = gitDirectory.map { path == $0 || path.hasPrefix($0 + "/") } ?? false
+                let size = signature.size.flatMap(Int64.init(exactly:)) ?? Int64.max
+                let decision = policy.decide(relativePath: path, kind: .file, size: size, isInsideGitDirectory: insideGit)
+                guard decision.requiresStableWindow else { continue }
+                group.addTask {
+                    await DevSnapshotScanner.isStable(
+                        url: projectURL.appendingPathComponent(path),
+                        previous: signature,
+                        windowSeconds: stableWindow
+                    ) ? nil : path
+                }
+            }
+            var paths: Set<String> = []
+            for await path in group {
+                if let path { paths.insert(path) }
+            }
+            return paths
+        }
     }
 
     private func scan(
