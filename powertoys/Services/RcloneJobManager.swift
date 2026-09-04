@@ -199,7 +199,8 @@ final class RcloneJobManager {
         Self.needsRuntime(
             windowVisible: !windowOwners.isEmpty,
             jobs: jobs,
-            backgroundEnabled: UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch")
+            backgroundEnabled: UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch"),
+            hasActivePairs: DevSyncService.shared.hasActivePairs
         )
     }
 
@@ -220,9 +221,10 @@ final class RcloneJobManager {
     static func needsRuntime(
         windowVisible: Bool,
         jobs: [TransferJob],
-        backgroundEnabled: Bool
+        backgroundEnabled: Bool,
+        hasActivePairs: Bool = false
     ) -> Bool {
-        windowVisible || backgroundEnabled || jobs.contains { $0.state.isActive || $0.continuousSync }
+        windowVisible || backgroundEnabled || hasActivePairs || jobs.contains { $0.state.isActive || $0.continuousSync }
     }
 
     func windowDidOpen(owner: UUID) async {
@@ -246,6 +248,7 @@ final class RcloneJobManager {
     func start() async {
         guard !started else { return }
         started = true
+        await DevSyncService.shared.start()
         loadPersistedJobs()
         restoreSourceWatchers()
         startVolumeWatch()
@@ -315,6 +318,7 @@ final class RcloneJobManager {
     }
 
     func shutdown() async {
+        await DevSyncService.shared.stop()
         engineRetryTask?.cancel()
         engineRetryTask = nil
         pollTask?.cancel()
