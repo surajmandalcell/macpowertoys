@@ -1,5 +1,21 @@
 import Foundation
 
+nonisolated struct DevMutationActivity: Sendable {
+    let perform: @Sendable (@escaping @Sendable () async -> DevOperationOutcome) async -> DevOperationOutcome
+
+    func callAsFunction(
+        _ operation: @escaping @Sendable () async -> DevOperationOutcome
+    ) async -> DevOperationOutcome {
+        await perform(operation)
+    }
+
+    static let live = DevMutationActivity { operation in
+        let activity = ProcessInfo.processInfo.beginActivity(options: .idleSystemSleepDisabled, reason: "Dev Sync")
+        defer { ProcessInfo.processInfo.endActivity(activity) }
+        return await operation()
+    }
+}
+
 actor DevVolumeMutationGate {
     static let shared = DevVolumeMutationGate()
 
@@ -31,6 +47,8 @@ actor DevSyncPairEngine {
     private let rsyncExecutable: URL
     private let emit: @Sendable (DevSyncUpdate) -> Void
     private let now: @Sendable () -> Date
+    private let lowPowerModeEnabled: @Sendable () -> Bool
+    private let withMutationActivity: DevMutationActivity
     private var statusValue: DevPairStatus
     private var projectValues: [DevProject] = []
     private var conflictValues: [DevConflict] = []
@@ -60,13 +78,17 @@ actor DevSyncPairEngine {
         stateStore: DevSyncStateStore,
         rsyncExecutable: URL,
         emit: @escaping @Sendable (DevSyncUpdate) -> Void,
-        now: @escaping @Sendable () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = Date.init,
+        lowPowerModeEnabled: @escaping @Sendable () -> Bool = { ProcessInfo.processInfo.isLowPowerModeEnabled },
+        withMutationActivity: DevMutationActivity = .live
     ) {
         self.pair = pair
         self.stateStore = stateStore
         self.rsyncExecutable = rsyncExecutable
         self.emit = emit
         self.now = now
+        self.lowPowerModeEnabled = lowPowerModeEnabled
+        self.withMutationActivity = withMutationActivity
         statusValue = DevPairStatus(pairID: pair.id, state: pair.state)
         scheduler = DevDirtyScheduler(timing: pair.configuration.timing, performance: pair.configuration.performance, now: now)
         safetyStore = DevSafetyStore(pair: pair, stateStore: stateStore)
@@ -648,7 +670,7 @@ actor DevSyncPairEngine {
             return
         }
         if pair.configuration.power.pauseOnLowPowerMode,
-           ProcessInfo.processInfo.isLowPowerModeEnabled,
+           lowPowerModeEnabled(),
            due.reason != .userRequested {
             setPairState(.paused, detail: "Low Power Mode")
             return
@@ -801,9 +823,7 @@ actor DevSyncPairEngine {
         }
         let gateKey = pair.externalRoot.volumeIdentifier
         await DevVolumeMutationGate.shared.acquire(gateKey)
-        let activity = ProcessInfo.processInfo.beginActivity(options: .idleSystemSleepDisabled, reason: "Dev Sync")
         defer {
-            ProcessInfo.processInfo.endActivity(activity)
             Task { await DevVolumeMutationGate.shared.release(gateKey) }
         }
         setPairState(.transferring, detail: project.name)
@@ -811,8 +831,10 @@ actor DevSyncPairEngine {
         let runner = DevOperationRunner(context: context)
         activeRunner = runner
         let baseline = await stateStore.loadBaseline(projectID: project.id, pairID: pair.id)
-        let outcome = await runner.run(plan: plan, kind: kind, baseline: baseline, plannerOutput: output) { [weak self] progress, detail in
-            Task { await self?.setProgress(progress, detail: detail) }
+        let outcome = await withMutationActivity {
+            await runner.run(plan: plan, kind: kind, baseline: baseline, plannerOutput: output) { [weak self] progress, detail in
+                Task { await self?.setProgress(progress, detail: detail) }
+            }
         }
         activeRunner = nil
         return outcome

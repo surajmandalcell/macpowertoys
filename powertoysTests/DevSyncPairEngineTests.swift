@@ -213,6 +213,43 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(distinctMaximum, 2)
     }
 
+    func testScenario85LowPowerModePausesAutomaticWork() async throws {
+        let fixture = try await makeFixture(
+            lowPowerModeEnabled: { true },
+            configure: { $0.power.pauseOnLowPowerMode = true }
+        )
+        await fixture.engine.start()
+        try Data("automatic change".utf8).write(to: fixture.internalProject.appendingPathComponent("source.swift"))
+
+        await fixture.engine.noteEvents(side: .internal, relativePaths: ["app/source.swift"])
+        try await waitUntil { await fixture.engine.status().state == .paused }
+
+        let operations = await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20)
+        XCTAssertTrue(operations.isEmpty)
+    }
+
+    func testIdleSleepAssertionIsPairedAroundMutation() async throws {
+        let meter = ActivityMeter()
+        let fixture = try await makeFixture(withMutationActivity: DevMutationActivity { operation in
+            await meter.begin()
+            let outcome = await operation()
+            await meter.end()
+            return outcome
+        })
+        await fixture.engine.start()
+        try Data("mutation".utf8).write(to: fixture.internalProject.appendingPathComponent("source.swift"))
+
+        await fixture.engine.syncProject(fixture.project.id)
+        try await waitUntil {
+            await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20).first?.state == .committed
+        }
+
+        let counts = await meter.counts()
+        XCTAssertEqual(counts.begun, 1)
+        XCTAssertEqual(counts.ended, 1)
+        XCTAssertEqual(counts.active, 0)
+    }
+
     func testScenario86SyncNowDuringRunMergesIntoNextGeneration() async throws {
         let fixture = try await makeFixture(executable: makeRsyncWrapper(delay: 0.4))
         await fixture.engine.start()
@@ -251,7 +288,10 @@ final class DevSyncPairEngineTests: XCTestCase {
         executable: URL = URL(fileURLWithPath: "/usr/bin/rsync"),
         gitRepository: Bool = false,
         externalVolumeIdentifier: String? = nil,
-        availableCapacity: Int64? = nil
+        availableCapacity: Int64? = nil,
+        lowPowerModeEnabled: @escaping @Sendable () -> Bool = { false },
+        withMutationActivity: DevMutationActivity = .live,
+        configure: (inout DevSyncConfiguration) -> Void = { _ in }
     ) async throws -> PairFixture {
         let root = temporaryRoot.appendingPathComponent(name, isDirectory: true)
         let internalRoot = root.appendingPathComponent("internal", isDirectory: true)
@@ -272,6 +312,7 @@ final class DevSyncPairEngineTests: XCTestCase {
         var configuration = DevSyncConfiguration.default
         configuration.timing = .init(fseventsLatencySeconds: 0.01, quietPeriodSeconds: 0.05, minimumProjectIntervalSeconds: 0, continuousCheckpointSeconds: 0.1, largeFileQuietSeconds: 0, fullReconcileSeconds: 86_400)
         configuration.safety.minimumFreeSpaceReserveBytes = 0
+        configure(&configuration)
         let pair = DevSyncPair(
             displayName: name,
             mode: .devOneWay,
@@ -304,7 +345,14 @@ final class DevSyncPairEngineTests: XCTestCase {
         }
         let capabilities = DevPairCapabilities(internalVolume: internalVolume, externalVolume: externalVolume, rsync: rsyncCapabilities, probedAt: Date())
         try await store.saveCapabilities(capabilities, pairID: pair.id)
-        let engine = DevSyncPairEngine(pair: pair, stateStore: store, rsyncExecutable: executable, emit: { _ in })
+        let engine = DevSyncPairEngine(
+            pair: pair,
+            stateStore: store,
+            rsyncExecutable: executable,
+            emit: { _ in },
+            lowPowerModeEnabled: lowPowerModeEnabled,
+            withMutationActivity: withMutationActivity
+        )
         engines.append(engine)
         return PairFixture(pair: pair, project: project, internalRoot: internalRoot, externalRoot: externalRoot, internalProject: internalProject, externalProject: externalProject, store: store, engine: engine)
     }
@@ -373,4 +421,24 @@ private actor ConcurrencyMeter {
     }
 
     func maximum() -> Int { maximumValue }
+}
+
+private actor ActivityMeter {
+    private var begun = 0
+    private var ended = 0
+    private var active = 0
+
+    func begin() {
+        begun += 1
+        active += 1
+    }
+
+    func end() {
+        ended += 1
+        active -= 1
+    }
+
+    func counts() -> (begun: Int, ended: Int, active: Int) {
+        (begun, ended, active)
+    }
 }
