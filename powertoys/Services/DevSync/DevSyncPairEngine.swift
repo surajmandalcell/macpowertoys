@@ -199,10 +199,26 @@ actor DevSyncPairEngine {
     }
 
     func verifyNow() async {
-        for project in projectValues where !project.explicitlyExcluded {
-            await scheduler.requestNow(projectID: project.id, reason: .periodic)
+        guard let internalRoot, let externalRoot else { return }
+        setPairState(.verifying, detail: "Reading both copies")
+        let verifier = DevDeepVerifier(
+            pair: pair,
+            projects: projectValues,
+            internalRoot: internalRoot,
+            externalRoot: externalRoot,
+            capabilities: capabilityValue
+        )
+        for project in projectValues where !project.explicitlyExcluded && project.residency != .externalResident {
+            do {
+                let report = try await verifier.verify(pairID: pair.id, projectID: project.id)
+                updateProject(project.id, state: report.differences.isEmpty && report.complete ? .clean : .destinationDrift, output: nil, error: nil)
+            } catch is CancellationError {
+                break
+            } catch {
+                updateProject(project.id, state: .error, output: nil, error: error.localizedDescription)
+            }
         }
-        Task { await self.processNextDue() }
+        setPairState(.idle)
     }
 
     func repairLinks() async {
