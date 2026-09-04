@@ -134,7 +134,7 @@ final class DevSyncEventsTests: XCTestCase {
         XCTAssertTrue(due.first?.requiresFullScan == true)
     }
 
-    func testManualOnlyTimingOnlyAllowsSyncNow() async {
+    func testManualOnlyTimingOnlyAllowsSyncNow() async throws {
         var timing = DevSyncConfiguration.Timing.default
         timing.quietPeriodSeconds = 0
         timing.continuousCheckpointSeconds = 0
@@ -146,6 +146,11 @@ final class DevSyncEventsTests: XCTestCase {
         await scheduler.requestNow(projectID: projectID, reason: .userRequested)
         let manualDue = await scheduler.due(at: Date(timeIntervalSince1970: 5_001))
         XCTAssertEqual(manualDue.count, 1)
+        let pendingManualGeneration = await scheduler.begin(projectID: projectID)
+        let manualGeneration = try XCTUnwrap(pendingManualGeneration)
+        await scheduler.requeue(manualGeneration)
+        let retryDue = await scheduler.due(at: Date(timeIntervalSince1970: 5_001))
+        XCTAssertEqual(retryDue.count, 1)
     }
 
     func testMinimumProjectIntervalDefersAutomaticGeneration() async {
