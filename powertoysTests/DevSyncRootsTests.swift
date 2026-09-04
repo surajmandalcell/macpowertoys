@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import XCTest
 @testable import powertoys
@@ -72,6 +73,19 @@ final class DevSyncRootsTests: XCTestCase {
             DevSyncRoots.validatePair(internal: outerCandidate, external: candidateExternal, existingPairs: [pairWithNestedRoot])
                 .contains { if case .overlapsExistingPair(pairName: "NestedPair", path: nestedExistingPath) = $0 { return true }; return false }
         )
+
+        let offlineNestedPath = try DevSyncRoots.canonicalURL(outerCandidate).appendingPathComponent("offline-root").path
+        let pairWithOfflineRoot = DevSyncPair(
+            displayName: "OfflinePair",
+            mode: .devOneWay,
+            internalRoot: DevSyncRoot(bookmark: nil, path: offlineNestedPath, volumeIdentifier: "uuid:offline", volumeName: "Offline", fileSystemType: "apfs"),
+            externalRoot: existingPair.externalRoot
+        )
+        let offlineIssues = DevSyncRoots.validatePair(internal: outerCandidate, external: candidateExternal, existingPairs: [pairWithOfflineRoot])
+        XCTAssertTrue(
+            offlineIssues.contains { if case .overlapsExistingPair(pairName: "OfflinePair", path: offlineNestedPath) = $0 { return true }; return false },
+            "\(offlineIssues)"
+        )
     }
 
     func testMakeRootCanonicalizesPathAndStoresVolumeUUID() throws {
@@ -87,7 +101,7 @@ final class DevSyncRootsTests: XCTestCase {
         XCTAssertTrue(root.volumeIdentifier.hasPrefix("uuid:"))
     }
 
-    func testResolveReturnsIdentityMismatchForWrongStoredVolume() throws {
+    func testScenario54ResolveReturnsIdentityMismatchForWrongStoredVolume() throws {
         let rootURL = temporaryRoot.appendingPathComponent("root", isDirectory: true)
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
         var root = try DevSyncRoots.makeRoot(url: rootURL)
@@ -100,13 +114,55 @@ final class DevSyncRootsTests: XCTestCase {
         XCTAssertFalse(foundName.isEmpty)
     }
 
-    func testScenario43ProbeReportsFullAPFSFidelityAndNanosecondTimestamps() throws {
+    func testScenario55ResolveTracksMovedRootOnSameVolume() throws {
+        let originalURL = temporaryRoot.appendingPathComponent("original", isDirectory: true)
+        let movedURL = temporaryRoot.appendingPathComponent("moved", isDirectory: true)
+        try FileManager.default.createDirectory(at: originalURL, withIntermediateDirectories: true)
+        var root = try DevSyncRoots.makeRoot(url: originalURL)
+        try FileManager.default.moveItem(at: originalURL, to: movedURL)
+        root.path = movedURL.path
+
+        guard case .available(let resolvedURL) = DevSyncRoots.resolve(root) else {
+            return XCTFail("Expected bookmark resolution after a same-volume move")
+        }
+        XCTAssertEqual(resolvedURL.path, try DevSyncRoots.canonicalURL(movedURL).path)
+    }
+
+    func testScenario43Scenario57ProbeReportsFullAPFSFidelityAndCapacity() throws {
         let capabilities = DevVolumeProbe.probe(rootURL: temporaryRoot, probeDirectory: temporaryRoot)
 
         XCTAssertEqual(capabilities.fidelity, .full)
         XCTAssertEqual(capabilities.timestampResolutionNanoseconds, 1)
         XCTAssertTrue(capabilities.supportsSymbolicLinks)
         XCTAssertTrue(capabilities.supportsExtendedAttributes)
+        XCTAssertGreaterThan(capabilities.availableCapacity, 0)
+    }
+
+    func testScenario56ProbeBlocksAnUnwritableRoot() {
+        chmod(temporaryRoot.path, mode_t(0o500))
+        defer { chmod(temporaryRoot.path, mode_t(0o700)) }
+
+        let capabilities = DevVolumeProbe.probe(rootURL: temporaryRoot, probeDirectory: temporaryRoot)
+
+        XCTAssertEqual(capabilities.fidelity, .blocked)
+        XCTAssertTrue(capabilities.fidelityNotes.contains("Volume is not writable"))
+    }
+
+    func testScenario56ProbeNeverEscapesThroughTheSystemDirectoryLink() throws {
+        let outside = FileManager.default.temporaryDirectory
+            .appendingPathComponent("devsync-probe-outside-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: outside) }
+        try FileManager.default.createSymbolicLink(
+            at: temporaryRoot.appendingPathComponent(".cloudsync-system"),
+            withDestinationURL: outside
+        )
+
+        let capabilities = DevVolumeProbe.probe(rootURL: temporaryRoot)
+
+        XCTAssertEqual(capabilities.fidelity, .blocked)
+        XCTAssertTrue(capabilities.fidelityNotes.contains("Temporary volume probe is outside the root"))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: outside.path), [])
     }
 
     func testScenario59SyntheticCoarseVolumeUsesTwoSecondWindow() {
@@ -143,5 +199,15 @@ final class DevSyncRootsTests: XCTestCase {
         XCTAssertEqual(capabilities.fidelity, .portable)
         XCTAssertEqual(capabilities.modifyWindowSeconds, 2)
         XCTAssertEqual(capabilities.fidelityNotes.count, 3)
+    }
+
+    func testScenario60ProbeReportsTheVolumeEncryptionState() throws {
+        let expected = try temporaryRoot.resourceValues(forKeys: [.volumeIsEncryptedKey]).volumeIsEncrypted
+        let capabilities = DevVolumeProbe.probe(rootURL: temporaryRoot, probeDirectory: temporaryRoot)
+
+        XCTAssertEqual(capabilities.isEncrypted, expected)
+        if expected == true {
+            XCTAssertEqual(capabilities.fidelity, .full)
+        }
     }
 }
