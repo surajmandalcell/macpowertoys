@@ -17,7 +17,7 @@ final class DevSyncRsyncTests: XCTestCase {
     }
 
     func testScenario75SystemHelpParsingAndCapabilityProbe() async throws {
-        let help = try runProcess(executable: URL(fileURLWithPath: "/usr/bin/rsync"), arguments: ["--help"])
+        let help = try await runProcess(executable: URL(fileURLWithPath: "/usr/bin/rsync"), arguments: ["--help"])
         let options = DevRsyncProbe.parseHelp(String(decoding: help, as: UTF8.self))
 
         XCTAssertTrue(options.contains("--files-from"))
@@ -34,24 +34,84 @@ final class DevSyncRsyncTests: XCTestCase {
         XCTAssertEqual(capabilities.protocolVersion, 29)
         XCTAssertTrue(capabilities.isOpenrsync)
         XCTAssertTrue(capabilities.supportsFilesFrom)
+        XCTAssertTrue(capabilities.supportsFrom0)
         XCTAssertTrue(capabilities.supportsPartialDir)
         XCTAssertTrue(capabilities.supportsBackupDir)
+        XCTAssertTrue(capabilities.supportsItemizeChanges)
+        XCTAssertTrue(capabilities.supportsExecutability)
+        XCTAssertTrue(capabilities.supportsHardLinks)
+        XCTAssertTrue(capabilities.supportsDoubleDash)
+        XCTAssertFalse(capabilities.supportsXattrs)
+        XCTAssertFalse(capabilities.supportsACLs)
+        XCTAssertFalse(capabilities.supportsCrtimes)
+        XCTAssertTrue(capabilities.selfTestNotes.contains("Extended attributes option failed its self-test"))
     }
 
     func testScenario37ManifestRejectsUnsafePathsAndDefersUnsupportedNewlines() {
         let unsupported = makeCapabilities(supportsFrom0: false)
         let result = DevRsyncTransfer.validateManifest(
-            ["../x", "/abs", "proj/.cloudsync-system/x", "safe/name", "line\nbreak"],
+            ["../x", "/abs", "proj/.cloudsync-system/x", "proj/.CloudSync-System/x", "safe/name", "line\nbreak"],
             capabilities: unsupported
         )
 
         XCTAssertEqual(result.accepted, ["safe/name"])
         XCTAssertEqual(result.deferred, ["line\nbreak"])
-        XCTAssertEqual(result.rejected.count, 3)
+        XCTAssertEqual(result.rejected.count, 4)
         XCTAssertTrue(result.rejected.contains { if case .unsafePath("../x") = $0.1 { return true }; return false })
         XCTAssertTrue(result.rejected.contains { if case .unsafePath("/abs") = $0.1 { return true }; return false })
         XCTAssertTrue(result.rejected.contains { if case .unsafePath("proj/.cloudsync-system/x") = $0.1 { return true }; return false })
+        XCTAssertTrue(result.rejected.contains { if case .unsafePath("proj/.CloudSync-System/x") = $0.1 { return true }; return false })
         XCTAssertTrue(DevRsyncTransfer.validateManifest(["line\nbreak"], capabilities: makeCapabilities(supportsFrom0: true)).accepted.contains("line\nbreak"))
+    }
+
+    func testScenario74LocatorUsesOnlyPreferredAndKnownPaths() throws {
+        let preferred = temporaryRoot.appendingPathComponent("rsync")
+        try Data().write(to: preferred)
+        chmod(preferred.path, mode_t(0o755))
+
+        XCTAssertEqual(DevRsyncLocator.locate(preferredPath: preferred.path), preferred)
+        XCTAssertNotEqual(DevRsyncLocator.locate(preferredPath: temporaryRoot.path), temporaryRoot)
+        let fallback = try XCTUnwrap(DevRsyncLocator.locate(preferredPath: temporaryRoot.appendingPathComponent("missing").path))
+        XCTAssertTrue(DevRsyncLocator.candidatePaths.contains(fallback.path))
+    }
+
+    func testScenario76ParsesRsync3Capabilities() {
+        let version = DevRsyncProbe.parseVersion("rsync version 3.2.7 protocol version 31")
+        let options = DevRsyncProbe.parseHelp("--acls --crtimes --from0")
+
+        XCTAssertEqual(version.version, "3.2.7")
+        XCTAssertEqual(version.protocolVersion, 31)
+        XCTAssertFalse(version.isOpenrsync)
+        XCTAssertEqual(options, ["--acls", "--crtimes", "--from0"])
+
+        let capabilities = makeCapabilities(supportsACLs: true, supportsCrtimes: true)
+        let volume = makeVolume(path: temporaryRoot, supportsAllMetadata: true)
+        let resolved = DevRsyncOptions.resolve(
+            capabilities: capabilities,
+            pairCapabilities: DevPairCapabilities(internalVolume: volume, externalVolume: volume, rsync: capabilities),
+            metadata: DevSyncConfiguration.Metadata(),
+            partialDirectory: temporaryRoot.appendingPathComponent("partial"),
+            backupDirectory: nil
+        )
+        let arguments = DevRsyncCommand.arguments(
+            capabilities: capabilities,
+            options: resolved,
+            sourceRoot: temporaryRoot.appendingPathComponent("source"),
+            destinationRoot: temporaryRoot.appendingPathComponent("destination")
+        )
+        XCTAssertTrue(resolved.preserveCreationTimes)
+        XCTAssertTrue(arguments.contains("--crtimes"))
+        XCTAssertTrue(capabilities.supportsACLs)
+        XCTAssertFalse(arguments.contains("-A"))
+    }
+
+    func testRsyncExitClassesMatchTheContract() {
+        XCTAssertEqual(DevRsyncExitClass.classify(exitCode: 0), .success)
+        XCTAssertEqual(DevRsyncExitClass.classify(exitCode: 20), .cancelled)
+        XCTAssertEqual(DevRsyncExitClass.classify(exitCode: 23), .partial)
+        XCTAssertEqual(DevRsyncExitClass.classify(exitCode: 24), .vanished)
+        XCTAssertEqual(DevRsyncExitClass.classify(exitCode: 25), .deleteLimit)
+        XCTAssertEqual(DevRsyncExitClass.classify(exitCode: 1), .failure)
     }
 
     func testScenario75ArgumentsNeverUseProhibitedOptions() {
@@ -76,6 +136,7 @@ final class DevSyncRsyncTests: XCTestCase {
                 preservePermissions: true,
                 preserveXattrs: true,
                 preserveHardLinks: true,
+                preserveCreationTimes: true,
                 modifyWindowSeconds: 2,
                 partialDirectory: temporaryRoot.appendingPathComponent("partial"),
                 backupDirectory: temporaryRoot.appendingPathComponent("backup")
@@ -96,6 +157,7 @@ final class DevSyncRsyncTests: XCTestCase {
         XCTAssertTrue(arguments.contains("-p"))
         XCTAssertTrue(arguments.contains("-X"))
         XCTAssertTrue(arguments.contains("-H"))
+        XCTAssertTrue(arguments.contains("--crtimes"))
         XCTAssertTrue(arguments.contains("--modify-window=2"))
         XCTAssertEqual(arguments.suffix(2), ["\(temporaryRoot.appendingPathComponent("source").path)/", "\(temporaryRoot.appendingPathComponent("destination").path)/"])
     }
@@ -116,10 +178,26 @@ final class DevSyncRsyncTests: XCTestCase {
         XCTAssertFalse(options.preservePermissions)
         XCTAssertFalse(options.preserveXattrs)
         XCTAssertFalse(options.preserveHardLinks)
+        XCTAssertFalse(options.preserveCreationTimes)
         XCTAssertEqual(options.modifyWindowSeconds, 2)
+
+        var forcedMetadata = DevSyncConfiguration.Metadata()
+        forcedMetadata.permissions = .on
+        forcedMetadata.xattrs = .on
+        forcedMetadata.hardLinks = .on
+        let forcedOptions = DevRsyncOptions.resolve(
+            capabilities: rsync,
+            pairCapabilities: pair,
+            metadata: forcedMetadata,
+            partialDirectory: temporaryRoot.appendingPathComponent("partial"),
+            backupDirectory: nil
+        )
+        XCTAssertTrue(forcedOptions.preservePermissions)
+        XCTAssertTrue(forcedOptions.preserveXattrs)
+        XCTAssertTrue(forcedOptions.preserveHardLinks)
     }
 
-    func testScenario38Scenario39Scenario41Scenario42PathMatrixCopiesSafely() async throws {
+    func testScenario37Scenario38Scenario39Scenario41Scenario42PathMatrixCopiesSafely() async throws {
         let fileManager = FileManager.default
         let source = temporaryRoot.appendingPathComponent("source", isDirectory: true)
         let destination = temporaryRoot.appendingPathComponent("destination", isDirectory: true)
@@ -136,6 +214,8 @@ final class DevSyncRsyncTests: XCTestCase {
         let longName = String(repeating: "a", count: 250) + ".txt"
         try Data("long".utf8).write(to: source.appendingPathComponent(longName))
         try Data("hidden".utf8).write(to: source.appendingPathComponent(".hidden"))
+        let newlineName = "line\nbreak"
+        try Data("newline".utf8).write(to: source.appendingPathComponent(newlineName))
         try fileManager.createDirectory(at: source.appendingPathComponent("empty directory"), withIntermediateDirectories: true)
         let script = source.appendingPathComponent("script.sh")
         try Data("#!/bin/sh\n".utf8).write(to: script)
@@ -167,6 +247,7 @@ final class DevSyncRsyncTests: XCTestCase {
             "-leading.txt",
             longName,
             ".hidden",
+            newlineName,
             "empty directory",
             "script.sh",
             "outside-link"
@@ -176,14 +257,123 @@ final class DevSyncRsyncTests: XCTestCase {
 
         XCTAssertEqual(result.exitClass, .success, result.stderrTail)
         XCTAssertEqual(try Data(contentsOf: destination.appendingPathComponent("space dir/file name.txt")), Data("space".utf8))
-        XCTAssertTrue(fileManager.fileExists(atPath: destination.appendingPathComponent(longName).path))
+        for path in ["emoji 🚀.txt", "e\u{301}.txt", "-leading.txt", longName, ".hidden"] {
+            XCTAssertTrue(fileManager.fileExists(atPath: destination.appendingPathComponent(path).path), path)
+        }
         XCTAssertTrue(fileManager.fileExists(atPath: destination.appendingPathComponent("empty directory").path))
+        XCTAssertTrue(fileManager.fileExists(atPath: destination.appendingPathComponent(newlineName).path))
         XCTAssertTrue((lstatMode(destination.appendingPathComponent("script.sh").path) & 0o111) != 0)
         XCTAssertEqual(lstatType(destination.appendingPathComponent("outside-link").path), S_IFLNK)
         XCTAssertEqual(readLink(destination.appendingPathComponent("outside-link").path), outside.path)
+        XCTAssertTrue(result.itemizedPaths.contains("outside-link"), "\(result.itemizedPaths)")
+        XCTAssertTrue(result.itemizedPaths.contains(newlineName), "\(result.itemizedPaths)")
     }
 
-    func testScenario76BackupDirectoryRetainsOverwrittenVersion() async throws {
+    func testScenario37TransferRequiresNULManifestSupport() async throws {
+        let source = temporaryRoot.appendingPathComponent("source", isDirectory: true)
+        let destination = temporaryRoot.appendingPathComponent("destination", isDirectory: true)
+        let partial = temporaryRoot.appendingPathComponent("partial", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try Data("safe".utf8).write(to: source.appendingPathComponent("safe.txt"))
+        let capabilities = makeCapabilities(supportsFrom0: false)
+        let arguments = DevRsyncCommand.arguments(
+            capabilities: capabilities,
+            options: DevRsyncOptions(
+                preservePermissions: false,
+                preserveXattrs: false,
+                preserveHardLinks: false,
+                modifyWindowSeconds: nil,
+                partialDirectory: partial,
+                backupDirectory: nil
+            ),
+            sourceRoot: source,
+            destinationRoot: destination
+        )
+
+        let result = try await DevRsyncTransfer(
+            executable: URL(fileURLWithPath: "/usr/bin/rsync"),
+            arguments: arguments,
+            manifest: ["safe.txt"],
+            capabilities: capabilities
+        ).run { _ in }
+
+        XCTAssertEqual(result.exitClass, .failure)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathComponent("safe.txt").path))
+    }
+
+    func testScenario39TransferRejectsSymlinkSourceRoot() async throws {
+        let realSource = temporaryRoot.appendingPathComponent("real-source", isDirectory: true)
+        let sourceLink = temporaryRoot.appendingPathComponent("source-link", isDirectory: true)
+        let destination = temporaryRoot.appendingPathComponent("destination", isDirectory: true)
+        let partial = temporaryRoot.appendingPathComponent("partial", isDirectory: true)
+        try FileManager.default.createDirectory(at: realSource, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try Data("secret".utf8).write(to: realSource.appendingPathComponent("secret.txt"))
+        try FileManager.default.createSymbolicLink(at: sourceLink, withDestinationURL: realSource)
+        let capabilities = makeCapabilities(supportsFrom0: true)
+        let arguments = DevRsyncCommand.arguments(
+            capabilities: capabilities,
+            options: DevRsyncOptions(
+                preservePermissions: false,
+                preserveXattrs: false,
+                preserveHardLinks: false,
+                modifyWindowSeconds: nil,
+                partialDirectory: partial,
+                backupDirectory: nil
+            ),
+            sourceRoot: sourceLink,
+            destinationRoot: destination
+        )
+
+        let result = try await DevRsyncTransfer(
+            executable: URL(fileURLWithPath: "/usr/bin/rsync"),
+            arguments: arguments,
+            manifest: ["secret.txt"],
+            capabilities: capabilities
+        ).run { _ in }
+
+        XCTAssertEqual(result.exitClass, .failure)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathComponent("secret.txt").path))
+    }
+
+    func testScenario39TransferRejectsPathThroughSymlinkDirectory() async throws {
+        let source = temporaryRoot.appendingPathComponent("source", isDirectory: true)
+        let outside = temporaryRoot.appendingPathComponent("outside", isDirectory: true)
+        let destination = temporaryRoot.appendingPathComponent("destination", isDirectory: true)
+        let partial = temporaryRoot.appendingPathComponent("partial", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try Data("secret".utf8).write(to: outside.appendingPathComponent("secret.txt"))
+        try FileManager.default.createSymbolicLink(at: source.appendingPathComponent("linked"), withDestinationURL: outside)
+        let capabilities = makeCapabilities(supportsFrom0: true)
+        let arguments = DevRsyncCommand.arguments(
+            capabilities: capabilities,
+            options: DevRsyncOptions(
+                preservePermissions: false,
+                preserveXattrs: false,
+                preserveHardLinks: false,
+                modifyWindowSeconds: nil,
+                partialDirectory: partial,
+                backupDirectory: nil
+            ),
+            sourceRoot: source,
+            destinationRoot: destination
+        )
+
+        let result = try await DevRsyncTransfer(
+            executable: URL(fileURLWithPath: "/usr/bin/rsync"),
+            arguments: arguments,
+            manifest: ["linked/secret.txt"],
+            capabilities: capabilities
+        ).run { _ in }
+
+        XCTAssertEqual(result.exitClass, .failure)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathComponent("linked/secret.txt").path))
+    }
+
+    func testBackupDirectoryRetainsOverwrittenVersion() async throws {
         let fileManager = FileManager.default
         let source = temporaryRoot.appendingPathComponent("source", isDirectory: true)
         let destination = temporaryRoot.appendingPathComponent("destination", isDirectory: true)
@@ -261,6 +451,7 @@ final class DevSyncRsyncTests: XCTestCase {
         supportsExecutability: Bool = true,
         supportsPerms: Bool = true,
         supportsXattrs: Bool = false,
+        supportsACLs: Bool = false,
         supportsHardLinks: Bool = true,
         supportsCrtimes: Bool = false,
         supportsOmitDirTimes: Bool = true,
@@ -281,7 +472,7 @@ final class DevSyncRsyncTests: XCTestCase {
             supportsExecutability: supportsExecutability,
             supportsPerms: supportsPerms,
             supportsXattrs: supportsXattrs,
-            supportsACLs: false,
+            supportsACLs: supportsACLs,
             supportsHardLinks: supportsHardLinks,
             supportsCrtimes: supportsCrtimes,
             supportsOmitDirTimes: supportsOmitDirTimes,
@@ -322,17 +513,31 @@ final class DevSyncRsyncTests: XCTestCase {
         )
     }
 
-    private func runProcess(executable: URL, arguments: [String]) throws -> Data {
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = arguments
-        let output = Pipe()
-        let error = Pipe()
-        process.standardOutput = output
-        process.standardError = error
-        try process.run()
-        process.waitUntilExit()
-        return output.fileHandleForReading.readDataToEndOfFile() + error.fileHandleForReading.readDataToEndOfFile()
+    private func runProcess(executable: URL, arguments: [String]) async throws -> Data {
+        try await Task.detached(priority: .utility) {
+            let process = Process()
+            process.executableURL = executable
+            process.arguments = arguments
+            process.environment = ["PATH": "/usr/bin:/bin"]
+            process.qualityOfService = .utility
+            let output = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = output
+            process.standardError = errorPipe
+            let stdoutTask = Task.detached { output.fileHandleForReading.readDataToEndOfFile() }
+            let stderrTask = Task.detached { errorPipe.fileHandleForReading.readDataToEndOfFile() }
+            do {
+                try process.run()
+            } catch {
+                try? output.fileHandleForWriting.close()
+                try? errorPipe.fileHandleForWriting.close()
+                _ = await stdoutTask.value
+                _ = await stderrTask.value
+                throw error
+            }
+            process.waitUntilExit()
+            return await stdoutTask.value + stderrTask.value
+        }.value
     }
 
     private func lstatMode(_ path: String) -> mode_t {
