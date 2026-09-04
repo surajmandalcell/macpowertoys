@@ -667,9 +667,12 @@ nonisolated enum DevResidencyConversion {
         do {
             try createParents(for: relativePath, under: context.internalRoot)
             try FileManager.default.moveItem(at: retainedURL, to: internalProject)
-            var records = await context.stateStore.loadSafetyRecords(pairID: context.pair.id)
-            records.removeAll { $0.operationID == operationID && $0.kind == .projectRetired }
-            try await context.stateStore.saveSafetyRecords(records, pairID: context.pair.id)
+            let retiredRecordIDs = Set(
+                await context.stateStore.loadSafetyRecords(pairID: context.pair.id)
+                    .filter { $0.operationID == operationID && $0.kind == .projectRetired }
+                    .map(\.id)
+            )
+            try await context.stateStore.applySafetyRecordChanges(pairID: context.pair.id, removing: retiredRecordIDs, expirations: [:])
             return true
         } catch {
             logFailure("Internal project restore failed", project: relativePath)
