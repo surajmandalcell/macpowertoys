@@ -693,9 +693,10 @@ struct NetToysAnchorView: View {
     }
 
     private var anchorsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let anchors = model.configuration.anchors
+        return VStack(alignment: .leading, spacing: 8) {
             Text("CONFIGURED ANCHORS").utilitySectionHeader()
-            if model.configuration.anchors.isEmpty {
+            if anchors.isEmpty {
                 HStack(spacing: 10) {
                     Image(systemName: "link.badge.plus")
                         .foregroundStyle(.secondary)
@@ -721,9 +722,9 @@ struct NetToysAnchorView: View {
                 }
 
                 VStack(spacing: 0) {
-                    ForEach(Array(model.configuration.anchors.enumerated()), id: \.element.id) { index, anchor in
+                    ForEach(anchors) { anchor in
                         anchorRow(anchor)
-                        if index < model.configuration.anchors.count - 1 { QuietDivider() }
+                        if anchor.id != anchors.last?.id { QuietDivider() }
                     }
                 }
                 .utilitySectionCard()
