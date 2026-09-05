@@ -17,7 +17,7 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 
 ```text
 Dev Sync overall            [███████████████████░] 68/69
-Checkup G7                  [██████████░░░░░░░░░░] 3/6
+Checkup G7                  [█████████████░░░░░░░] 4/6
 G1 Foundation               [████████████████████] 15/15
 G2 Dev One-Way              [████████████████████] 14/14
 G3 Dev Bidirectional        [████████████████████] 10/10
@@ -209,8 +209,11 @@ G6 Everything mode          [█████████████████
   commits `c2a4277`, `78e5fb6`, screenshot `docs/screenshots/macpowertoys-launcher.png`.
 - [x] 7.2 No version string or status dot in any sidebar. Check: `7d41ab0`
   removes the Cloud Sync daemon line and dots and the System Monitor dot.
-- [~] 7.3 Input Devices redesign: equal cards, mouse horizontal scrolling,
-  shared settings view for tray and launcher. Needs: worker inputdevices.
+- [x] 7.3 Input Devices redesign: equal cards, mouse horizontal scrolling,
+  shared settings view for tray and launcher. Check: `2797253`, `e038609`,
+  `52663c4`, `72d8209`; 7 InputDevicesTests pass; the mouse horizontal row
+  was hidden by a truncating two-column grid, and cards differed because
+  eight rows were gated on reported values.
 - [x] 7.4 Tray popover: every tool's shared settings in the popover, no
   extra space under the tab row. Check: `e5edb24`, `db075f4`; three
   `TrayPopoverLayoutTests` measure the 8pt gap, the shared settings per
