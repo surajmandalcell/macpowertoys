@@ -326,9 +326,6 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
             }
             values[group, default: []].append(item(project: project, bytes: bytes[project.relativePath]))
         }
-        for candidate in output.candidates {
-            values[.unmanagedCandidates, default: []].append(DevSetupProjectItem(relativePath: candidate.relativePath, kind: .nonGit, candidateKind: candidate.kind, residency: nil, includedBytes: 0, excludedBytes: 0, warnings: [], adoptableLinkTarget: output.adoptableLinks[candidate.relativePath]))
-        }
         for conflict in output.conflicts where conflict.type == .projectIdentity || conflict.type == .projectPath {
             values[.identityConflicts, default: []].append(DevSetupProjectItem(relativePath: conflict.relativePath, kind: .nonGit, candidateKind: nil, residency: nil, includedBytes: 0, excludedBytes: 0, warnings: [], adoptableLinkTarget: nil))
         }

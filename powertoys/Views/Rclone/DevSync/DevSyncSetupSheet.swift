@@ -82,21 +82,10 @@ final class DevSyncSetupModel {
     }
 
     func isIncluded(_ item: DevSetupProjectItem, in group: DevSetupGroup) -> Bool {
-        if group == .unmanagedCandidates {
-            return draft.includedCandidatePaths.contains(item.relativePath)
-        }
-        return !draft.excludedProjectPaths.contains(item.relativePath)
+        !draft.excludedProjectPaths.contains(item.relativePath)
     }
 
     func setIncluded(_ included: Bool, for item: DevSetupProjectItem, in group: DevSetupGroup) {
-        if group == .unmanagedCandidates {
-            if included {
-                draft.includedCandidatePaths.insert(item.relativePath)
-            } else {
-                draft.includedCandidatePaths.remove(item.relativePath)
-            }
-            return
-        }
         if included {
             draft.excludedProjectPaths.remove(item.relativePath)
         } else {
@@ -437,7 +426,7 @@ private struct DevSyncSetupProjectsStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Everything under the internal root syncs. Git repositories sync as units; every other file and folder syncs as one unit. Only the skip list is left out: caches, dependency checkouts, build outputs, and tmp folders. Git-tracked content inside those still syncs.")
+            Text("Everything under the internal root syncs. Git repositories sync as units; every other file and folder syncs as one unit. Only the skip list is left out: caches, dependency checkouts, build outputs, and tmp folders. Git-tracked content inside those still syncs. Nested repositories and packages sync as part of the folder or repository that contains them.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
