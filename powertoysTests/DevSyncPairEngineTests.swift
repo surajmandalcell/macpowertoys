@@ -160,6 +160,36 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertFalse(operations.contains { $0.plan.actions.contains { $0.relativePath.hasPrefix("app/") } }, "the root unit must carve out the nested repository")
     }
 
+    func testLinkedPlainFolderReturnsToExternalAfterRemount() async throws {
+        let fixture = try await makeFixture()
+        let externalRoot = fixture.externalProject.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: externalRoot.appendingPathComponent("data"), withIntermediateDirectories: true)
+        try Data("blob".utf8).write(to: externalRoot.appendingPathComponent("data/blob.bin"))
+        await fixture.engine.start()
+        try await waitUntil {
+            await fixture.engine.projects().contains { $0.relativePath == "data" && $0.residency == .externalResident && $0.state == .clean }
+        }
+
+        await fixture.engine.volumeWillUnmount(externalRoot)
+        await fixture.engine.volumeDidUnmount(externalRoot)
+        let offline = await fixture.engine.projects().first { $0.relativePath == "data" }
+        XCTAssertEqual(offline?.state, .linkOffline)
+        XCTAssertEqual(offline?.residency, .externalResident)
+
+        await fixture.engine.volumeDidMount(externalRoot)
+        try await waitUntil {
+            await fixture.engine.projects().contains { $0.relativePath == "data" && $0.residency == .externalResident && $0.state == .clean }
+        }
+        await fixture.engine.syncNow()
+        try await waitUntil {
+            let status = await fixture.engine.status()
+            return status.state == .idle
+        }
+        let after = await fixture.engine.projects().first { $0.relativePath == "data" }
+        XCTAssertEqual(after?.state, .clean, "a remount must not turn a linked plain folder into Missing")
+        XCTAssertEqual(after?.residency, .externalResident)
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneBatch() async throws {
         let fixture = try await makeFixture()
         await fixture.engine.start()
