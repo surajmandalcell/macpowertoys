@@ -149,7 +149,6 @@ nonisolated enum DevSetupGroup: String, Codable, CaseIterable, Sendable {
     case externalOnly
     case bothSides
     case identityConflicts
-    case unmanagedCandidates
     case unsupportedTopology
 
     var displayName: String {
@@ -158,7 +157,6 @@ nonisolated enum DevSetupGroup: String, Codable, CaseIterable, Sendable {
         case .externalOnly: return "External only"
         case .bothSides: return "On both sides"
         case .identityConflicts: return "Identity conflicts"
-        case .unmanagedCandidates: return "Unmanaged candidates"
         case .unsupportedTopology: return "Unsupported topology"
         }
     }

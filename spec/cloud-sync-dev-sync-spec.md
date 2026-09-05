@@ -378,7 +378,8 @@ include switch. The catalog has two kinds of unit:
 
 - Every outermost Git repository at any depth is one unit. A monorepo with
   many `package.json` files is one unit unless the user splits it. A nested
-  independent repository can be offered as a candidate. A submodule is never
+  independent repository is never a separate unit: its files, including its
+  own `.git`, sync as part of the outer repository. A submodule is never
   auto-added.
 - The root unit, shown as `Everything else`, covers every file and folder
   that is not inside a repository unit and not a managed link: loose files
@@ -389,8 +390,11 @@ include switch. The catalog has two kinds of unit:
 
 Non-Git markers (`Package.swift`, `.xcodeproj`, `package.json`, and the rest
 of the marker list) never create a unit. A marker folder is ordinary content
-of the root unit. It becomes its own unit only when the user includes it as a
-candidate.
+of the unit that contains it. Discovery still records markers, nested
+repositories, and bare repositories as candidates for diagnostics, but the
+setup sheet never lists them and nothing asks the user to include them: a
+`_`-prefixed archive such as `organization/_archive/ArtFervor` syncs
+completely, with every package and nested repository inside it.
 
 Drive-only folders: during the external walk, the shallowest directory that
 exists on the drive but not on the Mac, outside every repository unit, is a
@@ -1377,12 +1381,12 @@ sees. Rows also define acceptance tests; the test name is the row number.
 | 10 | The user renames `app-a` to `app-a2` internally. | Matches the old and new projects by resource identifier, moves the external folder on its own volume, keeps the baseline. | Row `app-a2 · Mirrored · Renamed`. No full recopy. |
 | 11 | The user moves `personal/tool` to `work/tool`. | Same as a rename. | Row path updates. |
 | 12 | A monorepo has nested `apps/api` and `apps/web` with one `.git`. | One project. | One row. |
-| 13 | A repo contains a vendored independent Git repo. | The outer repo is the project. The inner repo is offered as an unmanaged candidate and never auto-added. | Candidate `vendor/lib · Nested repository · Add / Ignore`. |
+| 13 | A repo contains a vendored independent Git repo. | The outer repo is the unit. The inner repo syncs as part of it, including its `.git`, and is never a separate unit. | One row for the outer repo; no candidate list. |
 | 14 | A project uses submodules. | The superproject is the unit. Initialized submodule files are enumerated with Git in each work tree. | One row with a `Submodules` note. |
 | 15 | A project is a linked worktree whose main repo is outside the pair. | Copies raw files. Marks the topology unsupported. Never rewrites `.git`. | Row warning `Destination copy is not usable as a worktree`. |
-| 16 | A bare repository sits under the root. | Never auto-added. | Candidate `Bare repository`. |
+| 16 | A bare repository sits under the root. | Never a unit; its files sync as content of the unit that contains it. | No row. |
 | 17 | Two clones of the same remote sit at different paths. | Two projects. No merge. | Two rows. |
-| 18 | A folder has `package.json` but no `.git`. | Never auto-added. | Candidate `Node package · Add / Ignore`. |
+| 18 | A folder has `package.json` but no `.git`. | Never a unit; its files sync as content of the unit that contains it. | No row. |
 | 19 | The internal root is the home directory. | Allows it, bounds discovery to project roots, and shows the count. | Warning `312 projects found. Consider a narrower root.` |
 | 20 | The two roots are nested, identical, or the same directory through a symlink. | Rejects the pair in setup. | Inline error `Roots must not overlap`. Continue disabled. |
 | 21 | A second pair uses a root inside an existing pair. | Rejects it. | Inline error `~/dev/work is already owned by pair DevSSD`. |

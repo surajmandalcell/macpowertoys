@@ -190,6 +190,31 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(after?.residency, .externalResident)
     }
 
+    func testUnderscoreArchiveNestedRepositoryAndPackageSyncWithTheirContainer() async throws {
+        let fixture = try await makeFixture(gitRepository: true)
+        let internalRoot = fixture.internalProject.deletingLastPathComponent()
+        let externalRoot = fixture.externalProject.deletingLastPathComponent()
+        let nestedRepository = fixture.internalProject.appendingPathComponent("_ARCHIVE/_mubi-af-quiz", isDirectory: true)
+        try FileManager.default.createDirectory(at: nestedRepository, withIntermediateDirectories: true)
+        try Data("quiz".utf8).write(to: nestedRepository.appendingPathComponent("quiz.js"))
+        try runGit(["init", "-q"], at: nestedRepository)
+        let package = internalRoot.appendingPathComponent("organization/_archive/ArtFervor/af-jigsaw", isDirectory: true)
+        try FileManager.default.createDirectory(at: package.appendingPathComponent("public/puzzle"), withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: package.appendingPathComponent("package.json"))
+        try Data("{}".utf8).write(to: package.appendingPathComponent("public/puzzle/package.json"))
+
+        await fixture.engine.start()
+        try await waitUntil { await fixture.engine.projects().contains { $0.isRootUnit } }
+        await fixture.engine.syncNow()
+        try await waitUntil(timeout: 10) {
+            FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("app/_ARCHIVE/_mubi-af-quiz/quiz.js").path)
+                && FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("app/_ARCHIVE/_mubi-af-quiz/.git/HEAD").path)
+                && FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("organization/_archive/ArtFervor/af-jigsaw/public/puzzle/package.json").path)
+        }
+        let paths = await fixture.engine.projects().map(\.relativePath)
+        XCTAssertFalse(paths.contains { $0.contains("_mubi-af-quiz") || $0.contains("af-jigsaw") }, "candidates never become units: \(paths)")
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneBatch() async throws {
         let fixture = try await makeFixture()
         await fixture.engine.start()

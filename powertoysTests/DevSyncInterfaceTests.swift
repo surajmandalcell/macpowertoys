@@ -200,7 +200,7 @@ final class DevSyncInterfaceTests: XCTestCase {
         XCTAssertTrue(model.canContinue)
     }
 
-    func testSetupProjectInclusionTracksExcludedAndCandidatePaths() {
+    func testSetupProjectInclusionTracksExcludedPathsAndNeverListsCandidates() {
         let model = DevSyncSetupModel(engine: engine)
         let item = DevSetupProjectItem(
             relativePath: "work/scanner",
@@ -217,10 +217,7 @@ final class DevSyncInterfaceTests: XCTestCase {
         model.setIncluded(false, for: item, in: .internalOnly)
         XCTAssertFalse(model.isIncluded(item, in: .internalOnly))
         XCTAssertTrue(model.draft.excludedProjectPaths.contains(item.relativePath))
-
-        XCTAssertFalse(model.isIncluded(item, in: .unmanagedCandidates))
-        model.setIncluded(true, for: item, in: .unmanagedCandidates)
-        XCTAssertTrue(model.draft.includedCandidatePaths.contains(item.relativePath))
+        XCTAssertFalse(DevSetupGroup.allCases.contains { $0.displayName.localizedCaseInsensitiveContains("candidate") }, "the setup sheet never lists candidates")
     }
 
     func testSetupActivityPresetReplacesTiming() {
