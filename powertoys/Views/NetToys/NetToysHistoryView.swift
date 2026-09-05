@@ -39,6 +39,8 @@ nonisolated enum NetToysLocationAction: Equatable {
 @Observable
 @MainActor
 final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
+    private static let exportDateFormatter = ISO8601DateFormatter()
+
     var history = NetToysConfigurationStore.history()
     var helperStatus = NetToysConfigurationStore.status()
     var range = NetToysHistoryRange.day
@@ -181,7 +183,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let rows = visibleEvents.map { event in
             [
-                ISO8601DateFormatter().string(from: event.date),
+                Self.exportDateFormatter.string(from: event.date),
                 event.ssid ?? "",
                 event.displayName,
                 event.changes.map(Self.description).joined(separator: "; ")
@@ -382,7 +384,8 @@ struct NetToysHistoryView: View {
     }
 
     private var eventList: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let events = model.visibleEvents
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text("TRANSITIONS").utilitySectionHeader()
                 Spacer()
@@ -390,13 +393,13 @@ struct NetToysHistoryView: View {
                     .frame(width: 240)
                     .frame(height: UtilityLayout.workspaceActionHeight)
                 Button("Export") { model.export() }
-                    .disabled(model.visibleEvents.isEmpty)
+                    .disabled(events.isEmpty)
                 Button("Clear", role: .destructive) { confirmClear = true }
                     .disabled(!model.hasStoredHistory)
             }
             .controlSize(.small)
 
-            if model.visibleEvents.isEmpty {
+            if events.isEmpty {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.circle")
                         .foregroundStyle(.secondary)
@@ -408,7 +411,7 @@ struct NetToysHistoryView: View {
                 .utilitySectionCard()
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(model.visibleEvents.enumerated()), id: \.element.date) { index, event in
+                    ForEach(events, id: \.date) { event in
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: event.changes.contains(where: isOutage) ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                                 .foregroundStyle(event.changes.contains(where: isOutage) ? .orange : .green)
@@ -426,7 +429,7 @@ struct NetToysHistoryView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 7)
-                        if index < model.visibleEvents.count - 1 { QuietDivider() }
+                        if event.date != events.last?.date { QuietDivider() }
                     }
                 }
                 .utilitySectionCard()
@@ -448,7 +451,7 @@ struct NetToysHistoryView: View {
                 .utilitySectionCard()
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(runs.enumerated()), id: \.element.id) { index, run in
+                    ForEach(runs) { run in
                         HStack(spacing: 10) {
                             Image(systemName: "dot.radiowaves.left.and.right")
                                 .foregroundStyle(.tint)
@@ -474,7 +477,7 @@ struct NetToysHistoryView: View {
                         }
                         .controlSize(.small)
                         .padding(.vertical, 6)
-                        if index < runs.count - 1 { QuietDivider() }
+                        if run.id != runs.last?.id { QuietDivider() }
                     }
                 }
                 .utilitySectionCard()
@@ -816,11 +819,15 @@ struct NetToysSettingsView: View {
     }
 }
 
-nonisolated struct NetworkAvailabilitySegment: Equatable, Sendable {
+nonisolated struct NetworkAvailabilitySegment: Equatable, Identifiable, Sendable {
     let network: String
     let state: NetworkReachability
     let start: Date
     let end: Date
+
+    var id: String {
+        "\(network)|\(state.rawValue)|\(start.timeIntervalSinceReferenceDate)|\(end.timeIntervalSinceReferenceDate)"
+    }
 
     var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
 }
@@ -971,8 +978,8 @@ private struct NetworkUptimeTimeline: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
             } else {
-                ForEach(Array(summaries.enumerated()), id: \.element.network) { index, summary in
-                    if index > 0 { QuietDivider() }
+                ForEach(summaries, id: \.network) { summary in
+                    if summary.network != summaries.first?.network { QuietDivider() }
                     VStack(alignment: .leading, spacing: 7) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(summary.network)
@@ -1006,8 +1013,8 @@ private struct NetworkUptimeTimeline: View {
             if !outages.isEmpty {
                 QuietDivider()
                 Text("RECENT OUTAGES").utilitySectionHeader()
-                ForEach(Array(outages.prefix(4).enumerated()), id: \.offset) { index, outage in
-                    if index > 0 { QuietDivider() }
+                ForEach(outages.prefix(4)) { outage in
+                    if outage.id != outages.first?.id { QuietDivider() }
                     HStack(alignment: .top, spacing: 9) {
                         Image(systemName: "exclamationmark.circle.fill")
                             .foregroundStyle(.orange)
@@ -1036,7 +1043,7 @@ private struct NetworkUptimeTimeline: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule().fill(.secondary.opacity(0.16))
-                ForEach(Array(summary.segments.enumerated()), id: \.offset) { _, segment in
+                ForEach(summary.segments) { segment in
                     RoundedRectangle(cornerRadius: 4)
                         .fill(color(for: segment.state))
                         .frame(width: max(1, geometry.size.width * segment.duration / range))

@@ -1190,13 +1190,13 @@ private struct NetToysScannerSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                        ForEach(Array(openers.enumerated()), id: \.element.id) { index, opener in
+                        ForEach($openers) { $opener in
                             GridRow {
-                                TextField("Name", text: $openers[index].name)
+                                TextField("Name", text: $opener.name)
                                     .frame(width: 110)
-                                TextField("URL template", text: $openers[index].urlTemplate)
+                                TextField("URL template", text: $opener.urlTemplate)
                                     .frame(minWidth: 280)
-                                TextField("Port", value: $openers[index].requiredPort, format: .number)
+                                TextField("Port", value: $opener.requiredPort, format: .number)
                                     .frame(width: 60)
                                 Button(role: .destructive) {
                                     openers.removeAll { $0.id == opener.id }
