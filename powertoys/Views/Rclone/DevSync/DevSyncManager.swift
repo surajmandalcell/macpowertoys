@@ -120,6 +120,8 @@ final class DevSyncManager {
             links[pairID] = value
         case .capabilities(let pairID, let value):
             capabilities[pairID] = value
+        case .drift(_, let projectID, let paths):
+            driftPaths[projectID] = paths
         case .notification(let value):
             lastNotification = value
             LogManager.shared.info("Dev Sync notification: \(value.kind.rawValue)", source: "DevSync")

@@ -95,6 +95,7 @@ nonisolated enum DevSyncUpdate: Sendable {
     case links(pairID: UUID, [DevManagedLink])
     case capabilities(pairID: UUID, DevPairCapabilities)
     case notification(DevSyncNotification)
+    case drift(pairID: UUID, projectID: UUID, [String])
 }
 
 // MARK: - Setup
@@ -317,7 +318,7 @@ final class DevSyncPreviewEngine: DevSyncEngine, @unchecked Sendable {
         case .conflicts(let pairID, let conflicts): storedConflicts[pairID] = conflicts
         case .links(let pairID, let links): storedLinks[pairID] = links
         case .capabilities(let pairID, let capabilities): storedCapabilities[pairID] = capabilities
-        case .notification: break
+        case .notification, .drift: break
         }
         lock.unlock()
         for continuation in lock.withLock({ Array(continuations.values) }) { continuation.yield(update) }

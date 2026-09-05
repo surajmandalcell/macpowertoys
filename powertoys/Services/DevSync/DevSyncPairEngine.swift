@@ -61,6 +61,7 @@ actor DevSyncPairEngine {
     private var externalStream: DevEventStream?
     private var schedulerLoop: Task<Void, Never>?
     private var activeRunner: DevOperationRunner?
+    private var driftByProject: [UUID: [String]] = [:]
     private var activeGeneration: DevDirtyGeneration?
     private var running = false
     private var paused = false
@@ -799,7 +800,7 @@ actor DevSyncPairEngine {
                 await scheduler.requeue(generation)
             }
         } else {
-            statusValue.driftCount = output.driftPaths.count
+            recordDrift(output.driftPaths, projectID: project.id)
             updateProject(project.id, state: output.projectState, output: output, error: nil)
             if output.projectState == .conflict {
                 notifyOnce(.blockedByConflict, title: "Dev Sync needs a decision", body: "A conflict is blocking automatic synchronization.")
@@ -1016,7 +1017,7 @@ actor DevSyncPairEngine {
         emit(.conflicts(pairID: pair.id, conflictValues))
         resetBytesIfNeeded()
         statusValue.bytesWrittenToday += outcome.bytesWritten
-        statusValue.driftCount = output.driftPaths.count
+        recordDrift(output.driftPaths, projectID: project.id)
         statusValue.conflictCount = conflictValues.filter { $0.resolvedAt == nil }.count
         if outcome.requeuedPaths.isEmpty {
             await scheduler.complete(projectID: project.id)
@@ -1112,6 +1113,12 @@ actor DevSyncPairEngine {
         else { projectValues.append(project) }
         Task { try? await stateStore.saveProjects(projectValues, pairID: pair.id) }
         emitProjects()
+    }
+
+    private func recordDrift(_ paths: [String], projectID: UUID) {
+        driftByProject[projectID] = paths
+        statusValue.driftCount = driftByProject.values.reduce(0) { $0 + $1.count }
+        emit(.drift(pairID: pair.id, projectID: projectID, paths))
     }
 
     private func updateProject(_ id: UUID, state: DevProjectState, output: DevPlannerOutput?, error: String?) {
