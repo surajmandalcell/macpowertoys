@@ -112,6 +112,9 @@ struct InputDevicesWindowView: View {
         ) {
             InputDevicesScrollSettings()
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            InputScrollDeviceBar()
+        }
     }
 
     private func profile(for kind: InputDeviceDescriptor.Kind) -> InputScrollProfile {

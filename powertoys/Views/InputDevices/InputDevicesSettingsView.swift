@@ -9,9 +9,41 @@ struct InputDevicesSettingsView: View {
     var showsHeader = true
 
     var body: some View {
-        InputDevicesScrollSettings(showsHeaders: showsHeader)
-            .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 14, bottom: 24)
-            .settingsScrollContainer()
+        VStack(spacing: 0) {
+            InputDevicesScrollSettings(showsHeaders: showsHeader)
+                .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 14, bottom: 24)
+                .settingsScrollContainer()
+            InputScrollDeviceBar()
+        }
+    }
+}
+
+struct InputScrollDeviceBar: View {
+    @State private var manager = InputDevicesManager.shared
+
+    var body: some View {
+        VStack(spacing: 0) {
+            QuietDivider()
+            InputSettingRow(
+                label: "Scroll device",
+                help: "Automatic sends continuous events to Trackpad and wheel notches to Mouse."
+            ) {
+                Picker("Scroll device", selection: Binding(
+                    get: { manager.settings.eventOverride },
+                    set: { value in manager.update { $0.eventOverride = value } }
+                )) {
+                    ForEach(InputEventOverride.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(width: 160)
+            }
+            .padding(.horizontal, UtilityLayout.horizontalInset)
+            .padding(.vertical, UtilityLayout.headerVerticalInset)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
@@ -32,21 +64,6 @@ struct InputDevicesScrollSettings: View {
                             get: { $0.scrollControlEnabled },
                             set: { $0.scrollControlEnabled = $1 }
                         ))
-                    }
-                    InputSettingRow(
-                        label: "Treat scroll events as",
-                        help: "Automatic sends continuous events to Trackpad and wheel notches to Mouse."
-                    ) {
-                        Picker("Treat scroll events as", selection: setting(
-                            get: { $0.eventOverride },
-                            set: { $0.eventOverride = $1 }
-                        )) {
-                            ForEach(InputEventOverride.allCases) { option in
-                                Text(option.title).tag(option)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(width: 160)
                     }
                     if !manager.permissionGranted {
                         InputSettingRow(label: "Accessibility permission") {
