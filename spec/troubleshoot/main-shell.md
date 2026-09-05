@@ -33,9 +33,9 @@
   spacing values, so mixed content had no shared alignment columns.
 - **Invariant:** Use an 18pt leading icon column, at least 24pt for compact
   status/history rows, 8pt between peer controls, and align transfer progress
-  with its text column. Keep Pause/Resume on the active transfer row. Awake
-  and Cloud Sync use the same 12pt horizontal, 10pt top, and 14pt bottom body
-  insets. Give the outlined tab group a 20pt top inset and a 6pt body gap. Its
+  with its text column. Keep Pause/Resume on the active transfer row. Every tab
+  body uses the same 12pt horizontal gutter and 14pt bottom inset. Give the
+  outlined tab group one 8pt outer inset above and below it. Its
   4pt inner inset must be equal on every edge, and non-scrolling tabs must use
   the complete available width. Use one accent selection, 4pt between tabs,
   and no divider below a group that already has its own surface. Show tab icons
@@ -47,6 +47,41 @@
   Measure every tab-group edge, both body bottoms, and both footer edges. Add a
   third combined tool, confirm labels disappear, then reopen the popover and
   confirm the last selected available tool returns.
+
+## Menu-Bar Tab Body Gap
+
+- **Symptom:** The popover leaves a wide empty band under the tab row before
+  any content starts.
+- **Cause:** The tab group carried its own bottom inset while each tab body
+  added a second top inset, so two gaps stacked below one tab row. The group
+  also kept a 20pt top inset, so 38pt of chrome surrounded a 36pt tab group.
+- **Invariant:** The tab group owns the only gap on each side of the tab row:
+  `TrayPopoverLayout.tabGroupOuterInset` (8pt), applied with one
+  `.padding(.vertical,)`. `TrayPopoverLayout.bodyTopInset` is 0, so no tab body
+  adds a second top gap under the tab row.
+- **Check:** `TrayPopoverLayoutTests.testTrayBodyStartsOneOuterInsetBelowTheTabRow`
+  renders the popover offscreen and measures its vertical ink bands. The first
+  blank band must equal the outer inset, the tab-group band must equal
+  `tabGroupInset * 2 + tabHeight`, and the next blank band must not exceed the
+  outer inset plus 3 points of text ascent.
+
+## Menu-Bar Tool Settings
+
+- **Symptom:** A menu-bar tool exposes only a description and an Open button,
+  so every setting needs the launcher or the tool window.
+- **Cause:** The tray owned small per-tool views instead of the shared settings
+  view.
+- **Invariant:** Every combined tray tab shows one operational summary and then
+  `ToolSettingsContent(toolID:)`, the same view the launcher detail and the tool
+  window use. Each tab has one scrolling region, capped at 70 percent of the
+  screen through `TrayPopoverLayout.maximumBodyHeight`. A settings view that
+  cannot fit 340pt adapts through the `compactSettingsLayout` environment value;
+  never copy its controls. A control in the tool's settings view must not repeat
+  in the tray summary.
+- **Check:** `TrayPopoverLayoutTests.testEveryTrayTabbedToolRendersItsSharedSettingsView`
+  proves that no tray-tabbed tool falls back to the no-settings placeholder. In
+  the installed build, change one setting in each tray tab and confirm the same
+  value in that tool's window.
 
 ## Menu-Bar Tool Placement
 
