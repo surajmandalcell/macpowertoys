@@ -31,22 +31,40 @@ struct CCHistorySettingsPage: View {
                 QuietDivider()
             }
 
-            Form {
-                Section {
-                    Toggle("Start AI History at launch", isOn: $startAtLaunch)
-                } header: {
-                    Text("General")
-                } footer: {
-                    Text("Opens AI History automatically when MacPowerToys launches.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("GENERAL").utilitySectionHeader()
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("Start AI History at launch")
+                                Spacer()
+                                Toggle("Start AI History at launch", isOn: $startAtLaunch)
+                                    .labelsHidden()
+                            }
+                            Text("Opens AI History automatically when MacPowerToys launches.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 12))
+                        .controlSize(.small)
+                        .utilitySectionCard()
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("HISTORY").utilitySectionHeader()
+                        VStack(alignment: .leading, spacing: 10) {
+                            CCHistorySettings()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 12))
+                        .controlSize(.small)
+                        .utilitySectionCard()
+                    }
                 }
-                Section("History") {
-                    CCHistorySettings()
-                }
+                .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
             .thinScrollIndicators()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -62,16 +80,37 @@ struct CCHistorySettings: View {
     @State private var showingClearConfirm = false
 
     var body: some View {
-        Toggle("Auto-refresh", isOn: $autoRefresh)
-        Toggle("Deep search by default", isOn: $deepSearchDefault)
+        HStack {
+            Text("Auto-refresh")
+            Spacer()
+            Toggle("Auto-refresh", isOn: $autoRefresh)
+                .labelsHidden()
+        }
+        HStack {
+            Text("Deep search by default")
+            Spacer()
+            Toggle("Deep search by default", isOn: $deepSearchDefault)
+                .labelsHidden()
+        }
 
-        LabeledContent("Cached Sessions", value: "\(cacheSessionCount)")
-        LabeledContent("Cache Size", value: formatBytes(cacheFileSize))
+        HStack {
+            Text("Cached Sessions")
+            Spacer()
+            Text("\(cacheSessionCount)").monospacedDigit()
+        }
+        HStack {
+            Text("Cache Size")
+            Spacer()
+            Text(formatBytes(cacheFileSize)).monospacedDigit()
+        }
 
-        Button(role: .destructive) {
-            showingClearConfirm = true
-        } label: {
-            Label("Clear Cache", systemImage: "trash")
+        HStack {
+            Spacer()
+            Button(role: .destructive) {
+                showingClearConfirm = true
+            } label: {
+                Label("Clear Cache", systemImage: "trash")
+            }
         }
         .confirmationDialog("Clear Cache?", isPresented: $showingClearConfirm) {
             Button("Clear Cache", role: .destructive) {

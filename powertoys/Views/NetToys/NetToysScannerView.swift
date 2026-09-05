@@ -1134,101 +1134,125 @@ private struct NetToysScannerSettingsView: View {
                 UtilityModalCloseButton(action: saveAndDismiss)
             }
 
-            Form {
-                SingleStepStepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
-                SingleStepStepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
-                SingleStepStepper(
-                    "Launch delay: \(model.launchDelayMilliseconds) ms",
-                    value: $model.launchDelayMilliseconds,
-                    in: 0...100,
-                    step: 5
-                )
-                Section("Host detection") {
-                    Picker("Liveness", selection: $model.livenessMethod) {
-                        ForEach(NetToysLivenessMethod.allCases) { method in
-                            Text(method.rawValue).tag(method)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+                    settingsSection("Scan Engine") {
+                        SingleStepStepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
+                        SingleStepStepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
+                        SingleStepStepper(
+                            "Launch delay: \(model.launchDelayMilliseconds) ms",
+                            value: $model.launchDelayMilliseconds,
+                            in: 0...100,
+                            step: 5
+                        )
                     }
-                    Toggle("Use response-based TCP timeout", isOn: $model.adaptiveTCPTimeout)
-                    if model.livenessMethod == .icmpAndTCP {
-                        Toggle("Scan hosts that do not answer ICMP", isOn: $model.scanUnresponsiveHosts)
-                    }
-                    Toggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
-                    if model.collectPingDetails || model.livenessMethod == .icmpAndTCP || model.adaptiveTCPTimeout {
-                        SingleStepStepper("ICMP timeout: \(model.pingTimeoutMilliseconds) ms", value: $model.pingTimeoutMilliseconds, in: 100...5_000, step: 100)
-                        SingleStepStepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
-                    }
-                }
 
-                Section("Protocol fetchers") {
-                    Toggle("Detect HTTP servers", isOn: $model.detectHTTPServer)
-                    Toggle("Detect HTTP proxies", isOn: $model.detectHTTPProxy)
-                    Toggle("Read NetBIOS names", isOn: $model.detectNetBIOS)
-                    Toggle("Use custom text probe", isOn: $model.customTextEnabled)
-                    if model.customTextEnabled {
-                        SingleStepStepper("Custom port: \(model.customTextPort)", value: $model.customTextPort, in: 1...65_535)
-                        TextField("Request", text: $model.customTextRequest, axis: .vertical)
-                            .lineLimit(2...4)
-                        TextField("Response regular expression", text: $model.customTextPattern)
-                    }
-                }
-
-                Section("MAC addresses") {
-                    Text("macOS restricts neighboring device MAC addresses to processes with Apple's private neighbor-cache privilege. NetToys never presents the system's privacy placeholder as a device MAC.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Openers") {
-                    Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
-                        GridRow {
-                            Text("Name")
-                            Text("URL template")
-                            Text("Port")
-                            Color.clear.frame(width: 20)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                        ForEach($openers) { $opener in
-                            GridRow {
-                                TextField("Name", text: $opener.name)
-                                    .frame(width: 110)
-                                TextField("URL template", text: $opener.urlTemplate)
-                                    .frame(minWidth: 280)
-                                TextField("Port", value: $opener.requiredPort, format: .number)
-                                    .frame(width: 60)
-                                Button(role: .destructive) {
-                                    openers.removeAll { $0.id == opener.id }
-                                } label: {
-                                    Image(systemName: "trash")
+                    settingsSection("Host Detection") {
+                        HStack {
+                            Text("Liveness")
+                            Spacer()
+                            Picker("Liveness", selection: $model.livenessMethod) {
+                                ForEach(NetToysLivenessMethod.allCases) { method in
+                                    Text(method.rawValue).tag(method)
                                 }
-                                .buttonStyle(.borderless)
-                                .focusEffectDisabled()
-                                .accessibilityLabel("Delete \(opener.name) opener")
+                            }
+                            .labelsHidden()
+                            .frame(width: 180)
+                        }
+                        settingsToggle("Use response-based TCP timeout", isOn: $model.adaptiveTCPTimeout)
+                        if model.livenessMethod == .icmpAndTCP {
+                            settingsToggle("Scan hosts that do not answer ICMP", isOn: $model.scanUnresponsiveHosts)
+                        }
+                        settingsToggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
+                        if model.collectPingDetails || model.livenessMethod == .icmpAndTCP || model.adaptiveTCPTimeout {
+                            SingleStepStepper("ICMP timeout: \(model.pingTimeoutMilliseconds) ms", value: $model.pingTimeoutMilliseconds, in: 100...5_000, step: 100)
+                            SingleStepStepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
+                        }
+                    }
+
+                    settingsSection("Protocol Fetchers") {
+                        settingsToggle("Detect HTTP servers", isOn: $model.detectHTTPServer)
+                        settingsToggle("Detect HTTP proxies", isOn: $model.detectHTTPProxy)
+                        settingsToggle("Read NetBIOS names", isOn: $model.detectNetBIOS)
+                        settingsToggle("Use custom text probe", isOn: $model.customTextEnabled)
+                        if model.customTextEnabled {
+                            SingleStepStepper("Custom port: \(model.customTextPort)", value: $model.customTextPort, in: 1...65_535)
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("Request")
+                                Spacer()
+                                TextField("Request", text: $model.customTextRequest, axis: .vertical)
+                                    .labelsHidden()
+                                    .lineLimit(2...4)
+                                    .frame(minWidth: 280)
+                            }
+                            HStack {
+                                Text("Response regular expression")
+                                Spacer()
+                                TextField("Response regular expression", text: $model.customTextPattern)
+                                    .labelsHidden()
+                                    .frame(minWidth: 280)
                             }
                         }
                     }
 
-                    HStack {
-                        Button("Add Opener") {
-                            guard openers.count < 20 else { return }
-                            openers.append(NetToysOpener(
-                                name: "New Opener",
-                                urlTemplate: "http://{ip}:{port}/",
-                                requiredPort: 80
-                            ))
-                        }
-                        Button("Restore Defaults") { openers = NetToysOpener.defaults }
+                    settingsSection("MAC Addresses") {
+                        Text("macOS restricts neighboring device MAC addresses to processes with Apple's private neighbor-cache privilege. NetToys never presents the system's privacy placeholder as a device MAC.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
                     }
-                    Text("Use {ip}, {hostname}, and {port}. NetToys opens only URL protocols and always shows a preview.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+
+                    settingsSection("Openers") {
+                        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                            GridRow {
+                                Text("Name")
+                                Text("URL template")
+                                Text("Port")
+                                Color.clear.frame(width: 20)
+                            }
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+
+                            ForEach($openers) { $opener in
+                                GridRow {
+                                    TextField("Name", text: $opener.name)
+                                        .frame(width: 110)
+                                    TextField("URL template", text: $opener.urlTemplate)
+                                        .frame(minWidth: 280)
+                                    TextField("Port", value: $opener.requiredPort, format: .number)
+                                        .frame(width: 60)
+                                    Button(role: .destructive) {
+                                        openers.removeAll { $0.id == opener.id }
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .focusEffectDisabled()
+                                    .accessibilityLabel("Delete \(opener.name) opener")
+                                }
+                            }
+                        }
+
+                        HStack {
+                            Button("Add Opener") {
+                                guard openers.count < 20 else { return }
+                                openers.append(NetToysOpener(
+                                    name: "New Opener",
+                                    urlTemplate: "http://{ip}:{port}/",
+                                    requiredPort: 80
+                                ))
+                            }
+                            Button("Restore Defaults") { openers = NetToysOpener.defaults }
+                        }
+                        Text("Use {ip}, {hostname}, and {port}. NetToys opens only URL protocols and always shows a preview.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, 4)
             }
             .thinScrollIndicators()
-            .formStyle(.grouped)
-            .controlSize(.small)
+            .frame(height: 540)
 
             HStack {
                 Spacer()
@@ -1256,6 +1280,31 @@ private struct NetToysScannerSettingsView: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func settingsSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased()).utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 10) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(.system(size: 12))
+            .controlSize(.small)
+            .utilitySectionCard()
+        }
+    }
+
+    private func settingsToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
         }
     }
 }
@@ -1321,12 +1370,24 @@ private struct NetToysRandomTargetsView: View {
             Text("Generate unique usable IPv4 addresses inside one CIDR block.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-            Form {
-                TextField("CIDR", text: $cidr)
-                SingleStepStepper("Address count: \(count)", value: $count, in: 1...1_024)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("TARGETS").utilitySectionHeader()
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("CIDR")
+                        Spacer()
+                        TextField("CIDR", text: $cidr)
+                            .labelsHidden()
+                            .font(.system(size: 12, design: .monospaced))
+                            .frame(width: 180)
+                    }
+                    SingleStepStepper("Address count: \(count)", value: $count, in: 1...1_024)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.system(size: 12))
+                .controlSize(.small)
+                .utilitySectionCard()
             }
-            .thinScrollIndicators()
-            .formStyle(.grouped)
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }

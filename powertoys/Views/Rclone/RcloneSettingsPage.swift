@@ -8,6 +8,7 @@ import SwiftUI
 struct RcloneSettingsPage: View {
     var showsHeader = true
     @AppStorage("tool.rclone.startAtLaunch") private var startAtLaunch = false
+    @AppStorage("app.showTray") private var showTray = true
     @Environment(\.compactSettingsLayout) private var compact
 
     var body: some View {
@@ -17,18 +18,14 @@ struct RcloneSettingsPage: View {
                 QuietDivider()
             }
 
-            if compact {
-                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
-                    sections
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .settingsPageInsets(horizontal: 0, bottom: 0)
-            } else {
-                Form { sections }
-                    .formStyle(.grouped)
-                    .scrollContentBackground(.hidden)
-                    .thinScrollIndicators()
+            VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+                generalSection
+                traySection
+                RcloneSettingsView()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
+            .settingsScrollContainer()
         }
         .background(compact ? Color.clear : Color(nsColor: .windowBackgroundColor))
         .onChange(of: startAtLaunch) { _, enabled in
@@ -36,19 +33,46 @@ struct RcloneSettingsPage: View {
         }
     }
 
-    @ViewBuilder
-    private var sections: some View {
-        Section {
-            Toggle("Start sync engine at launch", isOn: $startAtLaunch)
-        } header: {
-            Text("General")
-        } footer: {
-            Text("Starts the transfer engine in the background when MacPowerToys launches. The Cloud Sync window stays closed until you open it.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+    private var generalSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GENERAL").utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Start sync engine at launch")
+                    Spacer()
+                    Toggle("Start sync engine at launch", isOn: $startAtLaunch)
+                        .labelsHidden()
+                }
+                Text("Starts the transfer engine in the background when MacPowerToys launches. The Cloud Sync window stays closed until you open it.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(.system(size: 12))
+            .controlSize(.small)
+            .utilitySectionCard()
         }
-        TraySettingSection()
-        RcloneSettingsView()
+    }
+
+    private var traySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TRAY").utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Show MacPowerToys in the menu bar")
+                    Spacer()
+                    Toggle("Show MacPowerToys in the menu bar", isOn: $showTray)
+                        .labelsHidden()
+                }
+                Text("The tray icon gives quick access to MacPowerToys even when all windows are closed.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(.system(size: 12))
+            .controlSize(.small)
+            .utilitySectionCard()
+        }
     }
 
     private var header: some View {

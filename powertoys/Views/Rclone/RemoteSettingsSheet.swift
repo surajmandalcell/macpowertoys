@@ -29,20 +29,23 @@ struct RemoteSettingsSheet: View {
             header
             QuietDivider()
 
-            Form {
-                Section {
-                    overrideRow(label: "Parallel transfers", value: $transfers, range: 0...64, globalValue: globalTransfers)
-                    overrideRow(label: "Checkers", value: $checkers, range: 0...128, globalValue: globalCheckers)
-                } header: {
-                    Text("Overrides")
-                } footer: {
-                    Text("0 uses the app-wide value. Overrides apply when a transfer starts. Pause a running transfer. Resume it to apply changes. The bandwidth limit applies to the full engine.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("OVERRIDES").utilitySectionHeader()
+                    VStack(alignment: .leading, spacing: 10) {
+                        overrideRow(label: "Parallel transfers", value: $transfers, range: 0...64, globalValue: globalTransfers)
+                        overrideRow(label: "Checkers", value: $checkers, range: 0...128, globalValue: globalCheckers)
+                        Text("0 uses the app-wide value. Overrides apply when a transfer starts. Pause a running transfer. Resume it to apply changes. The bandwidth limit applies to the full engine.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.system(size: 12))
+                    .controlSize(.small)
+                    .utilitySectionCard()
                 }
+                .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
             .thinScrollIndicators()
         }
         .frame(width: 440, height: 300)

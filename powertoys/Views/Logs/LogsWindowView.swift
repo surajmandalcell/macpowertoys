@@ -363,25 +363,32 @@ struct LogsSettingsView: View {
     @AppStorage("logs.fontSize") private var logsFontSize = 11
 
     var body: some View {
-        Form {
-            Section {
-                Picker("Font Size", selection: $logsFontSize) {
-                    Text("Small").tag(10)
-                    Text("Medium").tag(11)
-                    Text("Default").tag(12)
-                    Text("Large").tag(14)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("APPEARANCE").utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Font size")
+                    Spacer()
+                    Picker("Font size", selection: $logsFontSize) {
+                        Text("Small").tag(10)
+                        Text("Medium").tag(11)
+                        Text("Default").tag(12)
+                        Text("Large").tag(14)
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
                 }
-            } header: {
-                Text("Appearance")
-            } footer: {
                 Text("System Issues are read from macOS only when requested and are never saved by MacPowerToys.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(.system(size: 12))
+            .controlSize(.small)
+            .utilitySectionCard()
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .thinScrollIndicators()
+        .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
+        .settingsScrollContainer()
     }
 }
 
