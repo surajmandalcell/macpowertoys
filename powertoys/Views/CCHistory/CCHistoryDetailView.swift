@@ -35,6 +35,10 @@ struct CCHistoryDetailView: View {
     }
 
     var body: some View {
+        let options = filterOptions
+        let filteredMessages = Array(projectManager.currentMessages.filter {
+            options.shouldShow(message: $0)
+        }.reversed())
         ZStack {
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
@@ -67,7 +71,7 @@ struct CCHistoryDetailView: View {
                             MessageListView(
                                 messages: filteredMessages,
                                 searchText: searchText,
-                                filterOptions: filterOptions
+                                filterOptions: options
                             )
                         }
                     } else {
@@ -94,12 +98,6 @@ struct CCHistoryDetailView: View {
         }
     }
     
-    private var filteredMessages: [CCMessage] {
-        projectManager.currentMessages.filter { message in
-            filterOptions.shouldShow(message: message)
-        }.reversed()
-    }
-
     private var hasThinkingContent: Bool {
         projectManager.currentMessages.contains { $0.thinking != nil && !($0.thinking?.isEmpty ?? true) }
     }
