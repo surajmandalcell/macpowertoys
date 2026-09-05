@@ -65,7 +65,7 @@ struct SystemMonitorWindowView: View {
         case .memory: memoryPage
         case .network: networkPage
         case .menuBar: menuBarPage
-        case .about: ToolAboutView(toolId: "system-monitor")
+        case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
         }
     }
 

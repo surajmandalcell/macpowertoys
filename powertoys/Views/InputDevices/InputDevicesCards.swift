@@ -44,18 +44,16 @@ enum InputControlState {
     }
 }
 
-struct InputStateBadge: View {
+struct InputStateLabel: View {
     let state: InputControlState
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: state.icon).font(.system(size: 10))
+            Image(systemName: state.icon).font(.system(size: 9, weight: .medium))
             Text(state.title).font(.system(size: 11, weight: .medium))
         }
         .foregroundStyle(state.tint)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(state.tint.opacity(0.12)))
+        .lineLimit(1)
         .fixedSize()
         .accessibilityElement(children: .combine)
     }
@@ -111,7 +109,7 @@ private struct InputCardHeader<Accessory: View>: View {
 }
 
 struct InputDeviceCard: View {
-    @ScaledMetric(relativeTo: .caption) private var labelWidth: CGFloat = 82
+    @ScaledMetric(relativeTo: .caption) private var labelWidth: CGFloat = 64
 
     let device: InputDeviceDescriptor
     let profile: InputScrollProfile
@@ -124,60 +122,48 @@ struct InputDeviceCard: View {
                 title: device.name,
                 detail: device.isBuiltIn ? "\(device.kind.rawValue) · Built in" : device.kind.rawValue
             ) {
-                InputStateBadge(state: state)
+                InputStateLabel(state: state)
             }
             QuietDivider()
-            ForEach(rows, id: \.label) { row in
-                detailRow(row)
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
+                ForEach(Array(stride(from: 0, to: rows.count, by: 2)), id: \.self) { index in
+                    GridRow {
+                        cell(rows[index])
+                        if index + 1 < rows.count { cell(rows[index + 1]) } else { Color.clear.gridCellColumns(2) }
+                    }
+                }
             }
         }
     }
 
-    private struct Row {
-        let label: String
-        let value: String?
-        var monospaced = false
-    }
-
-    private var rows: [Row] {
+    var rows: [Row] {
         [
-            Row(label: "Connection", value: device.transport),
-            Row(label: "Maker", value: device.manufacturer.flatMap { $0.isEmpty ? nil : $0 }),
-            Row(label: "Tracking", value: device.systemTrackingSpeed?.formatted(.number.precision(.fractionLength(2)))),
-            Row(label: "Scroll speed", value: profile.speed.formatted(.number.precision(.fractionLength(2))) + "×"),
+            Row(label: "Model", value: device.modelNumber),
+            Row(label: "Vendor", value: device.vendorName),
+            Row(label: "Device ID", value: String(format: "%04X:%04X", device.vendorID, device.productID), monospaced: true),
+            Row(label: "Firmware", value: device.firmwareVersion, monospaced: true),
+            Row(label: "Serial", value: device.serialNumber.flatMap { $0.isEmpty ? nil : $0 }, monospaced: true),
+            Row(label: "Connection", value: device.connectionSummary),
+            Row(label: "Buttons", value: device.buttonCount.flatMap { $0 > 0 ? $0.formatted() : nil }),
             Row(label: "Resolution", value: device.pointerResolutionDPI.map {
                 $0.formatted(.number.precision(.fractionLength(0))) + " dpi"
             }),
             Row(label: "Polling", value: device.pollingRateHz.map {
                 $0.formatted(.number.precision(.fractionLength(0))) + " Hz"
             }),
-            Row(label: "Buttons", value: device.buttonCount.flatMap { $0 > 0 ? $0.formatted() : nil }),
-            Row(
-                label: "Device ID",
-                value: String(format: "%04X:%04X", device.vendorID, device.productID),
-                monospaced: true
-            ),
-            Row(
-                label: "Location",
-                value: device.locationID > 0 ? String(format: "0x%08X", device.locationID) : nil,
-                monospaced: true
-            ),
-            Row(
-                label: "Firmware",
-                value: device.versionNumber.map { String(format: "0x%04X", $0) },
-                monospaced: true
-            ),
-            Row(label: "Input report", value: device.maxInputReportSize.flatMap { $0 > 0 ? "\($0) bytes" : nil }),
-            Row(
-                label: "Serial",
-                value: device.serialNumber.flatMap { $0.isEmpty ? nil : $0 },
-                monospaced: true
-            )
+            Row(label: "Tracking", value: device.systemTrackingSpeed?.formatted(.number.precision(.fractionLength(2)))),
+            Row(label: "Scroll speed", value: profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
         ]
     }
 
-    private func detailRow(_ row: Row) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+    struct Row {
+        let label: String
+        let value: String?
+        var monospaced = false
+    }
+
+    private func cell(_ row: Row) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(row.label)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -190,7 +176,7 @@ struct InputDeviceCard: View {
                 .textSelection(.enabled)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.system(size: 11))
         .accessibilityElement(children: .combine)
@@ -272,6 +258,13 @@ struct InputScrollProfileCard: View {
                 help: "Invert left and right scrolling. Needs horizontal scrolling."
             ) {
                 Toggle("Reverse horizontal", isOn: $profile.reverseHorizontal)
+            }
+            .disabled(!profile.horizontalEnabled)
+            InputSettingRow(
+                label: "Shift scrolls sideways",
+                help: "Hold Shift and scroll to move left and right. Needs horizontal scrolling."
+            ) {
+                Toggle("Shift scrolls sideways", isOn: $profile.shiftScrollsHorizontally)
             }
             .disabled(!profile.horizontalEnabled)
             InputSettingRow(
