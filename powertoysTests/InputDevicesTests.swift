@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import powertoys
 
@@ -17,6 +18,25 @@ final class InputDevicesTests: XCTestCase {
             InputScrollPolicy.transform(vertical: 3, horizontal: -2, isContinuous: true, settings: settings),
             InputScrollResult(vertical: 1.5, horizontal: -1, shouldSmooth: false)
         )
+    }
+
+    func testMouseHorizontalScrollingPersistsAndBlocksSidewaysMovement() throws {
+        var settings = InputDevicesSettings()
+        settings.mouse.horizontalEnabled = false
+
+        let restored = InputDevicesSettings.decoded(from: try XCTUnwrap(settings.encoded))
+
+        XCTAssertFalse(restored.mouse.horizontalEnabled)
+        XCTAssertTrue(restored.trackpad.horizontalEnabled)
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: 3, horizontal: -2, isContinuous: false, settings: restored),
+            InputScrollResult(vertical: 3, horizontal: 0, shouldSmooth: true)
+        )
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: 3, horizontal: -2, isContinuous: true, settings: restored),
+            InputScrollResult(vertical: 3, horizontal: -2, shouldSmooth: false)
+        )
+        XCTAssertEqual(InputDevicesSettings.decoded(from: nil), InputDevicesSettings())
     }
 
     func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
@@ -42,5 +62,112 @@ final class InputDevicesTests: XCTestCase {
             125
         )
         XCTAssertNil(InputDeviceDescriptor.pollingRate(pointerRate: nil, reportIntervalMicroseconds: nil))
+    }
+
+    func testControlStateFollowsPermissionAndProfile() {
+        var settings = InputDevicesSettings()
+        XCTAssertEqual(
+            InputControlState.state(settings: settings, permissionGranted: true, kind: .mouse),
+            .disabled
+        )
+
+        settings.scrollControlEnabled = true
+        XCTAssertEqual(
+            InputControlState.state(settings: settings, permissionGranted: false, kind: .mouse),
+            .permissionNeeded
+        )
+        XCTAssertEqual(
+            InputControlState.state(settings: settings, permissionGranted: true, kind: .trackpad),
+            .active
+        )
+
+        settings.mouse.enabled = false
+        XCTAssertEqual(
+            InputControlState.state(settings: settings, permissionGranted: true, kind: .mouse),
+            .passthrough
+        )
+        XCTAssertEqual(
+            InputControlState.state(settings: settings, permissionGranted: true, kind: .trackpad),
+            .active
+        )
+    }
+
+    @MainActor
+    func testMouseAndTrackpadDeviceCardsShareOneHeight() {
+        let richMouse = descriptor(
+            name: "Logitech MX Master 3S Wireless Mouse",
+            kind: .mouse,
+            manufacturer: "Logitech",
+            versionNumber: 0x0110,
+            serialNumber: "A1B2C3D4E5",
+            pointerResolutionDPI: 4_000,
+            pollingRateHz: 1_000,
+            buttonCount: 7,
+            maxInputReportSize: 32,
+            systemTrackingSpeed: 1.5
+        )
+        let sparseTrackpad = descriptor(name: "Trackpad", kind: .trackpad)
+
+        XCTAssertEqual(
+            cardHeight(InputDeviceCard(device: richMouse, profile: InputScrollProfile(), state: .active)),
+            cardHeight(InputDeviceCard(device: sparseTrackpad, profile: InputScrollProfile(), state: .disabled))
+        )
+    }
+
+    @MainActor
+    func testMouseAndTrackpadProfileCardsShareOneHeight() {
+        let mouse = InputScrollProfileCard(
+            title: "Mouse",
+            icon: InputDeviceDescriptor.Kind.mouse.icon,
+            deviceCount: 3,
+            profile: .constant(InputScrollProfile(smooth: true))
+        )
+        let trackpad = InputScrollProfileCard(
+            title: "Trackpad",
+            icon: InputDeviceDescriptor.Kind.trackpad.icon,
+            deviceCount: 0,
+            profile: .constant(InputScrollProfile(enabled: false, horizontalEnabled: false))
+        )
+
+        XCTAssertEqual(cardHeight(mouse), cardHeight(trackpad))
+    }
+
+    @MainActor
+    private func cardHeight(_ view: some View, width: CGFloat = 340) -> CGFloat {
+        let hostingView = NSHostingView(rootView: view.frame(width: width))
+        hostingView.layoutSubtreeIfNeeded()
+        return hostingView.fittingSize.height
+    }
+
+    private func descriptor(
+        name: String,
+        kind: InputDeviceDescriptor.Kind,
+        manufacturer: String? = nil,
+        versionNumber: Int? = nil,
+        serialNumber: String? = nil,
+        pointerResolutionDPI: Double? = nil,
+        pollingRateHz: Double? = nil,
+        buttonCount: Int? = nil,
+        maxInputReportSize: Int? = nil,
+        systemTrackingSpeed: Double? = nil
+    ) -> InputDeviceDescriptor {
+        InputDeviceDescriptor(
+            id: name,
+            name: name,
+            kind: kind,
+            transport: "USB",
+            isBuiltIn: kind == .trackpad,
+            manufacturer: manufacturer,
+            vendorID: 0x046D,
+            productID: 0xB034,
+            versionNumber: versionNumber,
+            locationID: versionNumber == nil ? 0 : 0x1D10_0000,
+            serialNumber: serialNumber,
+            pointerResolutionDPI: pointerResolutionDPI,
+            pollingRateHz: pollingRateHz,
+            buttonCount: buttonCount,
+            maxInputReportSize: maxInputReportSize,
+            systemTrackingSpeed: systemTrackingSpeed
+        )
     }
 }
