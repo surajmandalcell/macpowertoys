@@ -15,6 +15,7 @@ nonisolated final class DevFilePolicyEngine: Sendable {
     private let projectKind: DevProjectKind
     private let gitDirectoryRelativePath: String?
     private let gitTracked: Set<String>?
+    private let gitTrackedDirectories: Set<String>?
     private let gitManifest: Set<String>?
     private let gitManifestDirectories: Set<String>?
     private let gitIgnored: Set<String>?
@@ -35,6 +36,7 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         self.projectKind = projectKind
         self.gitDirectoryRelativePath = gitDirectoryRelativePath
         self.gitTracked = gitTracked
+        self.gitTrackedDirectories = gitTracked.map(Self.parentDirectories)
         self.gitManifest = gitManifest
         self.gitManifestDirectories = gitManifest.map { manifest in
             var directories = Set<String>()
@@ -115,8 +117,13 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             gitManifest?.contains(path) == true
                 || input.kind == .directory && gitManifestDirectories?.contains(path) == true
         )
-        let tracked = gitAvailable && gitTracked?.contains(path) == true
-        if tracked || manifestMember {
+        let tracked = gitAvailable && (
+            gitTracked?.contains(path) == true
+                || input.kind == .directory && gitTrackedDirectories?.contains(path) == true
+        )
+        let inSkipList = policy.skipCommonCaches && Self.isCommonCachePath(path)
+            || policy.skipUnignoredBuildOutputs && Self.isBuildOutputPath(path)
+        if tracked || manifestMember && !inSkipList {
             return .include(
                 .gitTracked,
                 sensitive: sensitive,
@@ -193,6 +200,18 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             Self.updateFingerprint(&hasher, with: path)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func parentDirectories(_ paths: Set<String>) -> Set<String> {
+        var directories = Set<String>()
+        for path in paths {
+            var current = path
+            while let parent = DevRelativePath.parent(current) {
+                directories.insert(parent)
+                current = parent
+            }
+        }
+        return directories
     }
 
     static func parseProjectIgnoreRules(_ text: String) -> [String] {

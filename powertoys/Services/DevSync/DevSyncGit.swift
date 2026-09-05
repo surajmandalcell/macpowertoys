@@ -193,6 +193,14 @@ nonisolated enum DevGit {
         return Array(Set(manifest)).sorted()
     }
 
+    /// Paths Git tracks in the index (`--cached` only). Unlike the working-tree
+    /// manifest this never includes untracked files, so it decides whether content
+    /// inside a skip-list folder is committed work or regenerable junk.
+    static func trackedPaths(projectURL: URL) async throws -> Set<String> {
+        let data = try await run(["ls-files", "-z", "--cached"], in: projectURL)
+        return Set(nulSeparatedStrings(data).filter(DevRelativePath.isSafe))
+    }
+
     static func ignoredPaths(projectURL: URL, candidates: [String]) async throws -> Set<String> {
         guard !candidates.isEmpty else { return [] }
         guard candidates.allSatisfy(DevRelativePath.isSafe) else {

@@ -465,7 +465,10 @@ Precedence, highest first:
 Rules 1 and 2 are hard. An explicit user rule overrides the sensitive default.
 Rule 6 sits above rule 8 on purpose: Git-tracked content inside a skip-list
 folder such as a committed `vendor/` or `build/` still syncs, while untracked
-files beside it are skipped.
+files beside it are skipped. "Tracked" here means present in the Git index
+(`git ls-files --cached`). The working-tree manifest also lists untracked
+files that Git does not ignore; those count as tracked everywhere except
+inside a skip-list folder, where only index entries win.
 
 Object types are detected by `lstat`, never by name. Cloud Sync internal paths
 are the configured `.cloudsync-system`, `.cloudsync-partial`,

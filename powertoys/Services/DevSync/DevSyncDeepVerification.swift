@@ -119,11 +119,12 @@ actor DevDeepVerifier {
         let manifest = project.kind == .nonGit
             ? nil
             : try? await DevGit.workingTreeManifest(projectURL: projectURL).reduce(into: Set<String>()) { $0.insert($1) }
+        let tracked = project.kind == .nonGit ? nil : try? await DevGit.trackedPaths(projectURL: projectURL)
         return DevFilePolicyEngine(
             policy: pair.configuration.policy,
             projectKind: project.kind,
             gitDirectoryRelativePath: project.topology?.gitDirectory,
-            gitTracked: manifest,
+            gitTracked: tracked ?? manifest,
             gitManifest: manifest,
             gitIgnored: nil,
             gitAvailable: manifest != nil,
