@@ -10,6 +10,7 @@ private enum ToolDetailPage: String, CaseIterable, Identifiable {
 struct ToolAboutView: View {
     let toolId: String
     var showsModalCloseButton = false
+    var showsSettings = true
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dismissWindow) private var dismissWindow
@@ -25,6 +26,14 @@ struct ToolAboutView: View {
         if let tool {
             VStack(spacing: 0) {
                 header(for: tool)
+                if !showsSettings {
+                    QuietDivider()
+                    VStack(spacing: 0) {
+                        ToolDetailIntro(tool: tool)
+                        manualSection(for: tool)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                } else {
                 HStack(spacing: 2) {
                     ForEach(ToolDetailPage.allCases) { page in
                         UtilityTabPill(
@@ -59,6 +68,7 @@ struct ToolAboutView: View {
                 }
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
             }
         } else {
             EmptyStateView(icon: "questionmark.circle", message: "Unknown tool")

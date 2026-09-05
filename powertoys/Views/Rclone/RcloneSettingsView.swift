@@ -29,7 +29,7 @@ struct RcloneSettingsView: View {
                     .background(Color.primary.opacity(0.03))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                Text("One glob per line. Applied as --exclude rules on every transfer.")
+                Text("One glob per line, used as --exclude.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -56,9 +56,6 @@ struct RcloneSettingsView: View {
                     .labelsHidden()
                     .frame(width: 140)
                 }
-                Text("Number of files moved in parallel and hashed for comparison.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
             }
 
             settingsSection("Retries") {
@@ -66,7 +63,7 @@ struct RcloneSettingsView: View {
                 StepperField(label: "Retry backoff", value: $retryBackoff, range: 0...300, format: .number, suffix: "s")
                 StepperField(label: "Low-level retries", value: $lowLevelRetries, range: 1...50, format: .number)
                 StepperField(label: "Concurrent jobs", value: $maxConcurrentJobs, range: 1...16, format: .number)
-                Text("Failed transfers retry with exponential backoff before giving up.")
+                Text("Backoff doubles after each failed try.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -80,9 +77,6 @@ struct RcloneSettingsView: View {
                         .font(.system(size: 12, design: .monospaced))
                         .frame(minWidth: 180)
                 }
-                Text("Leave empty to locate rclone on the system PATH.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
             }
         }
     }

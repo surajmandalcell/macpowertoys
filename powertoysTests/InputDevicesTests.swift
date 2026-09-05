@@ -39,6 +39,61 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(InputDevicesSettings.decoded(from: nil), InputDevicesSettings())
     }
 
+    func testShiftWheelScrollsSidewaysAndClearsWhenDisabled() throws {
+        var settings = InputDevicesSettings()
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: -30, horizontal: 0, isContinuous: false, shiftHeld: true, settings: settings),
+            InputScrollResult(vertical: 0, horizontal: -30, shouldSmooth: true, shiftConverted: true)
+        )
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: -30, horizontal: 0, isContinuous: false, shiftHeld: false, settings: settings),
+            InputScrollResult(vertical: -30, horizontal: 0, shouldSmooth: true)
+        )
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: -30, horizontal: 4, isContinuous: false, shiftHeld: true, settings: settings),
+            InputScrollResult(vertical: -30, horizontal: 4, shouldSmooth: true),
+            "a real sideways delta is never rewritten"
+        )
+        settings.mouse.reverseHorizontal = true
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: -30, horizontal: 0, isContinuous: false, shiftHeld: true, settings: settings)?.horizontal,
+            30
+        )
+        settings.mouse.shiftScrollsHorizontally = false
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: -30, horizontal: 0, isContinuous: false, shiftHeld: true, settings: settings),
+            InputScrollResult(vertical: -30, horizontal: 0, shouldSmooth: true)
+        )
+        settings.mouse.shiftScrollsHorizontally = true
+        settings.mouse.horizontalEnabled = false
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: -30, horizontal: 0, isContinuous: false, shiftHeld: true, settings: settings),
+            InputScrollResult(vertical: -30, horizontal: 0, shouldSmooth: true)
+        )
+
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(InputDevicesSettings().encoded)) as? [String: Any])
+        var mouse = try XCTUnwrap(legacy["mouse"] as? [String: Any])
+        mouse.removeValue(forKey: "shiftScrollsHorizontally")
+        mouse["speed"] = 2.5
+        legacy["mouse"] = mouse
+        let restored = InputDevicesSettings.decoded(from: try JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertTrue(restored.mouse.shiftScrollsHorizontally, "a saved profile without the key keeps shift scrolling on")
+        XCTAssertEqual(restored.mouse.speed, 2.5)
+    }
+
+    func testDeviceIdentityFormatsFirmwareVendorAndConnection() {
+        XCTAssertEqual(InputDeviceDescriptor.firmwareVersion(0x5502), "55.02")
+        XCTAssertEqual(InputDeviceDescriptor.firmwareVersion(0x0110), "1.10")
+        let receiver = descriptor(name: "USB Receiver", kind: .mouse, manufacturer: nil)
+        XCTAssertEqual(receiver.vendorName, "Logitech")
+        XCTAssertEqual(receiver.connectionSummary, "USB")
+        var magic = descriptor(name: "Magic Mouse", kind: .mouse, manufacturer: "Apple")
+        magic.batteryPercent = 84
+        XCTAssertEqual(magic.connectionSummary, "USB · 84%")
+        let rows = InputDeviceCard(device: receiver, profile: InputScrollProfile(), state: .active).rows.map(\.label)
+        XCTAssertEqual(rows, ["Model", "Vendor", "Device ID", "Firmware", "Serial", "Connection", "Buttons", "Resolution", "Polling", "Tracking", "Scroll speed"])
+    }
+
     func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
         XCTAssertEqual(
             InputDeviceDescriptor.kind(name: "Apple Internal Keyboard / Trackpad", usagePage: 1, usage: 2),
@@ -152,7 +207,7 @@ final class InputDevicesTests: XCTestCase {
                 deviceCount: 1,
                 profile: .constant(InputScrollProfile(horizontalEnabled: false))
             )),
-            1
+            2
         )
         XCTAssertEqual(
             disabledControlCount(InputScrollProfileCard(
@@ -161,7 +216,7 @@ final class InputDevicesTests: XCTestCase {
                 deviceCount: 1,
                 profile: .constant(InputScrollProfile(enabled: false))
             )),
-            4
+            5
         )
     }
 

@@ -60,7 +60,7 @@ struct InputDevicesWindowView: View {
         switch page {
         case .devices: devicesPage
         case .scrolling: scrollingPage
-        case .about: ToolAboutView(toolId: "input-devices")
+        case .about: ToolAboutView(toolId: "input-devices", showsSettings: false)
         }
     }
 

@@ -349,7 +349,7 @@ struct ColorPickerSettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Keyboard shortcut")
                             .font(.system(size: 12, weight: .medium))
-                        Text("Works anywhere while MacPowerToys is running.")
+                        Text("Works in every app.")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }

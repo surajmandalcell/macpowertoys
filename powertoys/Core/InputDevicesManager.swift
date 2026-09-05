@@ -25,8 +25,38 @@ struct InputScrollProfile: Codable, Equatable {
     var reverseVertical = false
     var reverseHorizontal = false
     var horizontalEnabled = true
+    var shiftScrollsHorizontally = true
     var speed = 1.0
     var smooth = false
+
+    init(
+        enabled: Bool = true,
+        reverseVertical: Bool = false,
+        reverseHorizontal: Bool = false,
+        horizontalEnabled: Bool = true,
+        shiftScrollsHorizontally: Bool = true,
+        speed: Double = 1.0,
+        smooth: Bool = false
+    ) {
+        self.enabled = enabled
+        self.reverseVertical = reverseVertical
+        self.reverseHorizontal = reverseHorizontal
+        self.horizontalEnabled = horizontalEnabled
+        self.shiftScrollsHorizontally = shiftScrollsHorizontally
+        self.speed = speed
+        self.smooth = smooth
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        reverseVertical = try container.decodeIfPresent(Bool.self, forKey: .reverseVertical) ?? false
+        reverseHorizontal = try container.decodeIfPresent(Bool.self, forKey: .reverseHorizontal) ?? false
+        horizontalEnabled = try container.decodeIfPresent(Bool.self, forKey: .horizontalEnabled) ?? true
+        shiftScrollsHorizontally = try container.decodeIfPresent(Bool.self, forKey: .shiftScrollsHorizontally) ?? true
+        speed = try container.decodeIfPresent(Double.self, forKey: .speed) ?? 1.0
+        smooth = try container.decodeIfPresent(Bool.self, forKey: .smooth) ?? false
+    }
 }
 
 struct InputDevicesSettings: Codable, Equatable {
@@ -49,6 +79,7 @@ struct InputScrollResult: Equatable {
     let vertical: Double
     let horizontal: Double
     let shouldSmooth: Bool
+    var shiftConverted = false
 }
 
 enum InputScrollPolicy {
@@ -56,6 +87,7 @@ enum InputScrollPolicy {
         vertical: Double,
         horizontal: Double,
         isContinuous: Bool,
+        shiftHeld: Bool = false,
         settings: InputDevicesSettings
     ) -> InputScrollResult? {
         let trackpadLike: Bool
@@ -67,12 +99,17 @@ enum InputScrollPolicy {
 
         let profile = trackpadLike ? settings.trackpad : settings.mouse
         guard profile.enabled else { return nil }
+        let convert = shiftHeld && profile.shiftScrollsHorizontally && profile.horizontalEnabled
+            && horizontal == 0 && vertical != 0
+        let sourceVertical = convert ? 0 : vertical
+        let sourceHorizontal = convert ? vertical : horizontal
         return InputScrollResult(
-            vertical: vertical * profile.speed * (profile.reverseVertical ? -1 : 1),
+            vertical: sourceVertical * profile.speed * (profile.reverseVertical ? -1 : 1),
             horizontal: profile.horizontalEnabled
-                ? horizontal * profile.speed * (profile.reverseHorizontal ? -1 : 1)
+                ? sourceHorizontal * profile.speed * (profile.reverseHorizontal ? -1 : 1)
                 : 0,
-            shouldSmooth: profile.smooth && !isContinuous
+            shouldSmooth: profile.smooth && !isContinuous,
+            shiftConverted: convert
         )
     }
 }
@@ -106,6 +143,39 @@ struct InputDeviceDescriptor: Identifiable, Equatable {
     let buttonCount: Int?
     let maxInputReportSize: Int?
     let systemTrackingSpeed: Double?
+    var modelNumber: String? = nil
+    var batteryPercent: Int? = nil
+
+    var vendorName: String? {
+        if let manufacturer, !manufacturer.isEmpty { return manufacturer }
+        return Self.knownVendors[vendorID]
+    }
+
+    var firmwareVersion: String? {
+        versionNumber.map { Self.firmwareVersion($0) }
+    }
+
+    var connectionSummary: String {
+        let name: String
+        switch transport.lowercased() {
+        case "fifo", "spi", "i2c": name = "Internal"
+        case let value where value.hasPrefix("bluetooth"): name = "Bluetooth"
+        default: name = transport
+        }
+        guard let batteryPercent else { return name }
+        return "\(name) · \(batteryPercent)%"
+    }
+
+    nonisolated static func firmwareVersion(_ value: Int) -> String {
+        String(format: "%X.%02X", value >> 8, value & 0xFF)
+    }
+
+    nonisolated static let knownVendors: [Int: String] = [
+        0x046D: "Logitech", 0x05AC: "Apple", 0x004C: "Apple", 0x045E: "Microsoft", 0x1532: "Razer",
+        0x1B1C: "Corsair", 0x1038: "SteelSeries", 0x3434: "Keychron", 0x04F2: "Chicony",
+        0x0951: "HyperX", 0x03F0: "HP", 0x413C: "Dell", 0x17EF: "Lenovo", 0x0B05: "ASUS",
+        0x2516: "Cooler Master", 0x24AE: "Rapoo", 0x093A: "PixArt", 0x0458: "Genius"
+    ]
 
     nonisolated static func kind(name: String, usagePage: Int, usage: Int) -> Kind? {
         guard usagePage == kHIDPage_GenericDesktop,
@@ -261,12 +331,18 @@ final class InputDevicesManager {
             vertical: vertical,
             horizontal: horizontal,
             isContinuous: continuous,
+            shiftHeld: event.flags.contains(.maskShift),
             settings: settings
         ) else { return Unmanaged.passUnretained(event) }
 
+        if result.shiftConverted { event.flags.remove(.maskShift) }
         if result.shouldSmooth {
             postSmoothed(vertical: result.vertical, horizontal: result.horizontal)
             return nil
+        }
+        if result.shiftConverted {
+            moveVerticalToHorizontal(on: event, scale: result.horizontal / vertical)
+            return Unmanaged.passUnretained(event)
         }
 
         setScrollFields(
@@ -294,6 +370,22 @@ final class InputDevicesManager {
         ] {
             let value = Double(event.getIntegerValueField(field)) * scale
             event.setIntegerValueField(field, value: Int64(value.rounded()))
+        }
+    }
+
+    private func moveVerticalToHorizontal(on event: CGEvent, scale: Double) {
+        event.setDoubleValueField(
+            .scrollWheelEventPointDeltaAxis2,
+            value: event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1) * scale
+        )
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis1, value: 0)
+        for (from, to) in [
+            (CGEventField.scrollWheelEventDeltaAxis1, CGEventField.scrollWheelEventDeltaAxis2),
+            (.scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis2)
+        ] {
+            let value = Double(event.getIntegerValueField(from)) * scale
+            event.setIntegerValueField(to, value: Int64(value.rounded()))
+            event.setIntegerValueField(from, value: 0)
         }
     }
 
@@ -360,7 +452,10 @@ final class InputDevicesManager {
                 maxInputReportSize: (property(kIOHIDMaxInputReportSizeKey, on: device) as? NSNumber)?.intValue,
                 systemTrackingSpeed: (UserDefaults.standard.object(
                     forKey: kind == .mouse ? "com.apple.mouse.scaling" : "com.apple.trackpad.scaling"
-                ) as? NSNumber)?.doubleValue
+                ) as? NSNumber)?.doubleValue,
+                modelNumber: (property("ModelNumber", on: device) as? String).flatMap { $0.isEmpty ? nil : $0 },
+                batteryPercent: ((property("BatteryPercent", on: device) as? NSNumber)
+                    ?? (ancestorProperty("BatteryPercent", on: device) as? NSNumber))?.intValue
             )
         }
         .sorted { ($0.kind.rawValue, $0.name) < ($1.kind.rawValue, $1.name) }
@@ -368,6 +463,16 @@ final class InputDevicesManager {
 
     nonisolated private static func property(_ key: String, on device: IOHIDDevice) -> Any? {
         IOHIDDeviceGetProperty(device, key as CFString)
+    }
+
+    nonisolated private static func ancestorProperty(_ key: String, on device: IOHIDDevice) -> Any? {
+        IORegistryEntrySearchCFProperty(
+            IOHIDDeviceGetService(device),
+            kIOServicePlane,
+            key as CFString,
+            kCFAllocatorDefault,
+            IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)
+        )
     }
 
     nonisolated private static func registryProperty(_ key: String, on device: IOHIDDevice) -> Any? {

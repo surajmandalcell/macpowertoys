@@ -98,7 +98,7 @@ struct SystemCareWindowView: View {
         case .mole: molePage
         case .history: historyPage
         case .settings: settingsPage
-        case .about: ToolAboutView(toolId: "system-care")
+        case .about: ToolAboutView(toolId: "system-care", showsSettings: false)
         }
     }
 

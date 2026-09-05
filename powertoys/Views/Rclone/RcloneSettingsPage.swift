@@ -43,9 +43,6 @@ struct RcloneSettingsPage: View {
                     Toggle("Start sync engine at launch", isOn: $startAtLaunch)
                         .labelsHidden()
                 }
-                Text("Starts the transfer engine in the background when MacPowerToys launches. The Cloud Sync window stays closed until you open it.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .font(.system(size: 12))
@@ -64,9 +61,6 @@ struct RcloneSettingsPage: View {
                     Toggle("Show MacPowerToys in the menu bar", isOn: $showTray)
                         .labelsHidden()
                 }
-                Text("The tray icon gives quick access to MacPowerToys even when all windows are closed.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .font(.system(size: 12))
