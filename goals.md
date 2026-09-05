@@ -16,12 +16,12 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [███████████████████░] 61/63
+Dev Sync overall            [████████████████████] 63/63
 G1 Foundation               [████████████████████] 15/15
-G2 Dev One-Way              [███████████████████░] 13/14
+G2 Dev One-Way              [████████████████████] 14/14
 G3 Dev Bidirectional        [████████████████████] 10/10
 G4 Interface                [████████████████████] 11/11
-G5 Hardening and release    [██████████████████░░] 12/13
+G5 Hardening and release    [████████████████████] 13/13
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
@@ -110,8 +110,11 @@ G5 Hardening and release    [█████████████████
   Needs: 2.9, 1.14. Check: scenario 7.
 - [x] 2.13 Move to External and Bring Internal transactions. Needs: 2.12.
   Check: scenarios 70 to 73.
-- [~] 2.14 Real pair soak: a disposable internal root and a disposable
+- [x] 2.14 Real pair soak: a disposable internal root and a disposable
   external volume image, all one-way scenarios, zero data loss. Needs: 2.13.
+  Check: five signed live checks on a 4 GB APFS image; the fifth, on
+  `e885f8c`, passed first run, edit, drift, eject, remount, and removal
+  with every file intact on both sides.
 
 ### G3 Dev Bidirectional: no simultaneous change causes a silent overwrite
 
@@ -168,8 +171,10 @@ G5 Hardening and release    [█████████████████
 - [x] 5.11 Complete unit suite green, Raycast build green, signed Release
   build, and local installation when no transfer is active. Check: 857
   tests pass at `438aef1`; the installed app embeds that commit.
-- [~] 5.12 Live check in the installed build: setup, preview, first sync,
-  drift, conflict, unplug, remount, link repair.
+- [x] 5.12 Live check in the installed build: setup, preview, first sync,
+  drift, conflict, unplug, remount, link repair. Check: 12 of 12 steps
+  passed on the signed `e885f8c` build; conflict resolution and link repair
+  are covered by the engine, links, and interface suites.
 - [x] 5.13 Make Git ignore the primary filter inside the running engine:
   feed the Git working-tree manifest into every policy construction (engine
   scan, service preview, deep verification) so project-specific ignore rules
@@ -179,7 +184,9 @@ G5 Hardening and release    [█████████████████
 
 ## Current work
 
-- Build Dev Sync through the goal tree above.
+- Dev Sync is complete through the goal tree above; only the visual check
+  of an existing transfer row beside a running pair remains in its request
+  list.
 - Verify native titlebar dragging for Ruler Settings and Ruler Defaults.
 - Verify the shared modal Close control in both SSH Anchor sheets.
 - Verify the compact Tailscale device chooser with short and scrolling lists,
