@@ -174,6 +174,12 @@ final class UtilityToolsTests: XCTestCase {
     func testAwakeDurationFormatting() {
         XCTAssertEqual(AwakeService.duration(65), "01:05")
         XCTAssertEqual(AwakeService.duration(3661), "1:01:01")
+        for seconds in [900.0, 3600.0, 5400.0, 7200.0] {
+            let label = AwakeService.presetLabel(seconds)
+            XCTAssertFalse(label.contains(":"), "preset chips use unit labels, not clock digits: \(label)")
+            XCTAssertLessThan(label.count, AwakeService.duration(seconds).count + 3, label)
+        }
+        XCTAssertLessThanOrEqual(AwakeService.presetLabel(7200).count, 4)
     }
 
     func testActionIDsMapToTools() {
