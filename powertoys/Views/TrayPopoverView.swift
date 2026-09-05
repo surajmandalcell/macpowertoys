@@ -173,10 +173,6 @@ struct TrayPopoverView: View {
 
             Spacer()
 
-            TrayStylePreviewPicker()
-
-            Spacer()
-
             TrayFooterButton(title: "Quit", systemImage: "power") {
                 NSApplication.shared.terminate(nil)
             }
@@ -657,9 +653,6 @@ private struct TrayActionButton: View {
     var toolID: String = ""
     let action: () -> Void
 
-    @AppStorage("tray.actionStyle") private var styleName = TrayActionStyle.filled.rawValue
-
-    private var style: TrayActionStyle { TrayActionStyle(rawValue: styleName) ?? .filled }
     private var tint: NSColor {
         if !toolID.isEmpty, let color = ToolIconColor.major(asset: ToolRegistry.tool(for: toolID)?.logoAsset ?? "") { return color }
         return .controlAccentColor
@@ -669,49 +662,16 @@ private struct TrayActionButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(labelColor)
+                .foregroundStyle(isPrimary ? ToolIconColor.label(on: tint) : .primary)
                 .padding(.horizontal, 10)
                 .frame(maxWidth: .infinity, minHeight: 26)
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
-        .background(fill, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stroke, lineWidth: 1))
-    }
-
-    private var tintColor: Color { Color(nsColor: tint) }
-    private var readableTint: Color { Color(nsColor: ToolIconColor.readable(tint)) }
-
-    private var labelColor: Color {
-        guard isPrimary else { return style == .filled || style == .gradient ? .primary : readableTint }
-        switch style {
-        case .filled, .gradient: return ToolIconColor.label(on: tint)
-        case .tinted, .outline: return readableTint
-        }
-    }
-
-    private var fill: AnyShapeStyle {
-        if isPrimary {
-            switch style {
-            case .filled: return AnyShapeStyle(tintColor)
-            case .gradient: return AnyShapeStyle(LinearGradient(colors: [tintColor.opacity(0.92), tintColor], startPoint: .top, endPoint: .bottom))
-            case .tinted: return AnyShapeStyle(tintColor.opacity(0.18))
-            case .outline: return AnyShapeStyle(Color.clear)
-            }
-        }
-        switch style {
-        case .filled, .gradient: return AnyShapeStyle(Color.primary.opacity(0.06))
-        case .tinted: return AnyShapeStyle(tintColor.opacity(0.1))
-        case .outline: return AnyShapeStyle(Color.clear)
-        }
-    }
-
-    private var stroke: Color {
-        switch style {
-        case .outline: readableTint.opacity(isPrimary ? 1 : 0.6)
-        case .gradient: Color.white.opacity(isPrimary ? 0.18 : 0)
-        case .filled, .tinted: .clear
-        }
+        .background(
+            isPrimary ? Color(nsColor: tint) : Color.primary.opacity(0.06),
+            in: RoundedRectangle(cornerRadius: 6)
+        )
     }
 }
 
@@ -737,17 +697,3 @@ private struct TrayFooterButton: View {
     }
 }
 
-/// Temporary: lets the owner flip between action-button styles in the live popover.
-private struct TrayStylePreviewPicker: View {
-    @AppStorage("tray.actionStyle") private var styleName = TrayActionStyle.filled.rawValue
-
-    var body: some View {
-        Picker("Style", selection: $styleName) {
-            ForEach(TrayActionStyle.allCases) { style in Text(style.title).tag(style.rawValue) }
-        }
-        .pickerStyle(.segmented)
-        .controlSize(.mini)
-        .labelsHidden()
-        .frame(width: 190)
-    }
-}
