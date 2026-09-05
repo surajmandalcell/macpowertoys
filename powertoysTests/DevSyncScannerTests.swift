@@ -359,6 +359,31 @@ nonisolated private struct IncludeAllPolicy: DevPathPolicy {
     }
 }
 
+extension DevSyncScannerTests {
+    func testNestedProjectPathsAreCarvedOutOfTheRootUnit() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("devsync-nested-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("repo/src"), withIntermediateDirectories: true)
+        try Data("a".utf8).write(to: root.appendingPathComponent("repo/src/a.swift"))
+        try Data("b".utf8).write(to: root.appendingPathComponent("loose.txt"))
+
+        let snapshot = await DevSnapshotScanner.scan(
+            projectURL: root,
+            policy: ExcludeNodeModulesPolicy(),
+            gitDirectoryRelativePath: nil,
+            managedLinkPaths: [],
+            nestedProjectPaths: ["repo"],
+            collisionKeyCaseInsensitive: false,
+            hashPaths: []
+        )
+
+        XCTAssertNotNil(snapshot.entries["loose.txt"])
+        XCTAssertNil(snapshot.entries["repo"])
+        XCTAssertNil(snapshot.entries["repo/src/a.swift"])
+        XCTAssertEqual(snapshot.excluded["repo"], .separateProject)
+    }
+}
+
 nonisolated private struct ExcludeNodeModulesPolicy: DevPathPolicy {
     func decide(relativePath: String, kind: DevEntryKind, size: Int64, isInsideGitDirectory: Bool) -> DevFilePolicyDecision {
         relativePath == "node_modules" ? .exclude(.commonExclusion) : .include(.defaultInclusion)

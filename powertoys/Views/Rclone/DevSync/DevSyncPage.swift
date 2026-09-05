@@ -229,8 +229,14 @@ private struct DevSyncPairPage: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         } else {
-            ForEach(projects) { project in
-                DevSyncProjectRow(pair: pair, project: project, manager: manager)
+            let groups = DevSyncProjectGrouping.groups(projects)
+            ForEach(groups) { group in
+                if !group.title.isEmpty {
+                    DevSyncSectionHeader(title: group.title)
+                }
+                ForEach(group.projects) { project in
+                    DevSyncProjectRow(pair: pair, project: project, manager: manager)
+                }
             }
         }
     }
@@ -424,4 +430,30 @@ struct DevSyncErrorBanner: View {
 #Preview {
     DevSyncPage(manager: DevSyncPreviewFixture.manager())
         .frame(width: 760, height: 720)
+}
+
+struct DevSyncProjectGrouping: Identifiable {
+    var title: String
+    var projects: [DevProject]
+    var id: String { title }
+
+    static func groups(_ projects: [DevProject]) -> [DevSyncProjectGrouping] {
+        var order: [String] = []
+        var byTitle: [String: [DevProject]] = [:]
+        for project in projects {
+            let title = project.isRootUnit ? "" : (project.relativePath.split(separator: "/").count > 1 ? String(project.relativePath.split(separator: "/")[0]) : "")
+            if byTitle[title] == nil { order.append(title) }
+            byTitle[title, default: []].append(project)
+        }
+        let sorted = order.sorted { left, right in
+            if left.isEmpty != right.isEmpty { return left.isEmpty }
+            return left.localizedStandardCompare(right) == .orderedAscending
+        }
+        return sorted.map { title in
+            DevSyncProjectGrouping(title: title, projects: (byTitle[title] ?? []).sorted { left, right in
+                if left.isRootUnit != right.isRootUnit { return left.isRootUnit }
+                return left.relativePath.localizedStandardCompare(right.relativePath) == .orderedAscending
+            })
+        }
+    }
 }

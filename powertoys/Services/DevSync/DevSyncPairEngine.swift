@@ -230,7 +230,8 @@ actor DevSyncPairEngine {
             projects: projectValues,
             internalRoot: internalRoot,
             externalRoot: externalRoot,
-            capabilities: capabilityValue
+            capabilities: capabilityValue,
+            links: linkValues
         )
         for project in projectValues where !project.explicitlyExcluded && project.residency != .externalResident {
             do {
@@ -346,7 +347,7 @@ actor DevSyncPairEngine {
         case .deleteExternalToHistory:
             _ = try await safetyStore.retireProject(
                 side: .external,
-                projectURL: externalRoot.appendingPathComponent(project.relativePath),
+                projectURL: externalRoot.devProjectURL(project.relativePath, isDirectory: false),
                 relativePath: project.relativePath,
                 projectID: project.id,
                 operationID: UUID(),
@@ -362,8 +363,8 @@ actor DevSyncPairEngine {
         guard DevRelativePath.isSafe(relativePath),
               let project = projectValues.first(where: { $0.id == projectID }),
               let internalRoot, let externalRoot else { return }
-        let internalURL = internalRoot.appendingPathComponent(project.relativePath).appendingPathComponent(relativePath)
-        let externalURL = externalRoot.appendingPathComponent(project.relativePath).appendingPathComponent(relativePath)
+        let internalURL = internalRoot.devProjectURL(project.relativePath, isDirectory: false).appendingPathComponent(relativePath)
+        let externalURL = externalRoot.devProjectURL(project.relativePath, isDirectory: false).appendingPathComponent(relativePath)
         switch resolution {
         case .adoptExternal:
             let signature = try DevSnapshotScanner.signature(of: externalURL, includeHash: true)
@@ -428,7 +429,7 @@ actor DevSyncPairEngine {
     func explain(projectID: UUID, relativePath: String) async -> DevFilePolicyDecision? {
         guard let project = projectValues.first(where: { $0.id == projectID }),
               let internalRoot else { return nil }
-        let projectURL = internalRoot.appendingPathComponent(project.relativePath)
+        let projectURL = internalRoot.devProjectURL(project.relativePath, isDirectory: false)
         let url = projectURL.appendingPathComponent(relativePath)
         guard let signature = try? DevSnapshotScanner.signature(of: url, includeHash: false) else { return nil }
         let policy = await makePolicy(project: project, projectURL: projectURL)
@@ -470,10 +471,15 @@ actor DevSyncPairEngine {
         }
         let resolve: @Sendable (String) -> UUID? = { path in
             projects
-                .filter { path == $0.relativePath || path.hasPrefix($0.relativePath + "/") }
+                .filter { $0.relativePath.isEmpty || path == $0.relativePath || path.hasPrefix($0.relativePath + "/") }
                 .max { $0.relativePath.count < $1.relativePath.count }?.id
         }
         await scheduler.noteEvents(side: side, relativePaths: relativePaths, projectResolver: resolve, at: date)
+        let rootUnitID = projects.first { $0.isRootUnit }?.id
+        let rootUnitPaths = relativePaths.filter { resolve($0) == rootUnitID }
+        if rootUnitID != nil, !rootUnitPaths.isEmpty {
+            await scheduler.noteEvents(side: side, relativePaths: rootUnitPaths, projectResolver: { _ in nil }, at: date)
+        }
         markDirty(Set(relativePaths.compactMap(resolve)), side: side)
         try? await persistSchedulerState()
         startSchedulerLoop()
@@ -602,7 +608,8 @@ actor DevSyncPairEngine {
             externalIdentities: externalIdentities,
             excludedProjectPaths: Set(projectValues.filter(\.explicitlyExcluded).map(\.relativePath)),
             includedCandidatePaths: Set(projectValues.filter(\.explicitlyIncluded).map(\.relativePath)),
-            adoptedLinkPaths: Set(links.filter(\.adoptedFromUserLink).map(\.linkRelativePath))
+            adoptedLinkPaths: Set(links.filter(\.adoptedFromUserLink).map(\.linkRelativePath)),
+            linkableExternalDirectories: await linkableDirectories(externalResult.externalOnlyDirectories, links: links)
         ))
         projectValues = output.projects
         conflictValues = mergeConflicts(conflictValues, output.conflicts)
@@ -616,9 +623,24 @@ actor DevSyncPairEngine {
         }
     }
 
+    private func linkableDirectories(_ candidates: [String], links: [DevManagedLink]) async -> Set<String> {
+        guard !candidates.isEmpty else { return [] }
+        let linked = Set(links.map(\.linkRelativePath))
+        let known = Set(projectValues.map(\.relativePath))
+        var rootBaseline: DevBaseline?
+        if let rootUnit = projectValues.first(where: { $0.isRootUnit }) {
+            rootBaseline = await stateStore.loadBaseline(projectID: rootUnit.id, pairID: pair.id)
+        }
+        return Set(candidates.filter { path in
+            guard !linked.contains(path), !known.contains(path) else { return false }
+            guard let rootBaseline else { return true }
+            return rootBaseline.entries[path] == nil && !rootBaseline.entries.keys.contains { $0.hasPrefix(path + "/") }
+        })
+    }
+
     private func createPendingLinks() async {
         guard let internalRoot, let externalRoot, volumeOnline else { return }
-        let knownProjectPaths = Set(projectValues.map(\.relativePath))
+        let knownProjectPaths = Set(projectValues.map(\.relativePath).filter { !$0.isEmpty })
         var changed = false
         for index in projectValues.indices
         where projectValues[index].residency == .externalOnlyPendingLink && !projectValues[index].explicitlyExcluded {
@@ -770,6 +792,7 @@ actor DevSyncPairEngine {
             await refreshCatalog()
             await scheduler.complete(projectID: generation.projectID)
             try? await persistSchedulerState()
+            if statusValue.state == .planning { setPairState(.idle) }
             return
         }
         activeGeneration = generation
@@ -818,8 +841,8 @@ actor DevSyncPairEngine {
         guard let project = projectValues.first(where: { $0.id == projectID }),
               !project.explicitlyExcluded, project.residency != .externalResident,
               let internalRoot, let externalRoot else { return nil }
-        let internalProject = internalRoot.appendingPathComponent(project.relativePath)
-        let externalProject = externalRoot.appendingPathComponent(project.relativePath)
+        let internalProject = internalRoot.devProjectURL(project.relativePath, isDirectory: false)
+        let externalProject = externalRoot.devProjectURL(project.relativePath, isDirectory: false)
         let gitDirectoryRelativePath = project.topology?.gitDirectory ?? ".git"
         let hasGitLock = project.kind != .nonGit && !DevGit.activeLocks(
             projectURL: internalProject,
@@ -941,7 +964,8 @@ actor DevSyncPairEngine {
             projectURL: projectURL,
             policy: policy,
             gitDirectoryRelativePath: project.topology?.gitDirectory,
-            managedLinkPaths: [],
+            managedLinkPaths: subtreePaths(linkValues.map(\.linkRelativePath), under: project),
+            nestedProjectPaths: subtreePaths(projectValues.filter { $0.id != project.id }.map(\.relativePath), under: project),
             collisionKeyCaseInsensitive: capabilityValue.externalVolume?.isCaseSensitive == false,
             hashPaths: hashPaths,
             limitToPaths: limit
@@ -962,6 +986,14 @@ actor DevSyncPairEngine {
             excludedBytes: partial.excludedBytes,
             scannedAt: partial.scannedAt
         )
+    }
+
+    private func subtreePaths(_ paths: [String], under project: DevProject) -> Set<String> {
+        let prefix = project.relativePath.isEmpty ? "" : project.relativePath + "/"
+        return Set(paths.compactMap { path in
+            guard !path.isEmpty, path.hasPrefix(prefix), path != project.relativePath else { return nil }
+            return String(path.dropFirst(prefix.count))
+        })
     }
 
     private func makePolicy(project: DevProject, projectURL: URL) async -> DevFilePolicyEngine {
@@ -1025,7 +1057,7 @@ actor DevSyncPairEngine {
             var requeued = generation
             requeued.paths = Set(outcome.requeuedPaths.map { project.relativePath.isEmpty ? $0 : "\(project.relativePath)/\($0)" })
             requeued.requiresFullScan = false
-            await scheduler.requeue(requeued)
+            await scheduler.requeue(requeued, backoff: outcome.error != nil)
         }
         updateProject(project.id, state: outcome.projectState, output: output, error: outcome.error)
         if outcome.error == nil {
@@ -1039,6 +1071,7 @@ actor DevSyncPairEngine {
             pair.lastFullReconcileAt = generation.requiresFullScan ? now() : pair.lastFullReconcileAt
             if !pair.hasCompletedFirstRun {
                 pair.hasCompletedFirstRun = true
+                try? await savePair()
                 notifyOnce(.firstRunComplete, title: "Dev Sync is ready", body: "The first synchronization completed.")
             }
             await runRetentionIfDue()
@@ -1089,7 +1122,7 @@ actor DevSyncPairEngine {
         operation: @Sendable (DevResidencyContext) async throws -> T
     ) async throws -> T {
         guard let internalRoot, let externalRoot else { throw DevOperationRunnerError.rootUnavailable }
-        let policy = await makePolicy(project: project, projectURL: internalRoot.appendingPathComponent(project.relativePath))
+        let policy = await makePolicy(project: project, projectURL: internalRoot.devProjectURL(project.relativePath, isDirectory: false))
         let context = DevResidencyContext(pair: pair, project: project, internalRoot: internalRoot, externalRoot: externalRoot, capabilities: capabilityValue, policy: policy, gitDirectoryRelativePath: project.topology?.gitDirectory, stateStore: stateStore, safetyStore: safetyStore, linkManager: linkManager, rsyncExecutable: rsyncExecutable)
         let key = pair.externalRoot.volumeIdentifier
         await DevVolumeMutationGate.shared.acquire(key)

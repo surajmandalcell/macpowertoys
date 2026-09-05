@@ -39,19 +39,30 @@ actor DevDeepVerifier {
     private let internalRoot: URL
     private let externalRoot: URL
     private let capabilities: DevPairCapabilities
+    private let links: [DevManagedLink]
 
     init(
         pair: DevSyncPair,
         projects: [DevProject],
         internalRoot: URL,
         externalRoot: URL,
-        capabilities: DevPairCapabilities
+        capabilities: DevPairCapabilities,
+        links: [DevManagedLink] = []
     ) {
         self.pair = pair
         self.projects = projects
         self.internalRoot = internalRoot
         self.externalRoot = externalRoot
         self.capabilities = capabilities
+        self.links = links
+    }
+
+    private func subtreePaths(_ paths: [String], under project: DevProject) -> Set<String> {
+        let prefix = project.relativePath.isEmpty ? "" : project.relativePath + "/"
+        return Set(paths.compactMap { path in
+            guard !path.isEmpty, path.hasPrefix(prefix), path != project.relativePath else { return nil }
+            return String(path.dropFirst(prefix.count))
+        })
     }
 
     func verify(pairID: UUID, projectID: UUID) async throws -> DevDeepVerificationReport {
@@ -61,8 +72,8 @@ actor DevDeepVerifier {
         }
         try Task.checkCancellation()
         let startedAt = Date()
-        let internalProject = internalRoot.appendingPathComponent(project.relativePath, isDirectory: true)
-        let externalProject = externalRoot.appendingPathComponent(project.relativePath, isDirectory: true)
+        let internalProject = internalRoot.devProjectURL(project.relativePath)
+        let externalProject = externalRoot.devProjectURL(project.relativePath)
         guard (try? DevSnapshotScanner.signature(of: internalProject, includeHash: false).kind) == .directory,
               (try? DevSnapshotScanner.signature(of: externalProject, includeHash: false).kind) == .directory
         else { throw DevDeepVerificationError.rootUnavailable }
@@ -130,7 +141,8 @@ actor DevDeepVerifier {
             projectURL: projectURL,
             policy: policy,
             gitDirectoryRelativePath: project.topology?.gitDirectory,
-            managedLinkPaths: [],
+            managedLinkPaths: subtreePaths(links.map(\.linkRelativePath), under: project),
+            nestedProjectPaths: subtreePaths(projects.filter { $0.id != project.id }.map(\.relativePath), under: project),
             collisionKeyCaseInsensitive: capabilities.externalVolume?.isCaseSensitive == false,
             hashPaths: hashPaths
         )

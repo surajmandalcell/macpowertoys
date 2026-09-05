@@ -29,14 +29,14 @@ final class DevSyncDiscoveryTests: XCTestCase {
 
     func testScenario13NestedIndependentRepositoryIsCandidateOnly() async throws {
         let outer = try await makeRepository(named: "outer")
-        let nested = outer.appendingPathComponent("vendor/lib", isDirectory: true)
+        let nested = outer.appendingPathComponent("libs/lib", isDirectory: true)
         try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
         try await runGit(["init", "-q", "-b", "master"], in: nested)
 
         let result = await discover()
         XCTAssertEqual(result.projects.map(\.relativePath), ["outer"])
         XCTAssertTrue(result.candidates.contains {
-            $0.relativePath == "outer/vendor/lib" && $0.kind == .nestedRepository
+            $0.relativePath == "outer/libs/lib" && $0.kind == .nestedRepository
         })
     }
 
@@ -254,6 +254,20 @@ final class DevSyncDiscoveryTests: XCTestCase {
 
         XCTAssertFalse(result.projects.contains { $0.relativePath == "managed" })
         XCTAssertNil(result.symlinksToExternal["managed"])
+    }
+
+    func testExternalWalkReportsShallowestDriveOnlyDirectories() async throws {
+        let internalRoot = temporaryRoot.appendingPathComponent("internal", isDirectory: true)
+        let externalRoot = temporaryRoot.appendingPathComponent("external", isDirectory: true)
+        for path in ["internal/personal/app", "external/personal/app", "external/personal/only-on-drive/deep", "external/organization/new/child", "external/node_modules/pkg"] {
+            try FileManager.default.createDirectory(at: temporaryRoot.appendingPathComponent(path), withIntermediateDirectories: true)
+        }
+        try Data("x".utf8).write(to: externalRoot.appendingPathComponent("personal/only-on-drive/deep/x.txt"))
+
+        let result = await DevProjectDiscovery.discover(root: externalRoot, side: .external, configuration: .init(), managedLinkPaths: [], otherRoot: internalRoot)
+        XCTAssertEqual(result.externalOnlyDirectories, ["organization", "personal/only-on-drive"])
+        let internalResult = await DevProjectDiscovery.discover(root: internalRoot, side: .internal, configuration: .init(), managedLinkPaths: [], otherRoot: externalRoot)
+        XCTAssertEqual(internalResult.externalOnlyDirectories, [])
     }
 
     private func discover() async -> DevDiscoveryResult {

@@ -826,6 +826,8 @@ nonisolated struct DevCatalogInput: Sendable {
     var excludedProjectPaths: Set<String>
     var includedCandidatePaths: Set<String>
     var adoptedLinkPaths: Set<String>
+    /// Drive-only directories outside every project that should become linked projects.
+    var linkableExternalDirectories: Set<String> = []
 }
 
 nonisolated struct DevCatalogOutput: Equatable, Sendable {
@@ -876,6 +878,16 @@ private nonisolated struct DevCatalogPlanningContext {
             if candidate.side == .internal { internalProjects[candidate.relativePath] = discovered }
             else { externalProjects[candidate.relativePath] = discovered }
         }
+        for path in input.linkableExternalDirectories
+        where DevRelativePath.isSafe(path) && internalProjects[path] == nil && externalProjects[path] == nil {
+            externalProjects[path] = DevDiscoveredProject(
+                relativePath: path,
+                side: .external,
+                kind: .nonGit,
+                url: input.pair.externalRoot.url.appendingPathComponent(path),
+                resourceIdentifier: nil
+            )
+        }
     }
 
     mutating func build() -> DevCatalogOutput {
@@ -888,11 +900,16 @@ private nonisolated struct DevCatalogPlanningContext {
         paths.formUnion(input.links.map(\.linkRelativePath))
         if let symlinks = input.internalDiscovery?.symlinksToExternal { paths.formUnion(symlinks.keys) }
 
-        for path in paths.sorted(by: DevReconciliationPlanner.bytewisePrecedes) where !consumedPaths.contains(path) {
+        for path in paths.sorted(by: DevReconciliationPlanner.bytewisePrecedes) where !consumedPaths.contains(path) && !path.isEmpty {
             reconcile(path: path, known: knownByPath[path])
         }
+        var rootUnit = knownByPath[""] ?? makeProject(path: "", kind: .nonGit, residency: .mirrored)
+        rootUnit.residency = .mirrored
+        rootUnit.explicitlyIncluded = true
+        rootUnit.explicitlyExcluded = false
+        if knownByPath[""] == nil { rootUnit.state = .clean }
         return DevCatalogOutput(
-            projects: projects.sorted { DevReconciliationPlanner.bytewisePrecedes($0.relativePath, $1.relativePath) },
+            projects: projects.sorted { DevReconciliationPlanner.bytewisePrecedes($0.relativePath, $1.relativePath) } + [rootUnit],
             projectsToMirror: projectsToMirror.sorted { DevReconciliationPlanner.bytewisePrecedes($0.relativePath, $1.relativePath) },
             projectsToLink: projectsToLink.sorted { DevReconciliationPlanner.bytewisePrecedes($0.relativePath, $1.relativePath) },
             adoptableLinks: adoptableLinks,

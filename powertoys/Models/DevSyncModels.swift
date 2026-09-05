@@ -365,12 +365,12 @@ nonisolated struct DevSyncConfiguration: Codable, Equatable, Sendable {
     }
 
     struct Policy: Codable, Equatable, Sendable {
-        var followGitIgnore = true
+        var followGitIgnore = false
         var includeIgnoredSensitiveFiles = true
         var sensitivePatterns: [String] = DevSyncDefaults.sensitivePatterns
         var sensitiveSizeGuardBytes: Int64 = 50 * 1_024 * 1_024
         var skipCommonCaches = true
-        var skipUnignoredBuildOutputs = false
+        var skipUnignoredBuildOutputs = true
         var includeGitMetadata = true
         var includeGitLFSObjects = true
         var explicitIncludes: [String] = []
@@ -380,12 +380,12 @@ nonisolated struct DevSyncConfiguration: Codable, Equatable, Sendable {
 
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            followGitIgnore = try c.decodeIfPresent(Bool.self, forKey: .followGitIgnore) ?? true
+            followGitIgnore = try c.decodeIfPresent(Bool.self, forKey: .followGitIgnore) ?? false
             includeIgnoredSensitiveFiles = try c.decodeIfPresent(Bool.self, forKey: .includeIgnoredSensitiveFiles) ?? true
             sensitivePatterns = try c.decodeIfPresent([String].self, forKey: .sensitivePatterns) ?? DevSyncDefaults.sensitivePatterns
             sensitiveSizeGuardBytes = try c.decodeIfPresent(Int64.self, forKey: .sensitiveSizeGuardBytes) ?? 50 * 1_024 * 1_024
             skipCommonCaches = try c.decodeIfPresent(Bool.self, forKey: .skipCommonCaches) ?? true
-            skipUnignoredBuildOutputs = try c.decodeIfPresent(Bool.self, forKey: .skipUnignoredBuildOutputs) ?? false
+            skipUnignoredBuildOutputs = try c.decodeIfPresent(Bool.self, forKey: .skipUnignoredBuildOutputs) ?? true
             includeGitMetadata = try c.decodeIfPresent(Bool.self, forKey: .includeGitMetadata) ?? true
             includeGitLFSObjects = try c.decodeIfPresent(Bool.self, forKey: .includeGitLFSObjects) ?? true
             explicitIncludes = try c.decodeIfPresent([String].self, forKey: .explicitIncludes) ?? []
@@ -641,6 +641,10 @@ nonisolated struct DevProject: Codable, Identifiable, Equatable, Sendable {
     }
 
     var name: String { (relativePath as NSString).lastPathComponent }
+
+    var isRootUnit: Bool { relativePath.isEmpty }
+
+    var displayName: String { isRootUnit ? "Everything else" : name }
 
     var normalizedRelativePath: String {
         DevRelativePath.normalizedKey(relativePath)
@@ -935,6 +939,7 @@ nonisolated enum DevFilePolicyReason: String, Codable, CaseIterable, Sendable {
     case unsupportedObjectType
     case cloudSyncInternalPath
     case managedLink
+    case separateProject
     case explicitUserInclude
     case explicitUserExclude
     case sensitiveOverride
@@ -953,6 +958,7 @@ nonisolated enum DevFilePolicyReason: String, Codable, CaseIterable, Sendable {
         case .unsupportedObjectType: return "Unsupported object type"
         case .cloudSyncInternalPath: return "Cloud Sync system path"
         case .managedLink: return "Managed link"
+        case .separateProject: return "Separate project"
         case .explicitUserInclude: return "Included by rule"
         case .explicitUserExclude: return "Excluded by rule"
         case .sensitiveOverride: return "Sensitive override"
@@ -1421,19 +1427,32 @@ nonisolated enum DevSyncDefaults {
     ]
 
     static let hardExclusions: [String] = [
-        ".DS_Store", "._*", ".Spotlight-V100", ".Trashes", ".fseventsd", ".TemporaryItems",
-        "*.swp", "*.swo", "*~"
+        ".DS_Store", "._*", ".Spotlight-V100", ".Trashes", ".fseventsd", ".TemporaryItems"
     ]
 
+    /// Regenerable caches, dependency checkouts, and temporary folders. Git-tracked
+    /// content inside any of these still syncs; only untracked junk is skipped.
     static let commonCacheDirectories: [String] = [
-        "node_modules", ".npm", ".pnpm-store", ".yarn/cache", ".parcel-cache", ".turbo",
-        ".next/cache", ".nuxt", ".svelte-kit", ".vite", "__pycache__", ".pytest_cache",
-        ".mypy_cache", ".ruff_cache", ".tox", ".nox", ".venv", ".gradle", ".dart_tool",
-        ".ipynb_checkpoints", "DerivedData", "CMakeFiles", "cmake-build-*", ".vs"
+        "node_modules", ".npm", ".pnpm-store", ".yarn/cache", ".yarn/unplugged", ".pnp.cjs",
+        ".parcel-cache", ".turbo", ".next", ".nuxt", ".output", ".svelte-kit", ".vite", ".astro",
+        ".docusaurus", ".angular", ".cache", ".eslintcache", ".stylelintcache", ".webpack",
+        ".serverless", ".vercel", ".netlify", ".wrangler", ".nyc_output", "storybook-static",
+        "*.tsbuildinfo", ".expo", ".expo-shared", ".eas",
+        "__pycache__", "*.pyc", "*.pyo", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox",
+        ".nox", ".hypothesis", ".venv", "venv", ".eggs", "*.egg-info", "htmlcov", ".coverage",
+        ".pdm-build", ".pytype", ".ipynb_checkpoints",
+        ".gradle", ".kotlin", ".cxx", ".externalNativeBuild", "captures", ".bloop", ".metals", ".bsp",
+        "Pods", "Carthage", "DerivedData", ".build", ".swiftpm", "xcuserdata", ".symbolcache",
+        "*.xcarchive", ".dart_tool", ".pub-cache", ".fvm", "_build", "dist-newstyle", ".stack-work",
+        "elm-stuff", ".cpcache", "zig-cache", ".zig-cache", "zig-out", "bazel-*", ".terraform",
+        "CMakeFiles", "cmake-build-*", ".vs", "vendor",
+        "test-results", "playwright-report", ".playwright", "cypress/videos", "cypress/screenshots",
+        "tmp", "temp", ".tmp", ".temp"
     ]
 
+    /// Build outputs that are skipped unless Git tracks content inside them.
     static let buildOutputDirectories: [String] = [
-        "dist", "build", "out", "target", "coverage", "bin", "obj", "DerivedData"
+        "build", "out", "target", "coverage", "bin", "obj", "DerivedData"
     ]
 
     static let importantLockFiles: Set<String> = [
@@ -1460,6 +1479,13 @@ nonisolated enum DevSyncDefaults {
         "CMakeLists.txt", ".sln", ".csproj", "pubspec.yaml", "Gemfile", "composer.json",
         "terraform.tf"
     ]
+}
+
+extension URL {
+    /// Joins a project-relative path; the root unit's empty path returns the root itself.
+    nonisolated func devProjectURL(_ relativePath: String, isDirectory: Bool = true) -> URL {
+        relativePath.isEmpty ? self : appendingPathComponent(relativePath, isDirectory: isDirectory)
+    }
 }
 
 nonisolated enum DevRelativePath {

@@ -142,17 +142,18 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         var sensitive: [String] = []
         var projectBytes: [String: (included: Int64, excluded: Int64)] = [:]
         for project in catalog.output.projects where !project.explicitlyExcluded && project.residency != .externalResident && project.residency != .externalOnlyPendingLink {
-            let internalURL = catalog.internalURL.appendingPathComponent(project.relativePath)
-            let externalURL = catalog.externalURL.appendingPathComponent(project.relativePath)
+            let internalURL = catalog.internalURL.devProjectURL(project.relativePath, isDirectory: false)
+            let externalURL = catalog.externalURL.devProjectURL(project.relativePath, isDirectory: false)
             let policy = await previewPolicy(pair: catalog.pair, project: project, projectURL: internalURL)
-            async let internalSnapshot = snapshotIfPresent(url: internalURL, project: project, policy: policy, capabilities: catalog.capabilities)
-            async let externalSnapshot = snapshotIfPresent(url: externalURL, project: project, policy: policy, capabilities: catalog.capabilities)
+            let nested = nestedProjectPaths(of: project, in: catalog.output.projects)
+            async let internalSnapshot = snapshotIfPresent(url: internalURL, project: project, policy: policy, capabilities: catalog.capabilities, nestedProjectPaths: nested)
+            async let externalSnapshot = snapshotIfPresent(url: externalURL, project: project, policy: policy, capabilities: catalog.capabilities, nestedProjectPaths: nested)
             let internalScan = await internalSnapshot
             let externalScan = await externalSnapshot ?? (project.residency == .internalOnlyPendingMirror ? DevSnapshot.emptyDestination : nil)
             if let internalScan { projectBytes[project.relativePath] = (internalScan.includedBytes, internalScan.excludedBytes) }
             complete = complete && internalScan?.complete == true && externalScan?.complete == true
             let output = DevReconciliationPlanner.plan(DevPlannerInput(pair: catalog.pair, project: project, baseline: nil, internalSnapshot: internalScan, externalSnapshot: externalScan, tombstones: [], unresolvedConflicts: [], capabilities: catalog.capabilities, unstablePaths: [], now: Date()))
-            let prefix = project.relativePath + "/"
+            let prefix = project.relativePath.isEmpty ? "" : project.relativePath + "/"
             let gitPrefix = (project.topology?.gitDirectory ?? ".git") + "/"
             actions.append(contentsOf: output.plan.actions.map { action in
                 var action = action
@@ -193,7 +194,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     func createPair(draft: DevSetupDraft, approvedPreview: DevSetupPreview) async throws -> DevSyncPair {
         guard approvedPreview.scanComplete,
               let internalURL = draft.internalURL,
-              let externalURL = draft.externalURL else { throw DevOperationRunnerError.invalidAction }
+              let externalURL = draft.externalURL else { throw DevOperationRunnerError.invalidAction("DevSyncService.swift") }
         let probe = await probeRoots(internal: internalURL, external: externalURL)
         guard probe.canContinue, let internalRoot = probe.internalRoot, let externalRoot = probe.externalRoot,
               let executable = DevRsyncLocator.locate(preferredPath: rsyncPreferredPath) else {
@@ -310,7 +311,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         var externalIdentities: [String: DevProjectIdentity] = [:]
         for project in internalResult.projects where project.kind != .nonGit { internalIdentities[project.relativePath] = await DevGit.identity(projectURL: project.url) }
         for project in externalResult.projects where project.kind != .nonGit { externalIdentities[project.relativePath] = await DevGit.identity(projectURL: project.url) }
-        let output = DevCatalogPlanner.plan(DevCatalogInput(pair: pair, knownProjects: [], internalDiscovery: internalResult, externalDiscovery: externalResult, links: [], internalIdentities: internalIdentities, externalIdentities: externalIdentities, excludedProjectPaths: draft.excludedProjectPaths, includedCandidatePaths: draft.includedCandidatePaths, adoptedLinkPaths: draft.adoptedLinkPaths))
+        let output = DevCatalogPlanner.plan(DevCatalogInput(pair: pair, knownProjects: [], internalDiscovery: internalResult, externalDiscovery: externalResult, links: [], internalIdentities: internalIdentities, externalIdentities: externalIdentities, excludedProjectPaths: draft.excludedProjectPaths, includedCandidatePaths: draft.includedCandidatePaths, adoptedLinkPaths: draft.adoptedLinkPaths, linkableExternalDirectories: Set(externalResult.externalOnlyDirectories)))
         return Catalog(pair: pair, probe: probe, capabilities: probe.capabilities, internalURL: internalURL, externalURL: externalURL, internalDiscovery: internalResult, externalDiscovery: externalResult, output: output)
     }
 
@@ -348,9 +349,17 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         return DevFilePolicyEngine(policy: pair.configuration.policy, projectKind: project.kind, gitDirectoryRelativePath: project.topology?.gitDirectory, gitTracked: manifest, gitManifest: manifest, gitIgnored: nil, gitAvailable: manifest != nil, projectIgnoreRules: [])
     }
 
-    private func snapshotIfPresent(url: URL, project: DevProject, policy: DevFilePolicyEngine, capabilities: DevPairCapabilities) async -> DevSnapshot? {
+    private func snapshotIfPresent(url: URL, project: DevProject, policy: DevFilePolicyEngine, capabilities: DevPairCapabilities, nestedProjectPaths: Set<String>) async -> DevSnapshot? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return await DevSnapshotScanner.scan(projectURL: url, policy: policy, gitDirectoryRelativePath: project.topology?.gitDirectory, managedLinkPaths: [], collisionKeyCaseInsensitive: capabilities.externalVolume?.isCaseSensitive == false, hashPaths: [])
+        return await DevSnapshotScanner.scan(projectURL: url, policy: policy, gitDirectoryRelativePath: project.topology?.gitDirectory, managedLinkPaths: [], nestedProjectPaths: nestedProjectPaths, collisionKeyCaseInsensitive: capabilities.externalVolume?.isCaseSensitive == false, hashPaths: [])
+    }
+
+    private func nestedProjectPaths(of project: DevProject, in projects: [DevProject]) -> Set<String> {
+        let prefix = project.relativePath.isEmpty ? "" : project.relativePath + "/"
+        return Set(projects.compactMap { other in
+            guard other.id != project.id, !other.relativePath.isEmpty, other.relativePath.hasPrefix(prefix) else { return nil }
+            return String(other.relativePath.dropFirst(prefix.count))
+        })
     }
 
     private func add(_ source: DevPlanSummary, to target: inout DevPlanSummary) {
@@ -382,8 +391,8 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     }
 
     private func prepareMirrorDirectories(_ projects: [DevProject], externalRoot: URL, pair: DevSyncPair) async throws {
-        for project in projects {
-            guard DevRelativePath.isSafe(project.relativePath) else { throw DevOperationRunnerError.invalidAction }
+        for project in projects where !project.isRootUnit {
+            guard DevRelativePath.isSafe(project.relativePath) else { throw DevOperationRunnerError.invalidAction("DevSyncService.swift") }
             var operation = DevOperation(
                 pairID: pair.id,
                 projectID: project.id,
@@ -392,7 +401,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
                 plan: DevSyncPlan(pairID: pair.id, projectID: project.id)
             )
             try await stateStore.saveOperation(operation)
-            let destination = externalRoot.appendingPathComponent(project.relativePath, isDirectory: true)
+            let destination = externalRoot.devProjectURL(project.relativePath)
             try await Task.detached(priority: .utility) {
                 try Self.createDirectory(destination, below: externalRoot)
             }.value
@@ -418,10 +427,10 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         guard entryKind(root) == .directory else { throw DevOperationRunnerError.rootUnavailable }
         var current = root
         for component in directory.pathComponents.dropFirst(root.pathComponents.count) {
-            guard component != "..", component != ".", component != "/" else { throw DevOperationRunnerError.invalidAction }
+            guard component != "..", component != ".", component != "/" else { throw DevOperationRunnerError.invalidAction("DevSyncService.swift") }
             current.appendPathComponent(component, isDirectory: true)
             if let kind = entryKind(current) {
-                guard kind == .directory else { throw DevOperationRunnerError.invalidAction }
+                guard kind == .directory else { throw DevOperationRunnerError.invalidAction("DevSyncService.swift") }
             } else {
                 try FileManager.default.createDirectory(at: current, withIntermediateDirectories: false)
             }

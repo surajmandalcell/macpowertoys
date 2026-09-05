@@ -19,10 +19,8 @@ struct DevSyncRulesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            switchRow("Follow Git ignore rules", isOn: .constant(true), disabled: true, help: "Git projects always follow Git ignore rules.")
+            skipRow
             sensitiveRow
-            switchRow("Skip common caches and dependencies", isOn: $configuration.policy.skipCommonCaches)
-            switchRow("Skip common build outputs not ignored by Git", isOn: $configuration.policy.skipUnignoredBuildOutputs)
             switchRow("Include Git object store", isOn: $configuration.policy.includeGitMetadata)
             switchRow("Include Git LFS objects", isOn: $configuration.policy.includeGitLFSObjects)
             metadataRow(title: "Preserve extended attributes", selection: $configuration.metadata.xattrs)
@@ -45,6 +43,51 @@ struct DevSyncRulesSection: View {
                 .disabled(disabled)
         }
         .help(help)
+    }
+
+    @State private var isEditingSkipPatterns = false
+
+    private var skipRow: some View {
+        HStack(spacing: 8) {
+            Text("Skip caches, dependencies, build outputs, and tmp")
+                .font(.system(size: 12))
+            Spacer(minLength: 8)
+            Button("Extra patterns…") { isEditingSkipPatterns = true }
+                .controlSize(.small)
+                .popover(isPresented: $isEditingSkipPatterns, arrowEdge: .bottom) {
+                    skipPatternEditor
+                }
+            Toggle("Skip caches, dependencies, build outputs, and tmp", isOn: $configuration.policy.skipCommonCaches)
+                .labelsHidden()
+        }
+        .help("Git-tracked content inside a skipped folder still syncs.")
+    }
+
+    private var skipPatternEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            DevSyncSectionHeader(title: "Extra skip patterns")
+            TextEditor(text: Binding(
+                get: { configuration.policy.explicitExcludes.joined(separator: "\n") },
+                set: { text in
+                    configuration.policy.explicitExcludes = text
+                        .split(whereSeparator: \.isNewline)
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
+            ))
+            .thinScrollIndicators()
+            .font(.system(size: 12, design: .monospaced))
+            .scrollContentBackground(.hidden)
+            .padding(6)
+            .frame(width: 320, height: 220)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
+
+            Text("One glob per line. A trailing slash matches a folder anywhere. The built-in list already covers node_modules, caches, build outputs, and tmp.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
     }
 
     private var sensitiveRow: some View {
