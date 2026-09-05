@@ -185,7 +185,7 @@ final class WindowAccessorTests: XCTestCase {
 
     func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {
         let expectedSizes: [String: NSSize] = [
-            "main": NSSize(width: 780, height: 700),
+            "main": UtilityLayout.launcherContentSize,
             "cc-history": NSSize(width: 900, height: 600),
             "rclone": NSSize(width: 880, height: 600),
             "logs": NSSize(width: 860, height: 600),
@@ -209,6 +209,36 @@ final class WindowAccessorTests: XCTestCase {
             XCTAssertEqual(window.contentMinSize, expectedSize, identifier)
         }
         XCTAssertEqual(UtilityLayout.netToysDefaultContentSize, NSSize(width: 1_280, height: 800))
+    }
+
+    func testLauncherContentPaneFitsFourToolCardsInOneRow() {
+        let layout = UtilityLayout.self
+        let contentWidth = layout.launcherContentSize.width - layout.compactSidebarWidth
+        let columns = CGFloat(layout.launcherColumnCount)
+        let required = columns * layout.launcherCardMinimumWidth
+            + (columns - 1) * layout.launcherGridSpacing
+            + 2 * layout.launcherContentInset
+
+        XCTAssertEqual(contentWidth, 980)
+        XCTAssertEqual(required, 976)
+        XCTAssertGreaterThanOrEqual(contentWidth, required)
+
+        let fifthColumn = required + layout.launcherGridSpacing + layout.launcherCardMinimumWidth
+        XCTAssertLessThan(contentWidth, fifthColumn)
+    }
+
+    func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
+        XCTAssertTrue(WindowStateManager.restoresPositionOnly("main"))
+        XCTAssertFalse(WindowStateManager.restoresPositionOnly("rclone"))
+
+        let saved = NSRect(x: 40, y: 60, width: 780, height: 732)
+        let restored = WindowStateManager.positionOnlyFrame(
+            saved: saved,
+            currentSize: NSSize(width: 1_200, height: 752)
+        )
+        XCTAssertEqual(restored.size, NSSize(width: 1_200, height: 752))
+        XCTAssertEqual(restored.minX, 40)
+        XCTAssertEqual(restored.maxY, saved.maxY)
     }
 
     func testWorkspaceDensityUsesCompactSharedMetrics() {
