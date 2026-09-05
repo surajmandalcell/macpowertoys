@@ -10,17 +10,29 @@ enum TrayPopoverLayout {
     static let width: CGFloat = 340
     static let horizontalInset: CGFloat = 12
     static let tabGroupInset: CGFloat = 4
-    static let tabGroupTopInset: CGFloat = 20
-    static let tabGroupBottomInset: CGFloat = 6
+    static let tabGroupOuterInset: CGFloat = 8
     static let tabHeight: CGFloat = 28
     static let tabSpacing: CGFloat = 4
     static let minimumTabWidth: CGFloat = 30
     static let tabTransitionDuration = UtilityMotion.standardDuration
-    static let bodyTopInset: CGFloat = 10
+    static let bodyTopInset: CGFloat = 0
+    static let settingsTopInset: CGFloat = 10
     static let bodyBottomInset: CGFloat = 14
+    static let rowSpacing: CGFloat = 10
+    static let minimumBodyHeight: CGFloat = 44
     static let footerHorizontalInset: CGFloat = 10
     static let footerTopInset: CGFloat = 8
     static let footerBottomInset: CGFloat = 10
+    static let heightFraction: CGFloat = 0.7
+
+    static var chromeHeight: CGFloat {
+        tabGroupOuterInset * 2 + tabGroupInset * 2 + tabHeight
+            + footerTopInset + footerBottomInset + 24
+    }
+
+    static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {
+        max(minimumBodyHeight, screenHeight * heightFraction - chromeHeight)
+    }
 
     static func tabWidth(availableWidth: CGFloat, count: Int) -> CGFloat {
         guard count > 0 else { return availableWidth }
@@ -41,21 +53,22 @@ struct TrayPopoverView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.openWindow) private var openWindow
     @State private var slideForward = true
-    @State private var settings = SettingsManager.shared
-    @State private var menuBarPreferencesChanged = false
+    @State private var trayToolIDs = TrayPopoverView.combinedTrayToolIDs()
 
-    private var trayTools: [any Tool] {
-        _ = menuBarPreferencesChanged
-        return ToolRegistry.allTools.filter { tool in
+    static func combinedTrayToolIDs() -> [String] {
+        ToolRegistry.allTools.filter { tool in
             tool.hasTrayTab
                 && IndividualMenuBarTool(rawValue: tool.id)?.usesMenuBarMode(
                     .combined,
-                    enabled: settings.isToolEnabled(tool.id)
+                    enabled: SettingsManager.shared.isToolEnabled(tool.id)
                 ) == true
         }
+        .map(\.id)
     }
 
-    private var trayToolIDs: [String] { trayTools.map(\.id) }
+    private var trayTools: [any Tool] {
+        trayToolIDs.compactMap(ToolRegistry.tool(for:))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,8 +91,7 @@ struct TrayPopoverView: View {
                             )
                     )
                     .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                    .padding(.top, TrayPopoverLayout.tabGroupTopInset)
-                    .padding(.bottom, TrayPopoverLayout.tabGroupBottomInset)
+                    .padding(.vertical, TrayPopoverLayout.tabGroupOuterInset)
 
                 ZStack {
                     tabContent
@@ -106,7 +118,8 @@ struct TrayPopoverView: View {
         .onAppear(perform: normalizeSelection)
         .onChange(of: trayToolIDs) { normalizeSelection() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
-            menuBarPreferencesChanged.toggle()
+            let current = Self.combinedTrayToolIDs()
+            if current != trayToolIDs { trayToolIDs = current }
         }
     }
 
@@ -138,16 +151,16 @@ struct TrayPopoverView: View {
     private var tabContent: some View {
         switch selectedTab {
         case "rclone":
-            RSyncTrayTab()
+            TrayToolTab(toolID: selectedTab) { RSyncTraySummary() }
         case "awake":
-            AwakeTrayTab()
-        case "color-picker", "text-extractor", "input-devices":
-            if let tool = ToolRegistry.tool(for: selectedTab) {
-                QuickToolTrayTab(tool: tool)
-            }
+            TrayToolTab(toolID: selectedTab) { AwakeTraySummary() }
         default:
-            EmptyStateView(icon: "wrench.adjustable", message: "No tray view")
-                .frame(height: 160)
+            if let tool = ToolRegistry.tool(for: selectedTab) {
+                TrayToolTab(toolID: tool.id) { QuickToolTraySummary(tool: tool) }
+            } else {
+                EmptyStateView(icon: "wrench.adjustable", message: "No tray view")
+                    .frame(height: 160)
+            }
         }
     }
 
@@ -171,7 +184,45 @@ struct TrayPopoverView: View {
     }
 }
 
-private struct QuickToolTrayTab: View {
+private struct TrayToolTab<Summary: View>: View {
+    let toolID: String
+    @ViewBuilder let summary: Summary
+
+    @State private var contentHeight: CGFloat = TrayPopoverLayout.minimumBodyHeight
+
+    private var maximumHeight: CGFloat {
+        TrayPopoverLayout.maximumBodyHeight(
+            screenHeight: NSScreen.main?.visibleFrame.height ?? 900
+        )
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                summary
+
+                QuietDivider()
+
+                ToolSettingsContent(toolID: toolID)
+                    .environment(\.compactSettingsLayout, true)
+            }
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.height
+            } action: { newHeight in
+                contentHeight = newHeight
+            }
+        }
+        .thinScrollIndicators()
+        .frame(
+            height: min(
+                max(contentHeight, TrayPopoverLayout.minimumBodyHeight),
+                maximumHeight
+            )
+        )
+    }
+}
+
+private struct QuickToolTraySummary: View {
     let tool: any Tool
 
     private var menuBarTool: IndividualMenuBarTool? {
@@ -199,16 +250,16 @@ private struct QuickToolTrayTab: View {
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
         .padding(.top, TrayPopoverLayout.bodyTopInset)
-        .padding(.bottom, TrayPopoverLayout.bodyBottomInset)
+        .padding(.bottom, TrayPopoverLayout.rowSpacing)
     }
 }
 
-private struct AwakeTrayTab: View {
+private struct AwakeTraySummary: View {
     @State private var service = AwakeService.shared
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: TrayPopoverLayout.rowSpacing) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(service.isActive ? Color.green : Color.secondary)
@@ -223,33 +274,6 @@ private struct AwakeTrayTab: View {
             }
             .frame(minHeight: 24)
 
-            Picker("Awake mode", selection: quickMode) {
-                Text("Off").tag(AwakeQuickMode.off)
-                Text("Indefinite").tag(AwakeQuickMode.indefinite)
-                Text("30 min").tag(AwakeQuickMode.thirtyMinutes)
-                Text("1 hour").tag(AwakeQuickMode.oneHour)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.regular)
-            .frame(maxWidth: .infinity)
-
-            HStack(spacing: 8) {
-                Text("Keep Display On")
-                    .font(.system(size: 12))
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { service.configuration.keepDisplayOn },
-                    set: service.setKeepDisplayOn
-                ))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .help("Applies while Awake is active")
-                .accessibilityLabel("Keep Display On")
-            }
-            .frame(minHeight: 24)
-
             if let error = service.assertionError {
                 Text(error)
                     .font(.system(size: 10))
@@ -259,27 +283,7 @@ private struct AwakeTrayTab: View {
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
         .padding(.top, TrayPopoverLayout.bodyTopInset)
-        .padding(.bottom, TrayPopoverLayout.bodyBottomInset)
-    }
-
-    private var quickMode: Binding<AwakeQuickMode> {
-        Binding(
-            get: { AwakeQuickMode(configuration: service.configuration) },
-            set: { mode in
-                switch mode {
-                case .off:
-                    service.setMode(.passive)
-                case .indefinite:
-                    service.setMode(.indefinite)
-                case .thirtyMinutes:
-                    service.setMode(.timed, duration: 1_800)
-                case .oneHour:
-                    service.setMode(.timed, duration: 3_600)
-                case .custom:
-                    break
-                }
-            }
-        )
+        .padding(.bottom, TrayPopoverLayout.rowSpacing)
     }
 }
 
@@ -426,9 +430,8 @@ struct TrayTabButtonStyle: ButtonStyle {
 
 // MARK: - RSync Tray Tab
 
-private struct RSyncTrayTab: View {
+private struct RSyncTraySummary: View {
     @State private var manager = RcloneJobManager.shared
-    @State private var contentHeight: CGFloat = 60
     @Environment(\.openWindow) private var openWindow
     @Query(sort: \TransferRecord.createdAt, order: .reverse) private var records: [TransferRecord]
 
@@ -436,38 +439,24 @@ private struct RSyncTrayTab: View {
         Array(records.prefix(3))
     }
 
-    private var maxContentHeight: CGFloat {
-        (NSScreen.main?.visibleFrame.height ?? 900) * 0.7 - 130
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             statusRow
-                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                .padding(.top, TrayPopoverLayout.bodyTopInset)
 
-            ScrollView {
-                Group {
-                    if !manager.isDaemonRunning {
-                        engineOffState
-                    } else if manager.activeJobs.isEmpty {
-                        idleState
-                    } else {
-                        activeTransfers
-                    }
-                }
-                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                .padding(.top, TrayPopoverLayout.bodyTopInset)
-                .padding(.bottom, TrayPopoverLayout.bodyBottomInset)
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.height
-                } action: { newHeight in
-                    contentHeight = newHeight
+            Group {
+                if !manager.isDaemonRunning {
+                    engineOffState
+                } else if manager.activeJobs.isEmpty {
+                    idleState
+                } else {
+                    activeTransfers
                 }
             }
-            .thinScrollIndicators()
-            .frame(height: min(max(contentHeight, 44), maxContentHeight))
+            .padding(.top, TrayPopoverLayout.rowSpacing)
         }
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.top, TrayPopoverLayout.bodyTopInset)
+        .padding(.bottom, TrayPopoverLayout.rowSpacing)
     }
 
     private var statusRow: some View {

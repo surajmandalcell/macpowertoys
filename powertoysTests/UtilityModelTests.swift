@@ -80,7 +80,8 @@ final class UtilityModelTests: XCTestCase {
         XCTAssertFalse(TrayPopoverLayout.showsTabLabels(count: 3))
         XCTAssertEqual(TrayPopoverLayout.tabHeight, 28)
         XCTAssertEqual(TrayPopoverLayout.tabGroupInset, 4)
-        XCTAssertLessThan(TrayPopoverLayout.tabGroupBottomInset, TrayPopoverLayout.bodyTopInset)
+        XCTAssertEqual(TrayPopoverLayout.tabGroupOuterInset, 8)
+        XCTAssertEqual(TrayPopoverLayout.bodyTopInset, 0)
         XCTAssertGreaterThan(TrayPopoverLayout.bodyBottomInset, TrayPopoverLayout.bodyTopInset)
         XCTAssertGreaterThan(TrayPopoverLayout.footerBottomInset, TrayPopoverLayout.footerTopInset)
         XCTAssertEqual(

@@ -305,67 +305,71 @@ struct ColorPickerSettingsView: View {
     @State private var isConfirmingClearAll = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("GLOBAL SHORTCUT").utilitySectionHeader()
-                VStack(alignment: .leading, spacing: 0) {
-                    Toggle("Enable Pick Color shortcut", isOn: Binding(
-                        get: { shortcuts.isEnabled(.colorPicker) },
-                        set: { shortcuts.setEnabled($0, for: .colorPicker) }
-                    ))
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
-
-                    Button("Clear All", role: .destructive) {
-                        isConfirmingClearAll = true
-                    }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .disabled(service.history.isEmpty)
-                    .help("Clear every saved color")
-                    .accessibilityIdentifier("color-picker.clear-all")
-                    .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
-
-                    QuietDivider()
-
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Keyboard shortcut")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("Works anywhere while MacPowerToys is running.")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        ShortcutRecorderField(action: .colorPicker)
-                            .disabled(!shortcuts.isEnabled(.colorPicker))
-                    }
-                    .font(.system(size: 12))
-                    .padding(.top, ColorPickerLayout.settingsControlSpacing)
-
-                    ShortcutPermissionNotice(action: .colorPicker)
-                }
-                .padding(14)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+        content
+            .settingsScrollContainer()
+            .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
+                Button("Clear All", role: .destructive) { service.clearAll() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes every saved color from History and all projects. Projects are kept.")
             }
-            .padding(.horizontal, ColorPickerLayout.bodyHorizontalInset)
-            .padding(.bottom, UtilityLayout.floatingButtonContentInset)
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GLOBAL SHORTCUT").utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 0) {
+                Toggle("Enable Pick Color shortcut", isOn: Binding(
+                    get: { shortcuts.isEnabled(.colorPicker) },
+                    set: { shortcuts.setEnabled($0, for: .colorPicker) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
+
+                Button("Clear All", role: .destructive) {
+                    isConfirmingClearAll = true
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .disabled(service.history.isEmpty)
+                .help("Clear every saved color")
+                .accessibilityIdentifier("color-picker.clear-all")
+                .padding(.bottom, ColorPickerLayout.settingsControlSpacing)
+
+                QuietDivider()
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Keyboard shortcut")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Works anywhere while MacPowerToys is running.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    ShortcutRecorderField(action: .colorPicker)
+                        .disabled(!shortcuts.isEnabled(.colorPicker))
+                }
+                .font(.system(size: 12))
+                .padding(.top, ColorPickerLayout.settingsControlSpacing)
+
+                ShortcutPermissionNotice(action: .colorPicker)
+            }
+            .padding(14)
+            .background(Color.primary.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .thinScrollIndicators()
-        .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
-            Button("Clear All", role: .destructive) { service.clearAll() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This removes every saved color from History and all projects. Projects are kept.")
-        }
+        .settingsPageInsets(
+            horizontal: ColorPickerLayout.bodyHorizontalInset,
+            bottom: UtilityLayout.floatingButtonContentInset
+        )
     }
 }
 

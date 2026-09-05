@@ -212,16 +212,16 @@ struct TextExtractorSettingsView: View {
     @State private var languages = ""
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                shortcutSettings
-                recognitionSettings
-            }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.top, 14)
-            .padding(.bottom, UtilityLayout.floatingButtonContentInset)
+        VStack(alignment: .leading, spacing: 16) {
+            shortcutSettings
+            recognitionSettings
         }
-        .thinScrollIndicators()
+        .settingsPageInsets(
+            horizontal: UtilityLayout.horizontalInset,
+            top: 14,
+            bottom: UtilityLayout.floatingButtonContentInset
+        )
+        .settingsScrollContainer()
         .onAppear {
             languages = service.settings.preferredLanguages.joined(separator: ", ")
         }
