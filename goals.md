@@ -232,8 +232,9 @@ G6 Everything mode          [█████████████████
   Input Devices, and eleven Dev Sync steps passed; the menu-bar popover
   was verified with a native Accessibility driver. The 100k-file scale
   budget test passed in that suite run and later exceeded its 120 s budget
-  in two isolated reruns (146 s, 163 s) with no scanner or planner change;
-  treat it as a host-load budget, not a regression.
+  in two isolated reruns (146 s, 163 s) under load average 8 to 12 with no
+  scanner or planner change, then passed again inside the final 880-test
+  run at `38c1a4f` on the idle machine: a host-load budget, not a regression.
 
 ## Current work
 
