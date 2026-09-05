@@ -352,6 +352,10 @@ final class MarketplaceManagerTests: XCTestCase {
         XCTAssertEqual(tools.map(\.id), ["window-snapper"])
         XCTAssertEqual(tools.first?.category, .system)
         XCTAssertNil(tools.first?.iconFileURL)
+
+        let icon = try await manager.store.saveIcon(Data([0, 1, 2]), toolID: "window-snapper")
+        try await manager.recordInstall(try XCTUnwrap(manager.receipts.first))
+        XCTAssertEqual(manager.installedTools.first?.iconFileURL, icon)
     }
 
     func testRejectsOversizedCatalog() async throws {
