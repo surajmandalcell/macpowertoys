@@ -230,22 +230,15 @@ private struct QuickToolTraySummary: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(tool.description)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-
-            HStack(spacing: 8) {
-                Spacer()
-                if let action = menuBarTool?.quickAction {
-                    TrayActionButton(title: menuBarTool?.actionTitle ?? tool.name, isPrimary: true) {
-                        ToolActionRouter.shared.execute(ToolActionRequest(action: action))
-                    }
+        HStack(spacing: 8) {
+            Spacer()
+            if let action = menuBarTool?.quickAction {
+                TrayActionButton(title: menuBarTool?.actionTitle ?? tool.name, isPrimary: true) {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: action))
                 }
-                TrayActionButton(title: "Open", isPrimary: menuBarTool?.quickAction == nil) {
-                    ToolActionRouter.shared.open(toolID: tool.id)
-                }
+            }
+            TrayActionButton(title: "Open", isPrimary: menuBarTool?.quickAction == nil) {
+                ToolActionRouter.shared.open(toolID: tool.id)
             }
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
