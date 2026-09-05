@@ -167,7 +167,8 @@ struct LogsWindowView: View {
     }
 
     private var sidebarBody: some View {
-        VStack(spacing: 0) {
+        let levelCounts = Dictionary(grouping: LogManager.shared.logs, by: \.level).mapValues(\.count)
+        return VStack(spacing: 0) {
             SidebarSearchField(text: $searchText, placeholder: "Search logs...")
                 .padding(.horizontal, 12)
                 .padding(.top, UtilityLayout.workspaceContentTopInset)
@@ -199,7 +200,7 @@ struct LogsWindowView: View {
                         LogLevelFilterRow(
                             level: level,
                             isSelected: selectedLevels.contains(level),
-                            count: LogManager.shared.logs.filter { $0.level == level }.count
+                            count: levelCounts[level, default: 0]
                         ) {
                             if selectedLevels.contains(level) {
                                 selectedLevels.remove(level)
@@ -247,11 +248,12 @@ struct LogsWindowView: View {
     }
 
     private var internalContent: some View {
-        VStack(spacing: 0) {
-            contentHeader(title: "Internal Logs", detail: "\(filteredLogs.count) entries")
+        let entries = filteredLogs
+        return VStack(spacing: 0) {
+            contentHeader(title: "Internal Logs", detail: "\(entries.count) entries")
             QuietDivider()
             SelectableLogTextView(
-                lines: filteredLogs.reversed().map { RenderedLogLine($0) },
+                lines: entries.reversed().map { RenderedLogLine($0) },
                 fontSize: CGFloat(logsFontSize),
                 emptyMessage: "No internal logs to display"
             )
@@ -384,6 +386,7 @@ struct LogsSettingsView: View {
 }
 
 private struct RenderedLogLine {
+    let id: UUID
     let timestamp: Date
     let level: String
     let source: String
@@ -391,6 +394,7 @@ private struct RenderedLogLine {
     let color: NSColor
 
     init(_ entry: LogEntryData) {
+        id = entry.id
         timestamp = entry.timestamp
         level = entry.level.name.prefix(1).uppercased()
         source = entry.source
@@ -404,6 +408,7 @@ private struct RenderedLogLine {
     }
 
     init(_ entry: SystemLogLine) {
+        id = entry.id
         timestamp = entry.timestamp
         level = entry.level.rawValue
         source = entry.source
@@ -424,6 +429,18 @@ private struct SelectableLogTextView: NSViewRepresentable {
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }()
+
+    final class Coordinator {
+        var signature: Signature?
+    }
+
+    struct Signature: Equatable {
+        let lineIDs: [UUID]
+        let fontSize: CGFloat
+        let emptyMessage: String
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -446,6 +463,9 @@ private struct SelectableLogTextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        let signature = Signature(lineIDs: lines.map(\.id), fontSize: fontSize, emptyMessage: emptyMessage)
+        guard signature != context.coordinator.signature else { return }
+        context.coordinator.signature = signature
         textView.textStorage?.setAttributedString(attributedString())
     }
 
