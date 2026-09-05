@@ -50,13 +50,6 @@ struct SystemMonitorWindowView: View {
                     }
                 }
                 Spacer()
-                HStack(spacing: 6) {
-                    Circle().fill(service.detailedActive ? Color.green : Color.secondary).frame(width: 7, height: 7)
-                    Text(service.detailedActive ? "Detailed sampling active" : "Sampling stopped")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(10)
             }
             .padding(.horizontal, 12)
             .padding(.top, UtilityLayout.workspaceContentTopInset)

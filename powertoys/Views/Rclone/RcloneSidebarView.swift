@@ -24,16 +24,6 @@ struct RcloneSidebarView: View {
             Text("Cloud Sync")
                 .font(.system(size: 13, weight: .medium))
 
-            Circle()
-                .fill(daemonStatusColor)
-                .frame(width: 6, height: 6)
-
-            if case .running(_, let version) = manager.daemon.state {
-                Text(version)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-
             if !manager.daemonIsHealthy {
                 Button {
                     Task { await manager.restartDaemon() }
@@ -50,15 +40,6 @@ struct RcloneSidebarView: View {
         }
         .padding(.leading, UtilityLayout.workspaceTitleLeadingInset)
         .padding(.top, 8)
-    }
-
-    private var daemonStatusColor: Color {
-        switch manager.daemon.state {
-        case .running: return .green
-        case .starting: return .orange
-        case .failed: return .red
-        case .stopped: return .secondary
-        }
     }
 
     private var sidebarBody: some View {
