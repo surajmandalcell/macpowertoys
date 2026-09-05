@@ -8,6 +8,7 @@ import Observation
 final class AwakeService {
     static let shared = AwakeService()
     static weak var current: AwakeService?
+    private static let iso8601Formatter = ISO8601DateFormatter()
 
     private(set) var configuration: AwakeConfiguration
     private(set) var remaining: TimeInterval?
@@ -206,7 +207,7 @@ final class AwakeService {
         case .awakeTimed:
             setMode(.timed, duration: parameters["seconds"].flatMap(TimeInterval.init) ?? 1800)
         case .awakeUntil:
-            let date = parameters["date"].flatMap(ISO8601DateFormatter().date(from:))
+            let date = parameters["date"].flatMap(Self.iso8601Formatter.date(from:))
             setMode(.until, until: date)
         default: break
         }

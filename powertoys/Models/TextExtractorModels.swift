@@ -39,6 +39,14 @@ struct TextExtractorSettings: Codable, Equatable, Sendable {
 }
 
 struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.unitsStyle = .abbreviated
+        formatter.dateTimeStyle = .numeric
+        return formatter
+    }()
+
     let id: UUID
     let text: String
     let createdAt: Date
@@ -63,10 +71,7 @@ struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
 
     func relativeTimestamp(at now: Date = Date()) -> String {
         guard abs(createdAt.timeIntervalSince(now)) >= 60 else { return "Just now" }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        formatter.dateTimeStyle = .numeric
-        return formatter.localizedString(for: createdAt, relativeTo: now)
+        return Self.relativeDateFormatter.localizedString(for: createdAt, relativeTo: now)
     }
 }
 
