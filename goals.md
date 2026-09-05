@@ -16,12 +16,12 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [███████████████████░] 59/63
+Dev Sync overall            [███████████████████░] 60/63
 G1 Foundation               [████████████████████] 15/15
 G2 Dev One-Way              [███████████████████░] 13/14
 G3 Dev Bidirectional        [████████████████████] 10/10
 G4 Interface                [████████████████████] 11/11
-G5 Hardening and release    [███████████████░░░░░] 10/13
+G5 Hardening and release    [█████████████████░░░] 11/13
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
@@ -169,7 +169,7 @@ G5 Hardening and release    [███████████████░░
   build, and local installation when no transfer is active.
 - [~] 5.12 Live check in the installed build: setup, preview, first sync,
   drift, conflict, unplug, remount, link repair.
-- [~] 5.13 Make Git ignore the primary filter inside the running engine:
+- [x] 5.13 Make Git ignore the primary filter inside the running engine:
   feed the Git working-tree manifest into every policy construction (engine
   scan, service preview, deep verification) so project-specific ignore rules
   never reach the drive, and accept dangling symlinks after an openrsync
