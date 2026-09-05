@@ -36,6 +36,24 @@ nonisolated enum DevRecoveryDecision: Equatable, Sendable {
     case leaveForUser(String)
 }
 
+nonisolated enum DevOperationRunnerStep: Int, CaseIterable, Sendable {
+    case resolveRoots = 1
+    case validatePreconditions
+    case preflight
+    case persistPlan
+    case prepareSafety
+    case startTransfer
+    case monitorEvents
+    case readTransferResult
+    case verifyDestination
+    case verifySourceStability
+    case applyNonTransferActions
+    case commitBaseline
+    case markCommitted
+    case clearDirtyGeneration
+    case retentionCleanup
+}
+
 nonisolated enum DevOperationRunnerError: LocalizedError, Sendable {
     case rootUnavailable
     case identityMismatch
@@ -63,11 +81,16 @@ nonisolated enum DevOperationRunnerError: LocalizedError, Sendable {
 
 actor DevOperationRunner {
     private let context: DevOperationContext
+    private let afterStep: @Sendable (DevOperationRunnerStep) throws -> Void
     private var activeTransfer: DevRsyncTransfer?
     private var cancellationRequested = false
 
-    init(context: DevOperationContext) {
+    init(
+        context: DevOperationContext,
+        afterStep: @escaping @Sendable (DevOperationRunnerStep) throws -> Void = { _ in }
+    ) {
         self.context = context
+        self.afterStep = afterStep
     }
 
     func run(
@@ -96,12 +119,16 @@ actor DevOperationRunner {
 
         do {
             try await validateRoots()
+            try afterStep(.resolveRoots)
             try await validate(plan: plan)
+            try afterStep(.validatePreconditions)
             try await preflight(plan: plan)
+            try afterStep(.preflight)
             try await persist(&operation, state: .planned)
+            mutationStarted = plan.hasMutations
+            try afterStep(.persistPlan)
             progress(0.05, "Preparing safety copies")
 
-            mutationStarted = plan.hasMutations
             try await prepareSafety(
                 plan: plan,
                 operation: &operation,
@@ -109,6 +136,7 @@ actor DevOperationRunner {
                 conflicts: &conflicts
             )
             try await persist(&operation, state: .safetyPrepared)
+            try afterStep(.prepareSafety)
 
             let transferResults = try await runTransfers(
                 plan: plan,
@@ -117,6 +145,7 @@ actor DevOperationRunner {
                 progress: progress
             )
             try await persist(&operation, state: .transferComplete)
+            try afterStep(.readTransferResult)
             let exitClasses = transferResults.map(\.exitClass)
 
             if cancellationRequested || exitClasses.contains(.cancelled) {
@@ -155,8 +184,10 @@ actor DevOperationRunner {
             try await persist(&operation, state: .verifying)
             progress(0.8, "Verifying")
             let verification = await verifyCopiedPaths(plan: plan)
+            try afterStep(.verifyDestination)
             verified = verification.verified
             requeuedPaths.append(contentsOf: verification.requeued)
+            try afterStep(.verifySourceStability)
 
             if hasPartial {
                 let committedPaths = sortedPaths(verified.keys)
@@ -191,6 +222,7 @@ actor DevOperationRunner {
                 safetyRecords: safetyRecords,
                 verified: verified
             )
+            try afterStep(.applyNonTransferActions)
             verified.merge(nonTransfer.verified) { _, new in new }
             deletedPaths = nonTransfer.deleted
             requeuedPaths.append(contentsOf: nonTransfer.requeued)
@@ -203,13 +235,17 @@ actor DevOperationRunner {
                 tombstones: committedTombstones,
                 conflicts: conflicts
             )
+            try afterStep(.commitBaseline)
             let committedPaths = sortedPaths(Array(verified.keys) + deletedPaths)
             bytesWritten = bytes(for: Array(verified.keys), plan: plan)
             operation.bytesTransferred = bytesWritten
             operation.filesTransferred = verified.count
             operation.safetyRecords = safetyRecords
             try await persist(&operation, state: .committed, terminal: true)
+            try afterStep(.markCommitted)
             progress(1, nil)
+            try afterStep(.clearDirtyGeneration)
+            try afterStep(.retentionCleanup)
             return DevOperationOutcome(
                 operation: operation,
                 committedPaths: committedPaths,
@@ -431,6 +467,8 @@ actor DevOperationRunner {
                 capabilities: rsyncCapabilities
             )
             activeTransfer = transfer
+            try afterStep(.startTransfer)
+            try afterStep(.monitorEvents)
             let result = try await transfer.run { update in
                 let fraction = Double(update.itemizedLines) / Double(max(1, manifest.count))
                 progress(0.15 + min(0.6, fraction * 0.6), update.lastRelativePath.map(Self.redactedPath))
