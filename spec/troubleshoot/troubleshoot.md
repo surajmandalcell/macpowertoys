@@ -24,6 +24,10 @@ rules, and before inspecting or changing implementation files.
   normal initialization and does not represent the user's app or saved state.
 - Use one task-unique DerivedData path and close its preview normally when the
   check ends. Never reuse or open another task's DerivedData product.
+- Delete that DerivedData path, every disk image, fixture, and capture the task
+  created, and every worker cache (`/tmp/mpt-dd-*`) before the final report.
+  Workers delete their own cache before `worker_done`. One orchestration left
+  50 caches and 24 GB behind; the cleanup is part of the task.
 
 ## Routing
 
