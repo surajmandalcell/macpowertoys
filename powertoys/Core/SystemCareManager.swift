@@ -136,12 +136,13 @@ final class SystemCareManager {
         errorMessage = nil
         task = Task { [weak self] in
             guard let self else { return }
-            let installation = await Task.detached(priority: .utility) {
-                Self.detectMole()
+            let result = await Task.detached(priority: .utility) {
+                (Self.detectMole(), Self.installedApplications())
             }.value
-            molePath = installation.path
-            moleVersion = installation.version
-            applications = Self.installedApplications()
+            guard !Task.isCancelled else { return }
+            molePath = result.0.path
+            moleVersion = result.0.version
+            applications = result.1
         }
     }
 
@@ -287,10 +288,10 @@ final class SystemCareManager {
         let arguments = molePath == nil ? ["install", "mole"] : ["upgrade", "mole"]
         task = Task { [weak self] in
             do {
-                _ = try await Task.detached(priority: .utility) {
+                let installation = try await Task.detached(priority: .utility) {
                     try Self.run(executable: brew, arguments: arguments)
+                    return Self.detectMole()
                 }.value
-                let installation = Self.detectMole()
                 self?.molePath = installation.path
                 self?.moleVersion = installation.version
             } catch {
@@ -326,17 +327,26 @@ final class SystemCareManager {
     }
 
     private func openTerminal(arguments: [String], executable: URL) {
-        do {
-            let script = FileManager.default.temporaryDirectory
-                .appendingPathComponent("MacPowerToys-SystemCare-\(UUID().uuidString).command")
-            let command = ([executable.path] + arguments).map(Self.shellQuoted).joined(separator: " ")
-            let source = "#!/bin/zsh\ntrap 'rm -f -- \"$0\"' EXIT\nclear\n\(command)\nprintf '\\nPress Return to close…'\nread\n"
-            try Data(source.utf8).write(to: script, options: .atomic)
-            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-            NSWorkspace.shared.open(script)
-        } catch {
-            errorMessage = error.localizedDescription
+        let command = ([executable.path] + arguments).map(Self.shellQuoted).joined(separator: " ")
+        let source = "#!/bin/zsh\ntrap 'rm -f -- \"$0\"' EXIT\nclear\n\(command)\nprintf '\\nPress Return to close…'\nread\n"
+        Task { [weak self] in
+            do {
+                let script = try await Task.detached(priority: .userInitiated) {
+                    try Self.makeTerminalScript(source)
+                }.value
+                NSWorkspace.shared.open(script)
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    nonisolated private static func makeTerminalScript(_ source: String) throws -> URL {
+        let script = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MacPowerToys-SystemCare-\(UUID().uuidString).command")
+        try Data(source.utf8).write(to: script, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+        return script
     }
 
     nonisolated private static func cleanupCandidates(
