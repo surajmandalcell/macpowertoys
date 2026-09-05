@@ -93,6 +93,8 @@ final class DevSyncPairEngineTests: XCTestCase {
         try await waitUntil {
             await fixture.engine.projects().first { $0.relativePath == "app" }?.state == .destinationDrift
         }
+        let driftStatus = await fixture.engine.status()
+        XCTAssertEqual(driftStatus.driftCount, 1)
     }
 
     func testEventsMarkProjectsPendingAndEjectMarksLinkedProjectsOffline() async throws {

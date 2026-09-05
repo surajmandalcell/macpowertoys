@@ -1211,7 +1211,9 @@ Body, top to bottom:
    something: a clean or drifted project shows `Changes pending` from the
    first accepted event until its batch starts, and an external-resident
    project shows `Offline` while the drive is offline and returns to `Clean`
-   when the link validates after the remount.
+   when the link validates after the remount. A drifted row shows its own
+   drift-path count as soon as the engine finds the drift, and the status
+   card's drift count is the sum over every project.
 3. Conflicts, one card per conflict, with relative path, conflict type,
    internal size and time, external size and time, baseline time, an optional
    text diff for small text files, and safety-copy locations. Actions: Keep
