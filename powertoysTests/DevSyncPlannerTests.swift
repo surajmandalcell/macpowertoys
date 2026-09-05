@@ -659,6 +659,29 @@ final class DevSyncPlannerTests: XCTestCase {
         DevManagedLink(projectID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, linkRelativePath: path, targetVolumeIdentifier: "external", targetRelativePath: path, lastWrittenTargetText: "/external/\(path)", linkResourceIdentifier: nil, state: state, createdAt: now, lastValidatedAt: now, adoptedFromUserLink: false)
     }
 
+    func testLinkedPlainFolderStaysExternalResidentAcrossCatalogRefreshes() {
+        let pair = makePair(mode: .devOneWay)
+        var project = DevProject(pairID: pair.id, relativePath: "organization/lambton/meallens-data", residency: .externalResident, kind: .nonGit)
+        project.state = .clean
+        let link = DevManagedLink(
+            projectID: project.id,
+            linkRelativePath: project.relativePath,
+            targetVolumeIdentifier: pair.externalRoot.volumeIdentifier,
+            targetRelativePath: project.relativePath,
+            lastWrittenTargetText: "/external/" + project.relativePath,
+            linkResourceIdentifier: nil,
+            state: .healthy,
+            createdAt: now,
+            lastValidatedAt: now,
+            adoptedFromUserLink: false
+        )
+        let output = catalog(mode: .devOneWay, known: [project], internal: [], external: [], links: [link])
+        let refreshed = output.projects.first { $0.relativePath == project.relativePath }
+        XCTAssertEqual(refreshed?.residency, .externalResident)
+        XCTAssertEqual(refreshed?.state, .clean)
+        XCTAssertTrue(output.missingProjects.isEmpty)
+    }
+
     func testCatalogAlwaysEndsWithRootUnitAndLinksDriveOnlyDirectories() {
         let output = DevCatalogPlanner.plan(
             DevCatalogInput(
