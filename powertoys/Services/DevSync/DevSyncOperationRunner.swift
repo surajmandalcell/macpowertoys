@@ -59,7 +59,7 @@ nonisolated enum DevOperationRunnerError: LocalizedError, Sendable {
     case identityMismatch
     case invalidAction
     case preconditionChanged(String)
-    case notEnoughSpace(required: Int64, available: Int64)
+    case notEnoughSpace(required: Int64, available: Int64, reserve: Int64)
     case readOnlyVolume
     case transferFailed(DevRsyncExitClass)
     case verificationFailed
@@ -70,8 +70,8 @@ nonisolated enum DevOperationRunnerError: LocalizedError, Sendable {
         case .identityMismatch: "Wrong drive."
         case .invalidAction: "The plan contains an unsafe action."
         case .preconditionChanged: "A planned path changed before the operation started."
-        case .notEnoughSpace(let required, let available):
-            "Not enough space. \(max(0, required - available)) bytes more are required."
+        case .notEnoughSpace(let required, let available, let reserve):
+            "Not enough space. \(ByteCountFormatter.string(fromByteCount: max(0, required - available), countStyle: .file)) more is required after the \(ByteCountFormatter.string(fromByteCount: reserve, countStyle: .file)) reserve."
         case .readOnlyVolume: "The destination volume is read-only."
         case .transferFailed(let exitClass): "rsync ended with \(exitClass.rawValue)."
         case .verificationFailed: "Transferred paths did not verify."
@@ -360,16 +360,13 @@ actor DevOperationRunner {
         }
         for (side, required) in requiredBySide where required > 0 {
             let root = side == .internal ? context.internalRoot : context.externalRoot
-            let measured = await Task.detached(priority: .utility) {
-                (try? root.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]))?
-                    .volumeAvailableCapacityForImportantUsage
-            }.value
+            let measured = await Task.detached(priority: .utility) { DevSyncRoots.availableCapacity(at: root) }.value
             let probed = context.capabilitiesVolume(side)?.availableCapacity
             let available = [measured, probed].compactMap { ($0 ?? 0) > 0 ? $0 : nil }.min() ?? 0
             let reserve = max(0, context.pair.configuration.safety.minimumFreeSpaceReserveBytes)
             let usable = max(0, available - reserve)
             guard required <= usable else {
-                throw DevOperationRunnerError.notEnoughSpace(required: required, available: usable)
+                throw DevOperationRunnerError.notEnoughSpace(required: required, available: usable, reserve: reserve)
             }
         }
     }
@@ -748,11 +745,7 @@ actor DevOperationRunner {
             && context.capabilities.externalVolume?.supportsUnixPermissions == true
     }
 
-    private var timestampToleranceNanoseconds: Int64 {
-        context.capabilities.rsync?.protocolVersion.map { $0 < 30 } == true
-            ? max(1_000_000_000, context.capabilities.timestampToleranceNanoseconds)
-            : context.capabilities.timestampToleranceNanoseconds
-    }
+    private var timestampToleranceNanoseconds: Int64 { context.capabilities.timestampToleranceNanoseconds }
 
     private func mutationPaths(in plan: DevSyncPlan) -> [String] {
         sortedPaths(plan.actions.filter { $0.kind != .noOp && $0.kind != .createConflict }.map(\.relativePath))
@@ -940,11 +933,7 @@ nonisolated enum DevRecovery {
         }
     }
 
-    private static func timestampTolerance(_ context: DevOperationContext) -> Int64 {
-        context.capabilities.rsync?.protocolVersion.map { $0 < 30 } == true
-            ? max(1_000_000_000, context.capabilities.timestampToleranceNanoseconds)
-            : context.capabilities.timestampToleranceNanoseconds
-    }
+    private static func timestampTolerance(_ context: DevOperationContext) -> Int64 { context.capabilities.timestampToleranceNanoseconds }
 }
 
 private extension DevOperationContext {

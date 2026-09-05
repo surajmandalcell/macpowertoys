@@ -205,6 +205,12 @@ conflicts, ignored size, sensitive ignored files that will be included,
 file-system capability warnings, and estimated required free space. The user
 approves the full plan or excludes specific projects.
 
+The preview plans a pending mirror against an empty destination, because the
+mirror directory does not exist yet. It counts one managed link for each
+external-only project, lists every included sensitive path, and compares the
+required bytes with the available capacity minus the free-space reserve. A
+preview that changes nothing must mean that both sides already match.
+
 ## Safety invariants
 
 These rules are mandatory in every mode and phase.
@@ -954,7 +960,16 @@ Compatibility levels:
 
 Timestamp tolerance: detect the target resolution, set `--modify-window` only
 when required, and use the same tolerance in the baseline comparator so coarse
-file systems do not cause repeated false changes.
+file systems do not cause repeated false changes. The bundled macOS
+`openrsync` (protocol 29) writes whole-second modification times, so the pair
+tolerance is at least one second whenever the transfer tool reports a
+protocol below 30. The planner, verifier, runner, and baseline all read that
+one pair tolerance; none of them keeps a private value.
+
+Available capacity: read the important-usage capacity first and fall back to
+the plain available capacity when the important-usage value is zero. External
+volumes and disk images report zero for important usage, and a zero value
+must never read as a full disk.
 
 Free-space preflight estimates new bytes, changed bytes, the largest temporary
 file, staging for new projects, safety history bytes, and the configured
@@ -982,6 +997,12 @@ internal parent category directories are safe, the internal path is not inside
 another project root unless explicitly allowed, no case or Unicode collision
 exists, the volume identity is correct, and the project belongs to no other
 pair.
+
+Dev Sync creates the link for each external-only project when it refreshes
+the catalog: at pair start and after every discovery pass while the drive is
+online. When a file, folder, or link already exists at the internal path, Dev
+Sync keeps it untouched, marks the project `Link missing` with the reason,
+and waits for the user to move the item aside or exclude the project.
 
 Cloud Sync may create normal internal category directories such as
 `~/dev/personal/data/`. It never creates a managed link inside an existing Git

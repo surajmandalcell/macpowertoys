@@ -19,8 +19,10 @@ struct DevSyncRulesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle("Follow Git ignore rules", isOn: $configuration.policy.followGitIgnore)
+            Toggle("Follow Git ignore rules", isOn: .constant(true))
                 .frame(maxWidth: .infinity)
+                .disabled(true)
+                .help("Git projects always follow Git ignore rules.")
             sensitiveRow
             Toggle("Skip common caches and dependencies", isOn: $configuration.policy.skipCommonCaches)
                 .frame(maxWidth: .infinity)

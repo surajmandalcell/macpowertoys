@@ -596,7 +596,7 @@ private nonisolated struct DevPlanningContext {
             destination: destination,
             overwrites: destination != nil,
             bytes: bytes,
-            reason: "Copy (sourceSide.displayName.lowercased()) change"
+            reason: "Copy \(sourceSide.displayName.lowercased()) change"
         )
         manifests[destinationSide, default: []].insert(path)
     }

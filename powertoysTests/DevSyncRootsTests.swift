@@ -16,6 +16,14 @@ final class DevSyncRootsTests: XCTestCase {
         try? FileManager.default.removeItem(at: temporaryRoot)
     }
 
+    func testAvailableCapacityFallsBackWhenImportantUsageIsZero() {
+        XCTAssertEqual(DevSyncRoots.availableCapacity(important: 0, plain: 4_060_278_784), 4_060_278_784)
+        XCTAssertEqual(DevSyncRoots.availableCapacity(important: nil, plain: 10), 10)
+        XCTAssertEqual(DevSyncRoots.availableCapacity(important: 20, plain: 10), 20)
+        XCTAssertEqual(DevSyncRoots.availableCapacity(important: nil, plain: nil), 0)
+        XCTAssertGreaterThan(DevSyncRoots.availableCapacity(at: temporaryRoot) ?? 0, 0)
+    }
+
     func testScenario20RejectsSameNestedAndSymlinkRoots() throws {
         let internalURL = temporaryRoot.appendingPathComponent("internal", isDirectory: true)
         let externalURL = temporaryRoot.appendingPathComponent("external", isDirectory: true)

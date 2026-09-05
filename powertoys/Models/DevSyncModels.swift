@@ -1362,7 +1362,9 @@ nonisolated struct DevPairCapabilities: Codable, Equatable, Sendable {
     }
 
     var timestampToleranceNanoseconds: Int64 {
-        max(internalVolume?.timestampResolutionNanoseconds ?? 0, externalVolume?.timestampResolutionNanoseconds ?? 0)
+        let volumes = max(internalVolume?.timestampResolutionNanoseconds ?? 0, externalVolume?.timestampResolutionNanoseconds ?? 0)
+        let transferKeepsWholeSecondsOnly = rsync?.protocolVersion.map { $0 < 30 } == true
+        return transferKeepsWholeSecondsOnly ? max(1_000_000_000, volumes) : volumes
     }
 
     var fidelity: DevFileSystemFidelity {

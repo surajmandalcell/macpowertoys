@@ -11,6 +11,10 @@ nonisolated struct DevSnapshot: Equatable, Sendable {
     var includedBytes: Int64
     var excludedBytes: Int64
     var scannedAt: Date
+
+    static var emptyDestination: DevSnapshot {
+        DevSnapshot(entries: [:], excluded: [:], unreadablePaths: [], complete: true, collisions: [], includedBytes: 0, excludedBytes: 0, scannedAt: Date())
+    }
 }
 
 nonisolated protocol DevPathPolicy: Sendable {

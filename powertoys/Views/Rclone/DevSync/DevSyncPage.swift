@@ -209,12 +209,15 @@ private struct DevSyncPairPage: View {
             safetyCard
         }
         .confirmationDialog("Remove \"\(pair.displayName)\"?", isPresented: $isConfirmingRemoval) {
-            Button("Remove pair", role: .destructive) {
+            Button("Remove Pair, Keep Safety Store", role: .destructive) {
                 Task { await manager.removePair(pairID: pair.id, deleteSafetyStore: false) }
+            }
+            Button("Remove Pair and Delete Safety Store", role: .destructive) {
+                Task { await manager.removePair(pairID: pair.id, deleteSafetyStore: true) }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Removing the pair stops syncing. It keeps every file on both drives and keeps the safety store.")
+            Text("Removing the pair stops syncing and keeps every project file on both drives. The safety store holds retained versions and conflict copies in .cloudsync-system on the external drive.")
         }
     }
 

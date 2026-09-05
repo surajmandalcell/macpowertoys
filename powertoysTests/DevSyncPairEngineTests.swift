@@ -16,6 +16,39 @@ final class DevSyncPairEngineTests: XCTestCase {
         try? FileManager.default.removeItem(at: temporaryRoot)
     }
 
+    func testScenario2ExternalOnlyProjectGetsManagedLinkAndExistingInternalFolderIsKept() async throws {
+        let fixture = try await makeFixture()
+        let externalRoot = fixture.externalProject.deletingLastPathComponent()
+        let internalRoot = fixture.internalProject.deletingLastPathComponent()
+        let linked = externalRoot.appendingPathComponent("linked", isDirectory: true)
+        let occupied = externalRoot.appendingPathComponent("occupied", isDirectory: true)
+        for project in [linked, occupied] {
+            try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+            try Data("source".utf8).write(to: project.appendingPathComponent("source.swift"))
+            try runGit(["init", "-q"], at: project)
+        }
+        let keep = internalRoot.appendingPathComponent("occupied/keep.txt")
+        try FileManager.default.createDirectory(at: keep.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("mine".utf8).write(to: keep)
+
+        await fixture.engine.start()
+        try await waitUntil {
+            let projects = await fixture.engine.projects()
+            return projects.contains { $0.relativePath == "linked" && $0.residency == .externalResident }
+                && projects.contains { $0.relativePath == "occupied" && $0.state == .linkMissing }
+        }
+
+        XCTAssertEqual(
+            try FileManager.default.destinationOfSymbolicLink(atPath: internalRoot.appendingPathComponent("linked").path),
+            linked.standardizedFileURL.path
+        )
+        XCTAssertEqual(try Data(contentsOf: keep), Data("mine".utf8))
+        let projects = await fixture.engine.projects()
+        XCTAssertTrue(projects.first { $0.relativePath == "occupied" }?.lastError?.contains("already exists") == true)
+        let healthyLinks = await fixture.engine.links().filter { $0.state == .healthy }.map(\.linkRelativePath)
+        XCTAssertEqual(healthyLinks, ["linked"])
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneBatch() async throws {
         let fixture = try await makeFixture()
         await fixture.engine.start()
