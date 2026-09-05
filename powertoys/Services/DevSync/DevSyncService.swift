@@ -316,8 +316,10 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     }
 
     private func previewPolicy(pair: DevSyncPair, project: DevProject, projectURL: URL) async -> DevFilePolicyEngine {
-        let tracked = project.kind == .nonGit ? nil : try? await DevGit.workingTreeManifest(projectURL: projectURL)
-        return DevFilePolicyEngine(policy: pair.configuration.policy, projectKind: project.kind, gitDirectoryRelativePath: project.topology?.gitDirectory, gitTracked: tracked.map(Set.init), gitIgnored: nil, gitAvailable: tracked != nil, projectIgnoreRules: [])
+        let manifest = project.kind == .nonGit
+            ? nil
+            : try? await DevGit.workingTreeManifest(projectURL: projectURL).reduce(into: Set<String>()) { $0.insert($1) }
+        return DevFilePolicyEngine(policy: pair.configuration.policy, projectKind: project.kind, gitDirectoryRelativePath: project.topology?.gitDirectory, gitTracked: manifest, gitManifest: manifest, gitIgnored: nil, gitAvailable: manifest != nil, projectIgnoreRules: [])
     }
 
     private func snapshotIfPresent(url: URL, project: DevProject, policy: DevFilePolicyEngine, capabilities: DevPairCapabilities) async -> DevSnapshot? {

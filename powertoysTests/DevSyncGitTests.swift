@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import XCTest
 @testable import powertoys
@@ -52,6 +53,30 @@ final class DevSyncGitTests: XCTestCase {
             candidates: [".env.local", "node_modules/index.js", "visible.txt"]
         )
         XCTAssertEqual(ignored, [".env.local", "node_modules/index.js"])
+    }
+
+    func testScenario24WorkingTreeManifestHonorsIsolatedGlobalIgnore() async throws {
+        let repository = try await makeRepository(named: "global-ignore")
+        let globalExcludes = temporaryRoot.appendingPathComponent("global-excludes")
+        let globalConfiguration = temporaryRoot.appendingPathComponent("global-gitconfig")
+        try write("*.tmp\n", to: globalExcludes)
+        try write("[core]\n\texcludesFile = \(globalExcludes.path)\n", to: globalConfiguration)
+        try write("ignored", to: repository.appendingPathComponent("cache.tmp"))
+        try write("visible", to: repository.appendingPathComponent("visible.txt"))
+        let previousConfiguration = ProcessInfo.processInfo.environment["GIT_CONFIG_GLOBAL"]
+        setenv("GIT_CONFIG_GLOBAL", globalConfiguration.path, 1)
+        defer {
+            if let previousConfiguration {
+                setenv("GIT_CONFIG_GLOBAL", previousConfiguration, 1)
+            } else {
+                unsetenv("GIT_CONFIG_GLOBAL")
+            }
+        }
+
+        let manifest = try await DevGit.workingTreeManifest(projectURL: repository)
+
+        XCTAssertFalse(manifest.contains("cache.tmp"))
+        XCTAssertTrue(manifest.contains("visible.txt"))
     }
 
     func testScenario14WorkingTreeManifestIncludesInitializedSubmoduleFiles() async throws {
