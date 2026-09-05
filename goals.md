@@ -16,12 +16,12 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [██████████░░░░░░░░░░] 30/62
-G1 Foundation               [███████████████████░] 14/15
-G2 Dev One-Way              [████░░░░░░░░░░░░░░░░]  3/14
-G3 Dev Bidirectional        [██████░░░░░░░░░░░░░░]  3/10
-G4 Interface                [██████████████████░░] 10/11
-G5 Hardening and release    [░░░░░░░░░░░░░░░░░░░░]  0/12
+Dev Sync overall            [███████████████████░] 59/63
+G1 Foundation               [████████████████████] 15/15
+G2 Dev One-Way              [███████████████████░] 13/14
+G3 Dev Bidirectional        [████████████████████] 10/10
+G4 Interface                [████████████████████] 11/11
+G5 Hardening and release    [███████████████░░░░░] 10/13
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
@@ -77,7 +77,7 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 - [x] 1.14 Managed link manager: create, validate, repair, adopt, remove,
   offline handling, and exclusion from scans. Needs: 1.4.
   Check: scenarios 2, 6, 55, 66, 67, 68.
-- [ ] 1.15 Read-only preview end to end on a temporary pair: discovery,
+- [x] 1.15 Read-only preview end to end on a temporary pair: discovery,
   policy, scan, plan, summary, zero mutations. Needs: 1.13, 1.14.
   Check: an integration test asserts no file changed.
 
@@ -89,46 +89,46 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
 - [x] 2.2 `rsync` transfer engine: `Process` with argument arrays, NUL
   manifest on stdin, concurrent output capture, progress, cancellation.
   Needs: 1.6. Check: a real transfer of the path matrix through openrsync.
-- [~] 2.3 Verifier: post-transfer signature check, source stability, atomic
+- [x] 2.3 Verifier: post-transfer signature check, source stability, atomic
   baseline commit. Needs: 2.2. Check: scenario 47.
-- [ ] 2.4 Operation runner with the fifteen-step transaction and journal.
+- [x] 2.4 Operation runner with the fifteen-step transaction and journal.
   Needs: 2.1, 2.3. Check: failure injected after every step leaves a
   recoverable journal.
-- [ ] 2.5 Planned deletions through the safety engine with tombstones.
+- [x] 2.5 Planned deletions through the safety engine with tombstones.
   Needs: 2.4. Check: scenario 31.
-- [ ] 2.6 Destination drift detection and the two drift actions.
+- [x] 2.6 Destination drift detection and the two drift actions.
   Needs: 2.4. Check: scenarios 29, 30, 32.
-- [ ] 2.7 Policy-change removal to history. Needs: 2.5. Check: scenario 49.
-- [ ] 2.8 Volatile and large file handling. Needs: 2.4.
+- [x] 2.7 Policy-change removal to history. Needs: 2.5. Check: scenario 49.
+- [x] 2.8 Volatile and large file handling. Needs: 2.4.
   Check: scenarios 44, 45, 46.
-- [ ] 2.9 Pair engine actor: state machine, one mutation per volume, pause and
+- [x] 2.9 Pair engine actor: state machine, one mutation per volume, pause and
   resume, Sync Now merge. Needs: 2.4, 1.11. Check: scenarios 86, 87.
-- [ ] 2.10 Mount and unmount handling with recovery-required operations.
+- [x] 2.10 Mount and unmount handling with recovery-required operations.
   Needs: 2.9. Check: scenarios 53, 54, 56, 57, 58.
-- [ ] 2.11 Crash recovery at launch. Needs: 2.9. Check: scenarios 79, 80, 81.
-- [~] 2.12 Residency conversion when an internal project disappears.
+- [x] 2.11 Crash recovery at launch. Needs: 2.9. Check: scenarios 79, 80, 81.
+- [x] 2.12 Residency conversion when an internal project disappears.
   Needs: 2.9, 1.14. Check: scenario 7.
 - [x] 2.13 Move to External and Bring Internal transactions. Needs: 2.12.
   Check: scenarios 70 to 73.
-- [ ] 2.14 Real pair soak: a disposable internal root and a disposable
+- [~] 2.14 Real pair soak: a disposable internal root and a disposable
   external volume image, all one-way scenarios, zero data loss. Needs: 2.13.
 
 ### G3 Dev Bidirectional: no simultaneous change causes a silent overwrite
 
 - [x] 3.1 Baseline comparator with tolerance and hash escalation. Needs: 2.3.
-- [~] 3.2 Tombstone lifecycle. Needs: 2.5. Check: resurrection property.
+- [x] 3.2 Tombstone lifecycle. Needs: 2.5. Check: resurrection property.
 - [x] 3.3 Two-side planner for every row of the bidirectional table.
   Needs: 3.1, 3.2.
-- [ ] 3.4 Conflict store with both versions preserved. Needs: 2.1, 3.3.
+- [x] 3.4 Conflict store with both versions preserved. Needs: 2.1, 3.3.
   Check: scenario 27.
-- [ ] 3.5 Six conflict resolutions with verified baseline updates. Needs: 3.4.
-- [~] 3.6 Rename detection and same-volume counterpart moves. Needs: 3.3.
+- [x] 3.5 Six conflict resolutions with verified baseline updates. Needs: 3.4.
+- [x] 3.6 Rename detection and same-volume counterpart moves. Needs: 3.3.
   Check: scenarios 10, 11.
 - [x] 3.7 First-run bidirectional merge. Needs: 3.3, 1.13.
-- [ ] 3.8 Internal-side deletions to history with the external store online
+- [x] 3.8 Internal-side deletions to history with the external store online
   guard. Needs: 3.3.
-- [ ] 3.9 Interrupted two-way operation recovery. Needs: 2.11, 3.3.
-- [ ] 3.10 Project-level decision when a mirrored project disappears on one
+- [x] 3.9 Interrupted two-way operation recovery. Needs: 2.11, 3.3.
+- [x] 3.10 Project-level decision when a mirrored project disappears on one
   side. Needs: 3.3. Check: scenario 8.
 
 ### G4 Interface: reads as part of Cloud Sync, fast, native
@@ -147,28 +147,34 @@ G5 Hardening and release    [░░░░░░░░░░░░░░░░░
   sizes, warnings, and every row action. Needs: 4.6.
 - [x] 4.9 Conflict cards with metadata, optional diff, and six actions.
   Needs: 3.5.
-- [ ] 4.10 Notifications for the seven listed events only. Needs: 2.10.
+- [x] 4.10 Notifications for the seven listed events only. Needs: 2.10.
 - [x] 4.11 Pair settings replacement page and `DESIGN.md`, `Tool.swift`
   manual, and `CHANGELOG.md` updates. Needs: 4.8.
 
 ### G5 Hardening and release
 
-- [ ] 5.1 Path matrix integration test through the real `rsync`.
-- [ ] 5.2 Git matrix fixtures.
-- [ ] 5.3 File-system matrix on APFS case-insensitive, APFS case-sensitive, and
+- [x] 5.1 Path matrix integration test through the real `rsync`.
+- [x] 5.2 Git matrix fixtures.
+- [x] 5.3 File-system matrix on APFS case-insensitive, APFS case-sensitive, and
   an exFAT disk image.
-- [ ] 5.4 Failure matrix after each transaction step.
-- [ ] 5.5 Scale check with 10,000 events and 100,000 files; record the
+- [x] 5.4 Failure matrix after each transaction step.
+- [x] 5.5 Scale check with 10,000 events and 100,000 files; record the
   measurements in the request list.
-- [ ] 5.6 Deep verification with cancellation.
-- [ ] 5.7 Power and quality-of-service policies.
-- [ ] 5.8 Log redaction audit: no contents, secrets, bookmarks, or credentials.
-- [ ] 5.9 Retention cleanup ordering.
-- [~] 5.10 `docs/DEV_SYNC.md` extension guide.
-- [ ] 5.11 Complete unit suite green, Raycast build green, signed Release
+- [x] 5.6 Deep verification with cancellation.
+- [x] 5.7 Power and quality-of-service policies.
+- [x] 5.8 Log redaction audit: no contents, secrets, bookmarks, or credentials.
+- [x] 5.9 Retention cleanup ordering.
+- [x] 5.10 `docs/DEV_SYNC.md` extension guide.
+- [~] 5.11 Complete unit suite green, Raycast build green, signed Release
   build, and local installation when no transfer is active.
-- [ ] 5.12 Live check in the installed build: setup, preview, first sync,
+- [~] 5.12 Live check in the installed build: setup, preview, first sync,
   drift, conflict, unplug, remount, link repair.
+- [~] 5.13 Make Git ignore the primary filter inside the running engine:
+  feed the Git working-tree manifest into every policy construction (engine
+  scan, service preview, deep verification) so project-specific ignore rules
+  never reach the drive, and accept dangling symlinks after an openrsync
+  partial exit. Check: a fixture with `secrets/` and `*.log` ignored copies
+  neither, and a dangling link commits to the baseline.
 
 ## Current work
 
