@@ -45,7 +45,9 @@ struct AwakeView: View {
 
 struct AwakeSettingsView: View {
     var showsDisplayToggle = true
+    var showsStatus = true
 
+    @Environment(\.compactSettingsLayout) private var compact
     @State private var service = AwakeService.shared
     @State private var hours = 0
     @State private var minutes = 30
@@ -55,7 +57,7 @@ struct AwakeSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
             if showsDisplayToggle { displayOption }
-            status
+            if showsStatus { status }
             modes
             options
         }
@@ -97,26 +99,30 @@ struct AwakeSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 modeButton(.passive) { service.setMode(.passive) }
                 modeButton(.indefinite) { service.setMode(.indefinite) }
-                HStack {
+                AdaptiveModeRow(compact: compact) {
                     modeButton(.timed) {
                         service.setMode(.timed, duration: TimeInterval(hours * 3600 + minutes * 60))
                     }
                     .disabled(hours == 0 && minutes == 0)
-                    Stepper("\(hours) h", value: $hours, in: 0...168)
-                        .contentShape(Rectangle())
-                    Stepper("\(minutes) min", value: $minutes, in: 0...59, step: 5)
-                        .contentShape(Rectangle())
-                    Button("Start") { service.setMode(.timed, duration: TimeInterval(hours * 3600 + minutes * 60)) }
-                        .disabled(hours == 0 && minutes == 0)
-                        .contentShape(Rectangle())
+                    HStack {
+                        Stepper("\(hours) h", value: $hours, in: 0...168)
+                            .contentShape(Rectangle())
+                        Stepper("\(minutes) min", value: $minutes, in: 0...59, step: 5)
+                            .contentShape(Rectangle())
+                        Button("Start") { service.setMode(.timed, duration: TimeInterval(hours * 3600 + minutes * 60)) }
+                            .disabled(hours == 0 && minutes == 0)
+                            .contentShape(Rectangle())
+                    }
                 }
-                HStack {
+                AdaptiveModeRow(compact: compact) {
                     modeButton(.until) { service.setMode(.until, until: expiration) }
-                    DatePicker("", selection: $expiration, in: Date()...)
-                        .labelsHidden()
-                        .contentShape(Rectangle())
-                    Button("Start") { service.setMode(.until, until: expiration) }
-                        .contentShape(Rectangle())
+                    HStack {
+                        DatePicker("", selection: $expiration, in: Date()...)
+                            .labelsHidden()
+                            .contentShape(Rectangle())
+                        Button("Start") { service.setMode(.until, until: expiration) }
+                            .contentShape(Rectangle())
+                    }
                 }
             }
             .utilitySectionCard()
@@ -145,7 +151,7 @@ struct AwakeSettingsView: View {
                     .disabled(hours == 0 && minutes == 0)
                 }
                 QuietDivider()
-                HStack {
+                AdaptiveModeRow(compact: compact) {
                     TextField("Process ID", text: $processID)
                         .frame(width: 110)
                         .contentShape(Rectangle())
@@ -173,10 +179,23 @@ struct AwakeSettingsView: View {
                 Image(systemName: service.configuration.mode == mode ? "record.circle.fill" : "circle")
                 Text(mode.title)
             }
-            .frame(minWidth: 180, alignment: .leading)
+            .frame(minWidth: compact ? 0 : 180, maxWidth: compact ? .infinity : nil, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
+    }
+}
+
+private struct AdaptiveModeRow<Content: View>: View {
+    let compact: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if compact {
+            VStack(alignment: .leading, spacing: 8) { content }
+        } else {
+            HStack { content }
+        }
     }
 }
