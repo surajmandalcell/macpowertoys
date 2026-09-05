@@ -18,19 +18,26 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     private let rsyncPreferredPath: String?
     private let engines = Engines()
     private let lock = NSLock()
-    private var continuation: AsyncStream<DevSyncUpdate>.Continuation?
+    private var continuations: [UUID: AsyncStream<DevSyncUpdate>.Continuation] = [:]
     private var activePairCount = 0
     @MainActor private var volumeMonitor: DevVolumeMonitor?
-    let updates: AsyncStream<DevSyncUpdate>
+
+    var updates: AsyncStream<DevSyncUpdate> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            lock.withLock { continuations[id] = continuation }
+            continuation.onTermination = { [weak self] _ in
+                guard let self else { return }
+                self.lock.withLock { _ = self.continuations.removeValue(forKey: id) }
+            }
+        }
+    }
 
     var hasActivePairs: Bool { lock.withLock { activePairCount > 0 } }
 
     init(stateStore: DevSyncStateStore, rsyncPreferredPath: String? = nil) {
         self.stateStore = stateStore
         self.rsyncPreferredPath = rsyncPreferredPath
-        var captured: AsyncStream<DevSyncUpdate>.Continuation?
-        updates = AsyncStream { captured = $0 }
-        continuation = captured
     }
 
     func start() async {
@@ -266,7 +273,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     }
 
     private func yield(_ update: DevSyncUpdate) {
-        lock.withLock { continuation?.yield(update) }
+        for continuation in lock.withLock({ Array(continuations.values) }) { continuation.yield(update) }
     }
 
     private func forward(_ event: DevVolumeEvent) async {

@@ -287,6 +287,11 @@ Responsibilities:
 | Verifier | Post-transfer comparison with the planned source signature, source stability, and one atomic baseline commit. |
 | State store | Pairs, projects, baselines, dirty work, cursors, operations, conflicts, links, tombstones, backups, and crash recovery. |
 
+The service publishes pairs, status, projects, conflicts, links,
+capabilities, and notifications through update streams. Every subscriber
+receives its own stream, so the interface can subscribe each time its window
+appears without silencing another subscriber.
+
 ### State machines
 
 ```swift
@@ -578,6 +583,12 @@ last dirty times and schedules at last plus quiet period. Each event moves the
 schedule. When continuous activity reaches the checkpoint interval, a bounded
 checkpoint includes only stable eligible paths and leaves unstable paths dirty.
 When a job is active, new events merge into the next dirty generation.
+
+A due generation for a project that cannot be planned, such as an excluded or
+external-resident project, completes and drops. Requeue is reserved for a
+project that waits for Git, a quiet window, or temporarily unavailable roots.
+A generation that requeues without progress must never block the projects
+behind it.
 
 Storm collapse, configurable and testable: more than 1,000 path events in 10
 seconds collapse to project-dirty. More than 10,000 pending paths for one

@@ -16,12 +16,12 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [███████████████████░] 60/63
+Dev Sync overall            [███████████████████░] 61/63
 G1 Foundation               [████████████████████] 15/15
 G2 Dev One-Way              [███████████████████░] 13/14
 G3 Dev Bidirectional        [████████████████████] 10/10
 G4 Interface                [████████████████████] 11/11
-G5 Hardening and release    [█████████████████░░░] 11/13
+G5 Hardening and release    [██████████████████░░] 12/13
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
@@ -165,8 +165,9 @@ G5 Hardening and release    [█████████████████
 - [x] 5.8 Log redaction audit: no contents, secrets, bookmarks, or credentials.
 - [x] 5.9 Retention cleanup ordering.
 - [x] 5.10 `docs/DEV_SYNC.md` extension guide.
-- [~] 5.11 Complete unit suite green, Raycast build green, signed Release
-  build, and local installation when no transfer is active.
+- [x] 5.11 Complete unit suite green, Raycast build green, signed Release
+  build, and local installation when no transfer is active. Check: 857
+  tests pass at `438aef1`; the installed app embeds that commit.
 - [~] 5.12 Live check in the installed build: setup, preview, first sync,
   drift, conflict, unplug, remount, link repair.
 - [x] 5.13 Make Git ignore the primary filter inside the running engine:

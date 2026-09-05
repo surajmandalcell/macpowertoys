@@ -278,9 +278,19 @@ final class DevSyncPreviewEngine: DevSyncEngine, @unchecked Sendable {
     private var storedConflicts: [UUID: [DevConflict]]
     private var storedLinks: [UUID: [DevManagedLink]]
     private var storedCapabilities: [UUID: DevPairCapabilities]
-    private var continuation: AsyncStream<DevSyncUpdate>.Continuation?
-    let updates: AsyncStream<DevSyncUpdate>
+    private var continuations: [UUID: AsyncStream<DevSyncUpdate>.Continuation] = [:]
     private(set) var receivedIntents: [String] = []
+
+    var updates: AsyncStream<DevSyncUpdate> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            lock.withLock { continuations[id] = continuation }
+            continuation.onTermination = { [weak self] _ in
+                guard let self else { return }
+                self.lock.withLock { _ = self.continuations.removeValue(forKey: id) }
+            }
+        }
+    }
 
     init(
         pairs: [DevSyncPair] = [],
@@ -296,9 +306,6 @@ final class DevSyncPreviewEngine: DevSyncEngine, @unchecked Sendable {
         storedConflicts = conflicts
         storedLinks = links
         storedCapabilities = capabilities
-        var captured: AsyncStream<DevSyncUpdate>.Continuation?
-        updates = AsyncStream { captured = $0 }
-        continuation = captured
     }
 
     func emit(_ update: DevSyncUpdate) {
@@ -313,7 +320,7 @@ final class DevSyncPreviewEngine: DevSyncEngine, @unchecked Sendable {
         case .notification: break
         }
         lock.unlock()
-        continuation?.yield(update)
+        for continuation in lock.withLock({ Array(continuations.values) }) { continuation.yield(update) }
     }
 
     private func record(_ intent: String) {

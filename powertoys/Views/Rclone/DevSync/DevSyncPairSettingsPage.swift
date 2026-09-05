@@ -19,39 +19,46 @@ struct DevSyncRulesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle("Follow Git ignore rules", isOn: .constant(true))
-                .frame(maxWidth: .infinity)
-                .disabled(true)
-                .help("Git projects always follow Git ignore rules.")
+            switchRow("Follow Git ignore rules", isOn: .constant(true), disabled: true, help: "Git projects always follow Git ignore rules.")
             sensitiveRow
-            Toggle("Skip common caches and dependencies", isOn: $configuration.policy.skipCommonCaches)
-                .frame(maxWidth: .infinity)
-            Toggle("Skip common build outputs not ignored by Git", isOn: $configuration.policy.skipUnignoredBuildOutputs)
-                .frame(maxWidth: .infinity)
-            Toggle("Include Git object store", isOn: $configuration.policy.includeGitMetadata)
-                .frame(maxWidth: .infinity)
-            Toggle("Include Git LFS objects", isOn: $configuration.policy.includeGitLFSObjects)
-                .frame(maxWidth: .infinity)
+            switchRow("Skip common caches and dependencies", isOn: $configuration.policy.skipCommonCaches)
+            switchRow("Skip common build outputs not ignored by Git", isOn: $configuration.policy.skipUnignoredBuildOutputs)
+            switchRow("Include Git object store", isOn: $configuration.policy.includeGitMetadata)
+            switchRow("Include Git LFS objects", isOn: $configuration.policy.includeGitLFSObjects)
             metadataRow(title: "Preserve extended attributes", selection: $configuration.metadata.xattrs)
             metadataRow(title: "Preserve permissions", selection: $configuration.metadata.permissions)
             metadataRow(title: "Preserve hard links", selection: $configuration.metadata.hardLinks)
-            Toggle("Keep previous versions", isOn: keepsVersions)
-                .frame(maxWidth: .infinity)
+            switchRow("Keep previous versions", isOn: keepsVersions)
         }
         .toggleStyle(.switch)
         .controlSize(.small)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func switchRow(_ title: String, isOn: Binding<Bool>, disabled: Bool = false, help: String = "") -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 12))
+            Spacer(minLength: 8)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .disabled(disabled)
+        }
+        .help(help)
+    }
+
     private var sensitiveRow: some View {
         HStack(spacing: 8) {
-            Toggle("Back up ignored sensitive and local files", isOn: $configuration.policy.includeIgnoredSensitiveFiles)
+            Text("Back up ignored sensitive and local files")
+                .font(.system(size: 12))
             Spacer(minLength: 8)
             Button("Edit patterns…") { isEditingPatterns = true }
                 .controlSize(.small)
                 .popover(isPresented: $isEditingPatterns, arrowEdge: .bottom) {
                     patternEditor
                 }
+            Toggle("Back up ignored sensitive and local files", isOn: $configuration.policy.includeIgnoredSensitiveFiles)
+                .labelsHidden()
         }
     }
 

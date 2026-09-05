@@ -522,7 +522,7 @@ private struct DevSyncSetupPreviewStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let preview = model.preview {
-                summaryCard(preview.summary)
+                summaryCard(preview)
                 spaceCard(preview)
                 if !preview.sensitiveIncludedPaths.isEmpty {
                     sensitiveCard(preview.sensitiveIncludedPaths)
@@ -543,9 +543,12 @@ private struct DevSyncSetupPreviewStep: View {
         }
     }
 
-    private func summaryCard(_ summary: DevPlanSummary) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private func summaryCard(_ preview: DevSetupPreview) -> some View {
+        let summary = preview.summary
+        let mirrorCount = preview.groups.filter { $0.group == .internalOnly }.flatMap(\.items).filter { model.isIncluded($0, in: .internalOnly) }.count
+        return VStack(alignment: .leading, spacing: 6) {
             DevSyncSectionHeader(title: "Planned changes")
+            DevSyncValueRow(label: "Projects to mirror", value: "\(mirrorCount)")
             DevSyncValueRow(label: "Copy internal to external", value: "\(summary.copyToExternalCount) · \(RcloneFormat.bytes(summary.copyToExternalBytes))")
             DevSyncValueRow(label: "Copy external to internal", value: "\(summary.copyToInternalCount) · \(RcloneFormat.bytes(summary.copyToInternalBytes))")
             DevSyncValueRow(label: "Managed links", value: "\(summary.managedLinksToCreate)")
