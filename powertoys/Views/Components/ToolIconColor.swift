@@ -55,12 +55,19 @@ enum ToolIconColor {
             picked = NSColor(red: best.r / best.weight, green: best.g / best.weight, blue: best.b / best.weight, alpha: 1)
         } else if ground.weight > 0 {
             let average = NSColor(red: ground.r / ground.weight, green: ground.g / ground.weight, blue: ground.b / ground.weight, alpha: 1)
-            picked = average.brightnessComponent < 0.35 ? nil : average
+            picked = average.brightnessComponent < 0.35 || average.saturationComponent < 0.12 ? nil : average
         } else {
             picked = nil
         }
         if let picked { cache[asset] = picked }
         return picked
+    }
+
+    /// The tint lifted to a readable brightness for text and strokes on dark surfaces.
+    static func readable(_ tint: NSColor) -> NSColor {
+        let color = tint.usingColorSpace(.deviceRGB) ?? tint
+        guard color.brightnessComponent < 0.7 else { return color }
+        return NSColor(hue: color.hueComponent, saturation: min(color.saturationComponent, 0.75), brightness: 0.85, alpha: 1)
     }
 
     /// Black or white, whichever reads on the tint.

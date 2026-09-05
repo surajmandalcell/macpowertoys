@@ -680,12 +680,13 @@ private struct TrayActionButton: View {
     }
 
     private var tintColor: Color { Color(nsColor: tint) }
+    private var readableTint: Color { Color(nsColor: ToolIconColor.readable(tint)) }
 
     private var labelColor: Color {
-        guard isPrimary else { return style == .filled || style == .gradient ? .primary : tintColor }
+        guard isPrimary else { return style == .filled || style == .gradient ? .primary : readableTint }
         switch style {
         case .filled, .gradient: return ToolIconColor.label(on: tint)
-        case .tinted, .outline: return tintColor
+        case .tinted, .outline: return readableTint
         }
     }
 
@@ -707,7 +708,7 @@ private struct TrayActionButton: View {
 
     private var stroke: Color {
         switch style {
-        case .outline: tintColor.opacity(isPrimary ? 1 : 0.5)
+        case .outline: readableTint.opacity(isPrimary ? 1 : 0.6)
         case .gradient: Color.white.opacity(isPrimary ? 0.18 : 0)
         case .filled, .tinted: .clear
         }
