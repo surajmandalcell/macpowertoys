@@ -734,8 +734,7 @@ nonisolated enum DevResidencyConversion {
     private static func importantCapacity(_ url: URL) async -> Int64? {
         await Task.detached(priority: .utility) {
             guard entryKind(at: url) == .directory else { return nil }
-            return try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                .volumeAvailableCapacityForImportantUsage
+            return DevSyncRoots.availableCapacity(at: url)
         }.value
     }
 

@@ -45,6 +45,35 @@ final class DevSyncServiceTests: XCTestCase {
         XCTAssertEqual(try listing(fixture.externalRoot), beforeExternal)
     }
 
+    func testPreviewPlansPendingMirrorsLinksSensitiveFilesAndSpace() async throws {
+        let fixture = try makeRoots(internalOnly: true)
+        try Data("SECRET=1".utf8).write(to: fixture.internalRoot.appendingPathComponent("app/.env.local"))
+        let externalOnly = fixture.externalRoot.appendingPathComponent("data", isDirectory: true)
+        try FileManager.default.createDirectory(at: externalOnly, withIntermediateDirectories: true)
+        try Data("// marker".utf8).write(to: externalOnly.appendingPathComponent("Package.swift"))
+        var draft = setupDraft(fixture: fixture)
+        draft.includedCandidatePaths = ["app", "data"]
+        let service = makeService()
+
+        let preview = await service.preview(draft: draft)
+
+        XCTAssertTrue(preview.scanComplete)
+        XCTAssertEqual(preview.summary.copyToExternalCount, 3)
+        XCTAssertEqual(preview.summary.managedLinksToCreate, 1)
+        XCTAssertEqual(preview.summary.sensitiveIncludedCount, 1)
+        XCTAssertEqual(preview.sensitiveIncludedPaths, ["app/.env.local"])
+        XCTAssertGreaterThan(preview.summary.requiredFreeBytes, 0)
+        XCTAssertEqual(preview.summary.primaryActionTitle, "Copy 3 files and 1 managed link")
+        XCTAssertTrue(preview.plan.actions.contains { $0.kind == .copyPath && $0.destinationSide == .external && $0.relativePath == "app/source.swift" })
+        XCTAssertFalse(preview.warnings.contains { $0.hasPrefix("Not enough space") })
+        let scanned = preview.groups.flatMap(\.items).first { $0.relativePath == "app" }
+        XCTAssertGreaterThan(scanned?.includedBytes ?? 0, 0)
+
+        draft.configuration.safety.minimumFreeSpaceReserveBytes = Int64.max / 2
+        let starved = await service.preview(draft: draft)
+        XCTAssertTrue(starved.warnings.contains { $0.hasPrefix("Not enough space") })
+    }
+
     func testExternalSafetyHistoryUsesCanonicalTemporaryRoot() async throws {
         let fixture = try makeRoots(internalOnly: true)
         let internalRoot = try DevSyncRoots.makeRoot(url: fixture.internalRoot)

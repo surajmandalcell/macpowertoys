@@ -575,9 +575,43 @@ actor DevSyncPairEngine {
         try? await stateStore.saveConflicts(conflictValues, pairID: pair.id)
         emitProjects()
         emit(.conflicts(pairID: pair.id, conflictValues))
+        await createPendingLinks()
         if internalResult.complete && externalResult.complete {
             await handleMissingProjects(output.missingProjects)
         }
+    }
+
+    private func createPendingLinks() async {
+        guard let internalRoot, let externalRoot, volumeOnline else { return }
+        let knownProjectPaths = Set(projectValues.map(\.relativePath))
+        var changed = false
+        for index in projectValues.indices
+        where projectValues[index].residency == .externalOnlyPendingLink && !projectValues[index].explicitlyExcluded {
+            changed = true
+            do {
+                _ = try await linkManager.create(
+                    project: projectValues[index],
+                    internalRoot: internalRoot,
+                    externalRoot: externalRoot,
+                    externalVolumeIdentifier: pair.externalRoot.volumeIdentifier,
+                    knownProjectPaths: knownProjectPaths
+                )
+                projectValues[index].residency = .externalResident
+                projectValues[index].state = .clean
+                projectValues[index].lastError = nil
+                projectValues[index].lastSuccessAt = now()
+            } catch DevManagedLinkError.internalPathExists(let kind) {
+                projectValues[index].state = .linkMissing
+                projectValues[index].lastError = "A \(kind.rawValue) already exists at the internal path. Dev Sync keeps it. Move it aside or exclude the project."
+            } catch {
+                projectValues[index].state = .linkMissing
+                projectValues[index].lastError = "The managed link could not be created: \(error)"
+            }
+        }
+        guard changed else { return }
+        try? await stateStore.saveProjects(projectValues, pairID: pair.id)
+        emitProjects()
+        await refreshLinks()
     }
 
     private func handleMissingProjects(_ missing: [DevProject]) async {

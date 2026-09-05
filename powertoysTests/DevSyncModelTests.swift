@@ -81,6 +81,21 @@ final class DevSyncModelTests: XCTestCase {
         XCTAssertEqual(DevRelativePath.normalizedKey("Re\u{0301}sume\u{0301}.MD"), "résumé.md")
     }
 
+    func testWholeSecondTransferWidensTimestampTolerance() {
+        var rsync = DevRsyncCapabilities(
+            executablePath: "/usr/bin/rsync", versionText: "openrsync", protocolVersion: 29, isOpenrsync: true,
+            supportedLongOptions: [], supportsFilesFrom: true, supportsFrom0: true, supportsPartialDir: true,
+            supportsBackupDir: true, supportsItemizeChanges: true, supportsExecutability: true, supportsPerms: true,
+            supportsXattrs: false, supportsACLs: false, supportsHardLinks: false, supportsCrtimes: false,
+            supportsOmitDirTimes: true, supportsModifyWindow: true, supportsDoubleDash: true, selfTestPassed: true,
+            selfTestNotes: [], fingerprint: "test", probedAt: Date()
+        )
+        XCTAssertEqual(DevPairCapabilities(internalVolume: nil, externalVolume: nil, rsync: rsync).timestampToleranceNanoseconds, 1_000_000_000)
+        rsync.protocolVersion = 31
+        XCTAssertEqual(DevPairCapabilities(internalVolume: nil, externalVolume: nil, rsync: rsync).timestampToleranceNanoseconds, 0)
+        XCTAssertEqual(DevPairCapabilities(internalVolume: nil, externalVolume: nil, rsync: nil).timestampToleranceNanoseconds, 0)
+    }
+
     func testGlobMatchingCoversSensitiveAndCachePatterns() {
         XCTAssertTrue(DevRelativePath.matchesGlob("*.pem", name: "server.pem"))
         XCTAssertTrue(DevRelativePath.matchesGlob(".env.*", name: ".env.local"))

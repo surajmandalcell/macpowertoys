@@ -112,6 +112,16 @@ nonisolated enum DevSyncRoots {
         return bookmarkWasStale ? .staleBookmark : .offline
     }
 
+    static func availableCapacity(important: Int64?, plain: Int?) -> Int64 {
+        if let important, important > 0 { return important }
+        return Int64(plain ?? 0)
+    }
+
+    static func availableCapacity(at url: URL) -> Int64? {
+        guard let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey]) else { return nil }
+        return availableCapacity(important: values.volumeAvailableCapacityForImportantUsage, plain: values.volumeAvailableCapacity)
+    }
+
     static func volumeIdentifier(for url: URL) -> String? {
         guard lstatValue(normalizedPath(url.path)) != nil else { return nil }
         let canonical = (try? canonicalURL(url)) ?? URL(fileURLWithPath: normalizedPath(url.path))
@@ -277,9 +287,7 @@ nonisolated enum DevVolumeProbe {
         let initialHardLinks = values?.volumeSupportsHardLinks ?? true
         let initialPermissions = values?.volumeSupportsExtendedSecurity ?? true
         let initialPersistentIDs = values?.volumeSupportsPersistentIDs ?? false
-        let importantCapacity: Int64? = values?.volumeAvailableCapacityForImportantUsage
-        let fallbackCapacity = Int64(values?.volumeAvailableCapacity ?? 0)
-        let initialAvailable = importantCapacity ?? fallbackCapacity
+        let initialAvailable = DevSyncRoots.availableCapacity(important: values?.volumeAvailableCapacityForImportantUsage, plain: values?.volumeAvailableCapacity)
         var notes: [String] = []
         var probeResult = ProbeResult(
             supportsSymbolicLinks: initialSymlinks,

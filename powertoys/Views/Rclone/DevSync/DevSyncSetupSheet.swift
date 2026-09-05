@@ -39,6 +39,7 @@ final class DevSyncSetupModel {
 
     var step: DevSetupStep = .roots
     var draft = DevSetupDraft(displayName: "Dev Sync")
+    private var previewDraft: DevSetupDraft?
     var probe: DevSetupProbe?
     var groups: [DevSetupProjectGroup] = []
     var preview: DevSetupPreview?
@@ -134,11 +135,18 @@ final class DevSyncSetupModel {
         isWorking = true
         groups = await engine.discover(draft: draft)
         isWorking = false
+        let scanDraft = draft
+        let scanned = await engine.preview(draft: scanDraft)
+        if step == .projects, !scanned.groups.isEmpty { groups = scanned.groups }
+        preview = scanned
+        previewDraft = scanDraft
     }
 
     func buildPreview() async {
+        if preview != nil, previewDraft == draft { return }
         isWorking = true
         preview = await engine.preview(draft: draft)
+        previewDraft = draft
         isWorking = false
     }
 
@@ -477,10 +485,12 @@ private struct DevSyncSetupProjectItemRow: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            Text("included \(RcloneFormat.bytes(item.includedBytes)) · excluded \(RcloneFormat.bytes(item.excludedBytes))")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+            if item.includedBytes + item.excludedBytes > 0 {
+                Text("included \(RcloneFormat.bytes(item.includedBytes)) · excluded \(RcloneFormat.bytes(item.excludedBytes))")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
 
             ForEach(item.warnings, id: \.self) { warning in
                 Label(warning.displayName, systemImage: "exclamationmark.triangle.fill")
@@ -551,10 +561,12 @@ private struct DevSyncSetupPreviewStep: View {
 
     private func spaceCard(_ preview: DevSetupPreview) -> some View {
         let required = preview.summary.requiredFreeBytes
-        let fits = preview.availableExternalBytes >= required
+        let reserve = max(0, model.draft.configuration.safety.minimumFreeSpaceReserveBytes)
+        let fits = preview.availableExternalBytes >= required + reserve
         return VStack(alignment: .leading, spacing: 6) {
             DevSyncSectionHeader(title: "Space")
             DevSyncValueRow(label: "Required", value: RcloneFormat.bytes(required))
+            DevSyncValueRow(label: "Kept free", value: RcloneFormat.bytes(reserve))
             DevSyncValueRow(
                 label: "Available",
                 value: RcloneFormat.bytes(preview.availableExternalBytes),

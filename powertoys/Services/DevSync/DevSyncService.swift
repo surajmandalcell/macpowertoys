@@ -133,16 +133,20 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         var summary = DevPlanSummary()
         var complete = catalog.internalDiscovery.complete && catalog.externalDiscovery.complete
         var sensitive: [String] = []
-        for project in catalog.output.projects where !project.explicitlyExcluded && project.residency != .externalResident {
+        var projectBytes: [String: (included: Int64, excluded: Int64)] = [:]
+        for project in catalog.output.projects where !project.explicitlyExcluded && project.residency != .externalResident && project.residency != .externalOnlyPendingLink {
             let internalURL = catalog.internalURL.appendingPathComponent(project.relativePath)
             let externalURL = catalog.externalURL.appendingPathComponent(project.relativePath)
             let policy = await previewPolicy(pair: catalog.pair, project: project, projectURL: internalURL)
             async let internalSnapshot = snapshotIfPresent(url: internalURL, project: project, policy: policy, capabilities: catalog.capabilities)
             async let externalSnapshot = snapshotIfPresent(url: externalURL, project: project, policy: policy, capabilities: catalog.capabilities)
             let internalScan = await internalSnapshot
-            let externalScan = await externalSnapshot
+            let externalScan = await externalSnapshot ?? (project.residency == .internalOnlyPendingMirror ? DevSnapshot.emptyDestination : nil)
+            if let internalScan { projectBytes[project.relativePath] = (internalScan.includedBytes, internalScan.excludedBytes) }
+            complete = complete && internalScan?.complete == true && externalScan?.complete == true
             let output = DevReconciliationPlanner.plan(DevPlannerInput(pair: catalog.pair, project: project, baseline: nil, internalSnapshot: internalScan, externalSnapshot: externalScan, tombstones: [], unresolvedConflicts: [], capabilities: catalog.capabilities, unstablePaths: [], now: Date()))
             let prefix = project.relativePath + "/"
+            let gitPrefix = (project.topology?.gitDirectory ?? ".git") + "/"
             actions.append(contentsOf: output.plan.actions.map { action in
                 var action = action
                 action.relativePath = prefix + action.relativePath
@@ -150,16 +154,31 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
             })
             toExternal.append(contentsOf: output.plan.manifestToExternal.map { prefix + $0 })
             toInternal.append(contentsOf: output.plan.manifestToInternal.map { prefix + $0 })
-            add(output.plan.summary, to: &summary)
-            sensitive.append(contentsOf: output.plan.actions.filter { $0.reason.localizedCaseInsensitiveContains("sensitive") }.map { prefix + $0.relativePath })
+            var projectSummary = output.plan.summary
+            for action in output.plan.actions where action.kind == .copyPath {
+                let signature = action.preconditions.expectedSourceSignature
+                let decision = policy.decide(relativePath: action.relativePath, kind: signature?.kind ?? .file, size: Int64(signature?.size ?? 0), isInsideGitDirectory: action.relativePath.hasPrefix(gitPrefix))
+                guard decision.sensitive else { continue }
+                sensitive.append(prefix + action.relativePath)
+                projectSummary.sensitiveIncludedCount += 1
+            }
+            add(projectSummary, to: &summary)
+        }
+        summary.managedLinksToCreate += catalog.output.projectsToLink.count
+        var warnings = catalog.probe.warnings
+        let available = catalog.capabilities.externalVolume?.availableCapacity ?? 0
+        let reserve = max(0, draft.configuration.safety.minimumFreeSpaceReserveBytes)
+        if summary.requiredFreeBytes > available - reserve {
+            let volumeName = catalog.capabilities.externalVolume?.volumeName ?? catalog.externalURL.lastPathComponent
+            warnings.append("Not enough space on \(volumeName). Dev Sync keeps \(ByteCountFormatter.string(fromByteCount: reserve, countStyle: .file)) free.")
         }
         let plan = DevSyncPlan(pairID: catalog.pair.id, actions: actions, manifestToExternal: toExternal, manifestToInternal: toInternal, summary: summary, scanComplete: complete, deletionsAllowed: complete)
         return DevSetupPreview(
             plan: plan,
-            groups: groups(output: catalog.output),
+            groups: groups(output: catalog.output, bytes: projectBytes),
             sensitiveIncludedPaths: sensitive.sorted(),
-            warnings: catalog.probe.warnings,
-            availableExternalBytes: catalog.capabilities.externalVolume?.availableCapacity ?? 0,
+            warnings: warnings,
+            availableExternalBytes: available,
             scanComplete: complete
         )
     }
@@ -288,7 +307,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         return Catalog(pair: pair, probe: probe, capabilities: probe.capabilities, internalURL: internalURL, externalURL: externalURL, internalDiscovery: internalResult, externalDiscovery: externalResult, output: output)
     }
 
-    private func groups(output: DevCatalogOutput) -> [DevSetupProjectGroup] {
+    private func groups(output: DevCatalogOutput, bytes: [String: (included: Int64, excluded: Int64)] = [:]) -> [DevSetupProjectGroup] {
         var values: [DevSetupGroup: [DevSetupProjectItem]] = [:]
         for project in output.projects {
             let group: DevSetupGroup
@@ -297,7 +316,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
             case .internalOnlyPendingMirror: group = .internalOnly
             case .externalOnlyPendingLink, .externalResident: group = .externalOnly
             }
-            values[group, default: []].append(item(project: project))
+            values[group, default: []].append(item(project: project, bytes: bytes[project.relativePath]))
         }
         for candidate in output.candidates {
             values[.unmanagedCandidates, default: []].append(DevSetupProjectItem(relativePath: candidate.relativePath, kind: .nonGit, candidateKind: candidate.kind, residency: nil, includedBytes: 0, excludedBytes: 0, warnings: [], adoptableLinkTarget: output.adoptableLinks[candidate.relativePath]))
@@ -311,8 +330,8 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         }
     }
 
-    private func item(project: DevProject) -> DevSetupProjectItem {
-        DevSetupProjectItem(relativePath: project.relativePath, kind: project.kind, candidateKind: nil, residency: project.residency, includedBytes: project.includedBytes, excludedBytes: project.excludedBytes, warnings: project.warnings, adoptableLinkTarget: nil)
+    private func item(project: DevProject, bytes: (included: Int64, excluded: Int64)? = nil) -> DevSetupProjectItem {
+        DevSetupProjectItem(relativePath: project.relativePath, kind: project.kind, candidateKind: nil, residency: project.residency, includedBytes: bytes?.included ?? project.includedBytes, excludedBytes: bytes?.excluded ?? project.excludedBytes, warnings: project.warnings, adoptableLinkTarget: nil)
     }
 
     private func previewPolicy(pair: DevSyncPair, project: DevProject, projectURL: URL) async -> DevFilePolicyEngine {
