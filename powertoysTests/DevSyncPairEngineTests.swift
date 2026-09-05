@@ -52,6 +52,58 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(operations.count, 0)
     }
 
+    func testScenario24GitManifestFiltersPairEnginePlan() async throws {
+        let fixture = try await makeFixture(
+            gitRepository: true,
+            configure: { $0.policy.includeGitMetadata = false }
+        )
+        try commitTrackedFixture(at: fixture.internalProject)
+        try replaceExternalRepositoryWithClone(fixture)
+        try addIgnoredFixtureFiles(at: fixture.internalProject)
+        await fixture.engine.start()
+
+        let preview = await fixture.engine.previewProject(fixture.project.id)
+        let plan = try XCTUnwrap(preview)
+
+        XCTAssertEqual(Set(plan.manifestToExternal), ["tracked.swift", "untracked.swift", ".env.local"])
+        XCTAssertGreaterThanOrEqual(plan.summary.ignoredBytes, try entrySize(fixture.internalProject.appendingPathComponent("secrets")))
+    }
+
+    func testScenario24ServicePreviewUsesSameGitManifest() async throws {
+        let internalRoot = temporaryRoot.appendingPathComponent("preview-internal", isDirectory: true)
+        let externalRoot = temporaryRoot.appendingPathComponent("preview-external", isDirectory: true)
+        let internalProject = internalRoot.appendingPathComponent("app", isDirectory: true)
+        try FileManager.default.createDirectory(at: internalProject, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: externalRoot, withIntermediateDirectories: true)
+        try runGit(["init", "-q"], at: internalProject)
+        try commitTrackedFixture(at: internalProject)
+        let externalProject = externalRoot.appendingPathComponent("app", isDirectory: true)
+        try runGit(["clone", "-q", internalProject.path, externalProject.path], at: externalRoot)
+        try runGit(["remote", "remove", "origin"], at: externalProject)
+        try FileManager.default.removeItem(at: externalProject.appendingPathComponent("tracked.swift"))
+        try addIgnoredFixtureFiles(at: internalProject)
+        var configuration = DevSyncConfiguration.default
+        configuration.policy.includeGitMetadata = false
+        configuration.safety.minimumFreeSpaceReserveBytes = 0
+        let service = DevSyncService(
+            stateStore: DevSyncStateStore(rootURL: temporaryRoot.appendingPathComponent("preview-state")),
+            rsyncPreferredPath: "/usr/bin/rsync"
+        )
+        let draft = DevSetupDraft(
+            displayName: "Preview",
+            internalURL: internalRoot,
+            externalURL: externalRoot,
+            configuration: configuration
+        )
+
+        let preview = await service.preview(draft: draft)
+
+        XCTAssertEqual(
+            Set(preview.plan.manifestToExternal),
+            ["app/tracked.swift", "app/untracked.swift", "app/.env.local"]
+        )
+    }
+
     func testScenario26GitLockDefersOnlyGitMetadata() async throws {
         let fixture = try await makeFixture(gitRepository: true)
         await fixture.engine.start()
@@ -394,6 +446,52 @@ final class DevSyncPairEngineTests: XCTestCase {
         try Data("#!/bin/zsh\nsleep \(delay)\nexec /usr/bin/rsync \"$@\"\n".utf8).write(to: url)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
         return url
+    }
+
+    private func commitTrackedFixture(at project: URL) throws {
+        try Data("tracked".utf8).write(to: project.appendingPathComponent("tracked.swift"))
+        try runGit(["add", "tracked.swift"], at: project)
+        try runGit([
+            "-c", "user.name=Dev Sync",
+            "-c", "user.email=devsync@example.com",
+            "commit", "-q", "-m", "tracked"
+        ], at: project)
+    }
+
+    private func replaceExternalRepositoryWithClone(_ fixture: PairFixture) throws {
+        try FileManager.default.removeItem(at: fixture.externalProject)
+        try runGit(["clone", "-q", fixture.internalProject.path, fixture.externalProject.path], at: fixture.externalRoot)
+        try runGit(["remote", "remove", "origin"], at: fixture.externalProject)
+        try FileManager.default.removeItem(at: fixture.externalProject.appendingPathComponent("tracked.swift"))
+        try FileManager.default.copyItem(
+            at: fixture.internalProject.appendingPathComponent("Package.swift"),
+            to: fixture.externalProject.appendingPathComponent("Package.swift")
+        )
+        try FileManager.default.copyItem(
+            at: fixture.internalProject.appendingPathComponent("source.swift"),
+            to: fixture.externalProject.appendingPathComponent("source.swift")
+        )
+    }
+
+    private func addIgnoredFixtureFiles(at project: URL) throws {
+        try Data(".gitignore\nsecrets/\n*.log\n.env.local\nnode_modules/\n".utf8)
+            .write(to: project.appendingPathComponent(".gitignore"))
+        try Data("untracked".utf8).write(to: project.appendingPathComponent("untracked.swift"))
+        try Data("local".utf8).write(to: project.appendingPathComponent(".env.local"))
+        try writeFixture("token", to: project.appendingPathComponent("secrets/token.txt"))
+        try writeFixture("nested local", to: project.appendingPathComponent("secrets/.env.local"))
+        try writeFixture("log", to: project.appendingPathComponent("app.log"))
+        try writeFixture("module", to: project.appendingPathComponent("node_modules/x"))
+    }
+
+    private func writeFixture(_ text: String, to url: URL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(text.utf8).write(to: url)
+    }
+
+    private func entrySize(_ url: URL) throws -> Int64 {
+        let value = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber
+        return value?.int64Value ?? 0
     }
 
     private func runGit(_ arguments: [String], at directory: URL) throws {

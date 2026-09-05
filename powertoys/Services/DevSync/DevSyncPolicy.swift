@@ -15,6 +15,8 @@ nonisolated final class DevFilePolicyEngine: Sendable {
     private let projectKind: DevProjectKind
     private let gitDirectoryRelativePath: String?
     private let gitTracked: Set<String>?
+    private let gitManifest: Set<String>?
+    private let gitManifestDirectories: Set<String>?
     private let gitIgnored: Set<String>?
     private let gitAvailable: Bool
     private let projectIgnoreRules: [String]
@@ -24,6 +26,7 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         projectKind: DevProjectKind,
         gitDirectoryRelativePath: String?,
         gitTracked: Set<String>?,
+        gitManifest: Set<String>? = nil,
         gitIgnored: Set<String>?,
         gitAvailable: Bool,
         projectIgnoreRules: [String]
@@ -32,6 +35,18 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         self.projectKind = projectKind
         self.gitDirectoryRelativePath = gitDirectoryRelativePath
         self.gitTracked = gitTracked
+        self.gitManifest = gitManifest
+        self.gitManifestDirectories = gitManifest.map { manifest in
+            var directories = Set<String>()
+            for path in manifest {
+                var current = path
+                while let parent = DevRelativePath.parent(current) {
+                    directories.insert(parent)
+                    current = parent
+                }
+            }
+            return directories
+        }
         self.gitIgnored = gitIgnored
         self.gitAvailable = gitAvailable
         self.projectIgnoreRules = projectIgnoreRules
@@ -44,13 +59,14 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         let diskImage = DevSyncDefaults.diskImagePatterns.contains { DevRelativePath.matchesGlob($0, name: name) }
         let volatile = diskImage || DevSyncDefaults.volatileFilePatterns.contains { DevRelativePath.matchesGlob($0, name: name) }
         let requiresStableWindow = volatile || input.size > Self.largeFileThresholdBytes
+        let insideGitDirectory = input.isInsideGitDirectory || isGitDirectoryPath(path)
 
         guard input.kind != .unsupported else { return .exclude(.unsupportedObjectType) }
         guard !DevRelativePath.isCloudSyncSystemPath(path) else { return .exclude(.cloudSyncInternalPath) }
         guard !name.hasSuffix(".icloud") else { return .exclude(.datalessPlaceholder) }
 
-        let gitPath = input.isInsideGitDirectory ? pathInsideGitDirectory(path) : ""
-        if input.isInsideGitDirectory, DevGit.isTransientGitPath(gitPath) {
+        let gitPath = insideGitDirectory ? pathInsideGitDirectory(path) : ""
+        if insideGitDirectory, DevGit.isTransientGitPath(gitPath) {
             return .exclude(.transientGitLock)
         }
 
@@ -83,7 +99,7 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             }
         }
 
-        if input.isInsideGitDirectory {
+        if insideGitDirectory {
             if !policy.includeGitMetadata || (!policy.includeGitLFSObjects && isGitLFSPath(gitPath)) {
                 return .exclude(.commonExclusion)
             }
@@ -95,8 +111,12 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             )
         }
 
+        let manifestMember = gitAvailable && (
+            gitManifest?.contains(path) == true
+                || input.kind == .directory && gitManifestDirectories?.contains(path) == true
+        )
         let tracked = gitAvailable && gitTracked?.contains(path) == true
-        if tracked {
+        if tracked || manifestMember {
             return .include(
                 .gitTracked,
                 sensitive: sensitive,
@@ -105,7 +125,10 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             )
         }
 
-        let ignoredByGit = gitAvailable && policy.followGitIgnore && gitIgnored?.contains(path) == true
+        let ignoredByGit = gitAvailable && policy.followGitIgnore && (
+            gitIgnored?.contains(path) == true
+                || gitManifest != nil && !manifestMember
+        )
         let ignoredByProject = isIgnoredByProjectRules(path: path, name: name)
         if ignoredByGit || ignoredByProject {
             return .exclude(.gitIgnored)
@@ -159,6 +182,10 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         }
         Self.updateFingerprint(&hasher, with: gitTracked == nil ? "tracked:nil" : "tracked:set")
         for path in (gitTracked ?? []).sorted() {
+            Self.updateFingerprint(&hasher, with: path)
+        }
+        Self.updateFingerprint(&hasher, with: gitManifest == nil ? "manifest:nil" : "manifest:set")
+        for path in (gitManifest ?? []).sorted() {
             Self.updateFingerprint(&hasher, with: path)
         }
         Self.updateFingerprint(&hasher, with: gitIgnored == nil ? "ignored:nil" : "ignored:set")
@@ -229,6 +256,13 @@ nonisolated final class DevFilePolicyEngine: Sendable {
               path == gitDirectoryRelativePath || path.hasPrefix(gitDirectoryRelativePath + "/")
         else { return path }
         return String(path.dropFirst(gitDirectoryRelativePath.count).drop(while: { $0 == "/" }))
+    }
+
+    private func isGitDirectoryPath(_ path: String) -> Bool {
+        guard projectKind != .nonGit else { return false }
+        if path == ".git" || path.hasPrefix(".git/") { return true }
+        guard let gitDirectoryRelativePath else { return false }
+        return path == gitDirectoryRelativePath || path.hasPrefix(gitDirectoryRelativePath + "/")
     }
 
     private func isGitLFSPath(_ path: String) -> Bool {

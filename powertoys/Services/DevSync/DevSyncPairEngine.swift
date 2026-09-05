@@ -868,14 +868,17 @@ actor DevSyncPairEngine {
     }
 
     private func makePolicy(project: DevProject, projectURL: URL) async -> DevFilePolicyEngine {
-        let tracked = project.kind == .nonGit ? nil : try? await DevGit.workingTreeManifest(projectURL: projectURL)
+        let manifest = project.kind == .nonGit
+            ? nil
+            : try? await DevGit.workingTreeManifest(projectURL: projectURL).reduce(into: Set<String>()) { $0.insert($1) }
         return DevFilePolicyEngine(
             policy: pair.configuration.policy,
             projectKind: project.kind,
             gitDirectoryRelativePath: project.topology?.gitDirectory,
-            gitTracked: tracked.map(Set.init),
+            gitTracked: manifest,
+            gitManifest: manifest,
             gitIgnored: nil,
-            gitAvailable: tracked != nil,
+            gitAvailable: manifest != nil,
             projectIgnoreRules: []
         )
     }

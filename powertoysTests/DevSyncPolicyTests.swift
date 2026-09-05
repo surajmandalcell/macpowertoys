@@ -124,6 +124,22 @@ final class DevSyncPolicyTests: XCTestCase {
         XCTAssertFalse(decision.included)
     }
 
+    func testScenario24GitManifestIncludesOnlyMemberDirectories() {
+        let policyEngine = engine(gitManifest: ["Sources/App.swift"])
+
+        let memberDirectory = policyEngine.decide(
+            DevPolicyInput(relativePath: "Sources", kind: .directory, size: 64, isInsideGitDirectory: false)
+        )
+        let ignoredDirectory = policyEngine.decide(
+            DevPolicyInput(relativePath: "secrets", kind: .directory, size: 64, isInsideGitDirectory: false)
+        )
+
+        XCTAssertTrue(memberDirectory.included)
+        XCTAssertEqual(memberDirectory.reason, .gitTracked)
+        XCTAssertFalse(ignoredDirectory.included)
+        XCTAssertEqual(ignoredDirectory.reason, .gitIgnored)
+    }
+
     func testScenario40UnsupportedObjectTypeAlwaysExcluded() {
         var policy = DevSyncConfiguration.Policy()
         policy.explicitIncludes = ["socket"]
@@ -293,6 +309,7 @@ final class DevSyncPolicyTests: XCTestCase {
     private func engine(
         policy: DevSyncConfiguration.Policy = .init(),
         gitTracked: Set<String> = [],
+        gitManifest: Set<String>? = nil,
         gitIgnored: Set<String> = []
     ) -> DevFilePolicyEngine {
         DevFilePolicyEngine(
@@ -300,6 +317,7 @@ final class DevSyncPolicyTests: XCTestCase {
             projectKind: .gitRepository,
             gitDirectoryRelativePath: ".git",
             gitTracked: gitTracked,
+            gitManifest: gitManifest,
             gitIgnored: gitIgnored,
             gitAvailable: true,
             projectIgnoreRules: []
