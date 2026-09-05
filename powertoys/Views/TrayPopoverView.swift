@@ -173,6 +173,10 @@ struct TrayPopoverView: View {
 
             Spacer()
 
+            TrayStylePreviewPicker()
+
+            Spacer()
+
             TrayFooterButton(title: "Quit", systemImage: "power") {
                 NSApplication.shared.terminate(nil)
             }
@@ -231,13 +235,12 @@ private struct QuickToolTraySummary: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Spacer()
             if let action = menuBarTool?.quickAction {
-                TrayActionButton(title: menuBarTool?.actionTitle ?? tool.name, isPrimary: true) {
+                TrayActionButton(title: menuBarTool?.actionTitle ?? tool.name, isPrimary: true, toolID: tool.id) {
                     ToolActionRouter.shared.execute(ToolActionRequest(action: action))
                 }
             }
-            TrayActionButton(title: "Open", isPrimary: menuBarTool?.quickAction == nil) {
+            TrayActionButton(title: "Open", isPrimary: menuBarTool?.quickAction == nil, toolID: tool.id) {
                 ToolActionRouter.shared.open(toolID: tool.id)
             }
         }
@@ -260,7 +263,7 @@ private struct AwakeTraySummary: View {
                     .frame(width: 18)
                 Text(service.statusText).font(.system(size: 11)).monospacedDigit().lineLimit(1)
                 Spacer()
-                TrayActionButton(title: "Open", isPrimary: false) {
+                TrayActionButton(title: "Open", isPrimary: false, toolID: "awake") {
                     openWindow(id: "awake")
                     NSApp.activate(ignoringOtherApps: true)
                 }
@@ -467,7 +470,7 @@ private struct RSyncTraySummary: View {
 
             Spacer()
 
-            TrayActionButton(title: "Open Cloud Sync", isPrimary: false) {
+            TrayActionButton(title: "Open Cloud Sync", isPrimary: false, toolID: "rclone") {
                 openWindow(id: "rclone")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
@@ -651,26 +654,63 @@ private struct TrayTransferRow: View {
 private struct TrayActionButton: View {
     let title: String
     let isPrimary: Bool
+    var toolID: String = ""
     let action: () -> Void
+
+    @AppStorage("tray.actionStyle") private var styleName = TrayActionStyle.filled.rawValue
+
+    private var style: TrayActionStyle { TrayActionStyle(rawValue: styleName) ?? .filled }
+    private var tint: NSColor {
+        if !toolID.isEmpty, let color = ToolIconColor.major(asset: ToolRegistry.tool(for: toolID)?.logoAsset ?? "") { return color }
+        return .controlAccentColor
+    }
 
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(
-                    isPrimary
-                        ? Color(nsColor: .alternateSelectedControlTextColor)
-                        : .primary
-                )
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(labelColor)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, minHeight: 26)
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
-        .background(
-            isPrimary ? Color.accentColor : Color.primary.opacity(0.06),
-            in: RoundedRectangle(cornerRadius: 6)
-        )
+        .background(fill, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stroke, lineWidth: 1))
+    }
+
+    private var tintColor: Color { Color(nsColor: tint) }
+
+    private var labelColor: Color {
+        guard isPrimary else { return style == .filled || style == .gradient ? .primary : tintColor }
+        switch style {
+        case .filled, .gradient: return ToolIconColor.label(on: tint)
+        case .tinted, .outline: return tintColor
+        }
+    }
+
+    private var fill: AnyShapeStyle {
+        if isPrimary {
+            switch style {
+            case .filled: return AnyShapeStyle(tintColor)
+            case .gradient: return AnyShapeStyle(LinearGradient(colors: [tintColor.opacity(0.92), tintColor], startPoint: .top, endPoint: .bottom))
+            case .tinted: return AnyShapeStyle(tintColor.opacity(0.18))
+            case .outline: return AnyShapeStyle(Color.clear)
+            }
+        }
+        switch style {
+        case .filled, .gradient: return AnyShapeStyle(Color.primary.opacity(0.06))
+        case .tinted: return AnyShapeStyle(tintColor.opacity(0.1))
+        case .outline: return AnyShapeStyle(Color.clear)
+        }
+    }
+
+    private var stroke: Color {
+        switch style {
+        case .outline: tintColor.opacity(isPrimary ? 1 : 0.5)
+        case .gradient: Color.white.opacity(isPrimary ? 0.18 : 0)
+        case .filled, .tinted: .clear
+        }
     }
 }
 
@@ -693,5 +733,20 @@ private struct TrayFooterButton: View {
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
         .onHover { isHovering = $0 }
+    }
+}
+
+/// Temporary: lets the owner flip between action-button styles in the live popover.
+private struct TrayStylePreviewPicker: View {
+    @AppStorage("tray.actionStyle") private var styleName = TrayActionStyle.filled.rawValue
+
+    var body: some View {
+        Picker("Style", selection: $styleName) {
+            ForEach(TrayActionStyle.allCases) { style in Text(style.title).tag(style.rawValue) }
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.mini)
+        .labelsHidden()
+        .frame(width: 190)
     }
 }
