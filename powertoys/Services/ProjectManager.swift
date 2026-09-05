@@ -205,8 +205,12 @@ final class ProjectManager {
                 currentMessages.append(contentsOf: newMessages)
                 LogManager.shared.debug("Appended \(newMessages.count) new messages", source: "ProjectManager")
             }
+            var refreshedMessagesByID: [String: CCMessage] = [:]
+            for message in messages {
+                refreshedMessagesByID[message.id] = message
+            }
             for (index, msg) in currentMessages.enumerated() {
-                if let updated = messages.first(where: { $0.id == msg.id }), updated.content != msg.content {
+                if let updated = refreshedMessagesByID[msg.id], updated.content != msg.content {
                     currentMessages[index] = updated
                 }
             }
