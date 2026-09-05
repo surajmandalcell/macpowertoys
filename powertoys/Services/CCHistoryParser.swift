@@ -13,6 +13,7 @@ class CCHistoryParser {
     
     /// Parse a JSONL file and extract messages using memory-efficient chunked reading
     nonisolated static func parseJSONLFile(at url: URL) -> [CCMessage] {
+        guard !Task.isCancelled else { return [] }
         guard let handle = FileHandle(forReadingAtPath: url.path) else { return [] }
         defer { try? handle.close() }
 
@@ -21,9 +22,11 @@ class CCHistoryParser {
         let chunkSize = 65536
 
         while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            guard !Task.isCancelled else { return messages }
             buffer.append(chunk)
 
             while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                guard !Task.isCancelled else { return messages }
                 let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
                 buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
 

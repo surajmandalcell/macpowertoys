@@ -23,7 +23,8 @@ final class ProjectManager {
     private var fileWatcher: FileWatcher?
     private let claudeDirectory: URL
     private var loadTask: Task<Void, Never>?
-    private var messageLoadTask: Task<Void, Never>?
+    private var messageLoadTask: Task<[CCMessage], Never>?
+    private var messageLoadGeneration = UUID()
     private var updateClearTasks: [String: Task<Void, Never>] = [:]
 
     init() {
@@ -57,6 +58,7 @@ final class ProjectManager {
         let projectFolders = await Task.detached(priority: .userInitiated) {
             Self.getProjectFolders(in: directory)
         }.value
+        guard !Task.isCancelled else { return }
 
         loadingProgress = 0.3
 
@@ -65,6 +67,7 @@ final class ProjectManager {
 
         for (index, folder) in projectFolders.enumerated() {
             let sessions = await loadSessionsLazy(in: folder)
+            guard !Task.isCancelled else { return }
             if !sessions.isEmpty {
                 let project = CCProject(folderName: folder.lastPathComponent, sessions: sessions)
                 loadedProjects.append(project)
@@ -171,6 +174,8 @@ final class ProjectManager {
     func loadMessages(for session: CCSession, isRefresh: Bool = false) async {
         let startTime = CFAbsoluteTimeGetCurrent()
         messageLoadTask?.cancel()
+        let generation = UUID()
+        messageLoadGeneration = generation
 
         let isSameSession = selectedSession?.id == session.id
         if !isSameSession {
@@ -184,11 +189,14 @@ final class ProjectManager {
         LogManager.shared.debug("Loading messages for \(session.id) (refresh: \(isRefresh), same: \(isSameSession))...", source: "ProjectManager")
 
         let filePath = session.filePath
-        let messages = await Task.detached(priority: .userInitiated) {
+        let task = Task.detached(priority: .userInitiated) {
             CCHistoryParser.parseJSONLFile(at: filePath)
-        }.value
+        }
+        messageLoadTask = task
+        let messages = await task.value
 
-        guard !Task.isCancelled else { return }
+        guard !task.isCancelled, messageLoadGeneration == generation else { return }
+        messageLoadTask = nil
 
         if isSameSession && isRefresh {
             let existingIds = Set(currentMessages.map(\.id))
@@ -256,6 +264,16 @@ final class ProjectManager {
     func stopWatching() {
         fileWatcher?.stop()
         fileWatcher = nil
+        loadTask?.cancel()
+        loadTask = nil
+        messageLoadTask?.cancel()
+        messageLoadTask = nil
+        messageLoadGeneration = UUID()
+        updateClearTasks.values.forEach { $0.cancel() }
+        updateClearTasks.removeAll()
+        recentlyUpdatedSessionIds.removeAll()
+        isLoading = false
+        isLoadingMessages = false
     }
 
     private func handleFileChange(changedPaths: [String]) {
@@ -311,10 +329,11 @@ final class ProjectManager {
         recentlyUpdatedSessionIds.insert(sessionId)
 
         updateClearTasks[sessionId]?.cancel()
-        updateClearTasks[sessionId] = Task {
+        updateClearTasks[sessionId] = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled else { return }
-            recentlyUpdatedSessionIds.remove(sessionId)
+            self?.recentlyUpdatedSessionIds.remove(sessionId)
+            self?.updateClearTasks[sessionId] = nil
         }
     }
 

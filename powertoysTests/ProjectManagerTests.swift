@@ -83,6 +83,17 @@ final class ProjectManagerTests: XCTestCase {
         XCTAssertEqual(manager.currentMessages.map(\.content), ["After", "New"])
     }
 
+    func testJSONLParserStopsBeforeReadingWhenTaskIsCancelled() async throws {
+        let file = try jsonl([line(id: "one", type: "user", content: "Should not load")])
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let task = Task.detached { CCHistoryParser.parseJSONLFile(at: file) }
+        task.cancel()
+        let messages = await task.value
+
+        XCTAssertTrue(messages.isEmpty)
+    }
+
     private func session(id: String, title: String) -> CCSession {
         CCSession(id: id, filePath: URL(fileURLWithPath: "/tmp/\(id).jsonl"), firstUserMessage: title)
     }
