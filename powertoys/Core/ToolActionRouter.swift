@@ -43,6 +43,7 @@ extension Notification.Name {
 @MainActor
 final class ToolActionRouter {
     static let shared = ToolActionRouter()
+    private static let maximumPendingCount = 32
 
     private var openWindowAction: OpenWindowAction?
     private var pending: [ToolActionRequest] = []
@@ -87,7 +88,10 @@ final class ToolActionRouter {
 
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
             guard let openWindowAction else {
-                if pendingToolOpens.last != resolved { pendingToolOpens.append(resolved) }
+                if pendingToolOpens.last != resolved {
+                    if pendingToolOpens.count == Self.maximumPendingCount { pendingToolOpens.removeFirst() }
+                    pendingToolOpens.append(resolved)
+                }
                 return
             }
             presentSingleWindow(id: resolved, using: openWindowAction)
@@ -122,7 +126,10 @@ final class ToolActionRouter {
             return
         }
         guard openWindowAction != nil else {
-            if pending.last != request { pending.append(request) }
+            if pending.last != request {
+                if pending.count == Self.maximumPendingCount { pending.removeFirst() }
+                pending.append(request)
+            }
             return
         }
 

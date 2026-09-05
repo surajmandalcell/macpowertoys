@@ -40,6 +40,15 @@ extension Notification.Name {
 @MainActor
 final class DeepLinkHandler {
     static let shared = DeepLinkHandler()
+    private static let maximumPendingLinkCount = 32
+    private static let iso8601Formatter = ISO8601DateFormatter()
+    private static let localizedDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
 
     private var pendingLinks: [URL] = []
     private var openWindowAction: OpenWindowAction?
@@ -55,7 +64,10 @@ final class DeepLinkHandler {
     }
 
     func handle(url: URL) {
-        LogManager.shared.info("Handling deep link: \(url.absoluteString)", source: "DeepLinkHandler")
+        LogManager.shared.debug(
+            "Handling deep link: \(url.scheme ?? "unknown")://\(url.host ?? "")\(url.path)",
+            source: "DeepLinkHandler"
+        )
 
         guard Self.isSupportedScheme(url.scheme) else {
             LogManager.shared.warning("Invalid scheme: \(url.scheme ?? "nil")", source: "DeepLinkHandler")
@@ -73,8 +85,9 @@ final class DeepLinkHandler {
         }
 
         guard openWindowAction != nil else {
+            if pendingLinks.count == Self.maximumPendingLinkCount { pendingLinks.removeFirst() }
             pendingLinks.append(url)
-            LogManager.shared.debug("Queued pending link: \(url)", source: "DeepLinkHandler")
+            LogManager.shared.debug("Queued pending deep link", source: "DeepLinkHandler")
             return
         }
 
@@ -137,12 +150,7 @@ final class DeepLinkHandler {
     }
 
     private static func parseDate(_ value: String) -> Date? {
-        if let date = ISO8601DateFormatter().date(from: value) { return date }
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.date(from: value)
+        iso8601Formatter.date(from: value) ?? localizedDateFormatter.date(from: value)
     }
 
     func processPendingLinks() {
