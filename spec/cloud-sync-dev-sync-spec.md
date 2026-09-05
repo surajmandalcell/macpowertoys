@@ -1207,7 +1207,11 @@ Body, top to bottom:
    last successful sync, included and excluded size, and active warnings.
    Context and row actions: Sync Project, Preview, Move to External, Bring
    Internal, Exclude Project, Edit Rules, Repair Link, Resolve Conflict, Open
-   Real Location.
+   Real Location. The state badge changes as soon as the engine learns
+   something: a clean or drifted project shows `Changes pending` from the
+   first accepted event until its batch starts, and an external-resident
+   project shows `Offline` while the drive is offline and returns to `Clean`
+   when the link validates after the remount.
 3. Conflicts, one card per conflict, with relative path, conflict type,
    internal size and time, external size and time, baseline time, an optional
    text diff for small text files, and safety-copy locations. Actions: Keep

@@ -95,6 +95,35 @@ final class DevSyncPairEngineTests: XCTestCase {
         }
     }
 
+    func testEventsMarkProjectsPendingAndEjectMarksLinkedProjectsOffline() async throws {
+        let fixture = try await makeFixture(configure: { $0.timing.quietPeriodSeconds = 2 })
+        let externalRoot = fixture.externalProject.deletingLastPathComponent()
+        let linked = externalRoot.appendingPathComponent("linked", isDirectory: true)
+        try FileManager.default.createDirectory(at: linked, withIntermediateDirectories: true)
+        try Data("source".utf8).write(to: linked.appendingPathComponent("source.swift"))
+        try runGit(["init", "-q"], at: linked)
+        await fixture.engine.start()
+        try await waitUntil {
+            await fixture.engine.projects().contains { $0.relativePath == "linked" && $0.state == .clean }
+        }
+
+        await fixture.engine.noteEvents(side: .internal, relativePaths: ["app/source.swift"])
+        let pending = await fixture.engine.projects().first { $0.relativePath == "app" }?.state
+        XCTAssertEqual(pending, .dirtyInternal)
+
+        await fixture.engine.volumeWillUnmount(externalRoot)
+        await fixture.engine.volumeDidUnmount(externalRoot)
+        let offline = await fixture.engine.projects().first { $0.relativePath == "linked" }?.state
+        XCTAssertEqual(offline, .linkOffline)
+        let offlineStatus = await fixture.engine.status()
+        XCTAssertEqual(offlineStatus.state, .volumeOffline)
+
+        await fixture.engine.volumeDidMount(externalRoot)
+        try await waitUntil {
+            await fixture.engine.projects().first { $0.relativePath == "linked" }?.state == .clean
+        }
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneBatch() async throws {
         let fixture = try await makeFixture()
         await fixture.engine.start()
