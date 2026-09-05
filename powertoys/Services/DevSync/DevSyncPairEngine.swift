@@ -203,6 +203,7 @@ actor DevSyncPairEngine {
             try? await stateStore.saveOperation(operation)
         }
         setPairState(.volumeOffline, detail: "Drive disconnected")
+        await refreshLinks()
         scheduleDriveMissingNotification()
     }
 
@@ -466,13 +467,34 @@ actor DevSyncPairEngine {
             relativePaths = kept
             guard !relativePaths.isEmpty else { return }
         }
-        await scheduler.noteEvents(side: side, relativePaths: relativePaths, projectResolver: { path in
+        let resolve: @Sendable (String) -> UUID? = { path in
             projects
                 .filter { path == $0.relativePath || path.hasPrefix($0.relativePath + "/") }
                 .max { $0.relativePath.count < $1.relativePath.count }?.id
-        }, at: date)
+        }
+        await scheduler.noteEvents(side: side, relativePaths: relativePaths, projectResolver: resolve, at: date)
+        markDirty(Set(relativePaths.compactMap(resolve)), side: side)
         try? await persistSchedulerState()
         startSchedulerLoop()
+    }
+
+    private func markDirty(_ projectIDs: Set<UUID>, side: DevSyncSide) {
+        var changed = false
+        for index in projectValues.indices where projectIDs.contains(projectValues[index].id) {
+            let current = projectValues[index].state
+            let next: DevProjectState
+            switch (current, side) {
+            case (.clean, .internal), (.destinationDrift, .internal): next = .dirtyInternal
+            case (.clean, .external), (.destinationDrift, .external): next = .dirtyExternal
+            case (.dirtyInternal, .external), (.dirtyExternal, .internal): next = .dirtyBoth
+            default: continue
+            }
+            projectValues[index].state = next
+            changed = true
+        }
+        guard changed else { return }
+        Task { try? await stateStore.saveProjects(projectValues, pairID: pair.id) }
+        emitProjects()
     }
 
     private func resolveRootsAndCapabilities(forceProbe: Bool) async -> Bool {
@@ -655,9 +677,30 @@ actor DevSyncPairEngine {
             linkValues = await linkManager.links()
         }
         emit(.links(pairID: pair.id, linkValues))
+        syncExternalResidentProjectStates()
         if linkValues.contains(where: { $0.state != .healthy && $0.state != .offline }) {
             notifyOnce(.managedLinkBroken, title: "A Dev Sync link needs repair", body: "Open Dev Sync to review the managed link.")
         }
+    }
+
+    private func syncExternalResidentProjectStates() {
+        var changed = false
+        for index in projectValues.indices where projectValues[index].residency == .externalResident && !projectValues[index].explicitlyExcluded {
+            let linkState = linkValues.first { $0.projectID == projectValues[index].id }?.state
+            let next: DevProjectState
+            switch linkState {
+            case .healthy: next = .clean
+            case .offline: next = .linkOffline
+            case .missing, .replaced, .wrongTarget, nil: next = .linkMissing
+            }
+            let target = volumeOnline ? next : .linkOffline
+            guard projectValues[index].state != target else { continue }
+            projectValues[index].state = target
+            changed = true
+        }
+        guard changed else { return }
+        Task { try? await stateStore.saveProjects(projectValues, pairID: pair.id) }
+        emitProjects()
     }
 
     private func startEventStreams() {
