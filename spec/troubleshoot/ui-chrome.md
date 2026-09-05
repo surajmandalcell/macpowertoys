@@ -53,7 +53,10 @@
   controls, or content clips.
 - **Cause:** SwiftUI's default scene size is an initial size, not a minimum.
 - **Invariant:** `WindowAccessor` applies the shared minimum content size before
-  restoring a saved frame. The launcher uses 780 by 700 points. Logs, Cloud
+  restoring a saved frame. The launcher uses 1,200 by 720 points, which is the
+  220-point sidebar plus a 980-point content pane that fits four 220-point cards
+  with 16-point gaps inside 24-point padding. The launcher also restores position
+  only, so a frame saved at an older size never reopens at that size. Logs, Cloud
   Sync, AI History, Input Devices, System Care, and System Monitor use their
   sidebar family plus a 640-point content minimum and a 600-point height.
   NetToys uses a 1,280 by 800 point default and a 1,100 by 700 point minimum so
@@ -578,3 +581,17 @@
 - **Check:** Open Awake from a fresh launch and inspect the titlebar before
   interacting with it. Tab to and toggle `Keep Display On` to confirm keyboard
   control still works.
+
+## Sidebar Status And Version Chrome
+
+- **Symptom:** A workspace sidebar shows a build version string or a colored
+  online/offline dot beside its title or in its footer.
+- **Cause:** Daemon and sampler state was surfaced as sidebar chrome instead of
+  in the content that owns the work.
+- **Invariant:** No sidebar or sidebar footer shows a version number or a
+  status dot. Keep a recovery action such as Cloud Sync `Reconnect`, and keep
+  operational state in content rows (Dev Sync drive state, NetToys peer state).
+  The About and Settings surfaces may still show the app version.
+- **Check:** Grep every sidebar view for `CFBundleShortVersionString`, a version
+  label, and `Circle()` fills tinted green, orange, or red. Inspect the
+  launcher, Cloud Sync, and System Monitor sidebars in the installed build.

@@ -13,6 +13,12 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 - Top padding: `.padding(.top, 44)` - leaves one 4pt gap below the 40pt strip
 - Content and search bar start at the same vertical position
 
+### Launcher Window
+- Fixed 1200 x 720 content; 220pt sidebar; 980pt content pane
+- Grid: adaptive 220pt minimum columns, 16pt gaps, 24pt horizontal and bottom
+  padding, which yields exactly four cards in each row
+- Sidebars carry no version string and no online/offline status indicator
+
 ### Workspace Density
 - Simple sidebar: 220pt; data sidebar: 240pt; conversation sidebar: 260pt
 - Launcher, Logs, and Input Devices use 220pt; Cloud Sync, System Care, and

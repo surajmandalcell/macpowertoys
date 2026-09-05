@@ -78,7 +78,7 @@ spacing:
   tray-footer-top: 8
   tray-footer-bottom: 10
 windows:
-  launcher: { content-width: 780, content-height: 700, sidebar-width: 220, card-min-height: 110, resizable: false }
+  launcher: { content-width: 1200, content-height: 720, sidebar-width: 220, card-min-height: 110, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, resizable: true }
   nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
@@ -308,7 +308,7 @@ instead of combining chrome from two families.
 
 | Family | Purpose | Size | Navigation | Title owner |
 |---|---|---|---|---|
-| Main launcher | Discover and open tools | Fixed 780×700 content | 220pt catalog sidebar | Sidebar title |
+| Main launcher | Discover and open tools | Fixed 1200×720 content | 220pt catalog sidebar | Sidebar title |
 | Full workspace | Sustained, multi-context work | Resizable; content at least 640pt wide | 220–280pt tool sidebar | Sidebar title |
 | Compact applet | One immediate bounded task | Fixed width and bounded height | No sidebar | 40pt compact titlebar |
 
@@ -357,45 +357,45 @@ never displays running metrics, history, or workspace content.
 Canonical anatomy:
 
 ```text
-780 × 700 SwiftUI content, fixed
-┌──────── sidebar 220 ────────┬──────── content 560 ─────────┐
-│ traffic lights  title       │                              │
-│ search at y=44              │ grid or tool detail at y=44  │
-│ All Tools                   │                              │
-│ CATEGORY                    │                              │
-│   tool rows                 │                              │
-│                             │                              │
-│ Logs / Settings / Exit      │                              │
-└─────────────────────────────┴──────────────────────────────┘
+1200 × 720 SwiftUI content, fixed
+┌──── sidebar 220 ────┬──────────────── content 980 ────────────────┐
+│ traffic lights title│                                             │
+│ search at y=44      │ grid or tool detail at y=44                 │
+│ All Tools           │ ┌─220─┐ 16 ┌─220─┐ 16 ┌─220─┐ 16 ┌─220─┐   │
+│   tool rows         │ │card │    │card │    │card │    │card │   │
+│                     │ └─────┘    └─────┘    └─────┘    └─────┘   │
+│ Logs/Settings/Exit  │                                             │
+└─────────────────────┴─────────────────────────────────────────────┘
 ```
 
-- The SwiftUI scene content and sidebar are fixed at 780×700 and 220pt. The
-  current screenshot is 780×732 because the captured `NSWindow` frame adds
-  32pt above that content size. Never shrink the content to force the outer
-  capture to 780×700. Do not resize, collapse, or add an inspector.
+- The SwiftUI scene content and sidebar are fixed at 1200×720 and 220pt, so the
+  980pt content pane holds exactly four 220pt cards with 16pt gaps inside its
+  24pt padding (4 × 220 + 3 × 16 + 48 = 976). The captured `NSWindow` frame adds
+  32pt above that content size. Never shrink the content to force a smaller
+  outer capture. Do not resize, collapse, or add an inspector.
 - The sidebar title is `MacPowerToys`, centered in the 40pt top strip and 84pt
   from the leading window edge. It is the only app title.
 - The custom search field uses 12pt sidebar insets and starts at y=44. It is at
   least 32pt high, uses `Search` as its placeholder, and filters registered tool
-  names and search keywords while preserving registry category order. Never
+  names while preserving registry order. Never
   invent family filters such as “Quick tools” or “Workspaces”; family is not
   catalog taxonomy.
-- Navigation is `All Tools`, then the registry's uppercase category headers and
-  tool rows with a 28pt minimum and 4pt stack spacing. Rows use a 16pt icon,
-  8pt internal leading/trailing inset, and 8pt radius. Each header starts after
-  16pt and leaves 4pt before its first row. The footer has the same rows, 12pt
+- Navigation is `All Tools`, then one flat list of registry tool rows with a
+  28pt minimum and 4pt stack spacing. A direct owner decision removed launcher
+  category headings; do not reintroduce them. Rows use a 16pt icon, 8pt internal
+  leading/trailing inset, and 8pt radius. The footer has the same rows, a 12pt
   outer inset and bottom padding, and contains Logs, Settings, and Exit. The
   material transition is the pane boundary; do not add a vertical divider.
 - Launch opens `All Tools` with an empty search. Restore a prior selection only
   within the same running launcher session, never across a fresh app launch.
 - `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
-  padding, an adaptive two-column grid with 220pt minimum columns, and 16pt
-  row/column gaps.
+  padding, an adaptive grid with 220pt minimum columns and 16pt row/column gaps.
+  The 1200pt launcher shows four cards in each row.
 - A launcher tool card is at least 110pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
-  name; 10pt uppercase category; two lines of 12pt secondary description; and
-  an unlabeled mini enable switch bottom-leading; and a native small `Open`
-  button bottom-trailing. Rest is 0.03. Hover is 0.06
+  name; two lines of 12pt secondary description; an unlabeled mini enable switch
+  bottom-leading; and a native small `Open` button bottom-trailing.
+  Rest is 0.03. Hover is 0.06
   with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,
   radius 8, y offset 2. Accessibility text may
   expand the complete grid row, never only one card in that row.
