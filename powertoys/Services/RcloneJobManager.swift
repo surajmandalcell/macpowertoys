@@ -160,7 +160,7 @@ final class RcloneJobManager {
         switch daemon.state {
         case .stopped: return "Stopped"
         case .starting: return "Starting…"
-        case .running(_, let version): return "Connected · \(version)"
+        case .running: return "Connected"
         case .failed(let message): return message
         }
     }

@@ -448,37 +448,39 @@ private final class ThinScrollIndicatorView: NSView {
             configuredScrollView.configureThinScrollIndicators()
             return true
         }
-        if let scrollView = enclosingScrollView {
-            configuredScrollView = scrollView
-            scrollView.configureThinScrollIndicators()
-            return true
-        }
-
         guard window != nil, !bounds.isEmpty else { return false }
 
-        // SwiftUI hosts a background beside its scroll view, not inside it.
+        // SwiftUI hosts a background beside its scroll view, not inside it. An
+        // ancestor scroll view is the page, never the target, so skip it even
+        // when the target has not been created yet.
         let targetPoint = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
         var ancestor = superview
         while let view = ancestor {
-            if let scrollView = view.firstDescendantScrollView(containing: targetPoint) {
+            if let scrollView = view.firstDescendantScrollView(containing: targetPoint, excludingAncestorsOf: self) {
                 configuredScrollView = scrollView
                 scrollView.configureThinScrollIndicators()
                 return true
             }
             ancestor = view.superview
         }
+        if let scrollView = enclosingScrollView {
+            configuredScrollView = scrollView
+            scrollView.configureThinScrollIndicators()
+            return true
+        }
         return false
     }
 }
 
 private extension NSView {
-    func firstDescendantScrollView(containing point: NSPoint) -> NSScrollView? {
+    func firstDescendantScrollView(containing point: NSPoint, excludingAncestorsOf excluded: NSView) -> NSScrollView? {
         for view in subviews {
             if let scrollView = view as? NSScrollView,
+               !excluded.isDescendant(of: scrollView),
                scrollView.convert(scrollView.bounds, to: nil).contains(point) {
                 return scrollView
             }
-            if let scrollView = view.firstDescendantScrollView(containing: point) {
+            if let scrollView = view.firstDescendantScrollView(containing: point, excludingAncestorsOf: excluded) {
                 return scrollView
             }
         }

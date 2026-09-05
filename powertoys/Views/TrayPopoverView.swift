@@ -461,12 +461,7 @@ private struct RSyncTraySummary: View {
 
     private var statusRow: some View {
         HStack(spacing: 8) {
-            if manager.daemonIsHealthy {
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 6, height: 6)
-                    .frame(width: 18, height: 18)
-            } else {
+            if !manager.daemonIsHealthy {
                 TrayRetryButton {
                     Task { await manager.start() }
                 }

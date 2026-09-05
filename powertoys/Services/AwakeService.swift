@@ -213,6 +213,17 @@ final class AwakeService {
         }
     }
 
+    private static let presetFormatter: DateComponentsFormatter = {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute]
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
+
+    static func presetLabel(_ seconds: TimeInterval) -> String {
+        presetFormatter.string(from: seconds) ?? duration(seconds)
+    }
+
     static func duration(_ seconds: TimeInterval) -> String {
         let value = max(0, Int(seconds.rounded()))
         let hours = value / 3600

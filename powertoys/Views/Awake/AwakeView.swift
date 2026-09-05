@@ -135,7 +135,7 @@ struct AwakeSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     ForEach(service.configuration.presets, id: \.self) { seconds in
-                        Button(AwakeService.duration(seconds)) { service.setMode(.timed, duration: seconds) }
+                        Button(AwakeService.presetLabel(seconds)) { service.setMode(.timed, duration: seconds) }
                             .contentShape(Rectangle())
                             .contextMenu {
                                 Button("Remove Preset") {
