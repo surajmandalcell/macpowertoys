@@ -6,7 +6,7 @@
 import Foundation
 import AppKit
 
-enum AppDataLocation {
+nonisolated enum AppDataLocation {
     static var directory: URL {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return prepareDirectory(

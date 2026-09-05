@@ -249,7 +249,7 @@ final class RcloneJobManager {
         guard !started else { return }
         started = true
         await DevSyncService.shared.start()
-        loadPersistedJobs()
+        await loadPersistedJobs()
         restoreSourceWatchers()
         startVolumeWatch()
         resumeJobsForMountedVolumes()
@@ -360,7 +360,7 @@ final class RcloneJobManager {
         }
         persistJobsTask?.cancel()
         persistJobsTask = nil
-        persistJobsNow()
+        await persistJobsNow()
         daemon.stop()
         client = nil
         started = false
@@ -1403,37 +1403,43 @@ final class RcloneJobManager {
 
     // MARK: Job persistence
 
-    private func loadPersistedJobs() {
+    private func loadPersistedJobs() async {
         guard !loadedPersistedJobs else { return }
         loadedPersistedJobs = true
-        guard let data = try? Data(contentsOf: AppDataLocation.transfersURL),
-              let snapshots = try? JSONDecoder().decode([TransferJobSnapshot].self, from: data) else { return }
+        let snapshots = await Task.detached(priority: .utility) {
+            guard let data = try? Data(contentsOf: AppDataLocation.transfersURL) else {
+                return [TransferJobSnapshot]()
+            }
+            return (try? JSONDecoder().decode([TransferJobSnapshot].self, from: data)) ?? []
+        }.value
         jobs = snapshots.map { TransferJob(snapshot: $0) }
     }
 
     static func hasPersistedContinuousJobs() async -> Bool {
-        let url = AppDataLocation.transfersURL
         return await Task.detached(priority: .utility) {
-            guard let data = try? Data(contentsOf: url),
+            guard let data = try? Data(contentsOf: AppDataLocation.transfersURL),
                   let snapshots = try? JSONDecoder().decode([TransferJobSnapshot].self, from: data) else { return false }
             return snapshots.contains { $0.continuousSync == true }
         }.value
     }
 
     func persistJobsSoon() {
-        guard persistJobsTask == nil else { return }
+        persistJobsTask?.cancel()
         persistJobsTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
-            self?.persistJobsTask = nil
-            self?.persistJobsNow()
+            guard let self, !Task.isCancelled else { return }
+            self.persistJobsTask = nil
+            await self.persistJobsNow()
         }
     }
 
-    private func persistJobsNow() {
+    private func persistJobsNow() async {
         guard loadedPersistedJobs else { return }
         let snapshots = jobs.map(\.snapshot)
-        guard let data = try? JSONEncoder().encode(snapshots) else { return }
-        try? data.write(to: AppDataLocation.transfersURL, options: .atomic)
+        await Task.detached(priority: .utility) {
+            guard let data = try? JSONEncoder().encode(snapshots) else { return }
+            try? data.write(to: AppDataLocation.transfersURL, options: .atomic)
+        }.value
     }
 
     // MARK: Activity records
