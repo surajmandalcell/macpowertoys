@@ -169,6 +169,7 @@ final class MarketplaceManager {
     private(set) var catalogs: [String: MarketplaceCatalog] = [:]
     private(set) var receipts: [MarketplaceReceipt] = []
     private(set) var isRestored = false
+    private var installedIconURLs: [String: URL] = [:]
 
     let store: MarketplaceStore
     private let reservedToolIDs: Set<String>
@@ -227,6 +228,10 @@ final class MarketplaceManager {
         guard !isRestored else { return }
         let loadedSources = await store.loadSources()
         let loadedReceipts = await store.loadReceipts()
+        var loadedIconURLs: [String: URL] = [:]
+        for receipt in loadedReceipts {
+            loadedIconURLs[receipt.toolID] = await store.cachedIconURL(toolID: receipt.toolID)
+        }
         var loadedCatalogs: [String: MarketplaceCatalog] = [:]
         for source in loadedSources {
             guard let data = await store.loadCatalogData(cacheKey: MarketplaceStore.cacheKey(for: source.url)) else {
@@ -243,6 +248,7 @@ final class MarketplaceManager {
         }
         sources = loadedSources
         receipts = loadedReceipts
+        installedIconURLs = loadedIconURLs
         catalogs = loadedCatalogs
         isRestored = true
     }
@@ -384,6 +390,7 @@ final class MarketplaceManager {
         receipts.removeAll { $0.toolID == receipt.toolID }
         receipts.append(receipt)
         receipts.sort { $0.toolID < $1.toolID }
+        installedIconURLs[receipt.toolID] = await store.cachedIconURL(toolID: receipt.toolID)
         NotificationCenter.default.post(name: .marketplaceReceiptsChanged, object: nil)
     }
 
@@ -397,6 +404,7 @@ final class MarketplaceManager {
         }
         try await store.deleteInstalled(toolID: receipt.toolID)
         receipts.removeAll { $0.toolID == receipt.toolID }
+        installedIconURLs[receipt.toolID] = nil
         NotificationCenter.default.post(name: .marketplaceReceiptsChanged, object: nil)
     }
 
@@ -405,12 +413,7 @@ final class MarketplaceManager {
     }
 
     var installedTools: [any Tool] {
-        receipts.map { MarketplaceTool(receipt: $0, iconFileURL: iconFileURL(for: $0.toolID)) }
-    }
-
-    nonisolated func iconFileURL(for toolID: String) -> URL? {
-        let url = store.root.appendingPathComponent("Cache/Icons/\(toolID).png")
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        receipts.map { MarketplaceTool(receipt: $0, iconFileURL: installedIconURLs[$0.toolID]) }
     }
 
     // MARK: Aggregation
@@ -470,9 +473,14 @@ final class MarketplaceManager {
     }
 
     func fetchIconIfNeeded(for manifest: MarketplaceToolManifest) async -> URL? {
-        if let cached = await store.cachedIconURL(toolID: manifest.id) { return cached }
+        if let cached = await store.cachedIconURL(toolID: manifest.id) {
+            installedIconURLs[manifest.id] = cached
+            return cached
+        }
         guard let data = try? await fetch(manifest.iconURL, nil).data else { return nil }
-        return try? await store.saveIcon(data, toolID: manifest.id)
+        let url = try? await store.saveIcon(data, toolID: manifest.id)
+        installedIconURLs[manifest.id] = url
+        return url
     }
 
     // MARK: Helpers
