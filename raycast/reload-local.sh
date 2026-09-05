@@ -1,45 +1,17 @@
 #!/bin/sh
 set -eu
 
+# Build the local extension into Raycast's extension folder. Never use
+# `ray develop` here: it registers a second, development copy of the same
+# extension, and every command then appears twice in Raycast.
 repo_dir=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 extension_dir="$HOME/.config/raycast/extensions/macpowertoys"
 
-[ -d "$extension_dir" ] || exit 0
-
-clean_stale_source_maps() {
-  for source_map in "$extension_dir"/*.js.map; do
-    [ -e "$source_map" ] || return 0
-    [ -f "${source_map%.map}" ] || rm -f "$source_map"
-  done
-}
-
-if ! pgrep -x Raycast >/dev/null; then
-  cd "$repo_dir/raycast"
-  ./node_modules/.bin/ray build -e dev -o "$extension_dir"
-  clean_stale_source_maps
-  exit 0
-fi
-
-log_file=$(mktemp "${TMPDIR:-/tmp}/macpowertoys-raycast-reload.XXXXXX")
-pid=
-cleanup() {
-  [ -z "$pid" ] || kill -INT "$pid" 2>/dev/null || true
-  [ -z "$pid" ] || wait "$pid" 2>/dev/null || true
-  rm -f "$log_file"
-}
-trap cleanup EXIT HUP INT TERM
-
-(cd "$repo_dir/raycast" && exec ./node_modules/.bin/ray develop --non-interactive) >"$log_file" 2>&1 &
-pid=$!
-attempt=0
-until grep -q "built extension successfully" "$log_file"; do
-  if ! kill -0 "$pid" 2>/dev/null || [ "$attempt" -ge 300 ]; then
-    cat "$log_file"
-    exit 1
-  fi
-  attempt=$((attempt + 1))
-  sleep 0.1
+mkdir -p "$extension_dir"
+cd "$repo_dir/raycast"
+./node_modules/.bin/ray build -e dev -o "$extension_dir"
+for source_map in "$extension_dir"/*.js.map; do
+  [ -e "$source_map" ] || break
+  [ -f "${source_map%.map}" ] || rm -f "$source_map"
 done
-
-clean_stale_source_maps
-echo "Reloaded the local MacPowerToys Raycast extension."
+echo "Built the local MacPowerToys Raycast extension into $extension_dir."

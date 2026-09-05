@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="112" fill="#1C1D22"/>
-  <path d="M282 58 128 282h112l-12 172 156-238H270z" fill="#FFB13D" opacity=".3"/>
-  <path d="M260 48 106 272h112l-12 172 156-238H248z" fill="#F4F4F5"/>
+  <g transform="scale(0.5) translate(52 52)" fill="#FFB13D" stroke="#FFB13D" opacity=".3"><path d="M320 720 L810 660" stroke-width="230" stroke-linecap="round" fill="none"/><circle cx="655" cy="480" r="215"/><path d="M320 720 L362 330" stroke-width="200" stroke-linecap="round" fill="none"/><circle cx="385" cy="255" r="140"/><circle cx="288" cy="205" r="56"/><circle cx="372" cy="148" r="56"/><circle cx="466" cy="160" r="56"/></g>
+  <g transform="scale(0.5)" fill="#F4F4F5" stroke="#F4F4F5"><path d="M320 720 L810 660" stroke-width="230" stroke-linecap="round" fill="none"/><circle cx="655" cy="480" r="215"/><path d="M320 720 L362 330" stroke-width="200" stroke-linecap="round" fill="none"/><circle cx="385" cy="255" r="140"/><circle cx="288" cy="205" r="56"/><circle cx="372" cy="148" r="56"/><circle cx="466" cy="160" r="56"/></g>
 </svg>

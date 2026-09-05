@@ -158,5 +158,5 @@ Read the [Privacy Policy](PRIVACY.md),
 [Contributing Guide](CONTRIBUTING.md).
 
 <p align="center">
-  Made for macOS · Released under the <a href="LICENSE">MIT License</a>
+  Made for macOS · Released under the <a href="LICENSE">MIT License</a> · Menu bar glyph adapted from <a href="https://lucide.dev">Lucide</a> (ISC)
 </p>

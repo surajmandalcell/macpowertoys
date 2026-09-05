@@ -1,5 +1,5 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <rect x="58" y="58" width="396" height="396" rx="90" fill="#1C1D22"/>
-  <path d="M310 142 L210 296 H274 L246 396 L354 232 H284 L324 142 Z" fill="#FFB13D" opacity="0.28" stroke="#FFB13D" stroke-opacity="0.28" stroke-width="22" stroke-linejoin="round"/>
-  <path d="M284 116 L184 270 H248 L220 370 L328 206 H258 L298 116 Z" fill="#FFFFFF" opacity="0.94" stroke="#FFFFFF" stroke-opacity="0.94" stroke-width="22" stroke-linejoin="round"/>
+  <g transform="translate(58 58) scale(0.3867) translate(52 52)" fill="#FFB13D" stroke="#FFB13D" opacity="0.28"><path d="M320 720 L810 660" stroke-width="230" stroke-linecap="round" fill="none"/><circle cx="655" cy="480" r="215"/><path d="M320 720 L362 330" stroke-width="200" stroke-linecap="round" fill="none"/><circle cx="385" cy="255" r="140"/><circle cx="288" cy="205" r="56"/><circle cx="372" cy="148" r="56"/><circle cx="466" cy="160" r="56"/></g>
+  <g transform="translate(58 58) scale(0.3867)" fill="#FFFFFF" stroke="#FFFFFF" opacity="0.94"><path d="M320 720 L810 660" stroke-width="230" stroke-linecap="round" fill="none"/><circle cx="655" cy="480" r="215"/><path d="M320 720 L362 330" stroke-width="200" stroke-linecap="round" fill="none"/><circle cx="385" cy="255" r="140"/><circle cx="288" cy="205" r="56"/><circle cx="372" cy="148" r="56"/><circle cx="466" cy="160" r="56"/></g>
 </svg>

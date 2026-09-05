@@ -852,7 +852,7 @@ The base application icon is the deliberate exception to the tool/plugin SVG
 construction rules above. `powertoys/AppIcon.icon` uses Icon Composer's
 `1024 × 1024` layered source canvas and solid document fill; its SVG layers
 must not bake in the rounded-square ground or any lighting effect. It preserves
-the accepted `docs/appicon.svg` bolt geometry, including the `52px` right/down
+the accepted `docs/appicon.svg` flexed-arm geometry, including the `52px` right/down
 echo offset at that scale (`26px` on a 512 canvas), rather than adopting the
 tool-icon `18 × 22` echo. Icon Composer supplies the system enclosure, lighting,
 and prior-generation fallback.
