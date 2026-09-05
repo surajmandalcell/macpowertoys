@@ -189,7 +189,11 @@ actor DevOperationRunner {
             requeuedPaths.append(contentsOf: verification.requeued)
             try afterStep(.verifySourceStability)
 
-            if hasPartial {
+            if hasPartial && !acceptsDanglingSymlinkPartial(
+                transferResults,
+                plan: plan,
+                verified: verified
+            ) {
                 let committedPaths = sortedPaths(verified.keys)
                 currentBaseline = try await commit(
                     baseline: currentBaseline,
@@ -518,6 +522,29 @@ actor DevOperationRunner {
             }
         }
         return (verified, sortedPaths(requeued))
+    }
+
+    private func acceptsDanglingSymlinkPartial(
+        _ results: [DevRsyncResult],
+        plan: DevSyncPlan,
+        verified: [String: DevFileSignature]
+    ) -> Bool {
+        let partialResults = results.filter { $0.exitClass == .partial }
+        guard !partialResults.isEmpty else { return false }
+        let copyActions = plan.actions.filter { $0.kind == .copyPath }
+        return partialResults.allSatisfy { result in
+            let failures = result.stderrTail.split(whereSeparator: \Character.isNewline)
+            return !failures.isEmpty && failures.allSatisfy { failure in
+                copyActions.contains { action in
+                    guard failure.hasSuffix("error: \(action.relativePath): stat: No such file or directory"),
+                          action.preconditions.expectedSourceSignature?.kind == .symlink,
+                          let expectedTarget = action.preconditions.expectedSourceSignature?.symlinkTarget,
+                          let verifiedTarget = verified[action.relativePath]?.symlinkTarget
+                    else { return false }
+                    return expectedTarget == verifiedTarget
+                }
+            }
+        }
     }
 
     private func applyNonTransferActions(

@@ -138,6 +138,75 @@ final class DevSyncOperationRunnerTests: XCTestCase {
         XCTAssertNil(baseline)
     }
 
+    func testScenario77DanglingSymlinkPartialCommitsVerifiedLink() async throws {
+        let fixture = try await makeFixture()
+        let relativePath = "dangling-link"
+        let sourceURL = fixture.internalProject.appendingPathComponent(relativePath)
+        let destinationURL = fixture.externalProject.appendingPathComponent(relativePath)
+        try FileManager.default.createSymbolicLink(atPath: sourceURL.path, withDestinationPath: "missing-target")
+        try FileManager.default.createSymbolicLink(atPath: destinationURL.path, withDestinationPath: "missing-target")
+        let sourceSignature = try DevSnapshotScanner.signature(of: sourceURL, includeHash: false)
+        let destinationSignature = try DevSnapshotScanner.signature(of: destinationURL, includeHash: false)
+        let plan = DevSyncPlan(
+            pairID: fixture.pair.id,
+            projectID: fixture.project.id,
+            actions: [
+                copyAction(
+                    fixture: fixture,
+                    relativePath: relativePath,
+                    signature: sourceSignature,
+                    destinationSignature: destinationSignature
+                )
+            ],
+            manifestToExternal: [relativePath]
+        )
+
+        let outcome = await DevOperationRunner(context: fixture.context).run(
+            plan: plan,
+            kind: .reconcile,
+            baseline: nil,
+            plannerOutput: plannerOutput(plan: plan),
+            progress: { _, _ in }
+        )
+
+        XCTAssertEqual(outcome.operation.rsyncExitCode, 23)
+        XCTAssertEqual(outcome.operation.state, .committed)
+        XCTAssertNil(outcome.error)
+        XCTAssertEqual(outcome.committedPaths, [relativePath])
+        XCTAssertEqual(outcome.requeuedPaths, [])
+        let baseline = await awaitBaseline(fixture)
+        XCTAssertEqual(baseline?.entries[relativePath]?.signature.symlinkTarget, "missing-target")
+    }
+
+    func testScenario77MissingSourceAfterValidationStaysPartial() async throws {
+        let fixture = try await makeFixture()
+        let relativePath = "missing.swift"
+        let sourceURL = fixture.internalProject.appendingPathComponent(relativePath)
+        try Data("vanishes".utf8).write(to: sourceURL)
+        let signature = try DevSnapshotScanner.signature(of: sourceURL, includeHash: true)
+        let plan = copyPlan(fixture: fixture, relativePath: relativePath, signature: signature)
+        let runner = DevOperationRunner(context: fixture.context) { step in
+            if step == .validatePreconditions {
+                try FileManager.default.removeItem(at: sourceURL)
+            }
+        }
+
+        let outcome = await runner.run(
+            plan: plan,
+            kind: .reconcile,
+            baseline: nil,
+            plannerOutput: plannerOutput(plan: plan),
+            progress: { _, _ in }
+        )
+
+        XCTAssertEqual(outcome.operation.rsyncExitCode, 23)
+        XCTAssertEqual(outcome.operation.state, .failed)
+        XCTAssertEqual(outcome.requeuedPaths, [relativePath])
+        XCTAssertTrue(outcome.error?.contains("partial") == true)
+        let baseline = await awaitBaseline(fixture)
+        XCTAssertNil(baseline)
+    }
+
     func testScenario87CancelMidTransferKeepsDirtyState() async throws {
         var fixture = try await makeFixture()
         let relativePath = "slow.swift"
@@ -301,7 +370,12 @@ final class DevSyncOperationRunnerTests: XCTestCase {
         )
     }
 
-    private func copyAction(fixture: Fixture, relativePath: String, signature: DevFileSignature) -> DevSyncAction {
+    private func copyAction(
+        fixture: Fixture,
+        relativePath: String,
+        signature: DevFileSignature,
+        destinationSignature: DevFileSignature? = nil
+    ) -> DevSyncAction {
         DevSyncAction(
             kind: .copyPath,
             destinationSide: .external,
@@ -309,8 +383,8 @@ final class DevSyncOperationRunnerTests: XCTestCase {
             bytes: Int64(signature.size ?? 0),
             preconditions: DevActionPreconditions(
                 expectedSourceSignature: signature,
-                expectedDestinationSignature: nil,
-                expectDestinationAbsent: true,
+                expectedDestinationSignature: destinationSignature,
+                expectDestinationAbsent: destinationSignature == nil,
                 expectedVolumeIdentifier: fixture.pair.externalRoot.volumeIdentifier,
                 expectedProjectFingerprint: nil,
                 expectedParentKind: .directory,
