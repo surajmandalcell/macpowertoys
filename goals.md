@@ -17,7 +17,7 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 
 ```text
 Dev Sync overall            [███████████████████░] 68/69
-Checkup G7                  [██████░░░░░░░░░░░░░░] 2/6
+Checkup G7                  [██████████░░░░░░░░░░] 3/6
 G1 Foundation               [████████████████████] 15/15
 G2 Dev One-Way              [████████████████████] 14/14
 G3 Dev Bidirectional        [████████████████████] 10/10
@@ -211,8 +211,10 @@ G6 Everything mode          [█████████████████
   removes the Cloud Sync daemon line and dots and the System Monitor dot.
 - [~] 7.3 Input Devices redesign: equal cards, mouse horizontal scrolling,
   shared settings view for tray and launcher. Needs: worker inputdevices.
-- [~] 7.4 Tray popover: every tool's shared settings in the popover, no
-  extra space under the tab row. Needs: 7.3 shared view.
+- [x] 7.4 Tray popover: every tool's shared settings in the popover, no
+  extra space under the tab row. Check: `e5edb24`, `db075f4`; three
+  `TrayPopoverLayoutTests` measure the 8pt gap, the shared settings per
+  tool, and the 70% cap; installed-build check pending in 7.6.
 - [~] 7.5 Audit of every tool for performance and correctness, findings at
   `spec/troubleshoot/audit-2026-09-05.md`, grouped Forms on the gutter.
 - [ ] 7.6 Full suite green on the merged tree, signed install, live check
