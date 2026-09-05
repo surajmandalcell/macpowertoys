@@ -78,10 +78,11 @@ private struct InputCardSurface<Content: View>: View {
     }
 }
 
-private struct InputCardHeader: View {
+private struct InputCardHeader<Accessory: View>: View {
     let icon: String
     let title: String
     let detail: String
+    @ViewBuilder let accessory: Accessory
 
     var body: some View {
         HStack(spacing: 10) {
@@ -90,19 +91,22 @@ private struct InputCardHeader: View {
                 .frame(width: 30, height: 30)
                 .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    Text(detail)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    accessory
+                }
             }
-            Spacer(minLength: 8)
         }
-        .frame(height: 30)
+        .frame(height: 40)
     }
 }
 
@@ -115,12 +119,11 @@ struct InputDeviceCard: View {
 
     var body: some View {
         InputCardSurface {
-            HStack(alignment: .top, spacing: 10) {
-                InputCardHeader(
-                    icon: device.kind.icon,
-                    title: device.name,
-                    detail: device.isBuiltIn ? "\(device.kind.rawValue) · Built in" : device.kind.rawValue
-                )
+            InputCardHeader(
+                icon: device.kind.icon,
+                title: device.name,
+                detail: device.isBuiltIn ? "\(device.kind.rawValue) · Built in" : device.kind.rawValue
+            ) {
                 InputStateBadge(state: state)
             }
             QuietDivider()
@@ -208,6 +211,7 @@ struct InputSettingRow<Control: View>: View {
             Spacer(minLength: 12)
             control
                 .labelsHidden()
+                .toggleStyle(.switch)
                 .accessibilityLabel(label)
         }
         .frame(minHeight: 22)
@@ -223,16 +227,14 @@ struct InputScrollProfileCard: View {
 
     var body: some View {
         InputCardSurface {
-            HStack(alignment: .top, spacing: 10) {
-                InputCardHeader(icon: icon, title: title, detail: deviceDetail)
-                Toggle("Use this profile", isOn: $profile.enabled)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .accessibilityLabel("Use the \(title) profile")
-                    .help("Apply this profile to \(title.lowercased()) scroll events.")
-            }
+            InputCardHeader(icon: icon, title: title, detail: deviceDetail) { EmptyView() }
             QuietDivider()
+            InputSettingRow(
+                label: "Use this profile",
+                help: "Apply this profile to \(title.lowercased()) scroll events."
+            ) {
+                Toggle("Use this profile", isOn: $profile.enabled)
+            }
             settingRows
         }
         .controlSize(.small)

@@ -1,6 +1,6 @@
 import SwiftUI
 
-private enum InputDevicesPage: String, CaseIterable, Identifiable {
+enum InputDevicesPage: String, CaseIterable, Identifiable {
     case devices = "Devices"
     case scrolling = "Scrolling"
     case about = "About"
@@ -17,7 +17,11 @@ private enum InputDevicesPage: String, CaseIterable, Identifiable {
 
 struct InputDevicesWindowView: View {
     @State private var manager = InputDevicesManager.shared
-    @State private var page = InputDevicesPage.devices
+    @State private var page: InputDevicesPage
+
+    init(page: InputDevicesPage = .devices) {
+        _page = State(initialValue: page)
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -102,83 +106,11 @@ struct InputDevicesWindowView: View {
     }
 
     private var scrollingPage: some View {
-        WorkspacePage("Scrolling", subtitle: manager.interceptionActive ? "Control active" : "Control inactive") {
-            section("Scroll Control", card: true) {
-                InputSettingRow(
-                    label: "Adjust scrolling system wide",
-                    help: "Install the scroll event tap so these profiles apply outside MacPowerToys."
-                ) {
-                    Toggle("Adjust scrolling system wide", isOn: setting(
-                        get: { $0.scrollControlEnabled },
-                        set: { $0.scrollControlEnabled = $1 }
-                    ))
-                }
-                InputSettingRow(
-                    label: "Treat scroll events as",
-                    help: "Automatic sends continuous events to Trackpad and wheel notches to Mouse."
-                ) {
-                    Picker("Treat scroll events as", selection: setting(
-                        get: { $0.eventOverride },
-                        set: { $0.eventOverride = $1 }
-                    )) {
-                        ForEach(InputEventOverride.allCases) { option in
-                            Text(option.title).tag(option)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 160)
-                }
-                if !manager.permissionGranted {
-                    InputSettingRow(label: "Accessibility permission") {
-                        HStack(spacing: 8) {
-                            Button("Grant Permission") { manager.requestPermission() }
-                            Button("Open Privacy Settings") { manager.openPrivacySettings() }
-                        }
-                    }
-                }
-                if let errorMessage = manager.errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            section("Profiles") {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 320), spacing: 12)],
-                    alignment: .leading,
-                    spacing: 12
-                ) {
-                    InputScrollProfileCard(
-                        title: "Mouse",
-                        icon: InputDeviceDescriptor.Kind.mouse.icon,
-                        deviceCount: deviceCount(of: .mouse),
-                        profile: profileBinding(\.mouse)
-                    )
-                    InputScrollProfileCard(
-                        title: "Trackpad",
-                        icon: InputDeviceDescriptor.Kind.trackpad.icon,
-                        deviceCount: deviceCount(of: .trackpad),
-                        profile: profileBinding(\.trackpad)
-                    )
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func section<Content: View>(
-        _ title: String,
-        card: Bool = false,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 10) {
-                content()
-            }
-            .modifier(OptionalSectionCard(isEnabled: card))
+        WorkspacePage(
+            "Scrolling",
+            subtitle: manager.interceptionActive ? "Control active" : "Control inactive"
+        ) {
+            InputDevicesScrollSettings()
         }
     }
 
@@ -186,38 +118,6 @@ struct InputDevicesWindowView: View {
         kind == .mouse ? manager.settings.mouse : manager.settings.trackpad
     }
 
-    private func deviceCount(of kind: InputDeviceDescriptor.Kind) -> Int {
-        manager.devices.filter { $0.kind == kind }.count
-    }
-
-    private func setting<Value>(
-        get: @escaping (InputDevicesSettings) -> Value,
-        set: @escaping (inout InputDevicesSettings, Value) -> Void
-    ) -> Binding<Value> {
-        Binding(
-            get: { get(manager.settings) },
-            set: { value in manager.update { set(&$0, value) } }
-        )
-    }
-
-    private func profileBinding(
-        _ keyPath: WritableKeyPath<InputDevicesSettings, InputScrollProfile>
-    ) -> Binding<InputScrollProfile> {
-        setting(get: { $0[keyPath: keyPath] }, set: { $0[keyPath: keyPath] = $1 })
-    }
-}
-
-private struct OptionalSectionCard: ViewModifier {
-    let isEnabled: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if isEnabled {
-            content.utilitySectionCard()
-        } else {
-            content.frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
 }
 
 #Preview {

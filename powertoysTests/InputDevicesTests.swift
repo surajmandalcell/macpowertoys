@@ -132,6 +132,58 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(cardHeight(mouse), cardHeight(trackpad))
     }
 
+    /// The four gated switches are NSControls. The slider inherits the same
+    /// disabled environment but SwiftUI does not back it with an NSControl.
+    @MainActor
+    func testProfileRowsFollowTheirGates() {
+        XCTAssertEqual(
+            disabledControlCount(InputScrollProfileCard(
+                title: "Mouse",
+                icon: InputDeviceDescriptor.Kind.mouse.icon,
+                deviceCount: 1,
+                profile: .constant(InputScrollProfile())
+            )),
+            0
+        )
+        XCTAssertEqual(
+            disabledControlCount(InputScrollProfileCard(
+                title: "Mouse",
+                icon: InputDeviceDescriptor.Kind.mouse.icon,
+                deviceCount: 1,
+                profile: .constant(InputScrollProfile(horizontalEnabled: false))
+            )),
+            1
+        )
+        XCTAssertEqual(
+            disabledControlCount(InputScrollProfileCard(
+                title: "Mouse",
+                icon: InputDeviceDescriptor.Kind.mouse.icon,
+                deviceCount: 1,
+                profile: .constant(InputScrollProfile(enabled: false))
+            )),
+            4
+        )
+    }
+
+    @MainActor
+    private func disabledControlCount(_ view: some View, width: CGFloat = 340) -> Int {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: 400),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(rootView: view.frame(width: width))
+        window.contentView?.layoutSubtreeIfNeeded()
+        return controls(in: window.contentView!).filter { !$0.isEnabled }.count
+    }
+
+    private func controls(in view: NSView) -> [NSControl] {
+        var found = view.subviews.flatMap { controls(in: $0) }
+        if let control = view as? NSControl { found.append(control) }
+        return found
+    }
+
     @MainActor
     private func cardHeight(_ view: some View, width: CGFloat = 340) -> CGFloat {
         let hostingView = NSHostingView(rootView: view.frame(width: width))
