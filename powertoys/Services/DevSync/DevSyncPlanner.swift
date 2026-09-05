@@ -888,6 +888,21 @@ private nonisolated struct DevCatalogPlanningContext {
                 resourceIdentifier: nil
             )
         }
+        // A linked plain folder is not a repository, so neither walk reports it once the
+        // internal link exists. Its healthy link is the evidence that it is still there.
+        for project in input.knownProjects
+        where project.kind == .nonGit
+            && (project.residency == .externalResident || project.residency == .externalOnlyPendingLink)
+            && externalProjects[project.relativePath] == nil
+            && input.links.contains(where: { $0.linkRelativePath == project.relativePath && $0.state == .healthy }) {
+            externalProjects[project.relativePath] = DevDiscoveredProject(
+                relativePath: project.relativePath,
+                side: .external,
+                kind: .nonGit,
+                url: input.pair.externalRoot.url.appendingPathComponent(project.relativePath),
+                resourceIdentifier: project.externalResourceIdentifier
+            )
+        }
     }
 
     mutating func build() -> DevCatalogOutput {

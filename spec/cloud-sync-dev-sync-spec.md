@@ -1052,7 +1052,10 @@ pair.
 
 Dev Sync creates the link for each external-only project when it refreshes
 the catalog: at pair start and after every discovery pass while the drive is
-online. When a file, folder, or link already exists at the internal path, Dev
+online. A linked plain folder is not a repository, so once its internal link
+exists neither walk reports it again; the catalog keeps it external-resident
+as long as its managed link validates as healthy, and never marks it missing
+on that evidence alone. When a file, folder, or link already exists at the internal path, Dev
 Sync keeps it untouched, marks the project `Link missing` with the reason,
 and waits for the user to move the item aside or exclude the project.
 
