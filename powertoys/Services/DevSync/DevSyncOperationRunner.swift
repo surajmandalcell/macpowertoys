@@ -325,7 +325,7 @@ actor DevOperationRunner {
                     .volumeAvailableCapacityForImportantUsage
             }.value
             let probed = context.capabilitiesVolume(side)?.availableCapacity
-            let available = [measured, probed].compactMap { $0 }.min() ?? 0
+            let available = [measured, probed].compactMap { ($0 ?? 0) > 0 ? $0 : nil }.min() ?? 0
             let reserve = max(0, context.pair.configuration.safety.minimumFreeSpaceReserveBytes)
             let usable = max(0, available - reserve)
             guard required <= usable else {
