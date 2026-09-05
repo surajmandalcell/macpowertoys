@@ -16,12 +16,13 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [████████████████████] 63/63
+Dev Sync overall            [███████████████████░] 68/69
 G1 Foundation               [████████████████████] 15/15
 G2 Dev One-Way              [████████████████████] 14/14
 G3 Dev Bidirectional        [████████████████████] 10/10
 G4 Interface                [████████████████████] 11/11
 G5 Hardening and release    [████████████████████] 13/13
+G6 Everything mode          [█████████████████░░░] 5/6
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
@@ -181,6 +182,24 @@ G5 Hardening and release    [█████████████████
   never reach the drive, and accept dangling symlinks after an openrsync
   partial exit. Check: a fixture with `secrets/` and `*.log` ignored copies
   neither, and a dangling link commits to the baseline.
+
+### G6 Everything mode: sync all except junk
+
+- [x] 6.1 Ask the owner about every ambiguous folder class with real names
+  from the dev root. Check: answers recorded in the spec skip-list table.
+- [x] 6.2 Expand the skip list across ecosystems, keep `dist`, editor temp,
+  logs, game engines, and ML runs, drop Git ignore as a filter, and let
+  Git-tracked content win. Check: `testEverythingModeSkipListIsTheOnlyFilter`.
+- [x] 6.3 Root unit `Everything else` covering all non-repository content
+  with nested units and links carved out. Check:
+  `testRootUnitSyncsLooseContentAndLinksDriveOnlyFolders`.
+- [x] 6.4 Drive-only folders outside repositories become linked units at
+  the same internal path. Check: discovery, catalog, and engine tests.
+- [x] 6.5 Setup sheet without include switches, `What syncs` step, Rules
+  with Extra patterns, pair page grouped by top-level folder.
+- [ ] 6.6 Full suite green, signed install, everything-mode live check on a
+  fixture with loose files, `_docs`, nested repositories, `node_modules`,
+  `tmp`, and a drive-only folder.
 
 ## Current work
 

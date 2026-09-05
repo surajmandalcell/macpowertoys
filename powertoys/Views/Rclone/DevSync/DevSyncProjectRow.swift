@@ -51,9 +51,9 @@ struct DevSyncProjectRow: View {
         HStack(spacing: 10) {
             residencyChip
             VStack(alignment: .leading, spacing: 2) {
-                Text(project.name)
+                Text(project.displayName)
                     .font(.system(size: 13))
-                Text(project.relativePath)
+                Text(project.isRootUnit ? "Loose files and folders outside repositories" : project.relativePath)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -218,12 +218,14 @@ struct DevSyncProjectRow: View {
         .fixedSize()
         .focusEffectDisabled()
         .help("More project actions")
-        .accessibilityLabel("More actions for \(project.name)")
+        .accessibilityLabel("More actions for \(project.displayName)")
     }
 
     @ViewBuilder
     private var residencyActions: some View {
         switch project.residency {
+        case _ where project.isRootUnit:
+            EmptyView()
         case .mirrored, .internalOnlyPendingMirror:
             Button("Move to External") {
                 Task { await manager.moveToExternal(pairID: pair.id, projectID: project.id) }

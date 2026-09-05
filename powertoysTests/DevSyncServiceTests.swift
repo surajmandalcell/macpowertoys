@@ -122,15 +122,25 @@ final class DevSyncServiceTests: XCTestCase {
         let service = makeService()
         let preview = await service.preview(draft: draft)
 
-        let pair = try await service.createPair(draft: draft, approvedPreview: preview)
+        var pair = try await service.createPair(draft: draft, approvedPreview: preview)
+        for _ in 0..<100 {
+            let status = await service.status(pairID: pair.id)
+            let projects = await service.projects(pairID: pair.id)
+            if status?.state == .idle, projects.allSatisfy({ $0.state == .clean }) { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        let storedPairs = await service.pairs()
+        pair = try XCTUnwrap(storedPairs.first { $0.id == pair.id })
         let operations = await service.operations(pairID: pair.id, limit: 20)
+        let status = await service.status(pairID: pair.id)
 
         XCTAssertTrue(pair.hasCompletedFirstRun, operations.map { "\($0.state.rawValue):\($0.errorSummary ?? "none")" }.joined(separator: ", "))
-        XCTAssertEqual(pair.state, .idle)
+        XCTAssertEqual(status?.state, .idle)
         let projects = await service.projects(pairID: pair.id)
-        XCTAssertEqual(projects.count, 1)
+        XCTAssertEqual(projects.map(\.relativePath), ["app", ""])
         XCTAssertEqual(projects[0].residency, .mirrored)
         XCTAssertEqual(projects[0].state, .clean)
+        XCTAssertEqual(projects[1].state, .clean)
         XCTAssertEqual(
             try Data(contentsOf: fixture.externalRoot.appendingPathComponent("app/source.swift")),
             Data("source".utf8)

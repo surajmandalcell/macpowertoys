@@ -15,6 +15,8 @@ nonisolated struct DevDiscoveryResult: Equatable, Sendable {
     var unreadablePaths: [String]
     var complete: Bool
     var symlinksToExternal: [String: String]
+    /// Shallowest directories that exist on this side but not on the other side.
+    var externalOnlyDirectories: [String] = []
 }
 
 nonisolated struct DevRenameCandidate: Equatable, Sendable {
@@ -88,7 +90,8 @@ nonisolated enum DevProjectDiscovery {
             }.sorted { $0.id < $1.id },
             unreadablePaths: scan.unreadablePaths.sorted(),
             complete: scan.complete,
-            symlinksToExternal: scan.symlinksToExternal
+            symlinksToExternal: scan.symlinksToExternal,
+            externalOnlyDirectories: scan.externalOnlyDirectories.sorted()
         )
     }
 
@@ -212,6 +215,7 @@ private nonisolated struct DevDiscoveryScan: Sendable {
     var unreadablePaths: [String] = []
     var complete = true
     var symlinksToExternal: [String: String] = [:]
+    var externalOnlyDirectories: [String] = []
 }
 
 private nonisolated struct DevDiscoveryScanner {
@@ -275,6 +279,12 @@ private nonisolated struct DevDiscoveryScanner {
 
         if isBareRepository(at: directory) {
             addCandidate(relativePath: relativePath, kind: .bareRepository)
+            return
+        }
+
+        if side == .external, !relativePath.isEmpty, let otherRootPath,
+           lstatMode(at: URL(fileURLWithPath: otherRootPath).appendingPathComponent(relativePath)) == nil {
+            result.externalOnlyDirectories.append(relativePath)
             return
         }
 

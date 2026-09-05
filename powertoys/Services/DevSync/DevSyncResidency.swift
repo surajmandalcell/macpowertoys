@@ -66,8 +66,8 @@ nonisolated enum DevResidencyConversion {
             progress(1.0 / 11.0)
 
             try await persist(&operation, state: .planned, store: context.stateStore)
-            let internalProject = context.internalRoot.appendingPathComponent(project.relativePath).standardizedFileURL
-            let externalProject = context.externalRoot.appendingPathComponent(project.relativePath).standardizedFileURL
+            let internalProject = context.internalRoot.devProjectURL(project.relativePath, isDirectory: false).standardizedFileURL
+            let externalProject = context.externalRoot.devProjectURL(project.relativePath, isDirectory: false).standardizedFileURL
             try await verifyProjectIdentity(context: context, source: internalProject, existingTarget: externalProject)
             progress(2.0 / 11.0)
 
@@ -249,8 +249,8 @@ nonisolated enum DevResidencyConversion {
             progress(1.0 / 9.0)
 
             try await persist(&operation, state: .planned, store: context.stateStore)
-            let internalProject = context.internalRoot.appendingPathComponent(project.relativePath).standardizedFileURL
-            let externalProject = context.externalRoot.appendingPathComponent(project.relativePath).standardizedFileURL
+            let internalProject = context.internalRoot.devProjectURL(project.relativePath, isDirectory: false).standardizedFileURL
+            let externalProject = context.externalRoot.devProjectURL(project.relativePath, isDirectory: false).standardizedFileURL
             guard let link = await context.linkManager.links().first(where: { $0.projectID == project.id }) else {
                 throw DevResidencyError.unexpectedInternalPath(internalProject.path)
             }
@@ -412,8 +412,8 @@ nonisolated enum DevResidencyConversion {
 
         do {
             try await persist(&operation, state: .planned, store: context.stateStore)
-            let internalProject = context.internalRoot.appendingPathComponent(project.relativePath).standardizedFileURL
-            let externalProject = context.externalRoot.appendingPathComponent(project.relativePath).standardizedFileURL
+            let internalProject = context.internalRoot.devProjectURL(project.relativePath, isDirectory: false).standardizedFileURL
+            let externalProject = context.externalRoot.devProjectURL(project.relativePath, isDirectory: false).standardizedFileURL
             guard entryKind(at: internalProject) == nil, entryKind(at: externalProject) == .directory else {
                 throw DevResidencyError.wrongResidency
             }

@@ -126,6 +126,59 @@ final class DevSyncPairEngineTests: XCTestCase {
         }
     }
 
+    func testRootUnitSyncsLooseContentAndLinksDriveOnlyFolders() async throws {
+        let fixture = try await makeFixture()
+        let internalRoot = fixture.internalProject.deletingLastPathComponent()
+        let externalRoot = fixture.externalProject.deletingLastPathComponent()
+        try Data("notes".utf8).write(to: internalRoot.appendingPathComponent("notes.md"))
+        try FileManager.default.createDirectory(at: internalRoot.appendingPathComponent("_docs"), withIntermediateDirectories: true)
+        try Data("guide".utf8).write(to: internalRoot.appendingPathComponent("_docs/guide.md"))
+        try FileManager.default.createDirectory(at: internalRoot.appendingPathComponent("node_modules/pkg"), withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: internalRoot.appendingPathComponent("node_modules/pkg/index.js"))
+        try FileManager.default.createDirectory(at: externalRoot.appendingPathComponent("data/deep"), withIntermediateDirectories: true)
+        try Data("blob".utf8).write(to: externalRoot.appendingPathComponent("data/deep/blob.bin"))
+
+        await fixture.engine.start()
+        for _ in 0..<12 {
+            let projects = await fixture.engine.projects()
+            let status = await fixture.engine.status()
+            let links = await fixture.engine.links()
+            let line = "DIAG state=\(status.state.rawValue) detail=\(status.phaseDetail ?? "-") err=\(status.lastError ?? "-") projects=\(projects.map { "\($0.relativePath.isEmpty ? "<root>" : $0.relativePath):\($0.residency.rawValue):\($0.state.rawValue):\($0.lastError ?? "-")" }) links=\(links.map { "\($0.linkRelativePath):\($0.state.rawValue)" })\n"
+            try? line.data(using: .utf8)?.write(to: URL(fileURLWithPath: "/private/tmp/claude-501/-Users-surajmandal-dev-personal-powertoys/a1b9e7ea-13e7-4d6b-970c-4b5256bfe703/scratchpad/diag-output.txt"), options: .atomic)
+            if projects.contains(where: { $0.isRootUnit }) && projects.contains(where: { $0.relativePath == "data" && $0.residency == .externalResident }) { break }
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        try await waitUntil {
+            let projects = await fixture.engine.projects()
+            return projects.contains { $0.isRootUnit } && projects.contains { $0.relativePath == "data" && $0.residency == .externalResident }
+        }
+        XCTAssertEqual(
+            try FileManager.default.destinationOfSymbolicLink(atPath: internalRoot.appendingPathComponent("data").path),
+            externalRoot.appendingPathComponent("data").standardizedFileURL.path
+        )
+
+        await fixture.engine.syncNow()
+        var trace = ""
+        for _ in 0..<12 {
+            let projects = await fixture.engine.projects()
+            let status = await fixture.engine.status()
+            let operations = await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20)
+            trace += "DIAG2 state=\(status.state.rawValue) detail=\(status.phaseDetail ?? "-") err=\(status.lastError ?? "-") projects=\(projects.map { "\($0.relativePath.isEmpty ? "<root>" : $0.relativePath):\($0.state.rawValue):\($0.lastError ?? "-")" }) ops=\(operations.map { "\($0.kind.rawValue):\($0.state.rawValue):\($0.errorSummary ?? "-"):\($0.plan.actions.count)" })\n"
+            try? trace.data(using: .utf8)?.write(to: URL(fileURLWithPath: "/private/tmp/claude-501/-Users-surajmandal-dev-personal-powertoys/a1b9e7ea-13e7-4d6b-970c-4b5256bfe703/scratchpad/diag-output.txt"), options: .atomic)
+            if FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("notes.md").path) { break }
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        try await waitUntil(timeout: 5) {
+            FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("_docs/guide.md").path)
+                && FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("notes.md").path)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: externalRoot.appendingPathComponent("node_modules").path))
+        let rootUnit = await fixture.engine.projects().first { $0.isRootUnit }
+        XCTAssertEqual(rootUnit?.displayName, "Everything else")
+        let operations = await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20)
+        XCTAssertFalse(operations.contains { $0.plan.actions.contains { $0.relativePath.hasPrefix("app/") } }, "the root unit must carve out the nested repository")
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneBatch() async throws {
         let fixture = try await makeFixture()
         await fixture.engine.start()
@@ -165,7 +218,7 @@ final class DevSyncPairEngineTests: XCTestCase {
     func testScenario24GitManifestFiltersPairEnginePlan() async throws {
         let fixture = try await makeFixture(
             gitRepository: true,
-            configure: { $0.policy.includeGitMetadata = false }
+            configure: { $0.policy.includeGitMetadata = false; $0.policy.followGitIgnore = true }
         )
         try commitTrackedFixture(at: fixture.internalProject)
         try replaceExternalRepositoryWithClone(fixture)
@@ -194,6 +247,7 @@ final class DevSyncPairEngineTests: XCTestCase {
         try addIgnoredFixtureFiles(at: internalProject)
         var configuration = DevSyncConfiguration.default
         configuration.policy.includeGitMetadata = false
+        configuration.policy.followGitIgnore = true
         configuration.safety.minimumFreeSpaceReserveBytes = 0
         let service = DevSyncService(
             stateStore: DevSyncStateStore(rootURL: temporaryRoot.appendingPathComponent("preview-state")),

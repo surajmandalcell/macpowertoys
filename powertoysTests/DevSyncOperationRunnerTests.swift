@@ -138,6 +138,37 @@ final class DevSyncOperationRunnerTests: XCTestCase {
         XCTAssertNil(baseline)
     }
 
+    func testSymlinkedDestinationParentIsRejectedBeforeAnyWrite() async throws {
+        let fixture = try await makeFixture()
+        let outside = temporaryRoot.appendingPathComponent("outside", isDirectory: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: fixture.internalProject.appendingPathComponent("linked"), withIntermediateDirectories: true)
+        let sourceURL = fixture.internalProject.appendingPathComponent("linked/file.txt")
+        try Data("payload".utf8).write(to: sourceURL)
+        try FileManager.default.createSymbolicLink(atPath: fixture.externalProject.appendingPathComponent("linked").path, withDestinationPath: outside.path)
+        let sourceSignature = try DevSnapshotScanner.signature(of: sourceURL, includeHash: false)
+        let plan = DevSyncPlan(
+            pairID: fixture.pair.id,
+            projectID: fixture.project.id,
+            actions: [copyAction(fixture: fixture, relativePath: "linked/file.txt", signature: sourceSignature, destinationSignature: nil)],
+            manifestToExternal: ["linked/file.txt"]
+        )
+
+        let outcome = await DevOperationRunner(context: fixture.context).run(
+            plan: plan,
+            kind: .reconcile,
+            baseline: nil,
+            plannerOutput: plannerOutput(plan: plan),
+            progress: { _, _ in }
+        )
+
+        XCTAssertEqual(outcome.operation.state, .failed)
+        XCTAssertTrue(outcome.error?.contains("unsafe action") == true, outcome.error ?? "nil")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside.appendingPathComponent("file.txt").path))
+        XCTAssertFalse(DevRelativePath.isSafe("../escape.txt"))
+        XCTAssertFalse(DevRelativePath.isSafe("/etc/passwd"))
+    }
+
     func testScenario77DanglingSymlinkPartialCommitsVerifiedLink() async throws {
         let fixture = try await makeFixture()
         let relativePath = "dangling-link"

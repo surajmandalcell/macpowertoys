@@ -229,6 +229,7 @@ actor DevDirtyScheduler {
     private var pending: [UUID: Pending] = [:]
     private var lastCompletion: [UUID: Date] = [:]
     private var attemptCounts: [UUID: Int] = [:]
+    private var retryNotBefore: [UUID: Date] = [:]
 
     init(
         timing: DevSyncConfiguration.Timing,
@@ -376,11 +377,17 @@ actor DevDirtyScheduler {
     func complete(projectID: UUID, at date: Date? = nil) {
         lastCompletion[projectID] = date ?? now()
         attemptCounts[projectID] = nil
+        retryNotBefore[projectID] = nil
     }
 
-    func requeue(_ generation: DevDirtyGeneration) {
+    func requeue(_ generation: DevDirtyGeneration, backoff: Bool = false) {
         let projectID = generation.projectID
         attemptCounts[projectID, default: 0] += 1
+        if backoff {
+            let attempts = attemptCounts[projectID, default: 1]
+            let delay = min(pow(2, Double(min(attempts, 8))), 300)
+            retryNotBefore[projectID] = now().addingTimeInterval(delay)
+        }
         guard var item = pending[projectID] else {
             var generation = generation
             if generation.paths == nil {
@@ -478,6 +485,7 @@ actor DevDirtyScheduler {
 
     private func isDue(_ item: Pending, at date: Date) -> Bool {
         if item.dueNow { return true }
+        if let notBefore = retryNotBefore[item.generation.projectID], notBefore > date { return false }
         guard !timing.isManualOnly else { return false }
         guard let dueDate = nextDueDate(for: item, now: date), dueDate <= date else { return false }
         if let completedAt = lastCompletion[item.generation.projectID], timing.minimumProjectIntervalSeconds > 0 {

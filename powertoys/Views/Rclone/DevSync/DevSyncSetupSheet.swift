@@ -20,7 +20,7 @@ enum DevSetupStep: Int, CaseIterable, Identifiable {
         switch self {
         case .roots: return "Roots"
         case .compatibility: return "Compatibility"
-        case .projects: return "Projects"
+        case .projects: return "What syncs"
         case .rules: return "Rules"
         case .activity: return "Activity"
         case .preview: return "Preview"
@@ -437,8 +437,12 @@ private struct DevSyncSetupProjectsStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Text("Everything under the internal root syncs. Git repositories sync as units; every other file and folder syncs as one unit. Only the skip list is left out: caches, dependency checkouts, build outputs, and tmp folders. Git-tracked content inside those still syncs.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if model.groups.isEmpty {
-                Text(model.isWorking ? "Looking for projects…" : "No projects found in these roots.")
+                Text(model.isWorking ? "Looking for repositories…" : "No repositories found in these roots.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -462,15 +466,8 @@ private struct DevSyncSetupProjectItemRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Toggle(isOn: Binding(
-                    get: { model.isIncluded(item, in: group) },
-                    set: { model.setIncluded($0, for: item, in: group) }
-                )) {
-                    Text(item.name)
-                        .font(.system(size: 12))
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                Text(item.relativePath.isEmpty ? "Everything else" : item.name)
+                    .font(.system(size: 12))
 
                 Spacer(minLength: 8)
 
@@ -479,7 +476,7 @@ private struct DevSyncSetupProjectItemRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text(item.relativePath)
+            Text(item.relativePath.isEmpty ? "loose files and folders outside repositories" : item.relativePath)
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

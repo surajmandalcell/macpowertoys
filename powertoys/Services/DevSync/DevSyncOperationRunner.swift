@@ -57,7 +57,7 @@ nonisolated enum DevOperationRunnerStep: Int, CaseIterable, Sendable {
 nonisolated enum DevOperationRunnerError: LocalizedError, Sendable {
     case rootUnavailable
     case identityMismatch
-    case invalidAction
+    case invalidAction(String)
     case preconditionChanged(String)
     case notEnoughSpace(required: Int64, available: Int64, reserve: Int64)
     case readOnlyVolume
@@ -68,7 +68,7 @@ nonisolated enum DevOperationRunnerError: LocalizedError, Sendable {
         switch self {
         case .rootUnavailable: "A Dev Sync root is unavailable."
         case .identityMismatch: "Wrong drive."
-        case .invalidAction: "The plan contains an unsafe action."
+        case .invalidAction(let reason): "The plan contains an unsafe action (\(reason))."
         case .preconditionChanged: "A planned path changed before the operation started."
         case .notEnoughSpace(let required, let available, let reserve):
             "Not enough space. \(ByteCountFormatter.string(fromByteCount: max(0, required - available), countStyle: .file)) more is required after the \(ByteCountFormatter.string(fromByteCount: reserve, countStyle: .file)) reserve."
@@ -317,7 +317,7 @@ actor DevOperationRunner {
                 guard DevRelativePath.isSafe(action.relativePath),
                       action.preconditions.policySchemaVersion == context.pair.configuration.policySchemaVersion,
                       action.preconditions.expectedVolumeIdentifier == context.pair.root(for: action.destinationSide).volumeIdentifier
-                else { throw DevOperationRunnerError.invalidAction }
+                else { throw DevOperationRunnerError.invalidAction("validate:320") }
 
                 let destinationRoot = Self.projectRoot(context: context, side: action.destinationSide)
                 let sourceRoot = Self.projectRoot(context: context, side: action.destinationSide.opposite)
@@ -583,7 +583,7 @@ actor DevOperationRunner {
                     verified[action.destinationRelativePath ?? action.relativePath] = signature
                 }
             case .createManagedLink:
-                guard let project = context.project else { throw DevOperationRunnerError.invalidAction }
+                guard let project = context.project else { throw DevOperationRunnerError.invalidAction("applyNonTransferActions:586") }
                 _ = try await context.linkManager.create(
                     project: project,
                     internalRoot: context.internalRoot,
@@ -593,7 +593,7 @@ actor DevOperationRunner {
                 )
             case .repairManagedLink:
                 guard let link = await context.linkManager.links().first(where: { $0.projectID == context.project?.id }) else {
-                    throw DevOperationRunnerError.invalidAction
+                    throw DevOperationRunnerError.invalidAction("applyNonTransferActions:596")
                 }
                 _ = try await context.linkManager.repair(
                     link,
@@ -604,7 +604,7 @@ actor DevOperationRunner {
                 )
             case .removeManagedLink:
                 guard let link = await context.linkManager.links().first(where: { $0.projectID == context.project?.id }) else {
-                    throw DevOperationRunnerError.invalidAction
+                    throw DevOperationRunnerError.invalidAction("applyNonTransferActions:607")
                 }
                 try await context.linkManager.remove(link, internalRoot: context.internalRoot, operationID: UUID())
             case .establishBaseline:
@@ -764,7 +764,7 @@ actor DevOperationRunner {
     fileprivate nonisolated static func projectRoot(context: DevOperationContext, side: DevSyncSide) -> URL {
         let root = side == .internal ? context.internalRoot : context.externalRoot
         guard let project = context.project else { return root }
-        return root.appendingPathComponent(project.relativePath, isDirectory: true)
+        return root.devProjectURL(project.relativePath)
     }
 
     private nonisolated static func requireDestination(
@@ -806,33 +806,30 @@ actor DevOperationRunner {
     }
 
     private nonisolated static func validateParents(of url: URL, below root: URL) throws {
-        let rootPath = root.standardizedFileURL.path
-        let parent = url.deletingLastPathComponent().standardizedFileURL
-        let parentPath = parent.path
+        let rootPath = root.path
+        let parentPath = url.deletingLastPathComponent().path
         guard parentPath == rootPath || parentPath.hasPrefix(rootPath + "/") else {
-            throw DevOperationRunnerError.invalidAction
+            throw DevOperationRunnerError.invalidAction("parent \(parentPath) is outside \(rootPath)")
         }
         var current = root
         let relative = String(parentPath.dropFirst(rootPath.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if entryKind(at: root) == .symlink { throw DevOperationRunnerError.invalidAction }
+        if entryKind(at: root) == .symlink { throw DevOperationRunnerError.invalidAction("validateParents:817") }
         for component in relative.split(separator: "/") {
             current.appendPathComponent(String(component), isDirectory: true)
-            if entryKind(at: current) == .symlink { throw DevOperationRunnerError.invalidAction }
+            if entryKind(at: current) == .symlink { throw DevOperationRunnerError.invalidAction("validateParents:820") }
         }
     }
 
     fileprivate nonisolated static func createDirectory(_ directory: URL, below root: URL) throws {
-        let root = root.standardizedFileURL
-        let directory = directory.standardizedFileURL
         guard directory.path == root.path || directory.path.hasPrefix(root.path + "/"), entryKind(at: root) == .directory else {
-            throw DevOperationRunnerError.invalidAction
+            throw DevOperationRunnerError.invalidAction("createDirectory:828")
         }
         var current = root
         let relative = String(directory.path.dropFirst(root.path.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         for component in relative.split(separator: "/") {
             current.appendPathComponent(String(component), isDirectory: true)
             if let kind = entryKind(at: current) {
-                guard kind == .directory else { throw DevOperationRunnerError.invalidAction }
+                guard kind == .directory else { throw DevOperationRunnerError.invalidAction("createDirectory:835") }
             } else {
                 try FileManager.default.createDirectory(at: current, withIntermediateDirectories: false)
             }

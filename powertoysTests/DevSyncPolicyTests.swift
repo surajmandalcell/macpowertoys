@@ -47,6 +47,7 @@ final class DevSyncPolicyTests: XCTestCase {
         XCTAssertEqual(decision.reason, .sensitiveSizeGuard)
         XCTAssertFalse(decision.included)
 
+        policy.followGitIgnore = true
         let ignored = engine(policy: policy, gitIgnored: [".env.local"]).decide(
             DevPolicyInput(relativePath: ".env.local", kind: .file, size: 1, isInsideGitDirectory: false)
         )
@@ -114,9 +115,15 @@ final class DevSyncPolicyTests: XCTestCase {
         XCTAssertTrue(decision.included)
     }
 
+    private var gitIgnorePolicy: DevSyncConfiguration.Policy {
+        var policy = DevSyncConfiguration.Policy()
+        policy.followGitIgnore = true
+        return policy
+    }
+
     func testGitIgnoreBeatsCommonExclusion() {
         let path = "node_modules/index.js"
-        let decision = engine(gitIgnored: [path]).decide(
+        let decision = engine(policy: gitIgnorePolicy, gitIgnored: [path]).decide(
             DevPolicyInput(relativePath: path, kind: .file, size: 1, isInsideGitDirectory: false)
         )
 
@@ -125,7 +132,7 @@ final class DevSyncPolicyTests: XCTestCase {
     }
 
     func testScenario24GitManifestIncludesOnlyMemberDirectories() {
-        let policyEngine = engine(gitManifest: ["Sources/App.swift"])
+        let policyEngine = engine(policy: gitIgnorePolicy, gitManifest: ["Sources/App.swift"])
 
         let memberDirectory = policyEngine.decide(
             DevPolicyInput(relativePath: "Sources", kind: .directory, size: 64, isInsideGitDirectory: false)
@@ -182,20 +189,48 @@ final class DevSyncPolicyTests: XCTestCase {
         )
         XCTAssertEqual(cache.reason, .commonExclusion)
 
-        var policy = DevSyncConfiguration.Policy()
-        policy.skipUnignoredBuildOutputs = true
-        let build = engine(policy: policy).decide(
-            DevPolicyInput(relativePath: "dist/app.js", kind: .file, size: 1, isInsideGitDirectory: false)
+        let build = engine().decide(
+            DevPolicyInput(relativePath: "build/app.o", kind: .file, size: 1, isInsideGitDirectory: false)
         )
         XCTAssertEqual(build.reason, .buildOutputExclusion)
         XCTAssertFalse(build.included)
-        let includedByDefault = engine().decide(
+        var policy = DevSyncConfiguration.Policy()
+        policy.skipUnignoredBuildOutputs = false
+        let includedWhenOff = engine(policy: policy).decide(
+            DevPolicyInput(relativePath: "build/app.o", kind: .file, size: 1, isInsideGitDirectory: false)
+        )
+        XCTAssertEqual(includedWhenOff.reason, .defaultInclusion)
+        let distKept = engine().decide(
             DevPolicyInput(relativePath: "dist/app.js", kind: .file, size: 1, isInsideGitDirectory: false)
         )
-        XCTAssertEqual(includedByDefault.reason, .defaultInclusion)
-        XCTAssertTrue(includedByDefault.included)
+        XCTAssertEqual(distKept.reason, .defaultInclusion)
         XCTAssertTrue(DevFilePolicyEngine.isCommonCachePath("project/node_modules/a.js"))
-        XCTAssertTrue(DevFilePolicyEngine.isBuildOutputPath("project/dist/a.js"))
+        XCTAssertTrue(DevFilePolicyEngine.isBuildOutputPath("project/build/a.o"))
+        XCTAssertFalse(DevFilePolicyEngine.isBuildOutputPath("project/dist/a.js"))
+    }
+
+    func testEverythingModeSkipListIsTheOnlyFilter() {
+        let tracked: Set<String> = ["vendor/lib.go", "build/script.sh", "src/main.swift"]
+        let policyEngine = engine(gitTracked: tracked, gitManifest: tracked, gitIgnored: ["data/local.sqlite", "notes.swp"])
+        func reason(_ path: String, kind: DevEntryKind = .file) -> DevFilePolicyReason {
+            policyEngine.decide(DevPolicyInput(relativePath: path, kind: kind, size: 1, isInsideGitDirectory: false)).reason
+        }
+        XCTAssertEqual(reason("data/local.sqlite"), .defaultInclusion)
+        XCTAssertEqual(reason("notes.swp"), .defaultInclusion)
+        XCTAssertEqual(reason("dist/app.exe"), .defaultInclusion)
+        XCTAssertEqual(reason("_docs/plan.md"), .defaultInclusion)
+        XCTAssertEqual(reason(".claude/settings.json"), .defaultInclusion)
+        XCTAssertEqual(reason("logs/run.log"), .defaultInclusion)
+        XCTAssertEqual(reason("tmp/scratch.txt"), .commonExclusion)
+        XCTAssertEqual(reason("tmp", kind: .directory), .commonExclusion)
+        XCTAssertEqual(reason("app/.venv/bin/python"), .commonExclusion)
+        XCTAssertEqual(reason("ios/Pods/Alamofire/a.swift"), .commonExclusion)
+        XCTAssertEqual(reason("vendor/lib.go"), .gitTracked)
+        XCTAssertEqual(reason("vendor", kind: .directory), .gitTracked)
+        XCTAssertEqual(reason("vendor/untracked.o"), .commonExclusion)
+        XCTAssertEqual(reason("build/script.sh"), .gitTracked)
+        XCTAssertEqual(reason("build/out.o"), .buildOutputExclusion)
+        XCTAssertEqual(reason(".DS_Store"), .commonExclusion)
     }
 
     func testSensitivePatternsDoNotSearchExcludedCaches() {

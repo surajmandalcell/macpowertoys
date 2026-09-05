@@ -52,6 +52,7 @@ nonisolated enum DevSnapshotScanner {
         policy: DevPathPolicy,
         gitDirectoryRelativePath: String?,
         managedLinkPaths: Set<String>,
+        nestedProjectPaths: Set<String> = [],
         collisionKeyCaseInsensitive: Bool,
         hashPaths: Set<String>,
         limitToPaths: Set<String>? = nil
@@ -62,6 +63,7 @@ nonisolated enum DevSnapshotScanner {
                 policy: policy,
                 gitDirectoryRelativePath: gitDirectoryRelativePath,
                 managedLinkPaths: managedLinkPaths,
+                nestedProjectPaths: nestedProjectPaths,
                 collisionKeyCaseInsensitive: collisionKeyCaseInsensitive,
                 hashPaths: hashPaths,
                 limitToPaths: limitToPaths
@@ -213,6 +215,7 @@ nonisolated enum DevSnapshotScanner {
         policy: DevPathPolicy,
         gitDirectoryRelativePath: String?,
         managedLinkPaths: Set<String>,
+        nestedProjectPaths: Set<String>,
         collisionKeyCaseInsensitive: Bool,
         hashPaths: Set<String>,
         limitToPaths: Set<String>?
@@ -235,6 +238,7 @@ nonisolated enum DevSnapshotScanner {
                 policy: policy,
                 gitDirectoryRelativePath: gitDirectoryRelativePath,
                 managedLinkPaths: managedLinkPaths,
+                nestedProjectPaths: nestedProjectPaths,
                 hashPaths: hashPaths,
                 limitTargets: limitTargets,
                 limitMembers: limitMembers,
@@ -257,6 +261,7 @@ nonisolated enum DevSnapshotScanner {
         policy: DevPathPolicy,
         gitDirectoryRelativePath: String?,
         managedLinkPaths: Set<String>,
+        nestedProjectPaths: Set<String>,
         hashPaths: Set<String>,
         limitTargets: Set<String>?,
         limitMembers: Set<String>?,
@@ -295,6 +300,8 @@ nonisolated enum DevSnapshotScanner {
                 decision = .exclude(.cloudSyncInternalPath)
             } else if managedLinkPaths.contains(relativePath) {
                 decision = .exclude(.managedLink)
+            } else if nestedProjectPaths.contains(relativePath) {
+                decision = .exclude(.separateProject)
             } else {
                 decision = policy.decide(
                     relativePath: relativePath,
@@ -327,6 +334,7 @@ nonisolated enum DevSnapshotScanner {
                     policy: policy,
                     gitDirectoryRelativePath: gitDirectoryRelativePath,
                     managedLinkPaths: managedLinkPaths,
+                    nestedProjectPaths: nestedProjectPaths,
                     hashPaths: hashPaths,
                     limitTargets: limitTargets,
                     limitMembers: limitMembers,

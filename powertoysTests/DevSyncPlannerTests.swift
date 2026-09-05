@@ -659,6 +659,30 @@ final class DevSyncPlannerTests: XCTestCase {
         DevManagedLink(projectID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, linkRelativePath: path, targetVolumeIdentifier: "external", targetRelativePath: path, lastWrittenTargetText: "/external/\(path)", linkResourceIdentifier: nil, state: state, createdAt: now, lastValidatedAt: now, adoptedFromUserLink: false)
     }
 
+    func testCatalogAlwaysEndsWithRootUnitAndLinksDriveOnlyDirectories() {
+        let output = DevCatalogPlanner.plan(
+            DevCatalogInput(
+                pair: makePair(mode: .devOneWay),
+                knownProjects: [],
+                internalDiscovery: DevDiscoveryResult(projects: [], candidates: [], unreadablePaths: [], complete: true, symlinksToExternal: [:]),
+                externalDiscovery: DevDiscoveryResult(projects: [], candidates: [], unreadablePaths: [], complete: true, symlinksToExternal: [:], externalOnlyDirectories: ["organization/lambton/meallens-data"]),
+                links: [],
+                internalIdentities: [:],
+                externalIdentities: [:],
+                excludedProjectPaths: [],
+                includedCandidatePaths: [],
+                adoptedLinkPaths: [],
+                linkableExternalDirectories: ["organization/lambton/meallens-data"]
+            )
+        )
+        XCTAssertEqual(output.projects.map(\.relativePath), ["organization/lambton/meallens-data", ""])
+        XCTAssertEqual(output.projects.last?.residency, .mirrored)
+        XCTAssertEqual(output.projects.last?.explicitlyIncluded, true)
+        XCTAssertEqual(output.projects.first?.residency, .externalOnlyPendingLink)
+        XCTAssertEqual(output.projects.first?.kind, .nonGit)
+        XCTAssertEqual(output.projectsToLink.map(\.relativePath), ["organization/lambton/meallens-data"])
+    }
+
     private func catalog(
         mode: DevSyncMode = .devBidirectional,
         known: [DevProject] = [],

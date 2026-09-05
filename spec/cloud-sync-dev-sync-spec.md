@@ -373,18 +373,32 @@ accepted outer project root, inspects Git topology below the root without
 treating every submodule as a project, preserves category directories, reports
 unreadable paths, and returns a complete or incomplete flag.
 
-The outermost repository is the project unit. A monorepo with many
-`package.json` files is one project unless the user splits it. A nested
-independent repository can be offered as a candidate. A submodule is never
-auto-added.
+Everything under the internal root syncs. There is no project picker and no
+include switch. The catalog has two kinds of unit:
 
-Non-Git markers (`Package.swift`, `.xcodeproj`, `.xcworkspace`,
-`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`,
-`build.gradle`, `settings.gradle`, `CMakeLists.txt`, `.sln`, `.csproj`,
-`pubspec.yaml`, `Gemfile`, `composer.json`, `terraform.tf`) never create a
-project automatically. They appear as unmanaged candidates with Add and Ignore
-actions. The default scope is recognized project roots, not every directory
-below the root.
+- Every outermost Git repository at any depth is one unit. A monorepo with
+  many `package.json` files is one unit unless the user splits it. A nested
+  independent repository can be offered as a candidate. A submodule is never
+  auto-added.
+- The root unit, shown as `Everything else`, covers every file and folder
+  that is not inside a repository unit and not a managed link: loose files
+  at the root, category folders such as `docs` and `organization`, and every
+  `_`-prefixed folder such as `_docs`, `_assets`, `_evidence`, and
+  `_archive`. Its relative path is empty, and its scans carve out every
+  nested unit and link as `Separate project` or `Managed link`.
+
+Non-Git markers (`Package.swift`, `.xcodeproj`, `package.json`, and the rest
+of the marker list) never create a unit. A marker folder is ordinary content
+of the root unit. It becomes its own unit only when the user includes it as a
+candidate.
+
+Drive-only folders: during the external walk, the shallowest directory that
+exists on the drive but not on the Mac, outside every repository unit, is a
+linkable directory. The catalog turns it into a nonGit unit with residency
+`externalOnlyPendingLink`, and the engine creates the managed link at the
+same internal path, exactly like a drive-only repository. A folder that the
+root unit's baseline already knows was mirrored is a deletion on the Mac,
+not a linkable directory; it follows the normal mirror rule with retention.
 
 ### Project identity
 
@@ -443,11 +457,15 @@ Precedence, highest first:
 4. Sensitive and local-file override.
 5. Required Git metadata rule.
 6. Git tracked-file inclusion.
-7. Git ignore result.
-8. Common high-churn exclusion.
-9. Default project inclusion.
+7. Git ignore result (off by default; the skip list is the only filter).
+8. Skip list: caches, dependency checkouts, build outputs, and temporary
+   folders.
+9. Default inclusion.
 
 Rules 1 and 2 are hard. An explicit user rule overrides the sensitive default.
+Rule 6 sits above rule 8 on purpose: Git-tracked content inside a skip-list
+folder such as a committed `vendor/` or `build/` still syncs, while untracked
+files beside it are skipped.
 
 Object types are detected by `lstat`, never by name. Cloud Sync internal paths
 are the configured `.cloudsync-system`, `.cloudsync-partial`,
@@ -519,25 +537,38 @@ and merge directories, and never run `git clean`, `git checkout`, `git reset`,
 ### Common exclusions
 
 Hard defaults: `.DS_Store`, `._*`, `.Spotlight-V100/`, `.Trashes/`,
-`.fseventsd/`, `.TemporaryItems/`, `*.swp`, `*.swo`, `*~`, and `.icloud`
-placeholder files.
+`.fseventsd/`, `.TemporaryItems/`, and `.icloud` placeholder files. Editor
+temporary files (`*.swp`, `*~`), log files, game-engine caches, and machine
+learning run folders sync; the owner asked for them.
 
 There is no blanket `*.lock` rule. `package-lock.json`, `pnpm-lock.yaml`,
 `yarn.lock`, `Cargo.lock`, `go.sum`, `Podfile.lock`, `Gemfile.lock`,
 `composer.lock`, `Package.resolved`, `gradle.lockfile`, and
 `.terraform.lock.hcl` stay eligible.
 
-Default cache and dependency exclusions apply when untracked and not
-explicitly included: `node_modules/`, `.npm/`, `.pnpm-store/`, `.yarn/cache/`,
-`.parcel-cache/`, `.turbo/`, `.next/cache/`, `.nuxt/`, `.svelte-kit/`,
-`.vite/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`,
-`.tox/`, `.nox/`, `.venv/`, `.gradle/`, `.dart_tool/`, `.ipynb_checkpoints/`,
-`DerivedData/`, `CMakeFiles/`, `cmake-build-*/`, `.vs/`.
+The skip list applies to untracked, not explicitly included paths at any
+depth. It is the only filter in the default configuration and is meant to be
+long: it names things that are temporary without doubt.
 
-Build outputs follow Git ignore. `build`, `dist`, `out`, and `target` are not
-hard-excluded. The optional "Skip common build outputs even when Git does not
-ignore them" profile adds `dist/`, `build/`, `out/`, `target/`, `coverage/`,
-`bin/`, `obj/`, and `DerivedData/`. It is off by default.
+| Ecosystem | Skipped |
+|---|---|
+| JavaScript | `node_modules`, `.npm`, `.pnpm-store`, `.yarn/cache`, `.yarn/unplugged`, `.pnp.cjs`, `.parcel-cache`, `.turbo`, `.next`, `.nuxt`, `.output`, `.svelte-kit`, `.vite`, `.astro`, `.docusaurus`, `.angular`, `.cache`, `.eslintcache`, `.stylelintcache`, `.webpack`, `.serverless`, `.vercel`, `.netlify`, `.wrangler`, `.nyc_output`, `storybook-static`, `*.tsbuildinfo` |
+| Expo and React Native | `.expo`, `.expo-shared`, `.eas` |
+| Python | `__pycache__`, `*.pyc`, `*.pyo`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.tox`, `.nox`, `.hypothesis`, `.venv`, `venv`, `.eggs`, `*.egg-info`, `htmlcov`, `.coverage`, `.pdm-build`, `.pytype`, `.ipynb_checkpoints` |
+| JVM and Android | `.gradle`, `.kotlin`, `.cxx`, `.externalNativeBuild`, `captures`, `.bloop`, `.metals`, `.bsp` |
+| Apple | `Pods`, `Carthage`, `DerivedData`, `.build`, `.swiftpm`, `xcuserdata`, `.symbolcache`, `*.xcarchive` |
+| Flutter | `.dart_tool`, `.pub-cache`, `.fvm` |
+| Other | `_build`, `dist-newstyle`, `.stack-work`, `elm-stuff`, `.cpcache`, `zig-cache`, `.zig-cache`, `zig-out`, `bazel-*`, `.terraform`, `CMakeFiles`, `cmake-build-*`, `.vs`, `vendor` |
+| Tests | `test-results`, `playwright-report`, `.playwright`, `cypress/videos`, `cypress/screenshots` |
+| Temporary | `tmp`, `temp`, `.tmp`, `.temp` |
+| Build outputs | `build`, `out`, `target`, `coverage`, `bin`, `obj` |
+
+Kept on purpose: `dist` (release installers live there), `.idea`, `.vscode`,
+`.claude`, `.codex`, `.agents`, `.cursor`, `.github`, `env`, `envs`, `data`,
+`output`, `cache`, `packages`, `deps`, `logs`, `*.log`, editor temporary
+files, Unity and Unreal caches, and `wandb`, `mlruns`, `lightning_logs`.
+Plain names that are common source folders never enter the list. The user
+adds patterns through explicit rules; the built-in list is not editable.
 
 An explicitly included non-Git project uses the common profile, supports a
 project `.cloudsyncignore` file with ordered rules and clear negation, previews
@@ -977,6 +1008,13 @@ tolerance is at least one second whenever the transfer tool reports a
 protocol below 30. The planner, verifier, runner, and baseline all read that
 one pair tolerance; none of them keeps a private value.
 
+Path containment: every "is this path below that root" check compares the
+lexical path built from the canonical root, never a standardized copy of a
+path that does not exist yet. Foundation strips `/private` from an existing
+`/private/var` root but keeps it on a missing child, so a standardized
+comparison rejects every new folder under such a root. A symlink walk over
+the existing parents still guards against link traversal.
+
 Available capacity: read the important-usage capacity first and fall back to
 the plain available capacity when the important-usage value is zero. External
 volumes and disk images report zero for important usage, and a zero value
@@ -1171,15 +1209,18 @@ and a footer with Back, Cancel, and Continue. Steps:
 2. **Compatibility**: read/write status, metadata fidelity, case behavior,
    symlink support, timestamp precision, selected `rsync` and capabilities,
    and blocking issues.
-3. **Projects**: groups for Internal only, External only, On both sides,
-   Identity conflicts, Unmanaged candidates, and Unsupported topology. Each
-   row shows relative path, detected type, estimated included and excluded
-   size, residency result, and warnings, with an include switch.
-4. **Rules**: Follow Git ignore rules (on, required for Git projects), Back
-   up ignored sensitive and local files (on) with Edit patterns, Skip common
-   caches and dependencies (on), Skip common build outputs not ignored by Git
-   (off), Include Git object store and LFS objects (on), Preserve extended
-   attributes (Auto), Preserve hard links (off), Version retention (on).
+3. **What syncs**: one sentence states that everything under the root
+   syncs except the skip list, then read-only groups for Internal only,
+   External only, On both sides, Identity conflicts, and Unsupported
+   topology. Each row shows relative path, detected type, estimated included
+   and excluded size, residency result, and warnings. There is no include
+   switch. The `Everything else` row stands for the root unit.
+4. **Rules**: Skip caches, dependencies, build outputs, and tmp (on) with
+   Extra patterns, Back up sensitive and local files (on) with Edit
+   patterns, Include Git object store and LFS objects (on), Preserve
+   extended attributes (Auto), Preserve hard links (off), Version retention
+   (on). Git ignore rules are off and not shown; the skip list is the only
+   filter.
 5. **Activity**: Responsive, Balanced, Low drive activity, Manual only, plus
    advanced debounce values, large-file threshold, only on power, and a byte
    budget.
@@ -1316,6 +1357,11 @@ sees. Rows also define acceptance tests; the test name is the row number.
 | 1 | `personal/app-a` is a real project on both sides with identical content. | Establishes a baseline. Copies nothing. | Row `app-a · Mirrored · Clean`. |
 | 2 | `personal/big-data` exists only on the external drive. | Creates the internal link `~/dev/personal/big-data -> /Volumes/DevSSD/dev/personal/big-data`. Never copies it inward. Never scans through the link. | Row `big-data · External`. Open Real Location shows the drive path. |
 | 3 | `work/app-c` exists only internally. | Previews, then creates the external mirror. | Row `app-c · Pending mirror`, then `Mirrored`. |
+| 3a | `~/dev/cleanup.sh`, `docs/`, and `organization/_archive/` are not inside any repository. | The root unit copies them to the same drive paths and carves out every repository inside them as its own unit. | Row `Everything else · Mirrored · Clean` under no group header; repositories under `organization` appear under the `organization` header. |
+| 3b | `organization/lambton/meallens-data` exists only on the drive and no repository owns it. | Discovery reports the shallowest drive-only directory, the catalog makes it a linked unit, and the engine creates `~/dev/organization/lambton/meallens-data -> <drive>/organization/lambton/meallens-data`. | Row `meallens-data · External · Clean`. |
+| 3c | The same folder was mirrored before and then deleted on the Mac. | The root unit baseline knows it, so it is a deletion: the drive copy moves to the safety store. No link appears. | Row `Everything else` shows the retained deletion in its history. |
+| 3d | `personal/app-a/tmp/` and `~/dev/tmp/` both exist. | Both skip: `tmp` is in the skip list at any depth. | Excluded paths show `Why: skip list`. |
+| 3e | A repository commits `vendor/` or `build/`. | Tracked files inside sync; untracked files beside them skip. | The row's excluded size counts only the untracked junk. |
 | 4 | A real internal folder already exists where a managed link should go. | Keeps the folder untouched. Creates a managed-link collision. Never replaces it. | Conflict `Path collision`. Choices: Adopt folder as mirror (same identity only), Exclude, or Move folder to Trash yourself and Repair. |
 | 5 | Both sides have `personal/app-b`, but the Git remotes and history differ. | Blocks that project. Copies nothing. | Conflict `Project identity`. Choices: Keep Both (exclude), Keep Internal (external goes to history), Keep External (internal goes to history). |
 | 6 | The user already made `~/dev/personal/big-data` a symlink to the external project. | Offers to adopt it. Never changes it automatically. | Row `big-data · Adopt link` action. |
