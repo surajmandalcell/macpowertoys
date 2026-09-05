@@ -68,7 +68,7 @@ final class RcloneDaemon {
 
     // MARK: Stray daemon registry
 
-    private static var registryDirectory: URL {
+    private nonisolated static var registryDirectory: URL {
         AppDataLocation.directory.appendingPathComponent("daemons", isDirectory: true)
     }
 
@@ -84,9 +84,10 @@ final class RcloneDaemon {
         try? FileManager.default.removeItem(at: registryDirectory.appendingPathComponent(String(daemonPid)))
     }
 
-    private static func reapStrayDaemons() {
+    private nonisolated static func reapStrayDaemons() -> [pid_t] {
         let fm = FileManager.default
-        guard let entries = try? fm.contentsOfDirectory(atPath: registryDirectory.path) else { return }
+        guard let entries = try? fm.contentsOfDirectory(atPath: registryDirectory.path) else { return [] }
+        var reaped: [pid_t] = []
         for entry in entries {
             let marker = registryDirectory.appendingPathComponent(entry)
             guard let daemonPid = pid_t(entry), daemonPid > 0 else {
@@ -104,8 +105,9 @@ final class RcloneDaemon {
             guard proc_pidpath(daemonPid, &buffer, UInt32(buffer.count)) > 0,
                   (String(cString: buffer) as NSString).lastPathComponent == "rclone" else { continue }
             kill(daemonPid, SIGTERM)
-            LogManager.shared.info("Reaped stray rclone daemon (pid \(daemonPid))", source: "RcloneDaemon")
+            reaped.append(daemonPid)
         }
+        return reaped
     }
 
     // MARK: Lifecycle
@@ -118,13 +120,15 @@ final class RcloneDaemon {
 
     private func startDaemon(binaryPath: String) async throws -> RcloneRCClient {
         state = .starting
-        Self.reapStrayDaemons()
 
-        let resolved = await Task.detached(priority: .userInitiated) {
-            Self.resolveBinaryPath(preferred: binaryPath)
+        let startup = await Task.detached(priority: .userInitiated) {
+            (Self.resolveBinaryPath(preferred: binaryPath), Self.reapStrayDaemons())
         }.value
+        for daemonPid in startup.1 {
+            LogManager.shared.info("Reaped stray rclone daemon (pid \(daemonPid))", source: "RcloneDaemon")
+        }
 
-        guard let resolved else {
+        guard let resolved = startup.0 else {
             state = .failed("rclone binary not found. Set its path in settings.")
             throw RcloneRCError.notReachable
         }
