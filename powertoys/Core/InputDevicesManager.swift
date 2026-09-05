@@ -34,6 +34,15 @@ struct InputDevicesSettings: Codable, Equatable {
     var eventOverride = InputEventOverride.automatic
     var mouse = InputScrollProfile(smooth: true)
     var trackpad = InputScrollProfile()
+
+    static func decoded(from data: Data?) -> InputDevicesSettings {
+        guard let data, let decoded = try? JSONDecoder().decode(Self.self, from: data) else {
+            return InputDevicesSettings()
+        }
+        return decoded
+    }
+
+    var encoded: Data? { try? JSONEncoder().encode(self) }
 }
 
 struct InputScrollResult: Equatable {
@@ -136,12 +145,7 @@ final class InputDevicesManager {
     private var runLoopSource: CFRunLoopSource?
 
     private init() {
-        if let data = UserDefaults.standard.data(forKey: Self.settingsKey),
-           let decoded = try? JSONDecoder().decode(InputDevicesSettings.self, from: data) {
-            settings = decoded
-        } else {
-            settings = InputDevicesSettings()
-        }
+        settings = .decoded(from: UserDefaults.standard.data(forKey: Self.settingsKey))
         Self.current = self
     }
 
@@ -160,7 +164,7 @@ final class InputDevicesManager {
     func update(_ change: (inout InputDevicesSettings) -> Void) {
         let wasEnabled = settings.scrollControlEnabled
         change(&settings)
-        if let data = try? JSONEncoder().encode(settings) {
+        if let data = settings.encoded {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
         if wasEnabled != settings.scrollControlEnabled {
