@@ -49,6 +49,52 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(healthyLinks, ["linked"])
     }
 
+    func testExternalResidentGenerationNeverStarvesMirroredProjects() async throws {
+        let fixture = try await makeFixture()
+        let linked = fixture.externalProject.deletingLastPathComponent().appendingPathComponent("linked", isDirectory: true)
+        try FileManager.default.createDirectory(at: linked, withIntermediateDirectories: true)
+        try Data("source".utf8).write(to: linked.appendingPathComponent("source.swift"))
+        try runGit(["init", "-q"], at: linked)
+        await fixture.engine.start()
+        try await waitUntil {
+            await fixture.engine.projects().contains { $0.relativePath == "linked" && $0.residency == .externalResident }
+        }
+
+        await fixture.engine.syncNow()
+        try Data("changed content".utf8).write(to: fixture.internalProject.appendingPathComponent("source.swift"))
+        await fixture.engine.noteEvents(side: .internal, relativePaths: ["app/source.swift"])
+
+        try await waitUntil {
+            (try? Data(contentsOf: fixture.externalProject.appendingPathComponent("source.swift"))) == Data("changed content".utf8)
+        }
+        try await waitUntil { await fixture.engine.status().pendingProjectCount == 0 }
+    }
+
+    func testOwnDestinationWritesDoNotQueueWork() async throws {
+        let fixture = try await makeFixture()
+        await fixture.engine.start()
+        try Data("changed content".utf8).write(to: fixture.internalProject.appendingPathComponent("source.swift"))
+        await fixture.engine.noteEvents(side: .internal, relativePaths: ["app/source.swift"])
+        try await waitUntil {
+            let operations = await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20)
+            return operations.count == 1 && operations[0].state.isTerminal
+        }
+
+        await fixture.engine.noteEvents(side: .external, relativePaths: ["app/source.swift"])
+        try await Task.sleep(for: .milliseconds(400))
+
+        let status = await fixture.engine.status()
+        XCTAssertEqual(status.pendingProjectCount, 0)
+        let operations = await fixture.store.loadOperations(pairID: fixture.pair.id, limit: 20)
+        XCTAssertEqual(operations.count, 1)
+
+        try Data("user edit".utf8).write(to: fixture.externalProject.appendingPathComponent("source.swift"))
+        await fixture.engine.noteEvents(side: .external, relativePaths: ["app/source.swift"])
+        try await waitUntil {
+            await fixture.engine.projects().first { $0.relativePath == "app" }?.state == .destinationDrift
+        }
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneBatch() async throws {
         let fixture = try await makeFixture()
         await fixture.engine.start()

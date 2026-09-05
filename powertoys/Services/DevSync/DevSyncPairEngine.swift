@@ -454,6 +454,18 @@ actor DevSyncPairEngine {
 
     func noteEvents(side: DevSyncSide, relativePaths: [String], at date: Date? = nil) async {
         let projects = projectValues
+        var relativePaths = relativePaths
+        if let root = side == .internal ? internalRoot : externalRoot {
+            let tolerance = capabilityValue.timestampToleranceNanoseconds
+            var kept: [String] = []
+            for path in relativePaths {
+                let actual = try? DevSnapshotScanner.signature(of: root.appendingPathComponent(path), includeHash: false)
+                if await ledger.consume(side: side, relativePath: path, actual: actual, toleranceNanoseconds: tolerance, now: date ?? now()) { continue }
+                kept.append(path)
+            }
+            relativePaths = kept
+            guard !relativePaths.isEmpty else { return }
+        }
         await scheduler.noteEvents(side: side, relativePaths: relativePaths, projectResolver: { path in
             projects
                 .filter { path == $0.relativePath || path.hasPrefix($0.relativePath + "/") }
@@ -719,7 +731,13 @@ actor DevSyncPairEngine {
         activeGeneration = generation
         guard let output = await plan(for: generation.projectID, paths: generation.paths, fullScan: generation.requiresFullScan),
               let project = projectValues.first(where: { $0.id == generation.projectID }) else {
-            await scheduler.requeue(generation)
+            let plannable = projectValues.first { $0.id == generation.projectID }
+                .map { !$0.explicitlyExcluded && $0.residency != .externalResident } ?? false
+            if plannable, internalRoot != nil, externalRoot != nil {
+                await scheduler.requeue(generation)
+            } else {
+                await scheduler.complete(projectID: generation.projectID)
+            }
             activeGeneration = nil
             return
         }
@@ -738,6 +756,7 @@ actor DevSyncPairEngine {
                 await scheduler.requeue(generation)
             }
         } else {
+            statusValue.driftCount = output.driftPaths.count
             updateProject(project.id, state: output.projectState, output: output, error: nil)
             if output.projectState == .conflict {
                 notifyOnce(.blockedByConflict, title: "Dev Sync needs a decision", body: "A conflict is blocking automatic synchronization.")
