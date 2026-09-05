@@ -4,6 +4,11 @@ import SwiftUI
 enum UtilityLayout {
     static let horizontalInset: CGFloat = 20
     static let compactSidebarWidth: CGFloat = 220
+    static let launcherCardMinimumWidth: CGFloat = 220
+    static let launcherGridSpacing: CGFloat = 16
+    static let launcherContentInset: CGFloat = 24
+    static let launcherColumnCount = 4
+    static let launcherContentSize = NSSize(width: 1_200, height: 720)
     static let dataSidebarWidth: CGFloat = 240
     static let conversationSidebarWidth: CGFloat = 260
     static let workspaceMinimumContentWidth: CGFloat = 640
@@ -41,7 +46,7 @@ enum UtilityLayout {
         let sidebarWidth: CGFloat
         switch identifier {
         case "main":
-            return NSSize(width: 780, height: 700)
+            return launcherContentSize
         case "nettoys":
             return netToysMinimumContentSize
         case "cc-history":

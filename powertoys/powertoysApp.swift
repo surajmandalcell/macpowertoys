@@ -65,7 +65,7 @@ struct MacPowerToysApp: App {
         }
         .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 780, height: 700)
+        .defaultSize(width: UtilityLayout.launcherContentSize.width, height: UtilityLayout.launcherContentSize.height)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
         .defaultLaunchBehavior(.suppressed)

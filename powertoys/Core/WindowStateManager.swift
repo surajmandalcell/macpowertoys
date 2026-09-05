@@ -71,6 +71,7 @@ final class WindowStateManager {
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
+        "main",
         "awake",
         "color-picker",
         "text-extractor"
@@ -80,6 +81,11 @@ final class WindowStateManager {
         knownWindowIdentifiers.first { knownIdentifier in
             identifier == knownIdentifier || identifier.hasPrefix("\(knownIdentifier)-")
         }
+    }
+
+    nonisolated static func restoresPositionOnly(_ identifier: String) -> Bool {
+        guard let storageIdentifier = storageIdentifier(for: identifier) else { return false }
+        return fixedSizeIdentifiers.contains(storageIdentifier)
     }
 
     nonisolated static func positionOnlyFrame(saved: NSRect, currentSize: NSSize) -> NSRect {
@@ -128,7 +134,7 @@ final class WindowStateManager {
 
         var frame = NSRect(x: state.x, y: state.y, width: state.width, height: state.height)
 
-        if Self.fixedSizeIdentifiers.contains(storageIdentifier) {
+        if Self.restoresPositionOnly(storageIdentifier) {
             frame = Self.positionOnlyFrame(saved: frame, currentSize: window.frame.size)
         }
 

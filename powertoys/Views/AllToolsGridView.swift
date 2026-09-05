@@ -7,7 +7,7 @@ struct AllToolsGridView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 16)], spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: UtilityLayout.launcherCardMinimumWidth), spacing: UtilityLayout.launcherGridSpacing)], spacing: UtilityLayout.launcherGridSpacing) {
                 ForEach(ToolRegistry.allTools, id: \.id) { tool in
                     ToolCard(
                         tool: tool,
@@ -21,8 +21,8 @@ struct AllToolsGridView: View {
                     )
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+            .padding(.horizontal, UtilityLayout.launcherContentInset)
+            .padding(.bottom, UtilityLayout.launcherContentInset)
         }
         .thinScrollIndicators()
     }
