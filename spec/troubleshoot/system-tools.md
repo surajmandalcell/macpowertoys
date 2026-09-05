@@ -269,6 +269,40 @@
 - **Check:** Apply different reverse settings to both profiles, send precise and
   coarse scroll events, then disable the tool and confirm events pass unchanged.
 
+## Input Devices Card Parity
+
+- **Symptom:** A mouse card is taller than a trackpad card on the same page, and
+  a setting such as mouse horizontal scrolling looks missing.
+- **Cause:** Device cards gated each detail row behind `if let`, so a device that
+  reports fewer HID properties drew fewer rows. Scroll profile cards packed their
+  toggles into a two-column grid, so the extra mouse smooth-wheel toggle added a
+  row and the narrow columns truncated `Reverse horizontal` and
+  `Horizontal scrolling` until they read as one control.
+- **Invariant:** Both card kinds keep one fixed anatomy. A device card always
+  renders the same twelve detail rows and prints an em dash for a value macOS
+  does not report. Both scroll profile cards render the same six labeled rows,
+  including horizontal scrolling and smooth wheel steps for the mouse and the
+  trackpad. Never gate a row on the presence of data or on the device kind, and
+  never place two settings side by side in one card row.
+- **Check:** `testMouseAndTrackpadDeviceCardsShareOneHeight` and
+  `testMouseAndTrackpadProfileCardsShareOneHeight` host each card at 340pt and
+  compare `fittingSize.height`. A fully reported mouse and an all-nil trackpad
+  must measure the same height.
+
+## Input Devices Scroll Settings Ownership
+
+- **Symptom:** The launcher detail page and the Scrolling page show different
+  Input Devices controls.
+- **Cause:** The launcher needs `InputDevicesSettingsView`, and a second copy of
+  the controls was written for it instead of reusing the tool's own view.
+- **Invariant:** `InputDevicesScrollSettings` is the one implementation of the
+  Scroll Control card and both profile cards. The Scrolling page renders it
+  inside its workspace page and `InputDevicesSettingsView` wraps the same view
+  for the launcher. The Scroll device selector stays at the bottom of both hosts
+  in the shared `InputScrollDeviceBar`, never inside the Scroll Control card.
+- **Check:** Open the Scrolling page and the launcher Input Devices detail and
+  confirm they show the same rows in the same order.
+
 ## Input Devices Event Tap Recovery
 
 - **Symptom:** Scroll control stops changing events even though the window still
