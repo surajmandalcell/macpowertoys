@@ -63,23 +63,10 @@ enum ToolIconColor {
         return picked
     }
 
-    /// The tint lifted to a readable brightness for text and strokes on dark surfaces.
-    static func readable(_ tint: NSColor) -> NSColor {
-        let color = tint.usingColorSpace(.deviceRGB) ?? tint
-        guard color.brightnessComponent < 0.7 else { return color }
-        return NSColor(hue: color.hueComponent, saturation: min(color.saturationComponent, 0.75), brightness: 0.85, alpha: 1)
-    }
-
     /// Black or white, whichever reads on the tint.
     static func label(on tint: NSColor) -> Color {
         let color = tint.usingColorSpace(.deviceRGB) ?? tint
         let luminance = 0.2126 * color.redComponent + 0.7152 * color.greenComponent + 0.0722 * color.blueComponent
         return luminance > 0.6 ? .black : .white
     }
-}
-
-enum TrayActionStyle: String, CaseIterable, Identifiable {
-    case filled, tinted, gradient, outline
-    var id: String { rawValue }
-    var title: String { rawValue.capitalized }
 }
