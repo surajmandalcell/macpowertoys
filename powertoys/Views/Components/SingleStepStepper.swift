@@ -20,7 +20,9 @@ struct SingleStepStepper: View {
     }
 
     var body: some View {
-        LabeledContent(title) {
+        HStack {
+            Text(title)
+            Spacer()
             SingleStepControl(
                 title: title,
                 value: $value,
