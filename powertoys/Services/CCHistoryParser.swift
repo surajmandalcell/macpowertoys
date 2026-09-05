@@ -20,12 +20,13 @@ class CCHistoryParser {
         var messages: [CCMessage] = []
         var buffer = Data()
         let chunkSize = 65536
+        let newline = Data([0x0A])
 
         while let chunk = try? handle.read(upToCount: chunkSize), !chunk.isEmpty {
             guard !Task.isCancelled else { return messages }
             buffer.append(chunk)
 
-            while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+            while let newlineRange = buffer.range(of: newline) {
                 guard !Task.isCancelled else { return messages }
                 let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
                 buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)

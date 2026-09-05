@@ -35,6 +35,12 @@ struct CCProject: Identifiable, Hashable {
 // MARK: - Session
 
 struct CCSession: Identifiable, Hashable, Codable {
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
+
     let id: String           // Session UUID (filename without extension)
     let filePath: URL
     var firstUserMessage: String?
@@ -67,9 +73,7 @@ struct CCSession: Identifiable, Hashable, Codable {
     
     var displayDate: String {
         guard let timestamp = timestamp else { return "" }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: timestamp, relativeTo: Date())
+        return Self.relativeDateFormatter.localizedString(for: timestamp, relativeTo: Date())
     }
 }
 
