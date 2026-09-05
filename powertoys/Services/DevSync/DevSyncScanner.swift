@@ -82,23 +82,28 @@ nonisolated enum DevSnapshotScanner {
             return Darwin.open(path, O_RDONLY | O_NOFOLLOW)
         }
         guard descriptor >= 0 else { throw posixError() }
+        defer { Darwin.close(descriptor) }
 
         var fileStatus = Darwin.stat()
-        guard Darwin.fstat(descriptor, &fileStatus) == 0 else {
-            let error = posixError()
-            Darwin.close(descriptor)
-            throw error
-        }
+        guard Darwin.fstat(descriptor, &fileStatus) == 0 else { throw posixError() }
         guard fileStatus.st_mode & S_IFMT == S_IFREG else {
-            Darwin.close(descriptor)
             throw CocoaError(.fileReadUnsupportedScheme)
         }
 
-        let fileHandle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         var hasher = SHA256()
+        var buffer = [UInt8](repeating: 0, count: hashChunkSize)
         while true {
-            guard let chunk = try fileHandle.read(upToCount: hashChunkSize), !chunk.isEmpty else { break }
-            hasher.update(data: chunk)
+            let bytesRead = buffer.withUnsafeMutableBytes {
+                Darwin.read(descriptor, $0.baseAddress, $0.count)
+            }
+            if bytesRead < 0 {
+                if errno == EINTR { continue }
+                throw posixError()
+            }
+            if bytesRead == 0 { break }
+            buffer.withUnsafeBytes {
+                hasher.update(bufferPointer: UnsafeRawBufferPointer(start: $0.baseAddress, count: bytesRead))
+            }
             try Task.checkCancellation()
         }
         return Data(hasher.finalize())
