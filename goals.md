@@ -16,14 +16,14 @@ Legend: `[ ]` pending, `[~]` in progress, `[!]` blocked, `[x]` complete.
 `Needs:` names the barrier that must be complete first.
 
 ```text
-Dev Sync overall            [███████████████████░] 68/69
-Checkup G7                  [█████████████░░░░░░░] 4/6
+Dev Sync overall            [████████████████████] 69/69
+Checkup G7                  [████████████████████] 6/6
 G1 Foundation               [████████████████████] 15/15
 G2 Dev One-Way              [████████████████████] 14/14
 G3 Dev Bidirectional        [████████████████████] 10/10
 G4 Interface                [████████████████████] 11/11
 G5 Hardening and release    [████████████████████] 13/13
-G6 Everything mode          [█████████████████░░░] 5/6
+G6 Everything mode          [████████████████████] 6/6
 ```
 
 ### G1 Foundation: a complete read-only first-run plan with no mutation
@@ -198,9 +198,11 @@ G6 Everything mode          [█████████████████
   the same internal path. Check: discovery, catalog, and engine tests.
 - [x] 6.5 Setup sheet without include switches, `What syncs` step, Rules
   with Extra patterns, pair page grouped by top-level folder.
-- [ ] 6.6 Full suite green, signed install, everything-mode live check on a
+- [x] 6.6 Full suite green, signed install, everything-mode live check on a
   fixture with loose files, `_docs`, nested repositories, `node_modules`,
-  `tmp`, and a drive-only folder.
+  `tmp`, and a drive-only folder. Check: installed signed `750b1d1` passed
+  the eleven Dev Sync steps (setup, preview `87 files and 1 managed link`,
+  disk paths, linked folder stable over 60 s, eject and remount, removal).
 
 ### G7 Checkup: wider launcher, clean sidebars, Input Devices, tray, audit
 
@@ -218,10 +220,20 @@ G6 Everything mode          [█████████████████
   extra space under the tab row. Check: `e5edb24`, `db075f4`; three
   `TrayPopoverLayoutTests` measure the 8pt gap, the shared settings per
   tool, and the 70% cap; installed-build check pending in 7.6.
-- [~] 7.5 Audit of every tool for performance and correctness, findings at
-  `spec/troubleshoot/audit-2026-09-05.md`, grouped Forms on the gutter.
-- [ ] 7.6 Full suite green on the merged tree, signed install, live check
-  of launcher, Input Devices, tray, and Dev Sync everything-mode.
+- [x] 7.5 Audit of every tool for performance and correctness, findings at
+  `spec/troubleshoot/audit-2026-09-05.md` (29 rows: 14 fixed, 9 deferred,
+  6 pass), grouped Forms on the gutter (`bdf3161`), 12 code commits, suite
+  879 pass at `fab74c3`.
+- [x] 7.6 Full suite green on the merged tree, signed install, live check
+  of launcher, Input Devices, tray, and Dev Sync everything-mode. Check:
+  878 pass, 1 skip at `76c59fe` (the one non-pass was a test-host exit
+  while another instance launched; the test passes alone); signed
+  `750b1d1` installed and equal to HEAD; Codex-driven launcher, sidebar,
+  Input Devices, and eleven Dev Sync steps passed; the menu-bar popover
+  was verified with a native Accessibility driver. The 100k-file scale
+  budget test passed in that suite run and later exceeded its 120 s budget
+  in two isolated reruns (146 s, 163 s) with no scanner or planner change;
+  treat it as a host-load budget, not a regression.
 
 ## Current work
 

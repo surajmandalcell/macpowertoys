@@ -509,6 +509,23 @@
   surface under its own frame. Do not make this regression depend on a fixed
   main-queue delay.
 
+### Nested editor inside a scrolling page
+
+- **Symptom:** A `TextEditor` inside a scrolling surface, such as the Cloud
+  Sync ignore-pattern editor in the menu-bar popover, keeps a legacy scroller
+  with a visible track while the page scroller stays thin.
+- **Cause:** `thinScrollIndicators()` configured the first scroll view it
+  found. With the editor inside the popover's `ScrollView`, that was the
+  enclosing page scroll view, so the editor's own scroll view never received
+  the overlay configuration.
+- **Invariant:** The configurator looks for the sibling scroll view that hosts
+  the modified view and skips every ancestor scroll view; `enclosingScrollView`
+  is only the fallback when no sibling exists.
+- **Check:** Open the Cloud Sync menu-bar tab in the installed build and confirm
+  the ignore-pattern editor shows no scroller track at rest. The
+  `ScrollIndicatorTests` sibling and modifier tests cover the lookup.
+
+
 ## Workspace Pane Seams
 
 - **Symptom:** A line or clear-looking gap appears between a workspace sidebar
@@ -588,10 +605,11 @@
   online/offline dot beside its title or in its footer.
 - **Cause:** Daemon and sampler state was surfaced as sidebar chrome instead of
   in the content that owns the work.
-- **Invariant:** No sidebar or sidebar footer shows a version number or a
-  status dot. Keep a recovery action such as Cloud Sync `Reconnect`, and keep
+- **Invariant:** No sidebar, sidebar footer, or menu-bar tab summary shows a
+  version number or a status dot. Keep a recovery action such as Cloud Sync `Reconnect`, and keep
   operational state in content rows (Dev Sync drive state, NetToys peer state).
   The About and Settings surfaces may still show the app version.
 - **Check:** Grep every sidebar view for `CFBundleShortVersionString`, a version
   label, and `Circle()` fills tinted green, orange, or red. Inspect the
-  launcher, Cloud Sync, and System Monitor sidebars in the installed build.
+  launcher, Cloud Sync, and System Monitor sidebars and the Cloud Sync menu-bar
+  tab in the installed build.
