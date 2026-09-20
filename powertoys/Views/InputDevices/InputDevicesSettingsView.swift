@@ -7,14 +7,24 @@ import SwiftUI
 
 struct InputDevicesSettingsView: View {
     var showsHeader = true
+    var showsContainerScroll = true
 
+    @ViewBuilder
     var body: some View {
-        VStack(spacing: 0) {
-            InputDevicesScrollSettings(showsHeaders: showsHeader)
-                .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 14, bottom: 24)
-                .settingsScrollContainer()
+        if showsContainerScroll {
+            VStack(spacing: 0) {
+                settingsContent.settingsScrollContainer()
+                InputScrollDeviceBar()
+            }
+        } else {
+            settingsContent
             InputScrollDeviceBar()
         }
+    }
+
+    private var settingsContent: some View {
+        InputDevicesScrollSettings(showsHeaders: showsHeader)
+            .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 14, bottom: 24)
     }
 }
 
@@ -66,7 +76,9 @@ struct InputDevicesScrollSettings: View {
                         ))
                     }
                     if !manager.permissionGranted {
-                        InputSettingRow(label: "Accessibility permission") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Accessibility permission")
+                                .font(.system(size: 12))
                             HStack(spacing: 8) {
                                 Button("Grant Permission") { manager.requestPermission() }
                                 Button("Open Privacy Settings") { manager.openPrivacySettings() }

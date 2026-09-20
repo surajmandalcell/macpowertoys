@@ -5,6 +5,8 @@ import XCTest
 @MainActor
 final class TrayPopoverLayoutTests: XCTestCase {
     private var restoredModes: [IndividualMenuBarTool: String?] = [:]
+    private var restoredSelection: String?
+    private var restoredOrder: String?
 
     override func setUpWithError() throws {
         let defaults = UserDefaults.standard
@@ -12,44 +14,54 @@ final class TrayPopoverLayoutTests: XCTestCase {
             restoredModes[tool] = defaults.string(forKey: tool.preferenceKey)
             defaults.set(MenuBarDisplayMode.combined.rawValue, forKey: tool.preferenceKey)
         }
+        restoredSelection = defaults.string(forKey: "tray.selectedTab.v2")
+        restoredOrder = defaults.string(forKey: "tray.tabOrder.v2")
+        defaults.set(TrayTab.home.rawValue, forKey: "tray.selectedTab.v2")
+        defaults.removeObject(forKey: "tray.tabOrder.v2")
     }
 
     override func tearDownWithError() throws {
         let defaults = UserDefaults.standard
         for (tool, value) in restoredModes {
-            if let value {
-                defaults.set(value, forKey: tool.preferenceKey)
-            } else {
-                defaults.removeObject(forKey: tool.preferenceKey)
-            }
+            if let value { defaults.set(value, forKey: tool.preferenceKey) }
+            else { defaults.removeObject(forKey: tool.preferenceKey) }
         }
+        restore(restoredSelection, key: "tray.selectedTab.v2")
+        restore(restoredOrder, key: "tray.tabOrder.v2")
     }
 
-    func testDashboardSectionsFollowScanAndActOrder() {
+    func testComplexTabOrderUsesSavedUniqueAvailableTabsThenDefaults() {
         XCTAssertEqual(
-            TrayPopoverLayout.dashboardSections(for: [
-                "rclone", "awake", "color-picker", "text-extractor", "input-devices"
-            ]),
-            [.quickActions, .awake, .cloudSync, .inputDevices]
+            TrayPopoverLayout.orderedComplexTabs(
+                available: [.cloudSync, .logs, .inputDevices, .systemCare],
+                savedIDs: ["input-devices", "unknown", "rclone", "input-devices"]
+            ),
+            [.inputDevices, .cloudSync, .logs, .systemCare]
         )
-        XCTAssertEqual(
-            TrayPopoverLayout.dashboardSections(for: ["input-devices", "rclone"]),
-            [.cloudSync, .inputDevices]
-        )
-        XCTAssertEqual(
-            TrayPopoverLayout.dashboardSections(for: ["text-extractor"]),
-            [.quickActions]
-        )
-        XCTAssertTrue(TrayPopoverLayout.dashboardSections(for: []).isEmpty)
     }
 
-    func testDashboardUsesQuickControlsInsteadOfToolSettingsOrTabs() throws {
+    func testEveryBuiltInHasAHomeRowOrComplexTab() {
+        let trayToolIDs = Set(
+            TrayPopoverLayout.homeToolIDs
+                + TrayPopoverLayout.defaultComplexTabs.compactMap(\.toolID)
+        )
+        XCTAssertEqual(trayToolIDs, Set(ToolRegistry.builtInTools.map(\.id)))
+    }
+
+    func testTrayUsesMutedTabbedChromeAndFocusedContent() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
+        XCTAssertTrue(source.contains("TrayTabStrip"))
+        XCTAssertTrue(source.contains("TrayToolLink"))
+        XCTAssertTrue(source.contains("arrow.up.right"))
+        XCTAssertTrue(source.contains(".draggable(tab.rawValue)"))
+        XCTAssertTrue(source.contains("Button(\"Move Left\""))
+        XCTAssertTrue(source.contains("Button(\"Move Right\""))
+        XCTAssertTrue(source.contains("InputDevicesSettingsView(showsHeader: true, showsContainerScroll: false)"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
-        XCTAssertFalse(source.contains("TrayTabStrip"))
-        XCTAssertTrue(source.contains("Picker(\"Awake duration\""))
-        XCTAssertTrue(source.contains("activeJobs.prefix(3)"))
+        XCTAssertFalse(source.contains("ToolIconColor.major"))
+        XCTAssertFalse(source.contains("Color.accentColor"))
+        XCTAssertFalse(source.contains(".focusEffectDisabled()"))
     }
 
     func testTrayPopoverHeightStaysWithinSeventyPercentOfTheScreen() {
@@ -57,7 +69,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let body = TrayPopoverLayout.maximumBodyHeight(screenHeight: screenHeight)
 
         XCTAssertLessThanOrEqual(
-            body + TrayPopoverLayout.chromeHeight,
+            body + TrayPopoverLayout.topChromeHeight,
             screenHeight * TrayPopoverLayout.heightFraction
         )
         XCTAssertEqual(
@@ -66,25 +78,22 @@ final class TrayPopoverLayoutTests: XCTestCase {
         )
     }
 
-    func testDashboardRendersInLightAndDark() throws {
-        for (scheme, name) in [(ColorScheme.light, "Light"), (.dark, "Dark")] {
-            let attachment = XCTAttachment(image: try renderDashboard(colorScheme: scheme))
-            attachment.name = "Menu Bar Dashboard — \(name)"
+    func testTrayRendersHomeAndInputDevicesInLightAndDark() throws {
+        for (tab, scheme, name) in [
+            (TrayTab.home, ColorScheme.light, "Home — Light"),
+            (.home, .dark, "Home — Dark"),
+            (.inputDevices, .dark, "Input Devices — Dark"),
+        ] {
+            let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))
+            attachment.name = "Menu Bar — \(name)"
             attachment.lifetime = .keepAlways
             add(attachment)
         }
+    }
 
-        let manager = RcloneJobManager.shared
-        let originalJobs = manager.jobs
-        defer { manager.jobs = originalJobs }
-        manager.jobs = [previewJob(state: .running), previewJob(state: .paused)]
-
-        let transferAttachment = XCTAttachment(
-            image: try renderDashboard(colorScheme: .dark)
-        )
-        transferAttachment.name = "Menu Bar Dashboard — Active and Paused Transfers"
-        transferAttachment.lifetime = .keepAlways
-        add(transferAttachment)
+    private func restore(_ value: String?, key: String) {
+        if let value { UserDefaults.standard.set(value, forKey: key) }
+        else { UserDefaults.standard.removeObject(forKey: key) }
     }
 
     private func sourceFile(_ path: String) throws -> String {
@@ -96,23 +105,25 @@ final class TrayPopoverLayoutTests: XCTestCase {
         return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 
-    private func renderDashboard(colorScheme: ColorScheme) throws -> NSImage {
+    private func render(tab: TrayTab, colorScheme: ColorScheme) throws -> NSImage {
+        UserDefaults.standard.set(tab.rawValue, forKey: "tray.selectedTab.v2")
         let host = NSHostingView(
             rootView: TrayPopoverView()
                 .background(Color(nsColor: .windowBackgroundColor))
                 .environment(\.colorScheme, colorScheme)
         )
-        host.appearance = NSAppearance(
-            named: colorScheme == .dark ? .darkAqua : .aqua
-        )
-        host.frame = NSRect(x: 0, y: 0, width: TrayPopoverLayout.width, height: 700)
+        host.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
+        host.frame = NSRect(x: 0, y: 0, width: TrayPopoverLayout.width, height: 1_100)
         host.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
         let size = host.fittingSize
         XCTAssertEqual(size.width, TrayPopoverLayout.width, accuracy: 1)
-        XCTAssertGreaterThan(size.height, 200)
-        XCTAssertLessThan(size.height, 700)
+        XCTAssertGreaterThan(size.height, 100)
+        XCTAssertLessThanOrEqual(
+            size.height,
+            (NSScreen.main?.visibleFrame.height ?? 900) * TrayPopoverLayout.heightFraction + 1
+        )
 
         host.frame.size = size
         host.layoutSubtreeIfNeeded()
@@ -121,37 +132,5 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let image = NSImage(size: size)
         image.addRepresentation(representation)
         return image
-    }
-
-    private func previewJob(state: TransferState) -> TransferJob {
-        let job = TransferJob(
-            operation: .copy,
-            sourceFs: "/Users/example/Design Assets",
-            destinationFs: "drive:Archive",
-            sourceDisplay: state == .paused ? "Project Photos" : "Design Assets",
-            destinationDisplay: "Drive / Archive",
-            excludePatterns: [],
-            maxRetries: 3
-        )
-        job.state = state
-        job.expectedBytes = 2_000_000
-        job.expectedFiles = 4
-        var stats = TransferStats()
-        stats.bytes = 1_200_000
-        stats.totalBytes = 2_000_000
-        stats.speed = 640_000
-        stats.transferring = [
-            FileProgress(
-                name: "brand-system.sketch",
-                size: 1_000_000,
-                bytes: 600_000,
-                percentage: 60,
-                speed: 320_000,
-                speedAvg: 300_000,
-                eta: 2
-            )
-        ]
-        job.stats = stats
-        return job
     }
 }
