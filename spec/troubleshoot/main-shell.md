@@ -31,42 +31,46 @@
   rows or sit too close to neighboring items.
 - **Cause:** Each tray section used independent icon widths, row heights, and
   spacing values, so mixed content had no shared alignment columns.
-- **Invariant:** Use one scrollable dashboard with a 12pt horizontal gutter.
-  Put one-shot actions first, stateful controls next, background status after
-  them, and open-only tools last. Use an 18pt leading icon column, at least 24pt
-  for compact rows, 8pt between peer controls, and align transfer progress with
-  its text column. Keep Pause/Resume on the active transfer row. Separate tool
-  sections with `QuietDivider`, not cards or tabs. Give the footer 8pt top and
-  10pt bottom insets.
-- **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
-  leading labels and trailing actions must remain aligned without crowding.
-  Enable every combined tool and confirm the reading order is quick actions,
-  Awake, Cloud Sync, then Input Devices. Measure the body and footer edges.
+- **Invariant:** Use a horizontally scrollable icon tab strip above one
+  vertically scrollable body. Home contains Color Picker, Text Extractor,
+  Awake, and Ruler in open rows separated by quiet dividers. Their title is the
+  link to the full tool and ends with a minimal up-right arrow; never add a
+  second Open button. Complex built-ins own focused tabs in this default order:
+  Cloud Sync, Logs, Input Devices, System Care, System Monitor, and NetToys.
+  Give the footer 8pt top and 10pt bottom insets.
+- **Check:** Enable every built-in, confirm Home then Cloud Sync appear first,
+  scroll through the complete tab strip, reorder two complex tabs, relaunch,
+  and confirm the order and selected tab persist. Compare Home and Cloud Sync
+  alignment in light and dark appearances.
 
-## Menu-Bar Dashboard Density
+## Menu-Bar Tab Density
 
-- **Symptom:** The combined popover becomes a second settings window or spends
-  most of its height on navigation chrome.
-- **Cause:** Per-tool tabs embedded full settings pages inside the tray.
-- **Invariant:** Omit tabs and full settings forms. Each enabled tool contributes
-  only its immediate action, current operational state, or a compact Open
-  action. Cap the complete dashboard body at 70 percent of the screen.
-- **Check:** The all-tools state exposes no settings field, stays within the
-  height cap, and reaches every section in one vertical scroll.
+- **Symptom:** The combined popover becomes a second settings window or a long
+  mixed dashboard that is hard to scan.
+- **Cause:** Every tool either embedded a full settings page or contributed to
+  one undifferentiated vertical list.
+- **Invariant:** Tabs organize distinct tasks, not every settings page. Home
+  keeps only compact single-purpose controls. Cloud Sync shows connection and
+  transfer operation, not configuration. Input Devices may reuse its full
+  mouse and trackpad controls because those controls are the tool's immediate
+  purpose. Other complex tabs expose only their useful menu-bar surface. Cap
+  the body at 70 percent of the screen.
+- **Check:** The all-tools state stays within the height cap. Cloud Sync has no
+  durable settings form. Input Devices exposes the same saved controls as its
+  window. No tab contains an unexplained duplicate Open button.
 
-## Menu-Bar Quick Controls
+## Menu-Bar Visual Language
 
-- **Symptom:** The menu-bar popup exposes infrequent configuration fields and
-  makes common actions slow to reach.
-- **Cause:** The tray reused `ToolSettingsContent` instead of defining a focused
-  quick-control surface.
-- **Invariant:** The tray never embeds `ToolSettingsContent`. Keep durable and
-  infrequent configuration in the launcher or tool window. The tray may expose
-  one-shot actions, an Awake duration preset, Cloud Sync state with Pause or
-  Resume, recovery, and compact Open actions.
-- **Check:** `TrayPopoverLayoutTests` proves the tray source has no shared
-  settings view. In the installed build, confirm that each visible control is
-  useful without opening a form.
+- **Symptom:** Bright tool-colored buttons make the popover look unrelated to
+  the rest of MacPowerToys and reduce label contrast.
+- **Cause:** Tool identity colors were used as large action fills.
+- **Invariant:** Match the app's quiet native surfaces: monochrome SF Symbols,
+  primary and secondary text, thin dividers, and low-opacity neutral hover,
+  pressed, and selected layers. Never use a tool's major color as a large tray
+  fill. Preserve keyboard focus and at least 24pt pointer targets.
+- **Check:** Render Home and one complex tab in light and dark appearance.
+  Labels remain readable at rest and on hover, selection is obvious without a
+  bright accent block, and the panel still reads as part of MacPowerToys.
 
 ## Menu-Bar Tool Placement
 

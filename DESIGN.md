@@ -729,10 +729,17 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   accent text, or enclosing segmented-control tray. An unselected hover uses
   the same 0.06 surface. The strip starts on the shared gutter and selection
   never moves its tabs.
-- **Tray Tab** - at least 28pt high, 12pt medium text, 10pt horizontal inset,
-  8pt radius, and 4pt between tabs. Hover is primary 0.06; selection is accent
-  with contrast-aware text. The selected tab also exposes `isSelected` to
-  accessibility. It is a tray-popover component, never an applet body tab.
+- **Tray tab** - a 32pt square icon button with a 16pt monochrome SF Symbol,
+  8pt radius, and 4pt between peers. The strip scrolls horizontally and lets
+  people reorder complex-tool tabs. Home remains first; Cloud Sync is first in
+  the default complex-tool order. Hover uses primary 0.06, pressed uses 0.10,
+  and selection uses primary 0.12 with ordinary primary text. Never fill a tab
+  with the app accent or a tool identity color. Expose the tool name and
+  selected state to accessibility.
+- **Tray open row** - the tool title itself is a plain button ending in a small
+  `arrow.up.right`; hover nudges the arrow up and right unless Reduce Motion is
+  enabled. Put immediate controls on the trailing edge or directly below. Do
+  not add a separate Open button.
 - **Section card** - 10pt radius, 0.05 bg, 14pt padding, preceded by an
   UPPERCASE 10pt secondary header on the same gutter.
 - **Card** (grid/tool) - 12pt radius, 0.03 bg, hover 0.06. Launcher tool cards

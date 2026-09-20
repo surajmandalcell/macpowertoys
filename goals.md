@@ -238,6 +238,13 @@ G6 Everything mode          [█████████████████
 
 ## Current work
 
+- Rebuild the combined menu-bar popup as a muted reorderable tab surface, with
+  compact simple tools on Home, Cloud Sync first among complex tools, and the
+  complete Input Devices control surface in its tab.
+- Remove AI History from the registry, windows, routing, services, assets,
+  tests, and Raycast integration without deleting external user data.
+- Rework Text Extractor's native Vision path for low-density text, latency, and
+  repeated-capture reliability, then verify it in the signed app.
 - Dev Sync is complete through the goal tree above; only the visual check
   of an existing transfer row beside a running pair remains in its request
   list.
