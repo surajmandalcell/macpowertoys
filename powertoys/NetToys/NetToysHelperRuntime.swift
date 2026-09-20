@@ -100,7 +100,11 @@ actor NetToysHelperRuntime {
     private func tick(_ configuration: NetToysConfiguration) async {
         var statuses: [SSHAnchorStatus] = []
         for anchor in configuration.anchors {
-            statuses.append(await check(anchor))
+            statuses.append(
+                configuration.sshAnchorEnabled
+                    ? await check(anchor)
+                    : status(anchor, .idle)
+            )
         }
         if configuration.wifiPriority.isEnabled
             || (configuration.recordsNetworkHistory

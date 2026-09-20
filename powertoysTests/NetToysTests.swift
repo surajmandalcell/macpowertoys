@@ -57,6 +57,34 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testSSHAnchorFeatureGatePreservesPerAnchorChoices() throws {
+        let enabled = SSHAnchorConfiguration(
+            hostAlias: "enabled",
+            hostName: "192.168.1.10",
+            port: 22,
+            identity: .stableMAC("001122334455")
+        )
+        let disabled = SSHAnchorConfiguration(
+            isEnabled: false,
+            hostAlias: "disabled",
+            hostName: "192.168.1.11",
+            port: 22,
+            identity: .stableMAC("aabbccddeeff")
+        )
+        var configuration = NetToysConfiguration(anchors: [enabled, disabled])
+
+        XCTAssertEqual(configuration.monitoredAnchors.map(\.hostAlias), ["enabled"])
+        configuration.sshAnchorEnabled = false
+        XCTAssertTrue(configuration.monitoredAnchors.isEmpty)
+
+        let restored = try JSONDecoder().decode(
+            NetToysConfiguration.self,
+            from: JSONEncoder().encode(configuration)
+        )
+        XCTAssertFalse(restored.sshAnchorEnabled)
+        XCTAssertEqual(restored.anchors.map(\.isEnabled), [true, false])
+    }
+
     func testIPv4TargetsParseRangeCIDRAndListWithoutDuplicates() throws {
         XCTAssertEqual(
             try IPv4Targets.parse("192.168.1.3-192.168.1.5").map(\.description),

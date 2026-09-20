@@ -378,17 +378,20 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
     }
 
     var probeInterval: TimeInterval
+    var sshAnchorEnabled: Bool
     var anchors: [SSHAnchorConfiguration]
     var recordsNetworkHistory: Bool
     var wifiPriority: WiFiPriorityConfiguration
 
     init(
         probeInterval: TimeInterval = 2.5,
+        sshAnchorEnabled: Bool = true,
         anchors: [SSHAnchorConfiguration] = [],
         recordsNetworkHistory: Bool = true,
         wifiPriority: WiFiPriorityConfiguration = WiFiPriorityConfiguration()
     ) {
         self.probeInterval = min(max(probeInterval, 2), 3)
+        self.sshAnchorEnabled = sshAnchorEnabled
         self.anchors = Array(anchors.prefix(16))
         self.recordsNetworkHistory = recordsNetworkHistory
         self.wifiPriority = wifiPriority
@@ -398,6 +401,10 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             probeInterval: try values.decode(TimeInterval.self, forKey: .probeInterval),
+            sshAnchorEnabled: try values.decodeIfPresent(
+                Bool.self,
+                forKey: .sshAnchorEnabled
+            ) ?? true,
             anchors: try values.decode([SSHAnchorConfiguration].self, forKey: .anchors),
             recordsNetworkHistory: try values.decode(Bool.self, forKey: .recordsNetworkHistory),
             wifiPriority: try values.decodeIfPresent(
@@ -405,6 +412,10 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
                 forKey: .wifiPriority
             ) ?? WiFiPriorityConfiguration()
         )
+    }
+
+    var monitoredAnchors: [SSHAnchorConfiguration] {
+        sshAnchorEnabled ? anchors.filter(\.isEnabled) : []
     }
 
     func replacingAnchor(_ anchor: SSHAnchorConfiguration) throws -> Self {

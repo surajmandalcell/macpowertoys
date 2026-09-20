@@ -136,9 +136,11 @@ struct TrayPopoverView: View {
         }
         .frame(width: TrayPopoverLayout.width)
         .background {
-            (reduceTransparency ? Color(nsColor: .windowBackgroundColor) : Color.black)
-                .opacity(reduceTransparency ? 1 : colorScheme == .dark ? 0.10 : 0.02)
-                .ignoresSafeArea()
+            if reduceTransparency {
+                Color(nsColor: .windowBackgroundColor).ignoresSafeArea()
+            } else {
+                Color.black.opacity(colorScheme == .dark ? 0.04 : 0.01).ignoresSafeArea()
+            }
         }
         .onAppear(perform: normalizeSelection)
         .onChange(of: storedTabOrder) { normalizeSelection() }
@@ -149,7 +151,7 @@ struct TrayPopoverView: View {
     }
 
     private var topChrome: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             TrayTabStrip(
                 tabs: tabs,
                 selected: Binding(get: { selectedTab }, set: { select($0) }),
@@ -162,20 +164,25 @@ struct TrayPopoverView: View {
                     .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.18 : 0.08))
             }
 
-            TrayChromeButton(title: "Open MacPowerToys", systemImage: "arrow.up.forward.square") {
-                openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
-            }
-            TrayChromeButton(title: "Open Settings", systemImage: "gearshape") {
-                openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .openToolSettings, object: "home")
+            Spacer(minLength: 8)
+
+            HStack(spacing: 4) {
+                TrayChromeButton(title: "Open MacPowerToys", systemImage: "arrow.up.forward.square") {
+                    openWindow(id: "main")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                TrayChromeButton(title: "Open Settings", systemImage: "gearshape") {
+                    openWindow(id: "main")
+                    NSApp.activate(ignoringOtherApps: true)
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .openToolSettings, object: "home")
+                    }
+                }
+                TrayChromeButton(title: "Quit MacPowerToys", systemImage: "power") {
+                    NSApp.terminate(nil)
                 }
             }
-            TrayChromeButton(title: "Quit MacPowerToys", systemImage: "power") {
-                NSApp.terminate(nil)
-            }
+            .fixedSize()
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
         .padding(.vertical, 6)
@@ -191,7 +198,11 @@ struct TrayPopoverView: View {
         case .inputDevices:
             VStack(spacing: 0) {
                 TrayToolHeader(tab: .inputDevices)
-                InputDevicesSettingsView(showsHeader: true, showsContainerScroll: false)
+                InputDevicesSettingsView(
+                    showsHeader: true,
+                    showsContainerScroll: false,
+                    contentTopInset: 6
+                )
             }
         case .systemCare:
             SystemCareTrayView()
@@ -385,6 +396,8 @@ private struct TrayHomeActionButton: View {
             HStack(spacing: 6) {
                 Image(systemName: symbol)
                     .rotationEffect(.degrees(iconRotation))
+                    .symbolRenderingMode(.monochrome)
+                    .font(.system(size: 12, weight: .medium))
                 Text(title).lineLimit(1)
             }
             .font(.system(size: 11, weight: .medium))
@@ -509,7 +522,8 @@ private struct TrayToolHeader: View {
     var body: some View {
         TrayToolLink(toolID: tab.rawValue, title: tab.title, symbol: tab.symbol)
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 8)
+        .padding(.top, 5)
+        .padding(.bottom, 3)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -570,6 +584,7 @@ private struct CloudSyncTrayView: View {
 private struct TrayTransferRow: View {
     let job: TransferJob
     @State private var manager = RcloneJobManager.shared
+    @State private var showsError = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -577,22 +592,25 @@ private struct TrayTransferRow: View {
                 Button {
                     manager.setExpanded(!job.isExpanded, for: job)
                 } label: {
-                    Image(systemName: "chevron.right")
+                    Image(systemName: job.isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
-                        .rotationEffect(.degrees(job.isExpanded ? 90 : 0))
-                        .frame(width: 22, height: 22)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12, height: 22)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 5))
+                .buttonStyle(.plain)
                 .accessibilityLabel(job.isExpanded ? "Hide transfer files" : "Show transfer files")
                 Image(systemName: job.operation.icon).font(.system(size: 10)).foregroundStyle(.secondary)
                 Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
                     .font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
-                Label(job.state.displayName, systemImage: job.state.icon)
-                    .labelStyle(.titleAndIcon)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(stateColor)
-                    .lineLimit(1)
+                if job.state == .failed, job.errorMessage?.isEmpty == false {
+                    Button { showsError.toggle() } label: { stateBadge }
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
+                        .accessibilityLabel(showsError ? "Hide transfer error" : "Show transfer error")
+                } else {
+                    stateBadge
+                }
                 if job.canPause {
                     transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
                 } else if job.canResume {
@@ -622,7 +640,7 @@ private struct TrayTransferRow: View {
                 .monospacedDigit()
             }
 
-            if let error = job.errorMessage, !error.isEmpty {
+            if showsError, let error = job.errorMessage, !error.isEmpty {
                 Text(error)
                     .font(.system(size: 9))
                     .foregroundStyle(Color.red.opacity(0.86))
@@ -649,6 +667,19 @@ private struct TrayTransferRow: View {
                 .padding(.leading, 30)
             }
         }
+    }
+
+    private var stateBadge: some View {
+        HStack(spacing: 3) {
+            Image(systemName: job.state.icon)
+            Text(job.state.displayName)
+        }
+        .font(.system(size: 9, weight: .medium))
+        .foregroundStyle(stateColor)
+        .lineLimit(1)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(stateColor.opacity(0.08), in: Capsule())
     }
 
     private var stateColor: Color {
@@ -778,10 +809,10 @@ private struct SystemCareTrayView: View {
 
             if !manager.hasCleanupScan {
                 EmptyStateView(icon: "internaldrive", message: "Analyze cleanup locations")
-                    .frame(height: 108)
+                    .frame(maxWidth: .infinity, minHeight: 108)
             } else if manager.cleanupCandidates.isEmpty {
                 EmptyStateView(icon: "checkmark.circle", message: "Nothing reclaimable in the saved scan")
-                    .frame(height: 108)
+                    .frame(maxWidth: .infinity, minHeight: 108)
             } else {
                 cleanupSummary
                 selectionBar
@@ -968,7 +999,7 @@ private struct SystemMonitorTrayView: View {
     private var sample: SystemMonitorSample? { service.snapshot }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             TrayToolHeader(tab: .systemMonitor)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 metric(
@@ -1019,7 +1050,8 @@ private struct SystemMonitorTrayView: View {
                     values: service.history.compactMap { $0.loadAverage.map { $0.0 } }
                 )
             }
-            .padding(TrayPopoverLayout.horizontalInset)
+            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            .padding(.top, 4)
         }
         .padding(.bottom, 8)
         .onAppear { service.startDetailed(owner: "tray") }
@@ -1183,27 +1215,120 @@ private struct TrayMetricSparkline: View {
 
 private struct NetToysTrayView: View {
     @State private var model = NetToysHistoryViewModel()
+    @State private var configuration = NetToysConfigurationStore.load()
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             TrayToolHeader(tab: .netToys)
-            QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
-            HStack(spacing: 9) {
-                Image(systemName: "network").font(.system(size: 12)).foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.helperStatus?.network?.displayName ?? "Network unavailable")
-                        .font(.system(size: 11, weight: .medium)).lineLimit(1)
-                    Text(helperDetail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
-                }
-                Spacer()
+            VStack(spacing: 0) {
+                statusRow(
+                    title: model.helperStatus?.network?.displayName ?? "Network unavailable",
+                    detail: helperDetail,
+                    symbol: "network"
+                )
+                QuietDivider()
+                toggleRow(
+                    title: "SSH Anchor",
+                    detail: configuration.anchors.isEmpty
+                        ? "No configured anchors"
+                        : "\(configuration.monitoredAnchors.count) of \(configuration.anchors.count) active",
+                    symbol: "link",
+                    isOn: Binding(
+                        get: { configuration.sshAnchorEnabled },
+                        set: { configuration.sshAnchorEnabled = $0; save() }
+                    ),
+                    disabled: configuration.anchors.isEmpty
+                )
+                QuietDivider()
+                toggleRow(
+                    title: "Wi-Fi Priority",
+                    detail: "\(configuration.wifiPriority.ssids.count) saved networks",
+                    symbol: "wifi",
+                    isOn: Binding(
+                        get: { configuration.wifiPriority.isEnabled },
+                        set: {
+                            configuration.wifiPriority.isEnabled = $0
+                                && configuration.wifiPriority.ssids.count >= 2
+                            save()
+                        }
+                    ),
+                    disabled: configuration.wifiPriority.ssids.count < 2
+                )
+                QuietDivider()
+                toggleRow(
+                    title: "Network History",
+                    detail: configuration.recordsNetworkHistory ? "Recording changes" : "Not recording",
+                    symbol: "chart.xyaxis.line",
+                    isOn: Binding(
+                        get: { configuration.recordsNetworkHistory },
+                        set: { configuration.recordsNetworkHistory = $0; save() }
+                    )
+                )
             }
-            .padding(TrayPopoverLayout.horizontalInset)
+            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 9))
+                    .foregroundStyle(Color.red.opacity(0.86))
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    .padding(.bottom, 8)
+            }
         }
-        .onAppear { model.refresh() }
+        .onAppear {
+            model.refresh()
+            configuration = NetToysConfigurationStore.load()
+        }
     }
 
     private var helperDetail: String {
         guard let status = model.helperStatus else { return "Background helper is not reporting" }
         return "Updated \(status.heartbeat.formatted(date: .omitted, time: .shortened))"
+    }
+
+    private func statusRow(title: String, detail: String, symbol: String) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func toggleRow(
+        title: String,
+        detail: String,
+        symbol: String,
+        isOn: Binding<Bool>,
+        disabled: Bool = false
+    ) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 11, weight: .medium))
+                Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .disabled(disabled)
+        }
+        .padding(.vertical, 7)
+    }
+
+    private func save() {
+        do {
+            try NetToysConfigurationStore.save(configuration)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

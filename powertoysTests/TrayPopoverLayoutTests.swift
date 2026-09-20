@@ -78,7 +78,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains(".draggable(tab.rawValue)"))
         XCTAssertTrue(source.contains("Button(\"Move Left\""))
         XCTAssertTrue(source.contains("Button(\"Move Right\""))
-        XCTAssertTrue(source.contains("InputDevicesSettingsView(showsHeader: true, showsContainerScroll: false)"))
+        XCTAssertTrue(source.contains("contentTopInset: 6"))
         XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
@@ -86,6 +86,24 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains(".focusEffectDisabled()"))
         XCTAssertTrue(source.contains("accessibilityReduceTransparency"))
         XCTAssertTrue(source.contains("colorSchemeContrast"))
+    }
+
+    func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
+        let source = try sourceFile("Views/TrayPopoverView.swift")
+
+        XCTAssertTrue(source.contains("Spacer(minLength: 8)"))
+        XCTAssertTrue(source.contains("Color.black.opacity(colorScheme == .dark ? 0.04 : 0.01)"))
+        XCTAssertTrue(source.contains("@State private var showsError = false"))
+        XCTAssertTrue(source.contains("if showsError, let error = job.errorMessage"))
+        XCTAssertTrue(source.contains("symbol: \"text.viewfinder\""))
+    }
+
+    func testCorrectedSharedSurfacesHaveOneTrailingAndHoverGeometry() throws {
+        let input = try sourceFile("Views/InputDevices/InputDevicesSettingsView.swift")
+        let launcher = try sourceFile("Views/AllToolsGridView.swift")
+
+        XCTAssertFalse(input.contains(".frame(maxWidth: .infinity, alignment: .trailing)"))
+        XCTAssertFalse(launcher.contains(".buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))"))
     }
 
     func testTrayPopoverHeightStaysWithinSeventyPercentOfTheScreen() {
