@@ -24,13 +24,13 @@
   option cards look like oversized web controls and hide the primary action.
 - **Cause:** New workspaces copied local 22pt scroll-body headers and custom
   card controls instead of the shared compact workspace shell.
-- **Invariant:** Use 220pt simple, 240pt data, or 260pt conversation sidebars.
+- **Invariant:** Use 220pt simple or 240pt data sidebars.
   Use 28pt full-width rows with native emphasized or unemphasized selection;
   labels and SF Symbols use the native selected foreground, while branded icon
   artwork keeps its original colors. Use the shared 40pt page strip, 13pt
   destination title, optional 11pt subtitle, 12pt body inset, native controls,
   related multi-column rows, and one accent primary action.
-- **Check:** Inspect launcher, Logs, Cloud Sync, AI History, Input Devices,
+- **Check:** Inspect launcher, Logs, Cloud Sync, Input Devices,
   System Care, and System Monitor at default and minimum widths. No workspace has
   a 22pt body title, a second 32pt top gap, or mismatched selected icon and text.
 
@@ -57,7 +57,7 @@
   220-point sidebar plus a 980-point content pane that fits four 220-point cards
   with 16-point gaps inside 24-point padding. The launcher also restores position
   only, so a frame saved at an older size never reopens at that size. Logs, Cloud
-  Sync, AI History, Input Devices, System Care, and System Monitor use their
+  Sync, Input Devices, System Care, and System Monitor use their
   sidebar family plus a 640-point content minimum and a 600-point height.
   NetToys uses a 1,280 by 800 point default and a 1,100 by 700 point minimum so
   the IP Scanner table retains useful column space. Compact applets and Ruler
@@ -149,12 +149,12 @@
 - **Cause:** A workspace chose local width or padding literals instead of its
   shared sidebar family and layout metrics.
 - **Invariant:** Launcher, Logs, and Input Devices use the 220pt compact family;
-  Cloud Sync, System Care, and System Monitor use the 240pt data family; AI History
-  uses the 260pt conversation family. Navigation groups have 12pt horizontal
+  Cloud Sync, System Care, and System Monitor use the 240pt data family.
+  Navigation groups have 12pt horizontal
   pane padding. All workspace titles and first controls use the shared 84pt and
   44pt edges.
 - **Check:** Search the complete workspace class for sidebar width, top padding,
-  and title-leading literals. Open all seven sidebars at default and minimum
+  and title-leading literals. Open all six sidebars at default and minimum
   sizes; selected rows keep equal left and right pane clearance.
 
 ## Launcher Detail Geometry
@@ -331,10 +331,10 @@
   native small `NSSearchField` in a 24pt slot for every search inside app and
   sub-app content, toolbars, sheets, and popovers. Put progress beside the
   native field when a content search needs a loading state.
-- **Check:** Inspect the launcher, Logs, and AI History sidebars, then inspect
-  AI History messages, Color Picker history, Cloud Sync files and connector
+- **Check:** Inspect the launcher and Logs sidebars, then inspect Color Picker
+  history, Cloud Sync files and connector
   picker, NetToys scanner and history, and System Care applications. Only the
-  three sidebar searches use the larger padded style.
+  two sidebar searches use the larger padded style.
 
 ## NetToys SSH Host Catalog And Scanner Handoff
 
@@ -512,16 +512,16 @@
 ### Nested editor inside a scrolling page
 
 - **Symptom:** A `TextEditor` inside a scrolling surface, such as the Cloud
-  Sync ignore-pattern editor in the menu-bar popover, keeps a legacy scroller
+  Sync ignore-pattern editor in its settings page, keeps a legacy scroller
   with a visible track while the page scroller stays thin.
 - **Cause:** `thinScrollIndicators()` configured the first scroll view it
-  found. With the editor inside the popover's `ScrollView`, that was the
-  enclosing page scroll view, so the editor's own scroll view never received
-  the overlay configuration.
+  found. With the editor inside an enclosing settings `ScrollView`, that was
+  the page scroll view, so the editor's own scroll view never received the
+  overlay configuration.
 - **Invariant:** The configurator looks for the sibling scroll view that hosts
   the modified view and skips every ancestor scroll view; `enclosingScrollView`
   is only the fallback when no sibling exists.
-- **Check:** Open the Cloud Sync menu-bar tab in the installed build and confirm
+- **Check:** Open Cloud Sync settings in the installed build and confirm
   the ignore-pattern editor shows no scroller track at rest. The
   `ScrollIndicatorTests` sibling and modifier tests cover the lookup.
 

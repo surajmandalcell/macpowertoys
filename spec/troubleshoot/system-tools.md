@@ -403,7 +403,7 @@
   surfaces, Awake activity, Input Devices scroll control, the NetToys login
   helper, Settings Sync observers, a visible Cloud Sync window, active or
   continuous Cloud Sync jobs, the saved Cloud Sync start-at-login mode, global
-  shortcuts, visible Ruler work, and visible AI History file watching. Each
+  shortcuts, and visible Ruler work. Each
   owner must still stop when its own need condition ends. Repeated start calls
   must not increase its owner count.
 - **Check:** Expose test-only owner counts instead of inferring them from process

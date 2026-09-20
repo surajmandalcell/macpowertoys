@@ -433,7 +433,6 @@ tool's product brief.
 
 | Tool | Category / family | Card description |
 |---|---|---|
-| AI History | Developer / workspace | Browse every Claude Code conversation on this Mac - live, searchable, and bookmarkable. |
 | Cloud Sync | Files / workspace | Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules. |
 | Logs | System / workspace | View application logs and diagnostics. |
 | Ruler | Developer / AppKit overlay | Measure the screen with movable, resizable rulers in pixels, millimeters, or inches. |
@@ -447,7 +446,7 @@ tool's product brief.
 ### Full Workspace
 
 A full workspace is a resizable environment for sustained work such as Cloud
-Sync, AI History, or Logs. Its sidebar owns tool-level navigation; its
+Sync or Logs. Its sidebar owns tool-level navigation; its
 content pane owns the selected destination. It uses native close, minimize, and
 zoom traffic lights over the sidebar and never draws a compact titlebar.
 
@@ -533,7 +532,6 @@ Existing workspaces fix the reference choices that general ranges leave open:
 |---|---|---|---|
 | Logs | 900×600 / 220pt | Search; level filters; Settings | Selectable dense log stream |
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
-| AI History | 1200×800 / 260pt | Conversation search; bookmarks, projects, Settings | Selected conversation detail |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
 | System Monitor | 1080×720 / 240pt | Metric destinations and menu settings | Live charts and metric grids |
@@ -692,15 +690,16 @@ A modeless detail that needs independent movement, resizing, restoration, or
 persistent navigation is not subordinate: define it as a compact applet or full
 workspace `Window` scene and follow that complete family contract.
 
-The tray popover is also subordinate: 340pt wide and no more than 70% of screen
-height. It is one scrollable quick dashboard, never a tabbed settings window.
-Order content by use: one-shot actions, stateful controls, background status,
-then open-only tools. Separate tool sections with quiet dividers and keep one
-12pt horizontal gutter. Durable configuration stays in the launcher or tool
-window; the tray never embeds a settings page. A compact footer may expose
-Open MacPowerToys and Quit. Measurement guides and capture overlays are
-transient task surfaces and must not borrow launcher, workspace, or applet
-navigation chrome.
+The tray popover is also subordinate: 360pt wide and no more than 70% of screen
+height. A horizontally scrollable, reorderable icon strip sits above one
+vertically scrollable body. Home keeps one-shot actions and compact stateful
+controls; complex built-ins get focused operational tabs. Durable
+configuration stays in the launcher or tool window, except Input Devices may
+reuse its full mouse and trackpad controls because those controls are its
+immediate purpose. Separate rows with quiet dividers and keep one 12pt
+horizontal gutter. Gear and power buttons open MacPowerToys and quit.
+Measurement guides and capture overlays are transient task surfaces and must
+not borrow launcher, workspace, or applet navigation chrome.
 
 ## Components
 
@@ -802,7 +801,6 @@ variant weakens the deliberate temperature and contrast difference.
 | Tool | Light appearance | Dark appearance | Decision |
 |---|---|---|---|
 | Cloud Sync | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
-| AI History | Midnight | Chosen Color | Preserve the terracotta message echo in dark mode |
 | Logs | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
 | Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
 | Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
@@ -849,7 +847,7 @@ palette or reuse another tool's semantic hue.
   physical cutout. Never use one for a catchlight or decorative control.
 - New Chosen Color icons use warm off-white `#F7F5F0` and charcoal `#23272E`,
   never pure white or black. The Chosen Color palette table is the binding
-  legacy exception: Cloud Sync, AI History, and Logs retain their listed
+  legacy exception: Cloud Sync and Logs retain their listed
   `#FFFFFF` foregrounds. Neutral Midnight/Porcelain assets always use their own
   closed glyph tokens rather than either white.
 - No decorative outline, gloss, blur, rim light, or soft drop shadow. A gradient
@@ -885,9 +883,7 @@ glyph behind the foreground:
 Compound glyphs must behave as one silhouette. Put all echo pieces inside one
 `<g>` with one shared fill or stroke. When a Chosen Color legacy icon uses a
 translucent semantic echo, apply `opacity` to the group, never to overlapping
-children. This prevents darker seams where parts overlap. AI History is the
-reference: the rounded message body and bottom pointer share one terracotta
-shadow group, so the pointer never looks like a second shadow.
+children. This prevents darker seams where parts overlap.
 
 At 32px the echo should read as a narrow lower-right depth cue, not a duplicate
 icon. If it becomes a second symbol, the foreground is too small or the offset
@@ -898,7 +894,6 @@ has been changed.
 | Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
 | Cloud Sync | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
-| AI History | `#1C1D22` | `#FFFFFF` at `.92` | `#D97757` message echo at `.30` |
 | Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |

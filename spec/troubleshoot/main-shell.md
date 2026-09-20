@@ -191,8 +191,8 @@
 
 ## Dock Icon Optical Sizing
 
-- **Symptom:** Awake, Color Picker, Text Extractor, Ruler, Logs, Cloud Sync, or
-  AI History appears materially larger than MacPowerToys when its applet
+- **Symptom:** Awake, Color Picker, Text Extractor, Ruler, Logs, or Cloud Sync
+  appears materially larger than MacPowerToys when its applet
   window becomes key, or the Dock icon is regenerated during every focus event.
 - **Cause:** Applet artwork filled the complete 512pt asset canvas while the
   base icon's visible body occupied about 396pt. Assigning each source image
