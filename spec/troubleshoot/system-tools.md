@@ -35,6 +35,23 @@
   history, and tray surfaces repeatedly; require responsive input, current
   data after loading, and no accumulating refresh task or timer.
 
+## NetToys Location Prompt And Heavy-Tool Switching
+
+- **Symptom:** Returning to NetToys or System Monitor stalls the launcher, and
+  merely opening NetToys can show the Location permission prompt again.
+- **Cause:** SwiftUI retained the heavy-settings readiness state while the
+  selected tool changed, so the next heavy tree built synchronously. NetToys
+  also requested Location on appearance, refresh, and app activation whenever
+  Core Location still reported `notDetermined`.
+- **Invariant:** Key the settings subtree by tool ID so each heavy destination
+  starts with its cancellable loading shell and the old subtree is released.
+  Read the current Location status during refresh, but request authorization
+  only from the visible user action. An existing authorization performs no
+  request; denied or restricted access opens System Settings.
+- **Check:** Alternate NetToys and System Monitor repeatedly in the exact signed
+  app. Each click must respond immediately, the final selection must win, and
+  no Location dialog may appear until Allow Location Access is clicked.
+
 - **Symptom:** NetToys uses generic network tests or SSH tunnels instead of the
   requested four-part product.
 - **Cause:** An earlier draft was mistaken for the final scope.

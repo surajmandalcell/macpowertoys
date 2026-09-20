@@ -307,6 +307,17 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertTrue(try toolSettingsContentSource().contains(".task(id: toolID)"))
     }
 
+    func testHeavyToolSettingsReturnToLoadingWhenSelectionChanges() throws {
+        let source = try toolAboutViewSource()
+        let settings = try XCTUnwrap(source.range(of: "ToolSettingsContent(toolID: tool.id)"))
+        let frame = try XCTUnwrap(source.range(
+            of: ".frame(maxWidth: .infinity, maxHeight: .infinity)",
+            range: settings.upperBound..<source.endIndex
+        ))
+
+        XCTAssertTrue(source[settings.lowerBound..<frame.upperBound].contains(".id(tool.id)"))
+    }
+
     func testNetToysHistoryLoadsSavedDataOffTheMainActor() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
