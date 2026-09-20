@@ -50,6 +50,23 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(LogsTool.shared.hasTrayTab)
     }
 
+    func testTransferConsoleBoundsActiveAndRecentJobs() {
+        let active = (0..<7).map { index in
+            transferJob(state: index == 0 ? .paused : .running, createdAt: Date(timeIntervalSince1970: Double(index)))
+        }
+        let recent = (0..<5).map { index in
+            transferJob(state: index == 0 ? .failed : .completed, createdAt: Date(timeIntervalSince1970: Double(100 + index)))
+        }
+
+        let visible = TrayPopoverLayout.visibleTransferJobs(active + recent)
+
+        XCTAssertEqual(visible.count, 8)
+        XCTAssertEqual(visible.filter { $0.state.isActive }.count, 5)
+        XCTAssertEqual(visible.filter { $0.state.isTerminal }.count, 3)
+        XCTAssertEqual(visible.first?.createdAt, Date(timeIntervalSince1970: 6))
+        XCTAssertEqual(visible.last?.createdAt, Date(timeIntervalSince1970: 102))
+    }
+
     func testTrayUsesMutedTabbedChromeAndFocusedContent() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
@@ -99,6 +116,22 @@ final class TrayPopoverLayoutTests: XCTestCase {
     private func restore(_ value: String?, key: String) {
         if let value { UserDefaults.standard.set(value, forKey: key) }
         else { UserDefaults.standard.removeObject(forKey: key) }
+    }
+
+    private func transferJob(state: TransferState, createdAt: Date) -> TransferJob {
+        let job = TransferJob(
+            operation: .copy,
+            sourceFs: "/source",
+            destinationFs: "/destination",
+            sourceDisplay: "Source",
+            destinationDisplay: "Destination",
+            excludePatterns: [],
+            maxRetries: 1,
+            createdAt: createdAt
+        )
+        job.state = state
+        job.finishedAt = state.isTerminal ? createdAt : nil
+        return job
     }
 
     private func sourceFile(_ path: String) throws -> String {
