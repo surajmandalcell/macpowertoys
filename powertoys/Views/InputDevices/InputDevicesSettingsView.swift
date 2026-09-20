@@ -53,7 +53,7 @@ struct InputScrollDeviceBar: View {
                 }
                 .pickerStyle(.menu)
                 .controlSize(.small)
-                .frame(width: 160)
+                .frame(width: 160, alignment: .trailing)
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
             .padding(.vertical, UtilityLayout.headerVerticalInset)

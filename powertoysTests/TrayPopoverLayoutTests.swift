@@ -102,6 +102,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let input = try sourceFile("Views/InputDevices/InputDevicesSettingsView.swift")
         let launcher = try sourceFile("Views/AllToolsGridView.swift")
 
+        XCTAssertTrue(input.contains(".frame(width: 160, alignment: .trailing)"))
         XCTAssertFalse(input.contains(".frame(maxWidth: .infinity, alignment: .trailing)"))
         XCTAssertFalse(launcher.contains(".buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))"))
     }
@@ -128,6 +129,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
             (.inputDevices, .dark, "Input Devices — Dark"),
             (.systemCare, .dark, "System Care — Dark"),
             (.systemMonitor, .dark, "System Monitor — Dark"),
+            (.netToys, .dark, "NetToys — Dark"),
         ] {
             let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))
             attachment.name = "Menu Bar — \(name)"
