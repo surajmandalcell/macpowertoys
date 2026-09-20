@@ -876,6 +876,7 @@ private struct SystemCareTrayView: View {
             ) { confirmTrash = true }
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .font(.system(size: 9))
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
     }
