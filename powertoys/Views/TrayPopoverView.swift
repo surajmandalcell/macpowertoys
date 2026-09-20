@@ -484,6 +484,7 @@ private struct TrayToolLink: View {
 private struct TrayQuietActionButton: View {
     let title: String
     let symbol: String
+    var disabled = false
     let action: () -> Void
 
     var body: some View {
@@ -497,6 +498,8 @@ private struct TrayQuietActionButton: View {
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .background(Color.primary.opacity(0.075), in: RoundedRectangle(cornerRadius: 6))
+        .disabled(disabled)
+        .opacity(disabled ? 0.45 : 1)
     }
 }
 
@@ -716,26 +719,241 @@ private struct TrayTransferFileRow: View {
 
 private struct SystemCareTrayView: View {
     @State private var manager = SystemCareManager.shared
+    @State private var expandedCategories = Set<SystemCareCategoryID>()
+    @State private var confirmTrash = false
+    @State private var startedScan = false
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            TrayToolHeader(tab: .systemCare)
-            statusRow("Storage", value: manager.storageURL == nil ? "Not analyzed" : Self.bytes(manager.storageTotal))
-            statusRow("Cleanup", value: manager.cleanupCandidates.isEmpty ? "Not scanned" : "\(manager.cleanupCandidates.count) items")
-            statusRow("Recovered", value: manager.lastRecoveredBytes == 0 ? "None this session" : Self.bytes(manager.lastRecoveredBytes))
+    private var totalSize: Int64 {
+        manager.cleanupCandidates.reduce(0) { $0 + $1.size }
+    }
+
+    private var categoryTotals: [(category: SystemCareCategoryID, size: Int64)] {
+        SystemCareCategoryID.allCases.compactMap { category in
+            let size = manager.cleanupCandidates.lazy
+                .filter { $0.category == category }
+                .reduce(0) { $0 + $1.size }
+            return size > 0 ? (category, size) : nil
         }
     }
 
-    private func statusRow(_ title: String, value: String) -> some View {
-        VStack(spacing: 0) {
-            QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
-            HStack {
-                Text(title).font(.system(size: 11))
-                Spacer()
-                Text(value).font(.system(size: 10)).foregroundStyle(.secondary)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TrayToolHeader(tab: .systemCare)
+            HStack(spacing: 6) {
+                TrayQuietActionButton(
+                    title: manager.hasCleanupScan ? "Analyze Again" : "Analyze",
+                    symbol: "magnifyingglass",
+                    disabled: manager.isWorking
+                ) {
+                    startedScan = true
+                    manager.scanCleanup(categories: Set(SystemCareCategoryID.allCases))
+                }
+                TrayQuietActionButton(
+                    title: "Clear Scan",
+                    symbol: "xmark.circle",
+                    disabled: !manager.hasCleanupScan || manager.isWorking
+                ) {
+                    manager.clearCleanupScan()
+                    expandedCategories.removeAll()
+                }
+                Spacer(minLength: 0)
+                if manager.isWorking {
+                    ProgressView().controlSize(.small)
+                }
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-            .padding(.vertical, 9)
+
+            if manager.isWorking {
+                Text(manager.progressMessage ?? "Analyzing cleanup locations…")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            }
+            if let error = manager.errorMessage {
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.red.opacity(0.86))
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            }
+
+            if !manager.hasCleanupScan {
+                EmptyStateView(icon: "internaldrive", message: "Analyze cleanup locations")
+                    .frame(height: 108)
+            } else if manager.cleanupCandidates.isEmpty {
+                EmptyStateView(icon: "checkmark.circle", message: "Nothing reclaimable in the saved scan")
+                    .frame(height: 108)
+            } else {
+                cleanupSummary
+                selectionBar
+                ForEach(SystemCareCategoryID.allCases) { category in
+                    categorySection(category)
+                }
+            }
+        }
+        .padding(.bottom, 10)
+        .confirmationDialog("Move selected items to Trash?", isPresented: $confirmTrash) {
+            Button("Move \(manager.selectedCandidateIDs.count) Items to Trash", role: .destructive) {
+                manager.moveSelectedToTrash()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("\(Self.bytes(manager.selectedSize)) will remain recoverable in macOS Trash.")
+        }
+        .onDisappear {
+            if startedScan && manager.isWorking { manager.cancel() }
+        }
+    }
+
+    private var cleanupSummary: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle().stroke(Color.primary.opacity(0.07), lineWidth: 7)
+                ForEach(Array(categoryTotals.enumerated()), id: \.element.category) { index, item in
+                    Circle()
+                        .trim(from: categoryStart(at: index), to: categoryEnd(at: index))
+                        .stroke(categoryColor(item.category), style: StrokeStyle(lineWidth: 7, lineCap: .butt))
+                        .rotationEffect(.degrees(-90))
+                }
+                Image(systemName: "internaldrive")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 64, height: 64)
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    Text(Self.bytes(totalSize)).font(.system(size: 16, weight: .semibold)).monospacedDigit()
+                    Spacer()
+                    Text("\(manager.cleanupCandidates.count) items")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(categoryTotals, id: \.category) { item in
+                    HStack(spacing: 7) {
+                        Text(item.category.title)
+                            .font(.system(size: 9))
+                            .lineLimit(1)
+                            .frame(width: 96, alignment: .leading)
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.primary.opacity(0.07))
+                                Capsule().fill(categoryColor(item.category).opacity(0.72))
+                                    .frame(width: geometry.size.width * CGFloat(Double(item.size) / Double(max(totalSize, 1))))
+                            }
+                        }
+                        .frame(height: 4)
+                        Text(Self.bytes(item.size))
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 54, alignment: .trailing)
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 9))
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+    }
+
+    private var selectionBar: some View {
+        HStack(spacing: 6) {
+            Button("Select All") {
+                manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: true) }
+            }
+            Button("Select None") {
+                manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: false) }
+            }
+            Spacer()
+            Text("\(manager.selectedCandidateIDs.count) · \(Self.bytes(manager.selectedSize))")
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            TrayQuietActionButton(
+                title: "Move to Trash",
+                symbol: "trash",
+                disabled: manager.selectedCandidateIDs.isEmpty || manager.isWorking
+            ) { confirmTrash = true }
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 9))
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+    }
+
+    private func categorySection(_ category: SystemCareCategoryID) -> some View {
+        let candidates = manager.cleanupCandidates.filter { $0.category == category }
+        return Group {
+            if !candidates.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 7) {
+                        Button {
+                            if expandedCategories.contains(category) { expandedCategories.remove(category) }
+                            else { expandedCategories.insert(category) }
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .rotationEffect(.degrees(expandedCategories.contains(category) ? 90 : 0))
+                                .frame(width: 22, height: 22)
+                        }
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 5))
+                        .accessibilityLabel(expandedCategories.contains(category) ? "Collapse \(category.title)" : "Expand \(category.title)")
+                        Image(systemName: category.icon).font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text(category.title).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text("\(candidates.count) · \(Self.bytes(candidates.reduce(0) { $0 + $1.size }))")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                        Toggle("Select \(category.title)", isOn: Binding(
+                            get: { candidates.allSatisfy { manager.selectedCandidateIDs.contains($0.id) } },
+                            set: { selected in candidates.forEach { manager.setCandidate($0.id, selected: selected) } }
+                        ))
+                        .toggleStyle(.checkbox)
+                        .labelsHidden()
+                    }
+                    if expandedCategories.contains(category) {
+                        LazyVStack(spacing: 2) {
+                            ForEach(candidates) { candidate in
+                                Toggle(isOn: Binding(
+                                    get: { manager.selectedCandidateIDs.contains(candidate.id) },
+                                    set: { manager.setCandidate(candidate.id, selected: $0) }
+                                )) {
+                                    HStack(spacing: 6) {
+                                        Text(candidate.name).font(.system(size: 10)).lineLimit(1).truncationMode(.middle)
+                                        Spacer(minLength: 4)
+                                        Text(Self.bytes(candidate.size))
+                                            .font(.system(size: 9))
+                                            .foregroundStyle(.secondary)
+                                            .monospacedDigit()
+                                    }
+                                }
+                                .toggleStyle(.checkbox)
+                                .padding(.leading, 29)
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                .padding(.vertical, 3)
+            }
+        }
+    }
+
+    private func categoryStart(at index: Int) -> CGFloat {
+        CGFloat(Double(categoryTotals.prefix(index).reduce(0) { $0 + $1.size }) / Double(max(totalSize, 1)))
+    }
+
+    private func categoryEnd(at index: Int) -> CGFloat {
+        categoryStart(at: index) + CGFloat(Double(categoryTotals[index].size) / Double(max(totalSize, 1)))
+    }
+
+    private func categoryColor(_ category: SystemCareCategoryID) -> Color {
+        switch category {
+        case .caches: Color.blue
+        case .logs: Color.teal
+        case .installers: Color.orange
+        case .developer: Color.purple
         }
     }
 
