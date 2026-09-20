@@ -183,6 +183,24 @@ final class CoreModelTests: XCTestCase {
         )
     }
 
+    func testTextRecognitionPrewarmUsesRepresentativeText() async throws {
+        let suiteName = "TextExtractorPrewarmTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let image = try XCTUnwrap(TextExtractorService.prewarmImage())
+        let service = TextExtractorService(defaults: defaults)
+        service.settings.detectCodes = false
+        service.settings.languageCorrection = false
+
+        let recognized = try await service.recognize(image)
+
+        XCTAssertTrue(
+            recognized.localizedCaseInsensitiveContains("MacPowerToys")
+                && recognized.localizedCaseInsensitiveContains("warmup"),
+            "Expected representative warmup text, got: \(recognized)"
+        )
+    }
+
     func testTextRecognitionEnhancesOnlyLowDensityCaptures() throws {
         let size = NSSize(width: 180, height: 60)
         let image = NSImage(size: size)

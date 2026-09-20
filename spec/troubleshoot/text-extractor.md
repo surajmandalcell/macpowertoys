@@ -42,16 +42,20 @@
 - **Symptom:** Nothing appears to happen after region selection, the clipboard
   briefly contains captured pixels, or successful OCR has no completion cue.
 - **Cause:** Display discovery and accurate recognition were both paid after the
-  drag ended, while completion side effects had no single ordered seam.
+  drag ended. A blank 32px warmup image let Vision short-circuit without loading
+  the real text-recognition path, so a signed first extraction still took 25.2
+  seconds even though synthetic focused tests were fast.
 - **Invariant:** Text Extractor uses Apple's pretrained Vision OCR and bundles no
-  model asset. When the tool is enabled, warm fast and accurate Vision requests
-  on a tiny generated image at app launch. Start ScreenCaptureKit shareable-
-  content discovery at launch only when Screen Recording permission already
-  exists; prewarming must never trigger the permission prompt. Reuse that task
-  for the first capture, otherwise start it during selection. Default new
-  settings to fast recognition, and change the pasteboard only once recognition
-  has non-empty text. Put only that string on the pasteboard, then play the
-  native completion cue.
+  model asset. When the tool is enabled, run the configured Vision requests on
+  a generated image containing representative text at app launch and retain the
+  warmup task until it finishes. A recognition started during warmup waits for
+  that one task instead of loading the same path twice. Start ScreenCaptureKit
+  shareable-content discovery at launch only when Screen Recording permission
+  already exists; prewarming must never trigger the permission prompt. Reuse
+  that task for the first capture, otherwise start it during selection. Default
+  new settings to fast recognition, and change the pasteboard only once
+  recognition has non-empty text. Put only that string on the pasteboard, then
+  play the native completion cue.
 - **Check:** Extract known text and confirm the pasteboard contains only the
   string, the cue follows the copy, and failure/cancellation leave it unchanged.
 
