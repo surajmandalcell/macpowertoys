@@ -34,4 +34,13 @@ render SystemCareLogo system-care
 render SystemMonitorLogo system-monitor
 render NetToysLogo nettoys
 
+extension_source="$repo_dir/raycast/assets/extension-icon.svg"
+extension_target="$repo_dir/raycast/assets/extension-icon.png"
+extension_output="$output_dir/extension-icon.png"
+sips -s format png "$extension_source" --out "$extension_output" >/dev/null
+if [ "$mode" = "--check" ] && ! cmp -s "$extension_output" "$extension_target"; then
+  echo "Stale Raycast icon: extension-icon.png"
+  status=1
+fi
+
 exit "$status"
