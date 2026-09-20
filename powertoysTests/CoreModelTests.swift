@@ -208,6 +208,19 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(rect, CGRect(x: 0, y: 0, width: 24, height: 12))
     }
 
+    func testTextSelectionUsesOneCompositorDrivenHighContrastCursor() throws {
+        XCTAssertEqual(TextSelectionCursor.cursor.image.size, NSSize(width: 36, height: 36))
+        XCTAssertEqual(TextSelectionCursor.cursor.hotSpot, NSPoint(x: 18, y: 18))
+
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Services/TextExtractorService.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertFalse(source.contains("mouseLocationOutsideOfEventStream"))
+        XCTAssertFalse(source.contains("override func mouseMoved"))
+    }
+
     func testLongTextExtractionNeedsExpandedView() {
         XCTAssertFalse(TextExtraction(text: "Short text").needsExpandedView)
         XCTAssertTrue(TextExtraction(text: String(repeating: "A", count: 181)).needsExpandedView)

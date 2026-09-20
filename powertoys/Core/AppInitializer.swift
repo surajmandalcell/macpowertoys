@@ -44,7 +44,8 @@ final class AppInitializer {
         SettingsSyncManager.shared.startIfEnabled()
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
         _ = ColorPickerService.shared
-        _ = TextExtractorService.shared
+        let textExtractor = TextExtractorService.shared
+        if SettingsManager.shared.isToolEnabled("text-extractor") { textExtractor.prewarm() }
         _ = GlobalShortcutManager.shared
         IndividualMenuBarController.shared.start()
         if SettingsManager.shared.isToolEnabled("input-devices") {
