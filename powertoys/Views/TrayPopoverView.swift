@@ -4,20 +4,19 @@
 //
 
 import SwiftUI
-import SwiftData
+
+enum TrayDashboardSection: String, CaseIterable, Identifiable {
+    case quickActions
+    case awake
+    case cloudSync
+    case inputDevices
+
+    var id: String { rawValue }
+}
 
 enum TrayPopoverLayout {
     static let width: CGFloat = 340
     static let horizontalInset: CGFloat = 12
-    static let tabGroupInset: CGFloat = 4
-    static let tabGroupOuterInset: CGFloat = 8
-    static let tabHeight: CGFloat = 28
-    static let tabSpacing: CGFloat = 4
-    static let minimumTabWidth: CGFloat = 30
-    static let tabTransitionDuration = UtilityMotion.standardDuration
-    static let bodyTopInset: CGFloat = 0
-    static let settingsTopInset: CGFloat = 10
-    static let bodyBottomInset: CGFloat = 14
     static let rowSpacing: CGFloat = 10
     static let minimumBodyHeight: CGFloat = 44
     static let footerHorizontalInset: CGFloat = 10
@@ -26,33 +25,33 @@ enum TrayPopoverLayout {
     static let heightFraction: CGFloat = 0.7
 
     static var chromeHeight: CGFloat {
-        tabGroupOuterInset * 2 + tabGroupInset * 2 + tabHeight
-            + footerTopInset + footerBottomInset + 24
+        footerTopInset + footerBottomInset + 24
     }
 
     static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {
         max(minimumBodyHeight, screenHeight * heightFraction - chromeHeight)
     }
 
-    static func tabWidth(availableWidth: CGFloat, count: Int) -> CGFloat {
-        guard count > 0 else { return availableWidth }
-        let totalSpacing = CGFloat(count - 1) * tabSpacing
-        return max(minimumTabWidth, (availableWidth - totalSpacing) / CGFloat(count))
-    }
-
-    static func showsTabLabels(count: Int) -> Bool { count <= 2 }
-
-    static func normalizedSelection(_ selection: String, availableIDs: [String]) -> String? {
-        availableIDs.contains(selection) ? selection : availableIDs.first
+    static func dashboardSections(for availableIDs: [String]) -> [TrayDashboardSection] {
+        let available = Set(availableIDs)
+        return TrayDashboardSection.allCases.filter { section in
+            switch section {
+            case .quickActions:
+                available.contains("color-picker") || available.contains("text-extractor")
+            case .awake:
+                available.contains("awake")
+            case .cloudSync:
+                available.contains("rclone")
+            case .inputDevices:
+                available.contains("input-devices")
+            }
+        }
     }
 }
 
 struct TrayPopoverView: View {
-    @AppStorage("tray.selectedTab") private var selectedTab = "rclone"
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.openWindow) private var openWindow
-    @State private var slideForward = true
     @State private var trayToolIDs = TrayPopoverView.combinedTrayToolIDs()
 
     static func combinedTrayToolIDs() -> [String] {
@@ -66,43 +65,13 @@ struct TrayPopoverView: View {
         .map(\.id)
     }
 
-    private var trayTools: [any Tool] {
-        trayToolIDs.compactMap(ToolRegistry.tool(for:))
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            if trayTools.isEmpty {
+            if trayToolIDs.isEmpty {
                 EmptyStateView(icon: "switch.2", message: "No enabled tray tools")
                     .frame(height: 160)
             } else {
-                TrayTabStrip(tools: trayTools, selected: tabSelection)
-                    .padding(TrayPopoverLayout.tabGroupInset)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.black.opacity(colorScheme == .dark ? 0.18 : 0.04))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(
-                                (colorScheme == .dark ? Color.white : Color.black)
-                                    .opacity(contrast == .increased ? 0.16 : 0.08),
-                                lineWidth: 1
-                            )
-                    )
-                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                    .padding(.vertical, TrayPopoverLayout.tabGroupOuterInset)
-
-                ZStack {
-                    tabContent
-                        .id(selectedTab)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: slideForward ? .trailing : .leading),
-                            removal: .move(edge: slideForward ? .leading : .trailing)
-                        ))
-                }
-                .clipped()
-                .frame(maxWidth: .infinity)
+                TrayDashboardView(toolIDs: trayToolIDs)
             }
 
             QuietDivider()
@@ -115,52 +84,9 @@ struct TrayPopoverView: View {
                 .opacity(colorScheme == .dark ? 0.2 : 0.04)
                 .ignoresSafeArea()
         }
-        .onAppear(perform: normalizeSelection)
-        .onChange(of: trayToolIDs) { normalizeSelection() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             let current = Self.combinedTrayToolIDs()
             if current != trayToolIDs { trayToolIDs = current }
-        }
-    }
-
-    private func normalizeSelection() {
-        if let normalized = TrayPopoverLayout.normalizedSelection(
-            selectedTab,
-            availableIDs: trayToolIDs
-        ), normalized != selectedTab {
-            selectedTab = normalized
-        }
-    }
-
-    private var tabSelection: Binding<String> {
-        Binding(
-            get: { selectedTab },
-            set: { nextTab in
-                guard nextTab != selectedTab else { return }
-                let oldIndex = trayTools.firstIndex { $0.id == selectedTab } ?? 0
-                let newIndex = trayTools.firstIndex { $0.id == nextTab } ?? 0
-                slideForward = newIndex > oldIndex
-                withAnimation(.easeInOut(duration: TrayPopoverLayout.tabTransitionDuration)) {
-                    selectedTab = nextTab
-                }
-            }
-        )
-    }
-
-    @ViewBuilder
-    private var tabContent: some View {
-        switch selectedTab {
-        case "rclone":
-            TrayToolTab(toolID: selectedTab) { RSyncTraySummary() }
-        case "awake":
-            TrayToolTab(toolID: selectedTab) { AwakeTraySummary() }
-        default:
-            if let tool = ToolRegistry.tool(for: selectedTab) {
-                TrayToolTab(toolID: tool.id) { QuickToolTraySummary(tool: tool) }
-            } else {
-                EmptyStateView(icon: "wrench.adjustable", message: "No tray view")
-                    .frame(height: 160)
-            }
         }
     }
 
@@ -184,11 +110,20 @@ struct TrayPopoverView: View {
     }
 }
 
-private struct TrayToolTab<Summary: View>: View {
-    let toolID: String
-    @ViewBuilder let summary: Summary
-
+@MainActor
+private struct TrayDashboardView: View {
+    let toolIDs: [String]
     @State private var contentHeight: CGFloat = TrayPopoverLayout.minimumBodyHeight
+
+    private var sections: [TrayDashboardSection] {
+        TrayPopoverLayout.dashboardSections(for: toolIDs)
+    }
+
+    private var quickActionTools: [any Tool] {
+        toolIDs.compactMap(ToolRegistry.tool(for:)).filter {
+            IndividualMenuBarTool(rawValue: $0.id)?.quickAction != nil
+        }
+    }
 
     private var maximumHeight: CGFloat {
         TrayPopoverLayout.maximumBodyHeight(
@@ -199,12 +134,13 @@ private struct TrayToolTab<Summary: View>: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                summary
-
-                QuietDivider()
-
-                ToolSettingsContent(toolID: toolID)
-                    .environment(\.compactSettingsLayout, true)
+                ForEach(sections) { section in
+                    if sections.first != section {
+                        QuietDivider()
+                            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    }
+                    sectionView(section)
+                }
             }
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.height
@@ -220,51 +156,112 @@ private struct TrayToolTab<Summary: View>: View {
             )
         )
     }
+
+    @ViewBuilder
+    private func sectionView(_ section: TrayDashboardSection) -> some View {
+        switch section {
+        case .quickActions:
+            QuickActionsTraySection(tools: quickActionTools)
+        case .awake:
+            AwakeTraySection()
+        case .cloudSync:
+            CloudSyncTraySection()
+        case .inputDevices:
+            OpenToolTraySection(
+                title: "INPUT DEVICES",
+                systemImage: "computermouse",
+                detail: "Mouse and trackpad controls",
+                toolID: "input-devices"
+            )
+        }
+    }
 }
 
-private struct QuickToolTraySummary: View {
-    let tool: any Tool
-
-    private var menuBarTool: IndividualMenuBarTool? {
-        IndividualMenuBarTool(rawValue: tool.id)
-    }
+private struct TraySectionHeader: View {
+    let title: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            if let action = menuBarTool?.quickAction {
-                TrayActionButton(title: menuBarTool?.actionTitle ?? tool.name, isPrimary: true, toolID: tool.id) {
-                    ToolActionRouter.shared.execute(ToolActionRequest(action: action))
+        Text(title)
+            .utilitySectionHeader()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct QuickActionsTraySection: View {
+    let tools: [any Tool]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TraySectionHeader(title: "QUICK ACTIONS")
+            HStack(spacing: 8) {
+                ForEach(tools, id: \.id) { tool in
+                    if let menuBarTool = IndividualMenuBarTool(rawValue: tool.id),
+                       let action = menuBarTool.quickAction {
+                        TrayActionButton(
+                            title: menuBarTool.actionTitle ?? tool.name,
+                            systemImage: menuBarTool.symbol,
+                            toolID: tool.id
+                        ) {
+                            ToolActionRouter.shared.execute(ToolActionRequest(action: action))
+                        }
+                    }
                 }
-            }
-            TrayActionButton(title: "Open", isPrimary: menuBarTool?.quickAction == nil, toolID: tool.id) {
-                ToolActionRouter.shared.open(toolID: tool.id)
             }
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.top, TrayPopoverLayout.bodyTopInset)
-        .padding(.bottom, TrayPopoverLayout.rowSpacing)
+        .padding(.vertical, 12)
     }
 }
 
-private struct AwakeTraySummary: View {
+private struct AwakeTraySection: View {
     @State private var service = AwakeService.shared
-    @Environment(\.openWindow) private var openWindow
+
+    private var quickMode: Binding<AwakeQuickMode?> {
+        Binding(
+            get: {
+                let mode = AwakeQuickMode(configuration: service.configuration)
+                return mode == .custom ? nil : mode
+            },
+            set: { mode in
+                guard let mode else { return }
+                switch mode {
+                case .off: service.setMode(.passive)
+                case .thirtyMinutes: service.setMode(.timed, duration: 30 * 60)
+                case .oneHour: service.setMode(.timed, duration: 60 * 60)
+                case .indefinite: service.setMode(.indefinite)
+                case .custom: break
+                }
+            }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: TrayPopoverLayout.rowSpacing) {
+            TraySectionHeader(title: "AWAKE")
+
             HStack(spacing: 8) {
-                Circle()
-                    .fill(service.isActive ? Color.green : Color.secondary)
-                    .frame(width: 7, height: 7)
+                Image(systemName: service.isActive ? "moon.zzz.fill" : "moon.zzz")
+                    .font(.system(size: 12))
+                    .foregroundStyle(service.isActive ? Color.primary : Color.secondary)
                     .frame(width: 18)
                 Text(service.statusText).font(.system(size: 11)).monospacedDigit().lineLimit(1)
                 Spacer()
-                TrayActionButton(title: "Open", isPrimary: false, toolID: "awake") {
-                    openWindow(id: "awake")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
+                TrayOpenButton(toolID: "awake", title: "Awake")
             }
             .frame(minHeight: 24)
+
+            Picker("Awake duration", selection: quickMode) {
+                Text("Off").tag(AwakeQuickMode?.some(.off))
+                Text("30 min").tag(AwakeQuickMode?.some(.thirtyMinutes))
+                Text("1 h").tag(AwakeQuickMode?.some(.oneHour))
+                Text("∞")
+                    .accessibilityLabel("Indefinite")
+                    .tag(AwakeQuickMode?.some(.indefinite))
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityLabel("Awake duration")
 
             if let error = service.assertionError {
                 Text(error)
@@ -274,267 +271,110 @@ private struct AwakeTraySummary: View {
             }
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.top, TrayPopoverLayout.bodyTopInset)
-        .padding(.bottom, TrayPopoverLayout.rowSpacing)
+        .padding(.vertical, 12)
     }
 }
 
-// MARK: - Tab Strip (chrome-style)
-
-private struct TrayTabStrip: View {
-    let tools: [any Tool]
-    @Binding var selected: String
-
-    var body: some View {
-        GeometryReader { geo in
-            let count = max(1, tools.count)
-            let perTab = TrayPopoverLayout.tabWidth(availableWidth: geo.size.width, count: count)
-            let overflow = CGFloat(count) * TrayPopoverLayout.minimumTabWidth
-                + CGFloat(count - 1) * TrayPopoverLayout.tabSpacing > geo.size.width
-
-            Group {
-                if overflow {
-                    ScrollView(.horizontal) {
-                        strip(perTab: TrayPopoverLayout.minimumTabWidth)
-                    }
-                    .thinScrollIndicators()
-                } else {
-                    strip(perTab: perTab)
-                }
-            }
-        }
-        .frame(height: TrayPopoverLayout.tabHeight)
-    }
-
-    private func strip(perTab: CGFloat) -> some View {
-        HStack(spacing: TrayPopoverLayout.tabSpacing) {
-            ForEach(tools, id: \.id) { tool in
-                TrayTabItem(
-                    tool: tool,
-                    width: perTab,
-                    showsLabel: TrayPopoverLayout.showsTabLabels(count: tools.count),
-                    isSelected: selected == tool.id
-                ) {
-                    selected = tool.id
-                }
-            }
-        }
-    }
-}
-
-private struct TrayTabItem: View {
-    let tool: any Tool
-    let width: CGFloat
-    let showsLabel: Bool
-    let isSelected: Bool
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                ToolIconView(tool: tool, size: 16)
-
-                if showsLabel {
-                    Text(tool.name)
-                        .font(.system(size: 12, weight: isSelected ? .medium : .regular))
-                        .foregroundStyle(
-                            isSelected
-                                ? Color(nsColor: .alternateSelectedControlTextColor)
-                                : (isHovering ? Color.primary : Color.secondary)
-                        )
-                        .lineLimit(1)
-                }
-            }
-            .frame(width: width, height: TrayPopoverLayout.tabHeight)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(TrayTabButtonStyle(isSelected: isSelected, isHovering: isHovering))
-        .focusEffectDisabled()
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityLabel(tool.name)
-        .onHover { isHovering = $0 }
-        .help(tool.name)
-        .animation(.easeInOut(duration: 0.15), value: isHovering)
-    }
-}
-
-struct TrayTabButtonStyle: ButtonStyle {
-    let isSelected: Bool
-    let isHovering: Bool
-
-    static func backgroundOpacity(
-        isSelected: Bool,
-        isHovering: Bool,
-        isPressed: Bool
-    ) -> Double {
-        if isSelected { return 1 }
-        return UtilityInteractionButtonStyle.highlightOpacity(
-            isEnabled: true,
-            isHovering: isHovering,
-            isPressed: isPressed
-        )
-    }
-
-    static func interactionOpacity(
-        isSelected: Bool,
-        isHovering: Bool,
-        isPressed: Bool
-    ) -> Double {
-        guard isSelected else { return 0 }
-        if isPressed { return 0.18 }
-        return isHovering ? 0.1 : 0
-    }
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(
-                        isSelected
-                            ? Color(nsColor: .controlAccentColor)
-                            : Color.primary.opacity(opacity(configuration))
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.primary.opacity(interactionOpacity(configuration)))
-            )
-    }
-
-    private func opacity(_ configuration: Configuration) -> Double {
-        Self.backgroundOpacity(
-            isSelected: isSelected,
-            isHovering: isHovering,
-            isPressed: configuration.isPressed
-        )
-    }
-
-    private func interactionOpacity(_ configuration: Configuration) -> Double {
-        Self.interactionOpacity(
-            isSelected: isSelected,
-            isHovering: isHovering,
-            isPressed: configuration.isPressed
-        )
-    }
-}
-
-// MARK: - RSync Tray Tab
-
-private struct RSyncTraySummary: View {
+private struct CloudSyncTraySection: View {
     @State private var manager = RcloneJobManager.shared
-    @Environment(\.openWindow) private var openWindow
-    @Query(sort: \TransferRecord.createdAt, order: .reverse) private var records: [TransferRecord]
 
-    private var recentRecords: [TransferRecord] {
-        Array(records.prefix(3))
+    private var statusText: String {
+        guard manager.isDaemonRunning else { return "Engine not running" }
+        let count = manager.activeJobs.count
+        return count == 0 ? "Ready · No active transfers" : "\(count) active transfer\(count == 1 ? "" : "s")"
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: TrayPopoverLayout.rowSpacing) {
+            TraySectionHeader(title: "CLOUD SYNC")
             statusRow
 
-            Group {
-                if !manager.isDaemonRunning {
-                    engineOffState
-                } else if manager.activeJobs.isEmpty {
-                    idleState
-                } else {
-                    activeTransfers
-                }
+            if !manager.activeJobs.isEmpty {
+                activeTransfers
             }
-            .padding(.top, TrayPopoverLayout.rowSpacing)
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.top, TrayPopoverLayout.bodyTopInset)
-        .padding(.bottom, TrayPopoverLayout.rowSpacing)
+        .padding(.vertical, 12)
     }
 
     private var statusRow: some View {
         HStack(spacing: 8) {
+            Image(systemName: "arrow.up.arrow.down.circle")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+
             if !manager.daemonIsHealthy {
                 TrayRetryButton {
                     Task { await manager.start() }
                 }
             }
 
-            Text(manager.isDaemonRunning ? manager.daemonStatusText : "Engine not running")
+            Text(statusText)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
             Spacer()
-
-            TrayActionButton(title: "Open Cloud Sync", isPrimary: false, toolID: "rclone") {
-                openWindow(id: "rclone")
-                NSApplication.shared.activate(ignoringOtherApps: true)
-            }
+            TrayOpenButton(toolID: "rclone", title: "Cloud Sync")
         }
         .frame(minHeight: 24)
     }
 
-    private var engineOffState: some View {
-        Text("The engine is not running. Select Retry to start it.")
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-    }
-
-    private var idleState: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if recentRecords.isEmpty {
-                Text("No transfers yet")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 12)
-            } else {
-                Text("RECENT")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                ForEach(recentRecords) { record in
-                    HStack(spacing: 8) {
-                        Image(systemName: record.state.icon)
-                            .font(.system(size: 10))
-                            .foregroundStyle(record.state.tint)
-                            .frame(width: 18)
-
-                        Text("\(record.sourceDisplay) → \(record.destinationDisplay)")
-                            .font(.system(size: 11))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-
-                        Spacer(minLength: 4)
-
-                        Text(RcloneFormat.bytes(record.bytes))
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                            .monospacedDigit()
-                    }
-                    .frame(minHeight: 24)
-                }
-            }
-        }
-    }
-
     private var activeTransfers: some View {
         VStack(spacing: 12) {
-            ForEach(manager.activeJobs.prefix(8)) { job in
+            ForEach(manager.activeJobs.prefix(3)) { job in
                 TrayTransferRow(job: job)
             }
 
-            if manager.activeJobs.count > 8 {
-                Text("+\(manager.activeJobs.count - 8) more")
+            if manager.activeJobs.count > 3 {
+                Text("+\(manager.activeJobs.count - 3) more")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
         }
     }
+}
 
+private struct OpenToolTraySection: View {
+    let title: String
+    let systemImage: String
+    let detail: String
+    let toolID: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TraySectionHeader(title: title)
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                TrayOpenButton(toolID: toolID, title: title.capitalized)
+            }
+            .frame(minHeight: 24)
+        }
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct TrayOpenButton: View {
+    let toolID: String
+    let title: String
+
+    var body: some View {
+        Button("Open") {
+            ToolActionRouter.shared.open(toolID: toolID)
+        }
+        .controlSize(.small)
+        .contentShape(Rectangle())
+        .help("Open \(title)")
+    }
 }
 
 // MARK: - Retry Button
@@ -649,29 +489,30 @@ private struct TrayTransferRow: View {
 
 private struct TrayActionButton: View {
     let title: String
-    let isPrimary: Bool
-    var toolID: String = ""
+    let systemImage: String
+    let toolID: String
     let action: () -> Void
 
     private var tint: NSColor {
-        if !toolID.isEmpty, let color = ToolIconColor.major(asset: ToolRegistry.tool(for: toolID)?.logoAsset ?? "") { return color }
+        if let color = ToolIconColor.major(asset: ToolRegistry.tool(for: toolID)?.logoAsset ?? "") { return color }
         return .controlAccentColor
     }
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isPrimary ? ToolIconColor.label(on: tint) : .primary)
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, minHeight: 26)
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                Text(title)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(ToolIconColor.label(on: tint))
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 30)
+            .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
-        .background(
-            isPrimary ? Color(nsColor: tint) : Color.primary.opacity(0.06),
-            in: RoundedRectangle(cornerRadius: 6)
-        )
+        .background(Color(nsColor: tint), in: RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -696,4 +537,3 @@ private struct TrayFooterButton: View {
         .onHover { isHovering = $0 }
     }
 }
-

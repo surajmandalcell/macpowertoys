@@ -1,21 +1,12 @@
-import SwiftData
-import SwiftUI
 import XCTest
 @testable import powertoys
 
 @MainActor
 final class TrayPopoverLayoutTests: XCTestCase {
-    private var container: ModelContainer!
     private var restoredModes: [IndividualMenuBarTool: String?] = [:]
-    private var restoredSelection: String?
 
     override func setUpWithError() throws {
-        container = try ModelContainer(
-            for: TransferRecord.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
         let defaults = UserDefaults.standard
-        restoredSelection = defaults.string(forKey: "tray.selectedTab")
         for tool in IndividualMenuBarTool.allCases {
             restoredModes[tool] = defaults.string(forKey: tool.preferenceKey)
             defaults.set(MenuBarDisplayMode.combined.rawValue, forKey: tool.preferenceKey)
@@ -31,57 +22,33 @@ final class TrayPopoverLayoutTests: XCTestCase {
                 defaults.removeObject(forKey: tool.preferenceKey)
             }
         }
-        if let restoredSelection {
-            defaults.set(restoredSelection, forKey: "tray.selectedTab")
-        } else {
-            defaults.removeObject(forKey: "tray.selectedTab")
-        }
     }
 
-    func testTrayBodyStartsOneOuterInsetBelowTheTabRow() throws {
-        UserDefaults.standard.set("color-picker", forKey: "tray.selectedTab")
-        let bands = try inkBands(of: TrayPopoverView().modelContainer(container))
-
-        XCTAssertGreaterThanOrEqual(bands.count, 3, "expected outer inset, tab group, body gap")
+    func testDashboardSectionsFollowScanAndActOrder() {
         XCTAssertEqual(
-            bands[0],
-            Band(isInk: false, length: Int(TrayPopoverLayout.tabGroupOuterInset)),
-            "the tab row must sit one outer inset below the popover top"
+            TrayPopoverLayout.dashboardSections(for: [
+                "rclone", "awake", "color-picker", "text-extractor", "input-devices"
+            ]),
+            [.quickActions, .awake, .cloudSync, .inputDevices]
         )
         XCTAssertEqual(
-            bands[1],
-            Band(
-                isInk: true,
-                length: Int(TrayPopoverLayout.tabGroupInset * 2 + TrayPopoverLayout.tabHeight)
-            ),
-            "the tab group must keep an equal inner inset around a 28pt tab row"
+            TrayPopoverLayout.dashboardSections(for: ["input-devices", "rclone"]),
+            [.cloudSync, .inputDevices]
         )
-
-        XCTAssertFalse(bands[2].isInk)
-        let bodyGap = bands[2].length
-        XCTAssertGreaterThanOrEqual(bodyGap, Int(TrayPopoverLayout.tabGroupOuterInset))
-        XCTAssertLessThanOrEqual(
-            bodyGap,
-            Int(TrayPopoverLayout.tabGroupOuterInset) + 3,
-            "the body must not stack a second top gap under the tab row"
+        XCTAssertEqual(
+            TrayPopoverLayout.dashboardSections(for: ["text-extractor"]),
+            [.quickActions]
         )
-        XCTAssertEqual(TrayPopoverLayout.bodyTopInset, 0)
+        XCTAssertTrue(TrayPopoverLayout.dashboardSections(for: []).isEmpty)
     }
 
-    func testEveryTrayTabbedToolRendersItsSharedSettingsView() throws {
-        let fallbackHeight = settingsHeight(for: "no-such-tool")
-        let trayTools = ToolRegistry.allTools.filter(\.hasTrayTab)
+    func testDashboardUsesQuickControlsInsteadOfToolSettingsOrTabs() throws {
+        let source = try sourceFile("Views/TrayPopoverView.swift")
 
-        XCTAssertEqual(trayTools.count, 5)
-        for tool in trayTools {
-            let height = settingsHeight(for: tool.id)
-            XCTAssertNotEqual(
-                height,
-                fallbackHeight,
-                "\(tool.id) falls back to the no-settings placeholder in the tray"
-            )
-            XCTAssertGreaterThan(height, 60, "\(tool.id) renders no usable tray settings")
-        }
+        XCTAssertFalse(source.contains("ToolSettingsContent"))
+        XCTAssertFalse(source.contains("TrayTabStrip"))
+        XCTAssertTrue(source.contains("Picker(\"Awake duration\""))
+        XCTAssertTrue(source.contains("activeJobs.prefix(3)"))
     }
 
     func testTrayPopoverHeightStaysWithinSeventyPercentOfTheScreen() {
@@ -98,58 +65,12 @@ final class TrayPopoverLayoutTests: XCTestCase {
         )
     }
 
-    // MARK: - Helpers
-
-    private struct Band: Equatable {
-        let isInk: Bool
-        let length: Int
-    }
-
-    private func settingsHeight(for toolID: String) -> CGFloat {
-        let host = NSHostingView(
-            rootView: ToolSettingsContent(toolID: toolID)
-                .environment(\.compactSettingsLayout, true)
-                .frame(width: TrayPopoverLayout.width)
-        )
-        host.layoutSubtreeIfNeeded()
-        return host.fittingSize.height
-    }
-
-    /// Vertical runs of drawn and undrawn pixels, so the measured gaps come from
-    /// the rendered popover rather than from the layout constants alone.
-    private func inkBands(of view: some View) throws -> [Band] {
-        let host = NSHostingView(rootView: view)
-        host.frame = NSRect(x: 0, y: 0, width: TrayPopoverLayout.width, height: 400)
-        host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-        host.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: TrayPopoverLayout.width,
-            height: host.fittingSize.height
-        )
-        host.layoutSubtreeIfNeeded()
-
-        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: representation)
-
-        let backgroundAlpha = try XCTUnwrap(representation.colorAt(x: 2, y: 2)).alphaComponent
-        var bands: [Band] = []
-        for y in 0..<representation.pixelsHigh {
-            var isInk = false
-            for x in stride(from: 0, to: representation.pixelsWide, by: 2) {
-                guard let color = representation.colorAt(x: x, y: y) else { continue }
-                if abs(color.alphaComponent - backgroundAlpha) > 0.01 {
-                    isInk = true
-                    break
-                }
-            }
-            if let last = bands.last, last.isInk == isInk {
-                bands[bands.count - 1] = Band(isInk: isInk, length: last.length + 1)
-            } else {
-                bands.append(Band(isInk: isInk, length: 1))
-            }
-        }
-        return bands
+    private func sourceFile(_ path: String) throws -> String {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys")
+            .appendingPathComponent(path)
+        return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 }
