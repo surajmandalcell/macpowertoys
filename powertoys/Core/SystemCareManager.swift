@@ -55,6 +55,7 @@ nonisolated struct CleanupCandidate: Identifiable, Hashable, Codable, Sendable {
 nonisolated struct CleanupScanSnapshot: Codable, Equatable, Sendable {
     let scannedAt: Date
     let candidates: [CleanupCandidate]
+    var selectedCandidateIDs: Set<String>? = nil
 }
 
 nonisolated struct StorageEntry: Identifiable, Equatable, Sendable {
@@ -143,8 +144,9 @@ final class SystemCareManager {
               let snapshot = try? JSONDecoder().decode(CleanupScanSnapshot.self, from: data)
         else { return }
         let candidates = snapshot.candidates.filter(Self.isSafe)
+        let validIDs = Set(candidates.map(\.id))
         cleanupCandidates = candidates
-        selectedCandidateIDs = Set(candidates.map(\.id))
+        selectedCandidateIDs = snapshot.selectedCandidateIDs?.intersection(validIDs) ?? validIDs
         cleanupScanDate = snapshot.scannedAt
     }
 
@@ -200,6 +202,13 @@ final class SystemCareManager {
     func setCandidate(_ id: String, selected: Bool) {
         if selected { selectedCandidateIDs.insert(id) }
         else { selectedCandidateIDs.remove(id) }
+        persistCleanupScan()
+    }
+
+    func setCandidates(_ ids: Set<String>, selected: Bool) {
+        if selected { selectedCandidateIDs.formUnion(ids) }
+        else { selectedCandidateIDs.subtract(ids) }
+        persistCleanupScan()
     }
 
     func clearCleanupScan() {
@@ -363,7 +372,8 @@ final class SystemCareManager {
         guard let cleanupScanDate,
               let data = try? JSONEncoder().encode(CleanupScanSnapshot(
                   scannedAt: cleanupScanDate,
-                  candidates: cleanupCandidates
+                  candidates: cleanupCandidates,
+                  selectedCandidateIDs: selectedCandidateIDs
               )) else { return }
         defaults.set(data, forKey: Self.cleanupScanKey)
     }
