@@ -233,6 +233,11 @@ final class NetToysAnchorViewModel {
         save()
     }
 
+    func setFeatureEnabled(_ enabled: Bool) {
+        configuration.sshAnchorEnabled = enabled
+        save()
+    }
+
     func tailscaleIsEnabled(for anchor: SSHAnchorConfiguration) -> Bool {
         anchor.tailscaleFallback?.isEnabled == true
     }
@@ -456,6 +461,13 @@ struct NetToysAnchorView: View {
                 subtitle: "Keep SSH aliases attached to local devices"
             ) {
                 helperStatus
+                Toggle("Enable SSH Anchor", isOn: Binding(
+                    get: { model.configuration.sshAnchorEnabled },
+                    set: { model.setFeatureEnabled($0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .help("Enable SSH Anchor monitoring")
                 Button {
                     model.refresh()
                 } label: {

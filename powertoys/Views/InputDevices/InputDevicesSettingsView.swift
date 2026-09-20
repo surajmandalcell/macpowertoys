@@ -8,6 +8,7 @@ import SwiftUI
 struct InputDevicesSettingsView: View {
     var showsHeader = true
     var showsContainerScroll = true
+    var contentTopInset: CGFloat = 14
 
     @ViewBuilder
     var body: some View {
@@ -24,7 +25,11 @@ struct InputDevicesSettingsView: View {
 
     private var settingsContent: some View {
         InputDevicesScrollSettings(showsHeaders: showsHeader)
-            .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 14, bottom: 24)
+            .settingsPageInsets(
+                horizontal: UtilityLayout.horizontalInset,
+                top: contentTopInset,
+                bottom: 24
+            )
     }
 }
 
@@ -49,7 +54,6 @@ struct InputScrollDeviceBar: View {
                 .pickerStyle(.menu)
                 .controlSize(.small)
                 .frame(width: 160)
-                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
             .padding(.vertical, UtilityLayout.headerVerticalInset)

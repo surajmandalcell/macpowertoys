@@ -69,6 +69,14 @@ struct NetToysWiFiPriorityView: View {
                 title: "Wi-Fi Priority",
                 subtitle: model.helperStatus?.network?.displayName ?? "No active network"
             ) {
+                Toggle("Enable Wi-Fi Priority", isOn: Binding(
+                    get: { model.configuration.wifiPriority.isEnabled },
+                    set: { model.setEnabled($0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .disabled(model.configuration.wifiPriority.ssids.count < 2)
+                .help("Enable automatic Wi-Fi failover")
                 Button {
                     Task { await model.refresh() }
                 } label: {

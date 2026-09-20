@@ -62,7 +62,7 @@ struct ToolCard: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
+            .buttonStyle(.plain)
             .focusEffectDisabled()
             .accessibilityIdentifier("tool.\(tool.id).card")
 
