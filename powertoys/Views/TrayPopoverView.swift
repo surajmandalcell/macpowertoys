@@ -875,8 +875,7 @@ private struct SystemCareTrayView: View {
                 disabled: manager.selectedCandidateIDs.isEmpty || manager.isWorking
             ) { confirmTrash = true }
         }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 5))
         .font(.system(size: 9))
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
     }
