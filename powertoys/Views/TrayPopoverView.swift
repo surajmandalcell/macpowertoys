@@ -66,6 +66,22 @@ enum TrayPopoverLayout {
         }
         return saved + defaultComplexTabs.filter { availableSet.contains($0) && !seen.contains($0) }
     }
+
+    static func visibleTransferJobs(
+        _ jobs: [TransferJob],
+        activeLimit: Int = 5,
+        recentLimit: Int = 3
+    ) -> [TransferJob] {
+        let active = jobs
+            .filter { $0.state.isActive }
+            .sorted { $0.createdAt > $1.createdAt }
+            .prefix(activeLimit)
+        let recent = jobs
+            .filter { $0.state.isTerminal }
+            .sorted { ($0.finishedAt ?? $0.createdAt) > ($1.finishedAt ?? $1.createdAt) }
+            .prefix(recentLimit)
+        return Array(active) + Array(recent)
+    }
 }
 
 struct TrayPopoverView: View {
@@ -498,11 +514,17 @@ private struct TrayToolHeader: View {
 private struct CloudSyncTrayView: View {
     @State private var manager = RcloneJobManager.shared
 
+    private var jobs: [TransferJob] {
+        TrayPopoverLayout.visibleTransferJobs(manager.jobs)
+    }
+
+    private var activeJobs: [TransferJob] { jobs.filter { $0.state.isActive } }
+    private var recentJobs: [TransferJob] { jobs.filter { $0.state.isTerminal } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             TrayToolHeader(tab: .cloudSync)
             if !manager.daemonIsHealthy {
-                QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
                 HStack {
                     Text("The engine is not responding.").font(.system(size: 11)).foregroundStyle(.secondary)
                     Spacer()
@@ -511,10 +533,32 @@ private struct CloudSyncTrayView: View {
                     }
                 }
                 .padding(TrayPopoverLayout.horizontalInset)
+                .background(Color.orange.opacity(0.08))
             }
-            ForEach(manager.activeJobs.prefix(4)) { job in
-                QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                TrayTransferRow(job: job).padding(TrayPopoverLayout.horizontalInset)
+            if jobs.isEmpty {
+                EmptyStateView(icon: "cloud", message: "No transfers yet")
+                    .frame(height: 96)
+            } else {
+                jobSection("Active", jobs: activeJobs)
+                jobSection("Recent", jobs: recentJobs)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func jobSection(_ title: String, jobs: [TransferJob]) -> some View {
+        if !jobs.isEmpty {
+            Text(title.uppercased())
+                .utilitySectionHeader()
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                .padding(.top, 5)
+            ForEach(Array(jobs.enumerated()), id: \.element.id) { index, job in
+                if index > 0 {
+                    QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                }
+                TrayTransferRow(job: job)
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    .padding(.vertical, 8)
             }
         }
     }
@@ -525,29 +569,104 @@ private struct TrayTransferRow: View {
     @State private var manager = RcloneJobManager.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
+                Button {
+                    manager.setExpanded(!job.isExpanded, for: job)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .rotationEffect(.degrees(job.isExpanded ? 90 : 0))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 5))
+                .accessibilityLabel(job.isExpanded ? "Hide transfer files" : "Show transfer files")
                 Image(systemName: job.operation.icon).font(.system(size: 10)).foregroundStyle(.secondary)
                 Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
                     .font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
-                Text(job.state == .paused ? "Paused" : RcloneFormat.speed(job.stats.speed))
-                    .font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
+                Label(job.state.displayName, systemImage: job.state.icon)
+                    .labelStyle(.titleAndIcon)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(stateColor)
+                    .lineLimit(1)
                 if job.canPause {
                     transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
                 } else if job.canResume {
                     transferButton("Resume transfer", symbol: "play.fill") { manager.resume(job) }
+                } else if job.canRetry {
+                    transferButton("Retry transfer", symbol: "arrow.clockwise") { manager.retry(job) }
                 }
             }
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.primary.opacity(0.08))
-                    Capsule().fill(Color.primary.opacity(0.48))
-                        .frame(width: max(0, min(1, job.progressFraction)) * geometry.size.width)
+
+            if job.effectiveTotalBytes > 0 || job.state.isActive {
+                trayProgress(job.progressFraction, tint: stateColor)
+                HStack(spacing: 6) {
+                    Text("\(RcloneFormat.bytes(job.displayBytes)) of \(RcloneFormat.bytes(job.effectiveTotalBytes))")
+                    if job.effectiveTotalFiles > 0 {
+                        Text("· \(job.displayFiles) of \(job.effectiveTotalFiles) files")
+                    }
+                    Spacer(minLength: 4)
+                    if job.stats.speed > 0 {
+                        Text(RcloneFormat.speed(job.stats.speed))
+                    }
+                    if job.displayEta != nil {
+                        Text("ETA \(RcloneFormat.eta(job.displayEta))")
+                    }
                 }
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
             }
-            .frame(height: 4)
+
+            if let error = job.errorMessage, !error.isEmpty {
+                Text(error)
+                    .font(.system(size: 9))
+                    .foregroundStyle(Color.red.opacity(0.86))
+                    .lineLimit(2)
+            }
+
+            if job.isExpanded {
+                VStack(alignment: .leading, spacing: 7) {
+                    if job.stats.transferring.isEmpty {
+                        Text(job.state.isTerminal ? "No in-flight files" : "Waiting for file activity")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        ForEach(Array(job.stats.transferring.prefix(4))) { file in
+                            TrayTransferFileRow(file: file)
+                        }
+                        if job.stats.transferring.count > 4 {
+                            Text("\(job.stats.transferring.count - 4) more in-flight files")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .padding(.leading, 30)
+            }
         }
+    }
+
+    private var stateColor: Color {
+        switch job.state {
+        case .running: Color.blue.opacity(0.78)
+        case .retrying, .paused: Color.orange.opacity(0.80)
+        case .completed: Color.green.opacity(0.76)
+        case .failed: Color.red.opacity(0.80)
+        case .queued, .cancelled: Color.secondary
+        }
+    }
+
+    private func trayProgress(_ fraction: Double, tint: Color) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.primary.opacity(0.08))
+                Capsule().fill(tint)
+                    .frame(width: max(0, min(1, fraction)) * geometry.size.width)
+            }
+        }
+        .frame(height: 4)
     }
 
     private func transferButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -558,6 +677,40 @@ private struct TrayTransferRow: View {
         .background(Color.primary.opacity(0.075), in: RoundedRectangle(cornerRadius: 6))
         .accessibilityLabel(title)
         .help(title)
+    }
+}
+
+private struct TrayTransferFileRow: View {
+    let file: FileProgress
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "doc").font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(file.name).font(.system(size: 9)).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 4)
+                Text("\(file.percentage)%")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.07))
+                    Capsule().fill(Color.blue.opacity(0.58))
+                        .frame(width: max(0, min(1, file.fraction)) * geometry.size.width)
+                }
+            }
+            .frame(height: 3)
+            HStack {
+                Text("\(RcloneFormat.bytes(file.bytes)) of \(RcloneFormat.bytes(file.size))")
+                Spacer()
+                if file.speed > 0 { Text(RcloneFormat.speed(file.speed)) }
+                if file.eta != nil { Text("ETA \(RcloneFormat.eta(file.eta))") }
+            }
+            .font(.system(size: 8))
+            .foregroundStyle(.tertiary)
+            .monospacedDigit()
+        }
     }
 }
 
