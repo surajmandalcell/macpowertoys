@@ -40,14 +40,20 @@ final class SystemCareTests: XCTestCase {
             category: .caches,
             size: 512
         )
-        let snapshot = CleanupScanSnapshot(scannedAt: Date(timeIntervalSince1970: 123), candidates: [candidate])
+        let snapshot = CleanupScanSnapshot(
+            scannedAt: Date(timeIntervalSince1970: 123),
+            candidates: [candidate],
+            selectedCandidateIDs: []
+        )
         defaults.set(try JSONEncoder().encode(snapshot), forKey: SystemCareManager.cleanupScanKey)
 
         let manager = SystemCareManager(defaults: defaults)
 
         XCTAssertTrue(manager.hasCleanupScan)
         XCTAssertEqual(manager.cleanupCandidates, [candidate])
-        XCTAssertEqual(manager.selectedCandidateIDs, [candidate.id])
+        XCTAssertTrue(manager.selectedCandidateIDs.isEmpty)
+        manager.setCandidate(candidate.id, selected: true)
+        XCTAssertEqual(SystemCareManager(defaults: defaults).selectedCandidateIDs, [candidate.id])
         manager.clearCleanupScan()
         XCTAssertFalse(manager.hasCleanupScan)
         XCTAssertTrue(manager.cleanupCandidates.isEmpty)

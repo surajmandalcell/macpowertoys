@@ -859,10 +859,10 @@ private struct SystemCareTrayView: View {
     private var selectionBar: some View {
         HStack(spacing: 6) {
             Button("Select All") {
-                manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: true) }
+                manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: true)
             }
             Button("Select None") {
-                manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: false) }
+                manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: false)
             }
             Spacer()
             Text("\(manager.selectedCandidateIDs.count) · \(Self.bytes(manager.selectedSize))")
@@ -906,7 +906,7 @@ private struct SystemCareTrayView: View {
                             .monospacedDigit()
                         Toggle("Select \(category.title)", isOn: Binding(
                             get: { candidates.allSatisfy { manager.selectedCandidateIDs.contains($0.id) } },
-                            set: { selected in candidates.forEach { manager.setCandidate($0.id, selected: selected) } }
+                            set: { manager.setCandidates(Set(candidates.map(\.id)), selected: $0) }
                         ))
                         .toggleStyle(.checkbox)
                         .labelsHidden()
@@ -1038,8 +1038,8 @@ private struct SystemMonitorTrayView: View {
         let color = tint ?? level.map(Self.usageTint) ?? .gray
         return VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 5) {
-                Image(systemName: symbol).font(.system(size: 9, weight: .medium)).foregroundStyle(color)
-                Text(title).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
+                Image(systemName: symbol).font(.caption2.weight(.medium)).foregroundStyle(color)
+                Text(title).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
             }
             Text(value)
@@ -1048,18 +1048,15 @@ private struct SystemMonitorTrayView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
             Text(detail)
-                .font(.system(size: 8))
+                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+            TrayMetricSparkline(values: values, color: color)
+                .frame(height: 18)
         }
         .padding(9)
-        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
-        .background {
-            RoundedRectangle(cornerRadius: 8).fill(color.opacity(0.065))
-            TrayMetricSparkline(values: values, color: color)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .opacity(values.count > 1 ? 1 : 0)
-        }
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+        .background(color.opacity(0.065), in: RoundedRectangle(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.045))
         }
@@ -1148,7 +1145,18 @@ private struct TrayMetricSparkline: View {
 
     var body: some View {
         Canvas { context, size in
-            guard values.count > 1, let minimum = values.min(), let maximum = values.max() else { return }
+            var guide = Path()
+            guide.move(to: CGPoint(x: 0, y: size.height * 0.75))
+            guide.addLine(to: CGPoint(x: size.width, y: size.height * 0.75))
+            context.stroke(guide, with: .color(color.opacity(0.12)), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+            guard !values.isEmpty, let minimum = values.min(), let maximum = values.max() else { return }
+            if values.count == 1 {
+                var line = Path()
+                line.move(to: CGPoint(x: 0, y: size.height * 0.5))
+                line.addLine(to: CGPoint(x: size.width, y: size.height * 0.5))
+                context.stroke(line, with: .color(color.opacity(0.46)), lineWidth: 1)
+                return
+            }
             let range = max(maximum - minimum, 1)
             let points = values.enumerated().map { index, value in
                 CGPoint(
