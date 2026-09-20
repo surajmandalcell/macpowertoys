@@ -31,17 +31,18 @@
   rows or sit too close to neighboring items.
 - **Cause:** Each tray section used independent icon widths, row heights, and
   spacing values, so mixed content had no shared alignment columns.
-- **Invariant:** Use a horizontally scrollable icon tab strip above one
-  vertically scrollable body. Home contains Color Picker, Text Extractor,
-  Awake, and Ruler in open rows separated by quiet dividers. Their title is the
-  link to the full tool and ends with a minimal up-right arrow; never add a
-  second Open button. Complex built-ins own focused tabs in this default order:
-  Cloud Sync, Logs, Input Devices, System Care, System Monitor, and NetToys.
-  Give the footer 8pt top and 10pt bottom insets.
-- **Check:** Enable every built-in, confirm Home then Cloud Sync appear first,
-  scroll through the complete tab strip, reorder two complex tabs, relaunch,
-  and confirm the order and selected tab persist. Compare Home and Cloud Sync
-  alignment in light and dark appearances.
+- **Invariant:** Use one compact reorderable icon strip above one vertically
+  scrollable body. Let the strip use its intrinsic width while it fits; cap it
+  at the available width and scroll only after overflow. Home places Pick
+  Color, Extract Text, and Ruler in one direct-action row, followed by one
+  compact Awake row. Complex tray-capable built-ins own focused tabs in this
+  default order: Cloud Sync, Input Devices, System Care, System Monitor, and
+  NetToys. App-only tools such as Logs never appear. Keep separate Open
+  MacPowerToys, Settings, and Quit controls and no divider below the strip.
+- **Check:** Exercise short and overflowing tab sets, confirm Home then Cloud
+  Sync appear first, reorder two complex tabs, relaunch, and confirm order and
+  selection persist. Compare Home and Cloud Sync alignment in light, dark,
+  Increased Contrast, and Reduced Transparency.
 
 ## Menu-Bar Tab Density
 
@@ -53,8 +54,9 @@
   keeps only compact single-purpose controls. Cloud Sync shows connection and
   transfer operation, not configuration. Input Devices may reuse its full
   mouse and trackpad controls because those controls are the tool's immediate
-  purpose. Other complex tabs expose only their useful menu-bar surface. Cap
-  the body at 70 percent of the screen.
+  purpose. Other complex tabs expose only their useful menu-bar surface. Omit
+  explanatory body subtitles; visible status text remains where it conveys
+  changing operational state. Cap the body at 70 percent of the screen.
 - **Check:** The all-tools state stays within the height cap. Cloud Sync has no
   durable settings form. Input Devices exposes the same saved controls as its
   window. No tab contains an unexplained duplicate Open button.
@@ -64,10 +66,11 @@
 - **Symptom:** Bright tool-colored buttons make the popover look unrelated to
   the rest of MacPowerToys and reduce label contrast.
 - **Cause:** Tool identity colors were used as large action fills.
-- **Invariant:** Match the app's quiet native surfaces: monochrome SF Symbols,
-  primary and secondary text, thin dividers, and low-opacity neutral hover,
-  pressed, and selected layers. Never use a tool's major color as a large tray
-  fill. Preserve keyboard focus and at least 24pt pointer targets.
+- **Invariant:** Match the supplied dark utility-panel reference with a muted,
+  translucent material, monochrome SF Symbols, primary and secondary text,
+  hairline grouping only where it helps scanning, and low-opacity neutral
+  hover, pressed, and selected layers. Never use a tool's major color as a
+  large tray fill. Preserve keyboard focus and at least 24pt pointer targets.
 - **Check:** Render Home and one complex tab in light and dark appearance.
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.

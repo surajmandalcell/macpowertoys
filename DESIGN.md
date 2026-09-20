@@ -87,7 +87,7 @@ components:
   sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
   sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: native-selected-content-text, selected-custom-artwork: original-colors }
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
-  tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: colors.selection-strong }
+  tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: "Color.primary.opacity(0.10)" }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
   workspace-action: { height: 24, control-size: small }
   structural-divider: { opacity: 0.22, increased-contrast-opacity: 0.44 }
@@ -194,9 +194,9 @@ hex lives only in icon assets. This keeps light and dark mode free.
 - Selection-light is accent at 0.1 for selected content rows and inline choices.
   Sidebar navigation uses the native selected background and foreground.
   Branded sidebar artwork keeps its original colors in every selection state.
-  Selection-strong is reserved for tray tabs. Tab pills are the quiet
-  exception: their persistent selected surface is primary 0.06 with ordinary
-  primary text, not an accent layer, accent text, or underline.
+  Selection-strong is not used in the tray. Tray tabs and tab pills keep a
+  quiet persistent selected surface of primary 0.10 or less with ordinary
+  primary text, never an accent layer, accent text, or underline.
 - Keyboard focus uses the system focus effect except for the repaired compact
   titlebar treatment defined below.
 - Cards: 0.03 for grids and subtle depth; 0.05 where softer contrast is wanted
@@ -691,13 +691,17 @@ persistent navigation is not subordinate: define it as a compact applet or full
 workspace `Window` scene and follow that complete family contract.
 
 The tray popover is also subordinate: 360pt wide and no more than 70% of screen
-height. A horizontally scrollable, reorderable icon strip sits above one
-vertically scrollable body. Home keeps one-shot actions and compact stateful
-controls; complex built-ins get focused operational tabs. Durable
+height. A compact reorderable icon strip sits above one vertically scrollable
+body. The strip takes its intrinsic width while it fits and becomes horizontal
+scrolling only when it reaches the available width. Home keeps Pick Color,
+Extract Text, and Ruler in one direct-action row plus a compact Awake row;
+complex tray-capable built-ins get focused operational tabs. App-only tools do
+not get placeholder tabs. Durable
 configuration stays in the launcher or tool window, except Input Devices may
 reuse its full mouse and trackpad controls because those controls are its
-immediate purpose. Separate rows with quiet dividers and keep one 12pt
-horizontal gutter. Gear and power buttons open MacPowerToys and quit.
+immediate purpose. Omit body subtitles, the divider below the strip, and bright
+tool-color fills. Keep one 12pt horizontal gutter. Separate icon buttons open
+MacPowerToys, open Settings, and quit.
 Measurement guides and capture overlays are transient task surfaces and must
 not borrow launcher, workspace, or applet navigation chrome.
 
@@ -728,11 +732,11 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   accent text, or enclosing segmented-control tray. An unselected hover uses
   the same 0.06 surface. The strip starts on the shared gutter and selection
   never moves its tabs.
-- **Tray tab** - a 32pt square icon button with a 16pt monochrome SF Symbol,
-  8pt radius, and 4pt between peers. The strip scrolls horizontally and lets
-  people reorder complex-tool tabs. Home remains first; Cloud Sync is first in
+- **Tray tab** - a 28pt square icon button with a 14pt monochrome SF Symbol,
+  8pt radius, and 4pt between peers. The strip scrolls horizontally only on
+  overflow and lets people reorder complex-tool tabs. Home remains first; Cloud Sync is first in
   the default complex-tool order. Hover uses primary 0.06, pressed uses 0.10,
-  and selection uses primary 0.12 with ordinary primary text. Never fill a tab
+  and selection uses primary 0.10 with ordinary primary text. Never fill a tab
   with the app accent or a tool identity color. Expose the tool name and
   selected state to accessibility.
 - **Tray open row** - the tool title itself is a plain button ending in a small
