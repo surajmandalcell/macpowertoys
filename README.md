@@ -6,8 +6,8 @@
 
 <p align="center">
   <strong>Small macOS utilities. One native home.</strong><br>
-  Measure, capture, stay awake, search history, and move files<br>
-  without a pile of unrelated menu bar apps.
+  Capture text, tune input, monitor your Mac, clean storage, and sync files<br>
+  without installing a pile of unrelated menu bar apps.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="1200" alt="MacPowerToys utility launcher on a dark desktop">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="1200" alt="MacPowerToys launcher showing all ten built-in tools">
 </p>
 
 <table>
@@ -53,29 +53,19 @@
 ## Designed for the Mac
 
 <p align="center">
-  <img src="docs/screenshots/cloud-sync.png" width="1200" alt="Cloud Sync completed transfer workspace on a dark desktop"><br>
-  <sub><b>Cloud Sync</b> · planned rclone transfers, persistent progress, and clear completion state</sub>
+  <img src="docs/screenshots/system-monitor.png" width="1080" alt="System Monitor overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"><br>
+  <sub><b>System Monitor</b> · CPU, GPU, memory, disk, network, thermal, battery, and load at a glance</sub>
 </p>
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/ruler.png" width="100%" alt="Ruler controls on a dark desktop"><br>
-      <sub><b>Ruler</b> · multiple rulers, precise units, grouping, and per-ruler settings</sub>
+      <img src="docs/screenshots/input-devices.png" width="100%" alt="Input Devices scrolling controls with separate mouse and trackpad profiles"><br>
+      <sub><b>Input Devices</b> · separate mouse and trackpad profiles under one system-wide switch</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/awake.png" width="100%" alt="Awake controls on a dark desktop"><br>
-      <sub><b>Awake</b> · precise display, time, and process controls</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/color-picker.png" width="100%" alt="Color Picker history on a dark desktop"><br>
-      <sub><b>Color Picker</b> · compact, searchable color history</sub>
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/text-extractor.png" width="100%" alt="Text Extractor controls on a dark desktop"><br>
-      <sub><b>Text Extractor</b> · on-device Apple Vision text recognition</sub>
+      <img src="docs/screenshots/nettoys-settings.png" width="100%" alt="NetToys settings showing its enable switch and network permission status"><br>
+      <sub><b>NetToys</b> · one-click disable and clear permission state</sub>
     </td>
   </tr>
 </table>
@@ -95,7 +85,7 @@ make build
 Open `powertoys.xcodeproj` and run the `powertoys` scheme, or
 use `make build ADHOC=1` on a Mac without an Apple Development
 identity. Raycast users can import the `raycast` directory;
-the extension exposes the main app and all 11 built-in tools.
+the extension exposes the launcher and all ten built-in tools.
 
 > [!NOTE]
 > Personal-team signing works on the signing Mac. Public,
