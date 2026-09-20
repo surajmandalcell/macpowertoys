@@ -1,3 +1,5 @@
+import AppKit
+import SwiftUI
 import XCTest
 @testable import powertoys
 
@@ -17,6 +19,48 @@ final class SystemMonitorTests: XCTestCase {
 
         XCTAssertTrue(overview.contains("LazyVGrid(columns: chartColumns, spacing: 12)"))
         XCTAssertTrue(source.contains("GridItem(.adaptive(minimum: 320), spacing: 12)"))
+    }
+
+    func testOverviewShowsAllEightMetricsWithMutedGraphBackdrops() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/SystemMonitor/SystemMonitorWindowView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let gridStart = try XCTUnwrap(source.range(of: "private var metricGrid"))
+        let gridEnd = try XCTUnwrap(source.range(
+            of: "private func metricCard",
+            range: gridStart.upperBound..<source.endIndex
+        ))
+        let grid = source[gridStart.lowerBound..<gridEnd.lowerBound]
+
+        XCTAssertEqual(grid.components(separatedBy: "metricCard(").count - 1, 8)
+        XCTAssertTrue(grid.contains("title: \"GPU\""))
+        XCTAssertTrue(grid.contains("title: \"Load\""))
+        XCTAssertTrue(source.contains(".background(tint.opacity(0.055))"))
+        XCTAssertFalse(source.contains("WorkspacePage(\"Overview\", subtitle:"))
+    }
+
+    @MainActor
+    func testOverviewRendersAtProductionSize() throws {
+        defer { SystemMonitorService.shared.stopDetailed() }
+        let host = NSHostingView(
+            rootView: SystemMonitorWindowView()
+                .environment(\.colorScheme, .dark)
+        )
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(x: 0, y: 0, width: 1_180, height: 780)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: host.bounds.size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "System Monitor — Overview — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
