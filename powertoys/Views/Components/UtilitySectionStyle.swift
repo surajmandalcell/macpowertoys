@@ -10,7 +10,6 @@ enum UtilityLayout {
     static let launcherColumnCount = 4
     static let launcherContentSize = NSSize(width: 1_200, height: 720)
     static let dataSidebarWidth: CGFloat = 240
-    static let conversationSidebarWidth: CGFloat = 260
     static let workspaceMinimumContentWidth: CGFloat = 640
     static let workspaceMinimumHeight: CGFloat = 600
     static let netToysMinimumContentSize = NSSize(width: 1_100, height: 700)
@@ -49,8 +48,6 @@ enum UtilityLayout {
             return launcherContentSize
         case "nettoys":
             return netToysMinimumContentSize
-        case "cc-history":
-            sidebarWidth = conversationSidebarWidth
         case "rclone", "system-care", "system-monitor":
             sidebarWidth = dataSidebarWidth
         case "logs", "input-devices":

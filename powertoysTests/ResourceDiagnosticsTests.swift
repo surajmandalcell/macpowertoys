@@ -45,7 +45,6 @@ final class ResourceDiagnosticsTests: XCTestCase {
             "inputDevices.eventTaps",
             "menuBar.observers",
             "menuBar.statusItems",
-            "projectHistory.fileWatchers",
             "settingsSync.observers",
             "systemMonitor.observers",
             "systemMonitor.statusItems",

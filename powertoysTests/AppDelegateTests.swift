@@ -16,7 +16,7 @@ final class AppDelegateTests: XCTestCase {
 
     func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
         for toolID in [
-            "main", "cc-history", "rclone", "logs", "awake", "color-picker",
+            "main", "rclone", "logs", "awake", "color-picker",
             "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
         ] {
             let url = URL(string: "macpowertoys://open/\(toolID)")!
@@ -102,7 +102,7 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "main"))
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
         for toolID in [
-            "cc-history", "rclone", "logs", "awake", "color-picker",
+            "rclone", "logs", "awake", "color-picker",
             "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
         ] {
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
@@ -114,7 +114,7 @@ final class AppDelegateTests: XCTestCase {
     @MainActor
     func testQuitCommandClosesEachNativeSubAppScope() {
         for toolID in [
-            "cc-history", "rclone", "logs", "awake", "color-picker",
+            "rclone", "logs", "awake", "color-picker",
             "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
         ] {
             let toolWindow = CloseTrackingWindow(identifier: toolID)

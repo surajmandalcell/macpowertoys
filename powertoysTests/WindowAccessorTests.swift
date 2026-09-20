@@ -140,7 +140,7 @@ final class WindowAccessorTests: XCTestCase {
 
     func testWorkspaceTrafficLightsUseBalancedSharedChrome() throws {
         for identifier in [
-            "main", "cc-history", "rclone", "logs", "input-devices",
+            "main", "rclone", "logs", "input-devices",
             "system-care", "system-monitor", "nettoys"
         ] {
             let window = NSWindow(
@@ -186,7 +186,6 @@ final class WindowAccessorTests: XCTestCase {
     func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {
         let expectedSizes: [String: NSSize] = [
             "main": UtilityLayout.launcherContentSize,
-            "cc-history": NSSize(width: 900, height: 600),
             "rclone": NSSize(width: 880, height: 600),
             "logs": NSSize(width: 860, height: 600),
             "input-devices": NSSize(width: 860, height: 600),
@@ -244,7 +243,6 @@ final class WindowAccessorTests: XCTestCase {
     func testWorkspaceDensityUsesCompactSharedMetrics() {
         XCTAssertEqual(UtilityLayout.compactSidebarWidth, 220)
         XCTAssertEqual(UtilityLayout.dataSidebarWidth, 240)
-        XCTAssertEqual(UtilityLayout.conversationSidebarWidth, 260)
         XCTAssertEqual(UtilityLayout.sidebarRowHeight, 28)
         XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 40)
         XCTAssertEqual(UtilityLayout.workspaceContentTopInset, 44)

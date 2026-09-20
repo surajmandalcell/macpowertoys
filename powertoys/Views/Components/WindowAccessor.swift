@@ -25,7 +25,7 @@ private class WindowAccessorView: NSView {
         "awake", "color-picker", "text-extractor"
     ])
     private static let workspaceWindowIdentifiers = Set([
-        "main", "cc-history", "rclone", "logs", "input-devices",
+        "main", "rclone", "logs", "input-devices",
         "system-care", "system-monitor", "nettoys"
     ])
 

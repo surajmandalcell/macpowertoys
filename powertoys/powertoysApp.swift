@@ -27,7 +27,7 @@ struct MacPowerToysApp: App {
 
     init() {
         do {
-            let schema = Schema([LogEntry.self, CachedConversation.self, CachedMessage.self, CachedSessionMetadata.self, TransferRecord.self])
+            let schema = Schema([LogEntry.self, TransferRecord.self])
             let config: ModelConfiguration
             if AppRuntime.isUITesting || !AppInstanceCoordinator.shared.ownsInstance {
                 config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -49,10 +49,6 @@ struct MacPowerToysApp: App {
             guard !AppRuntime.isRunningTests else { return }
             await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
             DeepLinkHandler.shared.handleCLIArguments()
-            for id in ["cc-history"] where SettingsManager.shared.isToolEnabled(id)
-                && UserDefaults.standard.bool(forKey: "tool.\(id).startAtLaunch") {
-                openWindow(id: id)
-            }
         }
     }
 
@@ -83,16 +79,6 @@ struct MacPowerToysApp: App {
                     .keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }
-
-        Window("AI History", id: "cc-history") {
-            CCHistoryWindowView()
-                .utilityMotionPolicy()
-        }
-        .modelContainer(modelContainer)
-        .defaultSize(width: 1200, height: 800)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["cc-history"]))
-        .restorationBehavior(.disabled)
 
         Window("Cloud Sync", id: "rclone") {
             RcloneWindowView()

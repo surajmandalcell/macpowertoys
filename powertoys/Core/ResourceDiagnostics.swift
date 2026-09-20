@@ -29,7 +29,6 @@ enum ResourceDiagnostics {
         let appDelegate = AppDelegate.current
         let awake = AwakeService.current
         let inputDevices = InputDevicesManager.current
-        let projectManager = ProjectManager.current
         let cloudSync = RcloneJobManager.current
         let globalShortcuts = GlobalShortcutManager.current
         let menuBar = IndividualMenuBarController.current
@@ -58,7 +57,6 @@ enum ResourceDiagnostics {
                 "inputDevices.eventTaps": inputDevices?.eventTapOwnerCount ?? 0,
                 "menuBar.observers": menuBar?.observerOwnerCount ?? 0,
                 "menuBar.statusItems": menuBar?.statusItemOwnerCount ?? 0,
-                "projectHistory.fileWatchers": projectManager?.fileWatcherOwnerCount ?? 0,
                 "settingsSync.observers": settingsSync?.observerOwnerCount ?? 0,
                 "systemMonitor.observers": systemMonitor?.wakeObserverOwnerCount ?? 0,
                 "systemMonitor.statusItems": systemMonitor?.statusItemOwnerCount ?? 0,

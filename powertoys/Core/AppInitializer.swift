@@ -29,8 +29,6 @@ final class AppInitializer {
         state = .initializing
 
         LogManager.shared.configurePersistence(container: modelContext.container)
-        ConversationCacheService.shared.setModelContext(modelContext)
-
         LogManager.shared.info("App initializing...", source: "AppInitializer")
 
         await LogManager.shared.loadPersistedLogs()
@@ -38,9 +36,6 @@ final class AppInitializer {
 
         Task.detached(priority: .background) {
             await LogManager.shared.pruneOldLogs()
-            await MainActor.run {
-                ConversationCacheService.shared.pruneStaleCache()
-            }
         }
 
         _ = SettingsManager.shared
