@@ -9,11 +9,31 @@
   independent disclosure state stored in app preferences. Expanded sections
   show at most five items: most recently checked anchors, Wi-Fi networks in
   priority order, or newest outage events. Each section routes to its matching
-  full NetToys page. Configuration and helper-status refreshes must not collapse
-  an expanded section. The tray reads existing files once and owns no poller.
+  full NetToys page. Each disclosure button owns one full-width content shape
+  with 6pt horizontal and vertical padding, so hover, press, and keyboard focus
+  cover the complete target instead of only its icon and text. Configuration
+  and helper-status refreshes must not collapse an expanded section. The tray
+  reads existing files once and owns no poller.
 - **Check:** Expand each section, save each configuration type, reopen the tray,
   and confirm all three states remain. Confirm every list is capped at five and
   its full-page route selects the matching destination.
+
+## NetToys History Loading
+
+- **Symptom:** Opening NetToys, its launcher settings, or the tray tab stalls
+  while saved network and scanner history loads, and the history page hitches
+  again on its periodic refresh.
+- **Cause:** `NetToysHistoryViewModel` read and decoded both JSON archives in
+  property initializers and repeated the same synchronous work on the main
+  actor every three seconds.
+- **Invariant:** Model initialization performs no file I/O. Load one Sendable
+  history snapshot on a utility task, reject canceled results, and coalesce
+  overlapping refreshes. The view-owned task controls periodic work and is
+  canceled when its destination disappears.
+- **Check:** The focused source regression rejects eager history and archive
+  initializers and requires the utility task. Open and close the settings,
+  history, and tray surfaces repeatedly; require responsive input, current
+  data after loading, and no accumulating refresh task or timer.
 
 - **Symptom:** NetToys uses generic network tests or SSH tunnels instead of the
   requested four-part product.

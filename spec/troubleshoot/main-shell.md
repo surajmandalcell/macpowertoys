@@ -25,6 +25,21 @@
   mouse-down. In the latest normal signed build, confirm that left-click opens
   the popover immediately and right-click shows only Open and Quit.
 
+## Menu-Bar Popover Anchoring
+
+- **Symptom:** The combined popover appears left of the click instead of
+  perfectly centered below the menu-bar icon.
+- **Cause:** SwiftUI's window-style `MenuBarExtra` owns placement and clamps the
+  window to available screen edges. Its public scene API exposes content,
+  insertion, label, and style, but no anchor-point or frame-origin control.
+- **Invariant:** Keep the combined item as a native window-style `MenuBarExtra`.
+  Do not replace native left-click presentation or use private status-item or
+  window-server positioning APIs to force mathematical centering.
+- **Check:** Confirm the app contains no custom popover position or frame-origin
+  path and the local SwiftUI SDK exposes no `MenuBarExtra` placement control.
+  Click the item near the middle and each screen edge; require immediate native
+  presentation and accept system edge avoidance.
+
 ## Menu-Bar Popover Rhythm
 
 - **Symptom:** Status dots, labels, transfer progress, and actions shift between
@@ -128,6 +143,22 @@
   its existing AppKit panels instead of cloning them in SwiftUI.
 - **Check:** Change one setting from each launcher detail, reopen its tool
   window, and confirm the same value and control surface are present.
+
+## Heavy Launcher Settings First Frame
+
+- **Symptom:** Selecting NetToys or System Monitor leaves the launcher frozen
+  before the detail page appears.
+- **Cause:** NetToys decoded saved history and scan archives on the main actor,
+  while both heavy destinations built their complete settings trees before
+  SwiftUI could present an immediate frame.
+- **Invariant:** Present a cancellable loading shell before building these two
+  settings trees. Read and decode NetToys history on a utility task, coalesce
+  overlapping refreshes, and apply only completed snapshots on the main actor.
+  Do not preload on hover or retain destination views after selection changes.
+- **Check:** Time Awake, System Monitor, and NetToys from sidebar activation to
+  the first accessible detail frame in the exact signed app. Confirm the two
+  heavy pages expose their loading identifiers, switching away cancels the
+  structured view task, and repeated selection does not grow background owners.
 
 ## External Sub-App Launch Ordering
 
