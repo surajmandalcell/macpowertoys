@@ -153,7 +153,37 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(recognized, payload)
     }
 
-    func testTextRecognitionNormalizesScreenCaptureImages() throws {
+    func testTextRecognitionReadsSmallTextFromOneXDisplay() async throws {
+        let suiteName = "TextExtractorLowDensityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let size = NSSize(width: 620, height: 54)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        ("MacPowerToys extracts small interface text 42" as NSString).draw(
+            at: NSPoint(x: 12, y: 18),
+            withAttributes: [
+                .font: NSFont.systemFont(ofSize: 11),
+                .foregroundColor: NSColor.black,
+            ]
+        )
+        image.unlockFocus()
+        let cgImage = try XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
+        let service = TextExtractorService(defaults: defaults)
+        service.settings.detectCodes = false
+
+        let recognized = try await service.recognize(cgImage, sourceScale: 1)
+
+        XCTAssertTrue(
+            recognized.localizedCaseInsensitiveContains("MacPowerToys extracts small")
+                && recognized.localizedCaseInsensitiveContains("text 42"),
+            "Expected low-density interface text, got: \(recognized)"
+        )
+    }
+
+    func testTextRecognitionEnhancesOnlyLowDensityCaptures() throws {
         let size = NSSize(width: 180, height: 60)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -162,13 +192,11 @@ final class CoreModelTests: XCTestCase {
         image.unlockFocus()
         let source = try XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
 
-        let normalized = try XCTUnwrap(TextExtractorService.normalizedImageForRecognition(source))
+        let enhanced = try XCTUnwrap(TextExtractorService.enhancedImageForRecognition(source, sourceScale: 1))
 
-        XCTAssertEqual(normalized.width, source.width)
-        XCTAssertEqual(normalized.height, source.height)
-        XCTAssertEqual(normalized.bitsPerComponent, 8)
-        XCTAssertEqual(normalized.bitsPerPixel, 32)
-        XCTAssertEqual(normalized.colorSpace?.name, CGColorSpace.sRGB)
+        XCTAssertEqual(enhanced.width, source.width * 3)
+        XCTAssertEqual(enhanced.height, source.height * 3)
+        XCTAssertNil(TextExtractorService.enhancedImageForRecognition(source, sourceScale: 2))
     }
 
     func testTextExtractorCaptureRectIsIntegralAndClampedToItsDisplay() {
