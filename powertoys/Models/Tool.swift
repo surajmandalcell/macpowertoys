@@ -63,7 +63,7 @@ struct RcloneTool: Tool {
     let id = "rclone"
     let name = "Cloud Sync"
     let description = "Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules."
-    let icon = "arrow.up.arrow.down.circle"
+    let icon = "cloud"
     let logoAsset = "CloudSyncLogo"
     let category = ToolCategory.files
     let hasTrayTab = true
@@ -259,9 +259,10 @@ struct SystemCareTool: Tool {
     let id = "system-care"
     let name = "System Care"
     let description = "Understand storage, preview safe cleanup, remove apps, and use advanced Mole maintenance."
-    let icon = "sparkles"
+    let icon = "internaldrive"
     let logoAsset = "SystemCareLogo"
     let category = ToolCategory.system
+    let hasTrayTab = true
 
     let manual = [
         ToolManualSection(title: "Storage and Cleanup", points: [
@@ -288,6 +289,7 @@ struct SystemMonitorTool: Tool {
     let icon = "chart.xyaxis.line"
     let logoAsset = "SystemMonitorLogo"
     let category = ToolCategory.system
+    let hasTrayTab = true
 
     let manual = [
         ToolManualSection(title: "Detailed Monitoring", points: [
@@ -313,6 +315,7 @@ struct NetToysTool: Tool {
     let icon = "network"
     let logoAsset = "NetToysLogo"
     let category = ToolCategory.system
+    let hasTrayTab = true
 
     let manual = [
         ToolManualSection(title: "IP Scanner", points: [

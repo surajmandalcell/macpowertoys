@@ -33,31 +33,36 @@ final class TrayPopoverLayoutTests: XCTestCase {
     func testComplexTabOrderUsesSavedUniqueAvailableTabsThenDefaults() {
         XCTAssertEqual(
             TrayPopoverLayout.orderedComplexTabs(
-                available: [.cloudSync, .logs, .inputDevices, .systemCare],
+                available: [.cloudSync, .inputDevices, .systemCare],
                 savedIDs: ["input-devices", "unknown", "rclone", "input-devices"]
             ),
-            [.inputDevices, .cloudSync, .logs, .systemCare]
+            [.inputDevices, .cloudSync, .systemCare]
         )
     }
 
-    func testEveryBuiltInHasAHomeRowOrComplexTab() {
+    func testEveryTrayCapableBuiltInHasAHomeActionOrComplexTab() {
         let trayToolIDs = Set(
             TrayPopoverLayout.homeToolIDs
                 + TrayPopoverLayout.defaultComplexTabs.compactMap(\.toolID)
         )
-        XCTAssertEqual(trayToolIDs, Set(ToolRegistry.builtInTools.map(\.id)))
+        let expected = Set(ToolRegistry.builtInTools.filter(\.hasTrayTab).map(\.id) + ["ruler"])
+        XCTAssertEqual(trayToolIDs, expected)
+        XCTAssertFalse(LogsTool.shared.hasTrayTab)
     }
 
     func testTrayUsesMutedTabbedChromeAndFocusedContent() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
         XCTAssertTrue(source.contains("TrayTabStrip"))
+        XCTAssertTrue(source.contains("ViewThatFits(in: .horizontal)"))
+        XCTAssertTrue(source.contains("TrayHomeActionButton"))
         XCTAssertTrue(source.contains("TrayToolLink"))
         XCTAssertTrue(source.contains("arrow.up.right"))
         XCTAssertTrue(source.contains(".draggable(tab.rawValue)"))
         XCTAssertTrue(source.contains("Button(\"Move Left\""))
         XCTAssertTrue(source.contains("Button(\"Move Right\""))
         XCTAssertTrue(source.contains("InputDevicesSettingsView(showsHeader: true, showsContainerScroll: false)"))
+        XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertFalse(source.contains("Color.accentColor"))
