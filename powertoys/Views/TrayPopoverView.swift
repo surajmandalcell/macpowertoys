@@ -182,7 +182,8 @@ private struct TraySectionHeader: View {
 
     var body: some View {
         Text(title)
-            .utilitySectionHeader()
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(Color.primary.opacity(0.68))
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
     }
@@ -279,9 +280,9 @@ private struct CloudSyncTraySection: View {
     @State private var manager = RcloneJobManager.shared
 
     private var statusText: String {
-        guard manager.isDaemonRunning else { return "Engine not running" }
         let count = manager.activeJobs.count
-        return count == 0 ? "Ready · No active transfers" : "\(count) active transfer\(count == 1 ? "" : "s")"
+        if count > 0 { return "\(count) active transfer\(count == 1 ? "" : "s")" }
+        return manager.isDaemonRunning ? "Ready · No active transfers" : "Engine not running"
     }
 
     var body: some View {
@@ -299,20 +300,20 @@ private struct CloudSyncTraySection: View {
 
     private var statusRow: some View {
         HStack(spacing: 8) {
-            Image(systemName: "arrow.up.arrow.down.circle")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-
             if !manager.daemonIsHealthy {
                 TrayRetryButton {
                     Task { await manager.start() }
                 }
+            } else {
+                Image(systemName: "arrow.up.arrow.down.circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.primary.opacity(0.72))
+                    .frame(width: 24, height: 24)
             }
 
             Text(statusText)
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
                 .lineLimit(1)
 
             Spacer()
@@ -330,7 +331,7 @@ private struct CloudSyncTraySection: View {
             if manager.activeJobs.count > 3 {
                 Text("+\(manager.activeJobs.count - 3) more")
                     .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color.primary.opacity(0.62))
             }
         }
     }
@@ -348,11 +349,11 @@ private struct OpenToolTraySection: View {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.72))
                     .frame(width: 18)
                 Text(detail)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.72))
                 Spacer()
                 TrayOpenButton(toolID: toolID, title: title.capitalized)
             }
@@ -386,8 +387,8 @@ private struct TrayRetryButton: View {
         Button(action: action) {
             Image(systemName: "arrow.clockwise")
                 .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 18, height: 18)
+                .foregroundStyle(Color.primary.opacity(0.72))
+                .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
@@ -453,7 +454,7 @@ private struct TrayTransferRow: View {
                 HStack(spacing: 8) {
                     Text(file.name)
                         .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Color.primary.opacity(0.62))
                         .lineLimit(1)
                         .truncationMode(.middle)
 
@@ -461,7 +462,7 @@ private struct TrayTransferRow: View {
 
                     Text("\(file.percentage)%")
                         .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Color.primary.opacity(0.62))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 }
@@ -474,7 +475,7 @@ private struct TrayTransferRow: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 9, weight: .semibold))
-                .frame(width: 20, height: 20)
+                .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))

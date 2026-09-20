@@ -1,6 +1,6 @@
 # MacPowerToys goals
 
-Reviewed against current source on 2026-09-05.
+Reviewed against current source on 2026-09-20.
 
 This file is the goals index. Each request list contains the detailed status,
 evidence, and remaining work. The Dev Sync section below is the active goal
@@ -238,8 +238,6 @@ G6 Everything mode          [█████████████████
 
 ## Current work
 
-- Replace the combined menu-bar tabs and full settings forms with one compact
-  quick dashboard, then verify the signed installed popover in light and dark.
 - Dev Sync is complete through the goal tree above; only the visual check
   of an existing transfer row beside a running pair remains in its request
   list.

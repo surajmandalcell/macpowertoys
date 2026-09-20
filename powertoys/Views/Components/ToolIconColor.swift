@@ -65,8 +65,19 @@ enum ToolIconColor {
 
     /// Black or white, whichever reads on the tint.
     static func label(on tint: NSColor) -> Color {
+        prefersDarkLabel(on: tint) ? .black : .white
+    }
+
+    static func prefersDarkLabel(on tint: NSColor) -> Bool {
         let color = tint.usingColorSpace(.deviceRGB) ?? tint
-        let luminance = 0.2126 * color.redComponent + 0.7152 * color.greenComponent + 0.0722 * color.blueComponent
-        return luminance > 0.6 ? .black : .white
+        func linear(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(color.redComponent)
+            + 0.7152 * linear(color.greenComponent)
+            + 0.0722 * linear(color.blueComponent)
+        return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
     }
 }
