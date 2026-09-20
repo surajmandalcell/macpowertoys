@@ -4,6 +4,11 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+### Security
+
+- Updated the Raycast lockfile to js-yaml 4.3.2 to resolve
+  GHSA-2883-xcg3-v3hh.
+
 ## [1.8.0] - 2026-09-21
 
 ### Added
