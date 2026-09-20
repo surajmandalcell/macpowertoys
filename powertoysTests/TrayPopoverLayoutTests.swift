@@ -84,6 +84,8 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertFalse(source.contains("Color.accentColor"))
         XCTAssertFalse(source.contains(".focusEffectDisabled()"))
+        XCTAssertTrue(source.contains("accessibilityReduceTransparency"))
+        XCTAssertTrue(source.contains("colorSchemeContrast"))
     }
 
     func testTrayPopoverHeightStaysWithinSeventyPercentOfTheScreen() {
@@ -100,11 +102,14 @@ final class TrayPopoverLayoutTests: XCTestCase {
         )
     }
 
-    func testTrayRendersHomeAndInputDevicesInLightAndDark() throws {
+    func testTrayRendersEveryPrimarySurfaceInLightAndDark() throws {
         for (tab, scheme, name) in [
             (TrayTab.home, ColorScheme.light, "Home — Light"),
             (.home, .dark, "Home — Dark"),
+            (.cloudSync, .dark, "Cloud Sync — Dark"),
             (.inputDevices, .dark, "Input Devices — Dark"),
+            (.systemCare, .dark, "System Care — Dark"),
+            (.systemMonitor, .dark, "System Monitor — Dark"),
         ] {
             let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))
             attachment.name = "Menu Bar — \(name)"

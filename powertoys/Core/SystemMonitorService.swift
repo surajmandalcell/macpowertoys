@@ -772,6 +772,7 @@ final class SystemMonitorService {
     private var timer: DispatchSourceTimer?
     private var wakeObserver: NSObjectProtocol?
     private var unavailableMenuMetrics = Set<SystemMonitorMenuMetric>()
+    private var detailedOwners = Set<String>()
     private var toolEnabled = true
     private var generation = 0
 
@@ -824,15 +825,15 @@ final class SystemMonitorService {
         toolEnabled = SettingsManager.shared.isToolEnabled("system-monitor")
         reconfigure()
     }
-    func startDetailed() {
-        guard SystemMonitorLifecycle.changesState(from: detailedActive, to: true) else { return }
+    func startDetailed(owner: String = "window") {
+        guard detailedOwners.insert(owner).inserted else { return }
         detailedActive = true
         unavailableMenuMetrics.removeAll()
         reconfigure()
     }
-    func stopDetailed() {
-        guard SystemMonitorLifecycle.changesState(from: detailedActive, to: false) else { return }
-        detailedActive = false
+    func stopDetailed(owner: String = "window") {
+        guard detailedOwners.remove(owner) != nil else { return }
+        detailedActive = !detailedOwners.isEmpty
         reconfigure()
     }
     func updateMenuSettings(_ change: (inout SystemMonitorMenuSettings) -> Void) {
@@ -847,7 +848,10 @@ final class SystemMonitorService {
     func setToolEnabled(_ enabled: Bool) {
         guard SystemMonitorLifecycle.changesState(from: toolEnabled, to: enabled) else { return }
         toolEnabled = enabled
-        if !enabled { detailedActive = false }
+        if !enabled {
+            detailedOwners.removeAll()
+            detailedActive = false
+        }
         if enabled { unavailableMenuMetrics.removeAll() }
         reconfigure()
     }

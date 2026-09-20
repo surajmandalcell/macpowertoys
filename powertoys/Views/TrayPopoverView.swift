@@ -965,30 +965,211 @@ private struct SystemCareTrayView: View {
 private struct SystemMonitorTrayView: View {
     @State private var service = SystemMonitorService.shared
 
+    private var sample: SystemMonitorSample? { service.snapshot }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 8) {
             TrayToolHeader(tab: .systemMonitor)
-            QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                metric("CPU", service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting")
-                metric("Memory", service.snapshot?.memoryUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting")
-                metric("Disk", service.snapshot?.diskUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting")
-                metric("Battery", service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Unavailable")
+                metric(
+                    "CPU", symbol: "cpu", value: percent(sample?.cpuUsage),
+                    detail: loadDetail, level: sample?.cpuUsage,
+                    values: service.history.compactMap(\.cpuUsage)
+                )
+                metric(
+                    "GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage),
+                    detail: "Graphics utilization", level: sample?.gpuUsage,
+                    values: service.history.compactMap(\.gpuUsage)
+                )
+                metric(
+                    "Memory", symbol: "memorychip", value: percent(sample?.memoryUsage),
+                    detail: memoryDetail, level: sample?.memoryUsage,
+                    values: service.history.compactMap(\.memoryUsage)
+                )
+                metric(
+                    "Disk", symbol: "internaldrive", value: percent(sample?.diskUsage),
+                    detail: diskDetail, level: sample?.diskUsage,
+                    values: service.history.compactMap(\.diskUsage)
+                )
+                metric(
+                    "Network", symbol: "network", value: sample?.networkDownload.map(Self.rate) ?? "Waiting",
+                    detail: "Up \(sample?.networkUpload.map(Self.rate) ?? "—")", level: nil,
+                    values: service.history.compactMap { point in
+                        guard let down = point.networkDownload, let up = point.networkUpload else { return nil }
+                        return max(down, up)
+                    }, tint: .blue
+                )
+                metric(
+                    "Battery", symbol: "battery.75percent",
+                    value: sample?.batteryPercent.map { "\($0)%" } ?? "Unavailable",
+                    detail: sample?.batteryCharging == true ? "Charging" : "On battery",
+                    level: sample?.batteryPercent.map(Double.init),
+                    values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
+                    tint: batteryTint
+                )
+                metric(
+                    "Thermal", symbol: "thermometer.medium", value: sample?.thermalState ?? "Unavailable",
+                    detail: "System pressure", level: thermalLevel,
+                    values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
+                    tint: thermalTint
+                )
+                metric(
+                    "Load", symbol: "chart.bar", value: loadValue,
+                    detail: loadAverageDetail, level: loadLevel,
+                    values: service.history.compactMap { $0.loadAverage.map { $0.0 } }
+                )
             }
             .padding(TrayPopoverLayout.horizontalInset)
         }
-        .onAppear { service.startDetailed() }
-        .onDisappear { service.stopDetailed() }
+        .padding(.bottom, 8)
+        .onAppear { service.startDetailed(owner: "tray") }
+        .onDisappear { service.stopDetailed(owner: "tray") }
     }
 
-    private func metric(_ title: String, _ value: String) -> some View {
-        HStack {
-            Text(title).font(.system(size: 10)).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).font(.system(size: 11, weight: .medium)).monospacedDigit()
+    private func metric(
+        _ title: String,
+        symbol: String,
+        value: String,
+        detail: String,
+        level: Double?,
+        values: [Double],
+        tint: Color? = nil
+    ) -> some View {
+        let color = tint ?? level.map(Self.usageTint) ?? .gray
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol).font(.system(size: 9, weight: .medium)).foregroundStyle(color)
+                Text(title).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+            Text(value)
+                .font(.system(size: 18, weight: .semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+            Text(detail)
+                .font(.system(size: 8))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .padding(9)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 7))
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+        .background {
+            RoundedRectangle(cornerRadius: 8).fill(color.opacity(0.065))
+            TrayMetricSparkline(values: values, color: color)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .opacity(values.count > 1 ? 1 : 0)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.045))
+        }
+    }
+
+    private func percent(_ value: Double?) -> String {
+        value.map { "\(Int($0.rounded()))%" } ?? "Waiting"
+    }
+
+    private var loadDetail: String {
+        guard let load = sample?.loadAverage else { return "Waiting for first sample" }
+        return "1m \(load.0.formatted(.number.precision(.fractionLength(1))))"
+    }
+
+    private var memoryDetail: String {
+        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "Physical memory" }
+        return "\(Self.bytes(used)) / \(Self.bytes(total))"
+    }
+
+    private var diskDetail: String {
+        guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "Startup volume" }
+        return "\(Self.bytes(max(total - used, 0))) free"
+    }
+
+    private var loadValue: String {
+        sample?.loadAverage.map { $0.0.formatted(.number.precision(.fractionLength(2))) } ?? "Waiting"
+    }
+
+    private var loadAverageDetail: String {
+        guard let load = sample?.loadAverage else { return "1, 5, and 15 minute" }
+        return "5m \(load.1.formatted(.number.precision(.fractionLength(1)))) · 15m \(load.2.formatted(.number.precision(.fractionLength(1))))"
+    }
+
+    private var loadLevel: Double? {
+        sample?.loadAverage.map { min($0.0 / Double(max(ProcessInfo.processInfo.activeProcessorCount, 1)) * 100, 100) }
+    }
+
+    private var thermalLevel: Double? { Self.thermalLevel(sample?.thermalState) }
+
+    private var thermalTint: Color {
+        switch sample?.thermalState {
+        case "Critical": .red
+        case "Serious": .orange
+        case "Fair": .blue
+        default: .green
+        }
+    }
+
+    private var batteryTint: Color {
+        guard let percent = sample?.batteryPercent else { return .gray }
+        if sample?.batteryCharging == true { return .green }
+        if percent < 20 { return .red }
+        if percent < 50 { return .orange }
+        return .blue
+    }
+
+    nonisolated private static func usageTint(_ value: Double) -> Color {
+        if value >= 90 { return .red }
+        if value >= 70 { return .orange }
+        if value >= 35 { return .blue }
+        return .green
+    }
+
+    nonisolated private static func thermalLevel(_ state: String?) -> Double? {
+        switch state {
+        case "Nominal": 20
+        case "Fair": 50
+        case "Serious": 75
+        case "Critical": 100
+        default: nil
+        }
+    }
+
+    nonisolated private static func rate(_ bytes: Double) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(max(bytes, 0)), countStyle: .file) + "/s"
+    }
+
+    nonisolated private static func bytes(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .memory)
+    }
+}
+
+private struct TrayMetricSparkline: View {
+    let values: [Double]
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            guard values.count > 1, let minimum = values.min(), let maximum = values.max() else { return }
+            let range = max(maximum - minimum, 1)
+            let points = values.enumerated().map { index, value in
+                CGPoint(
+                    x: size.width * CGFloat(index) / CGFloat(values.count - 1),
+                    y: size.height - size.height * CGFloat((value - minimum) / range)
+                )
+            }
+            var fill = Path()
+            fill.move(to: CGPoint(x: 0, y: size.height))
+            points.forEach { fill.addLine(to: $0) }
+            fill.addLine(to: CGPoint(x: size.width, y: size.height))
+            fill.closeSubpath()
+            context.fill(fill, with: .linearGradient(
+                Gradient(colors: [color.opacity(0.16), color.opacity(0.015)]),
+                startPoint: .zero,
+                endPoint: CGPoint(x: 0, y: size.height)
+            ))
+            var line = Path()
+            line.addLines(points)
+            context.stroke(line, with: .color(color.opacity(0.46)), lineWidth: 1)
+        }
     }
 }
 
