@@ -1,14 +1,45 @@
+<p align="center">
+  <img src="../docs/appicon.svg" width="96" height="96" alt="MacPowerToys icon">
+</p>
+
 # MacPowerToys for Raycast
 
-This companion extension exposes only MacPowerToys and its built-in tools as Raycast Root Search launchers.
+Launch MacPowerToys or any of its ten built-in tools from Raycast Root Search.
+Each command opens the matching native Mac window through the local
+`macpowertoys://` URL scheme. The extension runs no background service.
+
+<p align="center">
+  <img src="../docs/screenshots/macpowertoys-launcher.png" width="900" alt="MacPowerToys launcher with all ten built-in tools">
+</p>
+
+## Commands
+
+| Group             | Commands                                                |
+| ----------------- | ------------------------------------------------------- |
+| App               | MacPowerToys                                            |
+| Screen            | Ruler, Color Picker, Text Extractor                     |
+| System            | Awake, Input Devices, System Care, System Monitor, Logs |
+| Files and network | Cloud Sync, NetToys                                     |
 
 ## Local installation
 
-1. Install and open MacPowerToys.
-2. Run `npm ci && npm run build` in this directory.
+1. [Install MacPowerToys](https://github.com/surajmandalcell/macpowertoys/releases/latest) and open it once.
+2. Build the extension from this directory:
+
+   ```bash
+   npm ci
+   npm run build
+   ```
+
 3. Open Raycast's **Import Extension** command and select this directory.
 4. Assign aliases or hotkeys to the app launchers you use.
 
-Commands use the local `macpowertoys://` URL scheme. No cloud service is required by the extension.
+## Development
 
-Before submitting to the Raycast Store, add the owner's Raycast account username as the manifest `author`, then run `npm run lint:store` and `npm run publish`.
+```bash
+npm run dev
+npm run lint
+```
+
+Before submitting to the Raycast Store, run `npm run lint:store`, then
+`npm run publish` from the owner's Raycast account.
