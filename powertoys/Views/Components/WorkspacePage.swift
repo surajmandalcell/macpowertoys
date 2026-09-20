@@ -54,7 +54,8 @@ struct WorkspacePage<Content: View, Actions: View>: View {
                     content
                 }
                 .padding(.horizontal, UtilityLayout.horizontalInset)
-                .padding(.vertical, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .thinScrollIndicators()

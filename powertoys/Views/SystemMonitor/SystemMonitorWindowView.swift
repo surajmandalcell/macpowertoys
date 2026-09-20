@@ -70,7 +70,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var overviewPage: some View {
-        WorkspacePage("Overview", subtitle: "Live while this window is open") {
+        WorkspacePage("Overview") {
             metricGrid
             VStack(alignment: .leading, spacing: 10) {
                 Text("LAST TWO MINUTES").utilitySectionHeader()
@@ -102,54 +102,101 @@ struct SystemMonitorWindowView: View {
                 icon: "cpu",
                 title: "CPU",
                 value: service.snapshot?.cpuUsage.percent ?? "Priming…",
-                detail: loadDetail
+                detail: loadDetail,
+                values: service.history.compactMap(\.cpuUsage),
+                tint: usageTint(service.snapshot?.cpuUsage)
+            )
+            metricCard(
+                icon: "rectangle.3.group",
+                title: "GPU",
+                value: service.snapshot?.gpuUsage.percent ?? "Not available",
+                detail: "Graphics utilization",
+                values: service.history.compactMap(\.gpuUsage),
+                tint: usageTint(service.snapshot?.gpuUsage)
             )
             metricCard(
                 icon: "memorychip",
                 title: "Memory",
                 value: service.snapshot?.memoryUsage.percent ?? "Not available",
-                detail: memoryDetail
+                detail: memoryDetail,
+                values: service.history.compactMap(\.memoryUsage),
+                tint: usageTint(service.snapshot?.memoryUsage)
             )
             metricCard(
                 icon: "internaldrive",
                 title: "Disk",
                 value: service.snapshot?.diskUsage.percent ?? "Not available",
-                detail: diskDetail
+                detail: diskDetail,
+                values: service.history.compactMap(\.diskUsage),
+                tint: usageTint(service.snapshot?.diskUsage)
             )
             metricCard(
                 icon: "arrow.down.circle",
                 title: "Network",
                 value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…",
-                detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "not available")"
+                detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "not available")",
+                values: service.history.compactMap { sample in
+                    guard let down = sample.networkDownload, let up = sample.networkUpload else { return nil }
+                    return max(down, up)
+                },
+                tint: .blue
             )
             metricCard(
                 icon: "thermometer.medium",
                 title: "Thermal",
                 value: service.snapshot?.thermalState ?? "Not available",
-                detail: "System pressure"
+                detail: "System pressure",
+                values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
+                tint: thermalTint
             )
             metricCard(
                 icon: "battery.75percent",
                 title: "Battery",
                 value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Not available",
-                detail: batteryDetail
+                detail: batteryDetail,
+                values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
+                tint: batteryTint
+            )
+            metricCard(
+                icon: "chart.bar",
+                title: "Load",
+                value: loadAverage,
+                detail: loadAverageDetail,
+                values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
+                tint: usageTint(loadLevel)
             )
         }
     }
 
-    private func metricCard(icon: String, title: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 22, weight: .semibold))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .utilityAnimation(value: value)
-            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+    private func metricCard(
+        icon: String,
+        title: String,
+        value: String,
+        detail: String,
+        values: [Double] = [],
+        tint: Color = .gray
+    ) -> some View {
+        ZStack(alignment: .bottom) {
+            StatsSparkline(values: values, color: tint)
+                .frame(height: 44)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
+                .opacity(0.58)
+            VStack(alignment: .leading, spacing: 8) {
+                Label(title, systemImage: icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(tint)
+                Text(value)
+                    .font(.system(size: 22, weight: .semibold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .utilityAnimation(value: value)
+                Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
-        .background(Color.primary.opacity(0.03))
+        .background(tint.opacity(0.055))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -176,7 +223,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var processorPage: some View {
-        WorkspacePage("Processor", subtitle: "System load and pressure") {
+        WorkspacePage("Processor") {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "Priming…", detail: "User + system + nice")
                 metricCard(icon: "chart.bar", title: "Load Average", value: loadAverage, detail: "1, 5, and 15 minute run queue")
@@ -187,7 +234,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var memoryPage: some View {
-        WorkspacePage("Memory", subtitle: "Physical and compressed memory") {
+        WorkspacePage("Memory") {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "Not available", detail: memoryDetail)
                 metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "Not available", detail: "Installed unified memory")
@@ -198,7 +245,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var networkPage: some View {
-        WorkspacePage("Network & Disk", subtitle: "Current rates and startup disk use") {
+        WorkspacePage("Network & Disk") {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
@@ -212,7 +259,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var menuBarPage: some View {
-        WorkspacePage("Menu Bar", subtitle: "Optional lightweight status") {
+        WorkspacePage("Menu Bar") {
             SystemMonitorMenuSettingsView(showsContainerScroll: false)
         }
     }
@@ -225,6 +272,17 @@ struct SystemMonitorWindowView: View {
         service.snapshot?.loadAverage.map {
             [$0.0, $0.1, $0.2].map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · ")
         } ?? "Not available"
+    }
+
+    private var loadAverageDetail: String {
+        guard let load = service.snapshot?.loadAverage else { return "1, 5, and 15 minute average" }
+        return "5m \(load.1.formatted(.number.precision(.fractionLength(2)))) · 15m \(load.2.formatted(.number.precision(.fractionLength(2))))"
+    }
+
+    private var loadLevel: Double? {
+        service.snapshot?.loadAverage.map {
+            min($0.0 / Double(max(ProcessInfo.processInfo.activeProcessorCount, 1)) * 100, 100)
+        }
     }
 
     private var memoryDetail: String {
@@ -240,6 +298,42 @@ struct SystemMonitorWindowView: View {
     private var batteryDetail: String {
         guard service.snapshot?.batteryPercent != nil else { return "No internal battery detected" }
         return service.snapshot?.batteryCharging == true ? "Connected to power" : "On battery"
+    }
+
+    private var batteryTint: Color {
+        guard let percent = service.snapshot?.batteryPercent else { return .gray }
+        if service.snapshot?.batteryCharging == true { return .green }
+        if percent < 20 { return .red }
+        if percent < 50 { return .orange }
+        return .blue
+    }
+
+    private var thermalTint: Color {
+        switch service.snapshot?.thermalState {
+        case "Critical": .red
+        case "Serious": .orange
+        case "Fair": .blue
+        case "Nominal": .green
+        default: .gray
+        }
+    }
+
+    private func usageTint(_ value: Double?) -> Color {
+        guard let value else { return .gray }
+        if value >= 90 { return .red }
+        if value >= 70 { return .orange }
+        if value >= 35 { return .blue }
+        return .green
+    }
+
+    nonisolated private static func thermalLevel(_ state: String?) -> Double? {
+        switch state {
+        case "Nominal": 20
+        case "Fair": 50
+        case "Serious": 75
+        case "Critical": 100
+        default: nil
+        }
     }
 
     nonisolated private static func rate(_ bytes: Double) -> String {
@@ -688,23 +782,35 @@ struct SystemMonitorMenuSettingsView: View {
 
 private struct StatsSparkline: View {
     let values: [Double]
+    var color: Color = .accentColor
 
     var body: some View {
         Canvas { context, size in
             guard values.count > 1, let maximum = values.max(), let minimum = values.min() else { return }
             let range = max(maximum - minimum, 1)
-            var path = Path()
-            for (index, value) in values.enumerated() {
-                let point = CGPoint(
+            let points = values.enumerated().map { index, value in
+                CGPoint(
                     x: CGFloat(index) / CGFloat(values.count - 1) * size.width,
                     y: size.height - CGFloat((value - minimum) / range) * size.height
                 )
+            }
+            var fill = Path()
+            fill.move(to: CGPoint(x: 0, y: size.height))
+            points.forEach { fill.addLine(to: $0) }
+            fill.addLine(to: CGPoint(x: size.width, y: size.height))
+            fill.closeSubpath()
+            context.fill(fill, with: .linearGradient(
+                Gradient(colors: [color.opacity(0.14), color.opacity(0.01)]),
+                startPoint: .zero,
+                endPoint: CGPoint(x: 0, y: size.height)
+            ))
+            var path = Path()
+            for (index, point) in points.enumerated() {
                 if index == 0 { path.move(to: point) }
                 else { path.addLine(to: point) }
             }
-            context.stroke(path, with: .color(.accentColor), lineWidth: 2)
+            context.stroke(path, with: .color(color.opacity(0.72)), lineWidth: 1.5)
         }
-        .background(Color.primary.opacity(0.025))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .accessibilityLabel("Recent \(values.last?.formatted() ?? "unavailable")")
     }
