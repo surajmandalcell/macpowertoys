@@ -92,6 +92,25 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     @MainActor
+    func testDetailedSamplingStaysActiveUntilEverySurfaceCloses() {
+        let service = SystemMonitorService(
+            menuSettings: SystemMonitorMenuSettings(),
+            toolEnabled: true,
+            observesWake: false
+        )
+
+        service.startDetailed(owner: "window")
+        service.startDetailed(owner: "tray")
+        service.stopDetailed(owner: "tray")
+        XCTAssertTrue(service.detailedActive)
+        XCTAssertEqual(service.timerOwnerCount, 1)
+
+        service.stopDetailed(owner: "window")
+        XCTAssertFalse(service.detailedActive)
+        XCTAssertEqual(service.timerOwnerCount, 0)
+    }
+
+    @MainActor
     func testLegacyMenuSettingsLoadWhenCurrentSettingsAreAbsent() throws {
         let suite = "SystemMonitorTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
