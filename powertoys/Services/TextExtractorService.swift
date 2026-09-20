@@ -30,6 +30,7 @@ final class TextExtractorService {
     private let openTextExtractor: () -> Void
     private var selector: TextRegionSelector?
     private var shareableContentTask: Task<SCShareableContent, Error>?
+    private var didPrewarm = false
 
     init(
         defaults: UserDefaults = .standard,
@@ -76,9 +77,7 @@ final class TextExtractorService {
             return
         }
         state = .selecting
-        shareableContentTask = Task {
-            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-        }
+        if shareableContentTask == nil { prepareShareableContent() }
         let selector = TextRegionSelector()
         self.selector = selector
         selector.begin { [weak self] selection, screen in
@@ -91,6 +90,13 @@ final class TextExtractorService {
             self?.shareableContentTask = nil
             self?.state = .idle
         }
+    }
+
+    func prewarm() {
+        guard !didPrewarm else { return }
+        didPrewarm = true
+        Task.detached(priority: .utility) { Self.prewarmRecognition() }
+        if CGPreflightScreenCaptureAccess() { prepareShareableContent() }
     }
 
     func reset() { state = .idle }
@@ -252,6 +258,29 @@ final class TextExtractorService {
         level == .fast ? fastRecognitionLanguages : accurateRecognitionLanguages
     }
 
+    private nonisolated static func prewarmRecognition() {
+        _ = fastRecognitionLanguages
+        _ = accurateRecognitionLanguages
+        guard let context = CGContext(
+            data: nil,
+            width: 32,
+            height: 32,
+            bitsPerComponent: 8,
+            bytesPerRow: 32,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return }
+        context.setFillColor(gray: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
+        guard let image = context.makeImage() else { return }
+        for level in [VNRequestTextRecognitionLevel.fast, .accurate] {
+            let text = VNRecognizeTextRequest()
+            text.recognitionLevel = level
+            let requests: [VNRequest] = level == .fast ? [text, VNDetectBarcodesRequest()] : [text]
+            try? VNImageRequestHandler(cgImage: image).perform(requests)
+        }
+    }
+
     nonisolated static func enhancedImageForRecognition(_ image: CGImage, sourceScale: CGFloat) -> CGImage? {
         guard sourceScale > 0, sourceScale < 2 else { return nil }
         let scale = max(1, 3 / sourceScale)
@@ -278,6 +307,13 @@ final class TextExtractorService {
     private func fail(_ message: String) {
         state = .failed(message)
         openTextExtractor()
+    }
+
+    private func prepareShareableContent() {
+        shareableContentTask?.cancel()
+        shareableContentTask = Task {
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        }
     }
 
     private func saveSettings() {
@@ -363,6 +399,32 @@ private final class TextRegionSelectionPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
+enum TextSelectionCursor {
+    static let cursor: NSCursor = {
+        let size = NSSize(width: 36, height: 36)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: 0, y: 18))
+        path.line(to: NSPoint(x: 13, y: 18))
+        path.move(to: NSPoint(x: 23, y: 18))
+        path.line(to: NSPoint(x: 36, y: 18))
+        path.move(to: NSPoint(x: 18, y: 0))
+        path.line(to: NSPoint(x: 18, y: 13))
+        path.move(to: NSPoint(x: 18, y: 23))
+        path.line(to: NSPoint(x: 18, y: 36))
+        path.lineCapStyle = .round
+        NSColor.black.withAlphaComponent(0.78).setStroke()
+        path.lineWidth = 4
+        path.stroke()
+        NSColor.white.setStroke()
+        path.lineWidth = 2
+        path.stroke()
+        image.unlockFocus()
+        return NSCursor(image: image, hotSpot: NSPoint(x: 18, y: 18))
+    }()
+}
+
 private final class TextRegionSelectionView: NSView {
     private let completion: (CGRect) -> Void
     private let cancellation: () -> Void
@@ -370,7 +432,6 @@ private final class TextRegionSelectionView: NSView {
     private var lastPoint: CGPoint?
     private var shiftWasDownAtMouseDown = false
     private var selection = CGRect.zero
-    private var tracking: NSTrackingArea?
 
     init(frame: CGRect, completion: @escaping (CGRect) -> Void, cancellation: @escaping () -> Void) {
         self.completion = completion
@@ -384,39 +445,12 @@ private final class TextRegionSelectionView: NSView {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(bounds, cursor: .crosshair)
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let tracking { removeTrackingArea(tracking) }
-        let area = NSTrackingArea(rect: bounds, options: [.activeAlways, .mouseMoved, .inVisibleRect], owner: self)
-        addTrackingArea(area)
-        tracking = area
+        addCursorRect(bounds, cursor: TextSelectionCursor.cursor)
     }
 
     override func draw(_ dirtyRect: NSRect) {
         NSColor.black.withAlphaComponent(0.2).setFill()
         bounds.fill()
-        if let window {
-            let pointer = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-            let crosshair = NSBezierPath()
-            crosshair.move(to: CGPoint(x: pointer.x - 18, y: pointer.y))
-            crosshair.line(to: CGPoint(x: pointer.x - 5, y: pointer.y))
-            crosshair.move(to: CGPoint(x: pointer.x + 5, y: pointer.y))
-            crosshair.line(to: CGPoint(x: pointer.x + 18, y: pointer.y))
-            crosshair.move(to: CGPoint(x: pointer.x, y: pointer.y - 18))
-            crosshair.line(to: CGPoint(x: pointer.x, y: pointer.y - 5))
-            crosshair.move(to: CGPoint(x: pointer.x, y: pointer.y + 5))
-            crosshair.line(to: CGPoint(x: pointer.x, y: pointer.y + 18))
-            crosshair.lineCapStyle = .round
-            NSColor.black.withAlphaComponent(0.75).setStroke()
-            crosshair.lineWidth = 4
-            crosshair.stroke()
-            NSColor.white.setStroke()
-            crosshair.lineWidth = 2
-            crosshair.stroke()
-        }
         guard !selection.isEmpty else { return }
         NSGraphicsContext.saveGraphicsState()
         NSColor.clear.setFill()
@@ -444,10 +478,6 @@ private final class TextRegionSelectionView: NSView {
             selection = CGRect(x: min(start.x, point.x), y: min(start.y, point.y), width: abs(point.x - start.x), height: abs(point.y - start.y))
         }
         lastPoint = point
-        needsDisplay = true
-    }
-
-    override func mouseMoved(with event: NSEvent) {
         needsDisplay = true
     }
 
