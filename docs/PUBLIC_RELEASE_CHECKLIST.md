@@ -1,7 +1,10 @@
 # Public release checklist
 
-Track these gates before the next public binary release. The repository is
-already public at `surajmandalcell/macpowertoys`.
+Track these gates before a warning-free public binary release. The repository
+is already public at `surajmandalcell/macpowertoys`. Version `1.8.0` was
+published on 2026-09-21 as an explicitly approved Apple Development-signed
+testing release; its release notes disclose that it is not notarized and may
+be rejected by Gatekeeper.
 
 ## Repository
 
@@ -32,9 +35,11 @@ already public at `surajmandalcell/macpowertoys`.
 
 ## Verification
 
-- [x] Run local unit, rclone, and signed UI smoke checks. On 2026-08-31,
-  543 of 543 tests passed, a controlled local rclone transfer passed, and the
-  signed app completed 275 sub-app open and close cycles without an error.
+- [x] Run local unit, rclone, and signed UI smoke checks. For `v1.8.0`, 806
+  tests passed, 5 skipped, and 0 failed; Raycast lint and build passed. The
+  exact installed signed build opened NetToys without a Location prompt and
+  switched to System Monitor immediately. The earlier controlled local rclone
+  transfer and 275-cycle signed app check remain valid for their tested scope.
 - [x] Validate all seven marketplace fixtures. The executable pinned `uv`
   validator passed all seven fixtures on 2026-08-31.
 - [ ] Run the complete suite on a clean supported Mac account.
@@ -74,10 +79,16 @@ already public at `surajmandalcell/macpowertoys`.
   entitlement-compatible provisioning profile.
 - [ ] Confirm the hardened runtime, Developer ID signature, notarization,
   stapling, and SHA-256 verification. Gatekeeper rejected the current Apple
-  Development build as expected on 2026-08-31.
-- [ ] Verify the archive on a clean account before publishing the tag.
+  Development build as expected on 2026-09-21.
+- [ ] Verify the archive on a clean account before a warning-free production
+  release.
+- [x] Publish the owner-approved development-signed `v1.8.0` testing DMG and
+  checksum. The mounted app matched commit `93fbfd4`, version `1.8.0` build
+  `13`, and arm64; the uploaded SHA-256 matched the locally verified artifact.
 - [x] Publish explicit pre-release limitations and recovery instructions. The
   public README lists signing, Spaces, Cloud Sync, input, IPv4, SSH Anchor,
-  cleanup, Mole, and permission limits with the matching recovery action.
+  cleanup, Mole, and permission limits with the matching recovery action. The
+  `v1.8.0` release notes also state the Development-signing and notarization
+  limitation directly.
 
 Never replace or relaunch an installed MacPowerToys build while Cloud Sync is actively transferring data.
