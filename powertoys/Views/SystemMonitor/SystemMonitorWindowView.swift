@@ -72,19 +72,6 @@ struct SystemMonitorWindowView: View {
     private var overviewPage: some View {
         WorkspacePage("Overview") {
             metricGrid
-            VStack(alignment: .leading, spacing: 10) {
-                Text("LAST TWO MINUTES").utilitySectionHeader()
-                LazyVGrid(columns: chartColumns, spacing: 12) {
-                    chartCard(title: "CPU", suffix: "%", values: service.history.compactMap(\.cpuUsage))
-                    chartCard(title: "Memory", suffix: "%", values: service.history.compactMap(\.memoryUsage))
-                    chartCard(
-                        title: "Download",
-                        suffix: "/s",
-                        values: service.history.compactMap(\.networkDownload),
-                        formatter: Self.rate
-                    )
-                }
-            }
         }
     }
 

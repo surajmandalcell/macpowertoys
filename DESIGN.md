@@ -87,7 +87,8 @@ components:
   sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
   sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: native-selected-content-text, selected-custom-artwork: original-colors }
   sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
-  tray-tab: { min-height: 28, radius: 8, inset-x: 10, gap: 4, selected-bg: "Color.primary.opacity(0.10)" }
+  tray-tab: { min-height: 24, icon: 12, radius: 6, inset-x: 8, gap: 4, selected-bg: "Color.primary.opacity(0.10)" }
+  tray-chrome: { min-height: 24, icon: 12, radius: 6, gap: 4 }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
   workspace-action: { height: 24, control-size: small }
   structural-divider: { opacity: 0.22, increased-contrast-opacity: 0.44 }
@@ -208,6 +209,8 @@ hex lives only in icon assets. This keeps light and dark mode free.
   share one `.hudWindow` material surface over a clear, non-opaque `NSWindow`.
 - Status tints: green = healthy/complete, orange = retrying/attempts,
   red = failure, secondary = idle/cancelled.
+- The combined menu-bar popover uses an opaque semantic window background. It
+  does not show the desktop or native popover blur through its content.
 
 ## Typography
 

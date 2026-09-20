@@ -4,7 +4,7 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
-    func testOverviewHistoryGridUsesAdaptiveChartColumns() throws {
+    func testOverviewOmitsRedundantHistoryCards() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -17,7 +17,8 @@ final class SystemMonitorTests: XCTestCase {
         ))
         let overview = source[overviewStart.lowerBound..<overviewEnd.lowerBound]
 
-        XCTAssertTrue(overview.contains("LazyVGrid(columns: chartColumns, spacing: 12)"))
+        XCTAssertFalse(overview.contains("LAST TWO MINUTES"))
+        XCTAssertFalse(overview.contains("chartCard("))
         XCTAssertTrue(source.contains("GridItem(.adaptive(minimum: 320), spacing: 12)"))
     }
 

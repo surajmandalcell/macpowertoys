@@ -2,6 +2,19 @@
 
 ## NetToys
 
+- **Symptom:** The NetToys tray tab shows only switches, so current anchor,
+  Wi-Fi priority, and network issue state requires opening the full app.
+- **Cause:** The compact surface had no persistent progressive disclosure.
+- **Invariant:** SSH Anchor, Wi-Fi Priority, and Network History each have an
+  independent disclosure state stored in app preferences. Expanded sections
+  show at most five items: most recently checked anchors, Wi-Fi networks in
+  priority order, or newest outage events. Each section routes to its matching
+  full NetToys page. Configuration and helper-status refreshes must not collapse
+  an expanded section. The tray reads existing files once and owns no poller.
+- **Check:** Expand each section, save each configuration type, reopen the tray,
+  and confirm all three states remain. Confirm every list is capped at five and
+  its full-page route selects the matching destination.
+
 - **Symptom:** NetToys uses generic network tests or SSH tunnels instead of the
   requested four-part product.
 - **Cause:** An earlier draft was mistaken for the final scope.
@@ -362,8 +375,10 @@
   and workspace copy repeated context already expressed by the destination.
 - **Invariant:** Overview renders CPU, GPU, memory, disk, network, thermal,
   battery, and load in the adaptive grid. Each card uses the bounded 120-sample
-  history as a muted semantic-tint sparkline backdrop. Omit body subtitles from
-  System Monitor destinations and keep the shared content top inset compact.
+  history as a muted semantic-tint sparkline backdrop. Do not repeat CPU,
+  memory, or network in another Overview history-card section. Dedicated detail
+  pages may retain larger charts. Omit body subtitles from System Monitor
+  destinations and keep the shared content top inset compact.
 - **Check:** Render the overview at 1,180 by 780 points and the tray at its
   production width. Confirm all eight values fit, history lines remain quiet,
   and closing either surface releases only its own detailed-sampling owner.

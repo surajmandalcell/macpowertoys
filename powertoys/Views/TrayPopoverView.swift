@@ -43,10 +43,10 @@ enum TrayTab: String, CaseIterable, Identifiable {
 enum TrayPopoverLayout {
     static let width: CGFloat = 360
     static let horizontalInset: CGFloat = 12
-    static let tabHeight: CGFloat = 28
-    static let tabSpacing: CGFloat = 4
+    static let tabHeight: CGFloat = 24
+    static let tabSpacing: CGFloat = 3
     static let minimumBodyHeight: CGFloat = 54
-    static let topChromeHeight: CGFloat = 48
+    static let topChromeHeight: CGFloat = 38
     static let heightFraction: CGFloat = 0.7
     static let transitionDuration = UtilityMotion.standardDuration
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
@@ -82,14 +82,42 @@ enum TrayPopoverLayout {
             .prefix(recentLimit)
         return Array(active) + Array(recent)
     }
+
+    static func recentAnchors(
+        _ anchors: [SSHAnchorConfiguration],
+        statuses: [SSHAnchorStatus],
+        limit: Int = 5
+    ) -> [SSHAnchorConfiguration] {
+        let checkedAt = Dictionary(
+            statuses.map { ($0.anchorID, $0.lastCheck) },
+            uniquingKeysWith: { max($0, $1) }
+        )
+        return Array(anchors.enumerated().sorted {
+            let left = checkedAt[$0.element.id] ?? .distantPast
+            let right = checkedAt[$1.element.id] ?? .distantPast
+            return left == right ? $0.offset < $1.offset : left > right
+        }.prefix(limit).map(\.element))
+    }
+
+    static func recentNetworkIssues(
+        _ events: [NetworkTransitionEvent],
+        limit: Int = 5
+    ) -> [NetworkTransitionEvent] {
+        Array(events.reversed().filter { event in
+            event.changes.contains { change in
+                switch change {
+                case .network(_, let to): to == "disconnected"
+                case .gateway(_, let to), .internet(_, let to): to == .unreachable
+                }
+            }
+        }.prefix(limit))
+    }
 }
 
 struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.openWindow) private var openWindow
     @State private var configurationRevision = 0
 
@@ -135,13 +163,7 @@ struct TrayPopoverView: View {
             }
         }
         .frame(width: TrayPopoverLayout.width)
-        .background {
-            if reduceTransparency {
-                Color(nsColor: .windowBackgroundColor).ignoresSafeArea()
-            } else {
-                Color.black.opacity(colorScheme == .dark ? 0.04 : 0.01).ignoresSafeArea()
-            }
-        }
+        .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
         .onAppear(perform: normalizeSelection)
         .onChange(of: storedTabOrder) { normalizeSelection() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -157,10 +179,10 @@ struct TrayPopoverView: View {
                 selected: Binding(get: { selectedTab }, set: { select($0) }),
                 reorder: reorder
             )
-            .padding(4)
-            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
+            .padding(3)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
             .overlay {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.18 : 0.08))
             }
 
@@ -185,7 +207,7 @@ struct TrayPopoverView: View {
             .fixedSize()
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -309,19 +331,42 @@ private struct TrayTabButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: tab.symbol)
-                .symbolVariant(selected ? .fill : .none)
-                .font(.system(size: 14, weight: selected ? .semibold : .regular))
+            TrayTabIcon(tab: tab, selected: selected, size: 12)
                 .foregroundStyle(Color.primary.opacity(selected || hovering ? 1 : 0.58))
                 .frame(width: TrayPopoverLayout.tabHeight, height: TrayPopoverLayout.tabHeight)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
-        .background(Color.primary.opacity(selected ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 7))
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+        .background(Color.primary.opacity(selected ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 6))
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .help(tab.title)
         .onHover { hovering = $0 }
+    }
+}
+
+private struct TrayTabIcon: View {
+    let tab: TrayTab
+    let selected: Bool
+    let size: CGFloat
+
+    @ViewBuilder
+    var body: some View {
+        if tab == .cloudSync {
+            ZStack {
+                Image(systemName: "cloud.fill")
+                    .font(.system(size: size * 0.84))
+                    .opacity(0.36)
+                    .offset(x: 2, y: -2)
+                Image(systemName: "cloud")
+                    .font(.system(size: size, weight: selected ? .semibold : .regular))
+                    .offset(x: -2, y: 2)
+            }
+        } else {
+            Image(systemName: tab.symbol)
+                .symbolVariant(selected ? .fill : .none)
+                .font(.system(size: size, weight: selected ? .semibold : .regular))
+        }
     }
 }
 
@@ -334,12 +379,12 @@ private struct TrayChromeButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 14))
+                .font(.system(size: 12))
                 .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.62))
-                .frame(width: 28, height: 28)
+                .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .accessibilityLabel(title)
         .help(title)
         .onHover { hovering = $0 }
@@ -464,19 +509,17 @@ private struct AwakeTrayRow: View {
 }
 
 private struct TrayToolLink: View {
-    let toolID: String
-    let title: String
-    let symbol: String
+    let tab: TrayTab
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
 
     var body: some View {
         Button {
-            ToolActionRouter.shared.open(toolID: toolID)
+            ToolActionRouter.shared.open(toolID: tab.rawValue)
         } label: {
             HStack(spacing: 7) {
-                Image(systemName: symbol).font(.system(size: 13)).frame(width: 18)
-                Text(title).font(.system(size: 12, weight: .medium))
+                TrayTabIcon(tab: tab, selected: false, size: 12).frame(width: 18)
+                Text(tab.title).font(.system(size: 12, weight: .medium))
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -490,7 +533,7 @@ private struct TrayToolLink: View {
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .onHover { hovering = $0 }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovering)
-        .help("Open \(title)")
+        .help("Open \(tab.title)")
     }
 }
 
@@ -520,7 +563,7 @@ private struct TrayToolHeader: View {
     let tab: TrayTab
 
     var body: some View {
-        TrayToolLink(toolID: tab.rawValue, title: tab.title, symbol: tab.symbol)
+        TrayToolLink(tab: tab)
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
         .padding(.top, 5)
         .padding(.bottom, 3)
@@ -1217,6 +1260,10 @@ private struct NetToysTrayView: View {
     @State private var model = NetToysHistoryViewModel()
     @State private var configuration = NetToysConfigurationStore.load()
     @State private var errorMessage: String?
+    @AppStorage("tray.nettoys.anchor.expanded") private var anchorExpanded = false
+    @AppStorage("tray.nettoys.wifi.expanded") private var wifiExpanded = false
+    @AppStorage("tray.nettoys.history.expanded") private var historyExpanded = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1228,7 +1275,7 @@ private struct NetToysTrayView: View {
                     symbol: "network"
                 )
                 QuietDivider()
-                toggleRow(
+                activitySection(
                     title: "SSH Anchor",
                     detail: configuration.anchors.isEmpty
                         ? "No configured anchors"
@@ -1238,10 +1285,20 @@ private struct NetToysTrayView: View {
                         get: { configuration.sshAnchorEnabled },
                         set: { configuration.sshAnchorEnabled = $0; save() }
                     ),
-                    disabled: configuration.anchors.isEmpty
-                )
+                    disabled: configuration.anchors.isEmpty,
+                    isExpanded: $anchorExpanded
+                ) {
+                    if recentAnchors.isEmpty {
+                        emptyActivity("No anchors to show")
+                    } else {
+                        ForEach(recentAnchors) { anchor in
+                            anchorRow(anchor)
+                        }
+                    }
+                    openPageButton("Open all anchors", page: .anchor)
+                }
                 QuietDivider()
-                toggleRow(
+                activitySection(
                     title: "Wi-Fi Priority",
                     detail: "\(configuration.wifiPriority.ssids.count) saved networks",
                     symbol: "wifi",
@@ -1253,18 +1310,46 @@ private struct NetToysTrayView: View {
                             save()
                         }
                     ),
-                    disabled: configuration.wifiPriority.ssids.count < 2
-                )
+                    disabled: configuration.wifiPriority.ssids.count < 2,
+                    isExpanded: $wifiExpanded
+                ) {
+                    if configuration.wifiPriority.ssids.isEmpty {
+                        emptyActivity("No priority networks")
+                    } else {
+                        ForEach(Array(configuration.wifiPriority.ssids.prefix(5).enumerated()), id: \.offset) { index, ssid in
+                            activityRow(
+                                symbol: model.helperStatus?.network?.ssid == ssid ? "wifi" : "line.3.horizontal",
+                                title: ssid,
+                                detail: model.helperStatus?.network?.ssid == ssid ? "Connected" : "Priority \(index + 1)"
+                            )
+                        }
+                    }
+                    openPageButton("Open Wi-Fi Priority", page: .wifiPriority)
+                }
                 QuietDivider()
-                toggleRow(
+                activitySection(
                     title: "Network History",
                     detail: configuration.recordsNetworkHistory ? "Recording changes" : "Not recording",
                     symbol: "chart.xyaxis.line",
                     isOn: Binding(
                         get: { configuration.recordsNetworkHistory },
                         set: { configuration.recordsNetworkHistory = $0; save() }
-                    )
-                )
+                    ),
+                    isExpanded: $historyExpanded
+                ) {
+                    if recentIssues.isEmpty {
+                        emptyActivity("No recent network issues")
+                    } else {
+                        ForEach(Array(recentIssues.enumerated()), id: \.offset) { _, event in
+                            activityRow(
+                                symbol: "exclamationmark.circle",
+                                title: event.displayName,
+                                detail: event.changes.map(NetToysHistoryViewModel.description).joined(separator: " · ")
+                            )
+                        }
+                    }
+                    openPageButton("Open Network History", page: .history)
+                }
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
             .padding(.top, 4)
@@ -1288,6 +1373,17 @@ private struct NetToysTrayView: View {
         return "Updated \(status.heartbeat.formatted(date: .omitted, time: .shortened))"
     }
 
+    private var recentAnchors: [SSHAnchorConfiguration] {
+        TrayPopoverLayout.recentAnchors(
+            configuration.anchors,
+            statuses: model.helperStatus?.anchors ?? []
+        )
+    }
+
+    private var recentIssues: [NetworkTransitionEvent] {
+        TrayPopoverLayout.recentNetworkIssues(model.history.events)
+    }
+
     private func statusRow(title: String, detail: String, symbol: String) -> some View {
         HStack(spacing: 9) {
             Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 18)
@@ -1300,27 +1396,106 @@ private struct NetToysTrayView: View {
         .padding(.vertical, 8)
     }
 
-    private func toggleRow(
+    private func activitySection<Content: View>(
         title: String,
         detail: String,
         symbol: String,
         isOn: Binding<Bool>,
-        disabled: Bool = false
+        disabled: Bool = false,
+        isExpanded: Binding<Bool>,
+        @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 18)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 11, weight: .medium))
-                Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Button { isExpanded.wrappedValue.toggle() } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: symbol)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 18)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(title).font(.system(size: 11, weight: .medium))
+                            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+                .accessibilityLabel("\(isExpanded.wrappedValue ? "Hide" : "Show") \(title) activity")
+                Toggle(title, isOn: isOn)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .disabled(disabled)
             }
-            Spacer(minLength: 8)
-            Toggle(title, isOn: isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .disabled(disabled)
+            .padding(.vertical, 7)
+
+            if isExpanded.wrappedValue {
+                VStack(spacing: 0) { content() }
+                    .padding(.leading, 27)
+                    .padding(.bottom, 7)
+            }
         }
-        .padding(.vertical, 7)
+        .utilityAnimation(value: isExpanded.wrappedValue)
+    }
+
+    private func anchorRow(_ anchor: SSHAnchorConfiguration) -> some View {
+        let status = model.helperStatus?.anchors.first { $0.anchorID == anchor.id }
+        return activityRow(
+            symbol: status?.state == .healthy ? "checkmark.circle" : "link",
+            title: anchor.hostAlias,
+            detail: status.map { "\($0.currentHostName) · \($0.lastCheck.formatted(date: .omitted, time: .shortened))" }
+                ?? anchor.hostName
+        )
+    }
+
+    private func activityRow(symbol: String, title: String, detail: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .frame(width: 12)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.system(size: 10, weight: .medium)).lineLimit(1)
+                Text(detail).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 4)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func emptyActivity(_ message: String) -> some View {
+        Text(message)
+            .font(.system(size: 9))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 5)
+    }
+
+    private func openPageButton(_ title: String, page: NetToysPage) -> some View {
+        Button { open(page) } label: {
+            Label(title, systemImage: "arrow.up.forward.square")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(Color.primary.opacity(0.75))
+                .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4))
+        .padding(.top, 3)
+    }
+
+    private func open(_ page: NetToysPage) {
+        openWindow(id: "nettoys")
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .netToysOpenPage, object: page)
+        }
     }
 
     private func save() {

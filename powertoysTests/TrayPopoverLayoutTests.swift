@@ -67,10 +67,49 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(visible.last?.createdAt, Date(timeIntervalSince1970: 102))
     }
 
+    func testNetToysActivityListsStayBoundedAndNewestFirst() {
+        let anchors = (0..<7).map { index in
+            SSHAnchorConfiguration(
+                hostAlias: "host-\(index)",
+                hostName: "192.168.1.\(index)",
+                port: 22,
+                identity: .stableMAC("00:11:22:33:44:\(index)")
+            )
+        }
+        let statuses = anchors.enumerated().map { index, anchor in
+            SSHAnchorStatus(
+                anchorID: anchor.id,
+                state: .healthy,
+                currentHostName: anchor.hostName,
+                lastCheck: Date(timeIntervalSince1970: Double(index)),
+                message: nil
+            )
+        }
+        let events = (0..<7).map { index in
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1",
+                date: Date(timeIntervalSince1970: Double(index)),
+                changes: [.internet(from: .reachable, to: .unreachable)]
+            )
+        } + [NetworkTransitionEvent(
+            networkID: "en0|192.168.1.1",
+            date: Date(timeIntervalSince1970: 8),
+            changes: [.internet(from: .unreachable, to: .reachable)]
+        )]
+
+        XCTAssertEqual(TrayPopoverLayout.recentAnchors(anchors, statuses: statuses).count, 5)
+        XCTAssertEqual(TrayPopoverLayout.recentAnchors(anchors, statuses: statuses).first?.id, anchors.last?.id)
+        XCTAssertEqual(TrayPopoverLayout.recentNetworkIssues(events).count, 5)
+        XCTAssertEqual(TrayPopoverLayout.recentNetworkIssues(events).first?.date, Date(timeIntervalSince1970: 6))
+    }
+
     func testTrayUsesMutedTabbedChromeAndFocusedContent() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
+        XCTAssertEqual(TrayPopoverLayout.tabHeight, 24)
         XCTAssertTrue(source.contains("TrayTabStrip"))
+        XCTAssertTrue(source.contains("TrayTabIcon"))
+        XCTAssertTrue(source.contains("Image(systemName: \"cloud.fill\")"))
         XCTAssertTrue(source.contains("ViewThatFits(in: .horizontal)"))
         XCTAssertTrue(source.contains("TrayHomeActionButton"))
         XCTAssertTrue(source.contains("TrayToolLink"))
@@ -84,7 +123,8 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertFalse(source.contains("Color.accentColor"))
         XCTAssertFalse(source.contains(".focusEffectDisabled()"))
-        XCTAssertTrue(source.contains("accessibilityReduceTransparency"))
+        XCTAssertTrue(source.contains("Color(nsColor: .windowBackgroundColor).ignoresSafeArea()"))
+        XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
         XCTAssertTrue(source.contains("colorSchemeContrast"))
     }
 
@@ -92,10 +132,22 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
         XCTAssertTrue(source.contains("Spacer(minLength: 8)"))
-        XCTAssertTrue(source.contains("Color.black.opacity(colorScheme == .dark ? 0.04 : 0.01)"))
+        XCTAssertFalse(source.contains("Color.black.opacity"))
         XCTAssertTrue(source.contains("@State private var showsError = false"))
         XCTAssertTrue(source.contains("if showsError, let error = job.errorMessage"))
         XCTAssertTrue(source.contains("symbol: \"text.viewfinder\""))
+    }
+
+    func testNetToysTrayKeepsBoundedPersistentDisclosuresAndRoutesToFullPages() throws {
+        let tray = try sourceFile("Views/TrayPopoverView.swift")
+        let window = try sourceFile("Views/NetToys/NetToysWindowView.swift")
+
+        XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.anchor.expanded\")"))
+        XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.wifi.expanded\")"))
+        XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.history.expanded\")"))
+        XCTAssertTrue(tray.contains("prefix(5)"))
+        XCTAssertTrue(tray.contains(".netToysOpenPage"))
+        XCTAssertTrue(window.contains("publisher(for: .netToysOpenPage)"))
     }
 
     func testCorrectedSharedSurfacesHaveOneTrailingAndHoverGeometry() throws {
@@ -136,6 +188,25 @@ final class TrayPopoverLayoutTests: XCTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
         }
+
+        let defaults = UserDefaults.standard
+        let keys = [
+            "tray.nettoys.anchor.expanded",
+            "tray.nettoys.wifi.expanded",
+            "tray.nettoys.history.expanded",
+        ]
+        let priorValues = keys.map { defaults.object(forKey: $0) }
+        defer {
+            for (key, value) in zip(keys, priorValues) {
+                if let value { defaults.set(value, forKey: key) }
+                else { defaults.removeObject(forKey: key) }
+            }
+        }
+        keys.forEach { defaults.set(true, forKey: $0) }
+        let attachment = XCTAttachment(image: try render(tab: .netToys, colorScheme: .dark))
+        attachment.name = "Menu Bar — NetToys Expanded — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func restore(_ value: String?, key: String) {

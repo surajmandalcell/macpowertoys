@@ -40,7 +40,9 @@
   NetToys. App-only tools such as Logs never appear. Keep separate Open
   MacPowerToys, Settings, and Quit controls and no divider below the strip. Pin
   the tab group to the leading edge and those three app controls to one fixed
-  trailing group; do not distribute the six controls as one centered row.
+  trailing group; do not distribute the six controls as one centered row. Use
+  the same 12pt symbol inside every 24pt tab and outer chrome control. Cloud
+  Sync uses two overlapping clouds instead of a single-cloud symbol.
 - **Check:** Exercise short and overflowing tab sets, confirm Home then Cloud
   Sync appear first, reorder two complex tabs, relaunch, and confirm order and
   selection persist. Compare Home and Cloud Sync alignment in light, dark,
@@ -68,13 +70,12 @@
 - **Symptom:** Bright tool-colored buttons make the popover look unrelated to
   the rest of MacPowerToys and reduce label contrast.
 - **Cause:** Tool identity colors were used as large action fills.
-- **Invariant:** Match the supplied dark utility-panel reference with a muted,
-  translucent material, monochrome SF Symbols, primary and secondary text,
-  hairline grouping only where it helps scanning, and low-opacity neutral
-  hover, pressed, and selected layers. Keep the optional black overlay at 0.04
-  in dark appearance and 0.01 in light appearance; Reduced Transparency uses
-  the opaque window background. Never use a tool's major color as a large tray
-  fill. Preserve keyboard focus and at least 24pt pointer targets.
+- **Invariant:** Match the supplied dark utility-panel reference with an opaque
+  semantic window background, monochrome SF Symbols, primary and secondary
+  text, hairline grouping only where it helps scanning, and low-opacity neutral
+  hover, pressed, and selected layers. Do not leave the popover material or
+  desktop visibly blurred through the body. Never use a tool's major color as a
+  large tray fill. Preserve keyboard focus and at least 24pt pointer targets.
 - **Check:** Render Home and one complex tab in light and dark appearance.
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.
