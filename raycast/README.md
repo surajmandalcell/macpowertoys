@@ -41,5 +41,8 @@ npm run dev
 npm run lint
 ```
 
+`npm run dev` rebuilds the one imported extension in place; it does not add a
+second development registration to Raycast.
+
 Before submitting to the Raycast Store, run `npm run lint:store`, then
 `npm run publish` from the owner's Raycast account.
