@@ -53,19 +53,29 @@
 ## Designed for the Mac
 
 <p align="center">
-  <img src="docs/screenshots/system-monitor.png" width="1080" alt="System Monitor overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"><br>
-  <sub><b>System Monitor</b> · CPU, GPU, memory, disk, network, thermal, battery, and load at a glance</sub>
+  <a href="docs/screenshots/cloud-sync.png"><img src="docs/screenshots/cloud-sync.png" width="1100" alt="Cloud Sync showing a completed local sync transfer between Product Assets and Release Mirror"></a><br>
+  <sub><b>Cloud Sync</b> · plan and run copy, move, mirror, and two-way transfers</sub>
 </p>
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/input-devices.png" width="100%" alt="Input Devices scrolling controls with separate mouse and trackpad profiles"><br>
+      <a href="docs/screenshots/input-devices.png"><img src="docs/screenshots/input-devices.png" width="100%" alt="Input Devices scrolling controls with separate mouse and trackpad profiles"></a><br>
       <sub><b>Input Devices</b> · separate mouse and trackpad profiles under one system-wide switch</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/nettoys-settings.png" width="100%" alt="NetToys settings showing its enable switch and network permission status"><br>
+      <a href="docs/screenshots/nettoys.png"><img src="docs/screenshots/nettoys.png" width="100%" alt="NetToys IP Scanner showing a completed privacy-safe localhost scan"></a><br>
       <sub><b>NetToys</b> · one-click disable and clear permission state</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/system-monitor.png"><img src="docs/screenshots/system-monitor.png" width="100%" alt="System Monitor overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"></a><br>
+      <sub><b>System Monitor</b> · live health and performance graphs without a persistent heavy dashboard</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/cloud-sync.png"><img src="docs/screenshots/cloud-sync.png" width="100%" alt="Cloud Sync showing a completed local sync transfer between Product Assets and Release Mirror"></a><br>
+      <sub><b>Cloud Sync</b> · durable transfer progress with focused controls and activity history</sub>
     </td>
   </tr>
 </table>
