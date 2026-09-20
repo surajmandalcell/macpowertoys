@@ -42,6 +42,21 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testLocationAccessPromptsOnlyFromExplicitUserAction() throws {
+        XCTAssertEqual(NetToysLocationAction(status: .authorized, requestFailed: false), .none)
+        XCTAssertEqual(NetToysLocationAction(status: .authorizedAlways, requestFailed: false), .none)
+        XCTAssertEqual(NetToysLocationAction(status: .denied, requestFailed: false), .openSettings)
+        XCTAssertEqual(NetToysLocationAction(status: .restricted, requestFailed: false), .openSettings)
+
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/NetToys/NetToysHistoryView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertFalse(source.contains("requestSSIDAccessIfNeeded"))
+        XCTAssertEqual(source.components(separatedBy: "requestWhenInUseAuthorization()").count - 1, 1)
+    }
+
     func testLocalNetworkPolicyDenialNeedsSettings() {
         XCTAssertEqual(
             NetToysLocalNetworkAccessState(dnsErrorCode: -65_570),

@@ -59,6 +59,7 @@ struct ToolAboutView: View {
                         VStack(spacing: 0) {
                             ToolDetailIntro(tool: tool)
                             ToolSettingsContent(toolID: tool.id)
+                                .id(tool.id)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                         .disabled(!settings.isToolEnabled(tool.id) && tool.id != "nettoys")

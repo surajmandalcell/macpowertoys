@@ -26,7 +26,7 @@ nonisolated enum NetToysLocationAction: Equatable {
     case none
 
     init(status: CLAuthorizationStatus, requestFailed: Bool) {
-        if requestFailed || status == .denied {
+        if requestFailed || status == .denied || status == .restricted {
             self = .openSettings
         } else if status == .notDetermined {
             self = .request
@@ -119,14 +119,6 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         scanArchive = snapshot.scanArchive
         locationAuthorizationStatus = locationManager.authorizationStatus
         isLoading = false
-    }
-
-    func requestSSIDAccessIfNeeded() {
-        locationAuthorizationStatus = locationManager.authorizationStatus
-        guard !locationRequestFailed else { return }
-        guard locationAuthorizationStatus == .notDetermined else { return }
-        guard NSApp.isActive else { return }
-        requestLocationAccess()
     }
 
     func resolveSSIDAccess(forceSettings: Bool = false) {
@@ -285,15 +277,10 @@ struct NetToysHistoryView: View {
             .thinScrollIndicators()
         }
         .task {
-            model.requestSSIDAccessIfNeeded()
             while !Task.isCancelled {
                 await model.refresh()
-                model.requestSSIDAccessIfNeeded()
                 try? await Task.sleep(for: .seconds(3))
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            model.requestSSIDAccessIfNeeded()
         }
         .confirmationDialog("Clear network history?", isPresented: $confirmClear) {
             Button("Clear History", role: .destructive) { model.clear() }
@@ -688,13 +675,11 @@ struct NetToysSettingsView: View {
         }
         .task {
             await model.refresh()
-            model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
             neighborService.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await model.refresh() }
-            model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
             neighborService.refresh()
         }
