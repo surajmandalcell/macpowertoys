@@ -45,6 +45,8 @@ enum TrayPopoverLayout {
     static let horizontalInset: CGFloat = 12
     static let tabHeight: CGFloat = 24
     static let tabSpacing: CGFloat = 3
+    static let netToysDisclosureHorizontalPadding: CGFloat = 6
+    static let netToysDisclosureVerticalPadding: CGFloat = 6
     static let minimumBodyHeight: CGFloat = 54
     static let topChromeHeight: CGFloat = 38
     static let heightFraction: CGFloat = 0.7
@@ -1363,8 +1365,8 @@ private struct NetToysTrayView: View {
             }
         }
         .onAppear {
-            model.refresh()
             configuration = NetToysConfigurationStore.load()
+            Task { await model.refresh() }
         }
     }
 
@@ -1423,6 +1425,8 @@ private struct NetToysTrayView: View {
                             .foregroundStyle(.tertiary)
                             .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
                     }
+                    .padding(.horizontal, TrayPopoverLayout.netToysDisclosureHorizontalPadding)
+                    .padding(.vertical, TrayPopoverLayout.netToysDisclosureVerticalPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
@@ -1434,7 +1438,7 @@ private struct NetToysTrayView: View {
                     .controlSize(.mini)
                     .disabled(disabled)
             }
-            .padding(.vertical, 7)
+            .padding(.vertical, 1)
 
             if isExpanded.wrappedValue {
                 VStack(spacing: 0) { content() }

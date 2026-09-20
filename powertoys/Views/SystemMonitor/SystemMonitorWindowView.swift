@@ -435,7 +435,7 @@ struct SystemMonitorMenuSettingsView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 ForEach(service.menuSettings.items) { item in
                     itemRow(item)
                     if item.metric != service.menuSettings.items.last?.metric {

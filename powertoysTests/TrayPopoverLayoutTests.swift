@@ -150,6 +150,16 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(window.contains("publisher(for: .netToysOpenPage)"))
     }
 
+    func testNetToysDisclosureHoverOwnsTheFullPaddedRow() throws {
+        let tray = try sourceFile("Views/TrayPopoverView.swift")
+
+        XCTAssertEqual(TrayPopoverLayout.netToysDisclosureHorizontalPadding, 6)
+        XCTAssertEqual(TrayPopoverLayout.netToysDisclosureVerticalPadding, 6)
+        XCTAssertTrue(tray.contains(".padding(.horizontal, TrayPopoverLayout.netToysDisclosureHorizontalPadding)"))
+        XCTAssertTrue(tray.contains(".padding(.vertical, TrayPopoverLayout.netToysDisclosureVerticalPadding)"))
+        XCTAssertTrue(tray.contains(".buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))"))
+    }
+
     func testCorrectedSharedSurfacesHaveOneTrailingAndHoverGeometry() throws {
         let input = try sourceFile("Views/InputDevices/InputDevicesSettingsView.swift")
         let launcher = try sourceFile("Views/AllToolsGridView.swift")
