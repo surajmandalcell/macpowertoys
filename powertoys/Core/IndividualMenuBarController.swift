@@ -78,7 +78,7 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .cloudSync: "arrow.up.arrow.down.circle"
+        case .cloudSync: "cloud"
         case .awake: "cup.and.saucer"
         case .colorPicker: "eyedropper"
         case .textExtractor: "text.viewfinder"
