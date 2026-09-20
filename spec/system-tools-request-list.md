@@ -7,6 +7,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| In progress | Make NetToys useful from the tray and add page-level SSH Anchor and Wi-Fi Priority switches beside Refresh. | Direct owner correction on 2026-09-20. Existing per-anchor and Wi-Fi failover flags already stop their helper work; the page-level controls must reuse those persisted flags, and the tray must not create another poller. | Implement, regression-test helper configuration, render the tray, and inspect the signed installed pages. |
 | Done | Clear Network History from both Network History and NetToys Settings. | Both surfaces use `NetToysHistoryViewModel.clear()`, show the same destructive confirmation, clear uptime, transitions, and recent IP scans, and leave recording enabled for a fresh history. The signed installed `3c20d0a` build cleared all three stores, disabled both reset actions, reset IP Scanner results to zero, and showed the empty uptime, recent scans, and transitions states. The complete test suite passes. | None. |
 | Done | Replace the current NetToys icon with a clearer product icon. | The shared `NetToysLogo` asset uses the selected SV02 pixel monitor in Porcelain. Its top-right Wi-Fi mark is 75% of the source size. The launcher, sidebar, and Dock use this asset. | None. |
 | Done | Use IP Scanner, SSH Anchor, Network History, and Wi-Fi Priority destinations. | `6b837a6` adds the first three compact destinations. `552f4e8` adds Wi-Fi Priority for ordered saved-network failover and the system Instant Hotspot fallback. | None. |
@@ -38,6 +39,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| In progress | Align the actual Scroll device picker edge with the shared trailing gutter. | Direct owner correction on 2026-09-20 reports remaining trailing slack in the installed Input Devices page. | Correct the shared `InputScrollDeviceBar` geometry and verify both hosts. |
 | Done | Keep the Input Devices launcher introduction compact at the top. | The shared detail body places the description and menu-bar selector directly below the tabs with no Input Devices-only flexible spacer. The deterministic layout regression proves that the introduction precedes flexible content for every launcher detail. | None. The installed five-detail visual matrix remains in the main request list. |
 | Done | Choose no Input Devices menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Focused tests cover each mode, the exact `MacPowerToys.input-devices` autosave name, its Open Input Devices route, disabled state, legacy migration, combined-tab support, and no-op item refresh. | None. The shared five-tool physical placement, relaunch, and click matrix remains in the main request list. |
 | Done | Add a macOS tool for mouse and trackpad control. | `cfa8832` added Input Devices as an on-demand tool with a separate window, launcher route, and app icon. | None. |
@@ -62,6 +64,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| In progress | Center the pre-scan System Care tray empty state. | Direct owner correction on 2026-09-20 reports the icon and `Analyze cleanup locations` message pinned to the leading side. | Give the empty state the complete available width and verify the rendered tray. |
 | Done | Add a large System Care interface for Mole and native cleanup. | `a073a35` added Overview, Storage, Cleanup, Applications, Mole CLI, History, Settings, and About pages. | None. |
 | Done | Add a storage view that supports visual drill-down. | The Storage page has an interactive ring, breadcrumbs, size totals, and folder drill-down. `855a250` keeps folder rows actionable and renders file rows as plain information without false hover or pressed feedback. | None. |
 | Done | Make Mole installation and updates easy. | System Care detects Mole and provides Homebrew install and update actions. | None. |
@@ -78,6 +81,7 @@ user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| In progress | Increase System Monitor information density and match the next supplied visual reference without weakening lifecycle limits. | Direct owner correction on 2026-09-20 says the current monitor is still too basic and omits useful information. Eight metrics and bounded history exist, but the final visual reference is still incoming. | Apply the supplied reference when it arrives; retain one sampler, one timer, and the 120-sample cap. |
 | Done | Name the tool System Monitor everywhere and lock icon OSM13. | The registry, window, route, source symbols, menu item, Raycast command, tests, specifications, and shared `SystemMonitorLogo` asset use System Monitor. Narrow read-time fallbacks preserve the old disabled state, menu settings, window frame, and deep links. The launcher, sidebar, and Dock use the selected teal tidal waveform. | None. |
 | Done | Add CPU, memory, GPU, disk, network, battery, thermal, and load data. | `cfa8832` added the native detailed samplers. `b1d532e` added the GPU sampler. | None. |
 | Done | Give the System Monitor tray tab a dense live overview. | `04f5227` and `275d5d5` render CPU, GPU, memory, disk, network, battery, thermal, and load from the existing 120-sample history with muted semantic tints and dedicated background graph bands. `SystemMonitorService` tracks the window and tray as independent detailed-sampling owners. Focused tests cover 25 open/close cycles and overlapping-surface teardown; the final reviewed production-width render passes. In the exact installed signed `519095b` build, the closed tray reports zero System Monitor timers and status items, zero Cloud Sync window/file-watcher/long-task owners, 0.0 percent idle CPU, and 78,784 KiB RSS after launch. | None. |
