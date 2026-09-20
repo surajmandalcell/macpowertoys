@@ -39,6 +39,7 @@ npm-debug.log*
 /.impeccable/
 /.superpowers/
 /goals.md
+/goals.archive.md
 
 # Generated release artifacts
 *.dmg
