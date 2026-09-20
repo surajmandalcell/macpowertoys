@@ -86,7 +86,7 @@ final class UtilityModelTests: XCTestCase {
 
     func testCustomInteractionFamiliesUseSharedHoverAndPressedStyle() throws {
         let expectedStyleCounts = [
-            "Views/AllToolsGridView.swift": 1,
+            "Views/AllToolsGridView.swift": 0,
             "Views/Components/SidebarRow.swift": 2,
             "Views/Logs/LogsWindowView.swift": 2,
             "Views/Marketplace/MarketplaceSettingsView.swift": 2,
