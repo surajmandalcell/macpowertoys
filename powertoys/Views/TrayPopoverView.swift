@@ -598,8 +598,7 @@ private struct TrayTransferRow: View {
                         .frame(width: 12, height: 22)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4))
                 .accessibilityLabel(job.isExpanded ? "Hide transfer files" : "Show transfer files")
                 Image(systemName: job.operation.icon).font(.system(size: 10)).foregroundStyle(.secondary)
                 Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
