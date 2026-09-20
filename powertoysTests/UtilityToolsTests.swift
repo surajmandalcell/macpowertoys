@@ -300,6 +300,25 @@ final class UtilityToolsTests: XCTestCase {
         )
     }
 
+    func testHeavyToolSettingsYieldBeforeBuildingTheirContent() throws {
+        XCTAssertTrue(ToolSettingsContent.defersInitialLoad(for: "nettoys"))
+        XCTAssertTrue(ToolSettingsContent.defersInitialLoad(for: "system-monitor"))
+        XCTAssertFalse(ToolSettingsContent.defersInitialLoad(for: "awake"))
+        XCTAssertTrue(try toolSettingsContentSource().contains(".task(id: toolID)"))
+    }
+
+    func testNetToysHistoryLoadsSavedDataOffTheMainActor() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/NetToys/NetToysHistoryView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("Task.detached(priority: .utility)"))
+        XCTAssertFalse(source.contains("var history = NetToysConfigurationStore.history()"))
+        XCTAssertFalse(source.contains("var scanArchive = NetToysScannerStore.archive()"))
+    }
+
     func testNetToysMACAccessSurvivesAppUpdates() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -315,6 +334,14 @@ final class UtilityToolsTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("powertoys/Views/ToolAboutView.swift")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
+
+    private func toolSettingsContentSource() throws -> String {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/Components/ToolSettingsContent.swift")
         return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 

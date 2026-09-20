@@ -39,19 +39,28 @@ nonisolated enum NetToysLocationAction: Equatable {
 @Observable
 @MainActor
 final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
+    private struct Snapshot: Sendable {
+        let history: NetworkHistory
+        let helperStatus: NetToysHelperStatus?
+        let recordsHistory: Bool
+        let scanArchive: NetToysScanArchive
+    }
+
     private static let exportDateFormatter = ISO8601DateFormatter()
 
-    var history = NetToysConfigurationStore.history()
-    var helperStatus = NetToysConfigurationStore.status()
+    var history = NetworkHistory()
+    var helperStatus: NetToysHelperStatus?
     var range = NetToysHistoryRange.day
     var searchText = ""
-    var recordsHistory = NetToysConfigurationStore.load().recordsNetworkHistory
-    var scanArchive = NetToysScannerStore.archive()
+    var recordsHistory = true
+    var scanArchive = NetToysScanArchive()
+    var isLoading = true
     var errorMessage: String?
     var locationAuthorizationStatus: CLAuthorizationStatus
     var locationRequestFailed = false
 
     @ObservationIgnored private let locationManager: CLLocationManager
+    @ObservationIgnored private var refreshInProgress = false
 
     override init() {
         let locationManager = CLLocationManager()
@@ -90,12 +99,26 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         return NetworkSSID.isWiFi(interfaceName: interfaceName)
     }
 
-    func refresh() {
-        history = NetToysConfigurationStore.history()
-        helperStatus = NetToysConfigurationStore.status()
-        recordsHistory = NetToysConfigurationStore.load().recordsNetworkHistory
-        scanArchive = NetToysScannerStore.archive()
+    func refresh() async {
+        guard !refreshInProgress else { return }
+        refreshInProgress = true
+        defer { refreshInProgress = false }
+
+        let snapshot = await Task.detached(priority: .utility) {
+            Snapshot(
+                history: NetToysConfigurationStore.history(),
+                helperStatus: NetToysConfigurationStore.status(),
+                recordsHistory: NetToysConfigurationStore.load().recordsNetworkHistory,
+                scanArchive: NetToysScannerStore.archive()
+            )
+        }.value
+        guard !Task.isCancelled else { return }
+        history = snapshot.history
+        helperStatus = snapshot.helperStatus
+        recordsHistory = snapshot.recordsHistory
+        scanArchive = snapshot.scanArchive
         locationAuthorizationStatus = locationManager.authorizationStatus
+        isLoading = false
     }
 
     func requestSSIDAccessIfNeeded() {
@@ -171,7 +194,9 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         do {
             try NetToysConfigurationStore.saveHistory(NetworkHistory())
             try NetToysScannerStore.clearArchive()
-            refresh()
+            history = NetworkHistory()
+            scanArchive = NetToysScanArchive()
+            isLoading = false
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -240,7 +265,7 @@ struct NetToysHistoryView: View {
                 .accessibilityLabel("Record network history")
 
                 Button {
-                    model.refresh()
+                    Task { await model.refresh() }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -262,7 +287,7 @@ struct NetToysHistoryView: View {
         .task {
             model.requestSSIDAccessIfNeeded()
             while !Task.isCancelled {
-                model.refresh()
+                await model.refresh()
                 model.requestSSIDAccessIfNeeded()
                 try? await Task.sleep(for: .seconds(3))
             }
@@ -652,14 +677,23 @@ struct NetToysSettingsView: View {
             .frame(maxWidth: .infinity, minHeight: 300, alignment: .topLeading)
         }
         .thinScrollIndicators()
+        .overlay {
+            if model.isLoading {
+                ProgressView("Loading network settings…")
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .accessibilityIdentifier("nettoys.settings-loading")
+            }
+        }
         .task {
-            model.refresh()
+            await model.refresh()
             model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
             neighborService.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            model.refresh()
+            Task { await model.refresh() }
             model.requestSSIDAccessIfNeeded()
             localNetworkAccess.request()
             neighborService.refresh()

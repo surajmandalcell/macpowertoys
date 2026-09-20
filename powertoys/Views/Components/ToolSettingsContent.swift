@@ -7,9 +7,38 @@ import SwiftUI
 
 struct ToolSettingsContent: View {
     let toolID: String
+    @State private var isReady: Bool
+
+    init(toolID: String) {
+        self.toolID = toolID
+        _isReady = State(initialValue: !Self.defersInitialLoad(for: toolID))
+    }
+
+    static func defersInitialLoad(for toolID: String) -> Bool {
+        toolID == "nettoys" || toolID == "system-monitor"
+    }
+
+    var body: some View {
+        Group {
+            if isReady {
+                settingsContent
+            } else {
+                ProgressView("Loading settings…")
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("tool.\(toolID).settings-loading")
+            }
+        }
+        .task(id: toolID) {
+            guard Self.defersInitialLoad(for: toolID) else { return }
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            isReady = true
+        }
+    }
 
     @ViewBuilder
-    var body: some View {
+    private var settingsContent: some View {
         switch toolID {
         case "rclone":
             RcloneSettingsPage(showsHeader: false)
