@@ -17,7 +17,6 @@ Include the affected version, macOS version, impact, reproduction steps, and a m
 - Marketplace catalog sources are user-configured URLs and should be treated with the same care as any software source.
 - rclone configuration files contain provider credentials and must be protected like login secrets.
 - Text Extractor requires Screen Recording permission because it captures a user-selected screen region.
-- AI History reads local Claude Code data chosen by the application's documented discovery rules.
 
-Never attach a real rclone configuration, AI History source file, transfer log,
-or screenshot that contains private data to a public issue.
+Never attach a real rclone configuration, transfer log, or screenshot that
+contains private data to a public issue.

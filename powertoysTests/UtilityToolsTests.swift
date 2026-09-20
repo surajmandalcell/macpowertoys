@@ -7,7 +7,6 @@ import XCTest
 @MainActor
 final class UtilityToolsTests: XCTestCase {
     private let alternateDockIconAssets = [
-        "ClaudeHistoryLogo",
         "CloudSyncLogo",
         "LogsLogo",
         "RulerLogo",

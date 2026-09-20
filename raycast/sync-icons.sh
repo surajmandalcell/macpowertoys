@@ -23,7 +23,6 @@ render() {
   fi
 }
 
-render ClaudeHistoryLogo ai-history
 render CloudSyncLogo cloud-sync
 render LogsLogo logs
 render RulerLogo ruler

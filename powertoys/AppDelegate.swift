@@ -35,7 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static let nativeSceneToolIDs: Set<String> = [
-        "main", "cc-history", "rclone", "logs", "awake", "color-picker",
+        "main", "rclone", "logs", "awake", "color-picker",
         "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
     ]
 
@@ -115,7 +115,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let dockIconAssets = [
         "main": "AppIcon",
-        "cc-history": "ClaudeHistoryLogo",
         "rclone": "CloudSyncLogo",
         "logs": "LogsLogo",
         "ruler-window": "RulerLogo",

@@ -44,9 +44,11 @@ already public at `surajmandalcell/macpowertoys`.
 - [x] Verify both `macpowertoys://` and legacy `powertoys://` links. In exact
   installed build `327ebb1`, both schemes opened the main window. One
   background matrix opened all 11 sub-app windows through each scheme; the
-  WindowServer showed the expected AI History, Cloud Sync, Logs, Ruler,
+  WindowServer showed the then-current AI History, Cloud Sync, Logs, Ruler,
   Awake, Color Picker, Text Extractor, Input Devices, System Care, System
-  Monitor, and NetToys windows without bringing the app forward.
+  Monitor, and NetToys windows without bringing the app forward. AI History
+  was removed from the product on 2026-09-20 and is no longer in the release
+  matrix.
 - [x] Test at least one OAuth remote and one key-based or configuration-only
   rclone remote. On 2026-08-31, rclone 1.75.0 completed a 64 KiB Google Drive
   OAuth round trip and a 64 KiB temporary configuration-only alias round trip.

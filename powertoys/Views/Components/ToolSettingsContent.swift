@@ -11,8 +11,6 @@ struct ToolSettingsContent: View {
     @ViewBuilder
     var body: some View {
         switch toolID {
-        case "cc-history":
-            CCHistorySettingsPage(showsHeader: false)
         case "rclone":
             RcloneSettingsPage(showsHeader: false)
         case "ruler":

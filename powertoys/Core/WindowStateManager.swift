@@ -58,7 +58,6 @@ final class WindowStateManager {
 
     nonisolated private static let knownWindowIdentifiers = [
         "main",
-        "cc-history",
         "rclone",
         "logs",
         "awake",

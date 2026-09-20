@@ -227,23 +227,6 @@ final class CoreModelTests: XCTestCase {
         )
     }
 
-    func testCachedMessageMapsKnownAndUnknownTypes() {
-        let date = Date(timeIntervalSince1970: 123)
-        XCTAssertEqual(CachedMessage(messageId: "1", type: "user", content: "Hi", timestamp: date).toCCMessage(sessionId: "s").type, .user)
-        XCTAssertEqual(CachedMessage(messageId: "2", type: "assistant", content: "Hello", timestamp: date).toCCMessage(sessionId: "s").type, .assistant)
-        XCTAssertEqual(CachedMessage(messageId: "3", type: "future", content: "Notice", timestamp: date).toCCMessage(sessionId: "s").type, .system)
-    }
-
-    func testCachedMessageDecodesToolUseAndIgnoresMalformedJSON() throws {
-        let block = ToolUseBlock(id: "tool-1", name: "Read", input: "file", output: "contents")
-        let json = String(data: try JSONEncoder().encode([block]), encoding: .utf8)
-        let valid = CachedMessage(messageId: "1", type: "assistant", content: "", timestamp: Date(), toolUseJSON: json)
-        XCTAssertEqual(valid.toCCMessage(sessionId: "session").toolUse, [block])
-
-        let malformed = CachedMessage(messageId: "2", type: "assistant", content: "", timestamp: Date(), toolUseJSON: "not json")
-        XCTAssertTrue(malformed.toCCMessage(sessionId: "session").toolUse.isEmpty)
-    }
-
     func testTransferRecordSnapshotsJobAndComputesDurationAndSpeed() {
         let started = Date(timeIntervalSince1970: 100)
         let job = TransferJob(

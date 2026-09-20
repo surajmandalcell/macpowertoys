@@ -22,13 +22,6 @@
       "mode": "no-view"
     },
     {
-      "name": "claude-history",
-      "title": "AI History",
-      "description": "Open AI History",
-      "icon": "ai-history.png",
-      "mode": "no-view"
-    },
-    {
       "name": "cloud-sync",
       "title": "Cloud Sync",
       "description": "Open Cloud Sync",

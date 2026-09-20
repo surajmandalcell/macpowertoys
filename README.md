@@ -35,7 +35,7 @@
   </tr>
 </table>
 
-## Eleven focused tools
+## Ten focused tools
 
 | | Tool | What it does |
 |:--:|---|---|
@@ -44,7 +44,6 @@
 | <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.svg" width="30" alt=""> | **Color Picker** | Sample the screen, copy developer formats, and search local color history. |
 | <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.svg" width="30" alt=""> | **Text Extractor** | Select any screen region and copy text with on-device Apple Vision. |
 | <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="30" alt=""> | **Cloud Sync** | Plan and run copy, move, mirror, and two-way rclone transfers. |
-| <img src="powertoys/Assets.xcassets/ClaudeHistoryLogo.imageset/icon.svg" width="30" alt=""> | **AI History** | Search, bookmark, and export local Claude Code conversations. |
 | <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="30" alt=""> | **Logs** | Search and filter MacPowerToys diagnostics. |
 | <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.svg" width="30" alt=""> | **Input Devices** | Control mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 | <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.svg" width="30" alt=""> | **System Care** | Analyze storage, preview safe cleanup, remove apps, and use advanced Mole maintenance. |
@@ -141,8 +140,6 @@ changes. Never replace a running installation during a transfer.
 
 - MacPowerToys has no first-party analytics, advertising SDK, or telemetry service.
 - Text Extractor processes the selected screenshot with Apple Vision on the Mac.
-- AI History reads local Claude Code JSONL files and builds a local cache for
-  browsing and search.
 - rclone stores provider credentials in its local configuration according to
   rclone's behavior.
 - Optional iCloud settings sync uses an explicit allowlist of preferences.

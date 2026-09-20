@@ -62,7 +62,6 @@ final class ToolActionRouter {
     }
 
     private static let windowAliases: [String: String] = [
-        "cchistory": "cc-history",
         "cloud-sync": "rclone",
         "cloudsync": "rclone",
         "rsync": "rclone",

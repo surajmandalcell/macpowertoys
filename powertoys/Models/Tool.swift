@@ -57,37 +57,6 @@ enum ToolCategory: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - AI History Tool
-
-struct CCHistoryTool: Tool {
-    let id = "cc-history"
-    let name = "AI History"
-    let description = "Browse every Claude Code conversation on this Mac. Search and bookmark each conversation."
-    let icon = "text.bubble"
-    let logoAsset = "ClaudeHistoryLogo"
-    let category = ToolCategory.dev
-
-    let manual: [ToolManualSection] = [
-        ToolManualSection(title: "Browsing", points: [
-            "Sessions are read from ~/.claude/projects and grouped by project.",
-            "Click a session to open it. New messages stream in live while Claude Code is running.",
-            "Right-click a session to bookmark it or copy its ID and log path."
-        ]),
-        ToolManualSection(title: "Search & Filters", points: [
-            "The sidebar search matches session titles. Enable deep search to scan message content too.",
-            "Use the User, Claude, and Tools toggles above a conversation to choose what is visible.",
-            "⌘F searches within the open conversation. ⌘⇧F searches across everything."
-        ]),
-        ToolManualSection(title: "Copy & Panels", points: [
-            "Select messages and press ⌘C to copy them in your preferred format.",
-            "Click a tool icon in a message to inspect its input and output in the side panel.",
-            "Press ⌘, inside the window for auto-refresh, deep search, and cache options."
-        ])
-    ]
-
-    static let shared = CCHistoryTool()
-}
-
 // MARK: - Cloud Sync Tool
 
 struct RcloneTool: Tool {
@@ -387,7 +356,6 @@ struct MarketplaceTool: Tool {
 
 struct ToolRegistry {
     static let builtInTools: [any Tool] = [
-        CCHistoryTool.shared,
         RcloneTool.shared,
         LogsTool.shared,
         RulerTool.shared,

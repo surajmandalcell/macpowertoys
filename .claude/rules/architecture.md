@@ -131,7 +131,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 ## Window Identifiers
 - Set explicit identifiers: `window.identifier = NSWindow.Identifier("main")`
-- Standard names: "main", "cc-history", "logs", "tool-{toolId}"
+- Standard names: "main", "logs", "tool-{toolId}"
 
 ## Frame Validation
 - Always clamp restored frames to visible screen bounds
