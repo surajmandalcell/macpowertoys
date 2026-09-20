@@ -240,7 +240,7 @@ final class TextExtractorService {
 
     private nonisolated static let fastRecognitionLanguages: [String] = loadSupportedRecognitionLanguages(level: .fast)
     private nonisolated static let accurateRecognitionLanguages: [String] = loadSupportedRecognitionLanguages(level: .accurate)
-    private nonisolated(unsafe) static let recognitionContext = CIContext(options: [.useSoftwareRenderer: false])
+    private nonisolated static let recognitionContext = CIContext(options: [.useSoftwareRenderer: false])
 
     private nonisolated static func loadSupportedRecognitionLanguages(level: VNRequestTextRecognitionLevel) -> [String] {
         let request = VNRecognizeTextRequest()
