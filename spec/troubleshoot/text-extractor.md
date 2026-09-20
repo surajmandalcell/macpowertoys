@@ -30,8 +30,10 @@
 - **Symptom:** Extract Text starts capture but the pointer does not communicate
   that the user must drag a region.
 - **Cause:** Capture state changed without changing pointer affordance.
-- **Invariant:** Selection mode uses a large crosshair until selection completes
-  or is cancelled.
+- **Invariant:** Selection mode uses one large, high-contrast AppKit cursor until
+  selection completes or is cancelled. Do not draw a second crosshair from
+  `mouseLocationOutsideOfEventStream`; its event-driven redraw trails the native
+  pointer.
 - **Check:** Start extraction, move across multiple apps, cancel with Escape,
   and confirm the normal pointer returns.
 
@@ -41,10 +43,15 @@
   briefly contains captured pixels, or successful OCR has no completion cue.
 - **Cause:** Display discovery and accurate recognition were both paid after the
   drag ended, while completion side effects had no single ordered seam.
-- **Invariant:** Start ScreenCaptureKit display discovery during selection,
-  default new settings to fast recognition, and change the pasteboard only once
-  recognition has non-empty text. Put only that string on the pasteboard, then
-  play the native completion cue.
+- **Invariant:** Text Extractor uses Apple's pretrained Vision OCR and bundles no
+  model asset. When the tool is enabled, warm fast and accurate Vision requests
+  on a tiny generated image at app launch. Start ScreenCaptureKit shareable-
+  content discovery at launch only when Screen Recording permission already
+  exists; prewarming must never trigger the permission prompt. Reuse that task
+  for the first capture, otherwise start it during selection. Default new
+  settings to fast recognition, and change the pasteboard only once recognition
+  has non-empty text. Put only that string on the pasteboard, then play the
+  native completion cue.
 - **Check:** Extract known text and confirm the pasteboard contains only the
   string, the cue follows the copy, and failure/cancellation leave it unchanged.
 

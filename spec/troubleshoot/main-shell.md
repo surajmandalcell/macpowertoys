@@ -38,7 +38,9 @@
   compact Awake row. Complex tray-capable built-ins own focused tabs in this
   default order: Cloud Sync, Input Devices, System Care, System Monitor, and
   NetToys. App-only tools such as Logs never appear. Keep separate Open
-  MacPowerToys, Settings, and Quit controls and no divider below the strip.
+  MacPowerToys, Settings, and Quit controls and no divider below the strip. Pin
+  the tab group to the leading edge and those three app controls to one fixed
+  trailing group; do not distribute the six controls as one centered row.
 - **Check:** Exercise short and overflowing tab sets, confirm Home then Cloud
   Sync appear first, reorder two complex tabs, relaunch, and confirm order and
   selection persist. Compare Home and Cloud Sync alignment in light, dark,
@@ -69,8 +71,10 @@
 - **Invariant:** Match the supplied dark utility-panel reference with a muted,
   translucent material, monochrome SF Symbols, primary and secondary text,
   hairline grouping only where it helps scanning, and low-opacity neutral
-  hover, pressed, and selected layers. Never use a tool's major color as a
-  large tray fill. Preserve keyboard focus and at least 24pt pointer targets.
+  hover, pressed, and selected layers. Keep the optional black overlay at 0.04
+  in dark appearance and 0.01 in light appearance; Reduced Transparency uses
+  the opaque window background. Never use a tool's major color as a large tray
+  fill. Preserve keyboard focus and at least 24pt pointer targets.
 - **Check:** Render Home and one complex tab in light and dark appearance.
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.

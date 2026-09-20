@@ -251,6 +251,21 @@
   and does not change when transition search text changes. Confirm reversing
   transition order fails the timeline regression test.
 
+## NetToys Feature Gates
+
+- **Symptom:** SSH Anchor or Wi-Fi Priority keeps probing after its page-level
+  switch is off, or the tray starts a second status poller.
+- **Cause:** The UI switch did not own a persisted helper configuration gate,
+  or tray presentation created independent background work.
+- **Invariant:** Persist one global SSH Anchor gate in
+  `NetToysConfiguration`; turning it off keeps per-anchor choices but returns
+  idle statuses without port or recovery probes. Wi-Fi Priority reuses its
+  existing persisted enable flag. The tray reads the saved configuration and
+  the helper's published status once when shown; it never owns a timer.
+- **Check:** Disable each feature from its page and tray, confirm the saved
+  configuration changes, and confirm the helper performs no corresponding
+  request while unrelated NetToys features keep their own state.
+
 ## Input Devices
 
 - **Symptom:** Mouse settings also change trackpad scrolling, or scrolling stays
@@ -300,6 +315,9 @@
   inside its workspace page and `InputDevicesSettingsView` wraps the same view
   for the launcher. The Scroll device selector stays at the bottom of both hosts
   in the shared `InputScrollDeviceBar`, never inside the Scroll Control card.
+- **Invariant:** Give the native Scroll device picker a fixed 160pt frame whose
+  content is trailing-aligned. The bar and profile cards use the same 20pt
+  gutter; do not center an intrinsic-width menu inside that frame.
 - **Check:** Open the Scrolling page and the launcher Input Devices detail and
   confirm they show the same rows in the same order.
 
@@ -329,11 +347,26 @@
   page. Keep top-strip menus and buttons at the shared 24pt action height.
   Only directory rows are actionable in Storage. File rows are informational
   and do not use hover, pressed, or button treatment.
+- **Invariant:** Before a scan, center the cleanup icon and message across the
+  full body width. A leading stack must not collapse the empty state to its
+  intrinsic width.
 - **Check:** Reject a cleanup target outside the allowed roots. Preview each
   destructive Mole action before opening its command in Terminal. Start a scan
   from each page and confirm the status stays at the bottom of the pane.
 
 ## System Monitor
+
+- **Symptom:** Overview is a sparse four-card summary with no visual history,
+  or body subtitles leave a large dead band below the titlebar.
+- **Cause:** The detailed sampler exposed more data than the overview rendered,
+  and workspace copy repeated context already expressed by the destination.
+- **Invariant:** Overview renders CPU, GPU, memory, disk, network, thermal,
+  battery, and load in the adaptive grid. Each card uses the bounded 120-sample
+  history as a muted semantic-tint sparkline backdrop. Omit body subtitles from
+  System Monitor destinations and keep the shared content top inset compact.
+- **Check:** Render the overview at 1,180 by 780 points and the tray at its
+  production width. Confirm all eight values fit, history lines remain quiet,
+  and closing either surface releases only its own detailed-sampling owner.
 
 - **Symptom:** Monitoring continues after the window closes, ignores a menu
   item's interval, or leaves status items after disablement.
