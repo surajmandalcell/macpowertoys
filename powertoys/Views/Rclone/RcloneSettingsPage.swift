@@ -9,7 +9,6 @@ struct RcloneSettingsPage: View {
     var showsHeader = true
     @AppStorage("tool.rclone.startAtLaunch") private var startAtLaunch = false
     @AppStorage("app.showTray") private var showTray = true
-    @Environment(\.compactSettingsLayout) private var compact
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,7 +26,7 @@ struct RcloneSettingsPage: View {
             .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
             .settingsScrollContainer()
         }
-        .background(compact ? Color.clear : Color(nsColor: .windowBackgroundColor))
+        .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
         }

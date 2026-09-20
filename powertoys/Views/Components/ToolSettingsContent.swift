@@ -8,8 +8,6 @@ import SwiftUI
 struct ToolSettingsContent: View {
     let toolID: String
 
-    @Environment(\.compactSettingsLayout) private var compact
-
     @ViewBuilder
     var body: some View {
         switch toolID {
@@ -20,7 +18,7 @@ struct ToolSettingsContent: View {
         case "ruler":
             RulerLauncherSettingsView()
         case "awake":
-            AwakeSettingsView(showsStatus: !compact)
+            AwakeSettingsView()
                 .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
                 .settingsScrollContainer()
         case "color-picker":
@@ -70,19 +68,6 @@ struct RulerLauncherSettingsView: View {
     }
 }
 
-// MARK: - Compact (tray) layout
-
-private struct CompactSettingsLayoutKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    var compactSettingsLayout: Bool {
-        get { self[CompactSettingsLayoutKey.self] }
-        set { self[CompactSettingsLayoutKey.self] = newValue }
-    }
-}
-
 extension View {
     func settingsScrollContainer() -> some View {
         modifier(SettingsScrollContainer())
@@ -98,30 +83,21 @@ extension View {
 }
 
 private struct SettingsScrollContainer: ViewModifier {
-    @Environment(\.compactSettingsLayout) private var compact
-
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if compact {
-            content
-        } else {
-            ScrollView { content }
-                .thinScrollIndicators()
-        }
+        ScrollView { content }
+            .thinScrollIndicators()
     }
 }
 
 private struct SettingsPageInsets: ViewModifier {
-    @Environment(\.compactSettingsLayout) private var compact
-
     let horizontal: CGFloat
     let top: CGFloat
     let bottom: CGFloat
 
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, compact ? TrayPopoverLayout.horizontalInset : horizontal)
-            .padding(.top, compact ? TrayPopoverLayout.settingsTopInset : top)
-            .padding(.bottom, compact ? TrayPopoverLayout.bodyBottomInset : bottom)
+            .padding(.horizontal, horizontal)
+            .padding(.top, top)
+            .padding(.bottom, bottom)
     }
 }
