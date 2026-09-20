@@ -1,6 +1,7 @@
 import AppKit
 import CoreImage
 import CoreGraphics
+import CoreText
 import Observation
 import ScreenCaptureKit
 import Vision
@@ -30,6 +31,7 @@ final class TextExtractorService {
     private let openTextExtractor: () -> Void
     private var selector: TextRegionSelector?
     private var shareableContentTask: Task<SCShareableContent, Error>?
+    private var recognitionWarmupTask: Task<Void, Never>?
     private var didPrewarm = false
 
     init(
@@ -95,7 +97,10 @@ final class TextExtractorService {
     func prewarm() {
         guard !didPrewarm else { return }
         didPrewarm = true
-        Task.detached(priority: .utility) { Self.prewarmRecognition() }
+        let settings = settings
+        recognitionWarmupTask = Task.detached(priority: .userInitiated) {
+            Self.prewarmRecognition(settings: settings)
+        }
         if CGPreflightScreenCaptureAccess() { prepareShareableContent() }
     }
 
@@ -187,6 +192,10 @@ final class TextExtractorService {
 
     func recognize(_ image: CGImage, sourceScale: CGFloat = 2) async throws -> String {
         let settings = settings
+        if let recognitionWarmupTask {
+            await recognitionWarmupTask.value
+            self.recognitionWarmupTask = nil
+        }
         return try await Task.detached(priority: .userInitiated) {
             let lowDensity = sourceScale < 2
             let recognitionImage = lowDensity
@@ -194,19 +203,7 @@ final class TextExtractorService {
                 : image
 
             func recognize(level: VNRequestTextRecognitionLevel) throws -> String {
-                let textRequest = VNRecognizeTextRequest()
-                textRequest.recognitionLevel = level
-                textRequest.usesLanguageCorrection = settings.languageCorrection
-                if lowDensity {
-                    textRequest.minimumTextHeight = 0
-                    if let newest = VNRecognizeTextRequest.supportedRevisions.max() {
-                        textRequest.revision = newest
-                    }
-                }
-                let supported = Self.supportedRecognitionLanguages(level: level)
-                let languages = settings.preferredLanguages.filter(supported.contains)
-                textRequest.automaticallyDetectsLanguage = languages.isEmpty
-                if !languages.isEmpty { textRequest.recognitionLanguages = languages }
+                let textRequest = Self.textRecognitionRequest(level: level, settings: settings, lowDensity: lowDensity)
                 let barcodeRequest = settings.detectCodes ? VNDetectBarcodesRequest() : nil
                 let requests: [VNRequest] = [textRequest] + (barcodeRequest.map { [$0] } ?? [])
                 let handler = VNImageRequestHandler(cgImage: recognitionImage, options: [:])
@@ -258,27 +255,60 @@ final class TextExtractorService {
         level == .fast ? fastRecognitionLanguages : accurateRecognitionLanguages
     }
 
-    private nonisolated static func prewarmRecognition() {
+    private nonisolated static func textRecognitionRequest(
+        level: VNRequestTextRecognitionLevel,
+        settings: TextExtractorSettings,
+        lowDensity: Bool
+    ) -> VNRecognizeTextRequest {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = level
+        request.usesLanguageCorrection = settings.languageCorrection
+        if lowDensity {
+            request.minimumTextHeight = 0
+            if let newest = VNRecognizeTextRequest.supportedRevisions.max() {
+                request.revision = newest
+            }
+        }
+        let supported = supportedRecognitionLanguages(level: level)
+        let languages = settings.preferredLanguages.filter(supported.contains)
+        request.automaticallyDetectsLanguage = languages.isEmpty
+        if !languages.isEmpty { request.recognitionLanguages = languages }
+        return request
+    }
+
+    private nonisolated static func prewarmRecognition(settings: TextExtractorSettings) {
         _ = fastRecognitionLanguages
         _ = accurateRecognitionLanguages
-        guard let context = CGContext(
-            data: nil,
-            width: 32,
-            height: 32,
-            bitsPerComponent: 8,
-            bytesPerRow: 32,
-            space: CGColorSpaceCreateDeviceGray(),
-            bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ) else { return }
-        context.setFillColor(gray: 1, alpha: 1)
-        context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
-        guard let image = context.makeImage() else { return }
-        for level in [VNRequestTextRecognitionLevel.fast, .accurate] {
-            let text = VNRecognizeTextRequest()
-            text.recognitionLevel = level
-            let requests: [VNRequest] = level == .fast ? [text, VNDetectBarcodesRequest()] : [text]
+        guard let image = prewarmImage() else { return }
+        let levels: [VNRequestTextRecognitionLevel] = settings.speed == .accurate ? [.accurate] : [.fast, .accurate]
+        for (index, level) in levels.enumerated() {
+            let text = textRecognitionRequest(level: level, settings: settings, lowDensity: false)
+            let barcode = settings.detectCodes && index == 0 ? VNDetectBarcodesRequest() : nil
+            let requests: [VNRequest] = [text] + (barcode.map { [$0] } ?? [])
             try? VNImageRequestHandler(cgImage: image).perform(requests)
         }
+    }
+
+    nonisolated static func prewarmImage() -> CGImage? {
+        guard let context = CGContext(
+            data: nil,
+            width: 512,
+            height: 128,
+            bitsPerComponent: 8,
+            bytesPerRow: 512,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+        context.setFillColor(gray: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 512, height: 128))
+        let attributes = [
+            kCTFontAttributeName: CTFontCreateWithName("Helvetica-Bold" as CFString, 42, nil),
+            kCTForegroundColorAttributeName: CGColor(gray: 0, alpha: 1),
+        ] as CFDictionary
+        guard let string = CFAttributedStringCreate(nil, "MacPowerToys warmup 123" as CFString, attributes) else { return nil }
+        context.textPosition = CGPoint(x: 18, y: 42)
+        CTLineDraw(CTLineCreateWithAttributedString(string), context)
+        return context.makeImage()
     }
 
     nonisolated static func enhancedImageForRecognition(_ image: CGImage, sourceScale: CGFloat) -> CGImage? {
