@@ -133,6 +133,10 @@ struct NetToysWindowView: View {
                 NotificationCenter.default.post(name: .netToysApplyAnchorPrefill, object: prefill)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netToysOpenPage)) { notification in
+            guard let requestedPage = notification.object as? NetToysPage else { return }
+            page = requestedPage
+        }
         .task { localNetworkAccess.request() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             localNetworkAccess.request()
@@ -192,6 +196,7 @@ extension Notification.Name {
     static let netToysStartScan = Notification.Name("netToysStartScan")
     static let netToysOpenAnchor = Notification.Name("netToysOpenAnchor")
     static let netToysApplyAnchorPrefill = Notification.Name("netToysApplyAnchorPrefill")
+    static let netToysOpenPage = Notification.Name("netToysOpenPage")
 }
 
 struct NetToysPageHeader<Actions: View>: View {
