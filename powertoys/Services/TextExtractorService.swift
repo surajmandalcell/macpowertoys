@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 import CoreGraphics
 import Observation
 import ScreenCaptureKit
@@ -163,10 +164,11 @@ final class TextExtractorService {
             configuration.sourceRect = localRect
             configuration.width = max(1, Int((localRect.width * screen.backingScaleFactor).rounded()))
             configuration.height = max(1, Int((localRect.height * screen.backingScaleFactor).rounded()))
+            configuration.scalesToFit = false
             configuration.showsCursor = false
             configuration.colorSpaceName = CGColorSpace.sRGB
             let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
-            let text = try await recognize(image)
+            let text = try await recognize(image, sourceScale: screen.backingScaleFactor)
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 fail("No text was found. The clipboard was not changed.")
                 return
@@ -177,36 +179,39 @@ final class TextExtractorService {
         }
     }
 
-    func recognize(_ image: CGImage) async throws -> String {
+    func recognize(_ image: CGImage, sourceScale: CGFloat = 2) async throws -> String {
         let settings = settings
         return try await Task.detached(priority: .userInitiated) {
-            if settings.detectCodes {
-                let request = VNDetectBarcodesRequest()
-                let handler = VNImageRequestHandler(cgImage: image, options: [:])
-                try? handler.perform([request])
-                if let payload = request.results?.compactMap(\.payloadStringValue).first,
+            let lowDensity = sourceScale < 2
+            let recognitionImage = lowDensity
+                ? Self.enhancedImageForRecognition(image, sourceScale: sourceScale) ?? image
+                : image
+
+            func recognize(level: VNRequestTextRecognitionLevel) throws -> String {
+                let textRequest = VNRecognizeTextRequest()
+                textRequest.recognitionLevel = level
+                textRequest.usesLanguageCorrection = settings.languageCorrection
+                if lowDensity {
+                    textRequest.minimumTextHeight = 0
+                    if let newest = VNRecognizeTextRequest.supportedRevisions.max() {
+                        textRequest.revision = newest
+                    }
+                }
+                let supported = Self.supportedRecognitionLanguages(level: level)
+                let languages = settings.preferredLanguages.filter(supported.contains)
+                textRequest.automaticallyDetectsLanguage = languages.isEmpty
+                if !languages.isEmpty { textRequest.recognitionLanguages = languages }
+                let barcodeRequest = settings.detectCodes ? VNDetectBarcodesRequest() : nil
+                let requests: [VNRequest] = [textRequest] + (barcodeRequest.map { [$0] } ?? [])
+                let handler = VNImageRequestHandler(cgImage: recognitionImage, options: [:])
+                try handler.perform(requests)
+                if let payload = barcodeRequest?.results?.compactMap(\.payloadStringValue).first,
                    !payload.isEmpty {
                     return payload
                 }
-            }
-
-            guard let image = Self.normalizedImageForRecognition(image) else {
-                throw ExtractorError.imageNormalizationFailed
-            }
-
-            func recognize(level: VNRequestTextRecognitionLevel) throws -> String {
-                let request = VNRecognizeTextRequest()
-                request.recognitionLevel = level
-                request.usesLanguageCorrection = settings.languageCorrection
-                let supported = (try? request.supportedRecognitionLanguages()) ?? []
-                let languages = settings.preferredLanguages.filter(supported.contains)
-                request.automaticallyDetectsLanguage = languages.isEmpty
-                if !languages.isEmpty { request.recognitionLanguages = languages }
-                let handler = VNImageRequestHandler(cgImage: image, options: [:])
-                try handler.perform([request])
-                let observations = (request.results ?? []).sorted { left, right in
+                let observations = (textRequest.results ?? []).sorted { left, right in
                     let verticalDifference = abs(left.boundingBox.midY - right.boundingBox.midY)
-                    if verticalDifference > 0.025 { return left.boundingBox.midY > right.boundingBox.midY }
+                    if verticalDifference > 0.015 { return left.boundingBox.midY > right.boundingBox.midY }
                     return left.boundingBox.minX < right.boundingBox.minX
                 }
                 return observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
@@ -233,22 +238,41 @@ final class TextExtractorService {
         return local.intersection(CGRect(origin: .zero, size: screenFrame.size)).integral
     }
 
-    nonisolated static func normalizedImageForRecognition(_ image: CGImage) -> CGImage? {
-        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                data: nil,
-                width: image.width,
-                height: image.height,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              )
-        else { return nil }
-        context.setBlendMode(.copy)
-        context.interpolationQuality = .none
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        return context.makeImage()
+    private nonisolated static let fastRecognitionLanguages: [String] = loadSupportedRecognitionLanguages(level: .fast)
+    private nonisolated static let accurateRecognitionLanguages: [String] = loadSupportedRecognitionLanguages(level: .accurate)
+    private nonisolated(unsafe) static let recognitionContext = CIContext(options: [.useSoftwareRenderer: false])
+
+    private nonisolated static func loadSupportedRecognitionLanguages(level: VNRequestTextRecognitionLevel) -> [String] {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = level
+        return (try? request.supportedRecognitionLanguages()) ?? []
+    }
+
+    private nonisolated static func supportedRecognitionLanguages(level: VNRequestTextRecognitionLevel) -> [String] {
+        level == .fast ? fastRecognitionLanguages : accurateRecognitionLanguages
+    }
+
+    nonisolated static func enhancedImageForRecognition(_ image: CGImage, sourceScale: CGFloat) -> CGImage? {
+        guard sourceScale > 0, sourceScale < 2 else { return nil }
+        let scale = max(1, 3 / sourceScale)
+        let input = CIImage(cgImage: image)
+        guard let lanczos = CIFilter(name: "CILanczosScaleTransform") else { return nil }
+        lanczos.setValue(input, forKey: kCIInputImageKey)
+        lanczos.setValue(scale, forKey: kCIInputScaleKey)
+        lanczos.setValue(1, forKey: kCIInputAspectRatioKey)
+        guard var output = lanczos.outputImage else { return nil }
+        if let contrast = CIFilter(name: "CIColorControls") {
+            contrast.setValue(output, forKey: kCIInputImageKey)
+            contrast.setValue(1.1, forKey: kCIInputContrastKey)
+            output = contrast.outputImage ?? output
+        }
+        if let unsharp = CIFilter(name: "CIUnsharpMask") {
+            unsharp.setValue(output, forKey: kCIInputImageKey)
+            unsharp.setValue(1.6, forKey: kCIInputRadiusKey)
+            unsharp.setValue(0.7, forKey: kCIInputIntensityKey)
+            output = unsharp.outputImage ?? output
+        }
+        return recognitionContext.createCGImage(output, from: output.extent)
     }
 
     private func fail(_ message: String) {
@@ -274,13 +298,11 @@ extension NSScreen {
 private enum ExtractorError: LocalizedError {
     case displayUnavailable
     case invalidSelection
-    case imageNormalizationFailed
 
     var errorDescription: String? {
         switch self {
         case .displayUnavailable: "The selected display is no longer available."
         case .invalidSelection: "Select a larger region and try again."
-        case .imageNormalizationFailed: "The selected image could not be prepared for recognition."
         }
     }
 }
