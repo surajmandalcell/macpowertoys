@@ -9,7 +9,7 @@ nonisolated enum SystemCareMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-nonisolated enum SystemCareCategoryID: String, CaseIterable, Identifiable, Sendable {
+nonisolated enum SystemCareCategoryID: String, CaseIterable, Identifiable, Codable, Sendable {
     case caches
     case logs
     case installers
@@ -42,7 +42,7 @@ nonisolated enum SystemCareCategoryID: String, CaseIterable, Identifiable, Senda
     }
 }
 
-nonisolated struct CleanupCandidate: Identifiable, Hashable, Sendable {
+nonisolated struct CleanupCandidate: Identifiable, Hashable, Codable, Sendable {
     let url: URL
     let allowedRoot: URL
     let category: SystemCareCategoryID
@@ -50,6 +50,11 @@ nonisolated struct CleanupCandidate: Identifiable, Hashable, Sendable {
 
     var id: String { url.path }
     var name: String { url.lastPathComponent }
+}
+
+nonisolated struct CleanupScanSnapshot: Codable, Equatable, Sendable {
+    let scannedAt: Date
+    let candidates: [CleanupCandidate]
 }
 
 nonisolated struct StorageEntry: Identifiable, Equatable, Sendable {
@@ -110,6 +115,7 @@ nonisolated enum MoleOperation: String, CaseIterable, Identifiable {
 @MainActor
 final class SystemCareManager {
     static let shared = SystemCareManager()
+    static let cleanupScanKey = "systemCare.cleanupScan.v1"
 
     private(set) var molePath: URL?
     private(set) var moleVersion: String?
@@ -126,10 +132,23 @@ final class SystemCareManager {
     private(set) var applications: [InstalledApplication] = []
     private(set) var history: [MoleHistoryItem] = []
     private(set) var lastRecoveredBytes: Int64 = 0
+    private(set) var cleanupScanDate: Date?
 
+    private let defaults: UserDefaults
     private var task: Task<Void, Never>?
 
-    private init() {}
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        guard let data = defaults.data(forKey: Self.cleanupScanKey),
+              let snapshot = try? JSONDecoder().decode(CleanupScanSnapshot.self, from: data)
+        else { return }
+        let candidates = snapshot.candidates.filter(Self.isSafe)
+        cleanupCandidates = candidates
+        selectedCandidateIDs = Set(candidates.map(\.id))
+        cleanupScanDate = snapshot.scannedAt
+    }
+
+    var hasCleanupScan: Bool { cleanupScanDate != nil }
 
     func refresh() {
         task?.cancel()
@@ -166,6 +185,8 @@ final class SystemCareManager {
                 try Task.checkCancellation()
                 self?.cleanupCandidates = candidates
                 self?.selectedCandidateIDs = Set(candidates.map(\.id))
+                self?.cleanupScanDate = Date()
+                self?.persistCleanupScan()
             } catch is CancellationError {
                 return
             } catch {
@@ -181,6 +202,14 @@ final class SystemCareManager {
         else { selectedCandidateIDs.remove(id) }
     }
 
+    func clearCleanupScan() {
+        guard !isWorking else { return }
+        cleanupCandidates.removeAll()
+        selectedCandidateIDs.removeAll()
+        cleanupScanDate = nil
+        defaults.removeObject(forKey: Self.cleanupScanKey)
+    }
+
     func moveSelectedToTrash() {
         let candidates = cleanupCandidates.filter { selectedCandidateIDs.contains($0.id) }
         guard !candidates.isEmpty else { return }
@@ -190,24 +219,28 @@ final class SystemCareManager {
         task = Task { [weak self] in
             let outcome = await Task.detached(priority: .utility) {
                 var recovered: Int64 = 0
-                var failures: [String] = []
+                var failures: [(id: String, name: String)] = []
                 for candidate in candidates {
                     guard Self.isSafe(candidate) else {
-                        failures.append(candidate.name)
+                        failures.append((candidate.id, candidate.name))
                         continue
                     }
                     do {
                         try FileManager.default.trashItem(at: candidate.url, resultingItemURL: nil)
                         recovered += candidate.size
                     } catch {
-                        failures.append(candidate.name)
+                        failures.append((candidate.id, candidate.name))
                     }
                 }
                 return (recovered, failures)
             }.value
             self?.lastRecoveredBytes = outcome.0
-            self?.cleanupCandidates.removeAll { self?.selectedCandidateIDs.contains($0.id) == true }
-            self?.selectedCandidateIDs.removeAll()
+            let failedIDs = Set(outcome.1.map(\.id))
+            self?.cleanupCandidates.removeAll {
+                self?.selectedCandidateIDs.contains($0.id) == true && !failedIDs.contains($0.id)
+            }
+            self?.selectedCandidateIDs = failedIDs
+            self?.persistCleanupScan()
             self?.isWorking = false
             self?.progressMessage = nil
             if !outcome.1.isEmpty {
@@ -324,6 +357,15 @@ final class SystemCareManager {
         cleanupCandidates.lazy
             .filter { self.selectedCandidateIDs.contains($0.id) }
             .reduce(0) { $0 + $1.size }
+    }
+
+    private func persistCleanupScan() {
+        guard let cleanupScanDate,
+              let data = try? JSONEncoder().encode(CleanupScanSnapshot(
+                  scannedAt: cleanupScanDate,
+                  candidates: cleanupCandidates
+              )) else { return }
+        defaults.set(data, forKey: Self.cleanupScanKey)
     }
 
     private func openTerminal(arguments: [String], executable: URL) {

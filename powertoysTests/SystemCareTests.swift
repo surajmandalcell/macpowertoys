@@ -1,6 +1,7 @@
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class SystemCareTests: XCTestCase {
     func testCleanupCandidateMustBeAChildOfItsAllowedRoot() {
         let root = URL(fileURLWithPath: "/Users/example/Library/Caches", isDirectory: true)
@@ -26,5 +27,30 @@ final class SystemCareTests: XCTestCase {
         XCTAssertTrue(SystemCareManager.isSafe(safe))
         XCTAssertFalse(SystemCareManager.isSafe(rootItself))
         XCTAssertFalse(SystemCareManager.isSafe(siblingPrefix))
+    }
+
+    func testSavedCleanupScanRestoresUntilExplicitClear() throws {
+        let suiteName = "SystemCareTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let root = URL(fileURLWithPath: "/Users/example/Library/Caches", isDirectory: true)
+        let candidate = CleanupCandidate(
+            url: root.appendingPathComponent("com.example.app"),
+            allowedRoot: root,
+            category: .caches,
+            size: 512
+        )
+        let snapshot = CleanupScanSnapshot(scannedAt: Date(timeIntervalSince1970: 123), candidates: [candidate])
+        defaults.set(try JSONEncoder().encode(snapshot), forKey: SystemCareManager.cleanupScanKey)
+
+        let manager = SystemCareManager(defaults: defaults)
+
+        XCTAssertTrue(manager.hasCleanupScan)
+        XCTAssertEqual(manager.cleanupCandidates, [candidate])
+        XCTAssertEqual(manager.selectedCandidateIDs, [candidate.id])
+        manager.clearCleanupScan()
+        XCTAssertFalse(manager.hasCleanupScan)
+        XCTAssertTrue(manager.cleanupCandidates.isEmpty)
+        XCTAssertNil(defaults.data(forKey: SystemCareManager.cleanupScanKey))
     }
 }
