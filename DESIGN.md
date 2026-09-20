@@ -693,13 +693,14 @@ persistent navigation is not subordinate: define it as a compact applet or full
 workspace `Window` scene and follow that complete family contract.
 
 The tray popover is also subordinate: 340pt wide and no more than 70% of screen
-height. When its product brief supplies multiple local summaries, use one
-`Tray Tab` row with 8pt outer insets; otherwise omit tabs. It may also use an
-optional status row, one scrolling product-brief content region, and a footer
-for product-brief actions. Those regions appear only when their content exists;
-the design contract does not invent transfer rows, status copy, or footer
-commands. Measurement guides and capture overlays are transient task surfaces
-and must not borrow launcher, workspace, or applet navigation chrome.
+height. It is one scrollable quick dashboard, never a tabbed settings window.
+Order content by use: one-shot actions, stateful controls, background status,
+then open-only tools. Separate tool sections with quiet dividers and keep one
+12pt horizontal gutter. Durable configuration stays in the launcher or tool
+window; the tray never embeds a settings page. A compact footer may expose
+Open MacPowerToys and Quit. Measurement guides and capture overlays are
+transient task surfaces and must not borrow launcher, workspace, or applet
+navigation chrome.
 
 ## Components
 

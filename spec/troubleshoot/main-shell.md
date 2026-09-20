@@ -31,57 +31,42 @@
   rows or sit too close to neighboring items.
 - **Cause:** Each tray section used independent icon widths, row heights, and
   spacing values, so mixed content had no shared alignment columns.
-- **Invariant:** Use an 18pt leading icon column, at least 24pt for compact
-  status/history rows, 8pt between peer controls, and align transfer progress
-  with its text column. Keep Pause/Resume on the active transfer row. Every tab
-  body uses the same 12pt horizontal gutter and 14pt bottom inset. Give the
-  outlined tab group one 8pt outer inset above and below it. Its
-  4pt inner inset must be equal on every edge, and non-scrolling tabs must use
-  the complete available width. Use one accent selection, 4pt between tabs,
-  and no divider below a group that already has its own surface. Show tab icons
-  and names for one or two combined tools, then icons only above two. Persist
-  the last selected available tool. Give the footer 8pt top and 10pt bottom
-  insets.
+- **Invariant:** Use one scrollable dashboard with a 12pt horizontal gutter.
+  Put one-shot actions first, stateful controls next, background status after
+  them, and open-only tools last. Use an 18pt leading icon column, at least 24pt
+  for compact rows, 8pt between peer controls, and align transfer progress with
+  its text column. Keep Pause/Resume on the active transfer row. Separate tool
+  sections with `QuietDivider`, not cards or tabs. Give the footer 8pt top and
+  10pt bottom insets.
 - **Check:** Compare Cloud Sync idle, active, and paused states with Awake;
   leading labels and trailing actions must remain aligned without crowding.
-  Measure every tab-group edge, both body bottoms, and both footer edges. Add a
-  third combined tool, confirm labels disappear, then reopen the popover and
-  confirm the last selected available tool returns.
+  Enable every combined tool and confirm the reading order is quick actions,
+  Awake, Cloud Sync, then Input Devices. Measure the body and footer edges.
 
-## Menu-Bar Tab Body Gap
+## Menu-Bar Dashboard Density
 
-- **Symptom:** The popover leaves a wide empty band under the tab row before
-  any content starts.
-- **Cause:** The tab group carried its own bottom inset while each tab body
-  added a second top inset, so two gaps stacked below one tab row. The group
-  also kept a 20pt top inset, so 38pt of chrome surrounded a 36pt tab group.
-- **Invariant:** The tab group owns the only gap on each side of the tab row:
-  `TrayPopoverLayout.tabGroupOuterInset` (8pt), applied with one
-  `.padding(.vertical,)`. `TrayPopoverLayout.bodyTopInset` is 0, so no tab body
-  adds a second top gap under the tab row.
-- **Check:** `TrayPopoverLayoutTests.testTrayBodyStartsOneOuterInsetBelowTheTabRow`
-  renders the popover offscreen and measures its vertical ink bands. The first
-  blank band must equal the outer inset, the tab-group band must equal
-  `tabGroupInset * 2 + tabHeight`, and the next blank band must not exceed the
-  outer inset plus 3 points of text ascent.
+- **Symptom:** The combined popover becomes a second settings window or spends
+  most of its height on navigation chrome.
+- **Cause:** Per-tool tabs embedded full settings pages inside the tray.
+- **Invariant:** Omit tabs and full settings forms. Each enabled tool contributes
+  only its immediate action, current operational state, or a compact Open
+  action. Cap the complete dashboard body at 70 percent of the screen.
+- **Check:** The all-tools state exposes no settings field, stays within the
+  height cap, and reaches every section in one vertical scroll.
 
-## Menu-Bar Tool Settings
+## Menu-Bar Quick Controls
 
-- **Symptom:** A menu-bar tool exposes only a description and an Open button,
-  so every setting needs the launcher or the tool window.
-- **Cause:** The tray owned small per-tool views instead of the shared settings
-  view.
-- **Invariant:** Every combined tray tab shows one operational summary and then
-  `ToolSettingsContent(toolID:)`, the same view the launcher detail and the tool
-  window use. Each tab has one scrolling region, capped at 70 percent of the
-  screen through `TrayPopoverLayout.maximumBodyHeight`. A settings view that
-  cannot fit 340pt adapts through the `compactSettingsLayout` environment value;
-  never copy its controls. A control in the tool's settings view must not repeat
-  in the tray summary.
-- **Check:** `TrayPopoverLayoutTests.testEveryTrayTabbedToolRendersItsSharedSettingsView`
-  proves that no tray-tabbed tool falls back to the no-settings placeholder. In
-  the installed build, change one setting in each tray tab and confirm the same
-  value in that tool's window.
+- **Symptom:** The menu-bar popup exposes infrequent configuration fields and
+  makes common actions slow to reach.
+- **Cause:** The tray reused `ToolSettingsContent` instead of defining a focused
+  quick-control surface.
+- **Invariant:** The tray never embeds `ToolSettingsContent`. Keep durable and
+  infrequent configuration in the launcher or tool window. The tray may expose
+  one-shot actions, an Awake duration preset, Cloud Sync state with Pause or
+  Resume, recovery, and compact Open actions.
+- **Check:** `TrayPopoverLayoutTests` proves the tray source has no shared
+  settings view. In the installed build, confirm that each visible control is
+  useful without opening a form.
 
 ## Menu-Bar Tool Placement
 
@@ -95,8 +80,8 @@
   legacy separate choices, preserve the existing Cloud Sync and Awake combined
   defaults, and keep separate-item autosave names stable.
 - **Check:** Exercise all three modes for all five tools. Confirm Combined adds
-  exactly one tab, Separate removes that tab and adds one native status item,
-  and None removes both without changing tool enablement.
+  exactly one dashboard section or action, Separate removes it and adds one
+  native status item, and None removes both without changing tool enablement.
 
 ## Menu-Bar Footer Contrast
 

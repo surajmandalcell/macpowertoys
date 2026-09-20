@@ -238,6 +238,8 @@ G6 Everything mode          [█████████████████
 
 ## Current work
 
+- Replace the combined menu-bar tabs and full settings forms with one compact
+  quick dashboard, then verify the signed installed popover in light and dark.
 - Dev Sync is complete through the goal tree above; only the visual check
   of an existing transfer row beside a running pair remains in its request
   list.
@@ -248,10 +250,9 @@ G6 Everything mode          [█████████████████
 - Verify hover and pressed feedback for every updated selectable row, card, and
   tab family.
 - In one physical menu-bar matrix, verify live None, Combined, and Separate
-  modes; compact navigation; saved selection and item positions; Awake sizing
-  and selected states; focus and keyboard use; compact and dark appearance;
-  contrast; tab-group, body, and footer rhythm; native clicks; and Cloud Sync
-  Pause and Resume.
+  modes; dashboard ordering and item positions; Awake sizing and selected
+  states; focus and keyboard use; compact and dark appearance; contrast; body
+  and footer rhythm; native clicks; and Cloud Sync Pause and Resume.
 - Verify adaptive multi-column layouts, compact inline metadata, and readable
   narrow-width fallbacks.
 - Verify that physical Command-Shift-3 opens Color Picker and suppresses the
@@ -290,5 +291,7 @@ G6 Everything mode          [█████████████████
 - Use `Open` when implementation work remains.
 - Use `Platform limit` when a public macOS API cannot provide the result.
 - Use `Accepted` when the user accepts the current behavior or defers the work.
+- Use `Superseded` when a newer direct requirement replaces an older completed
+  request.
 
 Update this index when a request list adds or closes current work.
