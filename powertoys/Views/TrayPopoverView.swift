@@ -5,217 +5,371 @@
 
 import SwiftUI
 
-enum TrayDashboardSection: String, CaseIterable, Identifiable {
-    case quickActions
-    case awake
-    case cloudSync
-    case inputDevices
+enum TrayTab: String, CaseIterable, Identifiable {
+    case home
+    case cloudSync = "rclone"
+    case logs
+    case inputDevices = "input-devices"
+    case systemCare = "system-care"
+    case systemMonitor = "system-monitor"
+    case netToys = "nettoys"
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .home: "Home"
+        case .cloudSync: "Cloud Sync"
+        case .logs: "Logs"
+        case .inputDevices: "Input Devices"
+        case .systemCare: "System Care"
+        case .systemMonitor: "System Monitor"
+        case .netToys: "NetToys"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .home: "house"
+        case .cloudSync: "arrow.up.arrow.down.circle"
+        case .logs: "terminal"
+        case .inputDevices: "computermouse"
+        case .systemCare: "sparkles"
+        case .systemMonitor: "chart.xyaxis.line"
+        case .netToys: "network"
+        }
+    }
+
+    var toolID: String? { self == .home ? nil : rawValue }
 }
 
 enum TrayPopoverLayout {
-    static let width: CGFloat = 340
+    static let width: CGFloat = 360
     static let horizontalInset: CGFloat = 12
-    static let rowSpacing: CGFloat = 10
-    static let minimumBodyHeight: CGFloat = 44
-    static let footerHorizontalInset: CGFloat = 10
-    static let footerTopInset: CGFloat = 8
-    static let footerBottomInset: CGFloat = 10
+    static let tabHeight: CGFloat = 32
+    static let tabSpacing: CGFloat = 4
+    static let minimumBodyHeight: CGFloat = 54
+    static let topChromeHeight: CGFloat = 56
     static let heightFraction: CGFloat = 0.7
-
-    static var chromeHeight: CGFloat {
-        footerTopInset + footerBottomInset + 24
-    }
+    static let transitionDuration = UtilityMotion.standardDuration
+    static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
+    static let defaultComplexTabs: [TrayTab] = [
+        .cloudSync, .logs, .inputDevices, .systemCare, .systemMonitor, .netToys,
+    ]
 
     static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {
-        max(minimumBodyHeight, screenHeight * heightFraction - chromeHeight)
+        max(minimumBodyHeight, screenHeight * heightFraction - topChromeHeight)
     }
 
-    static func dashboardSections(for availableIDs: [String]) -> [TrayDashboardSection] {
-        let available = Set(availableIDs)
-        return TrayDashboardSection.allCases.filter { section in
-            switch section {
-            case .quickActions:
-                available.contains("color-picker") || available.contains("text-extractor")
-            case .awake:
-                available.contains("awake")
-            case .cloudSync:
-                available.contains("rclone")
-            case .inputDevices:
-                available.contains("input-devices")
-            }
+    static func orderedComplexTabs(available: [TrayTab], savedIDs: [String]) -> [TrayTab] {
+        let availableSet = Set(available)
+        var seen = Set<TrayTab>()
+        let saved = savedIDs.compactMap(TrayTab.init(rawValue:)).filter {
+            $0 != .home && availableSet.contains($0) && seen.insert($0).inserted
         }
+        return saved + defaultComplexTabs.filter { availableSet.contains($0) && !seen.contains($0) }
     }
 }
 
 struct TrayPopoverView: View {
+    @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
+    @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.openWindow) private var openWindow
-    @State private var trayToolIDs = TrayPopoverView.combinedTrayToolIDs()
+    @State private var configurationRevision = 0
 
-    static func combinedTrayToolIDs() -> [String] {
-        ToolRegistry.allTools.filter { tool in
-            tool.hasTrayTab
-                && IndividualMenuBarTool(rawValue: tool.id)?.usesMenuBarMode(
-                    .combined,
-                    enabled: SettingsManager.shared.isToolEnabled(tool.id)
-                ) == true
-        }
-        .map(\.id)
+    private var homeToolIDs: [String] {
+        _ = configurationRevision
+        return TrayPopoverLayout.homeToolIDs.dropLast().filter { id in
+            guard SettingsManager.shared.isToolEnabled(id),
+                  let tool = IndividualMenuBarTool(rawValue: id)
+            else { return false }
+            return tool.usesMenuBarMode(.combined, enabled: true)
+        } + (SettingsManager.shared.isToolEnabled("ruler") ? ["ruler"] : [])
     }
+
+    private var complexTabs: [TrayTab] {
+        _ = configurationRevision
+        let available = TrayPopoverLayout.defaultComplexTabs.filter { tab in
+            guard let toolID = tab.toolID, SettingsManager.shared.isToolEnabled(toolID) else {
+                return false
+            }
+            if let menuBarTool = IndividualMenuBarTool(rawValue: toolID) {
+                return menuBarTool.usesMenuBarMode(.combined, enabled: true)
+            }
+            return true
+        }
+        return TrayPopoverLayout.orderedComplexTabs(
+            available: available,
+            savedIDs: storedTabOrder.split(separator: ",").map(String.init)
+        )
+    }
+
+    private var tabs: [TrayTab] { [.home] + complexTabs }
+    private var selectedTab: TrayTab { TrayTab(rawValue: selectedTabID) ?? .home }
 
     var body: some View {
         VStack(spacing: 0) {
-            if trayToolIDs.isEmpty {
-                EmptyStateView(icon: "switch.2", message: "No enabled tray tools")
-                    .frame(height: 160)
-            } else {
-                TrayDashboardView(toolIDs: trayToolIDs)
-            }
-
+            topChrome
             QuietDivider()
-
-            footer
+            TrayMeasuredScroll {
+                tabContent
+                    .id(selectedTabID)
+                    .transition(.opacity)
+            }
         }
         .frame(width: TrayPopoverLayout.width)
         .background {
             Color.black
-                .opacity(colorScheme == .dark ? 0.2 : 0.04)
+                .opacity(colorScheme == .dark ? 0.18 : 0.035)
                 .ignoresSafeArea()
         }
+        .onAppear(perform: normalizeSelection)
+        .onChange(of: storedTabOrder) { normalizeSelection() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
-            let current = Self.combinedTrayToolIDs()
-            if current != trayToolIDs { trayToolIDs = current }
+            configurationRevision += 1
+            normalizeSelection()
         }
     }
 
-    private var footer: some View {
+    private var topChrome: some View {
         HStack(spacing: 8) {
-            TrayFooterButton(title: "Open MacPowerToys", systemImage: AppDelegate.openMainWindowSymbol) {
-                openWindow(id: "main")
-                NSApplication.shared.activate(ignoringOtherApps: true)
+            TrayTabStrip(
+                tabs: tabs,
+                selected: Binding(get: { selectedTab }, set: { select($0) }),
+                reorder: reorder
+            )
+            .padding(4)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.18 : 0.08))
             }
 
-            Spacer()
-
-            TrayFooterButton(title: "Quit", systemImage: "power") {
-                NSApplication.shared.terminate(nil)
+            TrayChromeButton(title: "Open MacPowerToys", systemImage: "gearshape") {
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            TrayChromeButton(title: "Quit MacPowerToys", systemImage: "power") {
+                NSApp.terminate(nil)
             }
         }
-        .padding(.horizontal, TrayPopoverLayout.footerHorizontalInset)
-        .padding(.top, TrayPopoverLayout.footerTopInset)
-        .padding(.bottom, TrayPopoverLayout.footerBottomInset)
-        .background(Color.primary.opacity(0.03))
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.vertical, 8)
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .home:
+            TrayHomeView(toolIDs: homeToolIDs)
+        case .cloudSync:
+            CloudSyncTrayView()
+        case .logs:
+            LogsTrayView()
+        case .inputDevices:
+            VStack(spacing: 0) {
+                TrayToolHeader(tab: .inputDevices, detail: "Mouse and trackpad scrolling")
+                QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                InputDevicesSettingsView(showsHeader: true, showsContainerScroll: false)
+            }
+        case .systemCare:
+            SystemCareTrayView()
+        case .systemMonitor:
+            SystemMonitorTrayView()
+        case .netToys:
+            NetToysTrayView()
+        }
+    }
+
+    private func select(_ tab: TrayTab) {
+        guard tab != selectedTab else { return }
+        withAnimation(.easeInOut(duration: TrayPopoverLayout.transitionDuration)) {
+            selectedTabID = tab.rawValue
+        }
+    }
+
+    private func normalizeSelection() {
+        guard !tabs.contains(selectedTab) else { return }
+        selectedTabID = TrayTab.home.rawValue
+    }
+
+    private func reorder(_ source: TrayTab, before destination: TrayTab) {
+        guard source != .home, destination != .home, source != destination,
+              let sourceIndex = complexTabs.firstIndex(of: source),
+              let destinationIndex = complexTabs.firstIndex(of: destination)
+        else { return }
+        var reordered = complexTabs
+        let tab = reordered.remove(at: sourceIndex)
+        reordered.insert(tab, at: min(destinationIndex, reordered.count))
+        storedTabOrder = reordered.map(\.rawValue).joined(separator: ",")
     }
 }
 
-@MainActor
-private struct TrayDashboardView: View {
-    let toolIDs: [String]
-    @State private var contentHeight: CGFloat = TrayPopoverLayout.minimumBodyHeight
-
-    private var sections: [TrayDashboardSection] {
-        TrayPopoverLayout.dashboardSections(for: toolIDs)
-    }
-
-    private var quickActionTools: [any Tool] {
-        toolIDs.compactMap(ToolRegistry.tool(for:)).filter {
-            IndividualMenuBarTool(rawValue: $0.id)?.quickAction != nil
-        }
-    }
+private struct TrayMeasuredScroll<Content: View>: View {
+    @ViewBuilder let content: Content
+    @State private var contentHeight = TrayPopoverLayout.minimumBodyHeight
 
     private var maximumHeight: CGFloat {
-        TrayPopoverLayout.maximumBodyHeight(
-            screenHeight: NSScreen.main?.visibleFrame.height ?? 900
-        )
+        TrayPopoverLayout.maximumBodyHeight(screenHeight: NSScreen.main?.visibleFrame.height ?? 900)
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                ForEach(sections) { section in
-                    if sections.first != section {
-                        QuietDivider()
-                            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            content
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .thinScrollIndicators()
+        .frame(height: min(max(contentHeight, TrayPopoverLayout.minimumBodyHeight), maximumHeight))
+    }
+}
+
+private struct TrayTabStrip: View {
+    let tabs: [TrayTab]
+    @Binding var selected: TrayTab
+    let reorder: (TrayTab, TrayTab) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: TrayPopoverLayout.tabSpacing) {
+                ForEach(Array(tabs.enumerated()), id: \.element.id) { index, tab in
+                    if tab == .home {
+                        TrayTabButton(tab: tab, selected: selected == tab) { selected = tab }
+                    } else {
+                        TrayTabButton(tab: tab, selected: selected == tab) { selected = tab }
+                            .draggable(tab.rawValue)
+                            .dropDestination(for: String.self) { values, _ in
+                                guard let source = values.first.flatMap(TrayTab.init(rawValue:)) else { return false }
+                                reorder(source, tab)
+                                return source != .home
+                            }
+                            .contextMenu {
+                                Button("Move Left", systemImage: "arrow.left") {
+                                    reorder(tab, tabs[index - 1])
+                                }
+                                .disabled(index <= 1)
+                                Button("Move Right", systemImage: "arrow.right") {
+                                    reorder(tab, tabs[index + 1])
+                                }
+                                .disabled(index >= tabs.count - 1)
+                            }
                     }
-                    sectionView(section)
                 }
-            }
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.height
-            } action: { newHeight in
-                contentHeight = newHeight
             }
         }
         .thinScrollIndicators()
-        .frame(
-            height: min(
-                max(contentHeight, TrayPopoverLayout.minimumBodyHeight),
-                maximumHeight
-            )
-        )
+        .scrollClipDisabled()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: TrayPopoverLayout.tabHeight)
     }
+}
 
-    @ViewBuilder
-    private func sectionView(_ section: TrayDashboardSection) -> some View {
-        switch section {
-        case .quickActions:
-            QuickActionsTraySection(tools: quickActionTools)
-        case .awake:
-            AwakeTraySection()
-        case .cloudSync:
-            CloudSyncTraySection()
-        case .inputDevices:
-            OpenToolTraySection(
-                title: "INPUT DEVICES",
-                systemImage: "computermouse",
-                detail: "Mouse and trackpad controls",
-                toolID: "input-devices"
-            )
+private struct TrayTabButton: View {
+    let tab: TrayTab
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: tab.symbol)
+                .symbolVariant(selected ? .fill : .none)
+                .font(.system(size: 15, weight: selected ? .semibold : .regular))
+                .foregroundStyle(Color.primary.opacity(selected || hovering ? 1 : 0.58))
+                .frame(width: TrayPopoverLayout.tabHeight, height: TrayPopoverLayout.tabHeight)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
+        .background(Color.primary.opacity(selected ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 7))
+        .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .help(tab.title)
+        .onHover { hovering = $0 }
     }
 }
 
-private struct TraySectionHeader: View {
+private struct TrayChromeButton: View {
     let title: String
+    let systemImage: String
+    let action: () -> Void
+    @State private var hovering = false
 
     var body: some View {
-        Text(title)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(Color.primary.opacity(0.68))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityAddTraits(.isHeader)
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14))
+                .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.62))
+                .frame(width: 28, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
+        .accessibilityLabel(title)
+        .help(title)
+        .onHover { hovering = $0 }
     }
 }
 
-private struct QuickActionsTraySection: View {
-    let tools: [any Tool]
+private struct TrayHomeView: View {
+    let toolIDs: [String]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TraySectionHeader(title: "QUICK ACTIONS")
-            HStack(spacing: 8) {
-                ForEach(tools, id: \.id) { tool in
-                    if let menuBarTool = IndividualMenuBarTool(rawValue: tool.id),
-                       let action = menuBarTool.quickAction {
-                        TrayActionButton(
-                            title: menuBarTool.actionTitle ?? tool.name,
-                            systemImage: menuBarTool.symbol,
-                            toolID: tool.id
-                        ) {
-                            ToolActionRouter.shared.execute(ToolActionRequest(action: action))
-                        }
-                    }
+        VStack(spacing: 0) {
+            if toolIDs.isEmpty {
+                EmptyStateView(icon: "switch.2", message: "No Home tools are in the combined menu")
+                    .frame(height: 120)
+            } else {
+                ForEach(Array(toolIDs.enumerated()), id: \.element) { index, toolID in
+                    if index > 0 { QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset) }
+                    homeRow(toolID)
                 }
             }
         }
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private func homeRow(_ toolID: String) -> some View {
+        switch toolID {
+        case "color-picker":
+            TrayQuickRow(toolID: toolID, title: "Color Picker", symbol: "eyedropper") {
+                TrayQuietActionButton(title: "Pick", symbol: "eyedropper") {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
+                }
+            }
+        case "text-extractor":
+            TrayQuickRow(toolID: toolID, title: "Text Extractor", symbol: "text.viewfinder") {
+                TrayQuietActionButton(title: "Extract", symbol: "text.viewfinder") {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
+                }
+            }
+        case "awake":
+            AwakeTrayRow()
+        case "ruler":
+            TrayQuickRow(toolID: toolID, title: "Ruler", symbol: "ruler") { EmptyView() }
+        default:
+            EmptyView()
+        }
     }
 }
 
-private struct AwakeTraySection: View {
+private struct TrayQuickRow<Accessory: View>: View {
+    let toolID: String
+    let title: String
+    let symbol: String
+    @ViewBuilder let accessory: Accessory
+
+    var body: some View {
+        HStack(spacing: 10) {
+            TrayToolLink(toolID: toolID, title: title, symbol: symbol)
+            Spacer(minLength: 8)
+            accessory
+        }
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.vertical, 10)
+    }
+}
+
+private struct AwakeTrayRow: View {
     @State private var service = AwakeService.shared
 
     private var quickMode: Binding<AwakeQuickMode?> {
@@ -238,303 +392,285 @@ private struct AwakeTraySection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: TrayPopoverLayout.rowSpacing) {
-            TraySectionHeader(title: "AWAKE")
-
-            HStack(spacing: 8) {
-                Image(systemName: service.isActive ? "moon.zzz.fill" : "moon.zzz")
-                    .font(.system(size: 12))
-                    .foregroundStyle(service.isActive ? Color.primary : Color.secondary)
-                    .frame(width: 18)
-                Text(service.statusText).font(.system(size: 11)).monospacedDigit().lineLimit(1)
-                Spacer()
-                TrayOpenButton(toolID: "awake", title: "Awake")
-            }
-            .frame(minHeight: 24)
-
-            Picker("Awake duration", selection: quickMode) {
-                Text("Off").tag(AwakeQuickMode?.some(.off))
-                Text("30 min").tag(AwakeQuickMode?.some(.thirtyMinutes))
-                Text("1 h").tag(AwakeQuickMode?.some(.oneHour))
-                Text("∞")
-                    .accessibilityLabel("Indefinite")
-                    .tag(AwakeQuickMode?.some(.indefinite))
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .accessibilityLabel("Awake duration")
-
-            if let error = service.assertionError {
-                Text(error)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 12)
-    }
-}
-
-private struct CloudSyncTraySection: View {
-    @State private var manager = RcloneJobManager.shared
-
-    private var statusText: String {
-        let count = manager.activeJobs.count
-        if count > 0 { return "\(count) active transfer\(count == 1 ? "" : "s")" }
-        return manager.isDaemonRunning ? "Ready · No active transfers" : "Engine not running"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: TrayPopoverLayout.rowSpacing) {
-            TraySectionHeader(title: "CLOUD SYNC")
-            statusRow
-
-            if !manager.activeJobs.isEmpty {
-                activeTransfers
-            }
-        }
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 12)
-    }
-
-    private var statusRow: some View {
-        HStack(spacing: 8) {
-            if !manager.daemonIsHealthy {
-                TrayRetryButton {
-                    Task { await manager.start() }
-                }
-            } else {
-                Image(systemName: "arrow.up.arrow.down.circle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.primary.opacity(0.72))
-                    .frame(width: 24, height: 24)
-            }
-
-            Text(statusText)
-                .font(.system(size: 11))
-                .foregroundStyle(Color.primary.opacity(0.72))
-                .lineLimit(1)
-
-            Spacer()
-            TrayOpenButton(toolID: "rclone", title: "Cloud Sync")
-        }
-        .frame(minHeight: 24)
-    }
-
-    private var activeTransfers: some View {
-        VStack(spacing: 12) {
-            ForEach(manager.activeJobs.prefix(3)) { job in
-                TrayTransferRow(job: job)
-            }
-
-            if manager.activeJobs.count > 3 {
-                Text("+\(manager.activeJobs.count - 3) more")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.primary.opacity(0.62))
-            }
-        }
-    }
-}
-
-private struct OpenToolTraySection: View {
-    let title: String
-    let systemImage: String
-    let detail: String
-    let toolID: String
-
-    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TraySectionHeader(title: title)
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.primary.opacity(0.72))
-                    .frame(width: 18)
-                Text(detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.primary.opacity(0.72))
-                Spacer()
-                TrayOpenButton(toolID: toolID, title: title.capitalized)
+            HStack(spacing: 10) {
+                TrayToolLink(toolID: "awake", title: "Awake", symbol: "moon.zzz")
+                Spacer(minLength: 8)
+                Picker("Awake duration", selection: quickMode) {
+                    Text("Off").tag(AwakeQuickMode?.some(.off))
+                    Text("30m").tag(AwakeQuickMode?.some(.thirtyMinutes))
+                    Text("1h").tag(AwakeQuickMode?.some(.oneHour))
+                    Text("∞").accessibilityLabel("Indefinite").tag(AwakeQuickMode?.some(.indefinite))
+                }
+                .pickerStyle(.segmented)
+                .tint(Color.primary.opacity(0.18))
+                .labelsHidden()
+                .frame(width: 176)
             }
-            .frame(minHeight: 24)
+            if service.isActive || service.assertionError != nil {
+                Text(service.assertionError ?? service.statusText)
+                    .font(.system(size: 10))
+                    .foregroundStyle(service.assertionError == nil ? Color.secondary : Color.red)
+                    .lineLimit(2)
+                    .padding(.leading, 32)
+            }
         }
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
     }
 }
 
-private struct TrayOpenButton: View {
+private struct TrayToolLink: View {
     let toolID: String
     let title: String
+    let symbol: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovering = false
 
     var body: some View {
-        Button("Open") {
+        Button {
             ToolActionRouter.shared.open(toolID: toolID)
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: symbol).font(.system(size: 13)).frame(width: 18)
+                Text(title).font(.system(size: 12, weight: .medium))
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .offset(x: hovering && !reduceMotion ? 1 : 0, y: hovering && !reduceMotion ? -1 : 0)
+            }
+            .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.84))
+            .padding(.horizontal, 6)
+            .frame(minHeight: 28)
+            .contentShape(Rectangle())
         }
-        .controlSize(.small)
-        .contentShape(Rectangle())
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+        .onHover { hovering = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovering)
         .help("Open \(title)")
     }
 }
 
-// MARK: - Retry Button
-
-private struct TrayRetryButton: View {
+private struct TrayQuietActionButton: View {
+    let title: String
+    let symbol: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "arrow.clockwise")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(Color.primary.opacity(0.72))
-                .frame(width: 24, height: 24)
+            Label(title, systemImage: symbol)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.primary.opacity(0.86))
+                .padding(.horizontal, 9)
+                .frame(minHeight: 26)
                 .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
-        .help("Restart the engine")
+        .background(Color.primary.opacity(0.075), in: RoundedRectangle(cornerRadius: 6))
     }
 }
 
-// MARK: - Tray Transfer Row
+private struct TrayToolHeader: View {
+    let tab: TrayTab
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            TrayToolLink(toolID: tab.rawValue, title: tab.title, symbol: tab.symbol)
+            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).padding(.leading, 32)
+        }
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct CloudSyncTrayView: View {
+    @State private var manager = RcloneJobManager.shared
+
+    private var status: String {
+        if !manager.daemonIsHealthy { return "Sync engine needs attention" }
+        let count = manager.activeJobs.count
+        return count == 0 ? "Ready · No active transfers" : "\(count) active transfer\(count == 1 ? "" : "s")"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TrayToolHeader(tab: .cloudSync, detail: status)
+            if !manager.daemonIsHealthy {
+                QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                HStack {
+                    Text("The engine is not responding.").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Spacer()
+                    TrayQuietActionButton(title: "Retry", symbol: "arrow.clockwise") {
+                        Task { await manager.start() }
+                    }
+                }
+                .padding(TrayPopoverLayout.horizontalInset)
+            }
+            ForEach(manager.activeJobs.prefix(4)) { job in
+                QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                TrayTransferRow(job: job).padding(TrayPopoverLayout.horizontalInset)
+            }
+        }
+    }
+}
 
 private struct TrayTransferRow: View {
     let job: TransferJob
     @State private var manager = RcloneJobManager.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: job.operation.icon)
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 18)
-
+                Image(systemName: job.operation.icon).font(.system(size: 10)).foregroundStyle(.secondary)
                 Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
-                    .font(.system(size: 11))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
+                    .font(.system(size: 11)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
-
                 Text(job.state == .paused ? "Paused" : RcloneFormat.speed(job.stats.speed))
-                    .font(.system(size: 10))
-                    .foregroundStyle(job.state == .paused ? Color.orange : Color.secondary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-
+                    .font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
                 if job.canPause {
-                    transferControl(title: "Pause transfer", systemImage: "pause.fill") {
-                        manager.pause(job)
-                    }
+                    transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
                 } else if job.canResume {
-                    transferControl(title: "Resume transfer", systemImage: "play.fill") {
-                        manager.resume(job)
-                    }
+                    transferButton("Resume transfer", symbol: "play.fill") { manager.resume(job) }
                 }
             }
-            .frame(minHeight: 22)
-
-            GeometryReader { geo in
+            GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.08))
-                    Capsule()
-                        .fill(Color.accentColor)
-                        .frame(width: max(0, min(1, job.progressFraction)) * geo.size.width)
-                        .animation(.easeInOut(duration: 0.3), value: job.progressFraction)
+                    Capsule().fill(Color.primary.opacity(0.08))
+                    Capsule().fill(Color.primary.opacity(0.48))
+                        .frame(width: max(0, min(1, job.progressFraction)) * geometry.size.width)
                 }
             }
             .frame(height: 4)
-            .padding(.leading, 26)
-
-            ForEach(job.stats.transferring.prefix(3)) { file in
-                HStack(spacing: 8) {
-                    Text(file.name)
-                        .font(.system(size: 10))
-                        .foregroundStyle(Color.primary.opacity(0.62))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    Spacer(minLength: 4)
-
-                    Text("\(file.percentage)%")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Color.primary.opacity(0.62))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                }
-                .padding(.leading, 26)
-            }
         }
     }
 
-    private func transferControl(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func transferButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 9, weight: .semibold))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
+            Image(systemName: symbol).font(.system(size: 9, weight: .semibold)).frame(width: 24, height: 24)
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
-        .help(title)
+        .background(Color.primary.opacity(0.075), in: RoundedRectangle(cornerRadius: 6))
         .accessibilityLabel(title)
+        .help(title)
     }
 }
 
-// MARK: - Buttons
-
-private struct TrayActionButton: View {
-    let title: String
-    let systemImage: String
-    let toolID: String
-    let action: () -> Void
-
-    private var tint: NSColor {
-        if let color = ToolIconColor.major(asset: ToolRegistry.tool(for: toolID)?.logoAsset ?? "") { return color }
-        return .controlAccentColor
-    }
+private struct LogsTrayView: View {
+    @State private var manager = LogManager.shared
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: systemImage)
-                Text(title)
+        VStack(alignment: .leading, spacing: 0) {
+            TrayToolHeader(tab: .logs, detail: "Recent application activity")
+            if manager.logs.isEmpty {
+                QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                Text("No recent log entries").font(.system(size: 11)).foregroundStyle(.secondary)
+                    .padding(TrayPopoverLayout.horizontalInset)
+            } else {
+                ForEach(Array(manager.logs.suffix(5).reversed())) { entry in
+                    QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    HStack(spacing: 8) {
+                        Image(systemName: entry.level.icon).font(.system(size: 10)).foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.message).font(.system(size: 11)).lineLimit(1)
+                            Text(entry.source).font(.system(size: 9)).foregroundStyle(.tertiary)
+                        }
+                        Spacer(minLength: 4)
+                        Text(entry.timestamp.formatted(date: .omitted, time: .shortened))
+                            .font(.system(size: 9)).foregroundStyle(.tertiary).monospacedDigit()
+                    }
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    .padding(.vertical, 8)
+                }
             }
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(ToolIconColor.label(on: tint))
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 30)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .background(Color(nsColor: tint), in: RoundedRectangle(cornerRadius: 6))
     }
 }
 
-private struct TrayFooterButton: View {
-    let title: String
-    let systemImage: String
-    let action: () -> Void
-
-    @State private var isHovering = false
+private struct SystemCareTrayView: View {
+    @State private var manager = SystemCareManager.shared
 
     var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(.system(size: 11))
-                .foregroundStyle(Color.primary.opacity(isHovering ? 1 : 0.75))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: 0) {
+            TrayToolHeader(tab: .systemCare, detail: manager.isWorking ? manager.progressMessage ?? "Working" : "Storage and cleanup status")
+            statusRow("Storage", value: manager.storageURL == nil ? "Not analyzed" : Self.bytes(manager.storageTotal))
+            statusRow("Cleanup", value: manager.cleanupCandidates.isEmpty ? "Not scanned" : "\(manager.cleanupCandidates.count) items")
+            statusRow("Recovered", value: manager.lastRecoveredBytes == 0 ? "None this session" : Self.bytes(manager.lastRecoveredBytes))
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .onHover { isHovering = $0 }
+    }
+
+    private func statusRow(_ title: String, value: String) -> some View {
+        VStack(spacing: 0) {
+            QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            HStack {
+                Text(title).font(.system(size: 11))
+                Spacer()
+                Text(value).font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            .padding(.vertical, 9)
+        }
+    }
+
+    private static func bytes(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
+    }
+}
+
+private struct SystemMonitorTrayView: View {
+    @State private var service = SystemMonitorService.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TrayToolHeader(tab: .systemMonitor, detail: "Live system health")
+            QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                metric("CPU", service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting")
+                metric("Memory", service.snapshot?.memoryUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting")
+                metric("Disk", service.snapshot?.diskUsage.map { "\(Int($0.rounded()))%" } ?? "Waiting")
+                metric("Battery", service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Unavailable")
+            }
+            .padding(TrayPopoverLayout.horizontalInset)
+        }
+        .onAppear { service.startDetailed() }
+        .onDisappear { service.stopDetailed() }
+    }
+
+    private func metric(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title).font(.system(size: 10)).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.system(size: 11, weight: .medium)).monospacedDigit()
+        }
+        .padding(9)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 7))
+    }
+}
+
+private struct NetToysTrayView: View {
+    @State private var model = NetToysHistoryViewModel()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TrayToolHeader(tab: .netToys, detail: "Current network and helper status")
+            QuietDivider().padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            HStack(spacing: 9) {
+                Image(systemName: "network").font(.system(size: 12)).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.helperStatus?.network?.displayName ?? "Network unavailable")
+                        .font(.system(size: 11, weight: .medium)).lineLimit(1)
+                    Text(helperDetail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(TrayPopoverLayout.horizontalInset)
+        }
+        .onAppear { model.refresh() }
+    }
+
+    private var helperDetail: String {
+        guard let status = model.helperStatus else { return "Background helper is not reporting" }
+        return "Updated \(status.heartbeat.formatted(date: .omitted, time: .shortened))"
     }
 }
