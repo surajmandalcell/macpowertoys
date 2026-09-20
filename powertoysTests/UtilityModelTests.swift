@@ -71,6 +71,19 @@ final class UtilityModelTests: XCTestCase {
         XCTAssertEqual(AwakeQuickMode(configuration: configuration), .custom)
     }
 
+    func testToolTintLabelsChooseTheHigherContrastColor() {
+        XCTAssertTrue(
+            ToolIconColor.prefersDarkLabel(
+                on: NSColor(srgbRed: 0.94, green: 0.34, blue: 0.29, alpha: 1)
+            )
+        )
+        XCTAssertFalse(
+            ToolIconColor.prefersDarkLabel(
+                on: NSColor(srgbRed: 0.08, green: 0.20, blue: 0.45, alpha: 1)
+            )
+        )
+    }
+
     func testCustomInteractionFamiliesUseSharedHoverAndPressedStyle() throws {
         let expectedStyleCounts = [
             "Views/AllToolsGridView.swift": 1,
