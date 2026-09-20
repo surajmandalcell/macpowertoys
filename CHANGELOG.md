@@ -4,6 +4,8 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-09-21
+
 ### Added
 
 - Added Dev Sync to Cloud Sync: Dev One-Way and Dev Bidirectional pairs
@@ -33,6 +35,8 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Changed
 
+- Redesigned the combined menu-bar popover around compact tabs, focused quick
+  actions, and on-demand tool pages instead of embedding full settings screens.
 - Replaced the custom Ruler with the behavior and settings from pinned FreeRuler commit `d38ca4f673f16c51485940e63eeee68babfbfeed` under its MIT license.
 - Made Ruler Settings and Defaults independent native windows. Added Border
   Opacity, set its default to 25%, and disabled new-ruler shadows.
@@ -54,6 +58,8 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Fixed
 
+- Made NetToys request Location access only from its explicit permission
+  action, and made switching between NetToys and System Monitor responsive.
 - Fixed Text Extractor region capture on multiple displays, blank selections,
   cancellation, permission recovery, clipboard content, and completion cues.
 - Matched native titlebar chrome, traffic-light alignment, focus behavior, and
@@ -72,8 +78,10 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Performance
 
-- Reduced Text Extractor recognition latency and avoided screenshot data on the
-  clipboard.
+- Prewarmed Text Extractor recognition, reduced selection-overlay latency, and
+  avoided screenshot data on the clipboard.
+- Deferred and cancelled heavyweight NetToys and System Monitor content when
+  their windows are not active.
 - Changed System Monitor to one scheduler with safe update intervals for each
   metric. Detailed sampling runs only while its window is open.
 - Stopped unused Cloud Sync daemons, polls, tasks, and volume observers when no

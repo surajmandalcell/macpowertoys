@@ -42,6 +42,7 @@ npm-debug.log*
 /goals.archive.md
 
 # Generated release artifacts
+/release/
 *.dmg
 *.pkg
 *.zip
