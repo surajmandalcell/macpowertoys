@@ -4,6 +4,23 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-09-21
+
+### Changed
+
+- Moved Dev Sync baselines from per-project JSON files into one native SQLite
+  database, with automatic migration of existing baselines.
+
+### Fixed
+
+- Replaced the filled Dock and Raycast artwork with the padded outline arm used
+  by the menu-bar identity, and prevented duplicate local Raycast registrations.
+- Made Marketplace subprocess output asynchronous and cancellation prompt.
+- Kept deep-verified Dev Sync drift visible when a delayed file-system event
+  arrives.
+- Removed the remaining Swift concurrency and unused-result warnings from the
+  Release and test builds.
+
 ### Security
 
 - Updated the Raycast lockfile to js-yaml 4.3.2 to resolve
