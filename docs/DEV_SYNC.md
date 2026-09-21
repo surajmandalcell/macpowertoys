@@ -10,7 +10,7 @@ out and how to extend it without touching reconciliation rules.
 |---|---|---|
 | Models | `powertoys/Models/DevSyncModels.swift` | Every shared type: pairs, projects, signatures, baselines, plans, operations, conflicts, capabilities, defaults. |
 | Contract | `powertoys/Services/DevSync/DevSyncEngine.swift` | The `DevSyncEngine` protocol the interface talks to, live status, setup types, and an in-memory preview engine. |
-| State | `DevSyncStateStore.swift` | Atomic JSON documents under `Application Support/MacPowerToys/DevSync/`. |
+| State | `DevSyncStateStore.swift` | Atomic JSON metadata and operation documents plus SQLite baseline storage under `Application Support/MacPowerToys/DevSync/`. |
 | Safety | `DevSyncSafety.swift` | Retained versions, conflict copies, staging, partials, retention. |
 | Roots | `DevSyncRoots.swift` | Root validation, volume identity, the volume capability probe, mount events. |
 | Git | `DevSyncGit.swift` | Read-only Git calls, manifests, ignore checks, topology, identity, locks. |
@@ -81,6 +81,8 @@ the behavior. A scenario that crosses modules belongs in
 - The state store keeps the newest five backups per pair under
   `DevSync/<pair-id>/backups/`. A corrupt document is moved aside with a
   `.corrupt-<timestamp>.json` suffix and reported in the pair status.
+- Baselines live in `DevSync/baselines.sqlite3`. A legacy per-project baseline
+  JSON file migrates into SQLite on its first successful read.
 - Every operation is a JSON document under `DevSync/<pair-id>/operations/`.
   A non-terminal document at launch triggers recovery before any new work.
 - The external safety store is `<external-root>/.cloudsync-system/<pair-id>/`.

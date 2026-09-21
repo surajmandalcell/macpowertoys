@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 
 nonisolated struct DevStateStoreIssue: Codable, Equatable, Sendable {
     var document: String
@@ -19,6 +20,9 @@ nonisolated private final class DevSyncISO8601Formatter: @unchecked Sendable {
 
 actor DevSyncStateStore {
     nonisolated private static let maximumBackupCount = 5
+    nonisolated private static var sqliteTransient: sqlite3_destructor_type {
+        unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+    }
 
     static let shared = DevSyncStateStore(rootURL: defaultRootURL)
 
@@ -79,6 +83,7 @@ actor DevSyncStateStore {
 
     func removePair(_ pairID: UUID) throws {
         _ = try backup(pairID: pairID)
+        try deleteBaselines(pairID: pairID)
         let directory = pairDirectory(pairID)
         guard isDirectory(directory) else { return }
         try fileManager.removeItem(at: directory)
@@ -93,25 +98,59 @@ actor DevSyncStateStore {
     }
 
     func loadBaseline(projectID: UUID, pairID: UUID) -> DevBaseline? {
-        load(
+        let document = "baselines/\(projectID.uuidString).json"
+        do {
+            if let data = try baselineData(projectID: projectID, pairID: pairID) {
+                do {
+                    return try decoder(preserveDatePrecision: false).decode(DevBaseline.self, from: data)
+                } catch {
+                    recordIssue(document: document, detail: "SQLite baseline failed to decode", recoveredFromBackup: false)
+                    return nil
+                }
+            }
+        } catch {
+            recordIssue(document: "baselines.sqlite3", detail: error.localizedDescription, recoveredFromBackup: false)
+        }
+
+        let legacyURL = pairFile(pairID, document)
+        guard let baseline = load(
             DevBaseline.self,
-            at: pairFile(pairID, "baselines/\(projectID.uuidString).json"),
-            document: "baselines/\(projectID.uuidString).json",
+            at: legacyURL,
+            document: document,
             pairID: pairID,
             preserveDatePrecision: false
-        )
+        ) else { return nil }
+        do {
+            try saveBaselineData(encode(baseline, preserveDatePrecision: false), projectID: projectID, pairID: pairID)
+            try fileManager.removeItem(at: legacyURL)
+        } catch {
+            recordIssue(document: "baselines.sqlite3", detail: error.localizedDescription, recoveredFromBackup: false)
+        }
+        return baseline
     }
 
     func saveBaseline(_ baseline: DevBaseline, pairID: UUID) throws {
         try Task.checkCancellation()
-        let url = pairFile(pairID, "baselines/\(baseline.projectID.uuidString).json")
         let data = try encode(baseline, preserveDatePrecision: false)
         try Task.checkCancellation()
-        // ponytail: JSON baseline documents; move to SQLite if load time exceeds budget
-        try write(data, to: url)
+        try saveBaselineData(data, projectID: baseline.projectID, pairID: pairID)
+        let legacyURL = pairFile(pairID, "baselines/\(baseline.projectID.uuidString).json")
+        if fileManager.fileExists(atPath: legacyURL.path), !hasSymbolicLinkBelowRoot(legacyURL) {
+            try fileManager.removeItem(at: legacyURL)
+        }
     }
 
     func deleteBaseline(projectID: UUID, pairID: UUID) throws {
+        try withBaselineDatabase { database in
+            let statement = try prepare(
+                "DELETE FROM baselines WHERE pair_id = ? AND project_id = ?",
+                in: database
+            )
+            defer { sqlite3_finalize(statement) }
+            try bind(pairID.uuidString, at: 1, to: statement, database: database)
+            try bind(projectID.uuidString, at: 2, to: statement, database: database)
+            guard sqlite3_step(statement) == SQLITE_DONE else { throw sqliteError(database) }
+        }
         let url = pairFile(pairID, "baselines/\(projectID.uuidString).json")
         guard !hasSymbolicLinkBelowRoot(url) else { throw CocoaError(.fileWriteNoPermission) }
         guard fileManager.fileExists(atPath: url.path) else { return }
@@ -298,6 +337,107 @@ actor DevSyncStateStore {
 
     private func pairFile(_ pairID: UUID, _ relativePath: String) -> URL {
         pairDirectory(pairID).appendingPathComponent(relativePath)
+    }
+
+    private var baselineDatabaseURL: URL {
+        rootURL.appendingPathComponent("baselines.sqlite3")
+    }
+
+    private func baselineData(projectID: UUID, pairID: UUID) throws -> Data? {
+        try withBaselineDatabase { database in
+            let statement = try prepare(
+                "SELECT payload FROM baselines WHERE pair_id = ? AND project_id = ?",
+                in: database
+            )
+            defer { sqlite3_finalize(statement) }
+            try bind(pairID.uuidString, at: 1, to: statement, database: database)
+            try bind(projectID.uuidString, at: 2, to: statement, database: database)
+            switch sqlite3_step(statement) {
+            case SQLITE_ROW:
+                let count = Int(sqlite3_column_bytes(statement, 0))
+                guard count > 0, let bytes = sqlite3_column_blob(statement, 0) else { return Data() }
+                return Data(bytes: bytes, count: count)
+            case SQLITE_DONE:
+                return nil
+            default:
+                throw sqliteError(database)
+            }
+        }
+    }
+
+    private func saveBaselineData(_ data: Data, projectID: UUID, pairID: UUID) throws {
+        guard data.count <= Int(Int32.max) else { throw CocoaError(.fileWriteOutOfSpace) }
+        try withBaselineDatabase { database in
+            let statement = try prepare(
+                "INSERT INTO baselines (pair_id, project_id, payload) VALUES (?, ?, ?) " +
+                    "ON CONFLICT(pair_id, project_id) DO UPDATE SET payload = excluded.payload",
+                in: database
+            )
+            defer { sqlite3_finalize(statement) }
+            try bind(pairID.uuidString, at: 1, to: statement, database: database)
+            try bind(projectID.uuidString, at: 2, to: statement, database: database)
+            let bindResult = data.withUnsafeBytes {
+                sqlite3_bind_blob(statement, 3, $0.baseAddress, Int32(data.count), Self.sqliteTransient)
+            }
+            guard bindResult == SQLITE_OK else { throw sqliteError(database) }
+            guard sqlite3_step(statement) == SQLITE_DONE else { throw sqliteError(database) }
+        }
+    }
+
+    private func deleteBaselines(pairID: UUID) throws {
+        try withBaselineDatabase { database in
+            let statement = try prepare("DELETE FROM baselines WHERE pair_id = ?", in: database)
+            defer { sqlite3_finalize(statement) }
+            try bind(pairID.uuidString, at: 1, to: statement, database: database)
+            guard sqlite3_step(statement) == SQLITE_DONE else { throw sqliteError(database) }
+        }
+    }
+
+    private func withBaselineDatabase<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        let url = baselineDatabaseURL
+        guard !hasSymbolicLinkBelowRoot(url) else { throw CocoaError(.fileWriteNoPermission) }
+        try createDirectory(rootURL)
+        var database: OpaquePointer?
+        let flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
+        guard sqlite3_open_v2(url.path, &database, flags, nil) == SQLITE_OK, let database else {
+            defer { if let database { sqlite3_close(database) } }
+            throw sqliteError(database)
+        }
+        defer { sqlite3_close(database) }
+        try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        let schema = "CREATE TABLE IF NOT EXISTS baselines (" +
+            "pair_id TEXT NOT NULL, project_id TEXT NOT NULL, payload BLOB NOT NULL, " +
+            "PRIMARY KEY(pair_id, project_id)) WITHOUT ROWID"
+        guard sqlite3_exec(database, schema, nil, nil, nil) == SQLITE_OK else {
+            throw sqliteError(database)
+        }
+        return try body(database)
+    }
+
+    private func prepare(_ sql: String, in database: OpaquePointer) throws -> OpaquePointer {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK, let statement else {
+            throw sqliteError(database)
+        }
+        return statement
+    }
+
+    private func bind(
+        _ value: String,
+        at index: Int32,
+        to statement: OpaquePointer,
+        database: OpaquePointer
+    ) throws {
+        let result = value.withCString {
+            sqlite3_bind_text(statement, index, $0, -1, Self.sqliteTransient)
+        }
+        guard result == SQLITE_OK else { throw sqliteError(database) }
+    }
+
+    private func sqliteError(_ database: OpaquePointer?) -> NSError {
+        let code = database.map(sqlite3_errcode) ?? SQLITE_CANTOPEN
+        let detail = database.flatMap(sqlite3_errmsg).map(String.init(cString:)) ?? "SQLite could not open the database"
+        return NSError(domain: "MacPowerToys.DevSync.SQLite", code: Int(code), userInfo: [NSLocalizedDescriptionKey: detail])
     }
 
     private func save<T: Encodable>(_ value: T, at url: URL) throws {
