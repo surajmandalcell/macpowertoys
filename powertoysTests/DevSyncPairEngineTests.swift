@@ -336,7 +336,7 @@ final class DevSyncPairEngineTests: XCTestCase {
     }
 
     func testVerifyNowFindsSilentSameSizeSameTimeDifference() async throws {
-        let fixture = try await makeFixture()
+        let fixture = try await makeFixture(configure: { $0.timing.quietPeriodSeconds = 2 })
         await fixture.engine.start()
         let internalFile = fixture.internalProject.appendingPathComponent("source.swift")
         let externalFile = fixture.externalProject.appendingPathComponent("source.swift")
@@ -350,6 +350,10 @@ final class DevSyncPairEngineTests: XCTestCase {
 
         let projectState = await fixture.engine.projects().first?.state
         XCTAssertEqual(projectState, .destinationDrift)
+
+        await fixture.engine.noteEvents(side: .external, relativePaths: ["app/source.swift"])
+        let stateAfterDelayedEvent = await fixture.engine.projects().first?.state
+        XCTAssertEqual(stateAfterDelayedEvent, .destinationDrift)
     }
 
     func testScenario30AllDriftResolutionsConverge() async throws {
