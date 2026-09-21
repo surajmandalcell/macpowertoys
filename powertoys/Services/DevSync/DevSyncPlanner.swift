@@ -270,7 +270,7 @@ private nonisolated struct DevPlanningContext {
                     continue
                 }
                 appendMove(from: oldPath, to: internalNewPath, side: .external, signature: externalSignature)
-                if let baselineSignature, let renamedSignature = input.internalSnapshot?.entries[internalNewPath],
+                if let renamedSignature = input.internalSnapshot?.entries[internalNewPath],
                    renamedSignature.kind == .directory {
                     processRenamedDirectory(from: oldPath, to: internalNewPath, renamedSide: .internal)
                 } else if let baselineSignature, let renamedSignature = input.internalSnapshot?.entries[internalNewPath],
@@ -292,7 +292,7 @@ private nonisolated struct DevPlanningContext {
                 continue
             }
             appendMove(from: oldPath, to: externalNewPath, side: .internal, signature: internalSignature)
-            if let baselineSignature, let renamedSignature = input.externalSnapshot?.entries[externalNewPath],
+            if let renamedSignature = input.externalSnapshot?.entries[externalNewPath],
                renamedSignature.kind == .directory {
                 processRenamedDirectory(from: oldPath, to: externalNewPath, renamedSide: .external)
             } else if let baselineSignature, let renamedSignature = input.externalSnapshot?.entries[externalNewPath],
@@ -995,7 +995,7 @@ private nonisolated struct DevCatalogPlanningContext {
         let userLinkTarget = input.internalDiscovery?.symlinksToExternal[path]
         let excluded = input.excludedProjectPaths.contains(path)
 
-        if let link, link.state == .replaced || (link != nil && internalProject != nil) {
+        if let link, link.state == .replaced || internalProject != nil {
             var project = known ?? makeProject(path: path, kind: externalProject?.kind ?? internalProject?.kind ?? .nonGit, residency: .externalResident)
             project.state = .blockedByFileSystem
             project.explicitlyExcluded = excluded

@@ -98,7 +98,7 @@ final class DevSyncManager {
         updatesTask = Task { [weak self] in
             for await update in stream {
                 guard !Task.isCancelled else { return }
-                await self?.apply(update)
+                self?.apply(update)
             }
         }
     }
