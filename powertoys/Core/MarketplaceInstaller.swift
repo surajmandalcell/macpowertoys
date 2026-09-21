@@ -71,6 +71,30 @@ nonisolated struct InstallerAdapters: Sendable {
     )
 }
 
+nonisolated private final class MarketplaceProcessState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var data = Data()
+    private var cancelled = false
+
+    func append(_ chunk: Data) {
+        lock.lock()
+        data.append(chunk)
+        lock.unlock()
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+
+    func result() -> (Data, Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (data, cancelled)
+    }
+}
+
 actor MarketplaceInstaller {
     static let appBundleName = "Tool.app"
     static let dataDirectoryName = "Data"
@@ -214,25 +238,52 @@ actor MarketplaceInstaller {
         }
     }
 
-    // ponytail: blocks one cooperative thread for the subprocess lifetime; move to a
-    // readabilityHandler pump if extraction of very large archives becomes a problem
     nonisolated static func run(_ tool: String, _ arguments: [String]) async throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
         process.arguments = arguments
         let pipe = Pipe()
+        let state = MarketplaceProcessState()
         process.standardOutput = pipe
         process.standardError = pipe
-        try process.run()
-        let data = await Task.detached(priority: .userInitiated) {
-            let output = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
-            process.waitUntilExit()
-            return output
-        }.value
-        let output = String(decoding: data, as: UTF8.self)
-        guard process.terminationStatus == 0 else {
-            throw MarketplaceInstallError.commandFailed("\(tool): \(output.trimmingCharacters(in: .whitespacesAndNewlines))")
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                pipe.fileHandleForReading.readabilityHandler = { handle in
+                    let chunk = handle.availableData
+                    if !chunk.isEmpty { state.append(chunk) }
+                }
+                process.terminationHandler = { finished in
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    state.append(pipe.fileHandleForReading.readDataToEndOfFile())
+                    let (data, cancelled) = state.result()
+                    if cancelled {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    let output = String(decoding: data, as: UTF8.self)
+                    guard finished.terminationStatus == 0 else {
+                        continuation.resume(throwing: MarketplaceInstallError.commandFailed(
+                            "\(tool): \(output.trimmingCharacters(in: .whitespacesAndNewlines))"
+                        ))
+                        return
+                    }
+                    continuation.resume(returning: output)
+                }
+                do {
+                    try process.run()
+                    if Task.isCancelled {
+                        state.cancel()
+                        process.terminate()
+                    }
+                } catch {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.resume(throwing: error)
+                }
+            }
+        } onCancel: {
+            state.cancel()
+            if process.isRunning { process.terminate() }
         }
-        return output
     }
 }

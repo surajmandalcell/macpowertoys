@@ -219,6 +219,22 @@ final class MarketplaceInstallerTests: XCTestCase {
         )
     }
 
+    func testCommandCancellationTerminatesProcessPromptly() async throws {
+        let command = Task {
+            try await MarketplaceInstaller.run("/bin/sleep", ["3"])
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        let start = ContinuousClock.now
+        command.cancel()
+
+        do {
+            _ = try await command.value
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {}
+
+        XCTAssertLessThan(start.duration(to: .now), .seconds(1))
+    }
+
     func testManagerInstallToolRecordsReceipt() async throws {
         let manager = MarketplaceManager(
             rootDirectory: root,
