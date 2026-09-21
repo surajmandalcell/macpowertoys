@@ -35,9 +35,6 @@ final class DevSyncScaleTests: XCTestCase {
         XCTAssertNil(generations.first?.paths)
         XCTAssertEqual(generations.first?.requiresFullScan, true)
         XCTAssertLessThan(duration, 5)
-        XCTContext.runActivity(
-            named: "DEVSYNC_SCALE events=10000 reconciliations=\(generations.count) seconds=\(duration)"
-        ) { _ in }
     }
 
     func testOneHundredThousandFileScanAndPlanStayWithinBudget() async throws {
@@ -114,9 +111,6 @@ final class DevSyncScaleTests: XCTestCase {
         XCTAssertEqual(output.plan.manifestToExternal.count, 100_000)
         XCTAssertLessThan(scanDuration, 120)
         XCTAssertLessThan(planDuration, 120)
-        XCTContext.runActivity(
-            named: "DEVSYNC_SCALE files=100000 scan_seconds=\(scanDuration) plan_seconds=\(planDuration)"
-        ) { _ in }
     }
 
     func testOneGigabyteStreamingHashUsesLessThanSixtyFourMegabytesResidentDelta() async throws {
@@ -136,9 +130,6 @@ final class DevSyncScaleTests: XCTestCase {
         XCTAssertEqual(digest.count, 32)
         XCTAssertLessThan(delta, 64 * 1_024 * 1_024)
         XCTAssertLessThan(duration, 120)
-        XCTContext.runActivity(
-            named: "DEVSYNC_SCALE bytes=1073741824 hash_seconds=\(duration) resident_delta_bytes=\(delta)"
-        ) { _ in }
     }
 
     private func residentMemory() -> Int64 {

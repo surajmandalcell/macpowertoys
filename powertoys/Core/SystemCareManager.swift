@@ -331,7 +331,7 @@ final class SystemCareManager {
         task = Task { [weak self] in
             do {
                 let installation = try await Task.detached(priority: .utility) {
-                    try Self.run(executable: brew, arguments: arguments)
+                    _ = try Self.run(executable: brew, arguments: arguments)
                     return Self.detectMole()
                 }.value
                 self?.molePath = installation.path

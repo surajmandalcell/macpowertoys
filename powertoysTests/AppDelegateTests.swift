@@ -4,6 +4,7 @@ import Combine
 import SwiftUI
 @testable import powertoys
 
+@MainActor
 final class AppDelegateTests: XCTestCase {
     func testNondefaultLaunchDoesNotOpenMainWindow() {
         XCTAssertTrue(AppDelegate.shouldOpenMainWindowAfterLaunch(userInfo: [

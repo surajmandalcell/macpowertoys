@@ -730,19 +730,19 @@ actor DevSyncPairEngine {
         guard running, volumeOnline, internalStream == nil, externalStream == nil,
               let internalRoot, let externalRoot else { return }
         let cursors = Task { await stateStore.loadCursors(pairID: pair.id) }
-        Task {
+        Task { [self] in
             let stored = await cursors.value
-            let internalCursor = stored.first { $0.side == .internal && $0.volumeIdentifier == pair.internalRoot.volumeIdentifier }
-            let externalCursor = stored.first { $0.side == .external && $0.volumeIdentifier == pair.externalRoot.volumeIdentifier }
-            let queue = DispatchQueue(label: "DevSync.Events.\(pair.id.uuidString)")
-            internalStream = DevEventStream(rootURL: internalRoot, sinceEventID: internalCursor?.lastEventID, latencySeconds: pair.configuration.timing.fseventsLatencySeconds, queue: queue) { [weak self] batch in
+            let internalCursor = stored.first { $0.side == .internal && $0.volumeIdentifier == self.pair.internalRoot.volumeIdentifier }
+            let externalCursor = stored.first { $0.side == .external && $0.volumeIdentifier == self.pair.externalRoot.volumeIdentifier }
+            let queue = DispatchQueue(label: "DevSync.Events.\(self.pair.id.uuidString)")
+            self.internalStream = DevEventStream(rootURL: internalRoot, sinceEventID: internalCursor?.lastEventID, latencySeconds: self.pair.configuration.timing.fseventsLatencySeconds, queue: queue) { [weak self] batch in
                 Task { await self?.handle(batch: batch, side: .internal, root: internalRoot) }
             }
-            externalStream = DevEventStream(rootURL: externalRoot, sinceEventID: externalCursor?.lastEventID, latencySeconds: pair.configuration.timing.fseventsLatencySeconds, queue: queue) { [weak self] batch in
+            self.externalStream = DevEventStream(rootURL: externalRoot, sinceEventID: externalCursor?.lastEventID, latencySeconds: self.pair.configuration.timing.fseventsLatencySeconds, queue: queue) { [weak self] batch in
                 Task { await self?.handle(batch: batch, side: .external, root: externalRoot) }
             }
-            _ = internalStream?.start()
-            _ = externalStream?.start()
+            _ = self.internalStream?.start()
+            _ = self.externalStream?.start()
         }
     }
 
@@ -860,8 +860,10 @@ actor DevSyncPairEngine {
             internalSnapshot = deferringGitMetadata(internalSnapshot, baseline: baseline, gitDirectory: gitDirectoryRelativePath)
             externalSnapshot = deferringGitMetadata(externalSnapshot, baseline: baseline, gitDirectory: gitDirectoryRelativePath)
         }
-        async let unstableInternal = unstablePaths(projectURL: internalProject, project: project, snapshot: internalSnapshot, policy: policy)
-        async let unstableExternal = unstablePaths(projectURL: externalProject, project: project, snapshot: externalSnapshot, policy: policy)
+        let stableInternalSnapshot = internalSnapshot
+        let stableExternalSnapshot = externalSnapshot
+        async let unstableInternal = unstablePaths(projectURL: internalProject, project: project, snapshot: stableInternalSnapshot, policy: policy)
+        async let unstableExternal = unstablePaths(projectURL: externalProject, project: project, snapshot: stableExternalSnapshot, policy: policy)
         let unstableSets = await (unstableInternal, unstableExternal)
         let unstablePaths = unstableSets.0.union(unstableSets.1)
         let tombstones = await stateStore.loadTombstones(pairID: pair.id).filter { $0.projectID == project.id }
@@ -879,8 +881,9 @@ actor DevSyncPairEngine {
             now: now()
         ))
         if !output.needsHashes.isEmpty {
-            async let hashedInternal = scan(projectURL: internalProject, project: project, policy: policy, baseline: baseline, limit: limited, hashPaths: output.needsHashes)
-            async let hashedExternal = scan(projectURL: externalProject, project: project, policy: policy, baseline: baseline, limit: limited, hashPaths: output.needsHashes)
+            let neededHashes = output.needsHashes
+            async let hashedInternal = scan(projectURL: internalProject, project: project, policy: policy, baseline: baseline, limit: limited, hashPaths: neededHashes)
+            async let hashedExternal = scan(projectURL: externalProject, project: project, policy: policy, baseline: baseline, limit: limited, hashPaths: neededHashes)
             internalSnapshot = await hashedInternal
             externalSnapshot = await hashedExternal
             if hasGitLock {
@@ -1027,7 +1030,7 @@ actor DevSyncPairEngine {
         let runner = DevOperationRunner(context: context)
         activeRunner = runner
         let baseline = await stateStore.loadBaseline(projectID: project.id, pairID: pair.id)
-        let outcome = await withMutationActivity {
+        let outcome = await withMutationActivity { [self] in
             await runner.run(plan: plan, kind: kind, baseline: baseline, plannerOutput: output) { [weak self] progress, detail in
                 Task { await self?.setProgress(progress, detail: detail) }
             }

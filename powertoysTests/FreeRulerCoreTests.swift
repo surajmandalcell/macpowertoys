@@ -3,6 +3,7 @@ import Carbon.HIToolbox
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class RulerCoreTests: XCTestCase {
 
     func testWindowAlphaValueConvertsPercentToAlpha() {
@@ -4341,6 +4342,7 @@ private func pointInsideEmptyRulerWindowCorner(
     return NSPoint(x: x, y: y)
 }
 
+@MainActor
 private func withInstalledAppDelegate(_ test: (AppDelegate) throws -> Void) rethrows {
     let previousDelegate = NSApp.delegate
     let appDelegate = AppDelegate()

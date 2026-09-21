@@ -542,6 +542,7 @@ final class DevSyncPairEngineTests: XCTestCase {
         }
     }
 
+    @MainActor
     func testScenario88RcloneTransferJobIsUntouched() async throws {
         let manager = RcloneJobManager()
         let job = TransferJob(operation: .copy, sourceFs: temporaryRoot.path, destinationFs: "remote:", sourceDisplay: "Local", destinationDisplay: "Remote", excludePatterns: [], maxRetries: 1)

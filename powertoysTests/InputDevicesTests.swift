@@ -2,6 +2,7 @@ import SwiftUI
 import XCTest
 @testable import powertoys
 
+@MainActor
 final class InputDevicesTests: XCTestCase {
     func testScrollProfilesStayIndependent() {
         var settings = InputDevicesSettings()
