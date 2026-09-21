@@ -4,7 +4,8 @@ Track these gates before a warning-free public binary release. The repository
 is already public at `surajmandalcell/macpowertoys`. Version `1.8.0` was
 published on 2026-09-21 as an explicitly approved Apple Development-signed
 testing release; its release notes disclose that it is not notarized and may
-be rejected by Gatekeeper.
+be rejected by Gatekeeper. The `1.8.1` patch source passed its local release
+gate on 2026-09-21 with the same distribution limitation.
 
 ## Repository
 
@@ -35,11 +36,13 @@ be rejected by Gatekeeper.
 
 ## Verification
 
-- [x] Run local unit, rclone, and signed UI smoke checks. For `v1.8.0`, 806
-  tests passed, 5 skipped, and 0 failed; Raycast lint and build passed. The
-  exact installed signed build opened NetToys without a Location prompt and
-  switched to System Monitor immediately. The earlier controlled local rclone
-  transfer and 275-cycle signed app check remain valid for their tested scope.
+- [x] Run local unit, rclone, and signed UI smoke checks. For the `v1.8.1`
+  patch source, 808 tests passed, 5 skipped, and 0 failed; the signed Release
+  build passed with Swift warnings treated as errors; strict app and helper
+  signature checks passed; and Raycast install, audit, lint, build, and icon
+  synchronization passed. All seven marketplace fixtures also passed through
+  their pinned validator. The earlier controlled local rclone transfer and
+  275-cycle signed app check remain valid for their tested scope.
 - [x] Validate all seven marketplace fixtures. The executable pinned `uv`
   validator passed all seven fixtures on 2026-08-31.
 - [ ] Run the complete suite on a clean supported Mac account.
