@@ -254,8 +254,39 @@ final class DevSyncStateStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded?.entries.count, 100_000)
         XCTAssertLessThan(elapsed, 4)
-        let baselineURL = store.pairDirectory(pair.id).appendingPathComponent("baselines/\(projectID.uuidString).json")
-        XCTAssertFalse(try Data(contentsOf: baselineURL).contains(0x0A))
+        let databaseURL = store.rootURL.appendingPathComponent("baselines.sqlite3")
+        let legacyURL = store.pairDirectory(pair.id).appendingPathComponent("baselines/\(projectID.uuidString).json")
+        XCTAssertTrue(fileManager.fileExists(atPath: databaseURL.path))
+        XCTAssertFalse(fileManager.fileExists(atPath: legacyURL.path))
+        XCTAssertEqual(permissions(at: databaseURL), 0o600)
+    }
+
+    func testLegacyBaselineMigratesIntoSQLite() async throws {
+        let storeRoot = root.appendingPathComponent("store", isDirectory: true)
+        let pair = makePair()
+        let baseline = DevBaseline(
+            projectID: UUID(),
+            entries: ["main.swift": DevBaselineEntry(
+                signature: DevFileSignature(kind: .file, size: 4),
+                lastVerifiedAt: Date(timeIntervalSince1970: 100)
+            )],
+            updatedAt: Date(timeIntervalSince1970: 100)
+        )
+        let legacyURL = storeRoot
+            .appendingPathComponent(pair.id.uuidString, isDirectory: true)
+            .appendingPathComponent("baselines", isDirectory: true)
+            .appendingPathComponent("\(baseline.projectID.uuidString).json")
+        try fileManager.createDirectory(at: legacyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(baseline).write(to: legacyURL)
+
+        let store = DevSyncStateStore(rootURL: storeRoot)
+        let loaded = await store.loadBaseline(projectID: baseline.projectID, pairID: pair.id)
+
+        XCTAssertEqual(loaded, baseline)
+        XCTAssertTrue(fileManager.fileExists(atPath: storeRoot.appendingPathComponent("baselines.sqlite3").path))
+        XCTAssertFalse(fileManager.fileExists(atPath: legacyURL.path))
     }
 
     func testBackupsKeepOnlyNewestFive() async throws {
@@ -367,13 +398,21 @@ final class DevSyncStateStoreTests: XCTestCase {
         let store = DevSyncStateStore(rootURL: root.appendingPathComponent("store", isDirectory: true))
         let firstPair = makePair()
         let secondPair = makePair()
+        let firstBaseline = DevBaseline(projectID: UUID(), updatedAt: Date(timeIntervalSince1970: 100))
+        let secondBaseline = DevBaseline(projectID: UUID(), updatedAt: Date(timeIntervalSince1970: 100))
         try await store.saveProjects([], pairID: firstPair.id)
         try await store.saveProjects([], pairID: secondPair.id)
+        try await store.saveBaseline(firstBaseline, pairID: firstPair.id)
+        try await store.saveBaseline(secondBaseline, pairID: secondPair.id)
 
         try await store.removePair(firstPair.id)
 
         XCTAssertFalse(fileManager.fileExists(atPath: store.pairDirectory(firstPair.id).path))
         XCTAssertTrue(fileManager.fileExists(atPath: store.pairDirectory(secondPair.id).path))
+        let removedBaseline = await store.loadBaseline(projectID: firstBaseline.projectID, pairID: firstPair.id)
+        let retainedBaseline = await store.loadBaseline(projectID: secondBaseline.projectID, pairID: secondPair.id)
+        XCTAssertNil(removedBaseline)
+        XCTAssertEqual(retainedBaseline, secondBaseline)
     }
 
     func testStateDocumentsAndDirectoriesUseRestrictivePermissions() async throws {
