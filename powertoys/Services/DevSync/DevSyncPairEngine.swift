@@ -491,8 +491,8 @@ actor DevSyncPairEngine {
             let current = projectValues[index].state
             let next: DevProjectState
             switch (current, side) {
-            case (.clean, .internal), (.destinationDrift, .internal): next = .dirtyInternal
-            case (.clean, .external), (.destinationDrift, .external): next = .dirtyExternal
+            case (.clean, .internal): next = .dirtyInternal
+            case (.clean, .external): next = .dirtyExternal
             case (.dirtyInternal, .external), (.dirtyExternal, .internal): next = .dirtyBoth
             default: continue
             }

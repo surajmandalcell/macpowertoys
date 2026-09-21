@@ -1,7 +1,7 @@
 # Dev Sync Request List
 
 Reviewed against `spec/cloud-sync-dev-sync-spec.md` and current source on
-2026-09-05. Update a status only after checking current source and, for
+2026-09-21. Update a status only after checking current source and, for
 visible behavior, the latest normal signed build. Scenario numbers refer to
 the scenario catalog in the spec. The complete unit suite passed 859 tests
 with one deliberate skip and zero failures on the tree at `e885f8c`, and the
@@ -22,6 +22,7 @@ fifth signed live check on that build passed all 12 steps.
 | Done | Survive mount-path changes through volume identity. | Roots store `uuid:` identifiers; `repair` rewrites link text only for the same volume (scenario 55). | None. |
 | Done | Block transfer on a wrong volume. | `DevSyncRoots.resolve` returns `identityMismatch`; the engine sets `.blocked` with a wrong-drive detail (scenario 54). | None. |
 | Done | Use a stored baseline for bidirectional decisions. | One native SQLite database stores baseline payloads by pair and project, replaces per-project file churn, and migrates legacy JSON after a successful read. The 100,000-entry round trip stays below its four-second budget; migration, pair deletion, permissions, and planner coverage pass. | None. |
+| Done | Keep verified destination drift visible when a delayed file-system event arrives. | `DevSyncPairEngine` still queues the delayed event for reconciliation but no longer downgrades a verified `Drift` state to `Changes pending`. The regression writes same-size, same-timestamp content, verifies it deeply, then delivers the delayed external event and keeps the project in `Drift`. | None. |
 | Done | Turn simultaneous changes into conflicts. | Content, add/add, delete/modify, modify/delete, type, collision, identity, path, rename, and drift conflicts are planned with both signatures; conflict cards offer the six resolutions (scenario 27). | None. |
 | Done | Require a complete healthy scan before any deletion. | The planner emits deletions only when both scans are complete and both roots were available; incomplete scans set `deletionsAllowed = false` (property tests 3 and 5). | None. |
 | Done | Never propagate whole-project deletion automatically. | Missing internal projects convert to external-resident in Dev One-Way and wait for `decideMissingProject` in Dev Bidirectional (scenarios 7, 8). | None. |
