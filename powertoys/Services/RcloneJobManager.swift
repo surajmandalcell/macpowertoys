@@ -115,6 +115,8 @@ final class RcloneJobManager {
     private var lastAppliedBandwidth: String?
     private var loadedPersistedJobs = false
     private var persistJobsTask: Task<Void, Never>?
+    private let transferWriter = OrderedAtomicFileWriter()
+    private var transferRevision = 0
     private var volumeObservers: [NSObjectProtocol] = []
     private var sourceWatchers: [UUID: FileWatcher] = [:]
     private var continuousSyncTasks: [UUID: Task<Void, Never>] = [:]
@@ -1436,9 +1438,13 @@ final class RcloneJobManager {
     private func persistJobsNow() async {
         guard loadedPersistedJobs else { return }
         let snapshots = jobs.map(\.snapshot)
+        transferRevision += 1
+        let revision = transferRevision
+        let writer = transferWriter
+        let url = AppDataLocation.transfersURL
         await Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(snapshots) else { return }
-            try? data.write(to: AppDataLocation.transfersURL, options: .atomic)
+            await writer.write(data, revision: revision, to: url)
         }.value
     }
 
