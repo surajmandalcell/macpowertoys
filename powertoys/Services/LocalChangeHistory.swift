@@ -42,6 +42,8 @@ final class LocalChangeHistory {
     private let storageURL: URL
     private let limit: Int
     private var persistTask: Task<Void, Never>?
+    private let writer = OrderedAtomicFileWriter()
+    private var revision = 0
 
     convenience init() {
         self.init(storageURL: AppDataLocation.localChangesURL)
@@ -108,9 +110,12 @@ final class LocalChangeHistory {
 
     private func persist(_ records: [LocalChangeRecord]) async {
         let url = storageURL
+        revision += 1
+        let currentRevision = revision
+        let writer = self.writer
         await Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(records) else { return }
-            try? data.write(to: url, options: .atomic)
+            await writer.write(data, revision: currentRevision, to: url)
         }.value
     }
 }
