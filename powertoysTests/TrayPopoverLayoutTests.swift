@@ -183,6 +183,25 @@ final class TrayPopoverLayoutTests: XCTestCase {
         )
     }
 
+    func testEmptyStateFillsLeadingTrayColumn() {
+        var emptyStateWidth: CGFloat = 0
+        let host = NSHostingView(rootView:
+            VStack(alignment: .leading, spacing: 0) {
+                EmptyStateView(icon: "cloud", message: "No transfers yet")
+                    .frame(height: 96)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
+                        emptyStateWidth = $0
+                    }
+            }
+            .frame(width: TrayPopoverLayout.width)
+        )
+        host.frame = NSRect(x: 0, y: 0, width: TrayPopoverLayout.width, height: 96)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+
+        XCTAssertEqual(emptyStateWidth, TrayPopoverLayout.width, accuracy: 1)
+    }
+
     func testTrayRendersEveryPrimarySurfaceInLightAndDark() throws {
         for (tab, scheme, name) in [
             (TrayTab.home, ColorScheme.light, "Home — Light"),

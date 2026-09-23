@@ -18,5 +18,6 @@ struct EmptyStateView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity)
     }
 }
