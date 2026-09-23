@@ -57,7 +57,7 @@ struct ToolCard: View {
                     Text(tool.description)
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(5)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .contentShape(Rectangle())
@@ -91,7 +91,7 @@ struct ToolCard: View {
         }
         .padding(12)
         .accessibilityElement(children: .contain)
-        .frame(minHeight: 110)
+        .frame(minHeight: 172)
         .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(

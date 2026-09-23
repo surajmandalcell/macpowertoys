@@ -78,7 +78,7 @@ spacing:
   tray-footer-top: 8
   tray-footer-bottom: 10
 windows:
-  launcher: { content-width: 1200, content-height: 720, sidebar-width: 220, card-min-height: 110, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
+  launcher: { content-width: 1200, content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, resizable: true }
   nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
@@ -394,9 +394,10 @@ Canonical anatomy:
 - `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
   padding, an adaptive grid with 220pt minimum columns and 16pt row/column gaps.
   The 1200pt launcher shows four cards in each row.
-- A launcher tool card is at least 110pt high at default text sizes, with 12pt outer
+- A launcher tool card is at least 172pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
-  name; two lines of 12pt secondary description; an unlabeled mini enable switch
+  name; up to five lines of 12pt secondary description so the current built-in
+  copy stays visible; an unlabeled mini enable switch
   bottom-leading; and a native small `Open` button bottom-trailing.
   Rest is 0.03. Hover is 0.06
   with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,

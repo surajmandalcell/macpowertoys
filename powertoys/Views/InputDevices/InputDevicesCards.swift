@@ -109,8 +109,6 @@ private struct InputCardHeader<Accessory: View>: View {
 }
 
 struct InputDeviceCard: View {
-    @ScaledMetric(relativeTo: .caption) private var labelWidth: CGFloat = 64
-
     let device: InputDeviceDescriptor
     let profile: InputScrollProfile
     let state: InputControlState
@@ -125,12 +123,13 @@ struct InputDeviceCard: View {
                 InputStateLabel(state: state)
             }
             QuietDivider()
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
-                ForEach(Array(stride(from: 0, to: rows.count, by: 2)), id: \.self) { index in
-                    GridRow {
-                        cell(rows[index])
-                        if index + 1 < rows.count { cell(rows[index + 1]) } else { Color.clear.gridCellColumns(2) }
-                    }
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible())],
+                alignment: .leading,
+                spacing: 8
+            ) {
+                ForEach(rows, id: \.label) { row in
+                    cell(row)
                 }
             }
         }
@@ -163,11 +162,10 @@ struct InputDeviceCard: View {
     }
 
     private func cell(_ row: Row) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(row.label)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .frame(width: labelWidth, alignment: .leading)
             Text(row.value ?? "—")
                 .font(row.monospaced && row.value != nil
                     ? .system(size: 11, design: .monospaced)
@@ -176,11 +174,12 @@ struct InputDeviceCard: View {
                 .textSelection(.enabled)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .font(.system(size: 11))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(row.label): \(row.value ?? "Not reported")")
+        .help(row.value ?? "Not reported")
     }
 }
 

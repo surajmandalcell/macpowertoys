@@ -344,7 +344,7 @@
   row and the narrow columns truncated `Reverse horizontal` and
   `Horizontal scrolling` until they read as one control.
 - **Invariant:** Both card kinds keep one fixed anatomy. A device card always
-  renders the same twelve detail rows and prints an em dash for a value macOS
+  renders the same eleven detail rows and prints an em dash for a value macOS
   does not report. Both scroll profile cards render the same six labeled rows,
   including horizontal scrolling and smooth wheel steps for the mouse and the
   trackpad. Never gate a row on the presence of data or on the device kind, and
