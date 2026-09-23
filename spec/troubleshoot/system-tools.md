@@ -354,6 +354,19 @@
   compare `fittingSize.height`. A fully reported mouse and an all-nil trackpad
   must measure the same height.
 
+## Input Devices Metadata Clipping
+
+- **Symptom:** Device card values appear as fragments such as `V...or` and
+  `3...×` at the normal Input Devices window width.
+- **Cause:** Each metadata item occupied half a card while its fixed-width label
+  and value also sat side by side, leaving too little width for the value.
+- **Invariant:** Keep two equal card columns and eleven metadata fields, but
+  stack each field's label above its value. Keep the full value in its
+  accessibility label and native tooltip when a long identifier is truncated.
+- **Check:** Inspect both cards in the current signed app at 980pt. Values such
+  as Vendor, Device ID, Firmware, and Scroll speed remain readable, and both
+  cards stay equal in height.
+
 ## Input Devices Scroll Settings Ownership
 
 - **Symptom:** The launcher detail page and the Scrolling page show different

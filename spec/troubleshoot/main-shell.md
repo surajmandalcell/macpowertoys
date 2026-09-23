@@ -1,5 +1,16 @@
 # Main Shell Troubleshooting
 
+## Launcher Card Description Height
+
+- **Symptom:** Tool descriptions end in an ellipsis after two lines while most
+  of the launcher window remains empty.
+- **Cause:** Every card had a two-line text limit and a 110pt minimum height,
+  even though the built-in descriptions need up to five lines at four columns.
+- **Invariant:** Keep the four-column 1,200pt launcher layout and give its cards
+  enough height for the complete built-in copy at the standard text size.
+- **Check:** In the current signed app, inspect all ten built-in cards. Their
+  descriptions are complete and their Open and enable controls remain aligned.
+
 ## Compact Tool Enablement
 
 - **Symptom:** Tool cards or detail pages spend one row on an `Enabled` label
