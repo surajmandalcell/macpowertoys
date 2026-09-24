@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct AddRemoteSheet: View {
@@ -84,7 +83,7 @@ struct AddRemoteSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.2), value: manager.authState)
+            .utilityAnimation(value: manager.authState)
 
             QuietDivider()
             footer
@@ -183,7 +182,7 @@ struct AddRemoteSheet: View {
                     }
                 }
                 .padding(20)
-                .animation(.easeInOut(duration: 0.16), value: selectedAuthenticationMode)
+                .utilityAnimation(value: selectedAuthenticationMode)
             }
             .thinScrollIndicators()
         }
@@ -459,6 +458,7 @@ private struct AuthenticationModeTab: View {
         .focusEffectDisabled()
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
+        .utilityAnimation(value: isSelected || isHovering, duration: UtilityMotion.interactionDuration)
         .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
@@ -489,9 +489,11 @@ private struct ProviderDropdown: View {
     private func trigger(width: CGFloat) -> some View {
         Button { isPresented.toggle() } label: {
             HStack(spacing: 8) {
-                TickerText(text: selectedName)
-                    .frame(maxWidth: .infinity)
-                    .id(selectedName)
+                Text(selectedName)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
@@ -505,6 +507,7 @@ private struct ProviderDropdown: View {
         .buttonStyle(.plain)
         .focusEffectDisabled()
         .onHover { isHoveringButton = $0 }
+        .utilityAnimation(value: isHoveringButton, duration: UtilityMotion.interactionDuration)
         .help(selectedName)
         .accessibilityLabel("Connector")
         .accessibilityValue(selectedName)
@@ -553,8 +556,11 @@ private struct ProviderDropdown: View {
                     .font(.system(size: 10, weight: .medium))
                     .opacity(selection == provider.id ? 1 : 0)
                     .frame(width: 12)
-                TickerText(text: provider.displayName)
-                    .frame(maxWidth: .infinity)
+                Text(provider.displayName)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 10)
             .frame(height: Self.rowHeight)
@@ -572,48 +578,5 @@ private struct ProviderDropdown: View {
 
     private var listHeight: CGFloat {
         min(max(CGFloat(providers.count), 1) * Self.rowHeight, Self.maximumListHeight)
-    }
-}
-
-private struct TickerText: View {
-    private static let gap: CGFloat = 24
-    private static let pointsPerSecond: CGFloat = 24
-
-    let text: String
-    @State private var isScrolling = false
-
-    var body: some View {
-        GeometryReader { geometry in
-            if textWidth > geometry.size.width {
-                HStack(spacing: Self.gap) {
-                    label
-                    label.accessibilityHidden(true)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-                .offset(x: isScrolling ? -(textWidth + Self.gap) : 0)
-                .animation(
-                    .linear(duration: Double((textWidth + Self.gap) / Self.pointsPerSecond))
-                        .repeatForever(autoreverses: false),
-                    value: isScrolling
-                )
-                .onAppear { isScrolling = true }
-            } else {
-                label
-            }
-        }
-        .frame(height: 16)
-        .clipped()
-        .accessibilityLabel(text)
-    }
-
-    private var label: some View {
-        Text(text)
-            .font(.system(size: 12))
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private var textWidth: CGFloat {
-        ceil((text as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 12)]).width)
     }
 }

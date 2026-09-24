@@ -108,6 +108,19 @@
   short feedback and crossfades. Reduce Motion gives no movement, fade, pulse,
   or numeric animation. Idle windows do not animate or wake for motion.
 
+## Cloud Sync Connector Labels
+
+- **Symptom:** Long connector names scroll continuously while Add Remote is
+  open and idle.
+- **Cause:** The label uses a repeating marquee animation.
+- **Invariant:** Truncate a long label at the available width and expose its
+  complete name through the existing tooltip and accessibility value. The
+  picker runs no animation while idle; hover and auth-state transitions use
+  the shared, Reduce Motion-aware timings.
+- **Check:** Leave Add Remote open with a long connector name and confirm no
+  label moves. Hover and change auth state in normal and Reduce Motion modes;
+  require short feedback only in normal mode.
+
 ## Settings Row Alignment
 
 - **Symptom:** Toggles, pickers, and option groups float in the middle of a card
