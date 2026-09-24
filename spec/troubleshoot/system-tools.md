@@ -503,6 +503,19 @@
 
 ## Background Resource Ownership
 
+- **Symptom:** An enabled Dev Sync pair wakes five times a second when no
+  files changed and no reconciliation is pending.
+- **Cause:** Its scheduler loop checked the dirty queue every 200 ms, even
+  after the queue became empty.
+- **Invariant:** Sleep until the next due generation. When none exists, park
+  the loop and wake it on file events, manual sync, configuration changes, or
+  remount. Cancel the sleep and loop when the pair stops. A file event only
+  reschedules the deadline; it does not start reconciliation early.
+- **Check:** Keep an enabled pair idle and confirm no periodic scheduler work.
+  Then edit a file and require one debounced operation. Repeat after a remount,
+  rapid edits, a manual Sync Now, and stop/start; no generation may be lost or
+  duplicated.
+
 - **Symptom:** Reopening a window or enabling a tool several times increases
   timers, watchers, event taps, helpers, status items, or idle resource use.
 - **Cause:** Start paths were not idempotent, or a close and disable path did not

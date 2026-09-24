@@ -60,6 +60,8 @@ actor DevSyncPairEngine {
     private var internalStream: DevEventStream?
     private var externalStream: DevEventStream?
     private var schedulerLoop: Task<Void, Never>?
+    private var schedulerSleepTask: Task<Void, Never>?
+    private var schedulerWakeVersion = 0
     private var activeRunner: DevOperationRunner?
     private var driftByProject: [UUID: [String]] = [:]
     private var activeGeneration: DevDirtyGeneration?
@@ -129,7 +131,9 @@ actor DevSyncPairEngine {
     func stop() async {
         running = false
         schedulerLoop?.cancel()
+        schedulerSleepTask?.cancel()
         schedulerLoop = nil
+        schedulerSleepTask = nil
         internalStream?.stop()
         externalStream?.stop()
         internalStream = nil
@@ -179,6 +183,7 @@ actor DevSyncPairEngine {
         }
         startEventStreams()
         await processNextDue()
+        startSchedulerLoop()
     }
 
     func volumeWillUnmount(_ url: URL) async {
@@ -213,13 +218,19 @@ actor DevSyncPairEngine {
             await scheduler.requestNow(projectID: project.id, reason: .userRequested)
         }
         try? await persistSchedulerState()
-        Task { await self.processNextDue() }
+        Task {
+            await self.processNextDue()
+            self.startSchedulerLoop()
+        }
     }
 
     func syncProject(_ projectID: UUID) async {
         await scheduler.requestNow(projectID: projectID, reason: .userRequested)
         try? await persistSchedulerState()
-        Task { await self.processNextDue() }
+        Task {
+            await self.processNextDue()
+            self.startSchedulerLoop()
+        }
     }
 
     func verifyNow() async {
@@ -446,7 +457,10 @@ actor DevSyncPairEngine {
         linkManager = DevManagedLinkManager(pair: pair, stateStore: stateStore)
         try? await savePair()
         for project in projectValues { await scheduler.requestNow(projectID: project.id, reason: .policyChanged) }
-        Task { await self.processNextDue() }
+        Task {
+            await self.processNextDue()
+            self.startSchedulerLoop()
+        }
     }
 
     func status() -> DevPairStatus { statusValue }
@@ -754,6 +768,7 @@ actor DevSyncPairEngine {
         try? await stateStore.saveCursors(cursors, pairID: pair.id)
         if batch.mustRescanRoot {
             await scheduler.noteFullRescan(side: side, projectID: nil, reason: .droppedEvents)
+            startSchedulerLoop()
         } else {
             let rootPath = root.standardizedFileURL.path
             let paths = batch.events.compactMap { event -> String? in
@@ -766,12 +781,34 @@ actor DevSyncPairEngine {
     }
 
     private func startSchedulerLoop() {
-        guard running, schedulerLoop == nil else { return }
+        guard running else { return }
+        schedulerWakeVersion &+= 1
+        schedulerSleepTask?.cancel()
+        guard schedulerLoop == nil else { return }
         schedulerLoop = Task { [weak self] in
-            while !Task.isCancelled {
-                await self?.processNextDue()
-                try? await Task.sleep(for: .milliseconds(200))
+            guard let self else { return }
+            await self.runSchedulerLoop()
+        }
+    }
+
+    private func runSchedulerLoop() async {
+        while !Task.isCancelled {
+            let version = schedulerWakeVersion
+            let nextDue = if !paused && volumeOnline {
+                await scheduler.nextDueDate()
+            } else {
+                Optional<Date>.none
             }
+            guard !Task.isCancelled, running else { break }
+            let delay = nextDue.map { max(0.2, $0.timeIntervalSince(now())) } ?? 3_600
+            let sleep = Task { _ = try? await Task.sleep(for: .seconds(delay)) }
+            schedulerSleepTask = sleep
+            if version != schedulerWakeVersion { sleep.cancel() }
+            await sleep.value
+            if version == schedulerWakeVersion { schedulerSleepTask = nil }
+            guard !Task.isCancelled, running else { break }
+            guard version == schedulerWakeVersion else { continue }
+            await processNextDue()
         }
     }
 
