@@ -1,13 +1,13 @@
 # System Tools Request List
 
-Reviewed against current source on 2026-09-21. Update this list when a direct
+Reviewed against current source on 2026-09-24. Update this list when a direct
 user correction or verified result changes a status.
 
 ## NetToys
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Audit NetToys logic and keep idle and import work light. | The installed app, rclone, and NetToys helper each sampled at 0.0% CPU while idle. NetToys retains its required heartbeat and network-history cadence. Scanner imports now have byte and entry limits, parse selected files off the main actor, ignore full-line comments, and preserve address-limit errors. All focused NetToys tests pass. | Verify the exact signed installed app and a selected-file import. |
+| Verify | Audit NetToys logic and keep idle and import work light. | The signed installed `e1b9384` app and helper source stamps match. With no transfer or NetToys probe pending, the app, rclone, login helper, and neighbor daemon each sampled at 0.0% CPU; the warm-minute helper average was about 0.17% of one CPU. NetToys retains its required heartbeat and network-history cadence. Scanner imports have byte and entry limits, parse selected files off the main actor, ignore full-line comments, and preserve address-limit errors. Focused NetToys and the exact-commit complete suite pass. | Exercise a selected-file import in the physical signed app. |
 | Done | Add persistent, expandable NetToys tray activity. | `d06c96c` adds independent AppStorage-backed SSH Anchor, Wi-Fi Priority, and Network History disclosures, bounds every preview to five items, and routes each footer to its complete NetToys page without adding a poller. Focused layout and rendered expanded-state tests pass, and the exact signed installed `d06c96c` build matches clean HEAD. | None. |
 | Verify | Make NetToys useful from the tray and add page-level SSH Anchor and Wi-Fi Priority switches beside Refresh. | `7504bc2` gives the tray current-network status plus persisted SSH Anchor, Wi-Fi Priority, and Network History controls without another poller. It adds one backward-compatible global SSH Anchor gate that preserves per-anchor choices but skips all anchor probes while off. SSH Anchor and Wi-Fi Priority pages place their switch immediately before Refresh. The configuration regression and rendered dark tray pass. | Inspect both page switches and the tray controls in the exact signed installed build, then confirm the helper stops the corresponding request class while each switch is off. |
 | Done | Clear Network History from both Network History and NetToys Settings. | Both surfaces use `NetToysHistoryViewModel.clear()`, show the same destructive confirmation, clear uptime, transitions, and recent IP scans, and leave recording enabled for a fresh history. The signed installed `3c20d0a` build cleared all three stores, disabled both reset actions, reset IP Scanner results to zero, and showed the empty uptime, recent scans, and transitions states. The complete test suite passes. | None. |
