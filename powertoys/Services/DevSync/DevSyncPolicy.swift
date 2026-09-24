@@ -121,8 +121,8 @@ nonisolated final class DevFilePolicyEngine: Sendable {
             gitTracked?.contains(path) == true
                 || input.kind == .directory && gitTrackedDirectories?.contains(path) == true
         )
-        let inSkipList = policy.skipCommonCaches && Self.isCommonCachePath(path)
-            || policy.skipUnignoredBuildOutputs && Self.isBuildOutputPath(path)
+        let inBuildOutput = policy.skipUnignoredBuildOutputs && Self.isBuildOutputPath(path)
+        let inSkipList = inCache || inBuildOutput
         if tracked || manifestMember && !inSkipList {
             return .include(
                 .gitTracked,
@@ -144,10 +144,10 @@ nonisolated final class DevFilePolicyEngine: Sendable {
         if isHardExcluded(path: path, name: name) {
             return .exclude(.commonExclusion)
         }
-        if policy.skipCommonCaches && Self.isCommonCachePath(path) {
+        if inCache {
             return .exclude(.commonExclusion)
         }
-        if policy.skipUnignoredBuildOutputs && Self.isBuildOutputPath(path) {
+        if inBuildOutput {
             return .exclude(.buildOutputExclusion)
         }
         return .include(
