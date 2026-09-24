@@ -516,6 +516,19 @@
   rapid edits, a manual Sync Now, and stop/start; no generation may be lost or
   duplicated.
 
+- **Symptom:** Cloud Sync's launch setting leaves its daemon and poller awake
+  every 700 ms even though no transfer can advance.
+- **Cause:** The poll loop used its active-transfer interval for an empty or
+  fully paused queue.
+- **Invariant:** An empty or fully paused engine checks daemon health every 5
+  seconds. Queued, running, and retrying work retains 700 ms progress polling.
+  Creating, resuming, or retrying a transfer submits it immediately when the
+  daemon is ready and wakes the poller, so idle sleep never delays progress.
+- **Check:** With Start at Launch enabled and no active transfer, measure the
+  signed app and rclone at idle. Start a local copy and require an immediate
+  running state followed by normal progress and completion. Resume and retry
+  must also wake the loop without duplicate submissions.
+
 - **Symptom:** Reopening a window or enabling a tool several times increases
   timers, watchers, event taps, helpers, status items, or idle resource use.
 - **Cause:** Start paths were not idempotent, or a close and disable path did not
