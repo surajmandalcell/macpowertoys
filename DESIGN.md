@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 name: MacPowerToys
 description: Design language for MacPowerToys and its child tools
 colors:
@@ -95,6 +95,10 @@ components:
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
   section-card: { radius: 10, bg: colors.card-detail, padding: spacing.card-padding }
   progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
+motion:
+  interaction-duration: 0.12
+  content-duration: 0.16
+  idle-animation: none
 ---
 
 # MacPowerToys Design Language
@@ -107,8 +111,10 @@ color doing all the talking, small type, generous alignment discipline, zero
 decoration for its own sake. Nothing bounces, glows, or gradients. When in doubt,
 remove chrome rather than add it.
 
-Animations exist only to prevent jarring layout jumps (0.15–0.18s easeInOut) —
-never as ornament.
+Every custom interactive control gives short feedback on hover, press, and
+selection. Content and layout changes keep the existing 0.16-second transition.
+Motion starts from an interaction or a real state change and stops when it ends;
+an idle window never animates. Reduce Motion makes these changes immediate.
 
 This document is the complete visual and window-structure contract. A tool's
 product brief still owns its purpose, operations, data, copy, and domain states.
@@ -1013,8 +1019,8 @@ same metaphor because macOS controls their tint.
 - **Never** add a second alignment gutter inside one container.
 - **Never** use `.formStyle(.grouped)` where its opaque insets break the shared
   edge. Prefer explicit section cards and labeled rows.
-- **Do** animate layout-changing state (0.15–0.18s easeInOut) so cards never
-  snap-resize; **don't** animate anything else.
+- **Do** animate custom-control hover and press feedback in 0.12 seconds and
+  layout or content changes in 0.16 seconds. Do not run idle motion loops.
 - **Do** give every interactive element `.contentShape(Rectangle())` and a
   `.help()` tooltip when the icon isn't self-evident.
 - A tab strip aligns by the leading pill boundary, not its inset text. That

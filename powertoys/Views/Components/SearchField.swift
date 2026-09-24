@@ -48,6 +48,7 @@ struct NativeSearchField: NSViewRepresentable {
 }
 
 struct SidebarSearchField: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var text: String
     var placeholder: String = "Search..."
     var isLoading: Bool = false
@@ -74,8 +75,10 @@ struct SidebarSearchField: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                 .focusEffectDisabled()
+                .accessibilityLabel("Clear search")
+                .help("Clear search")
             }
 
             if let deepSearch = deepSearchEnabled {
@@ -87,10 +90,18 @@ struct SidebarSearchField: View {
                         .foregroundStyle(deepSearch.wrappedValue ? Color.accentColor : .secondary)
                         .opacity(deepSearch.wrappedValue || isHoveringDeepSearch ? 1.0 : 0.5)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                 .focusEffectDisabled()
+                .animation(
+                    UtilityMotion.animation(
+                        reduceMotion: reduceMotion,
+                        duration: UtilityMotion.interactionDuration
+                    ),
+                    value: isHoveringDeepSearch
+                )
                 .onHover { isHoveringDeepSearch = $0 }
                 .help(deepSearch.wrappedValue ? "Deep search enabled (searching content)" : "Enable deep search (search message content)")
+                .accessibilityLabel("Deep search")
             }
         }
         .padding(8)

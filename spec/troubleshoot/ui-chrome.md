@@ -92,18 +92,21 @@
 - **Check:** Search every SwiftUI view for `Divider()`. Only the shared divider
   implementation and native menu or command separators can remain.
 
-## Layout Motion
+## Interaction And Layout Motion
 
-- **Symptom:** Pages, result sets, status surfaces, or window-height changes
-  snap, or Reduce Motion still permits a fade or numeric transition.
-- **Cause:** Layout state changed without the shared motion policy, or a local
-  animation bypassed the accessibility environment.
-- **Invariant:** Use a 0.16-second ease-in-out transition only for layout or
-  content changes. Apply the root motion policy to every window and menu-bar
-  panel. Reduce Motion makes all state changes immediate.
-- **Check:** Change pages and load results in every app family. Repeat with
-  Reduce Motion enabled. Normal mode uses short crossfades. Reduce Motion uses
-  no movement, fade, pulse, or numeric animation.
+- **Symptom:** Custom controls snap between hover and press states, content
+  changes snap, or Reduce Motion still permits a fade or numeric transition.
+- **Cause:** Interactive surfaces changed state without the shared motion
+  policy, or a local animation bypassed the accessibility environment.
+- **Invariant:** Animate custom-control hover and press feedback for 0.12
+  seconds and layout or content changes for 0.16 seconds. Motion is driven only
+  by interactions or actual state changes; an idle window never animates.
+  Apply the root motion policy to every window and menu-bar panel. Reduce
+  Motion makes every state change immediate.
+- **Check:** Hover and press shared controls, change pages, and load results
+  in every app family. Repeat with Reduce Motion enabled. Normal mode gives
+  short feedback and crossfades. Reduce Motion gives no movement, fade, pulse,
+  or numeric animation. Idle windows do not animate or wake for motion.
 
 ## Settings Row Alignment
 
