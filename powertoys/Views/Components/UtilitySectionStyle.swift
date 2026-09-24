@@ -64,6 +64,7 @@ enum UtilityLayout {
 
 enum UtilityMotion {
     static let standardDuration = 0.16
+    static let interactionDuration = 0.12
 
     static func animation(
         reduceMotion: Bool,
@@ -110,6 +111,7 @@ struct UtilityInteractionButtonStyle: ButtonStyle {
 
     private struct Body<Label: View>: View {
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var isHovering = false
 
         let label: Label
@@ -120,18 +122,23 @@ struct UtilityInteractionButtonStyle: ButtonStyle {
             label
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(highlightColor)
+                        .fill(Color.primary.opacity(highlightOpacity))
+                )
+                .animation(
+                    UtilityMotion.animation(
+                        reduceMotion: reduceMotion,
+                        duration: UtilityMotion.interactionDuration
+                    ),
+                    value: highlightOpacity
                 )
                 .onHover { isHovering = isEnabled && $0 }
         }
 
-        private var highlightColor: Color {
-            Color.primary.opacity(
-                UtilityInteractionButtonStyle.highlightOpacity(
-                    isEnabled: isEnabled,
-                    isHovering: isHovering,
-                    isPressed: isPressed
-                )
+        private var highlightOpacity: Double {
+            UtilityInteractionButtonStyle.highlightOpacity(
+                isEnabled: isEnabled,
+                isHovering: isHovering,
+                isPressed: isPressed
             )
         }
     }

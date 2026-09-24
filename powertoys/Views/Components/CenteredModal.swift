@@ -15,7 +15,7 @@ struct UtilityModalCloseButton: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 24, height: 24)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .focusEffectDisabled()
         .contentShape(Rectangle())
         .help("Close")
@@ -24,6 +24,7 @@ struct UtilityModalCloseButton: View {
 }
 
 struct CenteredModal<Content: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isPresented: Bool
     let title: String
     let width: CGFloat
@@ -73,7 +74,7 @@ struct CenteredModal<Content: View>: View {
     }
 
     private func dismiss() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
             isPresented = false
         }
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FloatingSettingsButton: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isActive: Bool
     let helpText: String
     let action: () -> Void
@@ -17,6 +18,20 @@ struct FloatingSettingsButton: View {
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
+        .animation(
+            UtilityMotion.animation(
+                reduceMotion: reduceMotion,
+                duration: UtilityMotion.interactionDuration
+            ),
+            value: isHovering
+        )
+        .animation(
+            UtilityMotion.animation(
+                reduceMotion: reduceMotion,
+                duration: UtilityMotion.interactionDuration
+            ),
+            value: isActive
+        )
         .onHover { isHovering = $0 }
         .help(helpText)
     }

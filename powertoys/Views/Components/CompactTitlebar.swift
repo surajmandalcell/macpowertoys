@@ -56,6 +56,7 @@ struct CompactTitlebarButton: View {
 }
 
 struct CompactTitlebarControlLabel<Content: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isPrimary: Bool
     let foregroundStyle: AnyShapeStyle
     let content: Content
@@ -85,6 +86,13 @@ struct CompactTitlebarControlLabel<Content: View>: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: UtilityLayout.compactTitlebarControlRadius))
             .contentShape(Rectangle())
+            .animation(
+                UtilityMotion.animation(
+                    reduceMotion: reduceMotion,
+                    duration: UtilityMotion.interactionDuration
+                ),
+                value: isHovering
+            )
             .onHover { isHovering = $0 }
     }
 }
