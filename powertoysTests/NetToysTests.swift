@@ -697,6 +697,33 @@ final class NetToysTests: XCTestCase {
         }
     }
 
+    func testScanTargetInputReportsAddressLimit() {
+        XCTAssertThrowsError(try NetToysTargetInput.parse("10.0.0.0/8")) { error in
+            XCTAssertEqual(error as? NetToysTargetInput.ParseError, .tooMany(65_536))
+        }
+        XCTAssertThrowsError(try NetToysTargetInput.parse("host-a host-b host-c", limit: 2)) { error in
+            XCTAssertEqual(error as? NetToysTargetInput.ParseError, .tooMany(2))
+        }
+    }
+
+    func testFileImportBoundsReadsAndValidatesTargets() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let content = Data("10.0.0.1\n# note\nhost.local\n".utf8)
+        try content.write(to: url)
+
+        XCTAssertEqual(try NetToysFileImport.read(url, maximumBytes: content.count), content)
+        XCTAssertEqual(try NetToysFileImport.targets(from: url), "10.0.0.1, host.local")
+        XCTAssertThrowsError(try NetToysFileImport.read(url, maximumBytes: content.count - 1)) { error in
+            XCTAssertEqual(error as? NetToysFileImport.ImportError, .tooLarge(content.count - 1))
+        }
+
+        try Data([0xFF]).write(to: url)
+        XCTAssertThrowsError(try NetToysFileImport.targets(from: url)) { error in
+            XCTAssertEqual(error as? NetToysFileImport.ImportError, .invalidTextEncoding)
+        }
+    }
+
     func testScanTargetResolverResolvesLocalhostAndKeepsPerTargetPort() async throws {
         let targets = try await NetToysTargetResolver.resolve("localhost:2222", defaultPorts: [22, 80])
 
