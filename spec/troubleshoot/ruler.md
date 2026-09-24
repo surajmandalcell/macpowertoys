@@ -1,5 +1,19 @@
 # Ruler Troubleshooting
 
+## Automated Ruler Window Checks
+
+- **Symptom:** A macOS logout confirmation appeared during app-scoped shortcut
+  attempts to dismiss the borderless Ruler overlay; Ruler remained open.
+- **Cause:** The keyboard delivery target could not be verified from the
+  borderless overlay. The Ruler accessibility state stayed unchanged after the
+  shortcut calls, so continuing with another key was unsafe.
+- **Invariant:** Once the Ruler overlay is open, keep automation read-only unless
+  an explicit visible Ruler control can be used without changing the owner's
+  focus. Do not send keyboard shortcuts or click the covered launcher.
+- **Check:** Confirm the overlay by app-scoped screenshot and accessibility
+  state, then stop UI input. If a system session dialog appears, ask the owner
+  to use Cancel before continuing with non-GUI verification.
+
 ## FreeRuler Parity Drift
 
 - **Symptom:** The MacPowerToys Ruler overlay has different geometry, controls,
