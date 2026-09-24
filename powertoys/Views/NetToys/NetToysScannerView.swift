@@ -105,6 +105,7 @@ final class NetToysScannerViewModel {
     var lastDuration: TimeInterval?
     var errorMessage: String?
     var isScanning = false
+    var isImporting = false
     var timeoutMilliseconds = 750
     var concurrency = 64
     var launchDelayMilliseconds = 0
@@ -305,7 +306,7 @@ final class NetToysScannerViewModel {
     }
 
     func start(targets override: [IPv4Address]? = nil) {
-        guard !isScanning else { return }
+        guard !isScanning, !isImporting else { return }
         _ = NetToysNeighborServiceManager.shared.enable()
         do {
             var defaultPorts = try PortList.parse(portInput)
@@ -420,18 +421,24 @@ final class NetToysScannerViewModel {
     }
 
     func importTargets() {
+        guard !isScanning, !isImporting else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.plainText]
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url,
-              let text = try? String(contentsOf: url, encoding: .utf8)
-        else { return }
-        let targets = text.split(whereSeparator: \.isNewline).compactMap { line -> String? in
-            let value = line.split(separator: "#", maxSplits: 1).first?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return value.isEmpty ? nil : value
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        isImporting = true
+        Task { [weak self] in
+            do {
+                let targets = try await Task.detached(priority: .userInitiated) {
+                    try NetToysFileImport.targets(from: url)
+                }.value
+                self?.targetInput = targets
+                self?.errorMessage = nil
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
+            self?.isImporting = false
         }
-        targetInput = targets.joined(separator: ", ")
     }
 
     func export(_ format: NetToysExportFormat, rows: [NetToysScanResult]) {
@@ -483,15 +490,28 @@ final class NetToysScannerViewModel {
     }
 
     func loadResults() {
+        guard !isScanning, !isImporting else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "nettoys") ?? .data]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            replaceResults(try NetToysScanImport.savedResults(Data(contentsOf: url)))
-            lastDuration = nil
-        } catch {
-            errorMessage = error.localizedDescription
+        isImporting = true
+        Task { [weak self] in
+            do {
+                let results = try await Task.detached(priority: .userInitiated) {
+                    let data = try NetToysFileImport.read(
+                        url,
+                        maximumBytes: NetToysFileImport.resultsByteLimit
+                    )
+                    return try NetToysScanImport.savedResults(data)
+                }.value
+                self?.replaceResults(results)
+                self?.lastDuration = nil
+                self?.errorMessage = nil
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
+            self?.isImporting = false
         }
     }
 
@@ -714,7 +734,9 @@ struct NetToysScannerView: View {
                 }
                 Button("Random Addresses…") { showRandomTargets = true }
                 Button("Import Target List…") { model.importTargets() }
+                    .disabled(model.isScanning || model.isImporting)
                 Button("Load Saved Results…") { model.loadResults() }
+                    .disabled(model.isScanning || model.isImporting)
                 Divider()
                 Button(model.favoriteTargets.contains(model.targetInput)
                     ? "Remove Current Favorite"
@@ -729,10 +751,15 @@ struct NetToysScannerView: View {
                     }
                 }
             } label: {
-                Image(systemName: "ellipsis.circle")
+                if model.isImporting {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "ellipsis.circle")
+                }
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
+            .accessibilityLabel(model.isImporting ? "Importing scan file" : "More scan options")
 
             if model.isScanning {
                 Button("Stop", role: .cancel) { model.cancel() }
@@ -740,6 +767,7 @@ struct NetToysScannerView: View {
                 Button("Scan") { model.start() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.return, modifiers: [])
+                    .disabled(model.isImporting)
             }
         }
         .controlSize(.small)

@@ -18,6 +18,23 @@
   and confirm all three states remain. Confirm every list is capped at five and
   its full-page route selects the matching destination.
 
+## NetToys Scanner Imports
+
+- **Symptom:** A target list with a full-line `#` comment treats the comment as
+  a hostname, a large file can stall the scanner window, and oversized IPv4
+  ranges report a generic invalid-target error.
+- **Cause:** `split` omitted the empty prefix before `#`; file reads and JSON
+  decoding ran without a byte limit on the main actor; the target parser
+  discarded the IPv4 address-limit error while trying hostname parsing.
+- **Invariant:** Strip comments before parsing. Bound target lists to 2 MiB,
+  saved scan files to 32 MiB, and target entries to the resolver limit. Parse
+  and decode selected files off the main actor. Keep Scan and other imports
+  disabled until the current import finishes, and report a precise error.
+- **Check:** Import a mixed IPv4, hostname, and commented target list; reject
+  an oversized file and invalid UTF-8; require the address and hostname limits
+  to report the same target-limit error. Confirm the scanner remains responsive
+  during a selected-file import.
+
 ## NetToys History Loading
 
 - **Symptom:** Opening NetToys, its launcher settings, or the tray tab stalls

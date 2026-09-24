@@ -131,7 +131,7 @@ nonisolated enum NetToysTargetInput: Equatable, Sendable {
             switch self {
             case .invalid(let value): "Invalid scan target: \(value)"
             case .unsupportedIPv6(let value): "IPv6 scanning is not supported for this target: \(value)"
-            case .tooMany(let limit): "The target contains more than \(limit) addresses."
+            case .tooMany(let limit): "The scan exceeds the \(limit)-target limit."
             }
         }
     }
@@ -142,15 +142,24 @@ nonisolated enum NetToysTargetInput: Equatable, Sendable {
         var result: [Self] = []
         var addressCount = 0
         for part in parts {
+            guard result.count < limit else { throw ParseError.tooMany(limit) }
             let token = String(part)
             let (target, port) = try splitPort(token)
             if target.contains(":") { throw ParseError.unsupportedIPv6(token) }
-            if let addresses = try? IPv4Targets.parse(target, limit: max(1, limit - addressCount)) {
+            let addresses: [IPv4Address]
+            do {
+                addresses = try IPv4Targets.parse(target, limit: max(1, limit - addressCount))
+            } catch IPv4Targets.ParseError.tooMany {
+                throw ParseError.tooMany(limit)
+            } catch {
+                guard isHostname(target) else { throw ParseError.invalid(token) }
+                result.append(.hostname(target, port: port))
+                continue
+            }
+            if !addresses.isEmpty {
                 addressCount += addresses.count
                 guard addressCount <= limit else { throw ParseError.tooMany(limit) }
                 result.append(.addresses(addresses, port: port))
-            } else if isHostname(target) {
-                result.append(.hostname(target, port: port))
             } else {
                 throw ParseError.invalid(token)
             }
@@ -1680,6 +1689,51 @@ nonisolated enum NetToysScanExport {
 
     private static func sqlQuote(_ value: String) -> String {
         "'\(value.replacingOccurrences(of: "'", with: "''"))'"
+    }
+}
+
+nonisolated enum NetToysFileImport {
+    static let targetByteLimit = 2 * 1_024 * 1_024
+    static let resultsByteLimit = 32 * 1_024 * 1_024
+
+    enum ImportError: LocalizedError, Equatable {
+        case tooLarge(Int)
+        case invalidTextEncoding
+
+        var errorDescription: String? {
+            switch self {
+            case .tooLarge(let limit):
+                "The selected file exceeds the \(ByteCountFormatter.string(fromByteCount: Int64(limit), countStyle: .file)) limit."
+            case .invalidTextEncoding:
+                "The target list must be UTF-8 text."
+            }
+        }
+    }
+
+    static func read(_ url: URL, maximumBytes: Int) throws -> Data {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var data = Data()
+        while let chunk = try handle.read(upToCount: maximumBytes + 1 - data.count),
+              !chunk.isEmpty {
+            data.append(chunk)
+            guard data.count <= maximumBytes else { throw ImportError.tooLarge(maximumBytes) }
+        }
+        return data
+    }
+
+    static func targets(from url: URL) throws -> String {
+        let data = try read(url, maximumBytes: targetByteLimit)
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw ImportError.invalidTextEncoding
+        }
+        let targets = text.split(whereSeparator: \.isNewline).compactMap { line -> String? in
+            let value = line.prefix(while: { $0 != "#" })
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.isEmpty ? nil : value
+        }.joined(separator: ", ")
+        _ = try NetToysTargetInput.parse(targets)
+        return targets
     }
 }
 
