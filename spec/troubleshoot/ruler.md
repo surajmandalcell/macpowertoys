@@ -12,7 +12,8 @@
   focus. Do not send keyboard shortcuts or click the covered launcher.
 - **Check:** Confirm the overlay by app-scoped screenshot and accessibility
   state, then stop UI input. If a system session dialog appears, ask the owner
-  to use Cancel before continuing with non-GUI verification.
+  to use Cancel before any further UI action or app replacement. Non-GUI
+  verification may continue.
 
 ## FreeRuler Parity Drift
 
