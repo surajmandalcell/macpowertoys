@@ -112,7 +112,7 @@ final class RcloneEngineTests: XCTestCase {
         let healthy = await waitFor(15) { manager.daemonIsHealthy }
         XCTAssertTrue(healthy, "The daemon should become healthy. Status: \(manager.daemonStatusText)")
 
-        manager.createTransfer(
+        let job = manager.createTransfer(
             operation: .copy,
             sourceFs: src.path,
             destinationFs: dst.path,
@@ -120,6 +120,7 @@ final class RcloneEngineTests: XCTestCase {
             destinationDisplay: "dst",
             extraExcludes: []
         )
+        XCTAssertEqual(job.state, .running, "An idle engine should start a new transfer immediately.")
 
         let completed = await waitFor(30) { manager.jobs.first?.state == .completed }
         XCTAssertTrue(completed, "The copy should complete. State: \(String(describing: manager.jobs.first?.state)). Error: \(manager.jobs.first?.errorMessage ?? "nil")")

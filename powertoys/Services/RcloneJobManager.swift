@@ -125,6 +125,7 @@ final class RcloneJobManager {
     private var idleShutdownTask: Task<Void, Never>?
 
     private let pollInterval: Duration = .milliseconds(700)
+    private let idlePollInterval: Duration = .seconds(5)
     private let continuousSyncDelay: Duration = .seconds(30)
 
     // MARK: Settings
@@ -871,6 +872,7 @@ final class RcloneJobManager {
         startSourceWatcher(for: job)
         persistJobsSoon()
         LogManager.shared.info("Queued \(operation.displayName): \(sourceDisplay) → \(destinationDisplay)", source: "RcloneJobManager")
+        promoteQueuedJobsIfReady()
         return job
     }
 
@@ -1037,6 +1039,7 @@ final class RcloneJobManager {
         job.nextRetryAt = nil
         persistJobsSoon()
         LogManager.shared.info("Resumed: \(job.sourceDisplay) → \(job.destinationDisplay)", source: "RcloneJobManager")
+        promoteQueuedJobsIfReady()
     }
 
     func setExpanded(_ expanded: Bool, for job: TransferJob) {
@@ -1066,6 +1069,7 @@ final class RcloneJobManager {
         for job in jobs where job.canResume {
             resume(job)
         }
+        promoteQueuedJobsIfReady()
     }
 
     // MARK: Volume watch (external drives)
@@ -1224,6 +1228,7 @@ final class RcloneJobManager {
         job.autoResumeOnLaunch = false
         startSourceWatcher(for: job)
         persistJobsSoon()
+        promoteQueuedJobsIfReady()
     }
 
     func remove(_ job: TransferJob) {
@@ -1252,7 +1257,10 @@ final class RcloneJobManager {
             while !Task.isCancelled {
                 guard let self else { break }
                 await self.tick()
-                try? await Task.sleep(for: self.pollInterval)
+                let hasPendingWork = self.jobs.contains {
+                    $0.state == .queued || $0.state == .running || $0.state == .retrying
+                }
+                try? await Task.sleep(for: hasPendingWork ? self.pollInterval : self.idlePollInterval)
             }
         }
     }
@@ -1483,6 +1491,13 @@ final class RcloneJobManager {
             submit(job, client: client)
             runningCount += 1
         }
+    }
+
+    private func promoteQueuedJobsIfReady() {
+        if daemon.isRunning, let client {
+            promoteQueuedJobs(client: client)
+        }
+        if pollTask != nil { startPolling() }
     }
 
     static func orderedReadyJobs(_ jobs: [TransferJob], at now: Date = Date()) -> [TransferJob] {
