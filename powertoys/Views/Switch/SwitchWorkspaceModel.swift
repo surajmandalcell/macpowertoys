@@ -131,12 +131,13 @@ final class SwitchWorkspaceModel {
         usageLoading.insert(id)
         usageErrors.removeValue(forKey: id)
         defer { usageLoading.remove(id) }
-        do {
-            usage[id] = try await manager.readCodexAccountUsage(accountID: id)
-        } catch is CancellationError {
-            usageAttempts.remove(id)
-        } catch {
-            usageErrors[id] = error.localizedDescription
+        let result = await manager.checkAccount(accountID: id)
+        if let status = try? await manager.status() { snapshot?.status = status }
+        if let snapshot = result.usage {
+            usage[id] = snapshot
+        } else {
+            usage.removeValue(forKey: id)
+            usageErrors[id] = result.verification.detail
         }
     }
 
