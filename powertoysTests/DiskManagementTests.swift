@@ -69,4 +69,22 @@ final class DiskManagementTests: XCTestCase {
                                  name: "", format: "", scheme: "", size: "")
         XCTAssertEqual(try delete.arguments(), ["apfs", "deleteVolume", "disk13s2"])
     }
+
+    func testAPFSOperationsRejectSharedOrChangedContainers() {
+        XCTAssertEqual(DiskManagement.singleAPFSStoreID([["DeviceIdentifier": "disk10s2"]]), "disk10s2")
+        XCTAssertNil(DiskManagement.singleAPFSStoreID([
+            ["DeviceIdentifier": "disk10s2"], ["DeviceIdentifier": "disk0s2"]
+        ]))
+
+        func disk(container: String) -> ManagedDisk {
+            ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
+                        scheme: card.scheme, devicePath: card.devicePath, writable: true,
+                        manageable: true, partitions: [
+                            ManagedPartition(id: "disk10s2", name: "APFS", content: "Apple_APFS",
+                                             size: 8_000_000_000, mountPoint: nil, uuid: nil,
+                                             apfsContainer: container)
+                        ])
+        }
+        XCTAssertNotEqual(disk(container: "disk13").identity, disk(container: "disk0").identity)
+    }
 }

@@ -41,7 +41,7 @@ nonisolated struct ManagedDisk: Identifiable, Sendable {
 
     var identity: String {
         let layout = partitions.map {
-            "\($0.id):\($0.content):\($0.isAPFSVolume ? 0 : $0.size):\($0.uuid ?? ""):\($0.name)"
+            "\($0.id):\($0.content):\($0.isAPFSVolume ? 0 : $0.size):\($0.uuid ?? ""):\($0.name):\($0.apfsContainer ?? ""):\($0.isAPFSVolume)"
         }.joined(separator: ";")
         return "\(id)|\(size)|\(bus)|\(scheme)|\(devicePath)|\(name)|\(layout)"
     }
@@ -234,10 +234,8 @@ nonisolated enum DiskManagement {
                                         mountPoint: nil, uuid: value["APFSVolumeUUID"] as? String,
                                         apfsContainer: reference, isAPFSVolume: true)
             }
-            for store in container["PhysicalStores"] as? [[String: Any]] ?? [] {
-                if let id = store["DeviceIdentifier"] as? String, validID(id) {
-                    apfsByStore[id] = (reference, volumes)
-                }
+            if let storeID = singleAPFSStoreID(container["PhysicalStores"] as? [[String: Any]] ?? []) {
+                apfsByStore[storeID] = (reference, volumes)
             }
         }
         return entries.compactMap { entry -> ManagedDisk? in
@@ -286,7 +284,8 @@ nonisolated enum DiskManagement {
         if let partition = request.partition {
             guard current.partitions.contains(where: {
                 $0.id == partition.id && ($0.isAPFSVolume || $0.size == partition.size) &&
-                    $0.content == partition.content && $0.uuid == partition.uuid
+                    $0.content == partition.content && $0.uuid == partition.uuid &&
+                    $0.apfsContainer == partition.apfsContainer && $0.isAPFSVolume == partition.isAPFSVolume
             }) else { throw DiskManagementError.changedDevice }
         }
         guard request.action == .verify || current.manageable else {
@@ -323,5 +322,11 @@ nonisolated enum DiskManagement {
 
     private static func validID(_ id: String) -> Bool {
         id.range(of: "^disk[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil
+    }
+
+    static func singleAPFSStoreID(_ stores: [[String: Any]]) -> String? {
+        guard stores.count == 1, let id = stores[0]["DeviceIdentifier"] as? String,
+              validID(id) else { return nil }
+        return id
     }
 }
