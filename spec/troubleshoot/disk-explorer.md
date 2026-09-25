@@ -1,5 +1,21 @@
 # Diskman Troubleshooting
 
+## Same Reader Can Hold A Different Card
+
+- **Symptom:** A disk number, bus, size, and partition layout can remain the
+  same when removable media is replaced in one reader, so those fields alone
+  cannot prove that a reviewed write still targets the selected card.
+- **Cause:** The original device identity covered the reader and disk layout,
+  but not the active I/O Registry media instance.
+- **Invariant:** Record the whole disk's I/O Registry media instance in Modify.
+  Allow writes only when that instance resolves, and compare it again with the
+  reviewed disk immediately before executing a command. Keep read-only
+  verification available when an instance cannot be resolved.
+- **Check:** `IOBSDNameMatching` returned the same instance on two read-only
+  probes of the authorized SD card. The hosted replacement-media regression
+  and focused Diskman UI, unit, and render jobs passed in `36189567926`.
+  Physical hot-swap remains untested.
+
 ## Analyze Scan Status Leaks Into Modify
 
 - **Symptom:** The normal-mode Modify page showed Analyze's “chart updates live”

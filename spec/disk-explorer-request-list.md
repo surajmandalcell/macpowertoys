@@ -33,7 +33,7 @@ product name is Diskman.
 | Verify | Match the app's restrained chrome and update the chart palette. | The chart uses a muted blue, green, coral, violet, and gold set inspired by Apple, Google, and Anthropic, with the shared neutral background and existing button/spacing components. The scan status reserves a constant height. Light and dark chart renders and the refreshed hover captures from `36156271971` were inspected after reducing washout. | Inspect the final installed app. |
 | Done | Rename the product to Diskman and organize the sidebar around Analyze and Modify. | Launcher, window, Raycast label, and manual say Diskman. Analyze groups folders and mounted volumes; Modify opens physical disk management. The prior route ID and saved settings are preserved. | Verify final signed UI. |
 | Verify | Keep Analyze's scan separate from Modify. | A page switch cancels the Analyze scan and removes its status footer. Hosted normal-mode run `36173007922` passed the Modify assertion and captured the disk inventory's own progress state without the scan footer. A separate normal-launch capture from run `36171513372` showed the visualization without an unsolicited event-access prompt. | Inspect the final signed window and its permission-dependent states. |
-| Verify | Add safe native disk and partition management. | Modify lists physical media and partition/volume structure. Native actions include verification, selected-volume repair, mount/unmount/eject, rename, erase volume/disk, repartition, add/delete/resize partitions, APFS volume and container operations, and zero-fill. Writes are limited to writable removable/external physical media, with an identity recheck immediately before execution and typed device-ID review for data-loss actions. APFS operations exclude shared-store containers and reject a changed container reference. Hosted run `36162099059` passed the command and safety tests and populated SD-layout renders. | Inspect the installed signed app. |
+| Verify | Add safe native disk and partition management. | Modify lists physical media and partition/volume structure. Native actions include verification, selected-volume repair, mount/unmount/eject, rename, erase volume/disk, repartition, add/delete/resize partitions, APFS volume and container operations, and zero-fill. Writes are limited to writable removable/external physical media with a resolvable I/O Registry media instance; the app compares that instance and the disk layout again immediately before execution and requires typed device-ID review for data-loss actions. APFS operations exclude shared-store containers and reject a changed container reference. Hosted run `36189567926` passed the replacement-media identity regression, other safety tests, Modify UI, and light/dark renders. Two read-only lookups of the authorized SD card returned the same media instance. | Inspect the updated signed app; a physical hot-swap was not performed. |
 | Done | Test destructive operations only on the authorized 16 GB SD card. | The test harness checked Secure Digital bus, 15,634,268,160-byte size, `disk10`, and card serial `0x19302912` before every operation. Erase, verify, repartition, rename, mount/unmount, partition delete/add, volume format, HFS+ resize, volume repair, zero-fill, and APFS add/delete/shrink/grow succeeded. The card was restored to one mounted ExFAT volume named `DISKMAN`; `fsck_exfat` reports it is OK. | Eject was left untested so the card remains available without physical reinsertion. |
 
 MiniTool's Windows-specific operations such as BitLocker, drive letters,
@@ -50,11 +50,11 @@ and [disktree's zoom and removal workflow](https://github.com/tobi/disktree).
 These are behavior references. The scanner, layout, and drawing remain native
 Swift implementations.
 
-Diskman's latest focused hosted run `36173007922` passed its unit and UI checks,
+Diskman's latest focused hosted run `36189567926` passed its unit and UI jobs,
 including progressive scans, chart hover and navigation, Modify inventory,
-and populated light and dark renders. Full hosted run `36171486281` passed.
-The locally installed app and embedded network helper passed strict code-sign
-verification with team `GF57JXJF5A`, matched the committed source stamp, and
-the app ran from `/Applications/MacPowerToys.app`. Direct inspection of that
-installed window was blocked by Computer Use access to MacPowerToys; hosted
-UI captures provide the interaction evidence above.
+the review sheet, media identity, and light/dark renders. Full hosted run
+`36171486281` passed before the media-instance guard. The prior locally
+installed app and embedded network helper at `61eb346` passed strict code-sign
+verification with team `GF57JXJF5A` and ran from `/Applications/MacPowerToys.app`.
+Direct inspection of that installed window was blocked by Computer Use access
+to MacPowerToys; hosted UI captures provide the interaction evidence above.
