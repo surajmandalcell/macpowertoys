@@ -75,7 +75,8 @@ four-column launcher is a trial pending the owner's layout decision.
 All twelve new sources are 512px RGBA PNGs. The third-round gallery loaded
 all options in isolated headless Chrome at desktop and narrow widths, and the
 four-column preview kept the description and controls clear. A compile-only
-app and test build succeeded. Both `LauncherGridTests` passed in the hosted
-macOS run; the first full run failed separate Portman assertions, which were
-corrected before the next hosted run. No owner-desktop app or test runner was
-opened.
+app and test build succeeded. The full hosted macOS suite passed at `df7372d`
+in [run 36101318344](https://github.com/surajmandalcell/macpowertoys/actions/runs/36101318344).
+Its 980×676 native SwiftUI capture confirms four cards per row with readable
+descriptions and aligned controls; it is linked from the gallery. No
+owner-desktop app or test runner was opened.
