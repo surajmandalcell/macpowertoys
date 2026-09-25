@@ -3,7 +3,9 @@
 Switch is a built-in MacPowerToys applet backed by the versioned
 `AIManagerCore` Swift package from the separate Switch repository. Switch.app is
 optional. The two apps have different SwiftUI interfaces and share only Core.
-MacPowerToys exposes account switching, sign-in, import, usage, and recovery.
+MacPowerToys exposes account switching, sign-in, import, usage, recovery,
+provider launch, account ordering, and saved-account details. Its combined menu
+offers quick switching and on-demand usage refresh without background polling.
 Conversation browsing and cleanup stay in standalone Switch.
 
 ```text

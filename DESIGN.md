@@ -598,6 +598,9 @@ available action must be distinguishable without relying on color alone.
 Recovery handles interrupted operations and linked settings; conversation
 browsing and cleanup remain in standalone Switch. Keep the minimum window at
 880×600 and check both appearances at that size before release.
+The combined MacPowerToys menu shows saved identities as compact rows with a
+default indicator and direct switching. Usage loads only on request in that
+menu; opening a menu must not start a recurring account poll.
 
 ### Compact Applet
 

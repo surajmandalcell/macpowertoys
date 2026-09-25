@@ -161,7 +161,9 @@
   Chat browsing and cleanup remain in standalone Switch.
 - **Check:** Inspect Accounts and Recovery at 880pt and 1,024pt in light and dark.
   The rail contains no account identity; Make Default, Verify, Add, Import,
-  Remove, usage, and recovery remain reachable without clipping.
+  Remove, Open, account details, usage, and recovery remain reachable without
+  clipping. In the combined menu, account rows switch the default and usage
+  refreshes on demand.
 
 ## Workspace Minimum Window Sizes
 
