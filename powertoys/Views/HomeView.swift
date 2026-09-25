@@ -34,7 +34,7 @@ struct HomeView: View {
         case "all-tools":
             AllToolsGridView(selectedTool: $selectedTool)
         case let toolId?:
-            ToolAboutView(toolId: toolId)
+            ToolAboutView(toolId: toolId, showsSettings: toolId != "portman")
         default:
             ContentUnavailableView("Select a Tool", systemImage: "wrench.adjustable", description: Text("Choose a tool from the sidebar."))
         }
