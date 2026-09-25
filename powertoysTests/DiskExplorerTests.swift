@@ -3,6 +3,24 @@ import Darwin
 @testable import powertoys
 
 final class DiskExplorerTests: XCTestCase {
+    @MainActor func testPartialResultsCannotBeMarkedForRemoval() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data(repeating: 7, count: 8192).write(to: root.appendingPathComponent("data.bin"))
+
+        let snapshots = DiskSnapshotRecorder()
+        let final = try DiskExplorerScanner.scan(root) { snapshots.append($0) }
+        let partial = try XCTUnwrap(snapshots.values.first { !$0.isComplete && !$0.root.children.isEmpty })
+        let model = DiskExplorerModel(preview: partial)
+        model.toggleMark(try XCTUnwrap(partial.root.children.first))
+        XCTAssertTrue(model.markedEntries.isEmpty)
+
+        let completeModel = DiskExplorerModel(preview: final)
+        completeModel.toggleMark(try XCTUnwrap(final.root.children.first))
+        XCTAssertEqual(completeModel.markedEntries.count, 1)
+    }
+
     func testScannerPublishesMeasuredFoldersBeforeItFinishes() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
