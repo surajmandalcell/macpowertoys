@@ -600,6 +600,8 @@ private struct TrayToolHeader: View {
 struct SwitchTrayView: View {
     @State private var model: SwitchWorkspaceModel
     @AppStorage("switchUsageShowsUsed") private var showUsageAsUsed = true
+    @AppStorage(SwitchTrayUsagePreferences.defaultKey) private var defaultShowUsage = true
+    @AppStorage(SwitchTrayUsagePreferences.periodKey) private var tokenPeriod = SwitchTrayTokenPeriod.sinceReset.rawValue
 
     init() {
         _model = State(initialValue: SwitchWorkspaceModel())
@@ -639,6 +641,8 @@ struct SwitchTrayView: View {
                 LazyVStack(spacing: 3) {
                     ForEach(model.accounts) { account in
                         let isDefault = model.snapshot?.status.isDefault(account) == true
+                        let showsUsage = SwitchTrayUsagePreferences.explicitValue(for: account.id)
+                            ?? defaultShowUsage
                         Button {
                             Task { await model.makeDefault(account.id) }
                         } label: {
@@ -657,10 +661,20 @@ struct SwitchTrayView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 8)
-                                if let percent = model.usage[account.id]?.rateLimits?.defaultBucket?.primary?.usedPercent {
-                                    Text(showUsageAsUsed ? "\(percent)% used" : "\(100 - percent)% left")
-                                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                                        .foregroundStyle(.secondary)
+                                if showsUsage, let snapshot = model.usage[account.id] {
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        if let percent = snapshot.rateLimits?.defaultBucket?.primary?.usedPercent {
+                                            Text(SwitchTrayUsagePreferences.percentageLabel(
+                                                used: percent, showUsed: showUsageAsUsed))
+                                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                        }
+                                        if let period = SwitchTrayTokenPeriod(rawValue: tokenPeriod) {
+                                            Text("\(period.tokens(in: snapshot).formatted(.number.notation(.compactName))) tokens")
+                                                .font(.system(size: 9))
+                                                .help(period.label)
+                                        }
+                                    }
+                                    .foregroundStyle(.secondary)
                                 }
                                 if isDefault {
                                     Image(systemName: "checkmark.circle.fill")

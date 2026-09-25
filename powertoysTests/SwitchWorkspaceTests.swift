@@ -140,6 +140,27 @@ final class SwitchWorkspaceTests: XCTestCase {
                        NSSize(width: 880, height: 600))
     }
 
+    func testTrayUsageChoicesRespectDefaultsAndOverrides() throws {
+        let name = "mpt-switch-prefs-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let accountID = UUID()
+        XCTAssertTrue(SwitchTrayUsagePreferences.showsUsage(for: accountID, defaults: defaults))
+        defaults.set(false, forKey: SwitchTrayUsagePreferences.defaultKey)
+        XCTAssertFalse(SwitchTrayUsagePreferences.showsUsage(for: accountID, defaults: defaults))
+        SwitchTrayUsagePreferences.setOverride(true, for: accountID, defaults: defaults)
+        XCTAssertTrue(SwitchTrayUsagePreferences.showsUsage(for: accountID, defaults: defaults))
+        SwitchTrayUsagePreferences.setOverride(false, for: accountID, defaults: defaults)
+        XCTAssertFalse(SwitchTrayUsagePreferences.showsUsage(for: accountID, defaults: defaults))
+        SwitchTrayUsagePreferences.useDefault(for: accountID, defaults: defaults)
+        XCTAssertNil(SwitchTrayUsagePreferences.explicitValue(for: accountID, defaults: defaults))
+        XCTAssertEqual(SwitchTrayUsagePreferences.percentageLabel(used: 120, showUsed: false), "0% left")
+        let snapshot = sampleUsage()
+        let sinceReset = SwitchTrayTokenPeriod.sinceReset.tokens(in: snapshot)
+        XCTAssertGreaterThan(sinceReset, 0)
+        XCTAssertLessThan(sinceReset, SwitchTrayTokenPeriod.weekly.tokens(in: snapshot))
+    }
+
     func testAccountImportSwitchAndRemovalUseIsolatedCoreStore() async throws {
         let files = FileManager.default
         let root = files.temporaryDirectory

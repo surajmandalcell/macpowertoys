@@ -29,11 +29,14 @@ struct SwitchWindowView: View {
     @State private var page: SwitchPage
     @AppStorage("switchAppearanceMode") private var appearanceMode = "system"
     @AppStorage("switchUsageShowsUsed") private var showUsageAsUsed = true
+    @AppStorage(SwitchTrayUsagePreferences.defaultKey) private var defaultShowTrayUsage = true
+    @AppStorage(SwitchTrayUsagePreferences.periodKey) private var trayTokenPeriod = SwitchTrayTokenPeriod.sinceReset.rawValue
     @Environment(\.colorScheme) private var systemScheme
     @State private var showingDelete = false
     @State private var showingAbout = false
     @State private var copiedAuthPath = false
     @State private var hoveredAccountID: UUID?
+    @State private var trayUsageOverrides: [UUID: Bool] = [:]
     @State private var importDecisions: [String: ConflictChoice] = [:]
     @State private var grokCode = ""
     @State private var conflictToResolve: RecoveryOperation?
@@ -379,10 +382,14 @@ struct SwitchWindowView: View {
                     .foregroundStyle(palette.muted)
                     .textSelection(.enabled)
             }
-            Text(verificationTitle(account.verification.state))
-                .font(.system(size: 11))
-                .foregroundStyle(palette.muted)
-                .help(account.verification.detail)
+            if account.verification.state == .imported
+                || account.verification.state == .needsSignIn
+                || account.verification.state == .unsupported {
+                Text(verificationTitle(account.verification.state))
+                    .font(.system(size: 11))
+                    .foregroundStyle(palette.muted)
+                    .help(account.verification.detail)
+            }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 4) { accountActions(account) }
                 VStack(alignment: .leading, spacing: 4) { accountActions(account) }
@@ -419,6 +426,23 @@ struct SwitchWindowView: View {
                            palette: palette, prominent: true, disabled: model.isWorking) {
             Task { await model.makeDefault(account.id) }
         }
+        if account.identity.providerID == .codex {
+            SwitchActionButton(title: "Show in Menubar",
+                               symbol: showsTrayUsage(account.id) ? "checkmark.seal" : "checkmark",
+                               palette: palette, disabled: model.isWorking) {
+                let value = !showsTrayUsage(account.id)
+                trayUsageOverrides[account.id] = value
+                SwitchTrayUsagePreferences.setOverride(value, for: account.id)
+            }
+            .accessibilityValue(showsTrayUsage(account.id) ? "On" : "Off")
+            .contextMenu {
+                Button("Use Menubar Default") {
+                    trayUsageOverrides.removeValue(forKey: account.id)
+                    SwitchTrayUsagePreferences.useDefault(for: account.id)
+                }
+                .disabled(SwitchTrayUsagePreferences.explicitValue(for: account.id) == nil)
+            }
+        }
         SwitchActionButton(title: isDefault ? "Open \(providerName(account))" : "Use & Open \(providerName(account))",
                            symbol: "play", palette: palette, disabled: model.isWorking) {
             Task { await model.openAccount(account.id) }
@@ -436,6 +460,11 @@ struct SwitchWindowView: View {
                              (isDefault && deletionReplacements(for: account).isEmpty)) {
             showingDelete = true
         }
+    }
+
+    private func showsTrayUsage(_ id: UUID) -> Bool {
+        trayUsageOverrides[id] ?? SwitchTrayUsagePreferences.explicitValue(for: id)
+            ?? defaultShowTrayUsage
     }
 
     private func deletionReplacements(for account: AccountRecord) -> [AccountRecord] {
@@ -519,12 +548,14 @@ struct SwitchWindowView: View {
                                 Text(plan).font(.system(size: 10)).foregroundStyle(palette.muted)
                             }
                         }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
+                        HStack(alignment: .top, spacing: 20) {
                             if let primary = bucket.primary, primary.usedPercent != nil {
                                 usageRow(windowTitle(primary, fallback: "Current window"), window: primary)
+                                    .frame(maxWidth: .infinity)
                             }
                             if let secondary = bucket.secondary, secondary.usedPercent != nil {
                                 usageRow(windowTitle(secondary, fallback: "Secondary window"), window: secondary)
+                                    .frame(maxWidth: .infinity)
                             }
                         }
                         HStack(spacing: 16) {
@@ -573,17 +604,21 @@ struct SwitchWindowView: View {
     }
 
     private func usageRow(_ title: String, window: CodexRateLimitWindowSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        let percentage = window.usedPercent.map {
+            SwitchTrayUsagePreferences.percentageLabel(used: $0, showUsed: showUsageAsUsed)
+        } ?? "—"
+        return VStack(alignment: .leading, spacing: 9) {
             HStack {
                 Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
                 Spacer()
-                Text(window.usedPercent.map { showUsageAsUsed ? "\($0)% used" : "\(100 - $0)% left" } ?? "—")
+                Text(percentage)
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .contentTransition(.numericText())
             }
             if let percent = window.usedPercent {
                 ProgressView(value: Double(min(max(percent, 0), 100)), total: 100)
-                    .accessibilityLabel("\(title), \(showUsageAsUsed ? percent : 100 - percent)% \(showUsageAsUsed ? "used" : "left")")
+                    .tint(palette.titleArt)
+                    .accessibilityLabel("\(title), \(percentage)")
             }
             if let reset = window.resetsAt {
                 Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
@@ -841,6 +876,38 @@ struct SwitchWindowView: View {
                                 .labelsHidden()
                                 .toggleStyle(.switch)
                                 .controlSize(.small)
+                        }
+                        .padding(16)
+                        .background(palette.panel2.opacity(0.55))
+                    }
+                }
+                SwitchPanel(title: "Menubar defaults", palette: palette) {
+                    VStack(spacing: 0) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Show account usage")
+                                Text("Accounts without their own choice show usage in Menubar.")
+                                    .font(.system(size: 10)).foregroundStyle(palette.muted)
+                            }
+                            Spacer()
+                            Toggle("Show account usage", isOn: $defaultShowTrayUsage)
+                                .labelsHidden().toggleStyle(.switch).controlSize(.small)
+                        }
+                        .padding(16)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Token summary")
+                                Text("Choose the period shown beside each account's usage.")
+                                    .font(.system(size: 10)).foregroundStyle(palette.muted)
+                            }
+                            Spacer()
+                            Picker("Token summary", selection: $trayTokenPeriod) {
+                                ForEach(SwitchTrayTokenPeriod.allCases) { period in
+                                    Text(period.label).tag(period.rawValue)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 190)
                         }
                         .padding(16)
                         .background(palette.panel2.opacity(0.55))

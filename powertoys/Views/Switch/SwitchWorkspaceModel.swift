@@ -3,6 +3,68 @@ import AppKit
 import Foundation
 import Observation
 
+enum SwitchTrayUsagePreferences {
+    static let defaultKey = "switchTrayShowsUsage"
+    static let periodKey = "switchTrayTokenPeriod"
+    private static let overridePrefix = "switchTrayShowsUsage.account."
+
+    static func explicitValue(for id: UUID, defaults: UserDefaults = .standard) -> Bool? {
+        let key = overridePrefix + id.uuidString
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return defaults.bool(forKey: key)
+    }
+
+    static func showsUsage(for id: UUID, defaults: UserDefaults = .standard) -> Bool {
+        explicitValue(for: id, defaults: defaults)
+            ?? (defaults.object(forKey: defaultKey) == nil || defaults.bool(forKey: defaultKey))
+    }
+
+    static func setOverride(_ value: Bool, for id: UUID, defaults: UserDefaults = .standard) {
+        defaults.set(value, forKey: overridePrefix + id.uuidString)
+    }
+
+    static func useDefault(for id: UUID, defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: overridePrefix + id.uuidString)
+    }
+
+    static func percentageLabel(used: Int, showUsed: Bool) -> String {
+        let clamped = min(max(used, 0), 100)
+        return "\(showUsed ? clamped : 100 - clamped)% \(showUsed ? "used" : "left")"
+    }
+}
+
+enum SwitchTrayTokenPeriod: String, CaseIterable, Identifiable {
+    case sinceReset, today, yesterday, weekly, monthly, yearly
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .sinceReset: "Since reset"
+        case .today: "Today"
+        case .yesterday: "Yesterday"
+        case .weekly: "Weekly"
+        case .monthly: "Monthly"
+        case .yearly: "Yearly"
+        }
+    }
+
+    func tokens(in snapshot: CodexAccountUsageSnapshot, now: Date = .now) -> Int64 {
+        if let period = CodexTokenPeriod(rawValue: rawValue) {
+            return period.tokens(in: snapshot.dailyUsage, endingAt: now)
+        }
+        let windows = [snapshot.rateLimits?.defaultBucket?.primary,
+                       snapshot.rateLimits?.defaultBucket?.secondary].compactMap { $0 }
+        guard let weekly = windows.filter({ ($0.windowDurationMinutes ?? 0) >= 10_080 })
+            .max(by: { ($0.windowDurationMinutes ?? 0) < ($1.windowDurationMinutes ?? 0) }),
+              let reset = weekly.resetsAt, let minutes = weekly.windowDurationMinutes,
+              minutes > 0 else {
+            return CodexTokenPeriod.weekly.tokens(in: snapshot.dailyUsage, endingAt: now)
+        }
+        return CodexTokenPeriod.tokens(in: snapshot.dailyUsage,
+                                       from: reset.addingTimeInterval(-Double(minutes) * 60),
+                                       through: now)
+    }
+}
+
 @Observable
 @MainActor
 final class SwitchWorkspaceModel {
@@ -145,6 +207,11 @@ final class SwitchWorkspaceModel {
     func setUsageForRender(_ snapshot: CodexAccountUsageSnapshot, accountID: UUID) {
         usage[accountID] = snapshot
         usageAttempts.insert(accountID)
+        if let index = self.snapshot?.status.accounts.firstIndex(where: { $0.id == accountID }) {
+            self.snapshot?.status.accounts[index].verification = .init(
+                state: .verifiedWithCodex, checkedAt: snapshot.fetchedAt,
+                detail: "Synthetic account and usage data for visual verification.")
+        }
     }
     #endif
 
