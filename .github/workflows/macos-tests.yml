@@ -31,7 +31,6 @@ jobs:
             -only-testing:powertoysUITests/PortmanUITests \
             CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
-            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
             MPT_SOURCE_COMMIT="$GITHUB_SHA" test
       - name: Build installable app archive
         run: |
