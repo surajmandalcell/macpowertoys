@@ -299,7 +299,9 @@ final class PortmanTests: XCTestCase {
                case .failed = tunnel.state { dropped = true; break }
             try await Task.sleep(for: .milliseconds(200))
         }
-        XCTAssertTrue(dropped, "An unexpected SSH exit must replace Forwarding with a failed state.")
+        XCTAssertTrue(dropped, "An unexpected SSH exit must replace Forwarding with a failed state. "
+            + "Listener remains: \(PortmanScanner.tunnelIsListening(pid: exitedPID, localPort: droppedPort)); "
+            + "process remains: \(Darwin.kill(exitedPID, 0) == 0).")
         for scheme in [ColorScheme.light, .dark] {
             let host = NSHostingView(rootView: PortmanPanelView(initialPage: .forward)
                 .environment(\.colorScheme, scheme))
