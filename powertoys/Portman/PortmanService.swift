@@ -276,7 +276,7 @@ final class PortmanService {
     func refreshLocal() async {
         do {
             let ports = try await Task.detached(priority: .utility) { try PortmanScanner.localPorts() }.value
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, monitoringCount > 0 else { return }
             localPorts = ports
             localError = nil
             let now = Date()
@@ -289,6 +289,7 @@ final class PortmanService {
             history = history.filter { key, _ in ports.contains { $0.id == key } }
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
         } catch {
+            guard !Task.isCancelled, monitoringCount > 0 else { return }
             localError = error.localizedDescription
         }
     }
