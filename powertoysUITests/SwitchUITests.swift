@@ -20,6 +20,7 @@ final class SwitchUITests: XCTestCase {
 
         let card = app.descendants(matching: .any)["tool.switch.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
+        attach(app.screenshot(), named: "Launcher All Tools")
         card.click()
 
         let launch = app.buttons["tool.switch.launch"]
