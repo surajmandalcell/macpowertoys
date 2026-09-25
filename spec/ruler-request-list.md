@@ -42,6 +42,9 @@ Update this list whenever Ruler requirements or verification results change.
   preservation, section rhythm, card geometry, 12pt row typography,
   accessibility relationships, the complete key order, 24pt minimum controls,
   and collision-free English, German, and Japanese labels.
+- Hosted run `36096121530` passed `RulerCoreTests` within the 842-test suite.
+  Dimension inputs now use the active display scale, and assertions allow
+  half-pixel plus one-decimal display rounding.
 - The complete host unit suite passed 543 tests with zero failures or skipped
   tests.
 - All five localized controls XIBs compile. Focused tests also verify opaque
