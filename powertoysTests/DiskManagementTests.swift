@@ -5,7 +5,7 @@ final class DiskManagementTests: XCTestCase {
     private let card = ManagedDisk(
         id: "disk10", name: "SDXC Reader", size: 15_634_268_160,
         bus: "Secure Digital", scheme: "GUID_partition_scheme", devicePath: "reader", writable: true,
-        manageable: true, partitions: [
+        manageable: true, mediaRegistryID: 1, partitions: [
             ManagedPartition(id: "disk10s1", name: "Data", content: "Microsoft Basic Data",
                              size: 4_000_000_000, mountPoint: "/Volumes/Data", uuid: "volume-id")
         ]
@@ -79,12 +79,21 @@ final class DiskManagementTests: XCTestCase {
         func disk(container: String) -> ManagedDisk {
             ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
                         scheme: card.scheme, devicePath: card.devicePath, writable: true,
-                        manageable: true, partitions: [
+                        manageable: true, mediaRegistryID: card.mediaRegistryID, partitions: [
                             ManagedPartition(id: "disk10s2", name: "APFS", content: "Apple_APFS",
                                              size: 8_000_000_000, mountPoint: nil, uuid: nil,
                                              apfsContainer: container)
                         ])
         }
         XCTAssertNotEqual(disk(container: "disk13").identity, disk(container: "disk0").identity)
+    }
+
+    func testReplacingMediaInvalidatesReviewedDiskIdentity() {
+        let replacement = ManagedDisk(
+            id: card.id, name: card.name, size: card.size, bus: card.bus,
+            scheme: card.scheme, devicePath: card.devicePath, writable: card.writable,
+            manageable: true, mediaRegistryID: 2, partitions: card.partitions
+        )
+        XCTAssertNotEqual(card.identity, replacement.identity)
     }
 }

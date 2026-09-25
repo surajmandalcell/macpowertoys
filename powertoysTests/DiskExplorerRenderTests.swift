@@ -8,7 +8,7 @@ final class DiskExplorerRenderTests: XCTestCase {
         let card = ManagedDisk(
             id: "disk10", name: "SDXC Reader", size: 15_634_268_160,
             bus: "Secure Digital", scheme: "GUID_partition_scheme", devicePath: "reader",
-            writable: true, manageable: true, partitions: [
+            writable: true, manageable: true, mediaRegistryID: 1, partitions: [
                 ManagedPartition(id: "disk10s1", name: "EFI", content: "EFI",
                                  size: 209_715_200, mountPoint: nil, uuid: nil),
                 ManagedPartition(id: "disk10s2", name: "DISKMAN", content: "Microsoft Basic Data",
