@@ -82,6 +82,11 @@ struct SwitchWindowView: View {
         .preferredColorScheme(schemeOverride)
         .background(WindowAccessor(identifier: "switch"))
         .task { await model.load() }
+        .task(id: model.selectedAccountID) {
+            if let id = model.selectedAccountID {
+                await model.loadUsage(id, onlyIfNeeded: true)
+            }
+        }
         .onChange(of: model.importPlan?.id) {
             importDecisions = Dictionary(uniqueKeysWithValues:
                 (model.importPlan?.conflicts ?? []).map { ($0.relativePath, .keepShared) }
@@ -166,27 +171,32 @@ struct SwitchWindowView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 14) {
-            Text(page.rawValue)
-                .font(.system(size: 22, weight: .semibold))
-                .tracking(-0.35)
-            Text(page.subtitle)
-                .font(.system(size: 13))
-                .foregroundStyle(palette.muted)
-                .lineLimit(1)
-            Spacer(minLength: 12)
-            Button { Task { await model.refresh() } } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 15))
-                    .frame(width: 32, height: 32)
+        ZStack {
+            SwitchTitleDragRegion()
+            HStack(alignment: .lastTextBaseline, spacing: 14) {
+                Text(page.rawValue)
+                    .font(.system(size: 22, weight: .semibold))
+                    .tracking(-0.35)
+                    .allowsHitTesting(false)
+                Text(page.subtitle)
+                    .font(.system(size: 13))
+                    .foregroundStyle(palette.muted)
+                    .lineLimit(1)
+                    .allowsHitTesting(false)
+                Spacer(minLength: 12)
+                Button { Task { await model.refresh() } } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 15))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .disabled(model.isWorking)
+                .help("Refresh accounts")
+                .accessibilityLabel("Refresh accounts")
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .disabled(model.isWorking)
-            .help("Refresh accounts")
-            .accessibilityLabel("Refresh accounts")
+            .padding(.horizontal, 24)
         }
-        .padding(.horizontal, 24)
         .frame(height: 48)
         .background(palette.canvas)
         .overlay(alignment: .bottom) { palette.railLine.frame(height: 1) }
@@ -452,10 +462,11 @@ struct SwitchWindowView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(palette.muted)
                 }
-                SwitchActionButton(title: model.usage[account.id] == nil ? "Load usage" : "Refresh usage",
+                SwitchActionButton(title: model.usageLoading.contains(account.id) ? "Refreshing usage" : "Refresh usage",
                                    symbol: "arrow.clockwise", palette: palette,
                                    iconOnly: model.usage[account.id] != nil,
-                                   disabled: model.isWorking || account.verification.state == .needsSignIn) {
+                                   disabled: model.usageLoading.contains(account.id)
+                                     || account.verification.state == .needsSignIn) {
                     Task { await model.loadUsage(account.id) }
                 }
             }
@@ -532,9 +543,19 @@ struct SwitchWindowView: View {
                     }
                 }
             } else {
-                Text("Load usage to see current rate limits for this account.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(palette.muted)
+                HStack(spacing: 10) {
+                    if model.usageLoading.contains(account.id) { ProgressView().controlSize(.small) }
+                    Text(model.usageLoading.contains(account.id) ? "Checking account usage…" :
+                         (model.usageErrors[account.id] == nil ? "Usage has not been checked" : "Usage could not be refreshed"))
+                        .font(.system(size: 12, weight: .medium))
+                    Spacer()
+                }
+                if let failure = model.usageErrors[account.id] {
+                    Text(failure).font(.system(size: 10)).foregroundStyle(palette.amber)
+                } else if !model.usageLoading.contains(account.id) {
+                    Text("Refresh this saved account without changing the default account.")
+                        .font(.system(size: 10)).foregroundStyle(palette.muted)
+                }
             }
         }
         .padding(16)
@@ -920,6 +941,18 @@ struct SwitchWindowView: View {
             Task { @MainActor in await model.reviewImport(source: url, mode: .full) }
         }
     }
+}
+
+private final class SwitchTitleDragView: NSView {
+    override var mouseDownCanMoveWindow: Bool { true }
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 1 { window?.performDrag(with: event) }
+    }
+}
+
+private struct SwitchTitleDragRegion: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { SwitchTitleDragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 private struct SwitchPalette {
