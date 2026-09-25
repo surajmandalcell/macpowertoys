@@ -176,7 +176,8 @@
   natural content height and the panel still scrolls on smaller screens.
 - **Check:** Measure the natural Home height against the short-screen cap and
   inspect light and dark production-width renders. The first hosted render at
-  `294c5a2` exposed the cutoff; the follow-up check is in `0493423`.
+  `294c5a2` exposed the cutoff; hosted run `36152200305` passed the
+  short-screen height regression after the summary cards were compacted.
 
 ## Fan And Awake Tray Alignment
 
