@@ -34,6 +34,7 @@ struct PortmanPanelView: View {
     @State private var highlightedProcessID: String?
     @State private var hoveredSegmentID: String?
     @State private var hoveredRowID: String?
+    @State private var hoveredStopPortID: String?
     @State private var showingMacMemory = false
     @State private var showingMore = false
     @State private var showingProcesses = false
@@ -79,8 +80,9 @@ struct PortmanPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Image(systemName: "circle.grid.2x2.fill")
+                Image("PortmanStatusGlyph").renderingMode(.template).resizable().scaledToFit()
                     .foregroundStyle(.secondary)
+                    .frame(width: 16, height: 16)
                 Text("Portman").font(.system(size: 12, weight: .semibold))
                 Spacer()
                 if page == .local {
@@ -102,7 +104,7 @@ struct PortmanPanelView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
 
-            HStack(spacing: 18) {
+            HStack(spacing: 0) {
                 ForEach([Page.local, .forward, .alerts], id: \.self) { destination in
                     Button { page = destination; selectedPortID = nil } label: {
                         VStack(spacing: 8) {
@@ -117,13 +119,13 @@ struct PortmanPanelView: View {
                             Capsule().fill(page == destination ? Color.accentColor : .clear)
                                 .frame(height: 2)
                         }
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .focusEffectDisabled()
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
                     .accessibilityIdentifier("portman.page.\(destination.rawValue)")
                 }
-                Spacer()
             }
             .padding(.horizontal, UtilityLayout.horizontalInset)
 
@@ -162,7 +164,11 @@ struct PortmanPanelView: View {
         }
         .onDisappear { service.endMonitoring() }
         .onChange(of: panelHeight) { PortmanMenuController.shared.setHeight(panelHeight) }
-        .onChange(of: selectedPortID) { showingMore = false; showingProcesses = false }
+        .onChange(of: selectedPortID) {
+            showingMore = false
+            showingProcesses = false
+            hoveredStopPortID = nil
+        }
         .onChange(of: host) {
             selectedRemotePorts = []
             localPortInputs = [:]
@@ -339,18 +345,20 @@ struct PortmanPanelView: View {
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(UtilityInteractionButtonStyle())
+            .buttonStyle(.plain)
             .help(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
             if hoveredRowID == port.id && !cleanupMode {
                 Button { openLocal(port.port) } label: {
-                    Image(systemName: "arrow.up.right.square").frame(width: 20, height: 24)
+                    Image(systemName: "link").frame(width: 24, height: 24)
                 }
                 .help("Open localhost:\(String(port.port))")
                 .accessibilityLabel("Open localhost port \(String(port.port))")
                 if port.canStop {
                     Button { pendingStop = port } label: {
-                        Image(systemName: "stop.fill").frame(width: 20, height: 24)
+                        Image(systemName: "stop.fill").frame(width: 24, height: 24)
                     }
+                    .foregroundStyle(hoveredStopPortID == port.id ? .red : .secondary)
+                    .onHover { hoveredStopPortID = $0 ? port.id : nil }
                     .help("Stop port \(String(port.port)) process tree")
                     .accessibilityLabel("Stop process tree for port \(String(port.port))")
                 }
@@ -364,6 +372,10 @@ struct PortmanPanelView: View {
                 .monospacedDigit()
                 .frame(width: 62, alignment: .trailing)
         }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .background(hoveredRowID == port.id ? Color.primary.opacity(0.07) : .clear,
+                    in: RoundedRectangle(cornerRadius: 7))
         .opacity(highlightedProcessID == nil || highlightedProcessID == port.processID ? 1 : 0.45)
         .onHover { inside in
             hoveredRowID = inside ? port.id : nil
@@ -1364,8 +1376,8 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
     private func updateButton() {
         guard let button = item?.button else { return }
         let ports = PortmanService.shared.localPorts
-        let image = NSImage(systemSymbolName: "circle.grid.2x2.fill",
-                            accessibilityDescription: "Portman")
+        let image = NSImage(named: "PortmanStatusGlyph")?.copy() as? NSImage
+        image?.size = NSSize(width: 18, height: 18)
         image?.isTemplate = true
         button.image = image
         button.imagePosition = .imageLeading
