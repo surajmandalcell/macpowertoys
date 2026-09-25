@@ -222,14 +222,26 @@ nonisolated enum DiskExplorerScanner {
         let countSize = state.isFirstHardLink(info)
         let ownAllocated = countSize ? max(0, Int64(info.st_blocks) * 512) : 0
         let ownApparent = countSize ? max(0, Int64(info.st_size)) : 0
+        var allocated = ownAllocated
+        var apparent = ownApparent
+        var files = kind == .directory ? 0 : 1
+        var directories = kind == .directory ? 1 : 0
+        var modified = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec))
+        for child in children {
+            allocated += child.allocatedBytes
+            apparent += child.apparentBytes
+            files += child.fileCount
+            directories += child.directoryCount
+            modified = max(modified, child.modifiedAt)
+        }
         return DiskEntry(
             url: url,
             kind: kind,
-            allocatedBytes: ownAllocated + children.reduce(0) { $0 + $1.allocatedBytes },
-            apparentBytes: ownApparent + children.reduce(0) { $0 + $1.apparentBytes },
-            fileCount: (kind == .directory ? 0 : 1) + children.reduce(0) { $0 + $1.fileCount },
-            directoryCount: (kind == .directory ? 1 : 0) + children.reduce(0) { $0 + $1.directoryCount },
-            modifiedAt: Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec)),
+            allocatedBytes: allocated,
+            apparentBytes: apparent,
+            fileCount: files,
+            directoryCount: directories,
+            modifiedAt: modified,
             device: UInt64(truncatingIfNeeded: info.st_dev),
             inode: UInt64(truncatingIfNeeded: info.st_ino),
             children: children.sorted { $0.allocatedBytes > $1.allocatedBytes }
