@@ -1409,6 +1409,7 @@ struct PortmanSettingsView: View {
                              : PortmanEditor.installed.first(where: { $0.id == editor })?.name ?? "Automatic")
                             .frame(width: 148, alignment: .trailing)
                     }
+                    .accessibilityIdentifier("portman.settings.editor")
                     .accessibilityLabel("Open folders in")
                 }
             }
@@ -1450,6 +1451,7 @@ struct PortmanSettingsView: View {
                     } label: {
                         Text("\(Int(scanInterval)) seconds").frame(width: 98, alignment: .trailing)
                     }
+                    .accessibilityIdentifier("portman.settings.interval")
                     .accessibilityLabel("Scan every")
                     .accessibilityValue("\(Int(scanInterval)) seconds")
                 }
@@ -1481,6 +1483,7 @@ struct PortmanSettingsView: View {
                         Text(PortmanCleanupMode(rawValue: cleanupMode)?.rawValue.capitalized ?? "Ask")
                             .frame(width: 98, alignment: .trailing)
                     }
+                    .accessibilityIdentifier("portman.settings.cleanupMode")
                     .accessibilityLabel("Cleanup mode")
                     .accessibilityValue(PortmanCleanupMode(rawValue: cleanupMode)?.rawValue.capitalized ?? "Ask")
                 }

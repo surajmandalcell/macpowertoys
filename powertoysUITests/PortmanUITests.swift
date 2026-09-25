@@ -127,8 +127,11 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Scan ports"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Keyboard shortcut"].exists)
         attach(app.screenshot(), named: "Portman Settings search")
-        let interval = app.popUpButtons["Scan every"]
-        XCTAssertTrue(interval.isHittable, "The scan interval selector is not clickable")
+        let interval = app.descendants(matching: .any)["portman.settings.interval"]
+        guard interval.isHittable else {
+            XCTFail("The scan interval selector is not clickable.\n\(app.debugDescription)")
+            return
+        }
         interval.click()
         app.menuItems["5 seconds"].click()
         XCTAssertEqual(interval.value as? String, "5 seconds",
@@ -138,8 +141,11 @@ final class PortmanUITests: XCTestCase {
         search.click()
         search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4))
         search.typeText("mode")
-        let cleanup = app.popUpButtons["Cleanup mode"]
-        XCTAssertTrue(cleanup.isHittable, "The cleanup mode selector is not clickable")
+        let cleanup = app.descendants(matching: .any)["portman.settings.cleanupMode"]
+        guard cleanup.isHittable else {
+            XCTFail("The cleanup mode selector is not clickable.\n\(app.debugDescription)")
+            return
+        }
         cleanup.click()
         app.menuItems["Off"].click()
         XCTAssertEqual(cleanup.value as? String, "Off",
