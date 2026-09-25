@@ -76,10 +76,38 @@ final class PortmanTests: XCTestCase {
         LISTEN 0 4096 127.0.0.1:3000 0.0.0.0:*
         """
         XCTAssertEqual(PortmanScanner.parseRemote(output), [3000, 6006])
+        let detailed = PortmanScanner.parseRemoteDetails(
+            "LISTEN 0 4096 127.0.0.1:3000 0.0.0.0:* users:((\"node\",pid=420,fd=7))\n"
+            + "p81\ncpython3\nn127.0.0.1:8000\n"
+        )
+        XCTAssertEqual(detailed.map(\.port), [3000, 8000])
+        XCTAssertEqual(detailed[0].processName, "node")
+        XCTAssertEqual(detailed[0].pid, 420)
+        XCTAssertEqual(detailed[1].processName, "python3")
+        XCTAssertEqual(detailed[1].pid, 81)
+        var node = detailed[0]
+        node.command = "node /srv/app/server.js --watch"
+        XCTAssertEqual(node.displayName, "node: server.js")
+        node.container = "my-web"
+        XCTAssertEqual(node.displayName, "Docker: my-web")
+        let inspected = PortmanScanner.parseRemoteProcessDetails(
+            "node /srv/app/server.js --watch\nMPT_CONTAINER\nmy-web|0.0.0.0:3000->3000/tcp\nother|0.0.0.0:4000->4000/tcp\n",
+            port: 3000
+        )
+        XCTAssertEqual(inspected.command, "node /srv/app/server.js --watch")
+        XCTAssertEqual(inspected.container, "my-web")
         let arguments = try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 3000, localPort: 4200)
         XCTAssertTrue(arguments.contains("127.0.0.1:4200:localhost:3000"))
         XCTAssertTrue(arguments.contains("ConnectTimeout=5"))
+        XCTAssertTrue(arguments.contains("StrictHostKeyChecking=accept-new"))
         XCTAssertEqual(arguments.suffix(2), ["--", "my-server"])
+        let passwordArguments = try PortmanScanner.tunnelArguments(
+            host: "alice@192.0.2.10", remotePort: 3000, localPort: 4200, password: true
+        )
+        XCTAssertTrue(passwordArguments.contains("BatchMode=no"))
+        XCTAssertTrue(passwordArguments.contains("NumberOfPasswordPrompts=1"))
+        XCTAssertTrue(passwordArguments.contains("PubkeyAuthentication=no"))
+        XCTAssertEqual(passwordArguments.suffix(2), ["--", "alice@192.0.2.10"])
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "-oProxyCommand=bad", remotePort: 3000, localPort: 4200))
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 0, localPort: 4200))
     }
@@ -203,6 +231,11 @@ final class PortmanTests: XCTestCase {
         await service.refreshRemote(host: "portman-test", configurationFile: clientConfig)
         XCTAssertTrue(service.remotePorts.contains(remotePort),
                       service.forwardingError ?? "SSH scan missed the HTTP listener")
+        await service.refreshRemote(host: "portman-test", password: "unused-test-password",
+                                    configurationFile: clientConfig)
+        XCTAssertTrue(service.forwardingError?.contains("Permission denied") == true,
+                      "Password mode must not silently fall back to a saved key")
+        await service.refreshRemote(host: "portman-test", configurationFile: clientConfig)
 
         let localPort = try unusedPort()
         XCTAssertTrue(service.forward(host: "portman-test", remotePort: remotePort,
