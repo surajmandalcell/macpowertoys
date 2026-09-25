@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A20000000000000000000001 /* AIManagerCore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000003 /* AIManagerCore */; };
 		A10000000000000000000001 /* NetToysCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* NetToysCore.swift */; };
 		A10000000000000000000002 /* NetToysRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* NetToysRuntime.swift */; };
 		A10000000000000000000003 /* NetToysScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* NetToysScanner.swift */; };
@@ -109,6 +110,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A20000000000000000000001 /* AIManagerCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,6 +207,7 @@
 			);
 			name = powertoys;
 			packageProductDependencies = (
+				A20000000000000000000003 /* AIManagerCore */,
 			);
 			productName = powertoys;
 			productReference = 1BDFA94E2F08A44C009A9009 /* powertoys.app */;
@@ -291,6 +294,9 @@
 			);
 			mainGroup = 1BDFA9452F08A44C009A9009;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1BDFA94F2F08A44C009A9009 /* Products */;
 			projectDirPath = "";
@@ -777,6 +783,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/surajmandalcell/ai-manager.git";
+			requirement = {
+				kind = exactVersion;
+				version = 3.2.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A20000000000000000000003 /* AIManagerCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */;
+			productName = AIManagerCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1BDFA9462F08A44C009A9009 /* Project object */;
 }
