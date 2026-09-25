@@ -7,6 +7,7 @@ struct FanControlView: View {
 
     @State private var service = FanControlService.shared
     @State private var showsSetup = false
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
 
     private var rpm: String {
@@ -67,7 +68,7 @@ struct FanControlView: View {
                 Button { showsSetup = true } label: {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.orange)
+                        .foregroundStyle(colorScheme == .light ? Color(red: 0.64, green: 0.32, blue: 0) : Color.orange)
                         .frame(width: 28, height: 28)
                         .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 7))
                         .contentShape(Rectangle())
