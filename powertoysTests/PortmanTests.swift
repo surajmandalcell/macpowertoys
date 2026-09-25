@@ -298,6 +298,9 @@ final class PortmanTests: XCTestCase {
             + "Listener remains: \(PortmanScanner.tunnelIsListening(pid: sshPID, localPort: droppedPort)); "
             + "process remains: \(Darwin.kill(sshPID, 0) == 0); "
             + "tunnel: \(String(describing: service.tunnels.first { $0.id == droppedID })).")
+        if dropped {
+            XCTAssertNil(service.processID(forTunnel: droppedID), "A failed tunnel must release its SSH process.")
+        }
         for scheme in [ColorScheme.light, .dark] {
             let host = NSHostingView(rootView: PortmanPanelView(initialPage: .forward)
                 .environment(\.colorScheme, scheme))
@@ -316,6 +319,7 @@ final class PortmanTests: XCTestCase {
             add(attachment)
         }
         service.stopTunnel(droppedID)
+        XCTAssertFalse(service.tunnels.contains { $0.id == droppedID })
     }
 
     func testLocalRangeAndProcessTableParsing() {
