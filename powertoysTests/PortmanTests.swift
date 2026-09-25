@@ -233,8 +233,9 @@ final class PortmanTests: XCTestCase {
                       service.forwardingError ?? "SSH scan missed the HTTP listener")
         await service.refreshRemote(host: "portman-test", password: "unused-test-password",
                                     configurationFile: clientConfig)
-        XCTAssertTrue(service.forwardingError?.contains("Permission denied") == true,
-                      "Password mode must not silently fall back to a saved key")
+        XCTAssertEqual(service.forwardingError,
+                       "Could not inspect portman-test: Permission denied. Check the SSH password or key.",
+                       "Password mode must not fall back to a saved key or expose askpass paths")
         await service.refreshRemote(host: "portman-test", configurationFile: clientConfig)
 
         let localPort = try unusedPort()
