@@ -149,10 +149,13 @@
   provide `xcodebuild` for this project.
 - **Invariant:** Do not install an older signed product with a stale source
   stamp. Keep the running app and preferences intact until a full Xcode app is
-  available and the clean current `HEAD` can be built and verified again.
-- **Check:** Confirm a full Xcode app path and `xcodebuild -version`, build the
-  current clean commit, verify its signature and source stamp, then run the
-  normal install gate without bringing the app forward.
+  available, or a hosted build at the clean current `HEAD` can be signed with
+  the configured local team. `make install PREBUILT_APP=...` retains the same
+  clean-source, source-stamp, helper, signature, and stopped-process gates.
+- **Check:** Confirm a full Xcode app path and `xcodebuild -version`, or run
+  `sh scripts/check-prebuilt-install.sh` and verify the hosted artifact's source
+  stamp and local signature. Run the normal install gate without bringing the
+  app forward.
 
 ## Raycast Local Install Drift
 
