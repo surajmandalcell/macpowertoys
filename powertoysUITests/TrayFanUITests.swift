@@ -17,24 +17,21 @@ final class TrayFanUITests: XCTestCase {
         let tray = app.menuBars.statusItems["MenuBarIcon"]
         XCTAssertTrue(tray.waitForExistence(timeout: 10))
         tray.click()
-        app.buttons["Home"].click()
+        app.buttons["System Monitor"].click()
+        app.buttons["system-monitor.tray.home"].click()
+        XCTAssertFalse(app.buttons["fan-control.setup"].exists)
+        app.buttons["system-monitor.tray.sensors"].click()
 
         let setup = app.buttons["fan-control.setup"]
         XCTAssertTrue(setup.waitForExistence(timeout: 20))
         setup.click()
 
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["1  Install smctl"].exists)
-        XCTAssertTrue(app.staticTexts["2  Approve its helper"].exists)
-        let installNote = app.staticTexts["Install with Homebrew, or use the guide for other methods."]
-        let approvalNote = app.staticTexts["Run this in Terminal. macOS will ask for administrator approval."]
-        XCTAssertTrue(installNote.exists)
-        XCTAssertTrue(approvalNote.exists)
-        XCTAssertGreaterThan(installNote.frame.height, 20)
-        XCTAssertGreaterThan(approvalNote.frame.height, 20)
-        XCTAssertTrue(app.buttons["Copy smctl installation command"].exists)
-        XCTAssertTrue(app.buttons["Copy helper installation command"].exists)
-        XCTAssertTrue(app.buttons["Check again"].exists)
+        let setupNote = app.staticTexts["MacPowerToys includes fan control. macOS may ask you to allow its background item once; there is no package or Terminal command to install."]
+        XCTAssertTrue(setupNote.exists)
+        XCTAssertGreaterThan(setupNote.frame.height, 20)
+        XCTAssertTrue(app.buttons["Enable Fan Control"].exists)
+        XCTAssertTrue(app.buttons["Check Again"].exists)
 
         let capture = XCTAttachment(screenshot: app.screenshot())
         capture.name = "Fan setup popover"

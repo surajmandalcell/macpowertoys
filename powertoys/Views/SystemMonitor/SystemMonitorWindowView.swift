@@ -12,8 +12,28 @@ enum SystemMonitorPalette {
     static let blue = Color(red: 69.0 / 255, green: 123.0 / 255, blue: 157.0 / 255)
 
     static func gradient(_ tint: Color) -> LinearGradient {
-        LinearGradient(colors: [tint.opacity(0.29), tint.opacity(0.12), tint.opacity(0.17)],
+        LinearGradient(colors: [tint.opacity(0.37), tint.opacity(0.16), tint.opacity(0.25)],
                        startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+struct GPUCardIcon: View {
+    var body: some View {
+        HStack(spacing: 1) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 2).strokeBorder(lineWidth: 1.3)
+                HStack(spacing: 1.5) {
+                    Circle().strokeBorder(lineWidth: 1)
+                    Circle().strokeBorder(lineWidth: 1)
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2.5)
+            }
+            .frame(width: 11, height: 9)
+            RoundedRectangle(cornerRadius: 0.5).frame(width: 1.5, height: 4)
+        }
+        .frame(width: 14, height: 13)
+        .accessibilityHidden(true)
     }
 }
 
@@ -42,6 +62,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case memory = "Memory"
     case network = "Network"
     case disk = "Disk"
+    case sensors = "Sensors"
     case remote = "Remote Stats"
     case about = "About"
 
@@ -53,6 +74,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .memory: [.memory]
         case .network: [.network]
         case .disk: [.disk]
+        case .sensors: [.thermal]
         case .processes, .remote, .about: []
         }
     }
@@ -63,6 +85,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .memory: "memorychip"
         case .network: "network"
         case .disk: "internaldrive"
+        case .sensors: "thermometer.medium"
         case .processes: "list.bullet.rectangle"
         case .remote: "server.rack"
         case .about: "info.circle"
@@ -124,6 +147,7 @@ struct SystemMonitorWindowView: View {
         case .memory: memoryPage
         case .network: networkPage
         case .disk: diskPage
+        case .sensors: sensorsPage
         case .processes: SystemMonitorProcessesView()
         case .remote: SystemMonitorRemoteView()
         case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
@@ -133,7 +157,6 @@ struct SystemMonitorWindowView: View {
     private var overviewPage: some View {
         WorkspacePage("Overview") {
             metricGrid
-            FanControlView(owner: "system-monitor-window")
         }
     }
 
@@ -168,7 +191,6 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "...",
                     detail: "All cores",
                     values: service.history.compactMap(\.cpuUsage),
-                    tint: usageTint(service.snapshot?.cpuUsage),
                     surfaceTint: SystemMonitorPalette.teal,
                     featured: true
                 )
@@ -178,19 +200,17 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.memoryUsage.percent ?? "Not available",
                     detail: memoryDetail,
                     values: service.history.compactMap(\.memoryUsage),
-                    tint: usageTint(service.snapshot?.memoryUsage),
                     surfaceTint: SystemMonitorPalette.coral,
                     featured: true
                 )
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 12)], spacing: 12) {
                 metricCard(
-                    icon: "rectangle.3.group",
+                    icon: "gpu-card",
                     title: "GPU",
                     value: service.snapshot?.gpuUsage.percent ?? "Not available",
                     detail: "Graphics utilization",
                     values: service.history.compactMap(\.gpuUsage),
-                    tint: usageTint(service.snapshot?.gpuUsage),
                     surfaceTint: SystemMonitorPalette.blue
                 )
                 metricCard(
@@ -199,7 +219,6 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.diskUsage.percent ?? "Not available",
                     detail: diskDetail,
                     values: service.history.compactMap(\.diskUsage),
-                    tint: usageTint(service.snapshot?.diskUsage),
                     surfaceTint: SystemMonitorPalette.orange
                 )
                 metricCard(
@@ -219,7 +238,6 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.thermalState ?? "Not available",
                     detail: "System pressure",
                     values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                    tint: thermalTint,
                     surfaceTint: SystemMonitorPalette.green
                 )
                 metricCard(
@@ -228,7 +246,6 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Not available",
                     detail: batteryDetail,
                     values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                    tint: batteryTint,
                     surfaceTint: SystemMonitorPalette.gold
                 )
                 metricCard(
@@ -237,7 +254,6 @@ struct SystemMonitorWindowView: View {
                     value: loadAverage,
                     detail: "Average CPU demand · \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs",
                     values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
-                    tint: usageTint(loadLevel),
                     surfaceTint: SystemMonitorPalette.blue
                 )
                 .help(loadExplanation)
@@ -257,13 +273,23 @@ struct SystemMonitorWindowView: View {
     ) -> some View {
         let surface = surfaceTint ?? tint
         return ZStack(alignment: .bottom) {
-            StatsSparkline(values: values, color: tint)
+            StatsSparkline(values: values, color: surface)
                 .frame(height: featured ? 78 : 44)
                 .opacity(0.58)
             VStack(alignment: .leading, spacing: 8) {
-                Label(title, systemImage: icon)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(colorScheme == .dark ? tint : .primary)
+                HStack(spacing: 6) {
+                    Group {
+                        if icon == "gpu-card" {
+                            GPUCardIcon()
+                        } else {
+                            Image(systemName: icon)
+                        }
+                    }
+                    .foregroundStyle(surface)
+                    .brightness(colorScheme == .dark ? 0 : -0.23)
+                    Text(title).foregroundStyle(.secondary)
+                }
+                .font(.system(size: 12, weight: .medium))
                 Text(value)
                     .font(.system(size: featured ? 30 : 22, weight: .semibold))
                     .monospacedDigit()
@@ -278,6 +304,7 @@ struct SystemMonitorWindowView: View {
         .background(SystemMonitorPalette.gradient(surface))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(surface.opacity(0.25)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: surface.opacity(0.1), radius: 7, y: 3)
     }
 
     private func chartCard(
@@ -308,10 +335,10 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.cpu)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "...", detail: "User + system + nice")
-                metricCard(icon: "chart.bar", title: "Load · 1 min", value: loadAverage, detail: loadAverageDetail)
+                metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "...", detail: "User + system + nice", surfaceTint: SystemMonitorPalette.teal)
+                metricCard(icon: "chart.bar", title: "Load · 1 min", value: loadAverage, detail: loadAverageDetail, surfaceTint: SystemMonitorPalette.blue)
                     .help(loadExplanation)
-                metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System thermal pressure")
+                metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System thermal pressure", surfaceTint: SystemMonitorPalette.green)
             }
             chartCard(title: "CPU Usage", suffix: "%", values: service.history.compactMap(\.cpuUsage))
         }
@@ -322,9 +349,9 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.memory)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "Not available", detail: memoryDetail)
-                metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "Not available", detail: "Installed unified memory")
-                metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "Not available", detail: "Used physical memory")
+                metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "Not available", detail: memoryDetail, surfaceTint: SystemMonitorPalette.coral)
+                metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "Not available", detail: "Installed unified memory", surfaceTint: SystemMonitorPalette.coral)
+                metricCard(icon: "gauge.with.dots.needle.50percent", title: "Utilization", value: service.snapshot?.memoryUsage.percent ?? "Not available", detail: "Used physical memory", surfaceTint: SystemMonitorPalette.coral)
             }
             chartCard(title: "Memory Utilization", suffix: "%", values: service.history.compactMap(\.memoryUsage))
         }
@@ -335,8 +362,8 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.network)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "...", detail: "All active non-loopback interfaces")
-                metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "...", detail: "All active non-loopback interfaces")
+                metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "...", detail: "All active non-loopback interfaces", surfaceTint: SystemMonitorPalette.cyan)
+                metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "...", detail: "All active non-loopback interfaces", surfaceTint: SystemMonitorPalette.cyan)
             }
             LazyVGrid(columns: chartColumns, spacing: 12) {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
@@ -350,11 +377,18 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.disk)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "internaldrive", title: "Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "Not available", detail: diskDetail)
-                metricCard(icon: "internaldrive.fill", title: "Available", value: diskAvailable, detail: "Startup volume")
-                metricCard(icon: "chart.pie", title: "Utilization", value: service.snapshot?.diskUsage.percent ?? "Not available", detail: "Startup volume")
+                metricCard(icon: "internaldrive", title: "Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "Not available", detail: diskDetail, surfaceTint: SystemMonitorPalette.orange)
+                metricCard(icon: "internaldrive.fill", title: "Available", value: diskAvailable, detail: "Startup volume", surfaceTint: SystemMonitorPalette.orange)
+                metricCard(icon: "chart.pie", title: "Utilization", value: service.snapshot?.diskUsage.percent ?? "Not available", detail: "Startup volume", surfaceTint: SystemMonitorPalette.orange)
             }
             chartCard(title: "Disk Utilization", suffix: "%", values: service.history.compactMap(\.diskUsage))
+        }
+    }
+
+    private var sensorsPage: some View {
+        WorkspacePage("Sensors") {
+            metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System pressure", values: service.history.compactMap { Self.thermalLevel($0.thermalState) }, surfaceTint: SystemMonitorPalette.green)
+            FanControlView(owner: "system-monitor-window")
         }
     }
 
@@ -395,32 +429,6 @@ struct SystemMonitorWindowView: View {
     private var batteryDetail: String {
         guard service.snapshot?.batteryPercent != nil else { return "No internal battery detected" }
         return service.snapshot?.batteryCharging == true ? "Connected to power" : "On battery"
-    }
-
-    private var batteryTint: Color {
-        guard let percent = service.snapshot?.batteryPercent else { return .gray }
-        if service.snapshot?.batteryCharging == true { return .green }
-        if percent < 20 { return .red }
-        if percent < 50 { return .orange }
-        return .blue
-    }
-
-    private var thermalTint: Color {
-        switch service.snapshot?.thermalState {
-        case "Critical": .red
-        case "Serious": .orange
-        case "Fair": .blue
-        case "Nominal": .green
-        default: .gray
-        }
-    }
-
-    private func usageTint(_ value: Double?) -> Color {
-        guard let value else { return .gray }
-        if value >= 90 { return .red }
-        if value >= 70 { return .orange }
-        if value >= 35 { return .blue }
-        return .green
     }
 
     nonisolated private static func thermalLevel(_ state: String?) -> Double? {
