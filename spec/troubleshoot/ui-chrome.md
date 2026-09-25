@@ -111,6 +111,8 @@
 - **Check:** Compile without launching on the owner's desktop. On a hosted Mac,
   inspect Servers at rest and hover, tab changes, both memory scopes, the SSH
   password sheet and retry, scanned remote-port disclosure, and Forward exit.
+  A rejected password must allow retry while Forward is open; leaving Forward
+  or closing the panel must dismiss that sheet and clear the in-memory secret.
 
 ## Portman Port Numbers And Initial Charts
 
