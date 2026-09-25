@@ -456,10 +456,12 @@
   work sampled every metric on each wake. Settings and rendered menu state were
   also applied without a change check.
 - **Invariant:** Use one sampler and exactly one utility-queue timer while a
-  visible System Monitor surface needs data. The open detailed window takes one
-  full snapshot each second. In menu-only mode, the timer wakes for the earliest
-  due metric and samples only enabled metrics that are due. Take the first sample
-  immediately.
+  visible System Monitor surface needs metric data. The detailed window samples
+  only the visible page's metrics each second; Processes, Menu Bar, and About
+  do not own the detailed timer. The tray retains its own detailed owner. In
+  menu-only mode, the timer wakes for the earliest due metric and samples only
+  enabled metrics that are due. Take the first sample immediately. Reset the
+  sampler on its utility queue without waiting on the main thread.
 - **Invariant:** When System Monitor is disabled, or when its window is closed
   and its menu is off, keep zero System Monitor timers and zero System Monitor
   status items. Increment a generation before stop. An in-flight sample may
