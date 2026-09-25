@@ -55,9 +55,9 @@ Swift implementations.
 Diskman's latest focused hosted run `36193151541` passed its unit and UI jobs,
 including progressive scans, chart hover and navigation, Modify inventory,
 the review sheet, media identity, and light/dark renders. Full hosted run
-`36192321188` passed before the final dark-ring divider change. The prior
-locally installed app and embedded network helper at `5ba62fc` passed strict
-code-sign verification with team `GF57JXJF5A` and launched from
-`/Applications/MacPowerToys.app` in the background.
-Direct inspection of that installed window was blocked by Computer Use access
-to MacPowerToys; hosted UI captures provide the interaction evidence above.
+`36193151569` passed after the final dark-ring divider change. The clean
+`9f7b419` Release app and embedded network helper passed strict code-sign
+verification with team `GF57JXJF5A`, were installed, and launched from
+`/Applications/MacPowerToys.app` in the background. Direct inspection of the
+installed window was blocked by Computer Use access to MacPowerToys; hosted UI
+captures provide the interaction evidence above.
