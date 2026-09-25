@@ -1437,12 +1437,13 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
 
     func show() {
         start()
-        guard let button = item?.button else { return }
         NSApp.activate(ignoringOtherApps: true)
-        guard !popover.isShown else { return }
-        popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
-        popover.contentSize = NSSize(width: 400, height: 400)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        Task { @MainActor [weak self] in
+            guard let self, let button = self.item?.button, !self.popover.isShown else { return }
+            self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
+            self.popover.contentSize = NSSize(width: 400, height: 400)
+            self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
     }
 
     func setHeight(_ height: CGFloat) {
