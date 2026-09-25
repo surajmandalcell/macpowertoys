@@ -544,9 +544,10 @@
   that keeps every PID and sorts siblings by the chosen column. Query network
   endpoints with a bounded, selected-PID-only `lsof` call every 30 seconds;
   cancel it when selection or page changes.
-- **Check:** Select a changing process, watch two update times and values,
-  copy its path, inspect the virtual-memory help, and compare grouped and flat
-  lists. Confirm no port subprocess runs with no selection.
+- **Check:** Run the real two-sample CPU regression in an isolated Mac session.
+  Select a changing process, watch two update times and values, copy its path,
+  inspect the virtual-memory help, and compare grouped and flat lists. Confirm
+  no port subprocess runs with no selection.
 
 - **Symptom:** Return does nothing in the remote host field, changing refresh
   requires a disconnect, or Open Terminal opens an idle shell.
@@ -558,8 +559,8 @@
   300 seconds; changing it or pressing Refresh Now restarts the page-owned
   polling task without installing a remote daemon. The selected cadence is
   persisted. Disconnect and page exit cancel polling. Open Terminal passes an
-  `ssh://` URL to Terminal only after the user presses it. Use regular-height
-  connection actions with balanced native padding.
+  `ssh://` URL to Terminal only after the user presses it. Use large native
+  connection actions with balanced padding.
 - **Check:** Use an SSH alias, press Return, change refresh while connected,
   select Manual and confirm no second automatic sample, then disconnect.
   Open Terminal from the action and confirm it starts the selected SSH session.
