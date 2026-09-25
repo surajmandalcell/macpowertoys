@@ -31,10 +31,11 @@
   tests, skips UI tests, and saves PNG XCTest attachments as `tray-renders` for
   offscreen review. Local owner-session checks remain compile-only.
 - **Check:** Match the successful workflow run to the tested commit and inspect
-  its XCTest result and tray renders. Run `36096121530` at `1fddb1a` passed 842
-  tests, with five skips and zero failures. That run predates artifact upload;
-  a later run must supply the renders. A passing build alone does not count as
-  an executed test.
+  its XCTest result and tray renders. Run `36097325950` at `fbe1721` passed 842
+  tests, with five skips and zero failures, and saved 13 PNG attachments. Its
+  offscreen tray images show the centered Cloud Sync empty state and the Home
+  fan row in both appearances. They do not prove native menu-bar placement or
+  live fan hardware. A passing build alone does not count as an executed test.
 
 ## Local Entitlements In Package Builds
 
