@@ -81,7 +81,9 @@ struct DiskExplorerWindowView: View {
             if next != .explore { model.cancel() }
         }
         .onChange(of: includeHidden) { _, newValue in
-            if let source = model.sourceURL { model.start(source, includeHidden: newValue) }
+            if page == .explore, let source = model.sourceURL {
+                model.start(source, includeHidden: newValue)
+            }
         }
         .quickLookPreview($previewURL)
         .popover(item: $selectedFile) { file in
