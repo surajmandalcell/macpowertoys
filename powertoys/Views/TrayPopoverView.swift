@@ -349,6 +349,7 @@ private struct TrayTabButton: View {
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .background(Color.primary.opacity(selected ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 6))
         .accessibilityLabel(tab.title)
+        .accessibilityIdentifier("tray.tab.\(tab.rawValue)")
         .accessibilityAddTraits(selected ? .isSelected : [])
         .help(tab.title)
         .onHover { hovering = $0 }
