@@ -825,6 +825,14 @@ variant weakens the deliberate temperature and contrast difference.
 | System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Porcelain | Porcelain | SV02 pixel monitor identity is fixed in both appearances |
 
+The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` supersedes
+the fixed-identity decisions above for Color Picker, Text Extractor, Input
+Devices, System Care, and NetToys. Disk Explorer uses the selected Sector
+platter direction. The refresh uses detailed bitmap concept art, so production
+assets for these six tools may use PNG image sets while preserving the shared
+rounded tile shape, appearance, and small-size checks. The unchanged tool
+assets continue to follow the SVG construction rules below.
+
 The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
 dark asset. Tools that use Chosen Color in both modes keep one universal SVG.
