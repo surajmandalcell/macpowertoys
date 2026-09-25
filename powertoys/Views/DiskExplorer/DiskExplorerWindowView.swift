@@ -153,6 +153,7 @@ struct DiskExplorerWindowView: View {
                     Divider()
                     Button("Choose Folder…") { chooseFolder() }
                 }
+                .accessibilityIdentifier("diskExplorer.scan")
                 if model.isScanning {
                     Button("Stop", systemImage: "stop.fill") { model.cancel() }
                 } else if let source = model.sourceURL {
@@ -165,6 +166,7 @@ struct DiskExplorerWindowView: View {
                         showsStatistics.toggle()
                     }
                     .labelStyle(.iconOnly)
+                    .accessibilityIdentifier("diskExplorer.statistics")
                     .help("Scan statistics")
                     .popover(isPresented: $showsStatistics) {
                         scanStatistics.frame(width: 260).padding(16)
@@ -203,6 +205,7 @@ struct DiskExplorerWindowView: View {
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
+                .accessibilityIdentifier("diskExplorer.resultTabs")
                 Spacer()
                 if resultTab == .visualization {
                     Picker("View", selection: $chartStyle) {
@@ -226,6 +229,7 @@ struct DiskExplorerWindowView: View {
                     .buttonStyle(.bordered)
                     .tint(showsContents ? .accentColor : nil)
                     .accessibilityLabel(showsContents ? "Hide Contents" : "Show Contents")
+                    .accessibilityIdentifier("diskExplorer.contents")
                     .help(showsContents ? "Hide Contents" : "Show Contents")
                 } else {
                     TextField("Filter largest files", text: $largestSearch)
