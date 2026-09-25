@@ -488,6 +488,8 @@ struct PortmanPanelView: View {
 
     private func localDetail(_ port: PortmanLocalPort) -> some View {
         let samples = service.history[port.id] ?? []
+        let chartEnd = (samples.last?.date ?? Date()).addingTimeInterval(10)
+        let chartStart = chartEnd.addingTimeInterval(-600)
         let hovered = hoveredTime.flatMap { time in
             samples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }
         }
@@ -618,8 +620,20 @@ struct PortmanPanelView: View {
                             .foregroundStyle(portColor(port))
                     }
                 }
+                .chartXScale(domain: chartStart...chartEnd)
                 .chartYScale(domain: 0...max(PortmanPreferences.memoryAlertBytes * 11 / 10,
                                              (samples.map(\.memoryBytes).max() ?? 1) * 12 / 10))
+                .chartXAxis(.hidden)
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
+                        AxisGridLine()
+                        AxisValueLabel {
+                            if let bytes = value.as(Int64.self) {
+                                Text(bytes == 0 ? "0" : memoryString(bytes))
+                            }
+                        }
+                    }
+                }
                 .chartOverlay { proxy in chartHover(proxy) }
                 .frame(height: 115)
                 .accessibilityLabel("Memory history for port \(String(port.port))")
@@ -641,7 +655,14 @@ struct PortmanPanelView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .chartXScale(domain: chartStart...chartEnd)
                 .chartYScale(domain: 0...100)
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: [0, 50, 100]) { _ in
+                        AxisGridLine()
+                        AxisValueLabel()
+                    }
+                }
                 .chartOverlay { proxy in chartHover(proxy) }
                 .frame(height: 55)
                 .accessibilityLabel("CPU history for port \(String(port.port))")
