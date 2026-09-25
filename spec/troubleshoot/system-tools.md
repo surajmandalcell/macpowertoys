@@ -528,6 +528,16 @@
 - **Check:** Compile the monitor tests, exercise the runner's output and timeout
   cases in an isolated test session, and inspect a protected process there.
 
+- **Symptom:** A stalled fan helper can leave the fan card loading or delay app
+  quit indefinitely.
+- **Cause:** Its command path read a pipe to EOF, retained all output, and only
+  sent a soft termination after five seconds.
+- **Invariant:** Drain output with a fixed memory cap. Send a hard kill if the
+  command remains alive after a short termination grace period. Keep fan
+  commands off the main actor except the bounded Auto restoration on quit.
+- **Check:** Use a synthetic command to exceed the output cap in an isolated
+  test session; compile on the owner's desktop without invoking the helper.
+
 - **Symptom:** System Monitor mixes unrelated clocks, Bluetooth, and metric
   plugins with activity monitoring, and Remote is labeled Linux-only.
 - **Cause:** A broad feature list was treated as monitor modules even though
