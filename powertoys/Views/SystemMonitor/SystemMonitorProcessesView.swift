@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 nonisolated enum ProcessSortColumn: String, CaseIterable {
@@ -41,9 +42,38 @@ nonisolated enum SystemMonitorProcessSorting {
     }
 }
 
+nonisolated enum SystemMonitorProcessHierarchy {
+    struct Row: Identifiable {
+        let process: SystemMonitorProcess
+        let depth: Int
+        var id: String { process.id }
+    }
+
+    static func rows(_ processes: [SystemMonitorProcess], by column: ProcessSortColumn,
+                     descending: Bool) -> [Row] {
+        let sorted = SystemMonitorProcessSorting.sorted(processes, by: column, descending: descending)
+        let ids = Set(sorted.map(\.pid))
+        let children = Dictionary(grouping: sorted.filter { ids.contains($0.parentPID) && $0.parentPID != $0.pid },
+                                  by: \.parentPID)
+        var rows: [Row] = []
+        var visited = Set<Int32>()
+        func append(_ process: SystemMonitorProcess, depth: Int) {
+            guard visited.insert(process.pid).inserted else { return }
+            rows.append(Row(process: process, depth: min(depth, 6)))
+            for child in children[process.pid] ?? [] { append(child, depth: depth + 1) }
+        }
+        for process in sorted where !ids.contains(process.parentPID) || process.parentPID == process.pid {
+            append(process, depth: 0)
+        }
+        for process in sorted { append(process, depth: 0) }
+        return rows
+    }
+}
+
 struct SystemMonitorProcessesView: View {
     @AppStorage("systemMonitor.processSortColumn") private var sortColumn = ProcessSortColumn.cpu.rawValue
     @AppStorage("systemMonitor.processSortDescending") private var descending = true
+    @AppStorage("systemMonitor.processHierarchy") private var hierarchy = false
     @State private var sampler = SystemMonitorProcessSampler()
     @State private var processes: [SystemMonitorProcess] = []
     @State private var didLoad = false
@@ -54,16 +84,24 @@ struct SystemMonitorProcessesView: View {
     @State private var pendingForce = false
     @State private var showingConfirmation = false
     @State private var errorMessage: String?
+    @State private var lastUpdated: Date?
+    @State private var networkEndpoints: [String] = []
+    @State private var endpointsLoaded = false
 
     private var selected: SystemMonitorProcess? { processes.first { $0.id == selectedID } }
     private var activeColumn: ProcessSortColumn { ProcessSortColumn(rawValue: sortColumn) ?? .cpu }
-    private var visibleProcesses: [SystemMonitorProcess] {
-        let filtered = processes.filter {
+    private var filteredProcesses: [SystemMonitorProcess] {
+        processes.filter {
             search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)
                 || String($0.pid).contains(search)
                 || $0.executablePath.localizedCaseInsensitiveContains(search)
         }
-        return SystemMonitorProcessSorting.sorted(filtered, by: activeColumn, descending: descending)
+    }
+    private var visibleRows: [SystemMonitorProcessHierarchy.Row] {
+        hierarchy
+            ? SystemMonitorProcessHierarchy.rows(filteredProcesses, by: activeColumn, descending: descending)
+            : SystemMonitorProcessSorting.sorted(filteredProcesses, by: activeColumn, descending: descending)
+                .map { .init(process: $0, depth: 0) }
     }
 
     var body: some View {
@@ -89,6 +127,10 @@ struct SystemMonitorProcessesView: View {
                         .strokeBorder(searchFocused ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: searchFocused ? 2 : 1)
                 }
                 Spacer(minLength: 0)
+                Toggle("Hierarchy", isOn: $hierarchy)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .help("Keep child processes below their parents; column headers sort each group")
                 Text("\(processes.count) processes")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
@@ -97,8 +139,12 @@ struct SystemMonitorProcessesView: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(selected.name).font(.system(size: 15, weight: .semibold))
-                            Text("PID \(selected.pid) · Parent \(selected.parentPID) · User \(selected.userID == UInt32.max ? "Unavailable" : String(selected.userID))")
+                            Text("PID \(selected.pid) · Parent \(parentName(for: selected)) · \(childCount(for: selected)) children · User \(selected.userID == UInt32.max ? "Unavailable" : String(selected.userID))")
                                 .font(.system(size: 11)).foregroundStyle(.secondary)
+                            if let lastUpdated {
+                                Text("Updated \(lastUpdated, style: .time)")
+                                    .font(.system(size: 10)).foregroundStyle(.tertiary)
+                            }
                         }
                         Spacer()
                         Button("Quit") { confirm(selected, force: false) }
@@ -106,13 +152,24 @@ struct SystemMonitorProcessesView: View {
                         Button("Force Quit", role: .destructive) { confirm(selected, force: true) }
                             .disabled(selected.started == 0)
                     }
-                    .controlSize(.small)
+                    .controlSize(.regular)
                     QuietDivider()
                     Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                         GridRow {
                             detail("CPU", selected.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "Measuring")
                             detail("Memory", selected.residentBytes == 0 && selected.started == 0 ? "Unavailable" : bytes(selected.residentBytes))
-                            detail("Virtual memory", selected.virtualBytes == 0 && selected.started == 0 ? "Unavailable" : bytes(selected.virtualBytes))
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 4) {
+                                    Text("Virtual address space")
+                                    Image(systemName: "info.circle")
+                                        .accessibilityLabel("About virtual address space")
+                                        .help("Address space reserved or mapped by this process, including shared files and unused ranges. It is not physical RAM in use; compare Memory for that.")
+                                }
+                                .font(.system(size: 10)).foregroundStyle(.secondary)
+                                Text(selected.virtualBytes == 0 && selected.started == 0 ? "Unavailable" : bytes(selected.virtualBytes))
+                                    .font(.system(size: 12, weight: .medium)).monospacedDigit().lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         GridRow {
                             detail("Threads", selected.threads == 0 ? "Unavailable" : "\(selected.threads)")
@@ -122,10 +179,32 @@ struct SystemMonitorProcessesView: View {
                             detail("Process ID", "\(selected.pid)")
                         }
                     }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("EXECUTABLE").utilitySectionHeader()
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack {
+                            Text("EXECUTABLE").utilitySectionHeader()
+                            Spacer()
+                            if selected.executablePath != "Unavailable" && selected.executablePath != "Protected process" {
+                                Button("Copy Path", systemImage: "doc.on.doc") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(selected.executablePath, forType: .string)
+                                }
+                                .controlSize(.regular)
+                            }
+                        }
                         Text(selected.executablePath)
                             .font(.system(size: 11)).textSelection(.enabled)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("NETWORK ENDPOINTS").utilitySectionHeader()
+                        if networkEndpoints.isEmpty {
+                            Text(endpointsLoaded ? "No visible endpoints" : "Checking…")
+                                .font(.system(size: 11)).foregroundStyle(.secondary)
+                        } else {
+                            ForEach(networkEndpoints, id: \.self) { endpoint in
+                                Text(endpoint).font(.system(size: 11, design: .monospaced))
+                                    .textSelection(.enabled)
+                            }
+                        }
                     }
                     if selected.started == 0 {
                         Text("Quit is unavailable because macOS did not provide a verifiable process identity.")
@@ -149,10 +228,12 @@ struct SystemMonitorProcessesView: View {
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 LazyVStack(spacing: 0) {
-                    ForEach(visibleProcesses) { process in
+                    ForEach(visibleRows) { row in
+                        let process = row.process
                         Button { selectedID = process.id } label: {
                             HStack(spacing: 8) {
                                 Text(process.name).lineLimit(1)
+                                    .padding(.leading, CGFloat(row.depth) * 14)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
                                     .frame(width: 72, alignment: .trailing)
@@ -176,7 +257,7 @@ struct SystemMonitorProcessesView: View {
                 } else if processes.isEmpty {
                     Text("No processes are available")
                         .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(30)
-                } else if visibleProcesses.isEmpty {
+                } else if filteredProcesses.isEmpty {
                     Text("No matching processes")
                         .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(30)
                 }
@@ -189,8 +270,22 @@ struct SystemMonitorProcessesView: View {
                 let result = await sampler.sample()
                 guard !Task.isCancelled else { break }
                 processes = result
+                lastUpdated = Date()
                 didLoad = true
                 try? await Task.sleep(for: .seconds(3))
+            }
+        }
+        .task(id: selectedID) {
+            networkEndpoints = []
+            endpointsLoaded = false
+            guard let selectedID, let pid = processes.first(where: { $0.id == selectedID })?.pid else { return }
+            while !Task.isCancelled {
+                guard processes.contains(where: { $0.id == selectedID }) else { return }
+                let endpoints = await SystemMonitorProcessPorts.endpoints(pid: pid)
+                guard !Task.isCancelled else { return }
+                networkEndpoints = endpoints
+                endpointsLoaded = true
+                try? await Task.sleep(for: .seconds(30))
             }
         }
         .confirmationDialog(
@@ -239,6 +334,16 @@ struct SystemMonitorProcessesView: View {
     }
     private func bytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
+    }
+    private func parentName(for process: SystemMonitorProcess) -> String {
+        guard process.parentPID > 0 else { return "Unavailable" }
+        if let parent = processes.first(where: { $0.pid == process.parentPID }) {
+            return "\(parent.name) (\(parent.pid))"
+        }
+        return String(process.parentPID)
+    }
+    private func childCount(for process: SystemMonitorProcess) -> Int {
+        processes.lazy.filter { $0.parentPID == process.pid && $0.pid != process.pid }.count
     }
     private func confirm(_ process: SystemMonitorProcess, force: Bool) {
         pendingProcess = process
