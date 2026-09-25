@@ -106,3 +106,9 @@ front of the desktop. No permission choice was made. Portman UI navigation now
 runs as a separate job on a fresh hosted Mac, while the unit job keeps its
 offscreen renders and installable archive. A local `build-for-testing` of the
 subsequent committed source passed without launching an app or runner.
+
+The first fresh-runner UI capture had no privacy dialog but also no Portman
+panel, which narrowed the failure to cold-launch routing or popover timing.
+The app delegate now routes `--open portman` at launch, independently of SwiftUI
+scene setup, and the controller defers presentation until its status item is
+ready. The hosted UI test remains the acceptance check for this route.
