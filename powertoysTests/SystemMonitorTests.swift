@@ -94,6 +94,19 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertTrue(processes.contains { $0.pid == getpid() && !$0.name.isEmpty })
     }
 
+    func testSelectedProcessCountersRefreshAcrossSamples() async throws {
+        let sampler = SystemMonitorProcessSampler()
+        let firstRows = await sampler.sample()
+        let first = try XCTUnwrap(firstRows.first { $0.pid == getpid() })
+        let deadline = Date().addingTimeInterval(0.12)
+        var work = 0
+        while Date() < deadline { work &+= 1 }
+        XCTAssertGreaterThan(work, 0)
+        let nextRows = await sampler.sample()
+        let next = try XCTUnwrap(nextRows.first { $0.id == first.id })
+        XCTAssertGreaterThan(next.cpuPercent ?? 0, 0)
+    }
+
     func testProtectedProcessFallbackParsesPublicCountersAndPath() {
         let row = "   1   0   0  21344 488724304   0.6 /System/Example App.app/Contents/MacOS/Example App\n"
         let result = SystemMonitorProcessSampler.parsePublicProcessInfo(row)
