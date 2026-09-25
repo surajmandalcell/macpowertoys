@@ -19,11 +19,13 @@ protocol Tool: Identifiable {
     var category: ToolCategory { get }
     var manual: [ToolManualSection] { get }
     var hasTrayTab: Bool { get }
+    var searchKeywords: [String] { get }
 }
 
 extension Tool {
     var hasTrayTab: Bool { false }
     var iconFileURL: URL? { nil }
+    var searchKeywords: [String] { [] }
 }
 
 // MARK: - Manual
@@ -390,6 +392,30 @@ struct PortmanTool: Tool {
     static let shared = PortmanTool()
 }
 
+struct SwitchTool: Tool {
+    let id = "switch"
+    let name = "Switch"
+    let description = "Keep CLI accounts together, switch the active account, and review Codex conversations and usage."
+    let icon = "person.2"
+    let logoAsset = "SwitchLogo"
+    let category = ToolCategory.dev
+    let searchKeywords = ["account", "codex", "grok", "conversation", "usage"]
+
+    let manual = [
+        ToolManualSection(title: "Accounts", points: [
+            "Sign in to Codex CLI or Grok Build, or import an existing account folder.",
+            "Choose Make Default to switch the account used by the corresponding CLI.",
+            "Verify access and refresh usage from the account detail view."
+        ]),
+        ToolManualSection(title: "Shared Store", points: [
+            "Switch.app is optional. This workspace and Switch.app use the same account store when both are installed.",
+            "Conversations shows the shared Codex history; Maintenance shows interrupted operations that need recovery."
+        ])
+    ]
+
+    static let shared = SwitchTool()
+}
+
 // MARK: - Marketplace Tool
 
 struct MarketplaceTool: Tool {
@@ -422,7 +448,8 @@ struct ToolRegistry {
         DiskExplorerTool.shared,
         SystemMonitorTool.shared,
         NetToysTool.shared,
-        PortmanTool.shared
+        PortmanTool.shared,
+        SwitchTool.shared
     ]
 
     static var allTools: [any Tool] {
