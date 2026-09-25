@@ -61,8 +61,7 @@ struct FanControlView: View {
                 Spacer(minLength: 4)
                 compactPresets
             }
-            if service.errorMessage != nil || (service.canRestoreAutomatic && !service.canControl)
-                || (service.snapshot != nil && !service.canControl) {
+            if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
                 Text(detail)
                     .foregroundStyle(service.errorMessage == nil ? Color.secondary : Color.red)
                     .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)

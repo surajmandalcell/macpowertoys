@@ -17,6 +17,16 @@ final class FanControlTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testFirstFanReadMarksUnavailableDataAsResolved() async {
+        let service = FanControlService.shared
+        service.start(owner: "fan-test-read")
+        await service.refresh()
+        XCTAssertTrue(service.hasCompletedRead)
+        service.stop(owner: "fan-test-read")
+        XCTAssertEqual(service.pollOwnerCount, 0)
+    }
+
     func testRealFanTextReportsRPMAndPercentWithoutClaimingControl() throws {
         let sample = """
         Number of fans: 2.0
