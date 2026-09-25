@@ -75,17 +75,17 @@ struct FanControlView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(colorScheme == .light ? Color(red: 0.64, green: 0.32, blue: 0) : Color.orange)
-                        .frame(width: 28, height: 28)
-                        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 7))
+                        .frame(width: 20, height: 28)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
                 .accessibilityHint(detail)
                 .accessibilityIdentifier("fan-control.setup")
                 .help(detail)
             }
-            compactPresets
+            presetButtons
         }
     }
 
@@ -203,7 +203,7 @@ struct FanControlView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(service.selectedPreset == preset ? Color.primary : Color.secondary)
                     .padding(.horizontal, 8)
-                    .frame(minHeight: 26)
+                    .frame(maxWidth: compact ? .infinity : nil, minHeight: 26)
                     .background(
                         service.selectedPreset == preset ? Color.orange.opacity(0.2) : .clear,
                         in: RoundedRectangle(cornerRadius: 6)
@@ -217,31 +217,9 @@ struct FanControlView: View {
                           preset == .max ? "Run fans at their hardware maximum" : "Return fan control to macOS")
             }
         }
+        .frame(width: compact ? 158 : nil)
         .padding(2)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
         .utilityAnimation(value: service.selectedPreset)
-    }
-
-    @ViewBuilder
-    private var compactPresets: some View {
-        if service.canRestoreAutomatic && !service.canControl {
-            Button("Auto") { service.select(.auto) }
-                .controlSize(.small)
-                .disabled(service.isChanging)
-                .help("Return fan control to macOS")
-        } else {
-            Picker("Fan speed", selection: Binding<FanPreset?>(
-                get: { service.selectedPreset },
-                set: { if let preset = $0 { service.select(preset) } }
-            )) {
-                ForEach(FanPreset.allCases) { preset in
-                    Text(preset.rawValue).tag(Optional(preset))
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 158)
-            .disabled(service.isChanging || !service.canControl)
-        }
     }
 }

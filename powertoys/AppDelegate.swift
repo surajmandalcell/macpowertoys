@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     static let statusItemEventMask: NSEvent.EventTypeMask = [.rightMouseDown]
 
     private var statusItemClickMonitor: Any?
+    private var pointerFocusMonitor: Any?
     private var currentDockIconAssetName = "AppIcon"
     private var currentDockIconAppearanceName: NSAppearance.Name?
     private var dockIconAppearanceObservation: NSKeyValueObservation?
@@ -24,7 +25,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     var timerOwnerCount: Int { timer == nil ? 0 : 1 }
     var eventMonitorOwnerCount: Int {
-        (statusItemClickMonitor == nil ? 0 : 1) + (freeRulerKeyMonitor == nil ? 0 : 1)
+        (statusItemClickMonitor == nil ? 0 : 1) + (pointerFocusMonitor == nil ? 0 : 1)
+            + (freeRulerKeyMonitor == nil ? 0 : 1)
     }
     var observerOwnerCount: Int {
         freeRulerObservers.count + (dockIconAppearanceObservation == nil ? 0 : 1)
@@ -176,6 +178,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSMenu.popUpContextMenu(menu, with: event, for: statusButton)
             return nil
         }
+        pointerFocusMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            if let window = event.window {
+                Self.dismissKeyboardFocus(in: window, at: event.locationInWindow)
+            }
+            return event
+        }
 
         didFinishLaunching = true
         startApplicationIfReady()
@@ -191,8 +199,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let pointerFocusMonitor { NSEvent.removeMonitor(pointerFocusMonitor) }
         FanControlService.current?.restoreAutomaticOnExit()
         PortmanService.shared.stopAll()
+    }
+
+    @MainActor
+    static func dismissKeyboardFocus(in window: NSWindow, at point: NSPoint) {
+        guard let contentView = window.contentView,
+              let currentResponder = window.firstResponder,
+              currentResponder !== contentView else { return }
+
+        var hitView = contentView.hitTest(point)
+        while let view = hitView {
+            if view is NSTextField || view is NSTextView { return }
+            hitView = view.superview
+        }
+        window.makeFirstResponder(nil)
     }
 
     @MainActor
