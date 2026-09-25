@@ -129,6 +129,7 @@ struct PortmanPanelView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .frame(maxWidth: .infinity)
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
                     .accessibilityIdentifier("portman.page.\(destination.rawValue)")
@@ -388,6 +389,7 @@ struct PortmanPanelView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .help(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
             if hoveredRowID == port.id && !cleanupMode {
                 Button { openLocal(port.port) } label: {
@@ -560,6 +562,7 @@ struct PortmanPanelView: View {
             HStack {
                 Button { selectedPortID = nil } label: { Label("Servers", systemImage: "chevron.left") }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .font(.system(size: 11))
                 Spacer()
                 Text(service.metadata[port.id]?.project ?? port.command)
@@ -569,6 +572,7 @@ struct PortmanPanelView: View {
                     Image(systemName: "link").frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .help("Open localhost:\(String(port.port))")
                 .accessibilityLabel("Open localhost port \(String(port.port))")
                 Menu {
@@ -973,6 +977,7 @@ struct PortmanPanelView: View {
                     }
                     .font(.system(size: 11))
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     ForEach(service.remotePorts, id: \.self) { port in remoteRow(port) }
                 } else if !service.isLoadingRemote && service.forwardingError == nil {
                     Text("No listening ports found. You can add a remote port manually.")
