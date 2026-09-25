@@ -14,7 +14,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Code complete; live check pending | Manage supported accounts in the applet. | Discover/import, sign in, switch defaults, verify, view all available rate-limit buckets, credits, and account activity, and remove accounts through Core with errors and recovery states visible. |
 | Hosted verified; live check pending | Preserve standalone Switch's remaining account actions in MacPowerToys. | Open the selected provider, copy its saved auth path, reorder accounts, and inspect source, import, last-use, and workspace details. The combined MacPowerToys menu offers quick account switching and usage on demand. |
 | Hosted verified; live check pending | Keep MacPowerToys lightweight: account management, sign-in, import, default switching, verification, usage, and account recovery. Conversation browsing and cleanup stay in standalone Switch. | No conversation or cleanup route, scan, or destructive action in the MacPowerToys applet. Recovery and linked-settings repair remain reachable. |
-| Original-layout port in progress | Follow the standalone Switch window's flow: narrow functional rail, page title and refresh strip, persistent account list, and adjacent Identity, Usage, activity, and account-detail panels. Keep the original icon. Include Accounts, Backup, and relevant Settings; omit Chat History and Cleanup as agreed. | Compare the port with `switch/docs/screenshots/accounts-dark.png` at 1120×740, then inspect light and dark, empty and populated, Backup, Settings, and minimum-width states. Every visible rail action must work. |
+| Layout rendered; final hosted navigation pending | Follow the standalone Switch window's flow: narrow functional rail, page title and refresh strip, persistent account list, and adjacent Identity, Usage, activity, and account-detail panels. Keep the original icon. Include Accounts, Backup, and relevant Settings; omit Chat History and Cleanup as agreed. | Compare the port with `switch/docs/screenshots/accounts-dark.png` at 1120×740, then inspect light and dark, empty and populated, Backup, Settings, and minimum-width states. Every visible rail action must work. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
@@ -53,3 +53,18 @@ Run 36150672552 captured empty and populated Accounts at 880pt and 1,024pt in
 light and dark, plus Recovery and the quick menu. The focus-outline assertion
 was corrected, and the full hosted macOS suite passed in run 36153836043.
 The signed installed app still needs a focus-preserving final check.
+
+The original-layout revision now has the standalone 48-point icon rail,
+200-point account list, title strip, Identity and Usage panels, activity grid,
+and Backup/Settings pages. Selected-account usage checks once in the background;
+failures stay inside its panel instead of opening a global alert. Settings
+include the original Codex and Grok data locations with Reveal controls and a
+usage-percentage choice shared with the compact menu. Hosted run 36184390010
+captured light and dark, empty and populated, Backup, Settings, and 880-point
+renders. Its two Switch-related repository UI checks found a missing focus
+modifier and thin scroller on the activity grid; both are fixed in the next
+revision. That run also had an unrelated Portman failure. Hosted Switch UI run
+36184481199 opened Switch from the launcher, then found the Add control under
+a different accessibility element type; the test now queries the identifier
+and opens the provider menu. The next hosted run must verify those fixes and
+capture a populated Usage panel with synthetic data.
