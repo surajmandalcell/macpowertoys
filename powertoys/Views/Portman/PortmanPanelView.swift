@@ -129,10 +129,12 @@ struct PortmanPanelView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
                     .accessibilityIdentifier("portman.page.\(destination.rawValue)")
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, UtilityLayout.horizontalInset)
 
             QuietDivider()
