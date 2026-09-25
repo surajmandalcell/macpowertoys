@@ -509,9 +509,10 @@
   process model retained only the fields needed by its four columns.
 - **Invariant:** Show every sampled PID in a lazy scrolling stack. Make Process,
   CPU, Memory, and PID headers reverse sort direction on repeat click and
-  persist the column and direction. Search includes name, PID, and path. Show
-  parent, user, CPU, resident and virtual memory, threads, start time, and
-  executable path for a selection. If macOS denies detailed `libproc` data,
+  persist the column and direction. Keep unavailable CPU and memory readings
+  after measured values in either direction. Search includes name, PID, and
+  path. Show parent, user, CPU, resident and virtual memory, threads, start
+  time, and executable path for a selection. If macOS denies detailed `libproc` data,
   use bounded public `ps` output where available; do not show fake zero usage
   or allow Quit without a verifiable start-time identity.
 - **Check:** Scroll beyond row 25, sort every header in both directions,
