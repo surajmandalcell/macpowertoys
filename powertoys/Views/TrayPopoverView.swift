@@ -1265,22 +1265,22 @@ private struct SystemMonitorTrayView: View {
         VStack(spacing: 0) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 summary(.cpu, metric(
-                    "CPU", symbol: "cpu", value: percent(sample?.cpuUsage),
+                    "CPU", symbol: "cpu", value: percent(sample?.cpuUsage, metric: .cpu),
                     detail: "All cores", level: sample?.cpuUsage,
                     values: service.history.compactMap(\.cpuUsage), surfaceTint: SystemMonitorPalette.teal
                 ))
                 summary(.gpu, metric(
-                    "GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage),
+                    "GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage, metric: .gpu),
                     detail: "Graphics utilization", level: sample?.gpuUsage,
                     values: service.history.compactMap(\.gpuUsage), surfaceTint: SystemMonitorPalette.blue
                 ))
                 summary(.memory, metric(
-                    "RAM", symbol: "memorychip", value: percent(sample?.memoryUsage),
+                    "RAM", symbol: "memorychip", value: percent(sample?.memoryUsage, metric: .memory),
                     detail: memoryDetail, level: sample?.memoryUsage,
                     values: service.history.compactMap(\.memoryUsage), surfaceTint: SystemMonitorPalette.coral
                 ))
                 summary(.disk, metric(
-                    "Disk", symbol: "internaldrive", value: percent(sample?.diskUsage),
+                    "Disk", symbol: "internaldrive", value: percent(sample?.diskUsage, metric: .disk),
                     detail: diskDetail, level: sample?.diskUsage,
                     values: service.history.compactMap(\.diskUsage), surfaceTint: SystemMonitorPalette.orange
                 ))
@@ -1331,7 +1331,7 @@ private struct SystemMonitorTrayView: View {
         VStack(alignment: .leading, spacing: 10) {
             switch page {
             case .cpu:
-                detailHero("CPU", symbol: "cpu", value: percent(sample?.cpuUsage),
+                detailHero("CPU", symbol: "cpu", value: percent(sample?.cpuUsage, metric: .cpu),
                            detail: "Usage across all cores", level: sample?.cpuUsage,
                            values: service.history.compactMap(\.cpuUsage), tint: SystemMonitorPalette.teal)
                 detailRows([
@@ -1343,11 +1343,11 @@ private struct SystemMonitorTrayView: View {
                 ])
                 .help("Load is the average number of processes running or ready for a CPU. It is not a percentage.")
             case .gpu:
-                detailHero("GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage),
+                detailHero("GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage, metric: .gpu),
                            detail: "Graphics utilization", level: sample?.gpuUsage,
                            values: service.history.compactMap(\.gpuUsage), tint: SystemMonitorPalette.blue)
             case .memory:
-                detailHero("RAM", symbol: "memorychip", value: percent(sample?.memoryUsage),
+                detailHero("RAM", symbol: "memorychip", value: percent(sample?.memoryUsage, metric: .memory),
                            detail: "Physical memory in use", level: sample?.memoryUsage,
                            values: service.history.compactMap(\.memoryUsage), tint: SystemMonitorPalette.coral)
                 detailRows([
@@ -1365,7 +1365,7 @@ private struct SystemMonitorTrayView: View {
                     ("Upload", sample?.networkUpload.map(Self.rate) ?? "..."),
                 ])
             case .disk:
-                detailHero("Disk", symbol: "internaldrive", value: percent(sample?.diskUsage),
+                detailHero("Disk", symbol: "internaldrive", value: percent(sample?.diskUsage, metric: .disk),
                            detail: "Startup volume used", level: sample?.diskUsage,
                            values: service.history.compactMap(\.diskUsage), tint: SystemMonitorPalette.orange)
                 detailRows([
@@ -1426,6 +1426,12 @@ private struct SystemMonitorTrayView: View {
                 }
             }
             .padding(14)
+            Text("History")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 5)
             TrayMetricSparkline(values: values, color: tint)
                 .frame(height: 56)
                 .accessibilityHidden(true)
@@ -1508,8 +1514,9 @@ private struct SystemMonitorTrayView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private func percent(_ value: Double?) -> String {
-        value.map { "\(Int($0.rounded()))%" } ?? "..."
+    private func percent(_ value: Double?, metric: SystemMonitorMenuMetric) -> String {
+        if let value { return "\(Int(value.rounded()))%" }
+        return sample?.unavailableMetrics.contains(metric) == true ? "Unavailable" : "..."
     }
 
     private var memoryDetail: String {
