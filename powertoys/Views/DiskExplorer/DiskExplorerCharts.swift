@@ -271,6 +271,7 @@ struct DiskSunburstView: View {
     @State private var hoveredID: String?
     @State private var hoveredLabel: String?
     @State private var selectedID: String?
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.45) }
 
@@ -292,7 +293,8 @@ struct DiskSunburstView: View {
                             .overlay {
                                 DiskRingShape(start: segment.start, end: segment.end,
                                               inner: segment.inner, outer: segment.outer)
-                                    .stroke(Color(nsColor: .controlBackgroundColor), lineWidth: 2)
+                                    .stroke(colorScheme == .dark ? Color.primary.opacity(0.22) : .white,
+                                            lineWidth: 2)
                             }
                             .animation(chartAnimation, value: segment.start)
                             .animation(chartAnimation, value: segment.end)
