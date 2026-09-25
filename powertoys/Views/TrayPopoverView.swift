@@ -191,7 +191,7 @@ struct TrayPopoverView: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 4) {
-                TrayChromeButton(title: "Open MacPowerToys", systemImage: "arrow.up.forward.square") {
+                TrayChromeButton(title: "Open MacPowerToys", systemImage: "arrow.up.forward.square", visibleTitle: "Open App") {
                     openWindow(id: "main")
                     NSApp.activate(ignoringOtherApps: true)
                 }
@@ -375,16 +375,26 @@ private struct TrayTabIcon: View {
 private struct TrayChromeButton: View {
     let title: String
     let systemImage: String
+    var visibleTitle: String? = nil
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.62))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
+            Group {
+                if let visibleTitle {
+                    Text(visibleTitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.horizontal, 8)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 12))
+                        .frame(width: 24)
+                }
+            }
+            .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.62))
+            .frame(height: 24)
+            .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .accessibilityLabel(title)
