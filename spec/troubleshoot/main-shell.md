@@ -28,6 +28,21 @@
   descriptions, and aligned controls. Inspect the exact signed app only when
   desktop interaction is allowed.
 
+## Two-Row Launcher Card Density
+
+- **Symptom:** Four columns were correct, but 172pt cards left the last of 13
+  built-in tools clipped at the bottom of the standard 980×676 launcher.
+- **Cause:** The icon/name header and the enable/Open row took separate vertical
+  space above each description.
+- **Invariant:** Keep four flexible columns. Let the 48pt icon span the name
+  and action rows, with the name above the native switch and Open button.
+  Place each complete description below that header. Keep the card, switch,
+  and Open actions separate.
+- **Check:** Hosted [run 36124794622](https://github.com/surajmandalcell/macpowertoys/actions/runs/36124794622)
+  passed and saved 980×676 dark and light native captures. All 13 cards are
+  fully visible with complete descriptions and visible controls. Live action
+  checks await a focus-safe signed app session.
+
 ## Compact Tool Enablement
 
 - **Symptom:** Tool cards or detail pages spend one row on an `Enabled` label

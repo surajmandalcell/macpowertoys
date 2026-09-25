@@ -93,6 +93,14 @@ The owner chose four columns for All Tools. Each card now places a larger icon
 across two rows: the tool name beside its upper half, then the native enable
 switch and Open button beside its lower half. The description sits below that
 header. Preserve the full built-in descriptions, separate card/enable/Open
-actions, and four columns at the standard 980pt pane width. Verify the actual
-height and readability in a native 980×676 capture; do not infer them from the
-earlier HTML layout study.
+actions, and four columns at the standard 980pt pane width.
+
+The app and Raycast assets are byte-for-byte copies of the selected M02 and
+T01 PNGs. The isolated Raycast build and icon sync check pass. Hosted macOS
+[run 36124794622](https://github.com/surajmandalcell/macpowertoys/actions/runs/36124794622)
+passed and saved native 980×676 dark and light launcher captures. All 13 cards
+are fully visible in four columns; the previous 172pt cards clipped the last
+card. The new cards use a 48pt icon and 150pt minimum height, with complete
+descriptions and separate visible enable/Open controls. The owner's desktop
+was not focused by a local app or test runner. Live control interaction and
+Dock display remain unverified.
