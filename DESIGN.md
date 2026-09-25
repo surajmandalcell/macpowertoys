@@ -704,7 +704,7 @@ The tray popover is also subordinate: 360pt wide and no more than 70% of screen
 height. A compact reorderable icon strip sits above one vertically scrollable
 body. The strip takes its intrinsic width while it fits and becomes horizontal
 scrolling only when it reaches the available width. Home keeps Pick Color,
-Extract Text, and Ruler in one direct-action row plus a compact Awake row;
+Extract Text, and Ruler in one direct-action row plus compact Awake and Fan rows;
 complex tray-capable built-ins get focused operational tabs. App-only tools do
 not get placeholder tabs. Durable
 configuration stays in the launcher or tool window, except Input Devices may

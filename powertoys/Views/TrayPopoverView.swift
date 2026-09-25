@@ -408,7 +408,7 @@ private struct TrayHomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if toolIDs.isEmpty {
+            if toolIDs.isEmpty && !SettingsManager.shared.isToolEnabled("system-monitor") {
                 EmptyStateView(icon: "switch.2", message: "No Home tools are in the combined menu")
                     .frame(height: 120)
             } else {
@@ -436,6 +436,11 @@ private struct TrayHomeView: View {
                 }
                 if toolIDs.contains("awake") {
                     AwakeTrayRow()
+                }
+                if SettingsManager.shared.isToolEnabled("system-monitor") {
+                    FanControlView(owner: "tray-home", compact: true)
+                        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                        .padding(.vertical, 6)
                 }
             }
         }
@@ -1107,6 +1112,9 @@ private struct SystemMonitorTrayView: View {
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
             .padding(.top, 4)
+            FanControlView(owner: "system-monitor-tray", compact: true)
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                .padding(.top, 8)
         }
         .padding(.bottom, 8)
         .onAppear { service.startDetailed(owner: "tray") }

@@ -184,6 +184,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        FanControlService.current?.restoreAutomaticOnExit()
+    }
+
     @MainActor
     func statusItemContextMenu() -> NSMenu {
         let menu = NSMenu()
