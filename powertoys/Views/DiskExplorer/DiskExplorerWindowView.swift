@@ -26,10 +26,12 @@ struct DiskExplorerWindowView: View {
     @State private var previewURL: URL?
     @State private var showingReview = false
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
+    @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
 
     private var chart: DiskChartStyle { DiskChartStyle(rawValue: chartStyle) ?? .treemap }
+    private var measure: DiskChartMeasure { DiskChartMeasure(rawValue: chartMeasure) ?? .space }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -41,7 +43,11 @@ struct DiskExplorerWindowView: View {
         }
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "disk-explorer"))
-        .onAppear { model.refreshVolumes() }
+        .onAppear {
+            model.refreshVolumes()
+            model.start(model.sourceURL ?? FileManager.default.homeDirectoryForCurrentUser,
+                        includeHidden: includeHidden)
+        }
         .onDisappear { model.leave() }
         .onChange(of: includeHidden) { _, newValue in
             if let source = model.sourceURL { model.start(source, includeHidden: newValue) }
@@ -166,6 +172,10 @@ struct DiskExplorerWindowView: View {
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
+                Picker("Measure", selection: $chartMeasure) {
+                    ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
+                }
+                .fixedSize()
                 Spacer()
                 TextField("Search this folder", text: $search)
                     .textFieldStyle(.roundedBorder)
@@ -243,16 +253,36 @@ struct DiskExplorerWindowView: View {
     }
 
     @ViewBuilder private func chartView(_ directory: DiskEntry) -> some View {
-        Group {
-            if chart == .treemap {
-                DiskTreemapView(directory: directory, apparent: apparentSize, select: inspect)
-            } else {
-                DiskSunburstView(directory: directory, apparent: apparentSize, select: inspect)
+        VStack(spacing: 0) {
+            Group {
+                if chart == .treemap {
+                    DiskTreemapView(directory: directory, apparent: apparentSize, measure: measure, select: inspect)
+                } else {
+                    DiskSunburstView(directory: directory, apparent: apparentSize, measure: measure, select: inspect)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if measure == .age {
+                HStack(spacing: 14) {
+                    ageKey("7 days", color: .mint)
+                    ageKey("30 days", color: .teal)
+                    ageKey("1 year", color: .blue)
+                    ageKey("Older", color: .purple)
+                }
+                .padding(.horizontal, 12).padding(.bottom, 8)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func ageKey(_ title: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(title)
+        }
+        .font(.system(size: 10))
+        .foregroundStyle(.secondary)
     }
 
     private func entriesView(_ directory: DiskEntry) -> some View {
@@ -433,6 +463,7 @@ struct DiskExplorerWindowView: View {
 struct DiskExplorerSettingsView: View {
     var unreadableCount: Int? = nil
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
+    @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
 
@@ -442,6 +473,9 @@ struct DiskExplorerSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Picker("Visualization", selection: $chartStyle) {
                     ForEach(DiskChartStyle.allCases) { style in Text(style.rawValue).tag(style.rawValue) }
+                }
+                Picker("Measure", selection: $chartMeasure) {
+                    ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
                 }
                 Toggle("Show apparent file size", isOn: $apparentSize)
                 Toggle("Include hidden files in scans", isOn: $includeHidden)

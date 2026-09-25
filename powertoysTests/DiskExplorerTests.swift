@@ -14,12 +14,17 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertEqual(link(data.path, folder.appendingPathComponent("hard-link.bin").path), 0)
         try Data(repeating: 8, count: 4096).write(to: root.appendingPathComponent(".hidden"))
         try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("loop"), withDestinationURL: root)
+        let newestWrite = Date().addingTimeInterval(3_600)
+        try FileManager.default.setAttributes([.modificationDate: newestWrite], ofItemAtPath: data.path)
 
         let result = try DiskExplorerScanner.scan(root)
         XCTAssertEqual(result.root.fileCount, 4)
         XCTAssertEqual(result.root.directoryCount, 2)
         XCTAssertEqual(result.unreadableCount, 0)
         XCTAssertEqual(result.root.allocatedBytes, try duBytes(root))
+        XCTAssertEqual(result.root.modifiedAt.timeIntervalSince1970,
+                       newestWrite.timeIntervalSince1970, accuracy: 1)
+        XCTAssertEqual(DiskChartMeasure.files.weight(result.root, apparent: false), 4)
 
         let withoutHidden = try DiskExplorerScanner.scan(root, includeHidden: false)
         XCTAssertFalse(withoutHidden.root.children.contains { $0.name == ".hidden" })
