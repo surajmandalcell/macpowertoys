@@ -280,7 +280,7 @@ final class GlobalShortcutManager {
         let needsTap = enabledActions.contains {
             isToolAvailable($0) && shortcut(for: $0).overridesSystemScreenshotShortcut
         }
-        guard needsTap else { return }
+        guard needsTap, AXIsProcessTrusted() else { return }
         let mask = CGEventMask(1) << CGEventType.keyDown.rawValue
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
