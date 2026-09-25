@@ -59,6 +59,20 @@
   Its mapping remains visible, and no unnamed remote-port list appears until
   a host is scanned again.
 
+## Portman Cleanup And Detail On Short Screens
+
+- **Symptom:** The selected-cleanup Stop button rendered gray, and a 488pt-high
+  hosted detail panel ended above its Open localhost action.
+- **Cause:** The destructive button role did not give the bordered macOS
+  control red prominence. Detail spacing and chart heights consumed the
+  available vertical space before its footer.
+- **Invariant:** Give the selected-cleanup Stop action an explicit prominent
+  red style. Keep the detail charts readable while fitting more of the route
+  into the screen-height-capped popover; retain scrolling when necessary.
+- **Check:** Inspect 400pt-wide light and dark cleanup and detail renders at
+  the hosted screen's actual height. The selected Stop action is visibly red,
+  and the detail's Open localhost action is visible or reachable by scrolling.
+
 ## Portman Closed-Menu Scan Cost
 
 - **Symptom:** The menu-only Portman owner starts a full socket and process
