@@ -449,6 +449,36 @@
 
 ## System Monitor
 
+- **Symptom:** Selecting a 10-second menu cadence or changing Off, Combined,
+  and Separate sends a measured value back to `...` and can move unrelated
+  menu-bar items. The title-bar selector also moves within its action area.
+- **Cause:** Each settings reconfiguration cleared all cached menu values,
+  reset the delta sampler, and removed every status item. The title-bar action
+  combined a redundant variable-width metric label with its picker.
+- **Invariant:** Keep the last measured value across interval and placement
+  changes, including the first empty CPU or network delta after rescheduling.
+  Reuse unaffected native status items, but remove values for disabled metrics.
+  Use one fixed-size segmented control on each metric title bar. New CPU,
+  memory, and network menu settings default to 10 seconds; saved choices stay
+  intact. Remote Stats keeps its conservative 30-second default and offers an
+  explicit 5-second choice.
+- **Check:** Run the menu-value retention test with a measured sample, a
+  10-second interval change, an empty delta, and Combined-to-Separate.
+  Require the value and unaffected item identity to remain. Compare the picker
+  bounds for all four metrics and three choices, then inspect the hosted tray
+  render and the signed app without taking desktop focus.
+
+- **Symptom:** Overview, Remote Stats, and tray metric cards feel dull or use
+  unrelated colors, while the Monitor sidebar wastes content width.
+- **Cause:** Card fills were derived from live status tints and weak gradients;
+  Monitor inherited the 240pt data-sidebar width despite short navigation.
+- **Invariant:** Use one named Coolors-derived color family for card surfaces
+  in all three Monitor views, keep live status color on the graph or icon, and
+  preserve readable text in both appearances. Use the 220pt sidebar and give
+  the returned space to content; other workspaces keep their widths.
+- **Check:** Compare offscreen light and dark Overview, tray, and disconnected
+  Remote Stats renders, then inspect the signed app without taking focus.
+
 - **Symptom:** Graphs stop short of card edges, Load shows unlabeled averages,
   pending menu readings say Waiting, and the installed app still says Remote.
 - **Cause:** Card padding also inset the graph; Overview joined the 1-, 5-, and
@@ -511,7 +541,7 @@
   in bits or bytes; battery percentage or charging state; and compact or full
   thermal state. Use a versioned schema and preserve old global-interval and
   metric-selection settings during migration.
-- **Invariant:** Default CPU, memory, and network to 2 seconds, GPU to 5 seconds,
+- **Invariant:** Default CPU, memory, and network to 10 seconds, GPU to 5 seconds,
   and disk, battery, and thermal to 30 seconds. Offer 1, 2, 3, 5, 10, 30, and
   60 seconds only where the source supports the rate. In menu-only mode, do not
   poll disk more often than every 15 seconds. Do not poll battery or thermal
@@ -574,7 +604,7 @@
   connected, and Terminal received only an app-open request while the SSH
   command went to the clipboard.
 - **Invariant:** Name the destination Remote Stats. Return starts the same
-  validated connection as Connect. Refresh offers Manual, 30, 60, 120, and
+  validated connection as Connect. Refresh offers Manual, 5, 10, 30, 60, 120, and
   300 seconds; changing it or pressing Refresh Now restarts the page-owned
   polling task without installing a remote daemon. The selected cadence is
   persisted. Disconnect and page exit cancel polling. Open Terminal passes an
