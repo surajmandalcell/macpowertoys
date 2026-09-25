@@ -4,6 +4,39 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    func testMonitorSubprocessOutputIsBounded() async throws {
+        do {
+            _ = try await SSHProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/bin/echo"),
+                arguments: [String(repeating: "x", count: 2_048)],
+                maximumOutputBytes: 1_024,
+                timeout: 5
+            )
+            XCTFail("Oversized output was accepted")
+        } catch SSHKeyAccessError.outputLimit {
+            // Expected: the runner drains excess output without retaining it.
+        }
+    }
+
+    func testMonitorPluginContractRejectsInvalidMetricsAndOutput() throws {
+        let manifest = try SystemMonitorPluginManifest.decode(Data("""
+        {"formatVersion":1,"metrics":[{"id":"physical-memory","title":"Physical memory"}]}
+        """.utf8))
+        let sample = try SystemMonitorPluginSample.decode("""
+        {"formatVersion":1,"values":{"physical-memory":{"value":"16 GB","detail":"Installed RAM"}}}
+        """, manifest: manifest)
+        XCTAssertEqual(sample.values["physical-memory"]?.value, "16 GB")
+        XCTAssertThrowsError(try SystemMonitorPluginManifest.decode(Data("""
+        {"formatVersion":1,"metrics":[{"id":"same","title":"One"},{"id":"same","title":"Two"}]}
+        """.utf8)))
+        XCTAssertThrowsError(try SystemMonitorPluginSample.decode("""
+        {"formatVersion":1,"values":{"other":{"value":"16 GB"}}}
+        """, manifest: manifest))
+        XCTAssertThrowsError(try SystemMonitorPluginSample.decode("""
+        {"formatVersion":1,"values":{"physical-memory":{"value":"16\\nGB"}}}
+        """, manifest: manifest))
+    }
+
     func testRemoteLinuxParserAndSSHHostBoundary() throws {
         let output = """
         MPT1
@@ -88,6 +121,26 @@ final class SystemMonitorTests: XCTestCase {
         image.addRepresentation(representation)
         let attachment = XCTAttachment(image: image)
         attachment.name = "System Monitor Remote — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testWorldClocksRenderAtProductionSize() throws {
+        let host = NSHostingView(rootView: SystemMonitorWorldClocksView()
+            .frame(width: 940, height: 780)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .environment(\.colorScheme, .dark))
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
+        host.layoutSubtreeIfNeeded()
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: host.bounds.size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "System Monitor World Clocks — Dark"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

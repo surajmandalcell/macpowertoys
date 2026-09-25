@@ -23,9 +23,13 @@ struct AppSettingsSheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedTab: SettingsTab = .general
+    @State private var selectedTab: SettingsTab
 
     private static let sheetSize = CGSize(width: 680, height: 560)
+
+    init(initialTab: SettingsTab = .general) {
+        _selectedTab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

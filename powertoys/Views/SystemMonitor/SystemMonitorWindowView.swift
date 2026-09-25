@@ -6,7 +6,10 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case memory = "Memory"
     case network = "Network & Disk"
     case processes = "Processes"
+    case bluetooth = "Bluetooth"
+    case clocks = "World Clocks"
     case remote = "Remote Linux"
+    case plugins = "Plugins"
     case menuBar = "Menu Bar"
     case about = "About"
 
@@ -17,7 +20,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .processor: [.cpu, .thermal]
         case .memory: [.memory]
         case .network: [.network, .disk]
-        case .processes, .remote, .menuBar, .about: []
+        case .processes, .bluetooth, .clocks, .remote, .plugins, .menuBar, .about: []
         }
     }
     var icon: String {
@@ -27,7 +30,10 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .memory: "memorychip"
         case .network: "network"
         case .processes: "list.bullet.rectangle"
+        case .bluetooth: "wave.3.right"
+        case .clocks: "clock"
         case .remote: "server.rack"
+        case .plugins: "puzzlepiece.extension"
         case .menuBar: "menubar.rectangle"
         case .about: "info.circle"
         }
@@ -81,7 +87,10 @@ struct SystemMonitorWindowView: View {
         case .memory: memoryPage
         case .network: networkPage
         case .processes: SystemMonitorProcessesView()
+        case .bluetooth: SystemMonitorBluetoothView()
+        case .clocks: SystemMonitorWorldClocksView()
         case .remote: SystemMonitorRemoteView()
+        case .plugins: SystemMonitorPluginsView()
         case .menuBar: menuBarPage
         case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
         }
@@ -103,74 +112,80 @@ struct SystemMonitorWindowView: View {
     }
 
     private var metricGrid: some View {
-        LazyVGrid(columns: metricColumns, spacing: 12) {
-            metricCard(
-                icon: "cpu",
-                title: "CPU",
-                value: service.snapshot?.cpuUsage.percent ?? "Priming…",
-                detail: loadDetail,
-                values: service.history.compactMap(\.cpuUsage),
-                tint: usageTint(service.snapshot?.cpuUsage)
-            )
-            metricCard(
-                icon: "rectangle.3.group",
-                title: "GPU",
-                value: service.snapshot?.gpuUsage.percent ?? "Not available",
-                detail: "Graphics utilization",
-                values: service.history.compactMap(\.gpuUsage),
-                tint: usageTint(service.snapshot?.gpuUsage)
-            )
-            metricCard(
-                icon: "memorychip",
-                title: "Memory",
-                value: service.snapshot?.memoryUsage.percent ?? "Not available",
-                detail: memoryDetail,
-                values: service.history.compactMap(\.memoryUsage),
-                tint: usageTint(service.snapshot?.memoryUsage)
-            )
-            metricCard(
-                icon: "internaldrive",
-                title: "Disk",
-                value: service.snapshot?.diskUsage.percent ?? "Not available",
-                detail: diskDetail,
-                values: service.history.compactMap(\.diskUsage),
-                tint: usageTint(service.snapshot?.diskUsage)
-            )
-            metricCard(
-                icon: "arrow.down.circle",
-                title: "Network",
-                value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…",
-                detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "not available")",
-                values: service.history.compactMap { sample in
-                    guard let down = sample.networkDownload, let up = sample.networkUpload else { return nil }
-                    return max(down, up)
-                },
-                tint: .blue
-            )
-            metricCard(
-                icon: "thermometer.medium",
-                title: "Thermal",
-                value: service.snapshot?.thermalState ?? "Not available",
-                detail: "System pressure",
-                values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                tint: thermalTint
-            )
-            metricCard(
-                icon: "battery.75percent",
-                title: "Battery",
-                value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Not available",
-                detail: batteryDetail,
-                values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                tint: batteryTint
-            )
-            metricCard(
-                icon: "chart.bar",
-                title: "Load",
-                value: loadAverage,
-                detail: loadAverageDetail,
-                values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
-                tint: usageTint(loadLevel)
-            )
+        VStack(spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                metricCard(
+                    icon: "cpu",
+                    title: "CPU",
+                    value: service.snapshot?.cpuUsage.percent ?? "Priming…",
+                    detail: loadDetail,
+                    values: service.history.compactMap(\.cpuUsage),
+                    tint: usageTint(service.snapshot?.cpuUsage),
+                    featured: true
+                )
+                metricCard(
+                    icon: "memorychip",
+                    title: "Memory",
+                    value: service.snapshot?.memoryUsage.percent ?? "Not available",
+                    detail: memoryDetail,
+                    values: service.history.compactMap(\.memoryUsage),
+                    tint: usageTint(service.snapshot?.memoryUsage),
+                    featured: true
+                )
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 12)], spacing: 12) {
+                metricCard(
+                    icon: "rectangle.3.group",
+                    title: "GPU",
+                    value: service.snapshot?.gpuUsage.percent ?? "Not available",
+                    detail: "Graphics utilization",
+                    values: service.history.compactMap(\.gpuUsage),
+                    tint: usageTint(service.snapshot?.gpuUsage)
+                )
+                metricCard(
+                    icon: "internaldrive",
+                    title: "Disk",
+                    value: service.snapshot?.diskUsage.percent ?? "Not available",
+                    detail: diskDetail,
+                    values: service.history.compactMap(\.diskUsage),
+                    tint: usageTint(service.snapshot?.diskUsage)
+                )
+                metricCard(
+                    icon: "arrow.down.circle",
+                    title: "Network",
+                    value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…",
+                    detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "not available")",
+                    values: service.history.compactMap { sample in
+                        guard let down = sample.networkDownload, let up = sample.networkUpload else { return nil }
+                        return max(down, up)
+                    },
+                    tint: .blue
+                )
+                metricCard(
+                    icon: "thermometer.medium",
+                    title: "Thermal",
+                    value: service.snapshot?.thermalState ?? "Not available",
+                    detail: "System pressure",
+                    values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
+                    tint: thermalTint
+                )
+                metricCard(
+                    icon: "battery.75percent",
+                    title: "Battery",
+                    value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Not available",
+                    detail: batteryDetail,
+                    values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
+                    tint: batteryTint
+                )
+                metricCard(
+                    icon: "chart.bar",
+                    title: "Load",
+                    value: loadAverage,
+                    detail: loadAverageDetail,
+                    values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
+                    tint: usageTint(loadLevel)
+                )
+            }
         }
     }
 
@@ -180,11 +195,12 @@ struct SystemMonitorWindowView: View {
         value: String,
         detail: String,
         values: [Double] = [],
-        tint: Color = .gray
+        tint: Color = .gray,
+        featured: Bool = false
     ) -> some View {
         ZStack(alignment: .bottom) {
             StatsSparkline(values: values, color: tint)
-                .frame(height: 44)
+                .frame(height: featured ? 78 : 44)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 8)
                 .opacity(0.58)
@@ -193,15 +209,16 @@ struct SystemMonitorWindowView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(tint)
                 Text(value)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: featured ? 30 : 22, weight: .semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .utilityAnimation(value: value)
                 Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .padding(featured ? 18 : 14)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .frame(height: featured ? 158 : 112)
         .background(tint.opacity(0.055))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }

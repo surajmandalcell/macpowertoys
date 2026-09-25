@@ -140,6 +140,7 @@ actor SystemMonitorRemotePoller {
         let result = try await SSHProcessRunner.run(
             executableURL: SSHKeyAccessConfiguration.sshURL,
             arguments: arguments,
+            maximumOutputBytes: 16_384,
             timeout: 8
         )
         guard result.status == 0 else {
