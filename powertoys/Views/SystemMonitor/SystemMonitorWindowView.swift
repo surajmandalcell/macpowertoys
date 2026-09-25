@@ -6,6 +6,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case memory = "Memory"
     case network = "Network & Disk"
     case processes = "Processes"
+    case remote = "Remote Linux"
     case menuBar = "Menu Bar"
     case about = "About"
 
@@ -16,7 +17,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .processor: [.cpu, .thermal]
         case .memory: [.memory]
         case .network: [.network, .disk]
-        case .processes, .menuBar, .about: []
+        case .processes, .remote, .menuBar, .about: []
         }
     }
     var icon: String {
@@ -26,6 +27,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .memory: "memorychip"
         case .network: "network"
         case .processes: "list.bullet.rectangle"
+        case .remote: "server.rack"
         case .menuBar: "menubar.rectangle"
         case .about: "info.circle"
         }
@@ -79,6 +81,7 @@ struct SystemMonitorWindowView: View {
         case .memory: memoryPage
         case .network: networkPage
         case .processes: SystemMonitorProcessesView()
+        case .remote: SystemMonitorRemoteView()
         case .menuBar: menuBarPage
         case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
         }

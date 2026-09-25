@@ -247,13 +247,13 @@ nonisolated final class SSHAskpassChannel: @unchecked Sendable {
     deinit { cleanup() }
 }
 
-private nonisolated struct SSHProcessResult: Sendable {
+nonisolated struct SSHProcessResult: Sendable {
     let status: Int32
     let standardOutput: String
     let standardError: String
 }
 
-private nonisolated enum SSHProcessRunner {
+nonisolated enum SSHProcessRunner {
     static func run(
         executableURL: URL,
         arguments: [String],
