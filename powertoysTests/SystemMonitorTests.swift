@@ -555,7 +555,7 @@ final class SystemMonitorTests: XCTestCase {
     func testNoOpSettingsMutationProducesNoUpdate() throws {
         let settings = SystemMonitorMenuSettings(enabled: true)
 
-        XCTAssertNil(settings.applying { $0.interval = 2 })
+        XCTAssertNil(settings.applying { $0.interval = 10 })
         let changed = try XCTUnwrap(settings.applying { $0.interval = 5 })
         XCTAssertEqual(changed.interval, 5)
     }
@@ -877,7 +877,7 @@ final class SystemMonitorTests: XCTestCase {
                 detailed: false,
                 unavailableMetrics: unavailable
             ),
-            2
+            10
         )
 
         var onlyUnavailable = settings
