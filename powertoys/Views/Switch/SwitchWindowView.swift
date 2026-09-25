@@ -476,44 +476,12 @@ struct SwitchWindowView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(palette.muted)
             } else if let snapshot = model.usage[account.id] {
-                if snapshot.rateLimits?.ordinaryUsageAllowed == false {
-                    Label("Ordinary usage is restricted", systemImage: "exclamationmark.circle")
-                        .font(.system(size: 12))
-                        .foregroundStyle(palette.amber)
-                }
-                let buckets = usageBuckets(snapshot)
-                if buckets.isEmpty {
-                    Text("Rate limits unavailable")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(buckets.indices, id: \.self) { index in
-                    let bucket = buckets[index]
-                    VStack(alignment: .leading, spacing: 9) {
-                        Text(bucket.name ?? bucket.model ?? bucket.id ?? "Rate limits")
-                            .font(.system(size: 12, weight: .medium))
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
-                            if let primary = bucket.primary, primary.usedPercent != nil {
-                                usageRow("Current window", window: primary)
-                            }
-                            if let secondary = bucket.secondary, secondary.usedPercent != nil {
-                                usageRow("Longer window", window: secondary)
-                            }
-                        }
-                        if let credits = bucket.credits {
-                            Text("Credits: \(credits.unlimited == true ? "Unlimited" : credits.balance ?? (credits.hasCredits == true ? "Available" : "None"))")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                        if bucket.spendControlReached == true {
-                            Text("Spend control reached")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.orange)
-                        }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 86), spacing: 10)], spacing: 12) {
+                    if let allowed = snapshot.rateLimits?.ordinaryUsageAllowed {
+                        usageFact("Ordinary usage", value: allowed ? "Available" : "Restricted")
                     }
-                }
-                if let summary = snapshot.usage {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], spacing: 12) {
+                    usageFact("Authentication", value: snapshot.account == nil ? "Verified locally" : "Signed in")
+                    if let summary = snapshot.usage {
                         if let value = summary.lifetimeTokens {
                             usageFact("Lifetime", value: value.formatted(.number.notation(.compactName)))
                         }
@@ -531,9 +499,50 @@ struct SwitchWindowView: View {
                         }
                     }
                 }
+                let buckets = usageBuckets(snapshot)
+                if buckets.isEmpty {
+                    Text("Rate limits unavailable")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(buckets.indices, id: \.self) { index in
+                    let bucket = buckets[index]
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack(spacing: 8) {
+                            Text(bucket.name ?? bucket.model ?? bucket.id ?? "Rate limits")
+                                .font(.system(size: 12, weight: .semibold))
+                            if let model = bucket.model {
+                                Text(model).font(.system(size: 10)).foregroundStyle(palette.muted)
+                            }
+                            Spacer()
+                            if let plan = bucket.plan {
+                                Text(plan).font(.system(size: 10)).foregroundStyle(palette.muted)
+                            }
+                        }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
+                            if let primary = bucket.primary, primary.usedPercent != nil {
+                                usageRow(windowTitle(primary, fallback: "Current window"), window: primary)
+                            }
+                            if let secondary = bucket.secondary, secondary.usedPercent != nil {
+                                usageRow(windowTitle(secondary, fallback: "Secondary window"), window: secondary)
+                            }
+                        }
+                        HStack(spacing: 16) {
+                            if let credits = bucket.credits {
+                                usageFact("Credits", value: credits.unlimited == true ? "Unlimited" :
+                                          credits.balance ?? (credits.hasCredits == true ? "Available" : "None"))
+                            }
+                            if let reached = bucket.spendControlReached {
+                                usageFact("Spend control", value: reached ? "Reached" : "Not reached")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(index.isMultiple(of: 2) ? palette.panel2 : palette.listHover.opacity(0.55))
+                }
                 if !snapshot.dailyUsage.isEmpty {
-                    Text("Daily activity").font(.system(size: 12, weight: .semibold))
-                        .padding(.top, 8)
                     SwitchActivityGrid(rows: snapshot.dailyUsage, palette: palette)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], spacing: 12) {
                         ForEach([CodexTokenPeriod.today, .weekly, .monthly, .yearly], id: \.rawValue) { period in
@@ -582,8 +591,13 @@ struct SwitchWindowView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(12)
-        .background(palette.panel2, in: RoundedRectangle(cornerRadius: 3))
+    }
+
+    private func windowTitle(_ window: CodexRateLimitWindowSnapshot, fallback: String) -> String {
+        guard let minutes = window.windowDurationMinutes else { return fallback }
+        if minutes >= 10_080 { return "Weekly window" }
+        if minutes.isMultiple(of: 60) { return "\(minutes / 60)-hour window" }
+        return "\(minutes)-minute window"
     }
 
     private func usageBuckets(_ snapshot: CodexAccountUsageSnapshot) -> [CodexRateLimitBucketSnapshot] {
@@ -1111,6 +1125,7 @@ private struct SwitchActivityGrid: View {
     let rows: [CodexDailyUsageSnapshot]
     let palette: SwitchPalette
     @State private var selectedDate: Date?
+    @State private var period: CodexTokenPeriod = .yearly
 
     private struct Day {
         let date: Date
@@ -1126,7 +1141,7 @@ private struct SwitchActivityGrid: View {
     private var weeks: [[Day?]] {
         let calendar = Self.calendar
         let today = calendar.startOfDay(for: .now)
-        let first = calendar.date(byAdding: .day, value: -364, to: today) ?? today
+        let first = calendar.date(byAdding: .day, value: 1 - period.dayCount, to: today) ?? today
         let start = calendar.date(byAdding: .day,
                                   value: 1 - calendar.component(.weekday, from: first),
                                   to: first) ?? first
@@ -1154,6 +1169,19 @@ private struct SwitchActivityGrid: View {
         let weeks = weeks
         let maximum = max(1, weeks.flatMap { $0 }.compactMap { $0?.tokens }.max() ?? 1)
         VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Daily activity").font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Picker("Activity period", selection: $period) {
+                    Text("7 days").tag(CodexTokenPeriod.weekly)
+                    Text("1 month").tag(CodexTokenPeriod.monthly)
+                    Text("1 year").tag(CodexTokenPeriod.yearly)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 170)
+            }
+            .padding(.top, 8)
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 3) {
                     VStack(spacing: 3) {
@@ -1196,5 +1224,6 @@ private struct SwitchActivityGrid: View {
                     .foregroundStyle(palette.muted)
             }
         }
+        .onChange(of: period) { selectedDate = nil }
     }
 }
