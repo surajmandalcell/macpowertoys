@@ -21,6 +21,20 @@ jobs:
         run: brew install rclone
       - name: Run unit tests in the hosted Mac
         run: TEST_SESSION=isolated ADHOC=1 make test DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
+      - name: Export test summary
+        if: always()
+        run: |
+          result=$(find "$RUNNER_TEMP/macpowertoys-derived/Logs/Test" -maxdepth 1 -type d -name '*.xcresult' -print -quit 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            xcrun xcresulttool get test-results summary --path "$result" > "$RUNNER_TEMP/macos-test-summary.json"
+          fi
+      - name: Save test summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-summary
+          path: ${{ runner.temp }}/macos-test-summary.json
+          if-no-files-found: warn
       - name: Export tray renders
         run: |
           result=$(find "$RUNNER_TEMP/macpowertoys-derived/Logs/Test" -maxdepth 1 -type d -name '*.xcresult' -print -quit)
