@@ -19,6 +19,7 @@ final class SwitchWorkspaceModel {
     private(set) var isWorking = false
     private(set) var isLoadingHistory = false
     private(set) var isLoadingMessages = false
+    private(set) var isLoadingMoreMessages = false
     var errorMessage: String?
     var selectedAccountID: UUID?
     var selectedThreadID: String?
@@ -28,6 +29,9 @@ final class SwitchWorkspaceModel {
     private let historyIndex: ChatHistoryIndex
     private let applicationSupport: URL
     private var activityCache: CodexUsageStatisticsCache?
+    private var messageGeneration = 0
+    private var activeMessageQuery = ""
+    private var activeMessageFilter: ChatMessageFilter = .all
     private let startupError: String?
 
     init(paths: ManagerPaths = .environment()) {
@@ -188,6 +192,13 @@ final class SwitchWorkspaceModel {
             if let selectedThreadID, !history.threads.contains(where: { $0.id == selectedThreadID }) {
                 self.selectedThreadID = nil
                 selectedThread = nil
+                messageGeneration &+= 1
+                isLoadingMessages = false
+                isLoadingMoreMessages = false
+            } else if let selectedThreadID {
+                await searchMessages(
+                    for: selectedThreadID, query: activeMessageQuery, filter: activeMessageFilter
+                )
             }
         } catch is CancellationError {
             return
@@ -200,28 +211,51 @@ final class SwitchWorkspaceModel {
         history = await historyIndex.search(query: historyQuery)
         selectedThreadID = nil
         selectedThread = nil
+        messageGeneration &+= 1
+        isLoadingMessages = false
+        isLoadingMoreMessages = false
     }
 
-    func selectThread(_ id: String) async {
+    func selectThread(_ id: String, query: String, filter: ChatMessageFilter) async {
         selectedThreadID = id
+        await searchMessages(for: id, query: query, filter: filter)
+    }
+
+    func searchMessages(for id: String, query: String, filter: ChatMessageFilter) async {
+        guard !Task.isCancelled, selectedThreadID == id else { return }
+        messageGeneration &+= 1
+        let generation = messageGeneration
+        activeMessageQuery = query
+        activeMessageFilter = filter
         selectedThread = nil
+        isLoadingMessages = true
+        isLoadingMoreMessages = false
+        defer { if messageGeneration == generation { isLoadingMessages = false } }
         do {
-            let detail = try await historyIndex.detail(for: id)
-            guard selectedThreadID == id else { return }
+            let detail = try await historyIndex.detail(for: id, query: query, filter: filter)
+            guard !Task.isCancelled, messageGeneration == generation,
+                  selectedThreadID == id else { return }
             selectedThread = detail
         } catch is CancellationError {
             return
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled && messageGeneration == generation {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func loadMoreMessages() async {
-        guard !isLoadingMessages, let selectedThread, let offset = selectedThread.nextOffset else { return }
-        isLoadingMessages = true
-        defer { isLoadingMessages = false }
+        guard !isLoadingMessages, !isLoadingMoreMessages,
+              let selectedThread, let offset = selectedThread.nextOffset else { return }
+        let generation = messageGeneration
+        isLoadingMoreMessages = true
+        defer { if messageGeneration == generation { isLoadingMoreMessages = false } }
         do {
-            guard let page = try await historyIndex.detail(for: selectedThread.thread.id, offset: offset),
+            guard let page = try await historyIndex.detail(
+                for: selectedThread.thread.id, offset: offset,
+                query: activeMessageQuery, filter: activeMessageFilter
+            ), !Task.isCancelled, messageGeneration == generation,
                   selectedThreadID == selectedThread.thread.id else { return }
             self.selectedThread = ChatThreadDetail(
                 thread: selectedThread.thread,
@@ -233,7 +267,9 @@ final class SwitchWorkspaceModel {
         } catch is CancellationError {
             return
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled && messageGeneration == generation {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

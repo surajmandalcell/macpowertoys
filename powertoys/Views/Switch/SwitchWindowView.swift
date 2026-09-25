@@ -29,6 +29,10 @@ struct SwitchWindowView: View {
     @State private var conflictToResolve: RecoveryOperation?
     @State private var linkedIssueToRepair: LinkedSettingsDivergence?
     @State private var pageTask: Task<Void, Never>?
+    @State private var messageSearchTask: Task<Void, Never>?
+    @State private var isMessageSearchPending = false
+    @State private var messageQuery = ""
+    @AppStorage("switch.messageFilterMask") private var messageFilterMask = ChatMessageFilter.all.rawValue
 
     var body: some View {
         HStack(spacing: 0) {
@@ -47,12 +51,20 @@ struct SwitchWindowView: View {
         }
         .onChange(of: page) {
             pageTask?.cancel()
+            messageSearchTask?.cancel()
+            isMessageSearchPending = false
             pageTask = Task {
                 if page == .conversations { await model.loadHistory() }
                 if page == .maintenance { await model.loadCleanup() }
             }
         }
-        .onDisappear { pageTask?.cancel() }
+        .onDisappear {
+            pageTask?.cancel()
+            messageSearchTask?.cancel()
+            isMessageSearchPending = false
+        }
+        .onChange(of: messageQuery) { scheduleMessageSearch() }
+        .onChange(of: messageFilterMask) { scheduleMessageSearch() }
         .onChange(of: model.importPlan?.id) {
             importDecisions = Dictionary(uniqueKeysWithValues:
                 (model.importPlan?.conflicts ?? []).map { ($0.relativePath, .keepShared) }
@@ -369,25 +381,50 @@ struct SwitchWindowView: View {
             HStack(spacing: 0) {
                 ScrollView {
                     LazyVStack(spacing: 4) {
+                        HStack {
+                            Text("\(model.history.matchingThreadCount.formatted()) conversations")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if model.isLoadingHistory && model.history.totalThreadCount == 0 {
+                                ProgressView().controlSize(.small)
+                            }
+                        }
+                        .padding(.bottom, 6)
                         ForEach(model.history.threads) { thread in
                             Button {
-                                Task { await model.selectThread(thread.id) }
+                                messageSearchTask?.cancel()
+                                isMessageSearchPending = false
+                                Task {
+                                    await model.selectThread(
+                                        thread.id, query: messageQuery, filter: messageFilter
+                                    )
+                                }
                             } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(thread.title)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .lineLimit(2)
-                                    Text(thread.updatedAt, style: .date)
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
+                                HStack(alignment: .top, spacing: 6) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(thread.title)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .lineLimit(2)
+                                        Text(thread.updatedAt, style: .date)
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 0)
+                                    if model.selectedThreadID == thread.id {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .accessibilityHidden(true)
+                                    }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(8)
                                 .background(model.selectedThreadID == thread.id
-                                    ? Color.accentColor.opacity(0.15) : Color.clear)
+                                    ? Color.accentColor.opacity(0.1) : Color.clear)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                             .buttonStyle(UtilityInteractionButtonStyle())
+                            .accessibilityValue(model.selectedThreadID == thread.id ? "Selected" : "")
                         }
                     }
                     .padding(12)
@@ -395,32 +432,9 @@ struct SwitchWindowView: View {
                 .frame(width: 280)
                 .background(Color(nsColor: .controlBackgroundColor))
                 QuietDivider()
-                if let detail = model.selectedThread {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 16) {
-                            Text(detail.thread.title)
-                                .font(.system(size: 17, weight: .semibold))
-                            ForEach(detail.messages) { message in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(message.role.rawValue.capitalized)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundStyle(.secondary)
-                                    Text(message.text)
-                                        .font(.system(size: 12))
-                                        .textSelection(.enabled)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            if detail.nextOffset != nil {
-                                Button("Load More Messages") {
-                                    Task { await model.loadMoreMessages() }
-                                }
-                                .controlSize(.small)
-                                .disabled(model.isLoadingMessages)
-                            }
-                        }
-                        .padding(UtilityLayout.horizontalInset)
-                    }
+                if let id = model.selectedThreadID,
+                   let thread = model.history.threads.first(where: { $0.id == id }) {
+                    conversationDetail(thread)
                 } else if model.isLoadingHistory {
                     ProgressView("Loading conversations…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -433,6 +447,136 @@ struct SwitchWindowView: View {
                 }
             }
         }
+    }
+
+    private var messageFilter: ChatMessageFilter {
+        ChatMessageFilter(rawValue: messageFilterMask & ChatMessageFilter.all.rawValue)
+    }
+
+    private func roleBinding(_ role: ChatMessageFilter) -> Binding<Bool> {
+        Binding(
+            get: { messageFilter.contains(role) },
+            set: { enabled in
+                let mask = messageFilter.rawValue
+                messageFilterMask = enabled ? mask | role.rawValue : mask & ~role.rawValue
+            }
+        )
+    }
+
+    private func scheduleMessageSearch(immediate: Bool = false) {
+        messageSearchTask?.cancel()
+        isMessageSearchPending = false
+        guard page == .conversations, let id = model.selectedThreadID else { return }
+        let query = messageQuery
+        let filter = messageFilter
+        isMessageSearchPending = true
+        messageSearchTask = Task {
+            if !immediate {
+                do { try await Task.sleep(for: .milliseconds(180)) }
+                catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            await model.searchMessages(for: id, query: query, filter: filter)
+            if !Task.isCancelled { isMessageSearchPending = false }
+        }
+    }
+
+    private func conversationDetail(_ thread: ChatThreadSummary) -> some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(thread.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .help(thread.title)
+                HStack(spacing: 6) {
+                    Text("\(thread.messageCount.formatted()) messages")
+                    if let tokens = thread.totalTokens {
+                        Text("· \(tokens.formatted(.number.notation(.compactName))) tokens")
+                            .help("\(tokens.formatted()) recorded tokens")
+                    }
+                    Spacer(minLength: 4)
+                    Text(thread.updatedAt, style: .date)
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+
+            HStack(spacing: 6) {
+                TextField("Search messages", text: $messageQuery)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(minWidth: 90)
+                    .layoutPriority(1)
+                    .onSubmit { scheduleMessageSearch(immediate: true) }
+                    .accessibilityLabel("Search messages in this conversation")
+                Menu("Roles") {
+                    Toggle("Prompts", isOn: roleBinding(.prompts))
+                    Toggle("Responses", isOn: roleBinding(.responses))
+                    Toggle("Tools", isOn: roleBinding(.tools))
+                    Toggle("Other", isOn: roleBinding(.other))
+                }
+                .help("Filter messages by role")
+                Button("Copy Shown") {
+                    guard let detail = model.selectedThread else { return }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(
+                        ChatTranscriptExport.text(for: detail.messages), forType: .string
+                    )
+                }
+                .disabled(isMessageSearchPending || (model.selectedThread?.messages.isEmpty ?? true))
+            }
+            .controlSize(.small)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
+            QuietDivider()
+
+            if isMessageSearchPending || model.isLoadingMessages {
+                ProgressView("Loading messages…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let detail = model.selectedThread {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if !messageQuery.isEmpty || messageFilter != .all {
+                            Text("\(detail.matchingMessageCount.formatted()) matching messages")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        if detail.messages.isEmpty {
+                            ContentUnavailableView("No matching messages", systemImage: "text.magnifyingglass")
+                                .frame(maxWidth: .infinity)
+                        }
+                        ForEach(detail.messages) { message in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(message.role.displayName)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                Text(message.text)
+                                    .font(.system(size: 12))
+                                    .textSelection(.enabled)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.primary.opacity(0.03))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        if detail.nextOffset != nil {
+                            Button("Load More Messages") {
+                                Task { await model.loadMoreMessages() }
+                            }
+                            .controlSize(.small)
+                            .disabled(model.isLoadingMoreMessages)
+                        }
+                    }
+                    .padding(12)
+                }
+            } else {
+                ContentUnavailableView("Conversation unavailable", systemImage: "text.bubble")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var maintenancePage: some View {
