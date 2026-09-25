@@ -273,6 +273,34 @@ final class PortmanTests: XCTestCase {
         }
         XCTAssertNotNil(failure, "A local port already in use must leave a failed tunnel, not Connecting.")
         service.stopTunnel(failedID)
+
+        let droppedPort = try unusedPort()
+        XCTAssertTrue(service.forward(host: "portman-test", remotePort: remotePort,
+                                      localPort: droppedPort, configurationFile: clientConfig))
+        let droppedID = try XCTUnwrap(service.tunnels.first { $0.localPort == droppedPort }?.id)
+        var sshPID: Int32?
+        var wasRunning = false
+        for _ in 0..<30 {
+            let owners = (try? PortmanScanner.run("/usr/sbin/lsof",
+                ["-nP", "-iTCP:\(droppedPort)", "-sTCP:LISTEN", "-c", "ssh", "-Fp"],
+                emptyExitIsSuccess: true)) ?? ""
+            sshPID = owners.split(whereSeparator: \.isNewline)
+                .first(where: { $0.first == "p" }).flatMap { Int32($0.dropFirst()) }
+            if let tunnel = service.tunnels.first(where: { $0.id == droppedID }),
+               case .running = tunnel.state, sshPID != nil { wasRunning = true; break }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        XCTAssertTrue(wasRunning, "The second tunnel must reach Forwarding before an unexpected exit.")
+        let exitedPID = try XCTUnwrap(sshPID, "The second tunnel never opened its local port.")
+        XCTAssertEqual(Darwin.kill(exitedPID, SIGTERM), 0)
+        var dropped = false
+        for _ in 0..<30 {
+            if let tunnel = service.tunnels.first(where: { $0.id == droppedID }),
+               case .failed = tunnel.state { dropped = true; break }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        XCTAssertTrue(dropped, "An unexpected SSH exit must replace Forwarding with a failed state.")
+        service.stopTunnel(droppedID)
     }
 
     func testLocalRangeAndProcessTableParsing() {
