@@ -251,7 +251,7 @@ final class PortmanTests: XCTestCase {
         await service.refreshRemote(host: "portman-test", password: "unused-test-password",
                                     configurationFile: clientConfig)
         XCTAssertEqual(service.forwardingError,
-                       "Could not inspect portman-test: Permission denied. Check the SSH password or key.",
+                       "Could not inspect portman-test: Permission denied. This host did not accept password authentication.",
                        "Password mode must not fall back to a saved key or expose askpass paths")
         await service.refreshRemote(host: "portman-test", configurationFile: clientConfig)
 

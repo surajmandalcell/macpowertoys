@@ -490,7 +490,8 @@ nonisolated enum PortmanScanner {
             let message = result.standardError.trimmingCharacters(in: .whitespacesAndNewlines)
             let detail = passwordAvailable(in: message) ? "SSH password required."
                 : (message.localizedCaseInsensitiveContains("Permission denied")
-                   ? "Permission denied. Check SSH key access."
+                   ? (password == nil ? "Permission denied. Check SSH key access."
+                      : "Permission denied. This host did not accept password authentication.")
                    : (message.isEmpty ? "The SSH scan failed." : message))
             throw NSError(domain: "Portman", code: Int(result.status),
                           userInfo: [NSLocalizedDescriptionKey: detail])
