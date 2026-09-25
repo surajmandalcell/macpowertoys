@@ -20,6 +20,33 @@ final class DiskExplorerUITests: XCTestCase {
         attach(window.screenshot(), named: "Diskman Normal Modify")
     }
 
+    @MainActor func testNormalLaunchReviewsMarkedFileWithoutRemovingIt() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
+        app.launch()
+        defer { app.terminate() }
+
+        let window = app.windows["Diskman"]
+        XCTAssertTrue(window.waitForExistence(timeout: 30))
+        XCTAssertTrue(window.buttons["Rescan"].waitForExistence(timeout: 30))
+
+        let tabs = window.descendants(matching: .any)["diskExplorer.resultTabs"]
+        tabs.descendants(matching: .any)["Largest Files"].click()
+        let mark = window.buttons.matching(identifier: "Mark for Removal").firstMatch
+        XCTAssertTrue(mark.waitForExistence(timeout: 10))
+        mark.click()
+
+        let review = window.buttons["Review 1"]
+        XCTAssertTrue(review.waitForExistence(timeout: 5))
+        review.click()
+        XCTAssertTrue(window.staticTexts["Review Items"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["Move to Trash"].exists)
+        XCTAssertTrue(window.buttons["Delete Permanently…"].exists)
+        attach(window.screenshot(), named: "Diskman Review Without Deletion")
+        window.buttons["Cancel"].click()
+        XCTAssertFalse(window.staticTexts["Review Items"].exists)
+    }
+
     @MainActor func testModifyShowsPhysicalDisksWithoutWriting() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
