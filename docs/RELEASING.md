@@ -5,7 +5,9 @@ MacPowerToys releases are currently built and verified locally. The repository d
 ## Personal signed build
 
 1. Confirm Cloud Sync has no active transfers.
-2. Run `make test` and the UI smoke tests locally.
+2. In a separate macOS account or VM, run `TEST_SESSION=isolated make test`
+   and the UI smoke tests. On the owner's desktop, use
+   `make build-for-testing` to compile tests without launching them.
 3. Run `make build`.
 4. Verify the result with `codesign --verify --deep --strict`.
 5. Quit the installed app, then run `make install ALLOW_INSTALL=1`.
