@@ -133,17 +133,19 @@
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.
 
-## System Monitor Tray Alignment
+## Fan And Awake Tray Alignment
 
-- **Symptom:** Fan looks like a separate badge, starts left of the padded
-  metric cards, and nearly touches the bottom of the System Monitor tray.
-- **Cause:** Its compact form supplied its own tinted card while the tray also
-  inset the entire component and left only 8pt below it.
+- **Symptom:** Fan looks like a separate badge, or both Fan and Awake waste
+  space on the right while Fan and RPM split into two lines.
+- **Cause:** The compact Fan used a tinted card and stacked text; both rows
+  added 8pt to the tray's 12pt gutter on both sides.
 - **Invariant:** Compact Fan uses the plain Awake-row pattern and a native
-  segmented control. Align the icon with the metric-card inset, keep Awake's
-  icon aligned with padded Home items, and leave 18pt below the Fan row.
+  segmented control. Both rows use a 16pt leading inset and the tray's normal
+  12pt trailing inset. The fan icon uses Awake's neutral tint, and Fan, RPM,
+  and utilization share one line. Leave 18pt below the Fan row.
 - **Check:** Inspect Home and System Monitor in the production-width tray in
-  light and dark, including the bottom edge and disabled fan controls.
+  light and dark, including both row edges, the bottom edge, live RPM, and
+  disabled fan controls.
 
 ## Menu-Bar Tool Placement
 
