@@ -131,4 +131,6 @@ passed Portman's fresh-runner UI navigation and the hosted unit-test step after
 the new Mac Tweaks registry expectations were corrected: 869 tests, five skips,
 zero failures. Run `36142313540` passed the added equality checks for all
 three tab button widths and the visible `0 KB` label. The signed installed copy
-still needs the final source-stamp replacement.
+and helper at `1319b8e` passed strict signature checks and launched from
+`/Applications` in the background. Recheck their source stamps against current
+`HEAD` at final handoff after any later repository commits.
