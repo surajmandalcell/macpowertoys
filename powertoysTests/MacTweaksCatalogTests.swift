@@ -11,6 +11,9 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertEqual(TweakSearch.results(for: "dotfiles").first?.id, "finder.hidden-files")
         XCTAssertEqual(TweakSearch.results(for: "dock gap").first?.id, "dock.spacers")
         XCTAssertTrue(TweakSearch.results(for: "quiteunlikelyquery").isEmpty)
+        XCTAssertFalse(TweakPreferences.supportsWrites(for: "finder.hidden-files", on: .init(majorVersion: 28, minorVersion: 0, patchVersion: 0)))
+        XCTAssertFalse(TweakPreferences.fields(for: "finder.hidden-files").isEmpty)
+        XCTAssertFalse(TweakPreferences.supportsWrites(for: "finder.column-sizing", on: .init(majorVersion: 27, minorVersion: 0, patchVersion: 0)))
     }
 
     func testExactPreferenceUndoRestoresAbsentAndExistingValues() throws {

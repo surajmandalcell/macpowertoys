@@ -26,11 +26,17 @@ enum TweakPreferences {
     private static let global = ".GlobalPreferences"
     private static let capture = "com.apple.screencapture"
 
-    static func fields(for id: String) -> [TweakPreferenceField] {
-        let version = ProcessInfo.processInfo.operatingSystemVersion
+    static func supportsWrites(for id: String, on version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion) -> Bool {
         guard (version.majorVersion == 15 && version.minorVersion == 8) ||
               (version.majorVersion == 26 && version.minorVersion == 7) ||
-              (version.majorVersion == 27 && version.minorVersion == 0) else { return [] }
+              (version.majorVersion == 27 && version.minorVersion == 0) else { return false }
+        if id == "finder.column-sizing" || id == "apps.automatic-termination" {
+            return version.majorVersion == 15
+        }
+        return !fields(for: id).isEmpty
+    }
+
+    static func fields(for id: String) -> [TweakPreferenceField] {
         switch id {
         case "dock.reveal-delay": return [seconds("Reveal delay", dock, "autohide-delay", [0, 0.2, 0.5, 1, 2])]
         case "dock.animation-duration": return [seconds("Animation duration", dock, "autohide-time-modifier", [0, 0.2, 0.5, 1, 2])]
@@ -63,9 +69,9 @@ enum TweakPreferences {
         case "screenshots.date": return [.flag("Include timestamp", capture, "include-date")]
         case "terminal.pointer-focus": return [.flag("Pointer focuses Terminal windows", "com.apple.Terminal", "FocusFollowsMouse")]
         case "music.half-stars": return [.flag("Allow half-star ratings", "com.apple.Music", "allow-half-stars")]
-        case "finder.column-sizing" where ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 15:
+        case "finder.column-sizing":
             return [.flag("Automatically size columns", finder, "_FXEnableColumnAutoSizing")]
-        case "apps.automatic-termination" where version.majorVersion == 15:
+        case "apps.automatic-termination":
             return [.flag("Disable native automatic termination", global, "NSDisableAutomaticTermination")]
         default: return []
         }
