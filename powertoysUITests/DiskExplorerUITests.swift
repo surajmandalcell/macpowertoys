@@ -41,9 +41,9 @@ final class DiskExplorerUITests: XCTestCase {
         review.click()
         XCTAssertTrue(window.staticTexts["Review Items"].waitForExistence(timeout: 5))
         let reviewElements = window.descendants(matching: .any)
-        XCTAssertTrue(reviewElements.matching(NSPredicate(
-            format: "label CONTAINS %@", "1 item ·"
-        )).firstMatch.exists)
+        let summary = reviewElements["diskman.reviewSummary"]
+        XCTAssertTrue(summary.exists)
+        XCTAssertTrue(summary.label.contains("1 item"))
         let home = FileManager.default.homeDirectoryForCurrentUser.path + "/"
         XCTAssertTrue(reviewElements.matching(NSPredicate(
             format: "label CONTAINS %@ OR value CONTAINS %@", home, home

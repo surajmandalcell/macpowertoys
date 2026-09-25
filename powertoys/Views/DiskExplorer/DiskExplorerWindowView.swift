@@ -699,6 +699,7 @@ private struct DiskExplorerReviewSheet: View {
             Text("Review Items").font(.system(size: 17, weight: .medium))
             Text("\(markedCountDescription) · \(model.markedBytes.diskSize)")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
+                .accessibilityIdentifier("diskman.reviewSummary")
             QuietDivider()
             List {
                 ForEach(model.markedEntries) { entry in
