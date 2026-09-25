@@ -2,7 +2,7 @@ import XCTest
 @testable import powertoys
 
 final class ToolRegistryTests: XCTestCase {
-    func testRegistryContainsEveryShippedToolWindow() {
+    func testRegistryContainsEveryShippedTool() {
         XCTAssertEqual(
             Set(ToolRegistry.builtInTools.map(\.id)),
             Set(["rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "portman", "switch"])

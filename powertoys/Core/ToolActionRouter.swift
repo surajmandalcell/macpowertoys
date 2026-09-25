@@ -15,6 +15,7 @@ enum ToolActionID: String, CaseIterable, Codable, Sendable {
     case colorPickerCopyLast = "color-picker.copy-last"
     case textExtractorCapture = "text-extractor.capture"
     case textExtractorOpen = "text-extractor.open"
+    case portmanOpen = "portman.open"
 
     var toolID: String {
         rawValue.split(separator: ".").first.map(String.init) ?? rawValue
@@ -85,6 +86,12 @@ final class ToolActionRouter {
             return
         }
 
+        if resolved == "portman" {
+            dismissMainWindow()
+            PortmanMenuController.shared.show()
+            return
+        }
+
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
             guard let openWindowAction else {
                 if pendingToolOpens.last != resolved {
@@ -129,6 +136,11 @@ final class ToolActionRouter {
                 if pending.count == Self.maximumPendingCount { pending.removeFirst() }
                 pending.append(request)
             }
+            return
+        }
+
+        if request.action == .portmanOpen {
+            open(toolID: "portman")
             return
         }
 

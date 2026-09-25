@@ -372,15 +372,15 @@ struct PortmanTool: Tool {
     let id = "portman"
     let name = "Portman"
     let description = "See local development servers and forward private SSH ports to this Mac."
-    let icon = "point.3.connected.trianglepath.dotted"
+    let icon = "circle.grid.2x2.fill"
     let logoAsset = "PortmanLogo"
     let category = ToolCategory.dev
-    let hasTrayTab = true
+    let hasTrayTab = false
 
     let manual = [
         ToolManualSection(title: "Local servers", points: [
-            "Portman lists listening TCP ports 3000–9999 while its window or menu tab is open.",
-            "Open a server to inspect its process, memory, CPU, and recent memory history."
+            "Open Portman from the launcher or its counted menu-bar item. The panel shows listening development ports and their share of Mac memory.",
+            "Select a server for process-tree, memory, CPU, and project details. Clean up previews the memory to free before stopping selected servers."
         ]),
         ToolManualSection(title: "SSH forwarding", points: [
             "Enter an SSH host or choose an alias from ~/.ssh/config, then scan its listening ports.",

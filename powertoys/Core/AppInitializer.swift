@@ -48,6 +48,7 @@ final class AppInitializer {
         if SettingsManager.shared.isToolEnabled("text-extractor") { textExtractor.prewarm() }
         _ = GlobalShortcutManager.shared
         IndividualMenuBarController.shared.start()
+        PortmanMenuController.shared.start()
         if SettingsManager.shared.isToolEnabled("input-devices") {
             InputDevicesManager.shared.refresh()
         }
@@ -69,6 +70,7 @@ final class AppInitializer {
     func shutdown() async {
         LogManager.shared.info("App shutting down...", source: "AppInitializer")
         IndividualMenuBarController.shared.stop()
+        PortmanMenuController.shared.stop()
     }
 
     private func applyStoredTheme() {

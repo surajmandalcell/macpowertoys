@@ -75,12 +75,14 @@ struct GlobalShortcut: Equatable {
 enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
     case colorPicker = 3
     case textExtractor = 4
+    case portman = 5
 
     var id: UInt32 { rawValue }
     var defaultsName: String {
         switch self {
         case .colorPicker: "color-picker"
         case .textExtractor: "text-extractor"
+        case .portman: "portman"
         }
     }
     var defaultShortcut: GlobalShortcut {
@@ -97,12 +99,19 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
                 carbonModifiers: UInt32(shiftKey | cmdKey),
                 keyLabel: "2"
             )
+        case .portman:
+            GlobalShortcut(
+                keyCode: UInt32(kVK_ANSI_P),
+                carbonModifiers: UInt32(optionKey | cmdKey),
+                keyLabel: "P"
+            )
         }
     }
     var toolAction: ToolActionID {
         switch self {
         case .colorPicker: .colorPickerPick
         case .textExtractor: .textExtractorCapture
+        case .portman: .portmanOpen
         }
     }
     var toolID: String { toolAction.toolID }
