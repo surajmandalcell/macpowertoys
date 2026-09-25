@@ -172,8 +172,10 @@ final class PortmanTests: XCTestCase {
 
     @MainActor
     func testRestartReopensAListeningServer() async throws {
-        guard FileManager.default.isExecutableFile(atPath: "/usr/bin/python3") else {
-            throw XCTSkip("The hosted Mac has no Python 3 executable.")
+        guard let rclone = try? PortmanScanner.run("/usr/bin/which", ["rclone"])
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              FileManager.default.isExecutableFile(atPath: rclone) else {
+            throw XCTSkip("The hosted Mac has no rclone executable.")
         }
         let preference = "portman.showAllListeners"
         let previous = UserDefaults.standard.object(forKey: preference)
@@ -206,8 +208,10 @@ final class PortmanTests: XCTestCase {
         close(socketFD)
         let port = try XCTUnwrap(chosenPort)
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        process.arguments = ["-m", "http.server", String(port), "--bind", "127.0.0.1"]
+        process.executableURL = URL(fileURLWithPath: rclone)
+        process.arguments = ["serve", "http", folder.path, "--addr", "127.0.0.1:\(port)",
+                             "--config", "/dev/null"]
+        process.environment = ["PATH": "/usr/bin:/bin"]
         process.currentDirectoryURL = folder
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
@@ -230,7 +234,8 @@ final class PortmanTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(250))
         }
         let listener = try XCTUnwrap(original)
-        XCTAssertNotNil(PortmanLaunch.capture(listener, folder: folder.path))
+        let launch = try XCTUnwrap(PortmanLaunch.capture(listener, folder: folder.path))
+        XCTAssertEqual(launch.environment["PATH"], "/usr/bin:/bin")
         let service = PortmanService.shared
         service.beginMonitoring()
         defer { service.endMonitoring() }
