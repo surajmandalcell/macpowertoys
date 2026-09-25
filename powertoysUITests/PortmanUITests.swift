@@ -11,6 +11,9 @@ final class PortmanUITests: XCTestCase {
 
         let forward = app.buttons["portman.page.Forward"]
         XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route")
+        XCTAssertTrue(app.staticTexts["No servers listening"].isHittable)
+        XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
+                      "The empty-state explanation is clipped below the menu-bar panel")
         attach(app.screenshot(), named: "Portman Servers")
 
         forward.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).click()
