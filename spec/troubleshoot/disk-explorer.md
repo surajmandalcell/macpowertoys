@@ -29,24 +29,28 @@
 - **Check:** The hosted UI test asserts the default prompt before hover, then
   a changed label containing a numeric detail in both chart modes.
 
-## Partial Scan Rearranges The Map
+## Partial Scan Rearranges The Map Or Hides A Final Large Item
 
 - **Symptom:** Treemap boxes appear, disappear, and snap into new places as
   partial scan sizes change. A hover card covers the map and scan status
-  changes the available body height.
+  changes the available body height. A later path-only cutoff kept a large
+  item inside Other even after the scan finished.
 - **Cause:** The original Canvas chart sorted by current size, changed its
   split groups, and hid zero-weight entries. The later SwiftUI chart animated
   frames but still ranked its bounded entries by changing measured size, so
-  items crossed the 80-tile or 24-segment cutoff during a scan.
-- **Invariant:** Keep entries visible from the first folder skeleton, select
-  and order the chart's bounded set by stable path, split by count, and
-  interpolate each tile or ring segment as measured weights arrive. Keep hover
-  details and scan status in reserved rows outside the plotted region. Reduce
-  Motion stays immediate.
+  items crossed the 80-tile or 24-segment cutoff during a scan. Choosing only
+  by path prevented that churn but could exclude the largest completed item.
+- **Invariant:** Keep entries visible from the first folder skeleton and use a
+  stable path-based bounded set while scanning. After completion, select the
+  largest measured entries once, retain path order within that set, and animate
+  the change. Split by count and interpolate each tile or ring segment as
+  measured weights arrive. Keep hover details and scan status in reserved rows
+  outside the plotted region. Reduce Motion stays immediate.
 - **Check:** `testTreemapKeepsTileGroupsWhenMeasuredSizesCross` fails with the
   prior weight-based grouping. `testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross`
-  covers the 80-tile and 24-segment cutoffs. Hosted chart navigation and
-  motion captures must confirm stable live transitions in both appearances.
+  covers the 80-tile and 24-segment live cutoffs plus final selection of a
+  late-named largest item. Hosted chart navigation and motion captures must
+  confirm stable live transitions in both appearances.
 
 ## Hosted Modify Inventory Fails To Decode
 
