@@ -57,7 +57,7 @@ final class SwitchUITests: XCTestCase {
         XCTAssertTrue(accounts.exists)
         XCTAssertTrue(recovery.exists)
         XCTAssertTrue(app.buttons["switch.about"].exists)
-        XCTAssertTrue(window.staticTexts["Saved accounts"].exists)
+        XCTAssertTrue(window.staticTexts["Your CLI accounts, together"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch Accounts")
 
         recovery.click()
@@ -65,7 +65,11 @@ final class SwitchUITests: XCTestCase {
         attach(window.screenshot(), named: "Switch Recovery")
 
         accounts.click()
-        XCTAssertTrue(window.staticTexts["Saved accounts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.staticTexts["Your CLI accounts, together"].waitForExistence(timeout: 5))
+
+        app.buttons["switch.about"].click()
+        XCTAssertTrue(app.buttons["tool.switch.launch"].waitForExistence(timeout: 5))
+        attach(window.screenshot(), named: "Switch About")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {

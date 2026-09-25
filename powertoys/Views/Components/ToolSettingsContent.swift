@@ -84,7 +84,7 @@ private struct SwitchLauncherSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("ACCOUNTS").utilitySectionHeader()
-            Text("Switch and MacPowerToys use the same account store. Open Switch to manage accounts, usage, and recovery.")
+            Text("Manage accounts, usage, and recovery in the Switch applet. The standalone Switch app is optional and shares the same accounts.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .utilitySectionCard()
