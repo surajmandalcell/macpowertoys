@@ -462,6 +462,11 @@
 - **Check:** Compile the Monitor app and test bundles without launching them.
   Confirm zero active transfers, `oci1` still saved, and the installed source
   stamp and process match the new clean `HEAD` after background handoff.
+- **Verified visual check:** Hosted run `36128135753` passed and its offscreen
+  Overview and tray renders show the short pending labels, labeled Load card,
+  and tray graph running to the card edges. The first-sample CPU label was then
+  corrected to `...`; run `36129347170` passed the full suite and archived that
+  source. These renders do not prove live hover or remote keyboard interaction.
 
 - **Symptom:** Overview is a sparse four-card summary with no visual history,
   or body subtitles leave a large dead band below the titlebar.
