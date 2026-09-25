@@ -172,7 +172,7 @@ struct PortmanPanelView: View {
         ), presenting: pendingStop) { port in
             Button("Stop PID \(port.pid)", role: .destructive) { service.stopLocal(port) }
         } message: { port in
-            Text("Port \(port.port) will stop. Eligible child processes may also stop.")
+            Text("Port \(port.port) and eligible children will stop. Any still running after the grace period will be force quit.")
         }
         .confirmationDialog("Restart this server?", isPresented: Binding(
             get: { pendingRestart != nil }, set: { if !$0 { pendingRestart = nil } }
@@ -192,7 +192,7 @@ struct PortmanPanelView: View {
                 selectedCleanupProcesses = []
             }
         } message: {
-            Text("Stopping these processes may interrupt open work. Save it before continuing.")
+            Text("Stopping these processes may interrupt open work. Any still running after the grace period will be force quit.")
         }
     }
 
@@ -982,6 +982,7 @@ struct PortmanSettingsView: View {
     @AppStorage("portman.growthAlertMB") private var growthAlertMB = 500
     @AppStorage("portman.idleHours") private var idleHours = 4.0
     @AppStorage("portman.runningDays") private var runningDays = 3.0
+    @AppStorage("portman.forceQuitSeconds") private var forceQuitSeconds = 3.0
     @AppStorage("portman.cleanupMode") private var cleanupMode = PortmanCleanupMode.ask.rawValue
     @AppStorage("portman.includeDeletedFolders") private var includeDeletedFolders = true
     @AppStorage("portman.cleanupNotifications") private var cleanupNotifications = true
@@ -1094,10 +1095,11 @@ struct PortmanSettingsView: View {
             Toggle("Include deleted folders", isOn: $includeDeletedFolders)
             Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
             Stepper("Suggest after \(Int(runningDays)) running days", value: $runningDays, in: 1...30, step: 1)
+            Stepper("Force quit after \(Int(forceQuitSeconds)) seconds", value: $forceQuitSeconds, in: 1...30, step: 1)
             Toggle("Notify about cleanup", isOn: $cleanupNotifications)
             Group {
                 if cleanupMode == PortmanCleanupMode.automatic.rawValue {
-                    Text("Automatic sends stop requests without another prompt. Protected servers and warnings stay excluded.")
+                    Text("Automatic stops eligible servers without another prompt and force quits any still running after the grace period. Protected servers and warnings stay excluded.")
                 } else if cleanupMode == PortmanCleanupMode.off.rawValue {
                     Text("Manual cleanup remains available from the server list.")
                 } else {

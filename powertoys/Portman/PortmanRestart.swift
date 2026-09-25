@@ -102,8 +102,10 @@ nonisolated enum PortmanRestart {
         defer { try? handle.close() }
 
         try PortmanScanner.stop(port)
-        for _ in 0..<20 {
+        let graceTicks = Int(PortmanPreferences.forceQuitSeconds * 4)
+        for tick in 0..<(graceTicks + 20) {
             if !isListening(port.port) { break }
+            if tick == graceTicks { PortmanScanner.forceStopIfUnchanged(port) }
             try await Task.sleep(for: .milliseconds(250))
         }
         guard !isListening(port.port) else { throw Failure.busy }
