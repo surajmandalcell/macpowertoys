@@ -44,11 +44,10 @@ struct PortmanPanelView: View {
     @State private var highlightedProcessID: String?
     @State private var hoveredSegmentID: String?
     @State private var hoveredRowID: String?
+    @State private var hoveredLinkPortID: String?
     @State private var hoveredStopPortID: String?
-    @State private var showingMacMemory = false
     @State private var showingMore = false
     @State private var showingProcesses = false
-    @Namespace private var tabUnderline
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
     @AppStorage("portman.editor") private var editor = "auto"
@@ -75,7 +74,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? (service.localPorts.isEmpty ? 330 : 300 + CGFloat(service.localPorts.count) * 64)
+            selectedPort == nil ? (service.localPorts.isEmpty ? 300 : 270 + CGFloat(service.localPorts.count) * 64)
                 : 455 + (showingMore ? 110 : 0)
                     + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
         case .forward:
@@ -122,21 +121,15 @@ struct PortmanPanelView: View {
             HStack(spacing: 0) {
                 ForEach([Page.local, .forward, .alerts], id: \.self) { destination in
                     Button { navigate(to: destination) } label: {
-                        ZStack(alignment: .bottom) {
-                            HStack(spacing: 4) {
-                                Text(destination.rawValue)
-                                if destination == .alerts && !service.activeAlerts.isEmpty {
-                                    Circle().fill(Color.orange).frame(width: 5, height: 5)
-                                }
-                            }
-                            .font(.system(size: 12, weight: page == destination ? .semibold : .regular))
-                            .foregroundStyle(page == destination ? Color.primary : Color.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 36)
-                            if page == destination {
-                                Rectangle().fill(Color.accentColor).frame(height: 2)
-                                    .matchedGeometryEffect(id: "portman-tab-underline", in: tabUnderline)
+                        HStack(spacing: 4) {
+                            Text(destination.rawValue)
+                            if destination == .alerts && !service.activeAlerts.isEmpty {
+                                Circle().fill(Color.orange).frame(width: 5, height: 5)
                             }
                         }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(page == destination ? Color.primary : Color.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 36)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -148,7 +141,19 @@ struct PortmanPanelView: View {
             }
             .frame(maxWidth: .infinity)
             .background(alignment: .bottom) { QuietDivider() }
-            .utilityAnimation(value: page, duration: UtilityMotion.standardDuration)
+            .overlay {
+                GeometryReader { geometry in
+                    if page != .settings {
+                        Rectangle()
+                            .fill(Color.accentColor)
+                            .frame(width: geometry.size.width / 3, height: 2)
+                            .position(x: geometry.size.width * (CGFloat(page == .local ? 0 : page == .forward ? 1 : 2) + 0.5) / 3,
+                                      y: geometry.size.height - 1)
+                            .utilityAnimation(value: page)
+                    }
+                }
+                .allowsHitTesting(false)
+            }
 
             ScrollView {
                 Group {
@@ -161,8 +166,8 @@ struct PortmanPanelView: View {
                     case .settings: PortmanSettingsView()
                     }
                 }
-                .utilityContentTransition(value: page)
-                .padding(.horizontal, 18)
+                .id(page)
+                .padding(.horizontal, page == .local && selectedPort == nil ? 10 : 18)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -219,6 +224,7 @@ struct PortmanPanelView: View {
         .onChange(of: selectedPortID) {
             showingMore = false
             showingProcesses = false
+            hoveredLinkPortID = nil
             hoveredStopPortID = nil
         }
         .onChange(of: host) {
@@ -303,30 +309,15 @@ struct PortmanPanelView: View {
                 Spacer()
             }
             VStack(spacing: 4) {
-                Text(memoryString(focusedSegment?.memoryBytes
-                    ?? (showingMacMemory && !cleanupMode ? service.systemMemoryUsedBytes : overviewMemory)))
+                Text(memoryString(focusedSegment?.memoryBytes ?? overviewMemory))
                     .font(.system(size: 28, weight: .medium, design: .monospaced))
                     .monospacedDigit()
                 Text(cleanupMode
                      ? "freed by stopping \(selectedCleanupProcesses.count) server\(selectedCleanupProcesses.count == 1 ? "" : "s")"
                      : focusedSegment.map {
                         "\(String(format: "%.1f", Double($0.memoryBytes) / Double(max(1, ProcessInfo.processInfo.physicalMemory)) * 100))% of RAM · \(String(format: "%.1f", $0.cpuPercent))% CPU"
-                     } ?? (showingMacMemory ? "used by this Mac"
-                          : "used by \(uniquePorts.count) server\(uniquePorts.count == 1 ? "" : "s")"))
+                     } ?? "used by \(uniquePorts.count) listening server\(uniquePorts.count == 1 ? "" : "s")")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
-                if !cleanupMode {
-                    Picker("Memory scope", selection: $showingMacMemory) {
-                        Text("Listening apps").tag(false)
-                        Text("Whole Mac").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .accessibilityLabel("Memory scope")
-                    .controlSize(.mini)
-                    .frame(width: 186)
-                    .padding(.top, 4)
-                    .help("Listening apps: memory used by processes with ports in the scan range on this Mac. Whole Mac: memory used by all processes.")
-                }
             }
             .frame(maxWidth: .infinity)
 
@@ -383,6 +374,7 @@ struct PortmanPanelView: View {
 
     private func localRow(_ port: PortmanLocalPort) -> some View {
         let attention = service.warning(for: port)
+        let isHovered = hoveredRowID == port.id
         return HStack(spacing: 8) {
             if cleanupMode {
                 Toggle(isOn: Binding(
@@ -394,84 +386,109 @@ struct PortmanPanelView: View {
                 .disabled(!port.canStop)
                 .accessibilityLabel("Select process \(String(port.pid)) for cleanup")
             }
-            Button {
-                if cleanupMode {
-                    guard port.canStop else { return }
-                    if selectedCleanupProcesses.contains(port.processID) {
-                        selectedCleanupProcesses.remove(port.processID)
-                    } else {
-                        selectedCleanupProcesses.insert(port.processID)
-                    }
-                } else { selectedPortID = port.id }
-            } label: {
-                HStack(spacing: 9) {
-                    HStack(spacing: 4) {
-                        VStack(spacing: 3) {
-                            Circle().fill(portColor(port)).frame(width: 3, height: 3)
-                            Circle().fill(portColor(port)).frame(width: 3, height: 3)
+            ZStack(alignment: .trailing) {
+                Button {
+                    if cleanupMode {
+                        guard port.canStop else { return }
+                        if selectedCleanupProcesses.contains(port.processID) {
+                            selectedCleanupProcesses.remove(port.processID)
+                        } else {
+                            selectedCleanupProcesses.insert(port.processID)
                         }
-                        Text(String(port.port))
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    } else { selectedPortID = port.id }
+                } label: {
+                    HStack(spacing: 9) {
+                        HStack(spacing: 4) {
+                            VStack(spacing: 3) {
+                                Circle().fill(portColor(port)).frame(width: 3, height: 3)
+                                Circle().fill(portColor(port)).frame(width: 3, height: 3)
+                            }
+                            Text(String(port.port))
+                                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        }
+                        .foregroundStyle(portColor(port))
+                        .frame(width: 52, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(service.metadata[port.id]?.branch ?? service.metadata[port.id]?.project ?? port.command)
+                                .font(.system(size: 13, weight: .medium)).lineLimit(1)
+                            Text(attention ?? "\(service.metadata[port.id]?.project ?? port.command) · up \(port.uptime)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(attention == nil ? Color.secondary : Color.orange)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 4)
+                        HStack(spacing: 6) {
+                            sparkline(for: port, attention: attention != nil)
+                                .frame(width: 42, height: 24)
+                            Text(memoryString(port.memoryBytes))
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(attention == nil ? Color.primary : Color.orange)
+                                .monospacedDigit()
+                                .frame(width: 62, alignment: .trailing)
+                        }
+                        .frame(width: 110, height: 28)
+                        .opacity(isHovered && !cleanupMode ? 0 : 1)
+                        .accessibilityHidden(isHovered && !cleanupMode)
                     }
-                    .foregroundStyle(portColor(port))
-                    .frame(width: 52, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(service.metadata[port.id]?.branch ?? service.metadata[port.id]?.project ?? port.command)
-                            .font(.system(size: 13, weight: .medium)).lineLimit(1)
-                        Text(attention ?? "\(service.metadata[port.id]?.project ?? port.command) · up \(port.uptime)")
-                            .font(.system(size: 11))
-                            .foregroundStyle(attention == nil ? Color.secondary : Color.orange)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 4)
-                    sparkline(for: port, attention: attention != nil)
-                        .frame(width: 42, height: 24)
-                    if hoveredRowID != port.id || cleanupMode {
-                        Text(memoryString(port.memoryBytes))
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(attention == nil ? Color.primary : Color.orange)
-                            .monospacedDigit()
-                            .frame(width: 62, alignment: .trailing)
-                    }
+                    .padding(.horizontal, 8)
+                    .frame(minHeight: 52)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
                 }
-                .frame(minHeight: 52)
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .help(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
-            if hoveredRowID == port.id && !cleanupMode {
-                HStack(spacing: 2) {
-                    Button { openLocal(port.port) } label: {
-                        Image(systemName: "link").font(.system(size: 10))
-                            .frame(width: 24, height: 24)
-                    }
-                    .help("Open localhost:\(String(port.port))")
-                    .accessibilityLabel("Open localhost port \(String(port.port))")
-                    if port.canStop {
-                        Button { pendingStop = port } label: {
-                            Image(systemName: "stop.fill").font(.system(size: 10))
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .accessibilityIdentifier("portman.local.\(String(port.port))")
+                .help(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
+                if isHovered && !cleanupMode {
+                    HStack(spacing: 4) {
+                        Button { openLocal(port.port) } label: {
+                            Image(systemName: "link").font(.system(size: 10))
                                 .frame(width: 24, height: 24)
                         }
-                        .foregroundStyle(hoveredStopPortID == port.id ? .red : .secondary)
-                        .onHover { hoveredStopPortID = $0 ? port.id : nil }
-                        .help("Stop port \(String(port.port)) process tree")
-                        .accessibilityLabel("Stop process tree for port \(String(port.port))")
+                        .foregroundStyle(hoveredLinkPortID == port.id ? Color.accentColor : Color.secondary)
+                        .background(hoveredLinkPortID == port.id ? Color.accentColor.opacity(0.12) : .clear,
+                                    in: RoundedRectangle(cornerRadius: 6))
+                        .onHover { hoveredLinkPortID = $0 ? port.id : nil }
+                        .utilityAnimation(value: hoveredLinkPortID, duration: UtilityMotion.interactionDuration)
+                        .help("Open localhost:\(String(port.port))")
+                        .accessibilityLabel("Open localhost port \(String(port.port))")
+                        .accessibilityIdentifier("portman.link.\(String(port.port))")
+                        if port.canStop {
+                            Button { pendingStop = port } label: {
+                                Image(systemName: "stop.fill").font(.system(size: 10))
+                                    .frame(width: 24, height: 24)
+                            }
+                            .foregroundStyle(hoveredStopPortID == port.id ? Color.red : Color.secondary)
+                            .background(hoveredStopPortID == port.id ? Color.red.opacity(0.12) : .clear,
+                                        in: RoundedRectangle(cornerRadius: 6))
+                            .onHover { hoveredStopPortID = $0 ? port.id : nil }
+                            .utilityAnimation(value: hoveredStopPortID, duration: UtilityMotion.interactionDuration)
+                            .help("Stop port \(String(port.port)) process tree")
+                            .accessibilityLabel("Stop process tree for port \(String(port.port))")
+                            .accessibilityIdentifier("portman.stop.\(String(port.port))")
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .padding(.trailing, 8)
+                    .transition(.opacity.combined(with: .offset(x: 4)))
                 }
-                .frame(width: 62, alignment: .trailing)
             }
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .background(hoveredRowID == port.id ? Color.primary.opacity(0.06) : .clear,
+        .background(isHovered ? Color.primary.opacity(0.06) : .clear,
                     in: RoundedRectangle(cornerRadius: 8))
         .padding(.horizontal, 6)
         .opacity(highlightedProcessID == nil || highlightedProcessID == port.processID ? 1 : 0.45)
+        .utilityAnimation(value: hoveredRowID, duration: UtilityMotion.interactionDuration)
         .onHover { inside in
             hoveredRowID = inside ? port.id : nil
             highlightedProcessID = inside ? port.processID : nil
+            if !inside {
+                if hoveredLinkPortID == port.id { hoveredLinkPortID = nil }
+                if hoveredStopPortID == port.id { hoveredStopPortID = nil }
+            }
         }
         .task(id: port.id) { await service.loadMetadata(for: port) }
         .contextMenu {
@@ -535,15 +552,14 @@ struct PortmanPanelView: View {
 
     private var memoryBreakdown: some View {
         let physical = max(1, Int64(ProcessInfo.processInfo.physicalMemory))
-        let allServers = usageSegments.reduce(Int64(0)) { $0 + $1.memoryBytes }
-        let used = min(physical, max(allServers, service.systemMemoryUsedBytes))
-        let other = max(0, used - allServers)
+        let segments = displayedUsageSegments
+        let total = segments.reduce(Int64(0)) { $0 + $1.memoryBytes }
         return VStack(alignment: .leading, spacing: 6) {
             GeometryReader { geometry in
-                HStack(spacing: 1) {
-                    ForEach(usageSegments) { segment in
+                HStack(spacing: 0) {
+                    ForEach(segments) { segment in
                         Rectangle().fill(portColor(segment.port))
-                            .frame(width: max(1, geometry.size.width * Double(segment.memoryBytes) / Double(physical)))
+                            .frame(width: geometry.size.width * Double(segment.memoryBytes) / Double(max(1, total)))
                             .opacity(highlightedProcessID == nil || highlightedProcessID == segment.port.processID ? 1 : 0.45)
                             .onHover { inside in
                                 hoveredSegmentID = inside ? segment.port.processID : nil
@@ -551,30 +567,28 @@ struct PortmanPanelView: View {
                             }
                             .help("Port \(String(segment.port.port)): \(memoryString(segment.memoryBytes))")
                     }
-                    Rectangle().fill(Color.primary.opacity(0.25))
-                        .frame(width: max(0, geometry.size.width * Double(other) / Double(physical)))
-                        .help("Other use: \(memoryString(other))")
-                    Rectangle().fill(Color.primary.opacity(0.08))
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             .frame(height: 12)
             HStack {
-                if let segment = usageSegments.first(where: { $0.port.processID == highlightedProcessID }) {
+                if let segment = segments.first(where: { $0.port.processID == highlightedProcessID }) {
                     Circle().fill(portColor(segment.port)).frame(width: 6, height: 6)
                     Text(":\(String(segment.port.port)) · \(memoryString(segment.memoryBytes))")
                 } else {
-                    Text("Servers \(memoryString(allServers))")
+                    Text(cleanupMode ? "Selected processes" : "Listening processes")
                 }
                 Spacer()
-                Text("Other use \(memoryString(other))")
-                Text("Free \(memoryString(physical - used))")
+                Text("\(String(format: "%.1f", Double(total) / Double(physical) * 100))% of RAM")
             }
             .font(.system(size: 10, design: .monospaced))
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
         }
+        .help("Memory used only by processes listening on scanned ports")
         .accessibilityElement(children: .combine)
     }
 

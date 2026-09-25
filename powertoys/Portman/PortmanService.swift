@@ -342,20 +342,6 @@ nonisolated enum PortmanScanner {
         }
     }
 
-    static func systemMemoryUsed() -> Int64 {
-        var stats = vm_statistics64()
-        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
-        let result = withUnsafeMutablePointer(to: &stats) { pointer in
-            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
-            }
-        }
-        guard result == KERN_SUCCESS else { return 0 }
-        let pageSize = Int64(vm_kernel_page_size)
-        return Int64(stats.active_count + stats.inactive_count + stats.wire_count
-                     + stats.compressor_page_count) * pageSize
-    }
-
     static func stop(_ port: PortmanLocalPort) throws {
         guard port.canStop else { throw StopError.protected }
         guard matches(pid: port.pid, started: port.started, userID: port.userID) else {
@@ -572,7 +558,6 @@ final class PortmanService {
     private(set) var githubLinks: [String: PortmanGitHubLinks] = [:]
     private(set) var restartableIDs = Set<String>()
     private(set) var restartingIDs = Set<String>()
-    private(set) var systemMemoryUsedBytes: Int64 = 0
     private(set) var lastConnectionAt: [String: Date] = [:]
     private(set) var snoozedUntil: [String: Date] = [:]
     private(set) var notificationStatus = "Not requested"
@@ -657,13 +642,11 @@ final class PortmanService {
         lastScanAt = Date()
         do {
             let range = PortmanPreferences.scanRange
-            let snapshot = try await Task.detached(priority: .utility) {
-                (try PortmanScanner.localPorts(range: range), PortmanScanner.systemMemoryUsed())
+            let ports = try await Task.detached(priority: .utility) {
+                try PortmanScanner.localPorts(range: range)
             }.value
             guard !Task.isCancelled, monitoringCount > 0 else { return }
-            let ports = snapshot.0
             localPorts = ports
-            systemMemoryUsedBytes = snapshot.1
             localError = nil
             let now = Date()
             let historyCutoff = now.addingTimeInterval(-600)
