@@ -119,15 +119,22 @@ struct SwitchWindowView: View {
     }
 
     private var accountsPage: some View {
-        HStack(spacing: 0) {
-            accountList
-                .frame(width: 268)
-                .background(Color(nsColor: .underPageBackgroundColor))
-            QuietDivider()
-            accountContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .textBackgroundColor))
+        Group {
+            if model.snapshot != nil && model.accounts.isEmpty && model.importableDiscoveries.isEmpty {
+                accountContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                HStack(spacing: 0) {
+                    accountList
+                        .frame(width: 268)
+                        .background(Color(nsColor: .underPageBackgroundColor))
+                    QuietDivider()
+                    accountContent
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
         }
+        .background(Color(nsColor: .textBackgroundColor))
     }
 
     private var accountList: some View {
@@ -237,7 +244,7 @@ struct SwitchWindowView: View {
             }
             .thinScrollIndicators()
         } else {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .center, spacing: 12) {
                 Image("SwitchLogo")
                     .resizable()
                     .frame(width: 72, height: 72)
@@ -249,6 +256,7 @@ struct SwitchWindowView: View {
                 Text("Add a Codex or Grok Build account to switch identities and check usage from one place.")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 addAccountMenu
                     .buttonStyle(.borderedProminent)
@@ -259,7 +267,7 @@ struct SwitchWindowView: View {
                     .foregroundStyle(.tint)
                     .disabled(model.isWorking)
             }
-            .frame(maxWidth: 360, alignment: .leading)
+            .frame(maxWidth: 390)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
     }
