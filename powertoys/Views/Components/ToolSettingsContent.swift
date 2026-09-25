@@ -73,15 +73,11 @@ struct ToolSettingsContent: View {
 private struct SwitchLauncherSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("SWITCH").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Manage accounts, usage, and recovery in the Switch workspace.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                Button("Open Switch") { ToolActionRouter.shared.open(toolID: "switch") }
-                    .controlSize(.small)
-            }
-            .utilitySectionCard()
+            Text("ACCOUNTS").utilitySectionHeader()
+            Text("Switch and MacPowerToys use the same account store. Open Switch to manage accounts, usage, and recovery.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .utilitySectionCard()
             Spacer()
         }
         .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)

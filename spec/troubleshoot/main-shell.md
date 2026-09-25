@@ -1,5 +1,18 @@
 # Main Shell Troubleshooting
 
+## Launcher Actions On Short Displays
+
+- **Symptom:** In a 1024pt hosted display, selecting Switch showed its detail
+  body but the header enable switch and Open button were beyond the right edge.
+- **Cause:** The launcher forced 1200pt content and a 1200pt minimum even when
+  the visible screen was narrower.
+- **Invariant:** Use 1200×720 when it fits. Clamp the fixed launcher to the
+  visible display and reduce grid columns before card actions become cramped.
+  Keep the detail header controls inside the window.
+- **Check:** Hosted [run 36137254239](https://github.com/surajmandalcell/macpowertoys/actions/runs/36137254239)
+  passed the Switch launcher route on a 1024pt display. Its capture shows both
+  header controls in bounds, and the UI test clicked Open to show Switch.
+
 ## Launcher Card Description Height
 
 - **Symptom:** Tool descriptions end in an ellipsis after two lines while most

@@ -9,7 +9,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 
 | Status | Requirement | Acceptance |
 |---|---|---|
-| Code complete; live check pending | Add Switch to the built-in launcher with window routing, Dock identity, and saved window size. | Open from the launcher and a direct tool link; enable and disable it like other tools. |
+| Hosted launcher route verified | Add Switch to the built-in launcher with window routing, Dock identity, and saved window size. | Open from the launcher and a direct tool link; enable and disable it like other tools. |
 | Build verified; live check pending | Use Switch Core without requiring Switch.app or importing its GUI/TUI modules. | A clean MacPowerToys build resolves the pinned Core package and launches with Switch.app absent. |
 | Code complete; live check pending | Manage supported accounts in the applet. | Discover/import, sign in, switch defaults, verify, view all available rate-limit buckets, credits, and account activity, and remove accounts through Core with errors and recovery states visible. |
 | Hosted verified; live check pending | Preserve standalone Switch's remaining account actions in MacPowerToys. | Open the selected provider, copy its saved auth path, reorder accounts, and inspect source, import, last-use, and workspace details. The combined MacPowerToys menu offers quick account switching and usage on demand. |
@@ -29,13 +29,16 @@ account management and captures Accounts and Recovery in light and dark at
 880pt and 1,024pt, plus the compact Switch menu. Hosted run 36129347170
 passed the full macOS suite, built an installable archive, and confirmed the
 duplicate import suggestion is gone. Its updated quick-menu renders have a
-proper background in both appearances. Live interaction remains unverified.
+proper background in both appearances. Account-changing actions remain verified
+with synthetic Core tests; the owner's saved accounts were not touched.
 The installed app reports the tested source commit. The install gate recorded
 successful signature verification; a sandboxed repeat returned
 `CSSMERR_TP_NOT_TRUSTED`, so that repeat cannot establish a trust failure.
 A targeted hosted UI test opens Switch through its supported CLI route and
 traverses Accounts and Recovery. Run 36131532331 passed unit tests but Xcode
 could not spawn its separate UI-test Debug app. A separate build output and
-explicit entitlements fixed that launch error. A manually dispatched
-Switch-only hosted workflow now avoids cancellation by unrelated shared CI
-pushes; its result is pending.
+explicit entitlements fixed that launch error. The Switch-only hosted workflow
+avoids cancellation by unrelated shared CI pushes. Run 36137254239 passed both
+the CLI navigation and launcher-to-Switch route on a 1024pt display, and its
+screenshots confirm the launcher header actions remain visible. The owner's
+desktop was not used for testing.
