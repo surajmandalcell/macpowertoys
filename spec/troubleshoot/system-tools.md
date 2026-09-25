@@ -584,6 +584,15 @@
 - **Check:** Use a synthetic command to exceed the output cap in an isolated
   test session; compile on the owner's desktop without invoking the helper.
 
+- **Symptom:** The fan card has no RPM on a Mac without smctl or Stats.
+- **Cause:** Both read paths required binaries installed outside MacPowerToys.
+- **Invariant:** Read SMC fan keys in the app only while a fan view owns the
+  poller. Limit fan indices and data lengths. Keep this path read-only; route
+  writes through the guarded privileged helper.
+- **Check:** Compile both Mac architectures, run the SMC layout and decoding
+  regression in hosted tests, and inspect a fan-equipped Mac without either
+  external binary installed.
+
 - **Symptom:** System Monitor mixes unrelated clocks, Bluetooth, and metric
   plugins with activity monitoring, and Remote is labeled Linux-only.
 - **Cause:** A broad feature list was treated as monitor modules even though

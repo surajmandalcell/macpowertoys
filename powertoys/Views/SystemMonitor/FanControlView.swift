@@ -42,7 +42,8 @@ struct FanControlView: View {
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
             if compact { compactContent } else { expandedContent }
         }
-        .padding(.horizontal, compact ? 20 : 14)
+        .padding(.leading, compact ? TrayPopoverLayout.horizontalInset + 4 : 14)
+        .padding(.trailing, compact ? TrayPopoverLayout.horizontalInset : 14)
         .padding(.vertical, compact ? 8 : 14)
         .background(compact ? Color.clear : Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
@@ -124,20 +125,18 @@ struct FanControlView: View {
         HStack(spacing: 7) {
             Image(systemName: "fanblades")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color.primary.opacity(0.84))
                 .frame(width: 16)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Fan")
-                    .font(.system(size: 12, weight: .medium))
-                Text("\(rpm) · \(utilization)")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .utilityAnimation(value: rpm + utilization)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
+            Text("Fan")
+                .font(.system(size: 12, weight: .medium))
+            Text("\(rpm) · \(utilization)")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .utilityAnimation(value: rpm + utilization)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Fan, \(rpm), \(utilization) of maximum speed")
