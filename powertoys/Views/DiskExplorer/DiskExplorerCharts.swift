@@ -161,6 +161,7 @@ struct DiskTreemapView: View {
         .accessibilityValue(hoveredID.flatMap { id in tiles.first { $0.id == id }?.label } ??
                             "\(tiles.count) items")
         .accessibilityHint("Point to a block for its name and size; select it to inspect or open")
+        .accessibilityIdentifier("diskExplorer.treemap")
         .onChange(of: directory.id) { _, _ in hoveredID = nil; selectedID = nil }
     }
 
@@ -214,6 +215,7 @@ struct DiskSunburstView: View {
     let measure: DiskChartMeasure
     let select: (DiskEntry) -> Void
     @State private var hoveredID: String?
+    @State private var hoveredLabel: String?
     @State private var selectedID: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -232,15 +234,16 @@ struct DiskSunburstView: View {
                 }
             }
             .onContinuousHover { phase in
-                let next: String?
+                let next: DiskRingSegment?
                 switch phase {
-                case .active(let point): next = Self.hitTest(segments, at: point, center: center)?.id
+                case .active(let point): next = Self.hitTest(segments, at: point, center: center)
                 case .ended: next = nil
                 }
-                if hoveredID != next {
+                if hoveredID != next?.id {
                     withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion,
                                                           duration: UtilityMotion.interactionDuration)) {
-                        hoveredID = next
+                        hoveredID = next?.id
+                        hoveredLabel = next?.label
                     }
                 }
             }
@@ -272,9 +275,10 @@ struct DiskSunburstView: View {
             .utilityContentTransition(value: focused?.id ?? directory.id)
         }
         .accessibilityLabel("Ring chart of \(directory.name)")
-        .accessibilityValue("\(directory.children.count) items")
+        .accessibilityValue(hoveredLabel ?? "\(directory.children.count) items")
         .accessibilityHint("Point to a segment for its name and size; select it to inspect or open")
-        .onChange(of: directory.id) { _, _ in hoveredID = nil; selectedID = nil }
+        .accessibilityIdentifier("diskExplorer.rings")
+        .onChange(of: directory.id) { _, _ in hoveredID = nil; hoveredLabel = nil; selectedID = nil }
     }
 
     private static func path(for segment: DiskRingSegment, center: CGPoint) -> Path {
