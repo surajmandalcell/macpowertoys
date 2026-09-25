@@ -22,9 +22,11 @@
 - **Invariant:** Use four flexible columns at the standard launcher width, so
   the cards share the available grid width even with the scroller reservation.
   Keep complete descriptions and the aligned enable/Open row.
-- **Check:** `LauncherGridTests` renders four cards at 916pt in one row and saves
-  a dark launcher image in the isolated macOS run. Inspect the exact signed app
-  only when desktop interaction is allowed.
+- **Check:** `LauncherGridTests` places four cards in one row at 916pt. Hosted
+  [run 36101318344](https://github.com/surajmandalcell/macpowertoys/actions/runs/36101318344)
+  passed and saved a 980×676 native capture with four columns, complete
+  descriptions, and aligned controls. Inspect the exact signed app only when
+  desktop interaction is allowed.
 
 ## Compact Tool Enablement
 
