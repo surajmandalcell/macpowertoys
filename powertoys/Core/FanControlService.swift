@@ -78,6 +78,7 @@ nonisolated enum FanCommand {
                 return FanSnapshot(fans: status.fans, profile: nil, canControl: false)
             }
         }
+        if let snapshot = NativeFanReader.snapshot() { return snapshot }
         if FileManager.default.isExecutableFile(atPath: statsPath),
            let output = try? run(statsPath, ["fans"]) {
             return parseStatsFans(output)

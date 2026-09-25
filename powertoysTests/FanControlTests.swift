@@ -45,6 +45,16 @@ final class FanControlTests: XCTestCase {
         XCTAssertTrue(snapshot.hasExternalManualControl)
     }
 
+    func testNativeSMCFanDecodingAndKernelLayout() {
+        XCTAssertTrue(NativeFanReader.hasExpectedLayout)
+        XCTAssertEqual(NativeFanReader.decodeNumber([2], type: "ui8 "), 2)
+        XCTAssertEqual(NativeFanReader.decodeNumber([0x00, 0x60, 0x58, 0x45], type: "flt "), 3_462)
+        XCTAssertEqual(NativeFanReader.decodeNumber([0x36, 0x18], type: "fpe2"), 3_462)
+        XCTAssertEqual(NativeFanReader.decodeNumber([0x12, 0x34], type: "ui16", littleEndianIntegers: true), 0x3412)
+        XCTAssertEqual(NativeFanReader.decodeNumber([0x12, 0x34], type: "ui16", littleEndianIntegers: false), 0x1234)
+        XCTAssertNil(NativeFanReader.decodeNumber([0x12], type: "ui16"))
+    }
+
     func testCoolAndMaxOnlyRequestGuardedFullProfile() {
         XCTAssertEqual(FanCommand.arguments(for: .cool), ["fan", "profile", "full"])
         XCTAssertEqual(FanCommand.arguments(for: .max), ["fan", "profile", "full"])
