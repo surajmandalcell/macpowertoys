@@ -1236,8 +1236,7 @@ struct SystemMonitorTrayView: View {
                             .frame(maxWidth: .infinity, minHeight: 30)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
+                    .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
                     .foregroundStyle(page == item ? Color.primary : Color.secondary)
                     .background(page == item ? Color.primary.opacity(0.12) : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 7))
@@ -1323,8 +1322,7 @@ struct SystemMonitorTrayView: View {
 
     private func summary<Content: View>(_ destination: SystemMonitorTrayPage, _ content: Content) -> some View {
         Button { pageID = destination.rawValue } label: { content }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
+            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
             .accessibilityHint("Show \(destination.title) details")
     }
 
