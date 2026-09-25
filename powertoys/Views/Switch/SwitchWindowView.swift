@@ -7,7 +7,6 @@ enum SwitchPage: String, CaseIterable, Identifiable {
     case recovery = "Recovery"
 
     var id: String { rawValue }
-    var icon: String { self == .accounts ? "person.2.fill" : "cross.case" }
 }
 
 struct SwitchWindowView: View {
@@ -16,12 +15,12 @@ struct SwitchWindowView: View {
     @State private var showingDelete = false
     @State private var showingAbout = false
     @State private var showingAccountDetails = false
+    @State private var showingSharedData = false
     @State private var copiedAuthPath = false
     @State private var importDecisions: [String: ConflictChoice] = [:]
     @State private var grokCode = ""
     @State private var conflictToResolve: RecoveryOperation?
     @State private var linkedIssueToRepair: LinkedSettingsDivergence?
-    @FocusState private var focusedRailItem: String?
 
     init() {
         _model = State(initialValue: SwitchWorkspaceModel())
@@ -34,8 +33,8 @@ struct SwitchWindowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            navigationRail
+        VStack(spacing: 0) {
+            header
             Group {
                 switch page {
                 case .accounts: accountsPage
@@ -43,9 +42,9 @@ struct SwitchWindowView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .windowBackgroundColor))
             .utilityContentTransition(value: page)
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "switch"))
         .task { await model.load() }
@@ -76,73 +75,58 @@ struct SwitchWindowView: View {
         }
     }
 
-    private var navigationRail: some View {
-        VStack(spacing: 12) {
+    private var header: some View {
+        HStack(spacing: 10) {
             Image("SwitchLogo")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 32, height: 32)
-                .toolIconTile(size: 32)
+                .frame(width: 24, height: 24)
+                .toolIconTile(size: 24)
                 .accessibilityHidden(true)
-                .padding(.bottom, 12)
-
+            Text("Switch")
+                .font(.system(size: 14, weight: .semibold))
+                .padding(.trailing, 22)
             ForEach(SwitchPage.allCases) { destination in
-                railButton(destination.icon, label: destination.rawValue,
-                           selected: page == destination) { page = destination }
+                Button(destination.rawValue) { page = destination }
+                    .font(.system(size: 12, weight: page == destination ? .semibold : .medium))
+                    .foregroundStyle(page == destination ? Color.primary : Color.secondary)
+                    .padding(.horizontal, 12)
+                    .frame(height: 28)
+                    .background(page == destination ? Color.primary.opacity(0.09) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 7))
+                    .buttonStyle(.plain)
                     .accessibilityIdentifier("switch.page.\(destination.id)")
+                    .accessibilityAddTraits(page == destination ? .isSelected : [])
             }
             Spacer(minLength: 0)
-            railButton("info.circle", label: "About Switch", selected: false) {
-                showingAbout = true
+            Button { Task { await model.refresh() } } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
             }
+            .disabled(model.isWorking)
+            Button {
+                showingAbout = true
+            } label: {
+                Label("About", systemImage: "info.circle")
+            }
+            .accessibilityIdentifier("switch.about")
         }
-        .padding(.top, 60)
-        .padding(.bottom, 18)
-        .frame(width: 68)
-        .frame(maxHeight: .infinity)
-        .background(Color(red: 0.09, green: 0.12, blue: 0.18))
-        .environment(\.colorScheme, .dark)
-    }
-
-    private func railButton(_ symbol: String, label: String, selected: Bool,
-                            action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: selected ? .semibold : .regular))
-                .foregroundStyle(selected ? Color.white : Color.white.opacity(0.68))
-                .frame(width: 42, height: 40)
-                .background(selected ? Color.white.opacity(0.16) : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(Color.white.opacity(focusedRailItem == label ? 0.8 : 0), lineWidth: 2)
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
-        .focusEffectDisabled()
-        .focused($focusedRailItem, equals: label)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-        .help(label)
+        .controlSize(.small)
+        .padding(.leading, UtilityLayout.workspaceTitleLeadingInset)
+        .padding(.trailing, 18)
+        .frame(height: 48)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .bottom) { QuietDivider() }
     }
 
     private var accountsPage: some View {
-        VStack(spacing: 0) {
-            NetToysPageHeader(title: "Accounts", subtitle: "Switch between CLI identities") {
-                Button { Task { await model.refresh() } } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .disabled(model.isWorking)
-            }
-            HStack(spacing: 0) {
-                accountList
-                    .frame(width: 256)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                QuietDivider()
-                accountContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+        HStack(spacing: 0) {
+            accountList
+                .frame(width: 268)
+                .background(Color(nsColor: .underPageBackgroundColor))
+            QuietDivider()
+            accountContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .textBackgroundColor))
         }
     }
 
@@ -254,21 +238,28 @@ struct SwitchWindowView: View {
             .thinScrollIndicators()
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                Image(systemName: "person.crop.circle.badge.plus")
-                    .font(.system(size: 34, weight: .ultraLight))
-                    .foregroundStyle(.secondary)
-                Text("Bring your accounts together")
-                    .font(.system(size: 19, weight: .medium))
-                Text("Add a Codex or Grok Build account to change the active CLI identity from here.")
-                    .font(.system(size: 12))
+                Image("SwitchLogo")
+                    .resizable()
+                    .frame(width: 72, height: 72)
+                    .toolIconTile(size: 72)
+                    .accessibilityHidden(true)
+                    .padding(.bottom, 8)
+                Text("Your CLI accounts, together")
+                    .font(.system(size: 22, weight: .semibold))
+                Text("Add a Codex or Grok Build account to switch identities and check usage from one place.")
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 addAccountMenu
                     .buttonStyle(.borderedProminent)
                     .disabled(model.isWorking)
-                    .padding(.top, 4)
+                    .padding(.top, 10)
+                Button("Import from Folder…") { chooseImportFolder() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .disabled(model.isWorking)
             }
-            .frame(maxWidth: 330, alignment: .leading)
+            .frame(maxWidth: 360, alignment: .leading)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
     }
@@ -311,8 +302,8 @@ struct SwitchWindowView: View {
                 Image(systemName: providerIcon(account))
                     .font(.system(size: 20, weight: .medium))
                     .frame(width: 50, height: 50)
-                    .foregroundStyle(.white)
-                    .background(Color(red: 0.13, green: 0.21, blue: 0.32),
+                    .foregroundStyle(.tint)
+                    .background(Color.accentColor.opacity(0.11),
                                 in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
@@ -364,18 +355,6 @@ struct SwitchWindowView: View {
                 accountFact("Access", value: verificationTitle(account.verification.state),
                             symbol: verificationSymbol(account.verification.state))
                     .help(account.verification.detail)
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("Home")
-                        .font(.system(size: 12, weight: .medium))
-                        .frame(width: 64, alignment: .leading)
-                    Text(account.home.path)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(account.home.path)
-                        .textSelection(.enabled)
-                }
             }
         }
         .confirmationDialog(
@@ -586,6 +565,7 @@ struct SwitchWindowView: View {
             QuietDivider()
             DisclosureGroup("Account details", isExpanded: $showingAccountDetails) {
                 VStack(alignment: .leading, spacing: 10) {
+                    metadataRow("Home", value: account.home.path)
                     if let workspace = account.identity.workspaceID {
                         metadataRow("Workspace", value: workspace)
                     }
@@ -647,77 +627,93 @@ struct SwitchWindowView: View {
     }
 
     private var recoveryPage: some View {
-        VStack(spacing: 0) {
-            NetToysPageHeader(title: "Recovery", subtitle: "Account store and linked settings") {
-                Button("Refresh") { Task { await model.refresh() } }
-                    .disabled(model.isWorking)
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Account recovery")
+                        .font(.system(size: 22, weight: .semibold))
+                    Text("Review interrupted changes and linked settings.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 12)
+
+                if model.pendingRecovery.isEmpty && model.linkedSettingsIssues.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Interrupted operations")
-                            .font(.system(size: 14, weight: .medium))
-                        if model.pendingRecovery.isEmpty {
-                            Label("No operations need recovery", systemImage: "checkmark.circle")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("Finish these operations before changing accounts.")
-                                .foregroundStyle(.secondary)
-                            Button("Recover Operations") { Task { await model.recover() } }
-                                .disabled(model.isWorking)
-                            ForEach(model.pendingRecovery) { operation in
-                                HStack {
-                                    Text("\(operation.kind) · \(operation.phase.rawValue)")
-                                    Spacer()
-                                    if operation.phase == .conflicted {
-                                        Button("Resolve…") { conflictToResolve = operation }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    QuietDivider()
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Linked settings")
-                            .font(.system(size: 14, weight: .medium))
-                        if model.linkedSettingsIssues.isEmpty {
-                            Label("No settings need repair", systemImage: "checkmark.circle")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(model.linkedSettingsIssues) { issue in
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(issue.relativePath).fontWeight(.medium)
-                                        Text(issue.localPath.path)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                            .textSelection(.enabled)
-                                    }
-                                    Spacer()
-                                    Button("Review Repair…") { linkedIssueToRepair = issue }
-                                }
-                            }
-                        }
-                    }
-                    QuietDivider()
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Shared data")
-                            .font(.system(size: 14, weight: .medium))
-                        Text(model.snapshot?.status.sharedRoot.path ?? "Loading…")
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 30, weight: .regular))
+                            .foregroundStyle(.green)
+                            .padding(.bottom, 4)
+                        Text("Everything is in sync")
+                            .font(.system(size: 17, weight: .semibold))
+                        Text("No account changes or linked settings need repair.")
+                            .font(.system(size: 13))
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .textSelection(.enabled)
+                        Button("Back to Accounts") { page = .accounts }
+                            .padding(.top, 7)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(24)
+                    .background(Color(nsColor: .controlBackgroundColor),
+                                in: RoundedRectangle(cornerRadius: 14))
+                }
+
+                if !model.pendingRecovery.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Interrupted operations")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Finish these operations before changing accounts.")
+                            .foregroundStyle(.secondary)
+                        Button("Recover Operations") { Task { await model.recover() } }
+                            .disabled(model.isWorking)
+                        ForEach(model.pendingRecovery) { operation in
+                            HStack {
+                                Text("\(operation.kind) · \(operation.phase.rawValue)")
+                                Spacer()
+                                if operation.phase == .conflicted {
+                                    Button("Resolve…") { conflictToResolve = operation }
+                                }
+                            }
+                        }
                     }
                 }
-                .font(.system(size: 12))
-                .controlSize(.small)
-                .padding(24)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                if !model.linkedSettingsIssues.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Linked settings")
+                            .font(.system(size: 16, weight: .semibold))
+                        ForEach(model.linkedSettingsIssues) { issue in
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(issue.relativePath).fontWeight(.medium)
+                                    Text(issue.localPath.path)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                        .textSelection(.enabled)
+                                }
+                                Spacer()
+                                Button("Review Repair…") { linkedIssueToRepair = issue }
+                            }
+                        }
+                    }
+                }
+
+                QuietDivider()
+                DisclosureGroup("Shared data location", isExpanded: $showingSharedData) {
+                    Text(model.snapshot?.status.sharedRoot.path ?? "Loading…")
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .padding(.top, 8)
+                }
             }
-            .thinScrollIndicators()
+            .font(.system(size: 12))
+            .controlSize(.small)
+            .frame(maxWidth: 620, alignment: .leading)
+            .padding(32)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
+        .thinScrollIndicators()
         .confirmationDialog("Resolve recovery conflict?", isPresented: Binding(
             get: { conflictToResolve != nil },
             set: { if !$0 { conflictToResolve = nil } }

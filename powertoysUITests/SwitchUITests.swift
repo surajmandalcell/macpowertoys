@@ -38,7 +38,7 @@ final class SwitchUITests: XCTestCase {
     }
 
     @MainActor
-    func testSwitchOpensFromCLIRouteAndNavigatesByIconRail() throws {
+    func testSwitchOpensFromCLIRouteAndNavigatesByLabeledHeader() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mpt-switch-ui-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -56,11 +56,12 @@ final class SwitchUITests: XCTestCase {
         let recovery = app.buttons["switch.page.Recovery"]
         XCTAssertTrue(accounts.exists)
         XCTAssertTrue(recovery.exists)
+        XCTAssertTrue(app.buttons["switch.about"].exists)
         XCTAssertTrue(window.staticTexts["Saved accounts"].exists)
         attach(window.screenshot(), named: "Switch Accounts")
 
         recovery.click()
-        XCTAssertTrue(window.staticTexts["Interrupted operations"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.staticTexts["Everything is in sync"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch Recovery")
 
         accounts.click()
