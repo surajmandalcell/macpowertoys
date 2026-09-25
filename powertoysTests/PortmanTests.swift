@@ -378,8 +378,9 @@ final class PortmanTests: XCTestCase {
                 let host = NSHostingView(rootView: PortmanPanelView(initialPage: page)
                     .environment(\.colorScheme, scheme))
                 host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-                host.frame = NSRect(x: 0, y: 0, width: 400,
-                                    height: page == .settings ? 620 : 400)
+                host.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+                host.layoutSubtreeIfNeeded()
+                host.frame.size = host.fittingSize
                 host.layoutSubtreeIfNeeded()
                 let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: representation)
