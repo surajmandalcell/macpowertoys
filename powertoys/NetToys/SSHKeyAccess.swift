@@ -54,6 +54,7 @@ nonisolated enum SSHKeyAccessError: LocalizedError {
     case installFailed(String)
     case verificationFailed
     case timeout
+    case outputLimit
     case processLaunchFailed(String)
 
     var errorDescription: String? {
@@ -67,6 +68,7 @@ nonisolated enum SSHKeyAccessError: LocalizedError {
         case .verificationFailed:
             "The key was installed, but key-only login still failed. Check sshd_config and authorized_keys permissions."
         case .timeout: "SSH key setup timed out."
+        case .outputLimit: "Process output exceeded its limit."
         case .processLaunchFailed(let message): "SSH could not start: \(message)"
         }
     }
@@ -259,6 +261,7 @@ nonisolated enum SSHProcessRunner {
         arguments: [String],
         environment: [String: String] = SSHKeyAccessConfiguration.baseEnvironment(),
         standardInput: Data? = nil,
+        maximumOutputBytes: Int? = nil,
         timeout: TimeInterval
     ) async throws -> SSHProcessResult {
         let worker = Task.detached(priority: .userInitiated) {
@@ -278,10 +281,10 @@ nonisolated enum SSHProcessRunner {
                 throw SSHKeyAccessError.processLaunchFailed(error.localizedDescription)
             }
             let outputReader = Task.detached {
-                output.fileHandleForReading.readDataToEndOfFile()
+                read(output.fileHandleForReading, maximumBytes: maximumOutputBytes)
             }
             let errorReader = Task.detached {
-                error.fileHandleForReading.readDataToEndOfFile()
+                read(error.fileHandleForReading, maximumBytes: maximumOutputBytes)
             }
             if let standardInput, let input {
                 input.fileHandleForWriting.write(standardInput)
@@ -302,14 +305,15 @@ nonisolated enum SSHProcessRunner {
                 if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
             }
             process.waitUntilExit()
-            let outputData = await outputReader.value
-            let errorData = await errorReader.value
+            let outputResult = await outputReader.value
+            let errorResult = await errorReader.value
             if wasCancelled { throw CancellationError() }
             if timedOut { throw SSHKeyAccessError.timeout }
+            if outputResult.exceeded || errorResult.exceeded { throw SSHKeyAccessError.outputLimit }
             return SSHProcessResult(
                 status: process.terminationStatus,
-                standardOutput: String(decoding: outputData, as: UTF8.self),
-                standardError: String(decoding: errorData, as: UTF8.self)
+                standardOutput: String(decoding: outputResult.data, as: UTF8.self),
+                standardError: String(decoding: errorResult.data, as: UTF8.self)
             )
         }
         return try await withTaskCancellationHandler {
@@ -317,6 +321,19 @@ nonisolated enum SSHProcessRunner {
         } onCancel: {
             worker.cancel()
         }
+    }
+
+    private static func read(_ handle: FileHandle, maximumBytes: Int?) -> (data: Data, exceeded: Bool) {
+        var data = Data()
+        var exceeded = false
+        while true {
+            let chunk = handle.readData(ofLength: 8_192)
+            if chunk.isEmpty { break }
+            let remaining = maximumBytes.map { max($0 - data.count, 0) } ?? chunk.count
+            data.append(chunk.prefix(remaining))
+            exceeded = exceeded || chunk.count > remaining
+        }
+        return (data, exceeded)
     }
 }
 
