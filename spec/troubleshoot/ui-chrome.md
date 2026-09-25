@@ -21,15 +21,30 @@
 ## Portman Server Overview Height
 
 - **Symptom:** The Memory scope label wraps vertically and the live server row
-  falls below the visible menu-bar panel.
+  falls below the visible menu-bar panel. The next render shows the server row
+  but clips the CPU summary and Clean up control.
 - **Cause:** The segmented picker renders its redundant visible label inside a
-  narrow slot, while the overview height budgets too little space per server.
+  narrow slot, while the overview height budgets too little space for the
+  memory summary, server rows, and footer.
 - **Invariant:** Hide the picker's visible label but keep its accessibility
-  name. Give the overview enough height to show the memory summary and server
-  rows within the screen-height cap.
+  name. Give the overview enough height to show the memory summary, server
+  rows, and footer within the screen-height cap.
 - **Check:** Review a 400pt-wide hosted render with one live server, then one
   with several servers. Confirm the segmented choices, memory legend, server
-  rows, and footer remain readable without a vertical word or cut-off row.
+  rows, and footer remain readable without a vertical word or cut-off control.
+
+## Portman Closed-Menu Scan Cost
+
+- **Symptom:** The menu-only Portman owner starts a full socket and process
+  scan every two seconds while the panel is closed.
+- **Cause:** The live panel's scan interval was also used for the persistent
+  status item. Two `lsof` scans and a process table read used about 0.08 CPU
+  seconds in a read-only local probe.
+- **Invariant:** Use the chosen interval while the panel is open and at least
+  30 seconds between scans while only the status item is visible. Opening the
+  panel triggers a fresh scan, and disabling Portman releases its monitor.
+- **Check:** Run the interval-policy regression, then inspect live status and
+  idle CPU in the final signed app with the panel open, closed, and disabled.
 
 ## Tool Icon Tile Template
 
