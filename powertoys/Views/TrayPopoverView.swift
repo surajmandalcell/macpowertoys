@@ -1317,7 +1317,7 @@ struct SystemMonitorTrayView: View {
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
             FanControlView(owner: "system-monitor-tray", compact: true)
-                .padding(.top, 8)
+                .padding(.top, 4)
         }
     }
 
