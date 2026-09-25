@@ -49,6 +49,11 @@ and [disktree's zoom and removal workflow](https://github.com/tobi/disktree).
 These are behavior references. The scanner, layout, and drawing remain native
 Swift implementations.
 
-Hosted full run `36142313540` passed 872 tests with 5 skips and no failures;
-its Portman UI job and installable archive build also passed. Disk Explorer's
-focused UI and chart run is `36141822640`.
+Diskman's focused hosted run `36156271971` passed its unit and UI checks,
+including progressive scans, chart hover and navigation, Modify inventory,
+and populated light and dark renders. Full hosted run `36156271937` passed.
+The locally installed app and embedded network helper passed strict code-sign
+verification with team `GF57JXJF5A`, matched the committed source stamp, and
+the app ran from `/Applications/MacPowerToys.app`. Direct inspection of that
+installed window was blocked by Computer Use access to MacPowerToys; hosted
+UI captures provide the interaction evidence above.
