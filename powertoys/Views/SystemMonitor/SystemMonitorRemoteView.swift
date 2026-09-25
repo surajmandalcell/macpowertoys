@@ -55,17 +55,17 @@ struct SystemMonitorRemoteView: View {
                         connected ? disconnect() : connect()
                     } label: {
                         Text(connected ? "Disconnect" : "Connect")
+                            .frame(width: 86)
                             .utilityActionLabel()
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(connected ? .gray : .accentColor)
                     .accessibilityIdentifier("system-monitor.remote.connection")
-                    if connected {
-                        Button { refreshGeneration += 1 } label: {
-                            Label("Refresh Now", systemImage: "arrow.clockwise")
-                                .utilityActionLabel()
-                        }
+                    Button { refreshGeneration += 1 } label: {
+                        Label("Refresh Now", systemImage: "arrow.clockwise")
+                            .utilityActionLabel()
                     }
+                    .disabled(!connected)
                     Button { openTerminal() } label: {
                         Label("Open Terminal", systemImage: "terminal")
                             .utilityActionLabel()
