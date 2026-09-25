@@ -60,7 +60,7 @@ struct SystemMonitorRemoteView: View {
                     Button("Open Terminal", systemImage: "terminal") { openTerminal() }
                         .disabled(!SystemMonitorRemoteProtocol.validHost(host))
                 }
-                .controlSize(.regular)
+                .controlSize(.large)
             }
             .utilitySectionCard()
 
@@ -86,15 +86,15 @@ struct SystemMonitorRemoteView: View {
 
                 if let reading {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
-                        metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores")
-                        metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))")
+                        metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores", tint: .green)
+                        metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))", tint: .red)
                         if !reading.load.isEmpty {
-                            metric("Load", value: reading.load.map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · "), detail: "1, 5, and 15 minutes")
+                            metric("Load", value: reading.load.map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · "), detail: "1, 5, and 15 minutes", tint: .blue)
                         }
-                        metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces")
-                        metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces")
+                        metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: .blue)
+                        metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: .blue)
                         if let diskUsed = reading.diskUsed, let diskTotal = reading.diskTotal {
-                            metric("Disk", value: bytes(diskUsed), detail: "of \(bytes(diskTotal)) on /")
+                            metric("Disk", value: bytes(diskUsed), detail: "of \(bytes(diskTotal)) on /", tint: .orange)
                         }
                     }
                 } else {
@@ -106,7 +106,7 @@ struct SystemMonitorRemoteView: View {
                 ContentUnavailableView(
                     "No remote host connected",
                     systemImage: "server.rack",
-                    description: Text("Connect to read usage. Sampling stops when you disconnect or close this page.")
+                    description: Text("Enter an SSH host or alias, choose its system, and press Return. Remote sampling stops when you disconnect or leave this page.")
                 )
                 .frame(maxWidth: .infinity, minHeight: 240)
             }
@@ -133,14 +133,19 @@ struct SystemMonitorRemoteView: View {
         .onDisappear { disconnect() }
     }
 
-    private func metric(_ title: String, value: String, detail: String) -> some View {
+    private func metric(_ title: String, value: String, detail: String, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+            Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(tint)
             Text(value).font(.system(size: 19, weight: .semibold)).monospacedDigit()
+                .contentTransition(.numericText())
             Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-        .utilitySectionCard()
+        .padding(14)
+        .background(LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0.065)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.16)) }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func disconnect() {
