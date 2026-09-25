@@ -24,6 +24,12 @@ final class LauncherGridTests: XCTestCase {
         XCTAssertEqual(host.fittingSize.height, 40)
     }
 
+    func testLauncherGridContractsOnNarrowDisplays() {
+        XCTAssertEqual(UtilityLayout.launcherGridColumns(for: 980).count, 4)
+        XCTAssertEqual(UtilityLayout.launcherGridColumns(for: 804).count, 3)
+        XCTAssertEqual(UtilityLayout.launcherGridColumns(for: 600).count, 2)
+    }
+
     func testLauncherFourColumnRender() throws {
         let size = NSSize(width: 980, height: 676)
         for scheme in [ColorScheme.dark, .light] {

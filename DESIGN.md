@@ -78,7 +78,7 @@ spacing:
   tray-footer-top: 8
   tray-footer-bottom: 10
 windows:
-  launcher: { content-width: 1200, content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
+  launcher: { default-content-width: 1200, default-content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, system-monitor-sidebar: 220, resizable: true }
   nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
@@ -319,7 +319,7 @@ instead of combining chrome from two families.
 
 | Family | Purpose | Size | Navigation | Title owner |
 |---|---|---|---|---|
-| Main launcher | Discover and open tools | Fixed 1200×720 content | 220pt catalog sidebar | Sidebar title |
+| Main launcher | Discover and open tools | 1200×720 default, clamped to the visible display | 220pt catalog sidebar | Sidebar title |
 | Full workspace | Sustained, multi-context work | Resizable; content at least 640pt wide | 220–280pt tool sidebar | Sidebar title |
 | Compact applet | One immediate bounded task | Fixed width and bounded height | No sidebar | 40pt compact titlebar |
 
@@ -401,8 +401,10 @@ Canonical anatomy:
 - Launch opens `All Tools` with an empty search. Restore a prior selection only
   within the same running launcher session, never across a fresh app launch.
 - `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
-  padding, four flexible columns, and 16pt row/column gaps. The 1200pt launcher
-  shows four cards in each row even when the scroll view reserves width.
+  padding, up to four flexible columns, and 16pt row/column gaps. The 1200pt
+  launcher shows four cards in each row even when the scroll view reserves
+  width. On a smaller display, the fixed launcher fits the visible screen and
+  the grid contracts to keep cards and detail actions reachable.
 - A launcher tool card is at least 150pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its 48pt icon spans the first two rows: a 13pt medium
   tool name sits beside the upper half, then an unlabeled native mini enable

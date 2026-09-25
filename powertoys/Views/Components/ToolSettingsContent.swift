@@ -75,7 +75,7 @@ private struct SwitchLauncherSettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SWITCH").utilitySectionHeader()
             VStack(alignment: .leading, spacing: 12) {
-                Text("Accounts, conversations, and recovery are managed in the Switch workspace.")
+                Text("Manage accounts, usage, and recovery in the Switch workspace.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Button("Open Switch") { ToolActionRouter.shared.open(toolID: "switch") }

@@ -13,6 +13,20 @@ enum UtilityLayout {
         count: launcherColumnCount
     )
     static let launcherContentSize = NSSize(width: 1_200, height: 720)
+    static var launcherWindowSize: NSSize {
+        guard let screenSize = NSScreen.main?.visibleFrame.size else { return launcherContentSize }
+        return NSSize(
+            width: min(launcherContentSize.width, screenSize.width),
+            height: min(launcherContentSize.height, screenSize.height)
+        )
+    }
+
+    static func launcherGridColumns(for width: CGFloat) -> [GridItem] {
+        let available = width - 2 * launcherContentInset + launcherGridSpacing
+        let columnWidth = launcherCardMinimumWidth + launcherGridSpacing
+        let count = min(launcherColumnCount, max(1, Int(available / columnWidth)))
+        return Array(repeating: GridItem(.flexible(), spacing: launcherGridSpacing), count: count)
+    }
     static let dataSidebarWidth: CGFloat = 240
     static let workspaceMinimumContentWidth: CGFloat = 640
     static let workspaceMinimumHeight: CGFloat = 600
@@ -49,7 +63,7 @@ enum UtilityLayout {
         let sidebarWidth: CGFloat
         switch identifier {
         case "main":
-            return launcherContentSize
+            return launcherWindowSize
         case "nettoys":
             return netToysMinimumContentSize
         case "rclone", "system-care", "disk-explorer", "switch":

@@ -185,7 +185,7 @@ final class WindowAccessorTests: XCTestCase {
 
     func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {
         let expectedSizes: [String: NSSize] = [
-            "main": UtilityLayout.launcherContentSize,
+            "main": UtilityLayout.launcherWindowSize,
             "rclone": NSSize(width: 880, height: 600),
             "logs": NSSize(width: 860, height: 600),
             "input-devices": NSSize(width: 860, height: 600),

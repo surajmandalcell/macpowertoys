@@ -6,25 +6,27 @@ struct AllToolsGridView: View {
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: UtilityLayout.launcherGridColumns, spacing: UtilityLayout.launcherGridSpacing) {
-                ForEach(ToolRegistry.allTools, id: \.id) { tool in
-                    ToolCard(
-                        tool: tool,
-                        selectAction: { selectedTool = tool.id },
-                        openAction: {
-                            ToolActionRouter.shared.open(toolID: tool.id)
-                            if closeMainWindowAfterOpeningTool {
-                                dismissWindow(id: "main")
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVGrid(columns: UtilityLayout.launcherGridColumns(for: geometry.size.width), spacing: UtilityLayout.launcherGridSpacing) {
+                    ForEach(ToolRegistry.allTools, id: \.id) { tool in
+                        ToolCard(
+                            tool: tool,
+                            selectAction: { selectedTool = tool.id },
+                            openAction: {
+                                ToolActionRouter.shared.open(toolID: tool.id)
+                                if closeMainWindowAfterOpeningTool {
+                                    dismissWindow(id: "main")
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
+                .padding(.horizontal, UtilityLayout.launcherContentInset)
+                .padding(.bottom, UtilityLayout.launcherContentInset)
             }
-            .padding(.horizontal, UtilityLayout.launcherContentInset)
-            .padding(.bottom, UtilityLayout.launcherContentInset)
+            .thinScrollIndicators()
         }
-        .thinScrollIndicators()
     }
 }
 

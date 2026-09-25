@@ -11,7 +11,7 @@ struct MainWindowView: View {
     var body: some View {
         HomeView()
             .ignoresSafeArea()
-            .frame(width: UtilityLayout.launcherContentSize.width, height: UtilityLayout.launcherContentSize.height)
+            .frame(width: UtilityLayout.launcherWindowSize.width, height: UtilityLayout.launcherWindowSize.height)
             .background(WindowAccessor(identifier: "main"))
             .sheet(isPresented: $showAppSettings) {
                 AppSettingsSheet()
