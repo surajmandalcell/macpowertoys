@@ -835,6 +835,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Disk Explorer | Chosen Color | Chosen Color | Owner-selected Sector platter |
 | System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
+| Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
 the prior identities for these six tools. They use 512px PNG image sets with

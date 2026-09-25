@@ -36,7 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let nativeSceneToolIDs: Set<String> = [
         "main", "rclone", "logs", "awake", "color-picker",
-        "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys",
+        "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "portman",
     ]
 
     static func requiresManualURLRouting(_ url: URL) -> Bool {
@@ -128,7 +128,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "system-care": "SystemCareLogo",
         "system-monitor": "SystemMonitorLogo",
         "disk-explorer": "DiskExplorerLogo",
-        "nettoys": "NetToysLogo"
+        "nettoys": "NetToysLogo",
+        "portman": "PortmanLogo"
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -187,6 +188,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         FanControlService.current?.restoreAutomaticOnExit()
+        PortmanService.shared.stopAll()
     }
 
     @MainActor

@@ -8,7 +8,7 @@ final class WindowAccessorTests: XCTestCase {
     private static var retainedWindows: [NSWindow] = []
 
     func testCompactAppletWindowsUseFixedAlignedChrome() throws {
-        for identifier in ["awake", "color-picker", "text-extractor"] {
+        for identifier in ["awake", "color-picker", "text-extractor", "portman"] {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],

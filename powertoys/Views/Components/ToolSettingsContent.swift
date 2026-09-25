@@ -54,6 +54,8 @@ struct ToolSettingsContent: View {
             TextExtractorSettingsView()
         case "nettoys":
             NetToysSettingsView()
+        case "portman":
+            PortmanSettingsView()
         case "input-devices":
             InputDevicesSettingsView()
         case "system-monitor":

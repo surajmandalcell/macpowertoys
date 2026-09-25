@@ -22,7 +22,7 @@ struct WindowAccessor: NSViewRepresentable {
 
 private class WindowAccessorView: NSView {
     private static let compactAppletWindowIdentifiers = Set([
-        "awake", "color-picker", "text-extractor"
+        "awake", "color-picker", "text-extractor", "portman"
     ])
     private static let workspaceWindowIdentifiers = Set([
         "main", "rclone", "logs", "input-devices",

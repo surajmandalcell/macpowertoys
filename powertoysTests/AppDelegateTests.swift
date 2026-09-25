@@ -18,7 +18,7 @@ final class AppDelegateTests: XCTestCase {
     func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
         for toolID in [
             "main", "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys", "portman",
         ] {
             let url = URL(string: "macpowertoys://open/\(toolID)")!
             XCTAssertFalse(AppDelegate.requiresManualURLRouting(url), toolID)
@@ -104,7 +104,7 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys", "portman",
         ] {
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: "\(toolID)-settings"), toolID)
@@ -116,7 +116,7 @@ final class AppDelegateTests: XCTestCase {
     func testQuitCommandClosesEachNativeSubAppScope() {
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys", "portman",
         ] {
             let toolWindow = CloseTrackingWindow(identifier: toolID)
             let settingsWindow = CloseTrackingWindow(identifier: "\(toolID)-settings")

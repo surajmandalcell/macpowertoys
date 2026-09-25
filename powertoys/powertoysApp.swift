@@ -187,6 +187,16 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["nettoys"]))
         .restorationBehavior(.disabled)
 
+        Window("Portman", id: "portman") {
+            PortmanWindowView()
+                .utilityMotionPolicy()
+        }
+        .defaultSize(width: 560, height: 520)
+        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["portman"]))
+        .restorationBehavior(.disabled)
+
         MenuBarExtra("MacPowerToys", image: "MenuBarIcon", isInserted: trayBinding) {
             TrayPopoverView()
                 .utilityMotionPolicy()
