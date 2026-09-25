@@ -128,7 +128,6 @@ struct PortmanPanelView: View {
                             .fill(Color.accentColor)
                             .frame(height: 2)
                             .opacity(page == destination ? 1 : 0)
-                            .utilityAnimation(value: page, duration: UtilityMotion.interactionDuration)
                             .allowsHitTesting(false)
                     }
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
@@ -226,6 +225,20 @@ struct PortmanPanelView: View {
         }
         .onChange(of: service.localPorts.map(\.processID)) {
             selectedCleanupProcesses.formIntersection(Set(service.localPorts.map(\.processID)))
+        }
+        .onChange(of: service.tunnels.map { "\($0.id):\(tunnelStatus($0.state))" }) { oldStates, newStates in
+            guard page == .forward, passwordPromptHost == nil,
+                  let tunnel = service.tunnels.first(where: {
+                      if case .failed(let message) = $0.state {
+                          return PortmanScanner.passwordAvailable(in: message)
+                              && newStates.contains("\($0.id):\(message)")
+                              && !oldStates.contains("\($0.id):\(message)")
+                      }
+                      return false
+                  }) else { return }
+            retryAfterPassword = tunnel
+            passwordPromptError = nil
+            passwordPromptHost = tunnel.host
         }
         .task(id: "\(selectedPortID ?? "")|\(sessionLinksEnabled)|\(publicGitHubLinksEnabled)") {
             hoveredTime = nil
@@ -960,19 +973,6 @@ struct PortmanPanelView: View {
                 Button("Scan") { scanRemote() }
                 .disabled(host.isEmpty || service.isLoadingRemote)
                 .controlSize(.small)
-                Button {
-                    guard !host.isEmpty else { return }
-                    passwordPromptError = nil
-                    retryAfterPassword = nil
-                    passwordPromptHost = host
-                } label: {
-                    Image(systemName: "lock").frame(width: 24, height: 24)
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .help("Use an SSH password for \(host)")
-                .accessibilityLabel("Enter SSH password")
-                .disabled(host.isEmpty)
             }
             if service.isLoadingRemote { ProgressView("Checking remote ports…").controlSize(.small) }
             Text("Ports stay on the server. Portman binds each tunnel to 127.0.0.1 on this Mac.")
@@ -1154,7 +1154,7 @@ struct PortmanPanelView: View {
             if case .failed = tunnel.state {
                 Button("Retry") {
                     if case .failed(let message) = tunnel.state,
-                       message.localizedCaseInsensitiveContains("Permission denied") {
+                       PortmanScanner.passwordAvailable(in: message) {
                         retryAfterPassword = tunnel
                         passwordPromptError = "Authentication failed. Enter the password again."
                         passwordPromptHost = tunnel.host
@@ -1205,7 +1205,7 @@ struct PortmanPanelView: View {
         remoteScanTask = Task {
             await service.refreshRemote(host: target, password: password)
             guard !Task.isCancelled, page == .forward, host == target,
-                  service.forwardingError?.localizedCaseInsensitiveContains("Permission denied") == true else { return }
+                  service.forwardingError?.contains("SSH password required.") == true else { return }
             sshPassword = nil
             passwordPromptError = password == nil ? nil : "Authentication failed. Enter the password again."
             passwordPromptHost = target
@@ -1377,10 +1377,10 @@ struct PortmanSettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Settings").font(.system(size: 13, weight: .semibold))
             NativeSearchField(text: $search, placeholder: "Search settings")
-                .frame(height: 24)
+                .frame(maxWidth: .infinity, minHeight: 28)
                 .accessibilityIdentifier("portman.settings.search")
             if !generalVisible && !portsVisible && !cleanupVisible && !integrationsVisible {
                 Text("No matching settings")
@@ -1398,14 +1398,18 @@ struct PortmanSettingsView: View {
                 HStack {
                     Text("Open folders in")
                     Spacer()
-                    Picker("Open folders in", selection: $editor) {
-                        Text("Automatic").tag("auto")
+                    Menu {
+                        Button("Automatic") { editor = "auto" }
                         ForEach(PortmanEditor.installed, id: \.id) { choice in
-                            Text(choice.name).tag(choice.id)
+                            Button(choice.name) { editor = choice.id }
                         }
-                        Text("Finder").tag("finder")
+                        Button("Finder") { editor = "finder" }
+                    } label: {
+                        Text(editor == "auto" ? "Automatic" : editor == "finder" ? "Finder"
+                             : PortmanEditor.installed.first(where: { $0.id == editor })?.name ?? "Automatic")
+                            .frame(width: 148, alignment: .trailing)
                     }
-                    .labelsHidden().frame(width: 180)
+                    .accessibilityLabel("Open folders in")
                 }
             }
             if portsVisible {
@@ -1413,7 +1417,11 @@ struct PortmanSettingsView: View {
                 Text("Ports & processes").font(.system(size: 12, weight: .medium))
             }
             if shows("Ports & processes", "Include other listening processes") {
-                Toggle("Include other listening processes", isOn: $showAllListeners)
+                HStack {
+                    Text("Include other listening processes")
+                    Spacer()
+                    Toggle("Include other listening processes", isOn: $showAllListeners).labelsHidden()
+                }
             }
             if shows("Ports & processes", "Scan ports") {
                 HStack {
@@ -1435,18 +1443,21 @@ struct PortmanSettingsView: View {
                 HStack {
                     Text("Scan every")
                     Spacer()
-                    Picker("Scan every", selection: $scanInterval) {
-                        Text("2 seconds").tag(2.0)
-                        Text("5 seconds").tag(5.0)
-                        Text("10 seconds").tag(10.0)
-                        Text("30 seconds").tag(30.0)
+                    Menu {
+                        ForEach([2.0, 5.0, 10.0, 30.0], id: \.self) { seconds in
+                            Button("\(Int(seconds)) seconds") { scanInterval = seconds }
+                        }
+                    } label: {
+                        Text("\(Int(scanInterval)) seconds").frame(width: 98, alignment: .trailing)
                     }
-                    .labelsHidden().frame(width: 130)
+                    .accessibilityLabel("Scan every")
+                    .accessibilityValue("\(Int(scanInterval)) seconds")
                 }
             }
             if shows("Ports & processes", "Extra protected process names") {
                 TextField("Extra protected process names, comma-separated", text: $protectedCommands)
                     .accessibilityLabel("Extra protected process names")
+                    .frame(maxWidth: .infinity)
                 Text("Databases, Docker, and SSH are always protected.")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
@@ -1458,20 +1469,20 @@ struct PortmanSettingsView: View {
                 HStack {
                     Text("Mode")
                     Spacer()
-                    Picker("Cleanup mode", selection: Binding(
-                        get: { cleanupMode },
-                        set: { value in
-                            if value == PortmanCleanupMode.automatic.rawValue
-                                && cleanupMode != PortmanCleanupMode.automatic.rawValue {
+                    Menu {
+                        Button("Off") { cleanupMode = PortmanCleanupMode.off.rawValue }
+                        Button("Ask") { cleanupMode = PortmanCleanupMode.ask.rawValue }
+                        Button("Automatic") {
+                            if cleanupMode != PortmanCleanupMode.automatic.rawValue {
                                 pendingAutomaticCleanup = true
-                            } else { cleanupMode = value }
+                            }
                         }
-                    )) {
-                        Text("Off").tag(PortmanCleanupMode.off.rawValue)
-                        Text("Ask").tag(PortmanCleanupMode.ask.rawValue)
-                        Text("Automatic").tag(PortmanCleanupMode.automatic.rawValue)
+                    } label: {
+                        Text(PortmanCleanupMode(rawValue: cleanupMode)?.rawValue.capitalized ?? "Ask")
+                            .frame(width: 98, alignment: .trailing)
                     }
-                    .labelsHidden().pickerStyle(.segmented).frame(width: 210)
+                    .accessibilityLabel("Cleanup mode")
+                    .accessibilityValue(PortmanCleanupMode(rawValue: cleanupMode)?.rawValue.capitalized ?? "Ask")
                 }
                 Group {
                     if cleanupMode == PortmanCleanupMode.automatic.rawValue {
@@ -1485,28 +1496,61 @@ struct PortmanSettingsView: View {
                 .font(.system(size: 10)).foregroundStyle(.secondary)
             }
             if shows("Clean up", "Include deleted folders") {
-                Toggle("Include deleted folders", isOn: $includeDeletedFolders)
+                HStack {
+                    Text("Include deleted folders")
+                    Spacer()
+                    Toggle("Include deleted folders", isOn: $includeDeletedFolders).labelsHidden()
+                }
             }
             if shows("Clean up", "Suggest after idle hours") {
-                Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
+                HStack {
+                    Text("Suggest after idle")
+                    Spacer()
+                    TextField("Idle hours", value: $idleHours, format: .number)
+                        .frame(width: 48).multilineTextAlignment(.trailing)
+                        .onSubmit { idleHours = min(72, max(1, idleHours)) }
+                    Text("hours").frame(width: 46, alignment: .leading)
+                }
             }
             if shows("Clean up", "Suggest after running days") {
-                Stepper("Suggest after \(Int(runningDays)) running days", value: $runningDays, in: 1...30, step: 1)
+                HStack {
+                    Text("Suggest after running")
+                    Spacer()
+                    TextField("Running days", value: $runningDays, format: .number)
+                        .frame(width: 48).multilineTextAlignment(.trailing)
+                        .onSubmit { runningDays = min(30, max(1, runningDays)) }
+                    Text("days").frame(width: 46, alignment: .leading)
+                }
             }
             if shows("Clean up", "Force quit after seconds") {
-                Stepper("Force quit after \(Int(forceQuitSeconds)) seconds", value: $forceQuitSeconds, in: 1...30, step: 1)
+                HStack {
+                    Text("Force quit after")
+                    Spacer()
+                    TextField("Force quit seconds", value: $forceQuitSeconds, format: .number)
+                        .frame(width: 48).multilineTextAlignment(.trailing)
+                        .onSubmit { forceQuitSeconds = min(30, max(1, forceQuitSeconds)) }
+                    Text("seconds").frame(width: 46, alignment: .leading)
+                }
             }
             if integrationsVisible {
                 if generalVisible || portsVisible || cleanupVisible { QuietDivider() }
                 Text("Integrations").font(.system(size: 12, weight: .medium))
             }
             if shows("Integrations", "Link coding sessions") {
-                Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
+                HStack {
+                    Text("Link coding sessions")
+                    Spacer()
+                    Toggle("Link coding sessions", isOn: $sessionLinksEnabled).labelsHidden()
+                }
                 Text("When you open a server, Portman checks its process for a Claude Code session and recent local Codex sessions for a folder match. A link copies a resume command.")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
             if shows("Integrations", "Find public GitHub links") {
-                Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
+                HStack {
+                    Text("Find public GitHub links")
+                    Spacer()
+                    Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled).labelsHidden()
+                }
                 Text("Checks public pull requests and previews for this project's branch. Private repositories and saved GitHub credentials are not used.")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
