@@ -35,3 +35,8 @@ A second headless run entered Maintenance without first opening Conversations,
 confirmed the conversation title, moved it to Trash, and restored it with the
 title intact. Account verification now clears cached usage when Core reports
 that sign-in is needed; the workspace hides usage in that state.
+
+A separate headless run used the exact Core revision pinned by MacPowerToys
+with synthetic credentials. It imported two accounts, changed the default,
+and removed the active account with an explicit replacement. No browser,
+real credential store, or app window was opened.

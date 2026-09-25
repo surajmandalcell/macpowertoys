@@ -79,4 +79,51 @@ final class SwitchWorkspaceTests: XCTestCase {
         XCTAssertTrue(files.fileExists(atPath: source.path))
         XCTAssertEqual(model.cleanupItems.first?.title, "Synthetic conversation")
     }
+
+    func testAccountImportSwitchAndRemovalUseIsolatedCoreStore() async throws {
+        let files = FileManager.default
+        let root = files.temporaryDirectory
+            .appendingPathComponent("mpt-switch-accounts-\(UUID().uuidString)", isDirectory: true)
+        defer { try? files.removeItem(at: root) }
+        let paths = ManagerPaths.environment(["AI_MANAGER_ROOT": root.path])
+        let model = SwitchWorkspaceModel(paths: paths)
+        await model.load()
+
+        for name in ["first", "second"] {
+            let source = root.appending(path: "source-\(name)")
+            try files.createDirectory(at: source, withIntermediateDirectories: true,
+                                      attributes: [.posixPermissions: 0o700])
+            let claims = try JSONSerialization.data(withJSONObject: [
+                "email": "\(name)@example.test", "chatgpt_user_id": "user-\(name)",
+                "chatgpt_account_id": "account-\(name)", "workspace_id": "workspace-\(name)"
+            ])
+            let payload = claims.base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+                .replacingOccurrences(of: "=", with: "")
+            let auth = try JSONSerialization.data(withJSONObject: ["tokens": [
+                "id_token": "header.\(payload).signature",
+                "access_token": "synthetic-access", "refresh_token": "synthetic-refresh",
+                "account_id": "account-\(name)"
+            ]])
+            let authFile = source.appending(path: "auth.json")
+            try auth.write(to: authFile, options: .atomic)
+            try files.setAttributes([.posixPermissions: 0o600], ofItemAtPath: authFile.path)
+            await model.reviewImport(source: source, mode: .full)
+            XCTAssertEqual(model.importPlan?.identity.email, "\(name)@example.test")
+            await model.commitImport(decisions: [:])
+            XCTAssertNil(model.errorMessage)
+        }
+
+        XCTAssertEqual(model.accounts.count, 2)
+        let first = try XCTUnwrap(model.accounts.first { $0.identity.email == "first@example.test" })
+        let second = try XCTUnwrap(model.accounts.first { $0.identity.email == "second@example.test" })
+        await model.makeDefault(second.id)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.snapshot?.status.firstDefaultAccountID, second.id)
+        await model.removeAccount(second.id, replacement: first.id)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.accounts.map(\.id), [first.id])
+        XCTAssertEqual(model.snapshot?.status.firstDefaultAccountID, first.id)
+    }
 }
