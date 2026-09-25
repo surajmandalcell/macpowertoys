@@ -461,7 +461,8 @@
   Use one fixed-size segmented control on each metric title bar. New CPU,
   memory, and network menu settings default to 10 seconds; saved choices stay
   intact. Remote Stats keeps its conservative 30-second default and offers an
-  explicit 5-second choice.
+  explicit 5-second choice. Its Connect/Disconnect width stays fixed and
+  Refresh Now remains in place, disabled until connected.
 - **Check:** Run the menu-value retention test with a measured sample, a
   10-second interval change, an empty delta, and Combined-to-Separate.
   Require the value and unaffected item identity to remain. Compare the picker
