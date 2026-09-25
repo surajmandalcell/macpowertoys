@@ -26,6 +26,11 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(setup.waitForExistence(timeout: 20))
         setup.click()
 
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "Fan setup popover"
+        capture.lifetime = .keepAlways
+        add(capture)
+
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForExistence(timeout: 5))
         let setupNote = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", "MacPowerToys includes fan control."
@@ -34,11 +39,6 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertGreaterThan(setupNote.frame.height, 20)
         XCTAssertTrue(app.buttons["Enable Fan Control"].exists)
         XCTAssertTrue(app.buttons["Check Again"].exists)
-
-        let capture = XCTAttachment(screenshot: app.screenshot())
-        capture.name = "Fan setup popover"
-        capture.lifetime = .keepAlways
-        add(capture)
 
         app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
         XCTAssertFalse(app.staticTexts["Enable fan control"].exists)
