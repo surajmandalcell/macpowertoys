@@ -11,6 +11,7 @@ struct SystemMonitorRemoteView: View {
     @State private var lastUpdated: Date?
     @State private var errorMessage: String?
     @State private var refreshGeneration = 0
+    @Environment(\.colorScheme) private var colorScheme
     private var platform: SystemMonitorRemotePlatform {
         SystemMonitorRemotePlatform(rawValue: platformName) ?? .linux
     }
@@ -48,16 +49,25 @@ struct SystemMonitorRemoteView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 HStack(spacing: 10) {
-                    Button(connected ? "Disconnect" : "Connect", systemImage: connected ? "link.slash" : "link") {
+                    Button {
                         connected ? disconnect() : connect()
+                    } label: {
+                        Text(connected ? "Disconnect" : "Connect")
+                            .utilityActionLabel()
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(connected ? .gray : .accentColor)
                     .accessibilityIdentifier("system-monitor.remote.connection")
                     if connected {
-                        Button("Refresh Now", systemImage: "arrow.clockwise") { refreshGeneration += 1 }
+                        Button { refreshGeneration += 1 } label: {
+                            Label("Refresh Now", systemImage: "arrow.clockwise")
+                                .utilityActionLabel()
+                        }
                     }
-                    Button("Open Terminal", systemImage: "terminal") { openTerminal() }
+                    Button { openTerminal() } label: {
+                        Label("Open Terminal", systemImage: "terminal")
+                            .utilityActionLabel()
+                    }
                         .disabled(!SystemMonitorRemoteProtocol.validHost(host))
                 }
                 .controlSize(.large)
@@ -86,16 +96,16 @@ struct SystemMonitorRemoteView: View {
 
                 if let reading {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
-                        metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores", tint: .green)
-                        metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))", tint: .red)
+                        metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores", tint: SystemMonitorPalette.teal)
+                        metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))", tint: SystemMonitorPalette.coral)
                         if !reading.load.isEmpty {
-                            metric("Load · 1 min", value: reading.load[0].formatted(.number.precision(.fractionLength(2))), detail: "Average CPU demand", tint: .blue)
+                            metric("Load · 1 min", value: reading.load[0].formatted(.number.precision(.fractionLength(2))), detail: "Average CPU demand", tint: SystemMonitorPalette.blue)
                                 .help("Load is the average number of processes running or ready for a CPU. It is not a percent.")
                         }
-                        metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: .blue)
-                        metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: .blue)
+                        metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: SystemMonitorPalette.cyan)
+                        metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: SystemMonitorPalette.cyan)
                         if let diskUsed = reading.diskUsed, let diskTotal = reading.diskTotal {
-                            metric("Disk", value: bytes(diskUsed), detail: "of \(bytes(diskTotal)) on /", tint: .orange)
+                            metric("Disk", value: bytes(diskUsed), detail: "of \(bytes(diskTotal)) on /", tint: SystemMonitorPalette.orange)
                         }
                     }
                 } else {
@@ -136,16 +146,16 @@ struct SystemMonitorRemoteView: View {
 
     private func metric(_ title: String, value: String, detail: String, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(tint)
+            Text(title).font(.system(size: 12, weight: .medium))
+                .foregroundStyle(colorScheme == .dark ? tint : .primary)
             Text(value).font(.system(size: 19, weight: .semibold)).monospacedDigit()
                 .contentTransition(.numericText())
             Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
         .padding(14)
-        .background(LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0.065)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.16)) }
+        .background(SystemMonitorPalette.gradient(tint))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.25)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 

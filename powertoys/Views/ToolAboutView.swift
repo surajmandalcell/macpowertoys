@@ -97,11 +97,13 @@ struct ToolAboutView: View {
                     .accessibilityLabel("Enable \(tool.name)")
                     .accessibilityIdentifier("tool.\(tool.id).enabled")
 
-                Button("Open") {
+                Button {
                     ToolActionRouter.shared.open(toolID: tool.id)
                     if closeMainWindowAfterOpeningTool {
                         dismissWindow(id: "main")
                     }
+                } label: {
+                    Text("Open").utilityActionLabel()
                 }
                 .accessibilityLabel("Open \(tool.name)")
                 .accessibilityIdentifier("tool.\(tool.id).launch")

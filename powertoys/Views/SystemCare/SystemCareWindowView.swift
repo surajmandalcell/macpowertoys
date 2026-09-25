@@ -325,22 +325,27 @@ struct SystemCareWindowView: View {
 
             if !manager.cleanupCandidates.isEmpty {
                 HStack {
-                    Button("Select All") {
+                    Button {
                         manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: true) }
+                    } label: {
+                        Text("Select All").utilityActionLabel()
                     }
-                    Button("Select None") {
+                    Button {
                         manager.cleanupCandidates.forEach { manager.setCandidate($0.id, selected: false) }
+                    } label: {
+                        Text("Select None").utilityActionLabel()
                     }
                     Spacer()
                     Text("\(manager.selectedCandidateIDs.count) selected · \(manager.selectedSize.formattedByteCount)")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    Button("Move to Trash") { showingTrashConfirmation = true }
+                    Button { showingTrashConfirmation = true } label: {
+                        Text("Move to Trash").utilityActionLabel()
+                    }
                         .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
                         .disabled(manager.selectedCandidateIDs.isEmpty || cleanupMode == .analysis)
                 }
-                .controlSize(.small)
+                .controlSize(.regular)
             }
 
             cleanupResults
