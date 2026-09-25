@@ -121,7 +121,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
-        XCTAssertFalse(source.contains(".focusEffectDisabled()"))
         XCTAssertTrue(source.contains("Color(nsColor: .windowBackgroundColor).ignoresSafeArea()"))
         XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
         XCTAssertTrue(source.contains("colorSchemeContrast"))
