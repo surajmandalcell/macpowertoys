@@ -24,3 +24,16 @@ All six sources and Raycast copies are 512px PNGs. The focused Dock/icon tests,
 Raycast icon sync check, Raycast lint, and Raycast build pass. The comparison
 page is `tmp/icon-refresh/index.html`. Final acceptance still needs the clean,
 signed installed app checked in the launcher and Dock.
+
+## Second-round choices
+
+On 2026-09-25, the owner rejected the current Portman, System Monitor, and Text
+Extractor icon directions and requested ten distinct choices for each. No new
+production icon is approved. Keep their current assets in place until the owner
+selects replacements. Present all 30 choices together at full size and at
+small launcher sizes, with no preselected option.
+
+The owner also proposed shorter, wider launcher cards in two columns. Show a
+reviewable comparison against the current four-column layout before changing
+the launcher. The proposed layout is a design option, not yet an approved
+production change.

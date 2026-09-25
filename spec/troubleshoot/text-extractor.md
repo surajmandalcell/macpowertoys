@@ -2,15 +2,13 @@
 
 ## Icon Identity
 
-- **Symptom:** The old loupe icon no longer matches the owner-selected crafted
-  icon direction.
-- **Cause:** The 2026-09-25 request replaces its previously locked Cobalt 051
-  artwork with a physical capture-card metaphor.
-- **Invariant:** Use the charcoal tile, ivory capture card, bold text bars, and
-  violet selected strip from the icon refresh. Keep the strip legible at small
-  sizes and do not add fake letters or a separate magnifier.
-- **Check:** Inspect the production PNG at 512, 64, and 16px on light and dark
-  surfaces, then confirm the same asset appears in launcher, Dock, and Raycast.
+- **Symptom:** The current capture-card icon did not satisfy the owner.
+- **Cause:** The owner requested ten new choices before selecting a replacement.
+- **Invariant:** Keep the current production asset until a new icon is selected.
+  Present distinct OCR or text-selection concepts, not color changes to one
+  shape, and keep each readable at small sizes without fake letters.
+- **Check:** Compare all choices at 512, 64, and 16px on light and dark
+  surfaces. After selection, verify launcher, Dock, and Raycast use one asset.
 
 ## Window Information Architecture
 
