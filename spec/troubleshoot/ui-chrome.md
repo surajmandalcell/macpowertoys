@@ -12,10 +12,11 @@
   item, and one route from the launcher, Raycast, Spotlight shortcut, and deep
   link. The default list focuses on user-owned development listeners; Settings
   can include other listeners. The panel contains overview, detail, cleanup,
-  alerts, settings, and SSH forwarding.
+  searchable settings, and SSH forwarding. Alerts and notification delivery
+  are absent by owner choice.
 - **Check:** Compile the current source without launching on the owner's
   desktop. In an isolated macOS session, open every entry route and inspect
-  overview, selected server, cleanup, active/snoozed alerts, settings, and SSH
+  overview, selected server, cleanup, settings, and SSH
   tunnel states at the real menu-bar width.
 
 ## Portman Cold Menu-Bar Launch
@@ -27,9 +28,9 @@
 - **Invariant:** Route the startup argument from the app delegate and present
   Portman only after its menu-bar button has a window and nonzero width.
 - **Check:** A fresh hosted Mac UI run opens `--open portman`, finds the Forward
-  tab, clicks blank edges of Forward and Alerts, and reaches Settings. Run
-  `36138020899` passed after the route and anchor fixes; the later compact
-  panel runs continued to pass without owner-desktop UI interaction.
+  tab, and clicks blank edges of Forward and Settings. Run `36138020899`
+  passed after the route and anchor fixes; the later compact panel runs
+  continued to pass without owner-desktop UI interaction.
 
 ## Portman Server Overview Height
 
@@ -39,12 +40,12 @@
 - **Cause:** The segmented picker renders its redundant visible label inside a
   narrow slot, while the overview height budgets too little space for the
   memory summary, server rows, and footer.
-- **Invariant:** Hide the picker's visible label but keep its accessibility
-  name. Give the overview enough height to show the memory summary, server
-  rows, and footer within the screen-height cap.
+- **Invariant:** Show listening-process memory, the server rows, and the footer
+  within the screen-height cap. Keep the memory bar and row hover surfaces on
+  the same horizontal edges.
 - **Check:** Review a 400pt-wide hosted render with one live server, then one
-  with several servers. Confirm the segmented choices, memory legend, server
-  rows, and footer remain readable without a vertical word or cut-off control.
+  with several servers. Confirm the memory legend, server rows, Sort by, and
+  cleanup footer remain readable without clipping.
 
 ## Portman Empty Servers Layout
 
@@ -52,7 +53,7 @@
   the menu-bar panel; a taller fix left a large blank area below the card.
 - **Cause:** The original 200pt empty placeholder and then a 375pt fixed panel
   did not match the compact empty card's height.
-- **Invariant:** The 330pt empty overview shows both lines of the card, a small
+- **Invariant:** The 300pt empty overview shows both lines of the card, a small
   bottom inset, and numeric `0 KB` while retaining equal-width tabs.
 - **Check:** Hosted run `36140052984` passed the empty-text visibility assertion.
   Its 400pt capture shows the complete card and a small bottom inset; check the
@@ -106,8 +107,8 @@
   Give rows a wider inset hover surface and preserve inner text padding. Keep
   one fixed trailing slot: graph plus memory at rest, link plus stop on hover,
   with blue/red action feedback and no width shift. Show only listening-process
-  memory. One underline occupies the divider and slides between equal tab
-  cells; tab content does not fade, and Reduce Motion disables the slide.
+  memory. Equal tab cells each own a bottom line that fades in place on
+  selection; tab content does not fade, and Reduce Motion disables the fade.
   Accept `user@IP`; use the in-memory SSH askpass channel for a password and
   retry, then clear it on exit. Show the remote process name, with command and
   Docker context only when the row is opened.
@@ -118,6 +119,29 @@
   or closing the panel must dismiss that sheet and clear the in-memory secret.
   The sheet is modal, so Cancel precedes tab navigation. Authentication errors
   must not expose askpass paths or expand the panel beneath the sheet.
+
+## Portman Bar-Aligned Rows And Searchable Settings
+
+- **Symptom:** The server hover surface stops inside the memory bar's edges,
+  the footer leaves extra height, the underline arrives from an unexpected
+  direction, and Alerts takes a tab that the owner does not use.
+- **Cause:** Each row added six points of horizontal padding inside the
+  overview gutter, rows and footer used the overview's loose section spacing,
+  and the underline animated a conditional positioned rectangle. The alert
+  tab also retained notification work and a chart threshold.
+- **Invariant:** The memory bar and server hover surfaces share the same outer
+  edges, with padding inside each row for its text. The compact footer contains
+  server count, CPU, Sort by Port/Memory/Name/CPU, and Clean up. Port sorts
+  ascending by default; resource sorts descend. Servers, Forward, and Settings
+  are equal-width tabs whose underline fades in place and respects Reduce
+  Motion. Settings uses the shared native small search field to filter
+  individual controls. No Portman alert page, notifications, tray tint, or
+  chart threshold remain; automatic cleanup still excludes high-usage servers.
+- **Check:** Compile locally without launching XCTest. On a hosted Mac, inspect
+  a four-server panel, compare row and bar frames, open Sort by, select Memory,
+  switch tabs at their blank edges, search for Scan in Settings, and confirm
+  unrelated controls disappear. Inspect the final signed installed stamp before
+  a background launch on the owner's Mac.
 
 ## Portman Port Numbers And Initial Charts
 
