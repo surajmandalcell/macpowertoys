@@ -140,6 +140,20 @@
   report the installed revision and the exact reason instead of claiming the
   latest UI is running.
 
+## Missing Xcode During Final Build
+
+- **Symptom:** The final Release build fails opening an IOKit SDK header even
+  though a prior build in the same task succeeded.
+- **Cause:** `/Applications/Xcode-beta.app` disappeared while the build was in
+  progress. `xcode-select` then pointed to Command Line Tools, which does not
+  provide `xcodebuild` for this project.
+- **Invariant:** Do not install an older signed product with a stale source
+  stamp. Keep the running app and preferences intact until a full Xcode app is
+  available and the clean current `HEAD` can be built and verified again.
+- **Check:** Confirm a full Xcode app path and `xcodebuild -version`, build the
+  current clean commit, verify its signature and source stamp, then run the
+  normal install gate without bringing the app forward.
+
 ## Raycast Local Install Drift
 
 - **Symptom:** The signed app is current, but Raycast keeps old tool icons or
