@@ -104,7 +104,6 @@ final class SwitchWorkspaceModel {
 
     func loadUsage(_ id: UUID) async {
         guard let manager, !isWorking else { return }
-        usage[id] = nil
         await perform {
             self.usage[id] = try await manager.readCodexAccountUsage(accountID: id)
         }

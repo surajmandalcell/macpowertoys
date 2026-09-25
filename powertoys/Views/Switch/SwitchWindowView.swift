@@ -21,6 +21,7 @@ struct SwitchWindowView: View {
     @State private var grokCode = ""
     @State private var conflictToResolve: RecoveryOperation?
     @State private var linkedIssueToRepair: LinkedSettingsDivergence?
+    @FocusState private var focusedRailItem: String?
 
     init() {
         _model = State(initialValue: SwitchWorkspaceModel())
@@ -111,10 +112,15 @@ struct SwitchWindowView: View {
                 .frame(width: 42, height: 40)
                 .background(selected ? Color.white.opacity(0.16) : Color.clear,
                             in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Color.white.opacity(focusedRailItem == label ? 0.8 : 0), lineWidth: 2)
+                }
                 .contentShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
+        .focused($focusedRailItem, equals: label)
         .accessibilityLabel(label)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .help(label)
@@ -551,14 +557,14 @@ struct SwitchWindowView: View {
 
     private func usageBuckets(_ snapshot: CodexAccountUsageSnapshot) -> [CodexRateLimitBucketSnapshot] {
         guard let limits = snapshot.rateLimits else { return [] }
-        var seen = Set<String>()
         var buckets: [CodexRateLimitBucketSnapshot] = []
         if let bucket = limits.defaultBucket {
-            seen.insert(bucket.id ?? "default")
             buckets.append(bucket)
         }
         for (key, bucket) in limits.buckets.sorted(by: { $0.key < $1.key }) {
-            if seen.insert(bucket.id ?? key).inserted { buckets.append(bucket) }
+            if !buckets.contains(where: { $0.id == (bucket.id ?? key) || $0 == bucket }) {
+                buckets.append(bucket)
+            }
         }
         return buckets.filter {
             $0.primary?.usedPercent != nil || $0.secondary?.usedPercent != nil
