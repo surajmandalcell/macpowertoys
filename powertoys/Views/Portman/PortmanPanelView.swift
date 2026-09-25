@@ -82,6 +82,7 @@ struct PortmanPanelView: View {
             }
             .font(.system(size: 12))
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
 
@@ -102,6 +103,7 @@ struct PortmanPanelView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
                 }
                 Spacer()
@@ -464,6 +466,7 @@ struct PortmanPanelView: View {
             HStack {
                 Button { selectedPortID = nil } label: { Label("Servers", systemImage: "chevron.left") }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .font(.system(size: 11))
                 Spacer()
                 Text(service.metadata[port.id]?.project ?? port.command)
@@ -484,6 +487,7 @@ struct PortmanPanelView: View {
                         Image(systemName: "stop.circle").frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .foregroundStyle(.red)
                     .help("Stop port \(port.port) process tree")
                     .accessibilityLabel("Stop process tree for port \(port.port)")
@@ -498,6 +502,7 @@ struct PortmanPanelView: View {
             }
             Button(showingMore ? "Less" : "More details") { showingMore.toggle() }
                 .font(.system(size: 11)).buttonStyle(.plain)
+                .focusEffectDisabled()
                 .foregroundStyle(.secondary)
             if showingMore {
                 detailRow("Process", "\(port.pid)")
