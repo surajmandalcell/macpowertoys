@@ -54,7 +54,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? 280 + CGFloat(service.localPorts.count) * 64 : 620
+            selectedPort == nil ? 320 + CGFloat(service.localPorts.count) * 64 : 620
         case .forward:
             400 + CGFloat(service.tunnels.count) * 48 + CGFloat(service.remotePorts.count) * 28
         case .alerts:
@@ -258,7 +258,7 @@ struct PortmanPanelView: View {
                         }
                         .disabled(selectedCleanupProcesses.isEmpty)
                     } else {
-                        Text("\(uniquePorts.count) servers · \(String(format: "%.1f", overviewCPU))% CPU")
+                        Text("\(uniquePorts.count) server\(uniquePorts.count == 1 ? "" : "s") · \(String(format: "%.1f", overviewCPU))% CPU")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(.secondary)
                         Spacer()
