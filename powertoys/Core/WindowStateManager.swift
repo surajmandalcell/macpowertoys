@@ -68,7 +68,8 @@ final class WindowStateManager {
         "disk-explorer",
         "system-monitor",
         "nettoys",
-        "portman"
+        "portman",
+        "switch"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [

@@ -56,6 +56,8 @@ struct ToolSettingsContent: View {
             NetToysSettingsView()
         case "portman":
             PortmanSettingsView()
+        case "switch":
+            SwitchLauncherSettingsView()
         case "input-devices":
             InputDevicesSettingsView()
         case "system-monitor":
@@ -67,6 +69,25 @@ struct ToolSettingsContent: View {
         default:
             EmptyStateView(icon: "slider.horizontal.3", message: "No settings available")
         }
+    }
+}
+
+private struct SwitchLauncherSettingsView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SWITCH").utilitySectionHeader()
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Accounts, conversations, and recovery are managed in the Switch workspace.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Button("Open Switch") { ToolActionRouter.shared.open(toolID: "switch") }
+                    .controlSize(.small)
+            }
+            .utilitySectionCard()
+            Spacer()
+        }
+        .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

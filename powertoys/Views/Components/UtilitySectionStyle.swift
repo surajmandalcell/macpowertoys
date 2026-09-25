@@ -48,7 +48,7 @@ enum UtilityLayout {
             return launcherContentSize
         case "nettoys":
             return netToysMinimumContentSize
-        case "rclone", "system-care", "disk-explorer", "system-monitor":
+        case "rclone", "system-care", "disk-explorer", "system-monitor", "switch":
             sidebarWidth = dataSidebarWidth
         case "logs", "input-devices":
             sidebarWidth = compactSidebarWidth

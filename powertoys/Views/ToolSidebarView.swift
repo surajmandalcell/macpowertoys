@@ -70,7 +70,10 @@ struct ToolSidebarView: View {
         if searchText.isEmpty {
             return tools
         }
-        return tools.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        return tools.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+                || $0.searchKeywords.contains { $0.localizedCaseInsensitiveContains(searchText) }
+        }
     }
 }
 
