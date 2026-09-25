@@ -556,8 +556,9 @@ System Monitor follows the owner's dark, bulkier utility-panel reference. Its
 dark sidebar and content pane use opaque near-black surfaces with a warm cast;
 the selected sidebar row uses a neutral gray fill. Overview and tray metric
 cards use colored gradients, clear edges, matching icon and graph hues, and
-larger readings. The compact Fan control appears only on Sensors, as a plain
-row with a native segmented control and breathing room below it. Search is
+larger readings. The compact Fan control appears on the combined menu's global
+Home and Monitor Sensors, as a plain row with three visible presets and breathing
+room below it. It does not appear on other Monitor pages. Search is
 at least 34pt high with a 12pt horizontal inset. Keep these exceptions inside
 System Monitor; other workspaces retain their shared flat materials.
 
@@ -1080,7 +1081,9 @@ same metaphor because macOS controls their tint.
   height. The family-defined sidebar search starts at its 32pt minimum.
 - Preserve visible keyboard focus for launcher, workspace, body, sheet, and
   floating controls. Compact titlebar controls are the only default-focus-effect
-  exception and use their defined keyboard-only replacement ring.
+  exception and use their defined keyboard-only replacement ring. Clicking
+  outside the focused control releases stale focus, while clicks in text fields
+  preserve editing.
 - Interaction states use one recipe everywhere: rest uses the component base;
   hover adds 0.06 primary to an unfilled control or 0.1 to a filled control;
   press adds 0.1 primary to an unfilled control or 0.18 to a filled control;

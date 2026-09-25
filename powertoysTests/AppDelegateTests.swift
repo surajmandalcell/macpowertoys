@@ -56,6 +56,30 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertEqual(AppDelegate.openMainWindowSymbol, "arrow.up.forward.square")
     }
 
+    func testPointerClickClearsStaleFocusButKeepsTextEditing() {
+        final class FocusProbe: NSView {
+            override var acceptsFirstResponder: Bool { true }
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 240, height: 120),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 120))
+        let probe = FocusProbe(frame: NSRect(x: 10, y: 10, width: 30, height: 30))
+        let field = NSTextField(frame: NSRect(x: 60, y: 60, width: 130, height: 24))
+        content.addSubview(probe)
+        content.addSubview(field)
+        window.contentView = content
+
+        XCTAssertTrue(window.makeFirstResponder(probe))
+        AppDelegate.dismissKeyboardFocus(in: window, at: NSPoint(x: 70, y: 70))
+        XCTAssertTrue(window.firstResponder === probe)
+
+        AppDelegate.dismissKeyboardFocus(in: window, at: NSPoint(x: 210, y: 25))
+        XCTAssertFalse(window.firstResponder === probe)
+    }
+
     func testQuitCommandClosesSubAppAndRequiresTwoLauncherPresses() {
         var coordinator = QuitCommandCoordinator()
 

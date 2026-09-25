@@ -170,9 +170,10 @@
   menu-bar panel, despite a large blank area in a fixed-size offscreen capture.
 - **Cause:** Eight 88pt summary cards plus the new secondary tab row exceeded
   the tray body's 70-percent screen-height cap on a short display.
-- **Invariant:** At 360pt width, Home shows all eight summary values within the
-  capped body on a 680pt visible screen. Fan appears only on Sensors. Detail
-  tabs keep their natural content height and the panel still scrolls on smaller
+- **Invariant:** At 360pt width, Monitor Home shows all eight summary values
+  within the capped body on a 680pt visible screen. Fan appears on Monitor
+  Sensors and the combined menu's global Home. Detail tabs keep their natural
+  content height and the panel still scrolls on smaller
   screens.
 - **Check:** Measure the natural Home height against the short-screen cap and
   inspect light and dark production-width renders. The first hosted render at
@@ -191,15 +192,18 @@
   also made its row taller. The native Awake picker draws its visible edge
   about 12pt inside its frame, so giving it another 12pt outer trailing inset
   leaves its buttons visibly short of the Home action edge.
-- **Invariant:** Compact Fan appears only in Monitor Sensors. It uses the plain
+- **Invariant:** Compact Fan appears in the combined menu's global Home and
+  Monitor Sensors, never on Monitor Home or other Monitor pages. It uses the plain
   Awake-row pattern, a 16pt leading inset, a 12pt trailing inset, and a native
-  segmented control. Fan, RPM, and utilization share one line; its icon stays
-  neutral. When control is unavailable, an amber setup button opens the
+  three-option control. Fan, RPM, and utilization share one line; its icon stays
+  neutral. Auto, Cool, and Max remain visible while unavailable options are
+  disabled. When control is unavailable, a bare amber warning glyph opens the
   built-in-helper approval flow. There is no separate package or Terminal
   command. The popup keeps a 34pt action target and 18pt bottom clearance.
-- **Check:** Inspect Monitor Home and Sensors at production tray width in light
-  and dark. Home has no Fan row; Sensors shows live RPM, disabled controls, and
-  the bounded approval explanation without clipping. The app never approves
+- **Check:** Inspect global Home, Monitor Home, and Sensors at production tray
+  width in light and dark. Global Home and Sensors show Fan; Monitor Home does
+  not. Check live RPM, disabled controls, and the bounded approval explanation
+  without clipping. The app never approves
   its own macOS background item.
 
 ## Menu-Bar Tool Placement

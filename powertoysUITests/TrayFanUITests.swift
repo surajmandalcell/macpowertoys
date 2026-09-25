@@ -17,10 +17,25 @@ final class TrayFanUITests: XCTestCase {
         let tray = app.menuBars.statusItems["MenuBarIcon"]
         XCTAssertTrue(tray.waitForExistence(timeout: 10))
         tray.click()
+        XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Fan Cool"].exists)
+        XCTAssertTrue(app.buttons["Fan Max"].exists)
+        XCTAssertTrue(app.buttons["fan-control.setup"].waitForExistence(timeout: 20))
+
+        let homeCapture = XCTAttachment(screenshot: app.screenshot())
+        homeCapture.name = "Global Home fan presets and warning"
+        homeCapture.lifetime = .keepAlways
+        add(homeCapture)
+
         app.buttons["tray.tab.system-monitor"].click()
         app.buttons["system-monitor.tray.home"].click()
         XCTAssertFalse(app.buttons["fan-control.setup"].exists)
+        XCTAssertFalse(app.buttons["Fan Auto"].exists)
         app.buttons["system-monitor.tray.sensors"].click()
+
+        XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Fan Cool"].exists)
+        XCTAssertTrue(app.buttons["Fan Max"].exists)
 
         let setup = app.buttons["fan-control.setup"]
         XCTAssertTrue(setup.waitForExistence(timeout: 20))

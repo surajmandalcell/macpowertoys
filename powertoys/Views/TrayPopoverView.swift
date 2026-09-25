@@ -446,6 +446,10 @@ private struct TrayHomeView: View {
                 if toolIDs.contains("awake") {
                     AwakeTrayRow()
                 }
+                if SettingsManager.shared.isToolEnabled("system-monitor") {
+                    FanControlView(owner: "tray-home", compact: true)
+                        .padding(.vertical, 4)
+                }
             }
         }
     }

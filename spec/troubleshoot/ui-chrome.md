@@ -517,6 +517,19 @@
   window, sheet, popover, and sidebar. Confirm no blue rectangular outline and
   confirm that Return or Space still activates each control.
 
+## Pointer Click Focus Release
+
+- **Symptom:** A keyboard focus outline remains on a control after the user
+  clicks an unrelated part of the same app window or menu-bar popover.
+- **Cause:** AppKit keeps the old first responder when the click target does not
+  accept focus.
+- **Invariant:** A left click outside a text editor clears the old first
+  responder before the target handles the click. Clicking in a text field keeps
+  editing intact; Tab still focuses controls and shows their keyboard indicator.
+- **Check:** Tab to a control in a workspace, compact applet, and tray. Click
+  blank content and another button; the old outline disappears. Click and edit
+  a search field without losing its insertion point.
+
 ## Custom Selectable Interaction States
 
 - **Symptom:** A custom row, card, or tab looks inert when the pointer moves

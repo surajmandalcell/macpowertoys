@@ -6,7 +6,8 @@
   even though MacPowerToys already bundles a signed background service.
 - **Cause:** Fan writes used an external CLI while the built-in SMC reader was
   read-only.
-- **Invariant:** The Sensors page alone owns Fan UI and polling. The signed
+- **Invariant:** The combined menu's global Home and Monitor Sensors own Fan UI
+  and polling; other Monitor pages do not. The signed
   MacPowerToys daemon accepts only Auto, Cool, or Max from the signed app,
   validates supported SMC keys and hardware maximum RPM, and restores Auto on
   a failed write or normal app exit. Setup may register the bundled service;
