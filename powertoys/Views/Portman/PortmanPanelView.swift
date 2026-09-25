@@ -965,10 +965,18 @@ struct PortmanPanelView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("localhost:\(String(tunnel.localPort))")
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
-                Text("\(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
-                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                if case .failed(let message) = tunnel.state {
+                    Text("\(tunnel.host):\(String(tunnel.remotePort))")
+                        .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(message)
+                        .font(.system(size: 11)).foregroundStyle(tunnelColor(tunnel.state))
+                        .lineLimit(2)
+                } else {
+                    Text("\(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
+                        .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
-            .help("localhost:\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))")
+            .help("localhost:\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
             Spacer(minLength: 4)
             if case .running = tunnel.state {
                 Button { openLocal(tunnel.localPort) } label: {
