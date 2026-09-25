@@ -93,7 +93,13 @@ final class PortmanTests: XCTestCase {
                              cpuPercent: 0, uptime: "0:01", started: 1, userID: uid)
         }
         XCTAssertTrue(PortmanScanner.isDevelopmentListener(port("node", "node server.js", user)))
+        XCTAssertTrue(PortmanScanner.isDevelopmentListener(port(
+            "Python", "/Library/Developer/Python.app/Contents/MacOS/Python -m http.server 3000", user
+        )))
         XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("ControlCenter", "/System/Library/ControlCenter.app/Contents/MacOS/ControlCenter", user)))
+        XCTAssertFalse(PortmanScanner.isDevelopmentListener(port(
+            "Chrome", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", user
+        )))
         XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("adb", "/opt/homebrew/bin/adb", user)))
         XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("node", "node server.js", user &+ 1)))
     }
