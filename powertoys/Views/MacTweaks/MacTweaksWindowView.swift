@@ -5,6 +5,7 @@ import SwiftUI
 
 struct MacTweaksWindowView: View {
     @State private var search = ""
+    @State private var selectedID = "mic-lock"
     @State private var micLock = MicLockService.shared
     @State private var meter = MicInputLevelMonitor()
     @State private var showReviveConfirmation = false
@@ -12,20 +13,21 @@ struct MacTweaksWindowView: View {
     @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginMessage: String?
 
-    private var showsMicLock: Bool {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        return query.isEmpty || [
-            "mic lock", "microphone", "audio", "bluetooth", "airpods", "input",
-            "sound", "primary", "fallback", "mute", "volume", "refresh", "revive"
-        ].contains { $0.localizedCaseInsensitiveContains(query) }
+    private var matches: [TweakItem] { TweakSearch.results(for: search) }
+
+    private var selectedItem: TweakItem? {
+        matches.first(where: { $0.id == selectedID }) ?? (search.isEmpty ? TweakSearch.micLock : matches.first)
     }
 
     var body: some View {
         HStack(spacing: 0) {
             sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             Group {
-                if showsMicLock { micLockPage }
-                else {
+                if selectedItem?.id == "mic-lock" { micLockPage }
+                else if let selectedItem {
+                    TweakDetailView(item: selectedItem)
+                        .id(selectedItem.id)
+                } else {
                     ContentUnavailableView.search(text: search)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -67,22 +69,57 @@ struct MacTweaksWindowView: View {
             SidebarTitle(text: "Mac Tweaks")
             VStack(spacing: 4) {
                 SidebarSearchField(text: $search, placeholder: "Search tweaks")
+                    .accessibilityLabel("Search tweaks")
                     .padding(.bottom, 12)
-                if showsMicLock {
-                    SidebarRow(icon: "mic", title: "Mic Lock", isSelected: true) {
-                        search = ""
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 3) {
+                        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            ForEach(TweakCatalog.categories, id: \.self) { category in
+                                let items = matches.filter { $0.category == category }
+                                if !items.isEmpty {
+                                    Text(category.uppercased())
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.top, 12)
+                                        .padding(.bottom, 3)
+                                    ForEach(items) { item in sidebarItem(item) }
+                                }
+                            }
+                        } else {
+                            ForEach(matches) { item in sidebarItem(item) }
+                        }
                     }
-                } else {
-                    Text("No tweaks found")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Spacer()
+                .thinScrollIndicators()
             }
             .padding(.horizontal, 12)
             .padding(.top, UtilityLayout.workspaceContentTopInset)
             .padding(.bottom, 12)
+        }
+    }
+
+    private func sidebarItem(_ item: TweakItem) -> some View {
+        SidebarRow(icon: item.id == "mic-lock" ? "mic" : icon(for: item.category),
+                   title: item.title, isSelected: selectedItem?.id == item.id) {
+            selectedID = item.id
+        }
+        .accessibilityIdentifier("mac-tweaks.item.\(item.id)")
+    }
+
+    private func icon(for category: String) -> String {
+        switch category {
+        case "Dock": "dock.rectangle"
+        case "Finder": "folder"
+        case "Input": "keyboard"
+        case "Screenshots": "camera.viewfinder"
+        case "Appearance": "paintbrush"
+        case "Power and hardware": "power"
+        case "Menu bar": "menubar.rectangle"
+        case "Built-in apps": "app"
+        case "Historical": "archivebox"
+        default: "slider.horizontal.3"
         }
     }
 
