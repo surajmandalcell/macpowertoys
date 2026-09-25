@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 
 nonisolated struct ManagedPartition: Identifiable, Sendable {
     let id: String
@@ -33,6 +34,7 @@ nonisolated struct ManagedDisk: Identifiable, Sendable {
     let devicePath: String
     let writable: Bool
     let manageable: Bool
+    let mediaRegistryID: UInt64?
     let partitions: [ManagedPartition]
 
     var unallocatedBytes: Int64 {
@@ -43,7 +45,7 @@ nonisolated struct ManagedDisk: Identifiable, Sendable {
         let layout = partitions.map {
             "\($0.id):\($0.content):\($0.isAPFSVolume ? 0 : $0.size):\($0.uuid ?? ""):\($0.name):\($0.apfsContainer ?? ""):\($0.isAPFSVolume)"
         }.joined(separator: ";")
-        return "\(id)|\(size)|\(bus)|\(scheme)|\(devicePath)|\(name)|\(layout)"
+        return "\(id)|\(size)|\(bus)|\(scheme)|\(devicePath)|\(name)|\(mediaRegistryID.map { String($0) } ?? "missing")|\(layout)"
     }
 }
 
@@ -252,7 +254,8 @@ nonisolated enum DiskManagement {
             let removable = info["RemovableMediaOrExternalDevice"] as? Bool == true
             let internalMedia = info["OSInternalMedia"] as? Bool == true
             let internalBus = info["Internal"] as? Bool == true && bus != "Secure Digital"
-            let manageable = writable && removable && !internalMedia && !internalBus && size > 0
+            let registryID = mediaRegistryID(for: id)
+            let manageable = writable && removable && !internalMedia && !internalBus && size > 0 && registryID != nil
             let partitions = (entry["Partitions"] as? [[String: Any]] ?? []).flatMap { part -> [ManagedPartition] in
                 guard let partID = part["DeviceIdentifier"] as? String, validID(partID) else { return [] }
                 let apfs = apfsByStore[partID]
@@ -268,6 +271,7 @@ nonisolated enum DiskManagement {
             }
             return ManagedDisk(id: id, name: name, size: size, bus: bus, scheme: scheme,
                                devicePath: path, writable: writable, manageable: manageable,
+                               mediaRegistryID: registryID,
                                partitions: partitions)
         }.sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
     }
@@ -322,6 +326,15 @@ nonisolated enum DiskManagement {
 
     private static func validID(_ id: String) -> Bool {
         id.range(of: "^disk[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil
+    }
+
+    private static func mediaRegistryID(for diskID: String) -> UInt64? {
+        guard let matching = IOBSDNameMatching(kIOMainPortDefault, 0, diskID) else { return nil }
+        let media = IOServiceGetMatchingService(kIOMainPortDefault, matching)
+        guard media != 0 else { return nil }
+        defer { IOObjectRelease(media) }
+        var id: UInt64 = 0
+        return IORegistryEntryGetRegistryEntryID(media, &id) == KERN_SUCCESS ? id : nil
     }
 
     static func singleAPFSStoreID(_ stores: [[String: Any]]) -> String? {
