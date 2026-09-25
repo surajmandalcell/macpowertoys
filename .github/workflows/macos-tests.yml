@@ -27,6 +27,7 @@ jobs:
           result=$(find "$RUNNER_TEMP/macpowertoys-derived/Logs/Test" -maxdepth 1 -type d -name '*.xcresult' -print -quit 2>/dev/null || true)
           if [ -n "$result" ]; then
             xcrun xcresulttool get test-results summary --path "$result" > "$RUNNER_TEMP/macos-test-summary.json"
+            jq -r '.testFailures[]? | "::error title=macOS test failure::\(.testName): \((.failureText // "Unknown failure") | gsub("\\r|\\n"; " "))"' "$RUNNER_TEMP/macos-test-summary.json"
           fi
       - name: Save test summary
         if: always()
