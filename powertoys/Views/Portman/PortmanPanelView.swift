@@ -67,7 +67,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? 300 + CGFloat(service.localPorts.count) * 64
+            selectedPort == nil ? (service.localPorts.isEmpty ? 375 : 300 + CGFloat(service.localPorts.count) * 64)
                 : 455 + (showingMore ? 110 : 0)
                     + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
         case .forward:
@@ -271,9 +271,8 @@ struct PortmanPanelView: View {
                 Spacer()
             }
             VStack(spacing: 4) {
-                Text(ByteCountFormatter.string(fromByteCount: focusedSegment?.memoryBytes
-                    ?? (showingMacMemory && !cleanupMode ? service.systemMemoryUsedBytes : overviewMemory),
-                    countStyle: .memory))
+                Text(memoryString(focusedSegment?.memoryBytes
+                    ?? (showingMacMemory && !cleanupMode ? service.systemMemoryUsedBytes : overviewMemory)))
                     .font(.system(size: 28, weight: .medium, design: .monospaced))
                     .monospacedDigit()
                 Text(cleanupMode
@@ -487,7 +486,7 @@ struct PortmanPanelView: View {
     }
 
     private func memoryString(_ bytes: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
+        bytes == 0 ? "0 KB" : ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
     }
 
     private func portColor(_ port: PortmanLocalPort) -> Color {
