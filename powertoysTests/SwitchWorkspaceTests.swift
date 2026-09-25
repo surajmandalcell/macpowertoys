@@ -13,6 +13,14 @@ final class SwitchWorkspaceTests: XCTestCase {
         defer { try? files.removeItem(at: root) }
         let model = SwitchWorkspaceModel(paths: ManagerPaths.environment(["AI_MANAGER_ROOT": root.path]))
         await model.load()
+
+        for size in [NSSize(width: 1_024, height: 720), NSSize(width: 880, height: 600)] {
+            for scheme in [ColorScheme.light, .dark] {
+                try await attachRender(of: .accounts, model: model, size: size,
+                                       scheme: scheme, state: "Empty")
+            }
+        }
+
         try await importAccount(named: "first", into: model, root: root)
         try await importAccount(named: "second", into: model, root: root)
         XCTAssertEqual(model.accounts.count, 2)
@@ -24,26 +32,32 @@ final class SwitchWorkspaceTests: XCTestCase {
         for size in [NSSize(width: 1_024, height: 720), NSSize(width: 880, height: 600)] {
             for scheme in [ColorScheme.light, .dark] {
                 for page in SwitchPage.allCases {
-                    let host = NSHostingView(rootView: SwitchWindowView(model: model, initialPage: page)
-                        .frame(width: size.width, height: size.height)
-                        .environment(\.colorScheme, scheme))
-                    host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-                    host.frame = NSRect(origin: .zero, size: size)
-                    host.layoutSubtreeIfNeeded()
-                    try await Task.sleep(for: .milliseconds(200))
-                    host.layoutSubtreeIfNeeded()
-
-                    let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-                    host.cacheDisplay(in: host.bounds, to: representation)
-                    let image = NSImage(size: size)
-                    image.addRepresentation(representation)
-                    let attachment = XCTAttachment(image: image)
-                    attachment.name = "Switch — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light") — \(Int(size.width))"
-                    attachment.lifetime = .keepAlways
-                    add(attachment)
+                    try await attachRender(of: page, model: model, size: size,
+                                           scheme: scheme, state: "Populated")
                 }
             }
         }
+    }
+
+    private func attachRender(of page: SwitchPage, model: SwitchWorkspaceModel,
+                              size: NSSize, scheme: ColorScheme, state: String) async throws {
+        let host = NSHostingView(rootView: SwitchWindowView(model: model, initialPage: page)
+            .frame(width: size.width, height: size.height)
+            .environment(\.colorScheme, scheme))
+        host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        host.frame = NSRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(200))
+        host.layoutSubtreeIfNeeded()
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "Switch — \(state) — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light") — \(Int(size.width))"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     func testAppletLoadsCoreStoreWithoutStandaloneApp() async throws {
