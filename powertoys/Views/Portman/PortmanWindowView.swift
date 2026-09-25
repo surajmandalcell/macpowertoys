@@ -16,6 +16,7 @@ struct PortmanWindowView: View {
     @State private var manualPort = ""
     @State private var cleanupMode = false
     @State private var selectedCleanupProcesses = Set<String>()
+    @State private var pendingCleanupPorts: [PortmanLocalPort] = []
     @State private var pendingStop: PortmanLocalPort?
     @State private var hoveredTime: Date?
 
@@ -96,6 +97,19 @@ struct PortmanWindowView: View {
         } message: { port in
             Text("Port \(port.port) and any other ports owned by PID \(port.pid) will stop.")
         }
+        .confirmationDialog("Stop selected server processes?", isPresented: Binding(
+            get: { !pendingCleanupPorts.isEmpty },
+            set: { if !$0 { pendingCleanupPorts = [] } }
+        ), titleVisibility: .visible) {
+            Button("Stop \(Set(pendingCleanupPorts.map(\.processID)).count) Processes", role: .destructive) {
+                service.stopLocalProcesses(pendingCleanupPorts)
+                pendingCleanupPorts = []
+                cleanupMode = false
+                selectedCleanupProcesses = []
+            }
+        } message: {
+            Text("Stopping these processes may interrupt open work. Save it before continuing.")
+        }
     }
 
     private var localOverview: some View {
@@ -136,10 +150,9 @@ struct PortmanWindowView: View {
                         Button("Cancel") { cleanupMode = false; selectedCleanupProcesses = [] }
                         Spacer()
                         Button("Stop \(selectedCleanupProcesses.count) processes", role: .destructive) {
-                            let selected = service.localPorts.filter { selectedCleanupProcesses.contains($0.processID) }
-                            service.stopLocalProcesses(selected)
-                            cleanupMode = false
-                            selectedCleanupProcesses = []
+                            pendingCleanupPorts = service.localPorts.filter {
+                                selectedCleanupProcesses.contains($0.processID)
+                            }
                         }
                         .disabled(selectedCleanupProcesses.isEmpty)
                     } else {
@@ -224,8 +237,9 @@ struct PortmanWindowView: View {
     }
 
     private var overviewCPU: Double {
+        let ports = service.localPorts.filter { !cleanupMode || selectedCleanupProcesses.contains($0.processID) }
         var seen = Set<Int32>()
-        return service.localPorts.reduce(0) { total, port in
+        return ports.reduce(0) { total, port in
             total + (seen.insert(port.pid).inserted ? port.cpuPercent : 0)
         }
     }
