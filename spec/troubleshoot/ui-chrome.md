@@ -113,6 +113,8 @@
   password sheet and retry, scanned remote-port disclosure, and Forward exit.
   A rejected password must allow retry while Forward is open; leaving Forward
   or closing the panel must dismiss that sheet and clear the in-memory secret.
+  The sheet is modal, so Cancel precedes tab navigation. Authentication errors
+  must not expose askpass paths or expand the panel beneath the sheet.
 
 ## Portman Port Numbers And Initial Charts
 
