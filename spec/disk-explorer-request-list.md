@@ -53,8 +53,8 @@ Swift implementations.
 Diskman's latest focused hosted run `36189567926` passed its unit and UI jobs,
 including progressive scans, chart hover and navigation, Modify inventory,
 the review sheet, media identity, and light/dark renders. Full hosted run
-`36171486281` passed before the media-instance guard. The prior locally
-installed app and embedded network helper at `61eb346` passed strict code-sign
-verification with team `GF57JXJF5A` and ran from `/Applications/MacPowerToys.app`.
+`36189567934` passed. The locally installed app and embedded network helper
+at `5ba62fc` passed strict code-sign verification with team `GF57JXJF5A`,
+and the app launched from `/Applications/MacPowerToys.app` in the background.
 Direct inspection of that installed window was blocked by Computer Use access
 to MacPowerToys; hosted UI captures provide the interaction evidence above.
