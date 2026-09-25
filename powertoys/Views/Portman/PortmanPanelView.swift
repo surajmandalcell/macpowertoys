@@ -190,6 +190,8 @@ struct PortmanPanelView: View {
             remoteDetailTask?.cancel()
             service.clearRemoteScan()
             sshPassword = nil
+            passwordPromptHost = nil
+            retryAfterPassword = nil
         }
         .onChange(of: panelHeight) { PortmanMenuController.shared.setHeight(panelHeight) }
         .onChange(of: page) {
@@ -210,6 +212,8 @@ struct PortmanPanelView: View {
                 manualPort = ""
                 sshPassword = nil
                 expandedRemotePort = nil
+                passwordPromptHost = nil
+                retryAfterPassword = nil
             }
         }
         .onChange(of: selectedPortID) {
@@ -1000,6 +1004,7 @@ struct PortmanPanelView: View {
                     Image(systemName: "lock").frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .help("Use an SSH password for \(host)")
                 .accessibilityLabel("Enter SSH password")
                 .disabled(host.isEmpty)
@@ -1126,6 +1131,7 @@ struct PortmanPanelView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .help(detail?.command ?? detail?.displayName ?? "Inspect remote port \(String(port))")
                 .accessibilityLabel("Details for remote port \(String(port))")
                 TextField(String(port), text: Binding(
@@ -1233,7 +1239,7 @@ struct PortmanPanelView: View {
         expandedRemotePort = nil
         remoteScanTask = Task {
             await service.refreshRemote(host: target, password: password)
-            guard !Task.isCancelled, host == target,
+            guard !Task.isCancelled, page == .forward, host == target,
                   service.forwardingError?.localizedCaseInsensitiveContains("Permission denied") == true else { return }
             sshPassword = nil
             passwordPromptError = password == nil ? nil : "Authentication failed. Enter the password again."
