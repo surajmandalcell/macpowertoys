@@ -120,6 +120,13 @@ final class PortmanUITests: XCTestCase {
         settings.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         attach(app.screenshot(), named: "Portman Settings")
+        let editor = app.descendants(matching: .any)["portman.settings.editor"]
+        XCTAssertTrue(editor.isHittable, "The editor selector is not clickable")
+        editor.click()
+        app.menuItems["Finder"].click()
+        XCTAssertEqual(editor.value as? String, "Finder")
+        editor.click()
+        app.menuItems["Automatic"].click()
         let search = app.searchFields["portman.settings.search"]
         search.click()
         search.typeText("scan")
@@ -152,6 +159,16 @@ final class PortmanUITests: XCTestCase {
                       "Choosing a cleanup mode did not update the setting")
         cleanup.click()
         app.menuItems["Ask"].click()
+        search.click()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4))
+        search.typeText("idle")
+        let idle = app.textFields["Idle hours"]
+        XCTAssertTrue(idle.isHittable, "The idle-hours field is not editable")
+        idle.click()
+        idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "6\n")
+        XCTAssertEqual(Double((idle.value as? String) ?? ""), 6)
+        idle.click()
+        idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "4\n")
 
         forward.click()
         XCTAssertTrue(app.buttons["Forward 0 selected"].waitForExistence(timeout: 5),

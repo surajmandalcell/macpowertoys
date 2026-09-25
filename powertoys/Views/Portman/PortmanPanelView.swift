@@ -1375,6 +1375,11 @@ struct PortmanSettingsView: View {
     private var integrationsVisible: Bool {
         shows("Integrations", "Link coding sessions", "Find public GitHub links")
     }
+    private var selectedEditorName: String {
+        if editor == "auto" { return "Automatic" }
+        if editor == "finder" { return "Finder" }
+        return PortmanEditor.installed.first(where: { $0.id == editor })?.name ?? "Automatic"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1405,12 +1410,12 @@ struct PortmanSettingsView: View {
                         }
                         Button("Finder") { editor = "finder" }
                     } label: {
-                        Text(editor == "auto" ? "Automatic" : editor == "finder" ? "Finder"
-                             : PortmanEditor.installed.first(where: { $0.id == editor })?.name ?? "Automatic")
+                        Text(selectedEditorName)
                             .frame(width: 148, alignment: .trailing)
                     }
                     .accessibilityIdentifier("portman.settings.editor")
                     .accessibilityLabel("Open folders in")
+                    .accessibilityValue(selectedEditorName)
                 }
             }
             if portsVisible {
