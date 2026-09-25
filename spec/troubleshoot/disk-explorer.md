@@ -1,20 +1,35 @@
 # Diskman Troubleshooting
 
+## Detail Footer Hidden From Accessibility
+
+- **Symptom:** Hosted run `36162099059` rendered the detail row below each
+  chart, but the UI test could not find `diskExplorer.treemapDetails`.
+- **Cause:** The treemap put its accessibility label and identifier on the
+  enclosing view, so macOS exposed the plot and footer as one element.
+- **Invariant:** Expose the plot and its reserved footer as separate elements.
+  The hovered item's name must appear in the footer, and the footer's frame
+  must begin below the plot in both chart modes.
+- **Check:** The hosted Diskman UI test locates both rows, compares their
+  frames with the plots, and matches each hover name to the footer text.
+
 ## Partial Scan Rearranges The Map
 
 - **Symptom:** Treemap boxes appear, disappear, and snap into new places as
   partial scan sizes change. A hover card covers the map and scan status
   changes the available body height.
-- **Cause:** The chart repeatedly sorted by current size and chose different
-  binary split groups; Canvas redrew rectangles without interpolating them.
-  Zero-weight entries were hidden until measured.
-- **Invariant:** Keep entries visible from the first folder skeleton, order
-  chosen entries by stable path, split by count, and interpolate each tile or
-  ring segment as measured weights arrive. Keep hover details and scan status
-  in reserved rows outside the plotted region. Reduce Motion stays immediate.
+- **Cause:** The original Canvas chart sorted by current size, changed its
+  split groups, and hid zero-weight entries. The later SwiftUI chart animated
+  frames but still ranked its bounded entries by changing measured size, so
+  items crossed the 80-tile or 24-segment cutoff during a scan.
+- **Invariant:** Keep entries visible from the first folder skeleton, select
+  and order the chart's bounded set by stable path, split by count, and
+  interpolate each tile or ring segment as measured weights arrive. Keep hover
+  details and scan status in reserved rows outside the plotted region. Reduce
+  Motion stays immediate.
 - **Check:** `testTreemapKeepsTileGroupsWhenMeasuredSizesCross` fails with the
-  prior weight-based grouping. Hosted chart navigation and motion captures
-  must confirm stable live transitions in both appearances.
+  prior weight-based grouping. `testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross`
+  covers the 80-tile and 24-segment cutoffs. Hosted chart navigation and
+  motion captures must confirm stable live transitions in both appearances.
 
 ## Hosted Modify Inventory Fails To Decode
 
