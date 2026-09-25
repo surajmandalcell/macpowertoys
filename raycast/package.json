@@ -85,6 +85,13 @@
       "mode": "no-view"
     },
     {
+      "name": "disk-explorer",
+      "title": "Disk Explorer",
+      "description": "Open Disk Explorer",
+      "icon": "extension-icon.png",
+      "mode": "no-view"
+    },
+    {
       "name": "nettoys",
       "title": "NetToys",
       "description": "Open NetToys",

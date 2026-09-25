@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added the Disk Explorer launcher.
 - Added the NetToys launcher.
 - Reduced Root Search to MacPowerToys and built-in app launchers only.
 - Removed separate tool-action commands.

@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="1200" alt="MacPowerToys launcher showing all ten built-in tools">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="1200" alt="MacPowerToys launcher">
 </p>
 
 <table>
@@ -35,7 +35,7 @@
   </tr>
 </table>
 
-## Ten focused tools
+## Eleven focused tools
 
 | | Tool | What it does |
 |:--:|---|---|
@@ -48,6 +48,7 @@
 | <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.svg" width="30" alt=""> | **Input Devices** | Control mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 | <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.svg" width="30" alt=""> | **System Care** | Analyze storage, preview safe cleanup, remove apps, and use advanced Mole maintenance. |
 | <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.svg" width="30" alt=""> | **System Monitor** | View CPU, memory, disk, network, battery, and thermal health on demand or in the menu bar. |
+| | **Disk Explorer** | Scan disks and folders, explore space in treemaps or rings, and review files before removal. |
 | <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
 
 ## Designed for the Mac
@@ -95,7 +96,7 @@ make build
 Open `powertoys.xcodeproj` and run the `powertoys` scheme, or
 use `make build ADHOC=1` on a Mac without an Apple Development
 identity. Raycast users can import the `raycast` directory;
-the extension exposes the launcher and all ten built-in tools.
+the extension exposes the launcher and all eleven built-in tools.
 
 > [!NOTE]
 > Personal-team signing works on the signing Mac. Public,
