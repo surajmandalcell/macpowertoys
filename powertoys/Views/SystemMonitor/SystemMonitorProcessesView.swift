@@ -135,11 +135,12 @@ struct SystemMonitorProcessesView: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             if let selected {
+                let children = processes.lazy.filter { $0.parentPID == selected.pid && $0.pid != selected.pid }.count
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(selected.name).font(.system(size: 15, weight: .semibold))
-                            Text("PID \(selected.pid) · Parent \(parentName(for: selected)) · \(childCount(for: selected)) children · User \(selected.userID == UInt32.max ? "Unavailable" : String(selected.userID))")
+                            Text("PID \(selected.pid) · Parent \(parentName(for: selected)) · \(children) \(children == 1 ? "child" : "children") · User \(selected.userID == UInt32.max ? "Unavailable" : String(selected.userID))")
                                 .font(.system(size: 11)).foregroundStyle(.secondary)
                             if let lastUpdated {
                                 Text("Updated \(lastUpdated, style: .time)")
@@ -152,7 +153,7 @@ struct SystemMonitorProcessesView: View {
                         Button("Force Quit", role: .destructive) { confirm(selected, force: true) }
                             .disabled(selected.started == 0)
                     }
-                    .controlSize(.regular)
+                    .controlSize(.large)
                     QuietDivider()
                     Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                         GridRow {
@@ -188,7 +189,7 @@ struct SystemMonitorProcessesView: View {
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(selected.executablePath, forType: .string)
                                 }
-                                .controlSize(.regular)
+                                .controlSize(.large)
                             }
                         }
                         Text(selected.executablePath)
@@ -341,9 +342,6 @@ struct SystemMonitorProcessesView: View {
             return "\(parent.name) (\(parent.pid))"
         }
         return String(process.parentPID)
-    }
-    private func childCount(for process: SystemMonitorProcess) -> Int {
-        processes.lazy.filter { $0.parentPID == process.pid && $0.pid != process.pid }.count
     }
     private func confirm(_ process: SystemMonitorProcess, force: Bool) {
         pendingProcess = process
