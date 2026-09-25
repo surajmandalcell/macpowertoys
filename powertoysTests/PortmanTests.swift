@@ -548,6 +548,23 @@ final class PortmanTests: XCTestCase {
         await service.loadMetadata(for: observed)
         await service.loadRestartAvailability(for: observed)
         for scheme in [ColorScheme.light, .dark] {
+            let cleanup = NSHostingView(rootView: PortmanPanelView(initialCleanupProcessID: observed.processID)
+                .environment(\.colorScheme, scheme))
+            cleanup.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            cleanup.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+            cleanup.layoutSubtreeIfNeeded()
+            cleanup.frame.size = cleanup.fittingSize
+            cleanup.layoutSubtreeIfNeeded()
+            let representation = try XCTUnwrap(cleanup.bitmapImageRepForCachingDisplay(in: cleanup.bounds))
+            cleanup.cacheDisplay(in: cleanup.bounds, to: representation)
+            let image = NSImage(size: cleanup.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Portman — Cleanup Selection — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        for scheme in [ColorScheme.light, .dark] {
             let detail = NSHostingView(rootView: PortmanPanelView(initialPortID: observed.id)
                 .environment(\.colorScheme, scheme))
             detail.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)

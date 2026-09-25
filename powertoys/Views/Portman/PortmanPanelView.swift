@@ -8,9 +8,12 @@ struct PortmanPanelView: View {
         case local = "Servers", forward = "Forward", alerts = "Alerts", settings = "Settings"
     }
 
-    init(initialPage: Page = .local, initialPortID: String? = nil) {
+    init(initialPage: Page = .local, initialPortID: String? = nil,
+         initialCleanupProcessID: String? = nil) {
         _page = State(initialValue: initialPage)
         _selectedPortID = State(initialValue: initialPortID)
+        _cleanupMode = State(initialValue: initialCleanupProcessID != nil)
+        _selectedCleanupProcesses = State(initialValue: Set(initialCleanupProcessID.map { [$0] } ?? []))
     }
 
     @State private var service = PortmanService.shared
