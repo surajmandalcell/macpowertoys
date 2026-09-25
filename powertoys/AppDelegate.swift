@@ -179,6 +179,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         didFinishLaunching = true
         startApplicationIfReady()
+        if let openIndex = CommandLine.arguments.firstIndex(of: "--open"),
+           CommandLine.arguments.indices.contains(openIndex + 1),
+           CommandLine.arguments[openIndex + 1] == "portman" {
+            PortmanMenuController.shared.show()
+        }
         if !AppRuntime.isUITesting && (AppRuntime.isRunningTests
             || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo)) {
             DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
