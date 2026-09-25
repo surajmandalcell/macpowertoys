@@ -13,10 +13,14 @@ else
 fi
 
 render() {
-  source="$repo_dir/powertoys/Assets.xcassets/$1.imageset/icon.svg"
   target="$repo_dir/raycast/assets/$2.png"
   output="$output_dir/$2.png"
-  sips -s format png "$source" --out "$output" >/dev/null
+  asset_dir="$repo_dir/powertoys/Assets.xcassets/$1.imageset"
+  if [ -f "$asset_dir/icon.png" ]; then
+    cp "$asset_dir/icon.png" "$output"
+  else
+    sips -s format png "$asset_dir/icon.svg" --out "$output" >/dev/null
+  fi
   if [ "$mode" = "--check" ] && ! cmp -s "$output" "$target"; then
     echo "Stale Raycast icon: $2.png"
     status=1
@@ -31,6 +35,7 @@ render ColorPickerLogo color-picker
 render TextExtractorLogo text-extractor
 render InputDevicesLogoA input-devices
 render SystemCareLogo system-care
+render DiskExplorerLogo disk-explorer
 render SystemMonitorLogo system-monitor
 render NetToysLogo nettoys
 

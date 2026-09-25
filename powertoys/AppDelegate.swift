@@ -127,6 +127,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "input-devices": "InputDevicesLogoA",
         "system-care": "SystemCareLogo",
         "system-monitor": "SystemMonitorLogo",
+        "disk-explorer": "DiskExplorerLogo",
         "nettoys": "NetToysLogo"
     ]
 
