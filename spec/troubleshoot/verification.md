@@ -5,17 +5,19 @@
 - **Symptom:** During Xcode test execution on the shared Mac, the owner saw a
   removable-volume access prompt for `MacPowerToys.app` and a Gatekeeper
   "damaged" dialog for `powertoysUITests-Runner.app`.
-- **Cause:** Test actions on the owner's active desktop can launch app bundles
-  and prompt through macOS privacy or Gatekeeper services. The two prompts were
-  observed while tests ran concurrently; their exact originating test action
-  was not established.
-- **Invariant:** When the owner requests focus-preserving verification, use
-  compile-only Xcode builds and read-only/static checks on this account. Run
-  app and UI test executables only in an isolated macOS account or VM. Do not
-  click privacy or Gatekeeper decisions on the owner's behalf.
-- **Check:** Before a test command, inspect whether it launches an app or test
-  runner. In the focus-preserving workflow, issue `xcodebuild build` rather
-  than `xcodebuild test` and confirm no new app or runner process was started.
+- **Cause:** The generated Xcode scheme included an unsigned UI runner. A full
+  `xcodebuild test` attempted to launch it. Xcode also launched Debug
+  `MacPowerToys.app` as a unit-test host; macOS logged that app coming forward
+  and requesting removable-volume access. The source checkout is on a
+  removable volume.
+- **Invariant:** The shared `powertoys` scheme has no test action. Executable
+  tests use `powertoys-desktop-tests` only in an isolated macOS account or VM.
+  `make test` requires `TEST_SESSION=isolated`, signs its products, and disables
+  parallel test launches. Use build-only checks on the owner's desktop. Do not
+  answer privacy or Gatekeeper decisions for the owner.
+- **Check:** The app scheme has zero testables; the isolated scheme has two.
+  `make test` without the isolated-session flag exits before Xcode starts.
+  `build-for-testing` compiles both bundles without launching an app or runner.
 
 ## README Window Screenshots
 
@@ -82,7 +84,8 @@
 - **Symptom:** macOS reports `powertoysUITests-Runner.app` as damaged and leaves
   a Gatekeeper dialog after the test command stops.
 - **Cause:** An app-style UI test runner built with `CODE_SIGNING_ALLOWED=NO` was
-  launched. Unsigned unit-test bundles are safe; unsigned UI runner apps are not.
+  launched. Unit-test execution also launches the MacPowerToys host app and can
+  interrupt the owner's desktop.
 - **Invariant:** Never launch an unsigned UI runner. Verify the runner with
   `codesign --verify --deep --strict` before launch. If a signed runner cannot
   connect, use live accessibility and visual smoke testing instead.
