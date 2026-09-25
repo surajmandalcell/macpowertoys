@@ -92,6 +92,26 @@
   and back. Verify scan cancellation and the monitoring interval, and inspect
   the full-width form and Clear scan control in the 400pt render.
 
+## Portman Dense Menu-Bar Rows And SSH Host Context
+
+- **Symptom:** Portman's large glyphs, edge-to-edge server hover, hidden hover
+  graph, detached tab underline, and sparse remote-port rows made the panel
+  look unlike the combined MacPowerToys menu. Servers/Mac did not explain the
+  memory scopes. A direct `user@IP` host could not use an SSH password.
+- **Cause:** The row swapped its graph for actions, the tab indicator sat above
+  a separate divider, the memory picker used ambiguous names, and both SSH
+  paths forced key-only authentication. The remote scan kept only port numbers.
+- **Invariant:** Use the smaller socket glyph in the status item and header.
+  Inset the neutral full-row hover; keep the graph and replace the memory
+  number with compact side actions on hover. The selected tab line covers the
+  divider and follows the shared reduced-motion policy. Name memory scopes by
+  what they include. Accept `user@IP`; use the in-memory SSH askpass channel
+  for a password and retry, then clear it on exit. Show the remote process
+  name, with command and Docker context only when the row is opened.
+- **Check:** Compile without launching on the owner's desktop. On a hosted Mac,
+  inspect Servers at rest and hover, tab changes, both memory scopes, the SSH
+  password sheet and retry, scanned remote-port disclosure, and Forward exit.
+
 ## Portman Port Numbers And Initial Charts
 
 - **Symptom:** Hosted renders showed `:9,000` and `localhost:49,194`, while a
