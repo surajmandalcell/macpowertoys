@@ -536,6 +536,7 @@ struct PortmanPanelView: View {
                         NSPasteboard.general.setString(session.resumeCommand, forType: .string)
                     } label: { Image(systemName: "doc.on.doc") }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .help("Copy \(session.label) resume command")
                     .accessibilityLabel("Copy \(session.label) resume command")
                 }
@@ -547,6 +548,7 @@ struct PortmanPanelView: View {
                     Text("Pull request").foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
                     Button("#\(number) ↗") { NSWorkspace.shared.open(url) }
                         .buttonStyle(.plain)
+                        .focusEffectDisabled()
                 }
                 .font(.system(size: 12))
             }
