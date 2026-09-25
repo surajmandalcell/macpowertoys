@@ -6,10 +6,11 @@
   of the launcher window remains empty.
 - **Cause:** Every card had a two-line text limit and a 110pt minimum height,
   even though the built-in descriptions need up to five lines at four columns.
-- **Invariant:** Keep the four-column 1,200pt launcher layout and give its cards
-  enough height for the complete built-in copy at the standard text size.
-- **Check:** In the current signed app, inspect all built-in cards. Their
-  descriptions are complete and their Open and enable controls remain aligned.
+- **Invariant:** Keep complete built-in descriptions at the standard text size
+  in the four-column launcher, without a fixed two-line limit.
+- **Check:** Hosted run `36124794622` saved dark and light 980×676 native
+  captures with complete descriptions on all 13 cards. Inspect the signed app
+  only when desktop interaction is allowed.
 
 ## Launcher Adaptive Grid Falls To Three Columns
 
