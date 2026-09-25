@@ -39,6 +39,13 @@ final class PortmanTests: XCTestCase {
         XCTAssertNil(PortmanGitHubLookup.repository(from: "https://github.com/owner/repo.git?token=secret"))
     }
 
+    func testEditorChoiceUsesOnlyKnownAppsAndPrefersSelectedApp() {
+        let available = PortmanEditor.choices.map(\.id)
+        XCTAssertEqual(PortmanEditor.bundleIDs(for: "com.microsoft.VSCode").first,
+                       "com.microsoft.VSCode")
+        XCTAssertEqual(PortmanEditor.bundleIDs(for: "untrusted.bundle"), available)
+    }
+
     func testLocalScanKeepsListeningPortsAndProcessStats() {
         let lsof = """
         p42

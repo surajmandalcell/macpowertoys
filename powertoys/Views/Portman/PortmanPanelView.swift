@@ -35,6 +35,7 @@ struct PortmanPanelView: View {
     @State private var showingProcesses = false
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
+    @AppStorage("portman.editor") private var editor = "auto"
 
     private let portColors: [Color] = [
         Color(red: 0.43, green: 0.78, blue: 0.93),
@@ -678,9 +679,15 @@ struct PortmanPanelView: View {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(port.launchCommand, forType: .string)
                     }
-                    if let folder = service.metadata[port.id]?.folder {
+                    if let details = service.metadata[port.id],
+                       FileManager.default.fileExists(atPath: details.root ?? details.folder) {
+                        Button("Open in editor") {
+                            PortmanEditor.open(details.root ?? details.folder, preferred: editor)
+                        }
                         Button("Show folder in Finder") {
-                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: folder)])
+                            NSWorkspace.shared.selectFile(
+                                nil, inFileViewerRootedAtPath: details.root ?? details.folder
+                            )
                         }
                     }
                     if port.canStop {
@@ -995,6 +1002,7 @@ struct PortmanSettingsView: View {
     @AppStorage("portman.notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
+    @AppStorage("portman.editor") private var editor = "auto"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1003,6 +1011,18 @@ struct PortmanSettingsView: View {
                 Text("Keyboard shortcut")
                 Spacer()
                 ShortcutRecorderField(action: .portman)
+            }
+            HStack {
+                Text("Open folders in")
+                Spacer()
+                Picker("Open folders in", selection: $editor) {
+                    Text("Automatic").tag("auto")
+                    ForEach(PortmanEditor.installed, id: \.id) { choice in
+                        Text(choice.name).tag(choice.id)
+                    }
+                    Text("Finder").tag("finder")
+                }
+                .labelsHidden().frame(width: 180)
             }
             QuietDivider()
             Text("Ports & processes").font(.system(size: 12, weight: .medium))
@@ -1137,6 +1157,37 @@ struct PortmanSettingsView: View {
         } message: {
             Text("Portman will send stop requests for eligible servers, including long-running ones, without asking again.")
         }
+    }
+}
+
+enum PortmanEditor {
+    static let choices: [(id: String, name: String)] = [
+        ("com.todesktop.230313mzl4w4u92", "Cursor"),
+        ("com.microsoft.VSCode", "Visual Studio Code"),
+        ("dev.zed.Zed", "Zed"),
+        ("com.sublimetext.4", "Sublime Text")
+    ]
+
+    static var installed: [(id: String, name: String)] {
+        choices.filter { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0.id) != nil }
+    }
+
+    static func bundleIDs(for preferred: String) -> [String] {
+        let ids = choices.map(\.id)
+        return ids.contains(preferred) ? [preferred] + ids.filter { $0 != preferred } : ids
+    }
+
+    static func open(_ path: String, preferred: String) {
+        if preferred != "finder" {
+            for id in bundleIDs(for: preferred) {
+                if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+                    NSWorkspace.shared.open([URL(fileURLWithPath: path)], withApplicationAt: app,
+                                            configuration: NSWorkspace.OpenConfiguration())
+                    return
+                }
+            }
+        }
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 }
 
