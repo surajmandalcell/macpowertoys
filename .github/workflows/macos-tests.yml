@@ -9,6 +9,7 @@ on:
       - Makefile
       - powertoys/**
       - powertoysTests/**
+      - powertoysUITests/**
       - powertoys.xcodeproj/**
 
 jobs:
