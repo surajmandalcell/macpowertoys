@@ -169,6 +169,13 @@ final class PortmanTests: XCTestCase {
         guard FileManager.default.isExecutableFile(atPath: "/usr/bin/python3") else {
             throw XCTSkip("The hosted Mac has no Python 3 executable.")
         }
+        let preference = "portman.showAllListeners"
+        let previous = UserDefaults.standard.object(forKey: preference)
+        UserDefaults.standard.set(true, forKey: preference)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: preference) }
+            else { UserDefaults.standard.removeObject(forKey: preference) }
+        }
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("portman-restart-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
