@@ -18,6 +18,19 @@
   overview, selected server, cleanup, active/snoozed alerts, settings, and SSH
   tunnel states at the real menu-bar width.
 
+## Portman Cold Menu-Bar Launch
+
+- **Symptom:** A fresh hosted `--open portman` launch displayed no panel even
+  though the app started and the menu-bar item existed.
+- **Cause:** Scene-driven routing could run before the item had a usable window
+  anchor, so showing the popover did not present it.
+- **Invariant:** Route the startup argument from the app delegate and present
+  Portman only after its menu-bar button has a window and nonzero width.
+- **Check:** A fresh hosted Mac UI run opens `--open portman`, finds the Forward
+  tab, clicks blank edges of Forward and Alerts, and reaches Settings. Run
+  `36138020899` passed after the route and anchor fixes; the later compact
+  panel runs continued to pass without owner-desktop UI interaction.
+
 ## Portman Server Overview Height
 
 - **Symptom:** The Memory scope label wraps vertically and the live server row
