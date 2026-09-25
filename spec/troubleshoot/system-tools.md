@@ -518,6 +518,16 @@
   relaunch and confirm the sort, then inspect a normal and a protected process.
   Confirm Quit remains guarded against PID reuse.
 
+- **Symptom:** A protected-process fallback can leave Processes loading when
+  `/bin/ps` stalls or emits excessive output.
+- **Cause:** The fallback read its pipe to EOF and waited for exit before
+  checking the output size, with no deadline.
+- **Invariant:** Run `ps` through the existing cancellable subprocess runner
+  with a five-second deadline and a 2 MB output limit. Keep the libproc rows
+  if the fallback fails.
+- **Check:** Compile the monitor tests, exercise the runner's output and timeout
+  cases in an isolated test session, and inspect a protected process there.
+
 - **Symptom:** System Monitor mixes unrelated clocks, Bluetooth, and metric
   plugins with activity monitoring, and Remote is labeled Linux-only.
 - **Cause:** A broad feature list was treated as monitor modules even though
