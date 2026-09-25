@@ -596,7 +596,8 @@ Switch is task-focused like an applet but uses a resizable workspace-sized
 window so account selection, actions, and usage remain visible together. The
 window header shows the original Switch icon and name, labeled Accounts and
 Recovery destinations, and visible About and Refresh controls. Saved identities
-form the only sidebar, beside the selected account's details. The applet uses
+form the only sidebar beside the selected account's details; it stays hidden
+while there are no accounts or importable sources. The applet uses
 native light and dark surfaces instead of forcing a dark navigation rail. The
 selected account, current default, access state, and available action must be
 distinguishable without relying on color alone.

@@ -14,7 +14,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Code complete; live check pending | Manage supported accounts in the applet. | Discover/import, sign in, switch defaults, verify, view all available rate-limit buckets, credits, and account activity, and remove accounts through Core with errors and recovery states visible. |
 | Hosted verified; live check pending | Preserve standalone Switch's remaining account actions in MacPowerToys. | Open the selected provider, copy its saved auth path, reorder accounts, and inspect source, import, last-use, and workspace details. The combined MacPowerToys menu offers quick account switching and usage on demand. |
 | Hosted verified; live check pending | Keep MacPowerToys lightweight: account management, sign-in, import, default switching, verification, usage, and account recovery. Conversation browsing and cleanup stay in standalone Switch. | No conversation or cleanup route, scan, or destructive action in the MacPowerToys applet. Recovery and linked-settings repair remain reachable. |
-| Hosted render checked; final pass pending | Use the original Switch app icon. Give Accounts and Recovery labeled navigation in the window header, with saved accounts as the only sidebar when needed. Keep About and Refresh visible and give selection, status, actions, and usage a precise hierarchy at the minimum window size. | Inspect light and dark renders at default and minimum sizes; check empty, selected, error, and keyboard states. |
+| Hosted visual and navigation verified; signed-app check pending | Use the original Switch app icon. Give Accounts and Recovery labeled navigation in the window header, with saved accounts as the only sidebar when needed. Keep About and Refresh visible and give selection, status, actions, and usage a precise hierarchy at the minimum window size. | Inspect light and dark renders at default and minimum sizes; check empty, selected, error, and keyboard states. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
@@ -45,3 +45,12 @@ screenshots confirm the launcher header actions remain visible. Run 36138071917
 passed again after removing the duplicate launcher action and captured the
 three-column All Tools grid at 1024pt. The owner's desktop was not used for
 testing.
+
+The original Switch icon now appears in the launcher, Dock asset, header, and
+first-run state. The empty account list stays hidden until an account or
+importable source exists. Hosted run 36150764154 passed launcher and CLI routes,
+Accounts/Recovery navigation, and opening About, with final window captures.
+Run 36150672552 captured empty and populated Accounts at 880pt and 1,024pt in
+light and dark, plus Recovery and the quick menu. It passed 871 unit tests;
+one unrelated Portman/Tray focus-outline assertion failed. No Switch test
+failed. The signed installed app still needs a focus-preserving final check.
