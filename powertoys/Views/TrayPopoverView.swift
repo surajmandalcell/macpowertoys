@@ -1173,7 +1173,7 @@ private struct SystemCareTrayView: View {
     }
 }
 
-private enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
+enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     case home, cpu, gpu, memory, network, disk, battery, sensors
 
     var id: String { rawValue }
