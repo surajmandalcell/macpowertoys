@@ -72,6 +72,7 @@ struct SystemMonitorWindowView: View {
     private var overviewPage: some View {
         WorkspacePage("Overview") {
             metricGrid
+            FanControlView(owner: "system-monitor-window")
         }
     }
 
