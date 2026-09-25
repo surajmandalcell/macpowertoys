@@ -3,6 +3,17 @@ import XCTest
 @testable import powertoys
 
 final class PortmanTests: XCTestCase {
+    func testClaudeSessionIDReadsOnlyEnvironmentAfterArguments() {
+        let id = UUID(uuidString: "12345678-1234-1234-1234-123456789abc")!
+        let bytes: [UInt8] = [2, 0, 0, 0] + Array(
+            "/bin/node\0\0node\0server.js\0SECRET=private\0CLAUDE_CODE_SESSION_ID=\(id.uuidString)\0".utf8
+        )
+        XCTAssertEqual(PortmanSessionResolver.sessionID(in: bytes), id)
+        XCTAssertNil(PortmanSessionResolver.sessionID(in: [2, 0, 0, 0] + Array(
+            "/bin/node\0\0node\0CLAUDE_CODE_SESSION_ID=bad\0".utf8
+        )))
+    }
+
     func testLocalScanKeepsListeningPortsAndProcessStats() {
         let lsof = """
         p42
