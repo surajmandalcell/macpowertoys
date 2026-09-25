@@ -1,6 +1,0 @@
-{
-  "formatVersion": 1,
-  "metrics": [
-    { "id": "physical-memory", "title": "Physical memory" }
-  ]
-}

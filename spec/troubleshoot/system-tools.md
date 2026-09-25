@@ -457,7 +457,7 @@
   also applied without a change check.
 - **Invariant:** Use one sampler and exactly one utility-queue timer while a
   visible System Monitor surface needs metric data. The detailed window samples
-  only the visible page's metrics each second; Processes, Menu Bar, and About
+  only the visible page's metrics each second; Processes, Remote, and About
   do not own the detailed timer. The tray retains its own detailed owner. In
   menu-only mode, the timer wakes for the earliest due metric and samples only
   enabled metrics that are due. Take the first sample immediately. Reset the
@@ -467,11 +467,12 @@
   status items. Increment a generation before stop. An in-flight sample may
   finish, but it must not change the snapshot, history, or menu after stop.
   Teardown is part of every close and disable path. `deinit` is only a backstop.
-- **Invariant:** Let the user enable, disable, and reorder CPU, memory, GPU,
-  disk, network, battery, and thermal items independently. Permit no selected
-  items. Preserve saved order exactly inside a grouped item. Use the saved order
-  when separate items are created, but let macOS and the user control their
-  final menu-bar positions. Give each separate item a stable autosave name.
+- **Invariant:** Let the user choose Off, Combined, or Separate independently
+  for CPU, memory, GPU, disk, network, battery, and thermal. Put the CPU,
+  memory, network, and disk controls in their page title bars. Permit no
+  selected items and mixed placements. Preserve saved order inside the
+  combined item. Give each separate item a stable autosave name and leave its
+  saved macOS position intact when other metrics are enabled or disabled.
 - **Invariant:** Store each item's icon, Icon and Value, Icon Only, or Value Only
   style, interval, and custom format. Support memory percentage, used, or
   available; disk percentage, used, or free; network download, upload, or both
@@ -492,8 +493,7 @@
 - **Invariant:** Compare normalized settings before writing UserDefaults or
   restarting the timer. Compare the full rendered title, image, tooltip,
   accessibility label, and length before writing an AppKit status item. Change
-  status-item ownership only when the enabled set, order, or grouped or
-  individual mode changes.
+  status-item ownership only when the enabled set, order, or placement changes.
 - **Check:** Test the service with no surface, each surface alone, and both
   surfaces together. Use at least one enabled menu metric. Require timer counts
   of 0, 1, 1, and 1. Also require zero timers and status items when the menu is
@@ -502,6 +502,32 @@
   per-item intervals and confirm only due metrics run. Run past 120 chart
   updates and confirm the cap. Apply the same settings and same rendered value
   twice and confirm the second pass makes no UserDefaults or AppKit write.
+
+- **Symptom:** Processes hides most PIDs behind a Show 25 picker, cannot sort
+  directly from headers, and offers almost no detail after selection.
+- **Cause:** The view capped the sampled list and used a sort picker; the
+  process model retained only the fields needed by its four columns.
+- **Invariant:** Show every sampled PID in a lazy scrolling stack. Make Process,
+  CPU, Memory, and PID headers reverse sort direction on repeat click and
+  persist the column and direction. Search includes name, PID, and path. Show
+  parent, user, CPU, resident and virtual memory, threads, start time, and
+  executable path for a selection. If macOS denies detailed `libproc` data,
+  use bounded public `ps` output where available; do not show fake zero usage
+  or allow Quit without a verifiable start-time identity.
+- **Check:** Scroll beyond row 25, sort every header in both directions,
+  relaunch and confirm the sort, then inspect a normal and a protected process.
+  Confirm Quit remains guarded against PID reuse.
+
+- **Symptom:** System Monitor mixes unrelated clocks, Bluetooth, and metric
+  plugins with activity monitoring, and Remote is labeled Linux-only.
+- **Cause:** A broad feature list was treated as monitor modules even though
+  plugins belong to the MacPowerToys Marketplace.
+- **Invariant:** Keep monitor metrics and MacPowerToys tool plugins separate.
+  Remote selects Linux, macOS, or Windows and samples only after Connect, at
+  30 seconds or slower by default, stopping on Disconnect or page exit.
+- **Check:** Confirm the sidebar order starts Overview, Processes, CPU; it has
+  no World Clocks, Bluetooth, Plugins, or Menu Bar page. Confirm the existing
+  Marketplace still installs tools and Remote is idle until connected.
 
 ## Background Resource Ownership
 

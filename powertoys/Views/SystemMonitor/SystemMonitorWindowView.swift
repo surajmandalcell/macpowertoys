@@ -2,15 +2,11 @@ import SwiftUI
 
 private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case overview = "Overview"
-    case processor = "Processor"
+    case processes = "Processes"
+    case processor = "CPU"
     case memory = "Memory"
     case network = "Network & Disk"
-    case processes = "Processes"
-    case bluetooth = "Bluetooth"
-    case clocks = "World Clocks"
-    case remote = "Remote Linux"
-    case plugins = "Plugins"
-    case menuBar = "Menu Bar"
+    case remote = "Remote"
     case about = "About"
 
     var id: String { rawValue }
@@ -20,7 +16,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .processor: [.cpu, .thermal]
         case .memory: [.memory]
         case .network: [.network, .disk]
-        case .processes, .bluetooth, .clocks, .remote, .plugins, .menuBar, .about: []
+        case .processes, .remote, .about: []
         }
     }
     var icon: String {
@@ -30,11 +26,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .memory: "memorychip"
         case .network: "network"
         case .processes: "list.bullet.rectangle"
-        case .bluetooth: "wave.3.right"
-        case .clocks: "clock"
         case .remote: "server.rack"
-        case .plugins: "puzzlepiece.extension"
-        case .menuBar: "menubar.rectangle"
         case .about: "info.circle"
         }
     }
@@ -43,6 +35,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
 struct SystemMonitorWindowView: View {
     @State private var service = SystemMonitorService.shared
     @State private var page = SystemMonitorPage.overview
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 0) {
@@ -50,7 +43,9 @@ struct SystemMonitorWindowView: View {
             content
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+                .background(colorScheme == .dark
+                    ? Color(red: 0.115, green: 0.108, blue: 0.102)
+                    : Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "system-monitor"))
@@ -63,11 +58,14 @@ struct SystemMonitorWindowView: View {
 
     private var sidebar: some View {
         ZStack(alignment: .topLeading) {
-            VisualEffectBackground(material: .sidebar)
+            (colorScheme == .dark
+                ? Color(red: 0.13, green: 0.122, blue: 0.116)
+                : Color(nsColor: .controlBackgroundColor))
             SidebarTitle(text: "System Monitor")
             VStack(spacing: 4) {
                 ForEach(SystemMonitorPage.allCases) { item in
-                    SidebarRow(icon: item.icon, title: item.rawValue, isSelected: page == item) {
+                    SidebarRow(icon: item.icon, title: item.rawValue, isSelected: page == item,
+                               customSelectionColor: Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.12)) {
                         page = item
                     }
                 }
@@ -76,6 +74,7 @@ struct SystemMonitorWindowView: View {
             .padding(.horizontal, 12)
             .padding(.top, UtilityLayout.workspaceContentTopInset)
             .padding(.bottom, 12)
+            .tint(.gray)
         }
     }
 
@@ -87,11 +86,7 @@ struct SystemMonitorWindowView: View {
         case .memory: memoryPage
         case .network: networkPage
         case .processes: SystemMonitorProcessesView()
-        case .bluetooth: SystemMonitorBluetoothView()
-        case .clocks: SystemMonitorWorldClocksView()
         case .remote: SystemMonitorRemoteView()
-        case .plugins: SystemMonitorPluginsView()
-        case .menuBar: menuBarPage
         case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
         }
     }
@@ -101,6 +96,32 @@ struct SystemMonitorWindowView: View {
             metricGrid
             FanControlView(owner: "system-monitor-window")
         }
+    }
+
+    private func menuPlacement(_ metric: SystemMonitorMenuMetric) -> some View {
+        let selection = Binding<SystemMonitorMenuPlacement>(
+            get: {
+                guard let item = service.menuSettings.items.first(where: { $0.metric == metric }),
+                      service.menuSettings.enabled, item.enabled else { return .off }
+                return item.placement
+            },
+            set: { placement in
+                service.updateMenuSettings { $0.setPlacement(placement, for: metric) }
+            }
+        )
+        return HStack(spacing: 5) {
+            Text(metric.title).font(.system(size: 10)).foregroundStyle(.secondary)
+            Picker("\(metric.title) menu bar", selection: selection) {
+                ForEach(SystemMonitorMenuPlacement.allCases) { placement in
+                    Text(placement.title).tag(placement)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 184)
+        }
+        .help("Show \(metric.title) in the combined menu bar item, a separate item, or neither")
+        .accessibilityIdentifier("system-monitor.\(metric.rawValue).menu-placement")
     }
 
     private var metricColumns: [GridItem] {
@@ -219,7 +240,11 @@ struct SystemMonitorWindowView: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .frame(height: featured ? 158 : 112)
-        .background(tint.opacity(0.055))
+        .background(
+            LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0.065)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.16)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -246,7 +271,9 @@ struct SystemMonitorWindowView: View {
     }
 
     private var processorPage: some View {
-        WorkspacePage("Processor") {
+        WorkspacePage("CPU") {
+            menuPlacement(.cpu)
+        } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "Priming…", detail: "User + system + nice")
                 metricCard(icon: "chart.bar", title: "Load Average", value: loadAverage, detail: "1, 5, and 15 minute run queue")
@@ -258,6 +285,8 @@ struct SystemMonitorWindowView: View {
 
     private var memoryPage: some View {
         WorkspacePage("Memory") {
+            menuPlacement(.memory)
+        } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "memorychip", title: "Used", value: service.snapshot?.memoryUsed.map(\.bytes) ?? "Not available", detail: memoryDetail)
                 metricCard(icon: "square.stack.3d.up", title: "Physical", value: service.snapshot?.memoryTotal.map(\.bytes) ?? "Not available", detail: "Installed unified memory")
@@ -269,6 +298,8 @@ struct SystemMonitorWindowView: View {
 
     private var networkPage: some View {
         WorkspacePage("Network & Disk") {
+            HStack(spacing: 8) { menuPlacement(.network); menuPlacement(.disk) }
+        } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
@@ -278,12 +309,6 @@ struct SystemMonitorWindowView: View {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
                 chartCard(title: "Upload", suffix: "/s", values: service.history.compactMap(\.networkUpload), formatter: Self.rate)
             }
-        }
-    }
-
-    private var menuBarPage: some View {
-        WorkspacePage("Menu Bar") {
-            SystemMonitorMenuSettingsView(showsContainerScroll: false)
         }
     }
 
@@ -399,51 +424,9 @@ struct SystemMonitorMenuSettingsView: View {
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DISPLAY").utilitySectionHeader()
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 20) {
-                    menuToggle
-                    Spacer(minLength: 12)
-                    layoutControl
-                    globalIntervalControl
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    menuToggle
-                    HStack(spacing: 16) {
-                        layoutControl
-                        globalIntervalControl
-                    }
-                }
-            }
+            globalIntervalControl
         }
         .utilitySectionCard()
-    }
-
-    private var menuToggle: some View {
-        Toggle("Show in menu bar", isOn: menuSetting(
-            get: { $0.enabled },
-            set: { $0.enabled = $1 }
-        ))
-        .toggleStyle(.switch)
-        .accessibilityIdentifier("system-monitor.menu.enabled")
-    }
-
-    private var layoutControl: some View {
-        settingControl("LAYOUT", width: 112) {
-            Picker("Layout", selection: menuSetting(
-                get: { $0.mode },
-                set: { $0.mode = $1 }
-            )) {
-                ForEach(SystemMonitorMenuMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .accessibilityLabel("Menu bar layout")
-            .accessibilityIdentifier("system-monitor.menu.layout")
-        }
     }
 
     private var globalIntervalControl: some View {
@@ -515,15 +498,25 @@ struct SystemMonitorMenuSettingsView: View {
         HStack(spacing: 8) {
             reorderMenu(item.metric)
 
-            Toggle(item.metric.title, isOn: itemSetting(
-                item,
-                get: { $0.enabled },
-                set: { $0.enabled = $1 }
-            ))
+            Picker(item.metric.title, selection: Binding<SystemMonitorMenuPlacement>(
+                get: {
+                    guard let current = service.menuSettings.items.first(where: { $0.metric == item.metric }),
+                          current.enabled else { return .off }
+                    return current.placement
+                },
+                set: { placement in
+                    service.updateMenuSettings { $0.setPlacement(placement, for: item.metric) }
+                }
+            )) {
+                ForEach(SystemMonitorMenuPlacement.allCases) { placement in
+                    Text(placement.title).tag(placement)
+                }
+            }
             .labelsHidden()
-            .toggleStyle(.switch)
-            .accessibilityLabel("Show \(item.metric.title) in the menu bar")
-            .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).enabled")
+            .pickerStyle(.menu)
+            .frame(width: 105)
+            .accessibilityLabel("\(item.metric.title) menu bar placement")
+            .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).placement")
 
             Label(item.metric.title, systemImage: item.symbol)
                 .font(.system(size: 12, weight: .medium))

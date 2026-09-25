@@ -10,6 +10,18 @@ nonisolated enum SystemMonitorMenuMode: String, Codable, CaseIterable, Identifia
     var title: String { self == .grouped ? "Grouped" : "Individual" }
 }
 
+nonisolated enum SystemMonitorMenuPlacement: String, Codable, CaseIterable, Identifiable {
+    case off, combined, separate
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .off: "Off"
+        case .combined: "Combined"
+        case .separate: "Separate"
+        }
+    }
+}
+
 nonisolated enum SystemMonitorMenuMetric: String, Codable, CaseIterable, Identifiable, Hashable {
     case cpu, memory, gpu, disk, network, battery, thermal
     var id: String { rawValue }
@@ -180,6 +192,7 @@ nonisolated enum SystemMonitorThermalDisplay: String, Codable, CaseIterable, Ide
 nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Identifiable {
     var metric: SystemMonitorMenuMetric
     var enabled: Bool
+    var placement: SystemMonitorMenuPlacement
     var style: SystemMonitorMenuItemStyle
     var symbol: String
     var interval: SystemMonitorMenuInterval
@@ -194,6 +207,7 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
     init(
         metric: SystemMonitorMenuMetric,
         enabled: Bool = false,
+        placement: SystemMonitorMenuPlacement = .combined,
         style: SystemMonitorMenuItemStyle = .iconAndValue,
         symbol: String? = nil,
         interval: SystemMonitorMenuInterval? = nil,
@@ -206,6 +220,7 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
     ) {
         self.metric = metric
         self.enabled = enabled
+        self.placement = placement
         self.style = style
         self.symbol = symbol ?? metric.symbol
         self.interval = interval ?? metric.defaultInterval
@@ -222,13 +237,14 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
     }
 
     private enum CodingKeys: String, CodingKey {
-        case metric, enabled, style, symbol, interval, memoryUnit, networkDirection
+        case metric, enabled, placement, style, symbol, interval, memoryUnit, networkDirection
         case diskUnit, networkUnit, batteryDisplay, thermalDisplay
     }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         metric = try values.decode(SystemMonitorMenuMetric.self, forKey: .metric)
         enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        placement = try values.decodeIfPresent(SystemMonitorMenuPlacement.self, forKey: .placement) ?? .combined
         style = try values.decodeIfPresent(SystemMonitorMenuItemStyle.self, forKey: .style) ?? .iconAndValue
         symbol = try values.decodeIfPresent(String.self, forKey: .symbol) ?? metric.symbol
         interval = try values.decodeIfPresent(SystemMonitorMenuInterval.self, forKey: .interval) ?? metric.defaultInterval
@@ -242,7 +258,7 @@ nonisolated struct SystemMonitorMenuItemConfiguration: Codable, Equatable, Ident
 }
 
 nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     var schemaVersion: Int
     var enabled: Bool
@@ -258,6 +274,9 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         self.mode = mode
         self.interval = interval
         self.items = items
+        if mode == .direct {
+            for index in self.items.indices { self.items[index].placement = .separate }
+        }
         normalize()
     }
 
@@ -277,10 +296,27 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         self.mode = mode
         self.interval = interval
         items = Self.migratedItems(from: metrics)
+        if mode == .direct {
+            for index in items.indices { items[index].placement = .separate }
+        }
         normalize()
     }
 
     var enabledItems: [SystemMonitorMenuItemConfiguration] { items.filter(\.enabled) }
+    var combinedItems: [SystemMonitorMenuItemConfiguration] { enabledItems.filter { $0.placement == .combined } }
+    var separateItems: [SystemMonitorMenuItemConfiguration] { enabledItems.filter { $0.placement == .separate } }
+
+    mutating func setPlacement(_ placement: SystemMonitorMenuPlacement, for metric: SystemMonitorMenuMetric) {
+        guard let index = items.firstIndex(where: { $0.metric == metric }) else { return }
+        if !enabled && placement != .off {
+            for itemIndex in items.indices { items[itemIndex].enabled = false }
+        }
+        items[index].enabled = placement != .off
+        if placement != .off {
+            items[index].placement = placement
+            enabled = true
+        }
+    }
 
     mutating func normalize() {
         interval = SystemMonitorMenuInterval.allowedSeconds.contains(interval) ? interval : 2
@@ -291,6 +327,9 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         }
         for index in items.indices where !items[index].metric.symbols.contains(items[index].symbol) {
             items[index].symbol = items[index].metric.symbol
+        }
+        for index in items.indices where items[index].placement == .off {
+            items[index].enabled = false
         }
         for index in items.indices {
             items[index].interval = items[index].metric.normalizedInterval(items[index].interval, global: interval)
@@ -318,7 +357,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
     private enum CodingKeys: String, CodingKey { case schemaVersion, enabled, mode, interval, items, metrics }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        _ = try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        let storedVersion = try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         schemaVersion = Self.currentSchemaVersion
         enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
         mode = try values.decodeIfPresent(SystemMonitorMenuMode.self, forKey: .mode) ?? .grouped
@@ -328,6 +367,9 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         } else {
             items = Self.migratedItems(from: try values.decodeIfPresent(Set<SystemMonitorMenuMetric>.self, forKey: .metrics)
                                        ?? [.cpu, .memory])
+        }
+        if storedVersion < 3 && mode == .direct {
+            for index in items.indices { items[index].placement = .separate }
         }
         normalize()
     }
@@ -433,7 +475,8 @@ nonisolated enum SystemMonitorStatusItemOrder {
         current: [SystemMonitorMenuMetric],
         mode: SystemMonitorMenuMode
     ) -> [String] {
-        guard mode == .direct, let previous, previous != current else { return [] }
+        guard mode == .direct, let previous, previous != current,
+              Set(previous) == Set(current) else { return [] }
         return current.map { "NSStatusItem Preferred Position \(autosaveName(for: $0))" }
     }
 }
@@ -972,14 +1015,14 @@ final class SystemMonitorMenuController: NSObject {
 
     func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
-        let order = settings.items.map(\.metric)
+        let order = settings.items.filter { $0.placement == .separate }.map(\.metric)
         let positionKeys = SystemMonitorStatusItemOrder.preferredPositionKeys(
             previous: lastDirectOrder,
             current: order,
-            mode: settings.mode
+            mode: .direct
         )
         positionKeys.forEach { defaults.removeObject(forKey: $0) }
-        if settings.mode == .direct || lastDirectOrder == nil { lastDirectOrder = order }
+        lastDirectOrder = order
         let oldLayout = layoutSignature(for: self.settings)
         self.settings = settings
         renderedStateCache.removeAll()
@@ -992,16 +1035,15 @@ final class SystemMonitorMenuController: NSObject {
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
         statusItems.removeAll()
         guard settings.enabled, !settings.enabledItems.isEmpty else { return }
-        if settings.mode == .grouped {
+        if !settings.combinedItems.isEmpty {
             statusItems["group"] = makeStatusItem(
                 autosaveName: SystemMonitorStatusItemOrder.groupedAutosaveName
             )
-        } else {
-            for item in settings.enabledItems.reversed() {
-                statusItems[item.metric.rawValue] = makeStatusItem(
-                    autosaveName: SystemMonitorStatusItemOrder.autosaveName(for: item.metric)
-                )
-            }
+        }
+        for item in settings.separateItems.reversed() {
+            statusItems[item.metric.rawValue] = makeStatusItem(
+                autosaveName: SystemMonitorStatusItemOrder.autosaveName(for: item.metric)
+            )
         }
         update(sample: nil, dueMetrics: Set(settings.enabledItems.map(\.metric)))
     }
@@ -1011,22 +1053,22 @@ final class SystemMonitorMenuController: NSObject {
         for item in settings.enabledItems where dueMetrics.contains(item.metric) {
             latestValues[item.metric] = SystemMonitorMenuRenderer.render(item: item, sample: sample).value
         }
-        if settings.mode == .grouped {
-            let state = settings.enabledItems.map(renderedItem)
-            guard renderedStateCache.shouldApply(state, for: "group"),
-                  let button = statusItems["group"]?.button else { return }
-            renderedWriteCount += 1
-            button.image = nil
-            button.attributedTitle = attributedTitle(for: state)
-            button.setAccessibilityLabel(accessibilityLabel(for: state))
-        } else {
-            for item in settings.enabledItems where dueMetrics.contains(item.metric) || sample == nil {
-                let state = [renderedItem(item)]
-                let key = item.metric.rawValue
-                guard renderedStateCache.shouldApply(state, for: key),
-                      let button = statusItems[key]?.button else { continue }
-                apply(state[0], to: button)
+        if !settings.combinedItems.isEmpty {
+            let state = settings.combinedItems.map(renderedItem)
+            if renderedStateCache.shouldApply(state, for: "group"),
+               let button = statusItems["group"]?.button {
+                renderedWriteCount += 1
+                button.image = nil
+                button.attributedTitle = attributedTitle(for: state)
+                button.setAccessibilityLabel(accessibilityLabel(for: state))
             }
+        }
+        for item in settings.separateItems where dueMetrics.contains(item.metric) || sample == nil {
+            let state = [renderedItem(item)]
+            let key = item.metric.rawValue
+            guard renderedStateCache.shouldApply(state, for: key),
+                  let button = statusItems[key]?.button else { continue }
+            apply(state[0], to: button)
         }
     }
 
@@ -1084,7 +1126,7 @@ final class SystemMonitorMenuController: NSObject {
         return item
     }
     private func layoutSignature(for settings: SystemMonitorMenuSettings) -> String {
-        "\(settings.enabled)|\(settings.mode.rawValue)|\(settings.enabledItems.map(\.metric.rawValue).joined(separator: ","))"
+        "\(settings.enabled)|\(settings.enabledItems.map { "\($0.metric.rawValue):\($0.placement.rawValue)" }.joined(separator: ","))"
     }
     @objc private func openSystemMonitor() { ToolActionRouter.shared.open(toolID: "system-monitor") }
 }

@@ -1,130 +1,159 @@
-import AppKit
 import SwiftUI
 
-private enum ProcessSort: String, CaseIterable, Identifiable {
-    case cpu = "CPU"
-    case memory = "Memory"
-    case name = "Name"
-    var id: String { rawValue }
+nonisolated enum ProcessSortColumn: String, CaseIterable {
+    case name, cpu, memory, pid
+    var title: String {
+        switch self {
+        case .name: "Process"
+        case .cpu: "CPU"
+        case .memory: "Memory"
+        case .pid: "PID"
+        }
+    }
+}
+
+nonisolated enum SystemMonitorProcessSorting {
+    static func sorted(_ processes: [SystemMonitorProcess], by column: ProcessSortColumn,
+                       descending: Bool) -> [SystemMonitorProcess] {
+        processes.sorted { left, right in
+            let order: ComparisonResult
+            switch column {
+            case .name: order = left.name.localizedStandardCompare(right.name)
+            case .cpu: order = compare(left.cpuPercent ?? -1, right.cpuPercent ?? -1)
+            case .memory: order = compare(left.residentBytes, right.residentBytes)
+            case .pid: order = compare(left.pid, right.pid)
+            }
+            if order == .orderedSame { return left.pid < right.pid }
+            return descending ? order == .orderedDescending : order == .orderedAscending
+        }
+    }
+    private static func compare<T: Comparable>(_ left: T, _ right: T) -> ComparisonResult {
+        if left < right { return .orderedAscending }
+        if left > right { return .orderedDescending }
+        return .orderedSame
+    }
 }
 
 struct SystemMonitorProcessesView: View {
-    @AppStorage("systemMonitor.processLimit") private var rowLimit = 25
+    @AppStorage("systemMonitor.processSortColumn") private var sortColumn = ProcessSortColumn.cpu.rawValue
+    @AppStorage("systemMonitor.processSortDescending") private var descending = true
     @State private var sampler = SystemMonitorProcessSampler()
     @State private var processes: [SystemMonitorProcess] = []
     @State private var didLoad = false
     @State private var search = ""
-    @State private var sort = ProcessSort.cpu
+    @FocusState private var searchFocused: Bool
     @State private var selectedID: String?
     @State private var pendingProcess: SystemMonitorProcess?
     @State private var pendingForce = false
     @State private var showingConfirmation = false
     @State private var errorMessage: String?
 
-    private var selected: SystemMonitorProcess? {
-        processes.first { $0.id == selectedID }
-    }
-
+    private var selected: SystemMonitorProcess? { processes.first { $0.id == selectedID } }
+    private var activeColumn: ProcessSortColumn { ProcessSortColumn(rawValue: sortColumn) ?? .cpu }
     private var visibleProcesses: [SystemMonitorProcess] {
         let filtered = processes.filter {
             search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)
                 || String($0.pid).contains(search)
+                || $0.executablePath.localizedCaseInsensitiveContains(search)
         }
-        let sorted = filtered.sorted { left, right in
-            switch sort {
-            case .cpu:
-                if left.cpuPercent != right.cpuPercent {
-                    return (left.cpuPercent ?? -1) > (right.cpuPercent ?? -1)
-                }
-                if left.cpuPercent == nil, left.residentBytes != right.residentBytes {
-                    return left.residentBytes > right.residentBytes
-                }
-            case .memory:
-                if left.residentBytes != right.residentBytes {
-                    return left.residentBytes > right.residentBytes
-                }
-            case .name:
-                let order = left.name.localizedStandardCompare(right.name)
-                if order != .orderedSame { return order == .orderedAscending }
-            }
-            return left.pid < right.pid
-        }
-        return Array(sorted.prefix(rowLimit))
+        return SystemMonitorProcessSorting.sorted(filtered, by: activeColumn, descending: descending)
     }
 
     var body: some View {
-        WorkspacePage("Processes") {
-            Button("Open Terminal", systemImage: "terminal") {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-            }
-            .help("Open Terminal")
-        } content: {
+        WorkspacePage("Processes") {} content: {
             HStack(spacing: 12) {
-                NativeSearchField(text: $search, placeholder: "Search name or PID")
-                    .frame(maxWidth: 360)
-                    .frame(height: 24)
-                Picker("Sort", selection: $sort) {
-                    ForEach(ProcessSort.allCases) { option in Text(option.rawValue).tag(option) }
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search name, path or PID", text: $search)
+                        .textFieldStyle(.plain)
+                        .focused($searchFocused)
+                    if !search.isEmpty {
+                        Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Clear search")
+                    }
                 }
-                .frame(width: 112)
-                Picker("Show", selection: $rowLimit) {
-                    ForEach([25, 50, 100, 500], id: \.self) { count in Text("\(count)").tag(count) }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: 400, minHeight: 34)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9)
+                        .strokeBorder(searchFocused ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: searchFocused ? 2 : 1)
                 }
-                .frame(width: 112)
                 Spacer(minLength: 0)
                 Text("\(processes.count) processes")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
-            .controlSize(.small)
-
             if let selected {
-                HStack(spacing: 10) {
-                    Text("\(selected.name) · PID \(selected.pid)")
-                        .font(.system(size: 12, weight: .medium))
-                        .lineLimit(1)
-                    Spacer()
-                    Button("Quit") { confirm(selected, force: false) }
-                    Button("Force Quit", role: .destructive) { confirm(selected, force: true) }
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(selected.name).font(.system(size: 15, weight: .semibold))
+                            Text("PID \(selected.pid) · Parent \(selected.parentPID) · User \(selected.userID == UInt32.max ? "Unavailable" : String(selected.userID))")
+                                .font(.system(size: 11)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Quit") { confirm(selected, force: false) }
+                            .disabled(selected.started == 0)
+                        Button("Force Quit", role: .destructive) { confirm(selected, force: true) }
+                            .disabled(selected.started == 0)
+                    }
+                    .controlSize(.small)
+                    Divider()
+                    Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
+                        GridRow {
+                            detail("CPU", selected.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "Measuring")
+                            detail("Memory", selected.residentBytes == 0 && selected.started == 0 ? "Unavailable" : bytes(selected.residentBytes))
+                            detail("Virtual memory", selected.virtualBytes == 0 && selected.started == 0 ? "Unavailable" : bytes(selected.virtualBytes))
+                        }
+                        GridRow {
+                            detail("Threads", selected.threads == 0 ? "Unavailable" : "\(selected.threads)")
+                            detail("Started", selected.started == 0 ? "Unavailable" :
+                                Date(timeIntervalSince1970: TimeInterval(selected.started / 1_000_000))
+                                    .formatted(date: .abbreviated, time: .standard))
+                            detail("Process ID", "\(selected.pid)")
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("EXECUTABLE").utilitySectionHeader()
+                        Text(selected.executablePath)
+                            .font(.system(size: 11)).textSelection(.enabled)
+                    }
+                    if selected.started == 0 {
+                        Text("Quit is unavailable because macOS did not provide a verifiable process identity.")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
                 }
-                .controlSize(.small)
-                .utilitySectionCard()
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
             }
-
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.orange)
-                    .font(.system(size: 12))
+                    .foregroundStyle(.orange).font(.system(size: 12))
             }
-
             VStack(spacing: 0) {
-                HStack {
-                    Text("PROCESS").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("CPU").frame(width: 72, alignment: .trailing)
-                    Text("MEMORY").frame(width: 90, alignment: .trailing)
-                    Text("PID").frame(width: 64, alignment: .trailing)
+                HStack(spacing: 8) {
+                    header(.name).frame(maxWidth: .infinity, alignment: .leading)
+                    header(.cpu).frame(width: 72, alignment: .trailing)
+                    header(.memory).frame(width: 90, alignment: .trailing)
+                    header(.pid).frame(width: 64, alignment: .trailing)
                 }
-                .utilitySectionHeader()
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
+                .padding(.horizontal, 12).padding(.vertical, 8)
                 LazyVStack(spacing: 0) {
                     ForEach(visibleProcesses) { process in
                         Button { selectedID = process.id } label: {
                             HStack(spacing: 8) {
-                                Text(process.name)
-                                    .lineLimit(1)
+                                Text(process.name).lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(process.cpuPercent.map { $0.formatted(.number.precision(.fractionLength(1))) + "%" } ?? "…")
+                                Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
                                     .frame(width: 72, alignment: .trailing)
-                                Text(ByteCountFormatter.string(fromByteCount: Int64(process.residentBytes), countStyle: .memory))
+                                Text(process.residentBytes == 0 && process.started == 0 ? "—" : bytes(process.residentBytes))
                                     .frame(width: 90, alignment: .trailing)
                                 Text("\(process.pid)").frame(width: 64, alignment: .trailing)
                             }
-                            .font(.system(size: 12))
-                            .monospacedDigit()
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 30)
+                            .font(.system(size: 12)).monospacedDigit()
+                            .padding(.horizontal, 12).frame(minHeight: 30)
                             .contentShape(Rectangle())
                             .background(selectedID == process.id ? Color.accentColor.opacity(0.1) : .clear)
                         }
@@ -138,14 +167,10 @@ struct SystemMonitorProcessesView: View {
                     ProgressView("Loading processes…").frame(maxWidth: .infinity).padding(30)
                 } else if processes.isEmpty {
                     Text("No processes are available")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(30)
+                        .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(30)
                 } else if visibleProcesses.isEmpty {
                     Text("No matching processes")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(30)
+                        .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(30)
                 }
             }
             .background(Color.primary.opacity(0.03))
@@ -178,6 +203,34 @@ struct SystemMonitorProcessesView: View {
         }
     }
 
+    private func header(_ column: ProcessSortColumn) -> some View {
+        Button {
+            if activeColumn == column { descending.toggle() }
+            else { sortColumn = column.rawValue; descending = column != .name }
+        } label: {
+            HStack(spacing: 3) {
+                Text(column.title.uppercased())
+                if activeColumn == column {
+                    Image(systemName: descending ? "chevron.down" : "chevron.up")
+                        .font(.system(size: 8, weight: .semibold))
+                }
+            }
+            .utilitySectionHeader()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Sort by \(column.title), \(activeColumn == column ? (descending ? "descending" : "ascending") : "inactive")")
+    }
+
+    private func detail(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(value).font(.system(size: 12, weight: .medium)).monospacedDigit().lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private func bytes(_ value: UInt64) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
+    }
     private func confirm(_ process: SystemMonitorProcess, force: Bool) {
         pendingProcess = process
         pendingForce = force

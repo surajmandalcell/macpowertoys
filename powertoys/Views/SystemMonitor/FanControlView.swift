@@ -42,11 +42,12 @@ struct FanControlView: View {
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
             if compact { compactContent } else { expandedContent }
         }
-        .padding(compact ? 10 : 14)
-        .background(Color.orange.opacity(compact ? 0.045 : 0.055), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, compact ? 20 : 14)
+        .padding(.vertical, compact ? 8 : 14)
+        .background(compact ? Color.clear : Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.18 : 0.07))
+                .strokeBorder(compact ? Color.clear : Color.primary.opacity(contrast == .increased ? 0.18 : 0.07))
         }
         .onAppear { service.start(owner: owner) }
         .onDisappear { service.stop(owner: owner) }
@@ -57,7 +58,7 @@ struct FanControlView: View {
             HStack(spacing: 8) {
                 fanIdentity
                 Spacer(minLength: 4)
-                presetButtons
+                compactPresets
             }
             if service.errorMessage != nil {
                 Text(detail).foregroundStyle(.red)
@@ -164,5 +165,20 @@ struct FanControlView: View {
         .padding(2)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
         .utilityAnimation(value: service.selectedPreset)
+    }
+
+    private var compactPresets: some View {
+        Picker("Fan speed", selection: Binding<FanPreset?>(
+            get: { service.selectedPreset },
+            set: { if let preset = $0 { service.select(preset) } }
+        )) {
+            ForEach(FanPreset.allCases) { preset in
+                Text(preset.rawValue).tag(Optional(preset))
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 154)
+        .disabled(service.isChanging || !(service.canControl || service.canRestoreAutomatic))
     }
 }

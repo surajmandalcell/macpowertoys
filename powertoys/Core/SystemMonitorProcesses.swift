@@ -7,7 +7,11 @@ nonisolated struct SystemMonitorProcess: Identifiable, Sendable {
     let name: String
     let cpuPercent: Double?
     let residentBytes: UInt64
+    let virtualBytes: UInt64
     let threads: Int32
+    let parentPID: Int32
+    let userID: UInt32
+    let executablePath: String
 
     var id: String { "\(pid):\(started)" }
 }
@@ -21,6 +25,14 @@ nonisolated enum SystemMonitorProcessUsage {
 }
 
 actor SystemMonitorProcessSampler {
+    struct PublicProcessInfo: Sendable {
+        let parentPID: Int32
+        let userID: UInt32
+        let residentBytes: UInt64
+        let virtualBytes: UInt64
+        let cpuPercent: Double?
+        let path: String
+    }
     private var previous: [String: UInt64] = [:]
     private var previousTime: Date?
     private let nanosecondsPerTick: Double
@@ -44,6 +56,7 @@ actor SystemMonitorProcessSampler {
         let elapsed = previousTime.map { now.timeIntervalSince($0) } ?? 0
         var current: [String: UInt64] = [:]
         var processes: [SystemMonitorProcess] = []
+        var restrictedPIDs = Set<Int32>()
         processes.reserveCapacity(Int(count))
         for pid in pids.prefix(Int(count)) where pid > 0 {
             if Task.isCancelled { break }
@@ -51,7 +64,18 @@ actor SystemMonitorProcessSampler {
             let bytes = withUnsafeMutablePointer(to: &info) {
                 proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, $0, Int32(MemoryLayout<proc_taskallinfo>.size))
             }
-            guard bytes == MemoryLayout<proc_taskallinfo>.size else { continue }
+            guard bytes == MemoryLayout<proc_taskallinfo>.size else {
+                restrictedPIDs.insert(pid)
+                var fallbackName = [CChar](repeating: 0, count: Int(MAXCOMLEN) + 1)
+                let nameLength = proc_name(pid, &fallbackName, UInt32(fallbackName.count))
+                processes.append(SystemMonitorProcess(
+                    pid: pid, started: 0,
+                    name: nameLength > 0 ? String(cString: fallbackName) : "PID \(pid)",
+                    cpuPercent: nil, residentBytes: 0, virtualBytes: 0, threads: 0,
+                    parentPID: 0, userID: UInt32.max, executablePath: "Protected process"
+                ))
+                continue
+            }
             let started = info.pbsd.pbi_start_tvsec * 1_000_000 + info.pbsd.pbi_start_tvusec
             let identity = "\(pid):\(started)"
             let ticks = info.ptinfo.pti_total_user + info.ptinfo.pti_total_system
@@ -62,18 +86,71 @@ actor SystemMonitorProcessSampler {
             let name = withUnsafeBytes(of: info.pbsd.pbi_name) { bytes in
                 String(decoding: bytes.prefix(while: { $0 != 0 }), as: UTF8.self)
             }
+            var path = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+            let pathLength = proc_pidpath(pid, &path, UInt32(path.count))
+            let executablePath = pathLength > 0 ? String(cString: path) : "Unavailable"
             current[identity] = ticks
             processes.append(SystemMonitorProcess(
                 pid: pid, started: started, name: name.isEmpty ? "PID \(pid)" : name,
                 cpuPercent: cpu, residentBytes: info.ptinfo.pti_resident_size,
-                threads: info.ptinfo.pti_threadnum
+                virtualBytes: info.ptinfo.pti_virtual_size,
+                threads: info.ptinfo.pti_threadnum, parentPID: Int32(info.pbsd.pbi_ppid),
+                userID: info.pbsd.pbi_uid, executablePath: executablePath
             ))
+        }
+        if !restrictedPIDs.isEmpty {
+            let publicInfo = Self.publicProcessInfo()
+            processes = processes.map { process in
+                guard restrictedPIDs.contains(process.pid), let info = publicInfo[process.pid] else {
+                    return process
+                }
+                return SystemMonitorProcess(
+                    pid: process.pid, started: 0, name: URL(fileURLWithPath: info.path).lastPathComponent,
+                    cpuPercent: info.cpuPercent, residentBytes: info.residentBytes,
+                    virtualBytes: info.virtualBytes, threads: 0, parentPID: info.parentPID,
+                    userID: info.userID, executablePath: info.path
+                )
+            }
         }
         if !Task.isCancelled {
             previous = current
             previousTime = now
         }
         return processes
+    }
+
+    private static func publicProcessInfo() -> [Int32: PublicProcessInfo] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ps")
+        process.arguments = ["-A", "-o", "pid=,ppid=,uid=,rss=,vsz=,%cpu=,comm="]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return [:] }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0, data.count <= 2_000_000,
+              let text = String(data: data, encoding: .utf8) else { return [:] }
+        return parsePublicProcessInfo(text)
+    }
+
+    nonisolated static func parsePublicProcessInfo(_ text: String) -> [Int32: PublicProcessInfo] {
+        var result: [Int32: PublicProcessInfo] = [:]
+        for line in text.split(whereSeparator: \.isNewline) {
+            let fields = line.split(maxSplits: 6, whereSeparator: \.isWhitespace)
+            guard fields.count == 7, let pid = Int32(fields[0]),
+                  let parentPID = Int32(fields[1]), let userID = UInt32(fields[2]),
+                  let residentKiB = UInt64(fields[3]), let virtualKiB = UInt64(fields[4]),
+                  let cpuPercent = Double(fields[5]), cpuPercent.isFinite,
+                  !fields[6].isEmpty else { continue }
+            let (residentBytes, residentOverflow) = residentKiB.multipliedReportingOverflow(by: 1_024)
+            let (virtualBytes, virtualOverflow) = virtualKiB.multipliedReportingOverflow(by: 1_024)
+            guard !residentOverflow, !virtualOverflow else { continue }
+            result[pid] = PublicProcessInfo(parentPID: parentPID, userID: userID,
+                                            residentBytes: residentBytes, virtualBytes: virtualBytes,
+                                            cpuPercent: cpuPercent, path: String(fields[6]))
+        }
+        return result
     }
 }
 

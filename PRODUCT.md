@@ -36,6 +36,8 @@ tool keeps its own window, workflow, state, and resource lifetime.
   away. Mole CLI is an attributed optional engine, not the product name.
 - System Monitor shows detailed monitoring only while its window is open. Its
   optional menu-bar summary uses a lightweight configurable interval.
+- MacPowerToys plugins are independently packaged tools installed through
+  Marketplace. System Monitor does not host metric plugins.
 
 ## Capabilities and Constraints
 
