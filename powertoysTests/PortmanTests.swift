@@ -79,6 +79,13 @@ final class PortmanTests: XCTestCase {
     }
 
     func testLocalScannerFindsAnActualListeningSocket() throws {
+        let preference = "portman.showAllListeners"
+        let previous = UserDefaults.standard.object(forKey: preference)
+        UserDefaults.standard.set(true, forKey: preference)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: preference) }
+            else { UserDefaults.standard.removeObject(forKey: preference) }
+        }
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         XCTAssertGreaterThanOrEqual(descriptor, 0)
         defer { close(descriptor) }
