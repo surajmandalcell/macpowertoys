@@ -60,8 +60,9 @@ struct FanControlView: View {
                 Spacer(minLength: 4)
                 compactPresets
             }
-            if service.errorMessage != nil {
-                Text(detail).foregroundStyle(.red)
+            if service.errorMessage != nil || (service.canRestoreAutomatic && !service.canControl) {
+                Text(detail)
+                    .foregroundStyle(service.errorMessage == nil ? Color.secondary : Color.red)
                     .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -167,18 +168,26 @@ struct FanControlView: View {
         .utilityAnimation(value: service.selectedPreset)
     }
 
+    @ViewBuilder
     private var compactPresets: some View {
-        Picker("Fan speed", selection: Binding<FanPreset?>(
-            get: { service.selectedPreset },
-            set: { if let preset = $0 { service.select(preset) } }
-        )) {
-            ForEach(FanPreset.allCases) { preset in
-                Text(preset.rawValue).tag(Optional(preset))
+        if service.canRestoreAutomatic && !service.canControl {
+            Button("Auto") { service.select(.auto) }
+                .controlSize(.small)
+                .disabled(service.isChanging)
+                .help("Return fan control to macOS")
+        } else {
+            Picker("Fan speed", selection: Binding<FanPreset?>(
+                get: { service.selectedPreset },
+                set: { if let preset = $0 { service.select(preset) } }
+            )) {
+                ForEach(FanPreset.allCases) { preset in
+                    Text(preset.rawValue).tag(Optional(preset))
+                }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 154)
+            .disabled(service.isChanging || !service.canControl)
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .frame(width: 154)
-        .disabled(service.isChanging || !(service.canControl || service.canRestoreAutomatic))
     }
 }
