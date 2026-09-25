@@ -448,7 +448,8 @@ private struct TrayHomeView: View {
                 }
                 if SettingsManager.shared.isToolEnabled("system-monitor") {
                     FanControlView(owner: "tray-home", compact: true)
-                        .padding(.vertical, 4)
+                        .padding(.top, 4)
+                        .padding(.bottom, 14)
                 }
             }
         }
