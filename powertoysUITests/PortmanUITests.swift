@@ -8,7 +8,7 @@ final class PortmanUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let forward = app.buttons["Forward"]
+        let forward = app.buttons["portman.page.Forward"]
         XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route")
         attach(app.screenshot(), named: "Portman Servers")
 
@@ -17,12 +17,16 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(app.textFields["SSH host or alias"].exists)
         attach(app.screenshot(), named: "Portman Forward")
 
-        app.buttons["Alerts"].click()
+        app.buttons["portman.page.Alerts"].click()
         XCTAssertTrue(app.staticTexts["No active alerts"].waitForExistence(timeout: 5)
                       || app.buttons["Inspect"].exists)
         attach(app.screenshot(), named: "Portman Alerts")
 
-        app.buttons["Servers"].click()
+        app.buttons["portman.settings"].click()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        attach(app.screenshot(), named: "Portman Settings")
+
+        app.buttons["portman.page.Servers"].click()
         XCTAssertTrue(forward.waitForExistence(timeout: 5))
     }
 
