@@ -11,7 +11,7 @@ Verdicts:
 
 The control engine writes only selected keys via exact CFPreferences domains, saves the original value and whether it was absent, and compares the current value before undo so an external change is not overwritten. Dock and Finder refreshes are explicit. Terminal is never closed by the app. A full product claim still requires visible effect, restart persistence, conflicting-setting, and undo checks on all three OS families. [Apple's preference-domain guide](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/UserDefaults/AboutPreferenceDomains/AboutPreferenceDomains.html), [exact-domain read API](https://developer.apple.com/documentation/corefoundation/cfpreferencescopyvalue%28_%3A_%3A_%3A_%3A%29), [write/delete API](https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/PreferencePanes/Tasks/Preferences.html).
 
-## Controls with a coded preference editor (24)
+## Controls with a coded preference editor (25)
 
 | ID | Scope and remaining check |
 | --- | --- |
@@ -39,6 +39,7 @@ The control engine writes only selected keys via exact CFPreferences domains, sa
 | `terminal.pointer-focus` | 15/26/27; Terminal windows only; manual restart. |
 | `music.half-stars` | 15/26/27; check current Music library and rating views. |
 | `finder.column-sizing` | 15.8 only in the target set. Hidden on 26.0; native Finder View Options from 26.1. |
+| `apps.automatic-termination` | 15.8 only; native automatic termination, not a keep-app-alive guarantee. |
 
 The current TinkerTool matrices document the visible feature families; nix-darwin documents most underlying key names and types. Apple documents the Dock lock keys in its [device-management source](https://github.com/apple/device-management/blob/release/mdm/profiles/com.apple.dock.yaml) and the network metadata control in [SMB browsing guidance](https://support.apple.com/en-us/102064). These sources do not replace runtime checks. [TinkerTool 15](https://www.bresink.com/osx/0TinkerTool10/details.html), [TinkerTool 26/27](https://www.bresink.com/osx/0TinkerTool/details.html), [Dock keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/dock.nix), [Finder keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/finder.nix), [global keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/NSGlobalDomain.nix), [capture keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/screencapture.nix).
 
@@ -74,7 +75,7 @@ These are implementable as convenience links or, after version-specific UI check
 | `native.units` | General/Language & Region and Control Center clock. |
 | `native.app-options` | Safari, TextEdit, Activity Monitor, Messages; each app owns its UI. |
 
-## Issues to resolve before offering a control (74)
+## Issues to resolve before offering a control (73)
 
 ### Other hidden preferences (24)
 
@@ -94,7 +95,7 @@ These are implementable as convenience links or, after version-specific UI check
 | `mail.custom-sound` | AIFF file lifecycle and protected Mail preference need a focused Full Disk Access flow. |
 | `appearance.app-light` | Per-app domains differ; Mail/Safari protection and mixed UI need tests. |
 | `appearance.font-defaults` | Category keys and app support vary; larger text may clip controls. |
-| `appearance.font-smoothing` | Key known, but effect is app-specific; old subpixel rendering cannot be promised. |
+| `appearance.font-smoothing` | Global versus current-host domain and app-specific effect need checks; old subpixel rendering cannot be promised. |
 | `formats.numbers` | Locale-specific templates, preview, and exact preference mapping need tests. |
 | `formats.currency` | Currency symbol and separator precedence need tests across locales. |
 | `formats.date-time` | Template validation needs non-English and edge-date checks. |
@@ -105,7 +106,7 @@ These are implementable as convenience links or, after version-specific UI check
 | `safari.backspace` | Protected Safari preference and text-field safety need Safari-build checks. |
 | `safari.zoom` | Protected Safari preference and site-specific override behavior need checks. |
 
-### Version-specific preferences (14)
+### Version-specific preferences (13)
 
 | ID | Blocking issue |
 | --- | --- |
@@ -121,7 +122,6 @@ These are implementable as convenience links or, after version-specific UI check
 | `input.layout-popup` | Documented on 26/27; old key recipe is not enough to choose a current domain. |
 | `safari.bookmarks` | 26/27 and actual Safari build need verification plus protected preference access. |
 | `timemachine.disk-prompt` | 15 evidence; no 26/27 support established. |
-| `apps.automatic-termination` | Key known, but 26/27 effect unverified; not a keep-app-alive guarantee. |
 | `dock.recent-count` | 15 evidence; 26/27 key and effect unverified. |
 
 Finder column sizing is in the coded-control table because the editor is gated to 15.8. TinkerTool records the native migration in [its notes](https://www.bresink.com/osx/0TinkerTool/issues.html) and the newer controls in [its version history](https://www.bresink.com/osx/0TinkerTool/history.html).

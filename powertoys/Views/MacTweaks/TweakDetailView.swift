@@ -123,6 +123,7 @@ struct TweakDetailView: View {
     private var activationNote: String {
         if item.id == "finder.network-metadata" { return "Apple specifies signing out and back in after changing this setting." }
         if item.id == "terminal.pointer-focus" { return "Quit and reopen Terminal when your shell sessions are finished. Mac Tweaks will not close it." }
+        if item.id == "apps.automatic-termination" { return "This affects native automatic termination only. It does not stop App Nap, memory pressure, or manual quitting." }
         if item.id.hasPrefix("screenshots.") { return "Take a new screenshot to check the effect. Existing captures are unchanged." }
         if item.id == "menubar.spacing" { return "Sign out and back in, or reopen affected status apps, to check spacing and click targets." }
         if restartTarget != nil { return "Restart the target app when ready to check the visible effect." }
