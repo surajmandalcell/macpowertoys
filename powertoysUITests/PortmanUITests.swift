@@ -23,12 +23,21 @@ final class PortmanUITests: XCTestCase {
 
         forward.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).click()
         XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["SSH host or alias"].exists)
+        XCTAssertTrue(app.textFields["SSH alias or username at IP address"].exists)
         attach(app.screenshot(), named: "Portman Forward")
 
-        let host = app.textFields["SSH host or alias"]
+        let host = app.textFields["SSH alias or username at IP address"]
         host.click()
-        host.typeText("example-server")
+        host.typeText("alice@127.0.0.1")
+        app.buttons["Enter SSH password"].click()
+        XCTAssertTrue(app.secureTextFields["Password"].waitForExistence(timeout: 5),
+                      "A direct SSH host did not offer password authentication")
+        attach(app.screenshot(), named: "Portman SSH Password")
+        app.secureTextFields["Password"].click()
+        app.secureTextFields["Password"].typeText("test-password")
+        app.buttons["Continue"].click()
+        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5),
+                      "Submitting the password dismissed the Portman panel")
         let remotePort = app.textFields["Remote port to add"]
         remotePort.click()
         remotePort.typeText("3000\n")

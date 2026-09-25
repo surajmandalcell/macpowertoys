@@ -27,6 +27,13 @@ struct PortmanPanelView: View {
     @State private var localPortInputs: [UInt16: String] = [:]
     @State private var manualPort = ""
     @State private var remoteScanTask: Task<Void, Never>?
+    @State private var remoteDetailTask: Task<Void, Never>?
+    @State private var sshPassword: String?
+    @State private var sshPasswordHost = ""
+    @State private var passwordPromptHost: String?
+    @State private var passwordPromptError: String?
+    @State private var retryAfterPassword: PortmanTunnel?
+    @State private var expandedRemotePort: UInt16?
     @State private var panelOwnsMonitoring = false
     @State private var cleanupMode = false
     @State private var selectedCleanupProcesses = Set<String>()
@@ -41,6 +48,7 @@ struct PortmanPanelView: View {
     @State private var showingMacMemory = false
     @State private var showingMore = false
     @State private var showingProcesses = false
+    @Namespace private var tabUnderline
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
     @AppStorage("portman.editor") private var editor = "auto"
@@ -73,7 +81,8 @@ struct PortmanPanelView: View {
         case .forward:
             350 + CGFloat(max(0, service.tunnels.count - 1)) * 48
                 + (!host.isEmpty && discoveredHost == host
-                   ? 62 + CGFloat(service.remotePorts.count) * 28 : 0)
+                   ? 62 + CGFloat(service.remotePorts.count) * 42
+                        + (expandedRemotePort == nil ? 0 : 48) : 0)
         case .alerts:
             260 + CGFloat(service.activeAlerts.count) * 92
         case .settings:
@@ -88,8 +97,8 @@ struct PortmanPanelView: View {
             HStack {
                 Image("PortmanStatusGlyph").renderingMode(.template).resizable().scaledToFit()
                     .foregroundStyle(.secondary)
-                    .frame(width: 16, height: 16)
-                Text("Portman").font(.system(size: 12, weight: .semibold))
+                    .frame(width: 13, height: 13)
+                Text("Portman").font(.system(size: 11, weight: .semibold))
                 Spacer()
                 if page == .local {
                     Button { Task { await service.refreshLocal() } } label: {
@@ -108,24 +117,26 @@ struct PortmanPanelView: View {
             .buttonStyle(.plain)
             .focusEffectDisabled()
             .padding(.horizontal, 18)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
 
             HStack(spacing: 0) {
                 ForEach([Page.local, .forward, .alerts], id: \.self) { destination in
                     Button { navigate(to: destination) } label: {
-                        VStack(spacing: 8) {
+                        ZStack(alignment: .bottom) {
                             HStack(spacing: 4) {
                                 Text(destination.rawValue)
                                 if destination == .alerts && !service.activeAlerts.isEmpty {
                                     Circle().fill(Color.orange).frame(width: 5, height: 5)
                                 }
                             }
-                                .font(.system(size: 12, weight: page == destination ? .semibold : .regular))
-                                .foregroundStyle(page == destination ? Color.primary : Color.secondary)
-                            Capsule().fill(page == destination ? Color.accentColor : .clear)
-                                .frame(height: 2)
+                            .font(.system(size: 12, weight: page == destination ? .semibold : .regular))
+                            .foregroundStyle(page == destination ? Color.primary : Color.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            if page == destination {
+                                Rectangle().fill(Color.accentColor).frame(height: 2)
+                                    .matchedGeometryEffect(id: "portman-tab-underline", in: tabUnderline)
+                            }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 36)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -136,9 +147,8 @@ struct PortmanPanelView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, UtilityLayout.horizontalInset)
-
-            QuietDivider()
+            .background(alignment: .bottom) { QuietDivider() }
+            .utilityAnimation(value: page, duration: UtilityMotion.standardDuration)
 
             ScrollView {
                 Group {
@@ -177,7 +187,9 @@ struct PortmanPanelView: View {
         .onDisappear {
             if panelOwnsMonitoring { service.endMonitoring() }
             remoteScanTask?.cancel()
-            service.cancelRemoteScan()
+            remoteDetailTask?.cancel()
+            service.clearRemoteScan()
+            sshPassword = nil
         }
         .onChange(of: panelHeight) { PortmanMenuController.shared.setHeight(panelHeight) }
         .onChange(of: page) {
@@ -190,11 +202,14 @@ struct PortmanPanelView: View {
             }
             if page != .forward {
                 remoteScanTask?.cancel()
-                service.cancelRemoteScan()
+                remoteDetailTask?.cancel()
+                service.clearRemoteScan()
                 selectedRemotePorts = []
                 lastSelectedRemotePort = nil
                 localPortInputs = [:]
                 manualPort = ""
+                sshPassword = nil
+                expandedRemotePort = nil
             }
         }
         .onChange(of: selectedPortID) {
@@ -204,11 +219,14 @@ struct PortmanPanelView: View {
         }
         .onChange(of: host) {
             remoteScanTask?.cancel()
-            service.cancelRemoteScan()
+            remoteDetailTask?.cancel()
+            service.clearRemoteScan()
             selectedRemotePorts = []
             lastSelectedRemotePort = nil
             localPortInputs = [:]
             service.forwardingError = nil
+            sshPassword = nil
+            expandedRemotePort = nil
         }
         .onChange(of: service.localPorts.map(\.processID)) {
             selectedCleanupProcesses.formIntersection(Set(service.localPorts.map(\.processID)))
@@ -249,6 +267,16 @@ struct PortmanPanelView: View {
         } message: {
             Text("Stopping these processes may interrupt open work. Any still running after the grace period will be force quit.")
         }
+        .sheet(isPresented: Binding(
+            get: { passwordPromptHost != nil },
+            set: { if !$0 { passwordPromptHost = nil; retryAfterPassword = nil } }
+        )) {
+            if let passwordPromptHost {
+                PortmanPasswordSheet(host: passwordPromptHost, errorMessage: passwordPromptError,
+                                     onCancel: { self.passwordPromptHost = nil; retryAfterPassword = nil },
+                                     onContinue: { password in submitPassword(password, for: passwordPromptHost) })
+            }
+        }
     }
 
     private func navigate(to destination: Page) {
@@ -284,15 +312,16 @@ struct PortmanPanelView: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                 if !cleanupMode {
                     Picker("Memory scope", selection: $showingMacMemory) {
-                        Text("Servers").tag(false)
-                        Text("Mac").tag(true)
+                        Text("Listening apps").tag(false)
+                        Text("Whole Mac").tag(true)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .accessibilityLabel("Memory scope")
                     .controlSize(.mini)
-                    .frame(width: 130)
+                    .frame(width: 186)
                     .padding(.top, 4)
+                    .help("Listening apps: memory used by processes with ports in the scan range on this Mac. Whole Mac: memory used by all processes.")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -391,6 +420,15 @@ struct PortmanPanelView: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 4)
+                    sparkline(for: port, attention: attention != nil)
+                        .frame(width: 42, height: 24)
+                    if hoveredRowID != port.id || cleanupMode {
+                        Text(memoryString(port.memoryBytes))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(attention == nil ? Color.primary : Color.orange)
+                            .monospacedDigit()
+                            .frame(width: 62, alignment: .trailing)
+                    }
                 }
                 .frame(minHeight: 52)
                 .frame(maxWidth: .infinity)
@@ -400,34 +438,32 @@ struct PortmanPanelView: View {
             .focusEffectDisabled()
             .help(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
             if hoveredRowID == port.id && !cleanupMode {
-                Button { openLocal(port.port) } label: {
-                    Image(systemName: "link").frame(width: 24, height: 24)
-                }
-                .help("Open localhost:\(String(port.port))")
-                .accessibilityLabel("Open localhost port \(String(port.port))")
-                if port.canStop {
-                    Button { pendingStop = port } label: {
-                        Image(systemName: "stop.fill").frame(width: 24, height: 24)
+                HStack(spacing: 2) {
+                    Button { openLocal(port.port) } label: {
+                        Image(systemName: "link").font(.system(size: 10))
+                            .frame(width: 24, height: 24)
                     }
-                    .foregroundStyle(hoveredStopPortID == port.id ? .red : .secondary)
-                    .onHover { hoveredStopPortID = $0 ? port.id : nil }
-                    .help("Stop port \(String(port.port)) process tree")
-                    .accessibilityLabel("Stop process tree for port \(String(port.port))")
+                    .help("Open localhost:\(String(port.port))")
+                    .accessibilityLabel("Open localhost port \(String(port.port))")
+                    if port.canStop {
+                        Button { pendingStop = port } label: {
+                            Image(systemName: "stop.fill").font(.system(size: 10))
+                                .frame(width: 24, height: 24)
+                        }
+                        .foregroundStyle(hoveredStopPortID == port.id ? .red : .secondary)
+                        .onHover { hoveredStopPortID = $0 ? port.id : nil }
+                        .help("Stop port \(String(port.port)) process tree")
+                        .accessibilityLabel("Stop process tree for port \(String(port.port))")
+                    }
                 }
-            } else {
-                sparkline(for: port, attention: attention != nil)
-                    .frame(width: 42, height: 24)
-            }
-            Text(memoryString(port.memoryBytes))
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(attention == nil ? Color.primary : Color.orange)
-                .monospacedDigit()
                 .frame(width: 62, alignment: .trailing)
+            }
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .background(hoveredRowID == port.id ? Color.primary.opacity(0.07) : .clear,
-                    in: RoundedRectangle(cornerRadius: 7))
+        .background(hoveredRowID == port.id ? Color.primary.opacity(0.06) : .clear,
+                    in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 6)
         .opacity(highlightedProcessID == nil || highlightedProcessID == port.processID ? 1 : 0.45)
         .onHover { inside in
             hoveredRowID = inside ? port.id : nil
@@ -937,10 +973,10 @@ struct PortmanPanelView: View {
                 QuietDivider()
             }
             HStack(spacing: 8) {
-                TextField("SSH host or alias", text: $host)
+                TextField("alias or user@IP", text: $host)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
-                    .accessibilityLabel("SSH host or alias")
+                    .accessibilityLabel("SSH alias or username at IP address")
                     .onSubmit { scanRemote() }
                 Menu {
                     if aliases.isEmpty { Text("No hosts in ~/.ssh/config") }
@@ -955,6 +991,18 @@ struct PortmanPanelView: View {
                 Button("Scan") { scanRemote() }
                 .disabled(host.isEmpty || service.isLoadingRemote)
                 .controlSize(.small)
+                Button {
+                    guard !host.isEmpty else { return }
+                    passwordPromptError = nil
+                    retryAfterPassword = nil
+                    passwordPromptHost = host
+                } label: {
+                    Image(systemName: "lock").frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .help("Use an SSH password for \(host)")
+                .accessibilityLabel("Enter SSH password")
+                .disabled(host.isEmpty)
             }
             if service.isLoadingRemote { ProgressView("Checking remote ports…").controlSize(.small) }
             Text("Ports stay on the server. Portman binds each tunnel to 127.0.0.1 on this Mac.")
@@ -1032,33 +1080,77 @@ struct PortmanPanelView: View {
     }
 
     private func remoteRow(_ port: UInt16) -> some View {
-        HStack(spacing: 8) {
-            Toggle(isOn: Binding(
-                get: { selectedRemotePorts.contains(port) },
-                set: { selected in
-                    selectedRemotePorts = Self.remoteSelection(
-                        selectedRemotePorts, port: port, selecting: selected,
-                        anchor: lastSelectedRemotePort, visible: service.remotePorts,
-                        extendRange: NSApp.currentEvent?.modifierFlags.contains(.shift) == true
-                    )
-                    lastSelectedRemotePort = port
+        let detail = service.remoteDetails[port]
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Toggle(isOn: Binding(
+                    get: { selectedRemotePorts.contains(port) },
+                    set: { selected in
+                        selectedRemotePorts = Self.remoteSelection(
+                            selectedRemotePorts, port: port, selecting: selected,
+                            anchor: lastSelectedRemotePort, visible: service.remotePorts,
+                            extendRange: NSApp.currentEvent?.modifierFlags.contains(.shift) == true
+                        )
+                        lastSelectedRemotePort = port
+                    }
+                )) { EmptyView() }
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+                .accessibilityLabel("Select remote port \(String(port))")
+                .help("Shift-click to select a range of remote ports")
+                Button {
+                    expandedRemotePort = expandedRemotePort == port ? nil : port
+                    if expandedRemotePort == port {
+                        remoteDetailTask?.cancel()
+                        remoteDetailTask = Task { await service.loadRemoteDetails(
+                            host: host, port: port,
+                            password: sshPasswordHost == host ? sshPassword : nil
+                        ) }
+                    } else {
+                        remoteDetailTask?.cancel()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(":\(String(port))")
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        Text(detail?.displayName ?? "Unknown service")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .rotationEffect(.degrees(expandedRemotePort == port ? 90 : 0))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 28)
+                    .contentShape(Rectangle())
                 }
-            )) {
-                Text(":\(String(port))").font(.system(size: 12, design: .monospaced))
+                .buttonStyle(.plain)
+                .help(detail?.command ?? detail?.displayName ?? "Inspect remote port \(String(port))")
+                .accessibilityLabel("Details for remote port \(String(port))")
+                TextField(String(port), text: Binding(
+                    get: { localPortInputs[port] ?? String(port) },
+                    set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 72)
+                .accessibilityLabel("Local port for remote port \(String(port))")
+                .onSubmit { forwardSelected() }
             }
-            .toggleStyle(.checkbox)
-            .help("Shift-click to select a range of remote ports")
-            Spacer()
-            TextField(String(port), text: Binding(
-                get: { localPortInputs[port] ?? String(port) },
-                set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
-            ))
-            .textFieldStyle(.roundedBorder)
-            .frame(width: 72)
-            .accessibilityLabel("Local port for remote port \(String(port))")
-            .onSubmit { forwardSelected() }
+            if expandedRemotePort == port {
+                VStack(alignment: .leading, spacing: 3) {
+                    if let pid = detail?.pid { Text("PID \(String(pid))") }
+                    if let container = detail?.container { Text("Docker container: \(container)") }
+                    Text(detail?.command ?? "Process command unavailable for this listener")
+                        .textSelection(.enabled)
+                }
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 25)
+            }
         }
-        .frame(minHeight: 28)
+        .padding(.vertical, 3)
     }
 
     private func tunnelRow(_ tunnel: PortmanTunnel) -> some View {
@@ -1090,9 +1182,17 @@ struct PortmanPanelView: View {
             }
             if case .failed = tunnel.state {
                 Button("Retry") {
-                    service.stopTunnel(tunnel.id)
-                    _ = service.forward(host: tunnel.host, remotePort: tunnel.remotePort,
-                                        localPort: tunnel.localPort)
+                    if case .failed(let message) = tunnel.state,
+                       message.localizedCaseInsensitiveContains("Permission denied") {
+                        retryAfterPassword = tunnel
+                        passwordPromptError = "Authentication failed. Enter the password again."
+                        passwordPromptHost = tunnel.host
+                    } else {
+                        service.stopTunnel(tunnel.id)
+                        _ = service.forward(host: tunnel.host, remotePort: tunnel.remotePort,
+                                            localPort: tunnel.localPort,
+                                            password: sshPasswordHost == tunnel.host ? sshPassword : nil)
+                    }
                 }
                 .controlSize(.small)
             }
@@ -1119,6 +1219,10 @@ struct PortmanPanelView: View {
     }
 
     private func scanRemote() {
+        startRemoteScan(password: sshPasswordHost == host ? sshPassword : nil)
+    }
+
+    private func startRemoteScan(password: String?) {
         guard !host.isEmpty else { return }
         let target = host
         remoteScanTask?.cancel()
@@ -1126,16 +1230,26 @@ struct PortmanPanelView: View {
         selectedRemotePorts = []
         lastSelectedRemotePort = nil
         discoveredHost = target
-        remoteScanTask = Task { await service.refreshRemote(host: target) }
+        expandedRemotePort = nil
+        remoteScanTask = Task {
+            await service.refreshRemote(host: target, password: password)
+            guard !Task.isCancelled, host == target,
+                  service.forwardingError?.localizedCaseInsensitiveContains("Permission denied") == true else { return }
+            sshPassword = nil
+            passwordPromptError = password == nil ? nil : "Authentication failed. Enter the password again."
+            passwordPromptHost = target
+        }
     }
 
     private func clearRemoteScan() {
         remoteScanTask?.cancel()
+        remoteDetailTask?.cancel()
         service.clearRemoteScan()
         discoveredHost = ""
         selectedRemotePorts = []
         lastSelectedRemotePort = nil
         localPortInputs = [:]
+        expandedRemotePort = nil
     }
 
     private func addManualPort() {
@@ -1168,8 +1282,25 @@ struct PortmanPanelView: View {
             return
         }
         for (remotePort, localPort) in requests {
-            guard service.forward(host: host, remotePort: remotePort, localPort: localPort) else { return }
+            guard service.forward(host: host, remotePort: remotePort, localPort: localPort,
+                                  password: sshPasswordHost == host ? sshPassword : nil) else { return }
             selectedRemotePorts.remove(remotePort)
+        }
+    }
+
+    private func submitPassword(_ password: String, for target: String) {
+        let retry = retryAfterPassword
+        retryAfterPassword = nil
+        passwordPromptHost = nil
+        passwordPromptError = nil
+        sshPasswordHost = target
+        sshPassword = password
+        if let retry {
+            service.stopTunnel(retry.id)
+            _ = service.forward(host: retry.host, remotePort: retry.remotePort,
+                                localPort: retry.localPort, password: password)
+        } else {
+            startRemoteScan(password: password)
         }
     }
 
@@ -1192,6 +1323,50 @@ struct PortmanPanelView: View {
 
     private func tunnelStatus(_ state: PortmanTunnel.State) -> String {
         switch state { case .connecting: "Connecting"; case .running: "Forwarding"; case .failed(let message): message }
+    }
+}
+
+private struct PortmanPasswordSheet: View {
+    let host: String
+    let errorMessage: String?
+    let onCancel: () -> Void
+    let onContinue: (String) -> Void
+
+    @State private var password = ""
+    @FocusState private var passwordIsFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SSH password for \(host)")
+                .font(.system(size: 13, weight: .medium))
+            Text("Portman uses this password for the scan and selected forwards. It stays in memory until you leave Forward.")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+            SecureField("Password", text: $password)
+                .textFieldStyle(.roundedBorder)
+                .focused($passwordIsFocused)
+                .onSubmit(submit)
+            if let errorMessage {
+                Text(errorMessage).font(.system(size: 11)).foregroundStyle(.red)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                Button("Continue", action: submit)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(password.isEmpty)
+            }
+            .controlSize(.small)
+        }
+        .padding(20)
+        .frame(width: 360)
+        .onAppear { passwordIsFocused = true }
+    }
+
+    private func submit() {
+        guard !password.isEmpty else { return }
+        let value = password
+        password = ""
+        onContinue(value)
     }
 }
 
@@ -1530,7 +1705,7 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
         guard let button = item?.button else { return }
         let ports = PortmanService.shared.localPorts
         let image = NSImage(named: "PortmanStatusGlyph")?.copy() as? NSImage
-        image?.size = NSSize(width: 18, height: 18)
+        image?.size = NSSize(width: 14, height: 14)
         image?.isTemplate = true
         button.image = image
         button.imagePosition = .imageLeading
