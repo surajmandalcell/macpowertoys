@@ -117,6 +117,20 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .name, descending: false).first?.pid, 1)
     }
 
+    func testUnknownProcessUsageSortsLastInEitherDirection() {
+        let known = SystemMonitorProcess(pid: 2, started: 1, name: "Known",
+                                         cpuPercent: 10, residentBytes: 1_024, virtualBytes: 0,
+                                         threads: 1, parentPID: 1, userID: 501, executablePath: "/bin/known")
+        let protected = SystemMonitorProcess(pid: 1, started: 0, name: "Protected",
+                                             cpuPercent: nil, residentBytes: 0, virtualBytes: 0,
+                                             threads: 0, parentPID: 0, userID: UInt32.max,
+                                             executablePath: "Protected process")
+        for column in [ProcessSortColumn.cpu, .memory] {
+            XCTAssertEqual(SystemMonitorProcessSorting.sorted([protected, known], by: column, descending: false).map(\.pid), [2, 1])
+            XCTAssertEqual(SystemMonitorProcessSorting.sorted([protected, known], by: column, descending: true).map(\.pid), [2, 1])
+        }
+    }
+
     @MainActor
     func testProcessesPageRendersAtProductionSize() throws {
         let host = NSHostingView(rootView: SystemMonitorProcessesView()
