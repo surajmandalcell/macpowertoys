@@ -4,6 +4,7 @@ import SwiftUI
 
 private enum DiskExplorerPage: Hashable {
     case explore
+    case modify
     case settings
     case about
 }
@@ -28,7 +29,6 @@ struct DiskExplorerWindowView: View {
     @State private var page = DiskExplorerPage.explore
     @State private var search = ""
     @State private var sort = DiskEntrySort.size
-    @State private var visibleLimit = 250
     @State private var resultTab = DiskResultTab.visualization
     @State private var showsContents = false
     @State private var showsStatistics = false
@@ -90,9 +90,16 @@ struct DiskExplorerWindowView: View {
     private var sidebar: some View {
         ZStack(alignment: .topLeading) {
             VisualEffectBackground(material: .sidebar)
-            SidebarTitle(text: "Disk Explorer")
+            SidebarTitle(text: "Diskman")
             VStack(alignment: .leading, spacing: 5) {
-                Text("VOLUMES").utilitySectionHeader().padding(.leading, 8)
+                Text("ANALYZE").utilitySectionHeader().padding(.leading, 8)
+                SidebarRow(icon: "house", title: "Home Folder",
+                           isSelected: page == .explore && model.sourceURL == FileManager.default.homeDirectoryForCurrentUser) {
+                    startScan(FileManager.default.homeDirectoryForCurrentUser)
+                }
+                SidebarRow(icon: "folder.badge.plus", title: "Choose Folder…", isSelected: false) {
+                    chooseFolder()
+                }
                 ForEach(model.volumes) { volume in
                     SidebarRow(
                         icon: volume.url.path == "/" ? "internaldrive" : "externaldrive",
@@ -103,13 +110,10 @@ struct DiskExplorerWindowView: View {
                     }
                     .help(volume.url.path)
                 }
-                Text("FOLDERS").utilitySectionHeader().padding(.leading, 8).padding(.top, 15)
-                SidebarRow(icon: "house", title: "Home Folder",
-                           isSelected: page == .explore && model.sourceURL == FileManager.default.homeDirectoryForCurrentUser) {
-                    startScan(FileManager.default.homeDirectoryForCurrentUser)
-                }
-                SidebarRow(icon: "folder.badge.plus", title: "Choose Folder…", isSelected: false) {
-                    chooseFolder()
+                Text("MODIFY").utilitySectionHeader().padding(.leading, 8).padding(.top, 15)
+                SidebarRow(icon: "externaldrive.badge.plus", title: "Manage Disks",
+                           isSelected: page == .modify) {
+                    page = .modify
                 }
                 Spacer()
                 QuietDivider().padding(.vertical, 5)
@@ -129,6 +133,7 @@ struct DiskExplorerWindowView: View {
     @ViewBuilder private var content: some View {
         switch page {
         case .explore: explorerPage
+        case .modify: DiskModifyView()
         case .settings:
             WorkspacePage("Settings") {
                 DiskExplorerSettingsView(unreadableCount: model.result?.unreadableCount)
@@ -140,7 +145,7 @@ struct DiskExplorerWindowView: View {
 
     private var explorerPage: some View {
         WorkspacePage(
-            "Disk Explorer",
+            "Diskman",
             subtitle: model.sourceURL?.path ?? "Choose a volume or folder",
             actions: {
                 Menu("Scan", systemImage: "internaldrive") {
@@ -292,7 +297,7 @@ struct DiskExplorerWindowView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
-        .onChange(of: current.id) { _, _ in search = ""; visibleLimit = 250; selectedFile = nil }
+        .onChange(of: current.id) { _, _ in search = ""; selectedFile = nil }
     }
 
     private var scanStatistics: some View {
@@ -383,8 +388,8 @@ struct DiskExplorerWindowView: View {
                 .padding(.horizontal, 12).padding(.bottom, 8)
             }
         }
-        .background(LinearGradient(colors: [Color.accentColor.opacity(0.07), Color.primary.opacity(0.025)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing))
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.65))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.07)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -409,16 +414,7 @@ struct DiskExplorerWindowView: View {
             QuietDivider()
             ScrollView {
                 LazyVStack(spacing: 1) {
-                    // ponytail: render 250 rows at a time; add virtualized table paging if folders with over 10,000 direct children feel slow.
-                    ForEach(matches.prefix(visibleLimit)) { entry in entryRow(entry) }
-                    if matches.count > visibleLimit {
-                        Button("Show more (\(matches.count - visibleLimit) remaining)") {
-                            visibleLimit += 250
-                        }
-                        .buttonStyle(.borderless)
-                        .focusEffectDisabled()
-                        .padding(10)
-                    }
+                    ForEach(matches) { entry in entryRow(entry) }
                 }
                 .padding(5)
             }
@@ -588,24 +584,24 @@ struct DiskExplorerWindowView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    @ViewBuilder private var statusInset: some View {
-        if model.isScanning || model.isRemoving || model.errorMessage != nil ||
-           model.operationMessage != nil || model.result?.isComplete == false {
-            VStack(spacing: 0) {
-                QuietDivider()
-                HStack(spacing: 8) {
-                    if model.isScanning || model.isRemoving { ProgressView().controlSize(.small) }
-                    Text(model.errorMessage ?? model.operationMessage ??
-                         (model.isRemoving ? "Removing selected items…" :
-                          model.isScanning ? "Scanning · \(model.scannedEntries.formatted()) items checked; chart updates live" :
-                          "Scan stopped. Results are partial; scan again before removal."))
-                        .font(.system(size: 11)).lineLimit(2)
-                    Spacer()
-                }
-                .padding(.horizontal, 14).padding(.vertical, 9)
+    private var statusInset: some View {
+        VStack(spacing: 0) {
+            QuietDivider()
+            HStack(spacing: 8) {
+                if model.isScanning || model.isRemoving { ProgressView().controlSize(.small) }
+                else { Image(systemName: "circle.fill").font(.system(size: 6)).foregroundStyle(.tertiary) }
+                Text(model.errorMessage ?? model.operationMessage ??
+                     (model.isRemoving ? "Removing selected items…" :
+                      model.isScanning ? "Scanning · \(model.scannedEntries.formatted()) items checked; chart updates live" :
+                      model.result?.isComplete == false ? "Scan stopped. Results are partial; scan again before removal." :
+                      "Ready to analyze"))
+                    .font(.system(size: 11)).lineLimit(1)
+                Spacer()
             }
-            .background(Color(nsColor: .windowBackgroundColor))
+            .padding(.horizontal, 14)
+            .frame(height: 36)
         }
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private func chooseFolder() {

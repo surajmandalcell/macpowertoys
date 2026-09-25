@@ -38,6 +38,10 @@ final class DiskManagementTests: XCTestCase {
                                       name: "DiskmanAdded", format: "ExFAT", scheme: "GPT", size: "2G")
         XCTAssertThrowsError(try longFATName.arguments())
 
+        let tooLarge = DiskRequest(disk: card, partition: nil, action: .addPartition,
+                                   name: "Small", format: "ExFAT", scheme: "GPT", size: "15G")
+        XCTAssertThrowsError(try tooLarge.arguments())
+
         let wrongAPFSMap = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
                                        name: "APFSTest", format: "APFS", scheme: "MBR", size: "")
         XCTAssertThrowsError(try wrongAPFSMap.arguments())

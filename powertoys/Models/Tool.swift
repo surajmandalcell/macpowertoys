@@ -284,15 +284,15 @@ struct SystemCareTool: Tool {
 
 struct DiskExplorerTool: Tool {
     let id = "disk-explorer"
-    let name = "Disk Explorer"
-    let description = "Scan disks and folders, explore their space in a treemap or ring chart, and review files before removal."
+    let name = "Diskman"
+    let description = "Analyze storage with live treemaps and rings, then manage removable disks and partitions."
     let icon = "internaldrive"
     let logoAsset = "DiskExplorerLogo"
     let category = ToolCategory.files
 
     let manual = [
         ToolManualSection(title: "Scan", points: [
-            "Your Home Folder scans when Disk Explorer opens. Choose a volume or another folder to scan it instead.",
+            "Your Home Folder scans when Diskman opens. Choose a volume or another folder to scan it instead.",
             "The scan counts space used on disk, includes hidden files, and reports locations it could not read.",
             "Stop or rescan from the top bar. Scanning stops when the window closes."
         ]),
@@ -304,6 +304,11 @@ struct DiskExplorerTool: Tool {
         ToolManualSection(title: "Remove", points: [
             "Mark files or folders, then open Review to check the exact list and total size.",
             "Move to Trash is recoverable until you empty Trash. Permanent deletion asks again and cannot be undone."
+        ]),
+        ToolManualSection(title: "Modify", points: [
+            "Select a physical disk or partition in Modify to verify, repair, mount, eject, format, or change its partition map.",
+            "Diskman allows changes only on writable removable or external media and checks the device again before every operation.",
+            "Review data-loss actions carefully and type the disk identifier to confirm them."
         ])
     ]
 

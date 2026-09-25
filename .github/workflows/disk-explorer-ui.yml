@@ -1,4 +1,4 @@
-name: Disk Explorer UI navigation
+name: Diskman UI navigation
 
 on:
   workflow_dispatch:
@@ -8,7 +8,10 @@ on:
       - .github/workflows/disk-explorer-ui.yml
       - powertoys/Core/DiskExplorerModel.swift
       - powertoys/Core/DiskExplorerScanner.swift
+      - powertoys/Core/DiskManagement.swift
       - powertoys/Views/DiskExplorer/**
+      - powertoysTests/DiskExplorerTests.swift
+      - powertoysTests/DiskManagementTests.swift
       - powertoysUITests/DiskExplorerUITests.swift
 
 jobs:
@@ -17,13 +20,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Run focused Disk Explorer unit and render checks
+      - name: Run focused Diskman unit and render checks
         run: |
           xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
             -derivedDataPath "$RUNNER_TEMP/macpowertoys-disk-explorer-unit" \
             -resultBundlePath "$RUNNER_TEMP/disk-explorer-unit.xcresult" \
             -destination 'platform=macOS' -parallel-testing-enabled NO \
             -only-testing:powertoysTests/DiskExplorerTests \
+            -only-testing:powertoysTests/DiskManagementTests \
             -only-testing:powertoysTests/DiskExplorerRenderTests \
             -only-testing:powertoysTests/FocusEffectTests \
             CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
@@ -48,7 +52,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Run Disk Explorer UI navigation on the hosted Mac
+      - name: Run Diskman UI navigation on the hosted Mac
         run: |
           xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
             -derivedDataPath "$RUNNER_TEMP/macpowertoys-disk-explorer-ui" \
