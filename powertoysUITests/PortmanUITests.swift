@@ -11,6 +11,11 @@ final class PortmanUITests: XCTestCase {
 
         let forward = app.buttons["portman.page.Forward"]
         XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route")
+        let servers = app.buttons["portman.page.Servers"]
+        let alerts = app.buttons["portman.page.Alerts"]
+        XCTAssertEqual(servers.frame.width, forward.frame.width, accuracy: 1)
+        XCTAssertEqual(alerts.frame.width, forward.frame.width, accuracy: 1)
+        XCTAssertTrue(app.staticTexts["0 KB"].isHittable)
         XCTAssertTrue(app.staticTexts["No servers listening"].isHittable)
         XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
                       "The empty-state explanation is clipped below the menu-bar panel")
@@ -30,8 +35,7 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Forward 1 selected"].waitForExistence(timeout: 5),
                       "Return did not add the manual remote port")
 
-        app.buttons["portman.page.Alerts"]
-            .coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
+        alerts.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
         XCTAssertTrue(app.staticTexts["No active alerts"].waitForExistence(timeout: 5)
                       || app.buttons["Inspect"].exists)
         attach(app.screenshot(), named: "Portman Alerts")
@@ -44,7 +48,7 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
         attach(app.screenshot(), named: "Portman Settings")
 
-        app.buttons["portman.page.Servers"].click()
+        servers.click()
         XCTAssertTrue(forward.waitForExistence(timeout: 5))
     }
 
