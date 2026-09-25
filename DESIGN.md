@@ -79,7 +79,7 @@ spacing:
   tray-footer-bottom: 10
 windows:
   launcher: { content-width: 1200, content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
-  workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, resizable: true }
+  workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, system-monitor-sidebar: 220, resizable: true }
   nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
 components:
@@ -91,6 +91,7 @@ components:
   tray-chrome: { min-height: 24, icon: 12, radius: 6, gap: 4 }
   compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
   workspace-action: { height: 24, control-size: small }
+  content-action: { min-label-height: 36, inset-x: 14, control-size: regular }
   structural-divider: { opacity: 0.22, increased-contrast-opacity: 0.44 }
   tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
   section-card: { radius: 10, bg: colors.card-detail, padding: spacing.card-padding }

@@ -21,11 +21,13 @@ All spacing, colors, radii, and typography values are standardized. Do not devia
 
 ### Workspace Density
 - Simple sidebar: 220pt; data sidebar: 240pt
-- Launcher, Logs, and Input Devices use 220pt; Cloud Sync, System Care, and
-  System Monitor use 240pt
+- Launcher, Logs, Input Devices, and System Monitor use 220pt; Cloud Sync and
+  System Care use 240pt
 - Sidebar row: 28pt minimum, 16pt icon, 8pt horizontal inset and gap
 - Workspace page strip: 40pt with 13pt title and optional 11pt subtitle
 - Workspace actions: native small controls in one centered 24pt row
+- Content action buttons: 36pt minimum label height and equal 14pt horizontal
+  label insets; keep title-bar controls in the compact 24pt row
 - Workspace body: 12pt top inset; never add a second 32pt top gap
 - Structural dividers: 0.22 opacity, or 0.44 with Increased Contrast; keep
   command-menu and context-menu separators native

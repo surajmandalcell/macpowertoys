@@ -1175,6 +1175,7 @@ private struct SystemCareTrayView: View {
 
 private struct SystemMonitorTrayView: View {
     @State private var service = SystemMonitorService.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     private var sample: SystemMonitorSample? { service.snapshot }
 
@@ -1185,22 +1186,22 @@ private struct SystemMonitorTrayView: View {
                 metric(
                     "CPU", symbol: "cpu", value: percent(sample?.cpuUsage),
                     detail: "All cores", level: sample?.cpuUsage,
-                    values: service.history.compactMap(\.cpuUsage)
+                    values: service.history.compactMap(\.cpuUsage), surfaceTint: SystemMonitorPalette.teal
                 )
                 metric(
                     "GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage),
                     detail: "Graphics utilization", level: sample?.gpuUsage,
-                    values: service.history.compactMap(\.gpuUsage)
+                    values: service.history.compactMap(\.gpuUsage), surfaceTint: SystemMonitorPalette.blue
                 )
                 metric(
                     "Memory", symbol: "memorychip", value: percent(sample?.memoryUsage),
                     detail: memoryDetail, level: sample?.memoryUsage,
-                    values: service.history.compactMap(\.memoryUsage)
+                    values: service.history.compactMap(\.memoryUsage), surfaceTint: SystemMonitorPalette.coral
                 )
                 metric(
                     "Disk", symbol: "internaldrive", value: percent(sample?.diskUsage),
                     detail: diskDetail, level: sample?.diskUsage,
-                    values: service.history.compactMap(\.diskUsage)
+                    values: service.history.compactMap(\.diskUsage), surfaceTint: SystemMonitorPalette.orange
                 )
                 metric(
                     "Network", symbol: "network", value: sample?.networkDownload.map(Self.rate) ?? "...",
@@ -1208,7 +1209,7 @@ private struct SystemMonitorTrayView: View {
                     values: service.history.compactMap { point in
                         guard let down = point.networkDownload, let up = point.networkUpload else { return nil }
                         return max(down, up)
-                    }, tint: .blue
+                    }, tint: SystemMonitorPalette.cyan
                 )
                 metric(
                     "Battery", symbol: "battery.75percent",
@@ -1216,18 +1217,19 @@ private struct SystemMonitorTrayView: View {
                     detail: sample?.batteryCharging == true ? "Charging" : "On battery",
                     level: sample?.batteryPercent.map(Double.init),
                     values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                    tint: batteryTint
+                    tint: batteryTint, surfaceTint: SystemMonitorPalette.gold
                 )
                 metric(
                     "Thermal", symbol: "thermometer.medium", value: sample?.thermalState ?? "Unavailable",
                     detail: "System pressure", level: thermalLevel,
                     values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                    tint: thermalTint
+                    tint: thermalTint, surfaceTint: SystemMonitorPalette.green
                 )
                 metric(
                     "Load · 1 min", symbol: "chart.bar", value: loadValue,
                     detail: "Average CPU demand", level: loadLevel,
-                    values: service.history.compactMap { $0.loadAverage.map { $0.0 } }
+                    values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
+                    surfaceTint: SystemMonitorPalette.blue
                 )
                 .help("Load is the average number of processes running or ready for a CPU. Compare it with \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs. It is not a percent.")
             }
@@ -1248,13 +1250,16 @@ private struct SystemMonitorTrayView: View {
         detail: String,
         level: Double?,
         values: [Double],
-        tint: Color? = nil
+        tint: Color? = nil,
+        surfaceTint: Color? = nil
     ) -> some View {
         let color = tint ?? level.map(Self.usageTint) ?? .gray
+        let surface = surfaceTint ?? color
         return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 5) {
-                    Image(systemName: symbol).font(.caption2.weight(.medium)).foregroundStyle(color)
+                    Image(systemName: symbol).font(.caption2.weight(.medium))
+                        .foregroundStyle(colorScheme == .dark ? color : .primary)
                     Text(title).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                 }
@@ -1275,13 +1280,9 @@ private struct SystemMonitorTrayView: View {
                 .frame(height: 18)
         }
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-        .background(
-            LinearGradient(colors: [color.opacity(0.19), color.opacity(0.08)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 10)
-        )
+        .background(SystemMonitorPalette.gradient(surface), in: RoundedRectangle(cornerRadius: 10))
         .overlay {
-            RoundedRectangle(cornerRadius: 10).strokeBorder(color.opacity(0.18))
+            RoundedRectangle(cornerRadius: 10).strokeBorder(surface.opacity(0.25))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }

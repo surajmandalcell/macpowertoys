@@ -186,22 +186,24 @@ final class SystemMonitorTests: XCTestCase {
 
     @MainActor
     func testRemotePageRendersDisconnectedState() throws {
-        let host = NSHostingView(rootView: SystemMonitorRemoteView()
-            .frame(width: 940, height: 780)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .environment(\.colorScheme, .dark))
-        host.appearance = NSAppearance(named: .darkAqua)
-        host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
-        host.layoutSubtreeIfNeeded()
+        for scheme in [ColorScheme.light, .dark] {
+            let host = NSHostingView(rootView: SystemMonitorRemoteView()
+                .frame(width: 940, height: 780)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.colorScheme, scheme))
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
+            host.layoutSubtreeIfNeeded()
 
-        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: representation)
-        let image = NSImage(size: host.bounds.size)
-        image.addRepresentation(representation)
-        let attachment = XCTAttachment(image: image)
-        attachment.name = "System Monitor Remote — Dark"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "System Monitor Remote — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 
     @MainActor
@@ -256,30 +258,32 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(grid.components(separatedBy: "metricCard(").count - 1, 8)
         XCTAssertTrue(grid.contains("title: \"GPU\""))
         XCTAssertTrue(grid.contains("title: \"Load · 1 min\""))
-        XCTAssertTrue(source.contains("tint.opacity(0.16)"))
+        XCTAssertTrue(source.contains("SystemMonitorPalette.gradient(surface)"))
         XCTAssertFalse(source.contains("WorkspacePage(\"Overview\", subtitle:"))
     }
 
     @MainActor
     func testOverviewRendersAtProductionSize() throws {
         defer { SystemMonitorService.shared.stopDetailed() }
-        let host = NSHostingView(
-            rootView: SystemMonitorWindowView()
-                .environment(\.colorScheme, .dark)
-        )
-        host.appearance = NSAppearance(named: .darkAqua)
-        host.frame = NSRect(x: 0, y: 0, width: 1_180, height: 780)
-        host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        for scheme in [ColorScheme.light, .dark] {
+            let host = NSHostingView(
+                rootView: SystemMonitorWindowView()
+                    .environment(\.colorScheme, scheme)
+            )
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(x: 0, y: 0, width: 1_180, height: 780)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
-        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: representation)
-        let image = NSImage(size: host.bounds.size)
-        image.addRepresentation(representation)
-        let attachment = XCTAttachment(image: image)
-        attachment.name = "System Monitor — Overview — Dark"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "System Monitor — Overview — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 
     @MainActor
@@ -288,24 +292,26 @@ final class SystemMonitorTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defaults.set(TrayTab.systemMonitor.rawValue, forKey: "tray.selectedTab.v2")
         defer { defaults.removePersistentDomain(forName: suiteName) }
-        let host = NSHostingView(rootView: TrayPopoverView()
-            .defaultAppStorage(defaults)
-            .frame(width: 360, height: 650, alignment: .top)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .environment(\.colorScheme, .dark))
-        host.appearance = NSAppearance(named: .darkAqua)
-        host.frame = NSRect(x: 0, y: 0, width: 360, height: 650)
-        host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        for scheme in [ColorScheme.light, .dark] {
+            let host = NSHostingView(rootView: TrayPopoverView()
+                .defaultAppStorage(defaults)
+                .frame(width: 360, height: 650, alignment: .top)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.colorScheme, scheme))
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(x: 0, y: 0, width: 360, height: 650)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
 
-        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: representation)
-        let image = NSImage(size: host.bounds.size)
-        image.addRepresentation(representation)
-        let attachment = XCTAttachment(image: image)
-        attachment.name = "System Monitor Tray — Dark"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "System Monitor Tray — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 
     @MainActor

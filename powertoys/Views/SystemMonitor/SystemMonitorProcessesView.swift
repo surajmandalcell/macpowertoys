@@ -148,9 +148,13 @@ struct SystemMonitorProcessesView: View {
                             }
                         }
                         Spacer()
-                        Button("Quit") { confirm(selected, force: false) }
+                        Button { confirm(selected, force: false) } label: {
+                            Text("Quit").utilityActionLabel()
+                        }
                             .disabled(selected.started == 0)
-                        Button("Force Quit", role: .destructive) { confirm(selected, force: true) }
+                        Button(role: .destructive) { confirm(selected, force: true) } label: {
+                            Text("Force Quit").utilityActionLabel()
+                        }
                             .disabled(selected.started == 0)
                     }
                     .controlSize(.large)
@@ -185,9 +189,12 @@ struct SystemMonitorProcessesView: View {
                             Text("EXECUTABLE").utilitySectionHeader()
                             Spacer()
                             if selected.executablePath != "Unavailable" && selected.executablePath != "Protected process" {
-                                Button("Copy Path", systemImage: "doc.on.doc") {
+                                Button {
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(selected.executablePath, forType: .string)
+                                } label: {
+                                    Label("Copy Path", systemImage: "doc.on.doc")
+                                        .utilityActionLabel()
                                 }
                                 .controlSize(.large)
                             }

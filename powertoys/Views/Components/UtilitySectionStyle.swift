@@ -52,9 +52,9 @@ enum UtilityLayout {
             return launcherContentSize
         case "nettoys":
             return netToysMinimumContentSize
-        case "rclone", "system-care", "disk-explorer", "system-monitor", "switch":
+        case "rclone", "system-care", "disk-explorer", "switch":
             sidebarWidth = dataSidebarWidth
-        case "logs", "input-devices":
+        case "logs", "input-devices", "system-monitor":
             sidebarWidth = compactSidebarWidth
         default:
             return nil
@@ -195,6 +195,11 @@ final class UtilitySectionCardView: NSView {
 }
 
 extension View {
+    func utilityActionLabel() -> some View {
+        padding(.horizontal, 14)
+            .frame(minHeight: 36)
+    }
+
     func utilitySectionHeader() -> some View {
         font(.system(size: 10, weight: .medium))
             .foregroundStyle(.secondary)

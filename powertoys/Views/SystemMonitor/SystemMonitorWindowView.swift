@@ -1,5 +1,22 @@
 import SwiftUI
 
+enum SystemMonitorPalette {
+    // Coolors: 264653-2a9d8f-e9c46a-f4a261-e76f51 and
+    // 004e64-00a5cf-9fffcb-25a18e-7ae582 and 457b9d-a8dadc-f1faee-e63946.
+    static let teal = Color(red: 42.0 / 255, green: 157.0 / 255, blue: 143.0 / 255)
+    static let coral = Color(red: 231.0 / 255, green: 111.0 / 255, blue: 81.0 / 255)
+    static let gold = Color(red: 233.0 / 255, green: 196.0 / 255, blue: 106.0 / 255)
+    static let orange = Color(red: 244.0 / 255, green: 162.0 / 255, blue: 97.0 / 255)
+    static let cyan = Color(red: 0, green: 165.0 / 255, blue: 207.0 / 255)
+    static let green = Color(red: 122.0 / 255, green: 229.0 / 255, blue: 130.0 / 255)
+    static let blue = Color(red: 69.0 / 255, green: 123.0 / 255, blue: 157.0 / 255)
+
+    static func gradient(_ tint: Color) -> LinearGradient {
+        LinearGradient(colors: [tint.opacity(0.29), tint.opacity(0.12), tint.opacity(0.17)],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
 private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case overview = "Overview"
     case processes = "Processes"
@@ -42,7 +59,7 @@ struct SystemMonitorWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar.frame(width: UtilityLayout.dataSidebarWidth)
+            sidebar.frame(width: UtilityLayout.compactSidebarWidth)
             content
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -146,6 +163,7 @@ struct SystemMonitorWindowView: View {
                     detail: "All cores",
                     values: service.history.compactMap(\.cpuUsage),
                     tint: usageTint(service.snapshot?.cpuUsage),
+                    surfaceTint: SystemMonitorPalette.teal,
                     featured: true
                 )
                 metricCard(
@@ -155,6 +173,7 @@ struct SystemMonitorWindowView: View {
                     detail: memoryDetail,
                     values: service.history.compactMap(\.memoryUsage),
                     tint: usageTint(service.snapshot?.memoryUsage),
+                    surfaceTint: SystemMonitorPalette.coral,
                     featured: true
                 )
             }
@@ -165,7 +184,8 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.gpuUsage.percent ?? "Not available",
                     detail: "Graphics utilization",
                     values: service.history.compactMap(\.gpuUsage),
-                    tint: usageTint(service.snapshot?.gpuUsage)
+                    tint: usageTint(service.snapshot?.gpuUsage),
+                    surfaceTint: SystemMonitorPalette.blue
                 )
                 metricCard(
                     icon: "internaldrive",
@@ -173,7 +193,8 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.diskUsage.percent ?? "Not available",
                     detail: diskDetail,
                     values: service.history.compactMap(\.diskUsage),
-                    tint: usageTint(service.snapshot?.diskUsage)
+                    tint: usageTint(service.snapshot?.diskUsage),
+                    surfaceTint: SystemMonitorPalette.orange
                 )
                 metricCard(
                     icon: "arrow.down.circle",
@@ -184,7 +205,7 @@ struct SystemMonitorWindowView: View {
                         guard let down = sample.networkDownload, let up = sample.networkUpload else { return nil }
                         return max(down, up)
                     },
-                    tint: .blue
+                    tint: SystemMonitorPalette.cyan
                 )
                 metricCard(
                     icon: "thermometer.medium",
@@ -192,7 +213,8 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.thermalState ?? "Not available",
                     detail: "System pressure",
                     values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                    tint: thermalTint
+                    tint: thermalTint,
+                    surfaceTint: SystemMonitorPalette.green
                 )
                 metricCard(
                     icon: "battery.75percent",
@@ -200,7 +222,8 @@ struct SystemMonitorWindowView: View {
                     value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "Not available",
                     detail: batteryDetail,
                     values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                    tint: batteryTint
+                    tint: batteryTint,
+                    surfaceTint: SystemMonitorPalette.gold
                 )
                 metricCard(
                     icon: "chart.bar",
@@ -208,7 +231,8 @@ struct SystemMonitorWindowView: View {
                     value: loadAverage,
                     detail: "Average CPU demand · \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs",
                     values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
-                    tint: usageTint(loadLevel)
+                    tint: usageTint(loadLevel),
+                    surfaceTint: SystemMonitorPalette.blue
                 )
                 .help(loadExplanation)
             }
@@ -222,16 +246,18 @@ struct SystemMonitorWindowView: View {
         detail: String,
         values: [Double] = [],
         tint: Color = .gray,
+        surfaceTint: Color? = nil,
         featured: Bool = false
     ) -> some View {
-        ZStack(alignment: .bottom) {
+        let surface = surfaceTint ?? tint
+        return ZStack(alignment: .bottom) {
             StatsSparkline(values: values, color: tint)
                 .frame(height: featured ? 78 : 44)
                 .opacity(0.58)
             VStack(alignment: .leading, spacing: 8) {
                 Label(title, systemImage: icon)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(tint)
+                    .foregroundStyle(colorScheme == .dark ? tint : .primary)
                 Text(value)
                     .font(.system(size: featured ? 30 : 22, weight: .semibold))
                     .monospacedDigit()
@@ -243,11 +269,8 @@ struct SystemMonitorWindowView: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .frame(height: featured ? 158 : 112)
-        .background(
-            LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0.065)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.16)) }
+        .background(SystemMonitorPalette.gradient(surface))
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(surface.opacity(0.25)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 

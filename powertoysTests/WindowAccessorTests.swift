@@ -190,7 +190,7 @@ final class WindowAccessorTests: XCTestCase {
             "logs": NSSize(width: 860, height: 600),
             "input-devices": NSSize(width: 860, height: 600),
             "system-care": NSSize(width: 880, height: 600),
-            "system-monitor": NSSize(width: 880, height: 600),
+            "system-monitor": NSSize(width: 860, height: 600),
             "nettoys": NSSize(width: 1_100, height: 700),
             "disk-explorer": NSSize(width: 880, height: 600),
         ]
