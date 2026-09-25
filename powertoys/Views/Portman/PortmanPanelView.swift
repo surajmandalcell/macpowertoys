@@ -62,7 +62,8 @@ struct PortmanPanelView: View {
         case .local:
             selectedPort == nil ? 320 + CGFloat(service.localPorts.count) * 64 : 620
         case .forward:
-            400 + CGFloat(service.tunnels.count) * 48 + CGFloat(service.remotePorts.count) * 28
+            400 + CGFloat(service.tunnels.count) * 48
+                + CGFloat(!host.isEmpty && discoveredHost == host ? service.remotePorts.count : 0) * 28
         case .alerts:
             280 + CGFloat(service.activeAlerts.count) * 92
         case .settings:
@@ -176,16 +177,16 @@ struct PortmanPanelView: View {
         .confirmationDialog("Stop this server process?", isPresented: Binding(
             get: { pendingStop != nil }, set: { if !$0 { pendingStop = nil } }
         ), presenting: pendingStop) { port in
-            Button("Stop PID \(port.pid)", role: .destructive) { service.stopLocal(port) }
+            Button("Stop PID \(String(port.pid))", role: .destructive) { service.stopLocal(port) }
         } message: { port in
-            Text("Port \(port.port) and eligible children will stop. Any still running after the grace period will be force quit.")
+            Text("Port \(String(port.port)) and eligible children will stop. Any still running after the grace period will be force quit.")
         }
         .confirmationDialog("Restart this server?", isPresented: Binding(
             get: { pendingRestart != nil }, set: { if !$0 { pendingRestart = nil } }
         ), presenting: pendingRestart) { port in
-            Button("Restart PID \(port.pid)") { service.restartLocal(port) }
+            Button("Restart PID \(String(port.pid))") { service.restartLocal(port) }
         } message: { port in
-            Text("Port \(port.port) will stop, then Portman will run its saved command in the same folder. Output goes to Library/Logs/MacPowerToys/Portman.")
+            Text("Port \(String(port.port)) will stop, then Portman will run its saved command in the same folder. Output goes to Library/Logs/MacPowerToys/Portman.")
         }
         .confirmationDialog("Stop selected server processes?", isPresented: Binding(
             get: { !pendingCleanupPorts.isEmpty },
@@ -246,7 +247,7 @@ struct PortmanPanelView: View {
 
             if service.localPorts.isEmpty {
                 ContentUnavailableView("No servers listening", systemImage: "network",
-                                       description: Text("Local development ports \(PortmanPreferences.scanRange.lowerBound)–\(PortmanPreferences.scanRange.upperBound) will appear here."))
+                                       description: Text("Local development ports \(String(PortmanPreferences.scanRange.lowerBound))–\(String(PortmanPreferences.scanRange.upperBound)) will appear here."))
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else {
                 LazyVStack(spacing: 4) {
@@ -293,7 +294,7 @@ struct PortmanPanelView: View {
                 .labelsHidden()
                 .toggleStyle(.checkbox)
                 .disabled(!port.canStop)
-                .accessibilityLabel("Select process \(port.pid) for cleanup")
+                .accessibilityLabel("Select process \(String(port.pid)) for cleanup")
             }
             Button {
                 if cleanupMode {
@@ -311,7 +312,7 @@ struct PortmanPanelView: View {
                             Circle().fill(portColor(port)).frame(width: 3, height: 3)
                             Circle().fill(portColor(port)).frame(width: 3, height: 3)
                         }
-                        Text("\(port.port)")
+                        Text(String(port.port))
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                     }
                     .foregroundStyle(portColor(port))
@@ -331,19 +332,19 @@ struct PortmanPanelView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(UtilityInteractionButtonStyle())
-            .help(cleanupMode ? "Select port \(port.port) for cleanup" : "Show port \(port.port) details")
+            .help(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
             if hoveredRowID == port.id && !cleanupMode {
                 Button { openLocal(port.port) } label: {
                     Image(systemName: "arrow.up.right.square").frame(width: 20, height: 24)
                 }
-                .help("Open localhost:\(port.port)")
-                .accessibilityLabel("Open localhost port \(port.port)")
+                .help("Open localhost:\(String(port.port))")
+                .accessibilityLabel("Open localhost port \(String(port.port))")
                 if port.canStop {
                     Button { pendingStop = port } label: {
                         Image(systemName: "stop.fill").frame(width: 20, height: 24)
                     }
-                    .help("Stop port \(port.port) process tree")
-                    .accessibilityLabel("Stop process tree for port \(port.port)")
+                    .help("Stop port \(String(port.port)) process tree")
+                    .accessibilityLabel("Stop process tree for port \(String(port.port))")
                 }
             } else {
                 sparkline(for: port, attention: attention != nil)
@@ -362,7 +363,7 @@ struct PortmanPanelView: View {
         }
         .task(id: port.id) { await service.loadMetadata(for: port) }
         .contextMenu {
-            Button("Open localhost:\(port.port)") { openLocal(port.port) }
+            Button("Open localhost:\(String(port.port))") { openLocal(port.port) }
             if port.canStop {
                 Button("Stop process tree…", role: .destructive) { pendingStop = port }
             }
@@ -436,7 +437,7 @@ struct PortmanPanelView: View {
                                 hoveredSegmentID = inside ? segment.port.processID : nil
                                 highlightedProcessID = inside ? segment.port.processID : nil
                             }
-                            .help("Port \(segment.port.port): \(memoryString(segment.memoryBytes))")
+                            .help("Port \(String(segment.port.port)): \(memoryString(segment.memoryBytes))")
                     }
                     Rectangle().fill(Color.primary.opacity(0.25))
                         .frame(width: max(0, geometry.size.width * Double(other) / Double(physical)))
@@ -449,7 +450,7 @@ struct PortmanPanelView: View {
             HStack {
                 if let segment = usageSegments.first(where: { $0.port.processID == highlightedProcessID }) {
                     Circle().fill(portColor(segment.port)).frame(width: 6, height: 6)
-                    Text(":\(segment.port.port) · \(memoryString(segment.memoryBytes))")
+                    Text(":\(String(segment.port.port)) · \(memoryString(segment.memoryBytes))")
                 } else {
                     Text("Servers \(memoryString(allServers))")
                 }
@@ -474,7 +475,7 @@ struct PortmanPanelView: View {
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
-        .accessibilityLabel("Recent memory use for port \(port.port)")
+        .accessibilityLabel("Recent memory use for port \(String(port.port))")
     }
 
     private var overviewMemory: Int64 {
@@ -503,7 +504,7 @@ struct PortmanPanelView: View {
             }
 
             HStack(alignment: .firstTextBaseline) {
-                Text(":\(port.port)")
+                Text(":\(String(port.port))")
                     .font(.system(size: 28, weight: .medium, design: .monospaced))
                     .foregroundStyle(portColor(port))
                 Spacer()
@@ -521,15 +522,15 @@ struct PortmanPanelView: View {
                     .help(service.restartableIDs.contains(port.id)
                           ? "Restart with the original command and environment"
                           : "Restart requires the original command, environment, and folder")
-                    .accessibilityLabel("Restart process for port \(port.port)")
+                    .accessibilityLabel("Restart process for port \(String(port.port))")
                     Button { pendingStop = port } label: {
                         Image(systemName: "stop.circle").frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
                     .foregroundStyle(.red)
-                    .help("Stop port \(port.port) process tree")
-                    .accessibilityLabel("Stop process tree for port \(port.port)")
+                    .help("Stop port \(String(port.port)) process tree")
+                    .accessibilityLabel("Stop process tree for port \(String(port.port))")
                 }
             }
             if let attention = service.warning(for: port) {
@@ -559,7 +560,7 @@ struct PortmanPanelView: View {
                let url = links.pullRequestURL, let number = links.pullRequestNumber {
                 HStack {
                     Text("Pull request").foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
-                    Button("#\(number) ↗") { NSWorkspace.shared.open(url) }
+                    Button("#\(String(number)) ↗") { NSWorkspace.shared.open(url) }
                         .buttonStyle(.plain)
                         .focusEffectDisabled()
                 }
@@ -593,12 +594,18 @@ struct PortmanPanelView: View {
                     .font(.system(size: 13, design: .monospaced))
                     .monospacedDigit()
             }
-            if samples.count > 1 {
+            if !samples.isEmpty {
                 Chart {
                     ForEach(samples) { sample in
                         LineMark(x: .value("Time", sample.date),
                                  y: .value("Memory", sample.memoryBytes))
                             .foregroundStyle(portColor(port))
+                    }
+                    if let latest = samples.last {
+                        PointMark(x: .value("Time", latest.date),
+                                  y: .value("Memory", latest.memoryBytes))
+                            .foregroundStyle(portColor(port))
+                            .symbolSize(25)
                     }
                     RuleMark(y: .value("Alert", PortmanPreferences.memoryAlertBytes))
                         .foregroundStyle(Color.orange.opacity(0.55))
@@ -615,7 +622,7 @@ struct PortmanPanelView: View {
                                              (samples.map(\.memoryBytes).max() ?? 1) * 12 / 10))
                 .chartOverlay { proxy in chartHover(proxy) }
                 .frame(height: 115)
-                .accessibilityLabel("Memory history for port \(port.port)")
+                .accessibilityLabel("Memory history for port \(String(port.port))")
 
                 HStack {
                     Text("CPU").font(.system(size: 13, weight: .medium))
@@ -637,7 +644,7 @@ struct PortmanPanelView: View {
                 .chartYScale(domain: 0...100)
                 .chartOverlay { proxy in chartHover(proxy) }
                 .frame(height: 55)
-                .accessibilityLabel("CPU history for port \(port.port)")
+                .accessibilityLabel("CPU history for port \(String(port.port))")
             }
             if let hovered {
                 Text(hovered.date.formatted(date: .omitted, time: .standard))
@@ -663,7 +670,7 @@ struct PortmanPanelView: View {
                 }
             }
             HStack {
-                Button("Open localhost:\(port.port)") { openLocal(port.port) }
+                Button("Open localhost:\(String(port.port))") { openLocal(port.port) }
                     .buttonStyle(.borderedProminent)
                 Spacer()
                 if let preview = service.githubLinks[port.id]?.previewURL {
@@ -700,7 +707,7 @@ struct PortmanPanelView: View {
                     Image(systemName: "ellipsis").frame(width: 24, height: 24)
                 }
                 .menuStyle(.borderlessButton)
-                .accessibilityLabel("More actions for port \(port.port)")
+                .accessibilityLabel("More actions for port \(String(port.port))")
             }
             .controlSize(.small)
             if let error = service.controlError { errorText(error) }
@@ -712,7 +719,7 @@ struct PortmanPanelView: View {
             HStack {
                 Text(command).lineLimit(1)
                 Spacer()
-                Text("\(pid)").foregroundStyle(.secondary)
+                Text(String(pid)).foregroundStyle(.secondary)
                 Text(memoryString(memoryBytes)).frame(width: 68, alignment: .trailing)
             }
             .font(.system(size: 10, design: .monospaced))
@@ -772,7 +779,7 @@ struct PortmanPanelView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(":\(port.port) · \(service.metadata[port.id]?.project ?? port.command)")
+                        Text(":\(String(port.port)) · \(service.metadata[port.id]?.project ?? port.command)")
                             .font(.system(size: 12, weight: .medium))
                         Text(service.warning(for: port) ?? "")
                             .font(.system(size: 11)).foregroundStyle(.orange)
@@ -795,7 +802,7 @@ struct PortmanPanelView: View {
                 Text("Snoozed").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                 ForEach(snoozed) { port in
                     HStack {
-                        Text(":\(port.port) · \(service.warning(for: port) ?? "")")
+                        Text(":\(String(port.port)) · \(service.warning(for: port) ?? "")")
                             .font(.system(size: 11)).lineLimit(1)
                         Spacer()
                         Button("Rearm") { service.rearm(port) }.controlSize(.mini)
@@ -845,7 +852,7 @@ struct PortmanPanelView: View {
             Text("Ports stay on the server. Portman binds each tunnel to 127.0.0.1 on this Mac.")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
 
-            if discoveredHost == host && !service.remotePorts.isEmpty {
+            if !host.isEmpty && discoveredHost == host && !service.remotePorts.isEmpty {
                 QuietDivider()
                 HStack {
                     Text("Listening on \(host)").font(.system(size: 12, weight: .medium))
@@ -910,7 +917,7 @@ struct PortmanPanelView: View {
                 get: { selectedRemotePorts.contains(port) },
                 set: { if $0 { selectedRemotePorts.insert(port) } else { selectedRemotePorts.remove(port) } }
             )) {
-                Text(":\(port)").font(.system(size: 12, design: .monospaced))
+                Text(":\(String(port))").font(.system(size: 12, design: .monospaced))
             }
             .toggleStyle(.checkbox)
             Spacer()
@@ -920,7 +927,7 @@ struct PortmanPanelView: View {
             ))
             .textFieldStyle(.roundedBorder)
             .frame(width: 72)
-            .accessibilityLabel("Local port for remote port \(port)")
+            .accessibilityLabel("Local port for remote port \(String(port))")
         }
         .frame(minHeight: 28)
     }
@@ -930,18 +937,19 @@ struct PortmanPanelView: View {
             Image(systemName: tunnelSymbol(tunnel.state))
                 .foregroundStyle(tunnelColor(tunnel.state))
             VStack(alignment: .leading, spacing: 2) {
-                Text("localhost:\(tunnel.localPort) → \(tunnel.host):\(tunnel.remotePort)")
-                    .font(.system(size: 12, design: .monospaced)).lineLimit(1)
-                Text(tunnelStatus(tunnel.state))
-                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
+                Text("localhost:\(String(tunnel.localPort))")
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                Text("\(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
             }
+            .help("localhost:\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))")
             Spacer(minLength: 4)
             if case .running = tunnel.state {
                 Button { openLocal(tunnel.localPort) } label: {
                     Image(systemName: "arrow.up.right.square")
                 }
-                .help("Open localhost:\(tunnel.localPort)")
-                .accessibilityLabel("Open tunnel on port \(tunnel.localPort)")
+                .help("Open localhost:\(String(tunnel.localPort))")
+                .accessibilityLabel("Open tunnel on port \(String(tunnel.localPort))")
             }
             if case .failed = tunnel.state {
                 Button("Retry") {
