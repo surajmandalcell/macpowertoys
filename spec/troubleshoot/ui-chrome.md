@@ -807,6 +807,18 @@
   Command-Shift-3 from another app. Color Picker must open without taking a
   screenshot.
 
+## Shortcut Tap Requests Event Access At Launch
+
+- **Symptom:** A normally launched Diskman window opens behind a macOS Device
+  Control and Data Access prompt, before the user uses any shortcut.
+- **Cause:** Launch initializes `GlobalShortcutManager`; its default reserved
+  screenshot shortcut tries to create a suppressing event tap immediately.
+- **Invariant:** Check Accessibility trust without prompting before creating a
+  reserved-shortcut tap. Keep the explicit access action in shortcut settings.
+- **Check:** Hosted normal-launch Diskman captures before the guard showed the
+  prompt; run `36171513372` passed and its normal-launch capture showed the
+  scanning visualization without a permission dialog.
+
 ## Awake Window Controls
 
 - **Symptom:** The Awake window can be enlarged, the off state is exposed as
