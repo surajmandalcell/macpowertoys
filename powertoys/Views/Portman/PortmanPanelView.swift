@@ -4,8 +4,12 @@ import SwiftUI
 import UserNotifications
 
 struct PortmanPanelView: View {
-    private enum Page: String, CaseIterable {
+    enum Page: String, CaseIterable {
         case local = "Servers", forward = "Forward", alerts = "Alerts", settings = "Settings"
+    }
+
+    init(initialPage: Page = .local) {
+        _page = State(initialValue: initialPage)
     }
 
     @State private var service = PortmanService.shared
