@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Observation
 
@@ -146,7 +147,7 @@ nonisolated enum FanCommand {
         _ = try run(smctlPath, arguments(for: preset))
     }
 
-    private static func run(_ executable: String, _ arguments: [String]) throws -> String {
+    static func run(_ executable: String, _ arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -155,12 +156,27 @@ nonisolated enum FanCommand {
         process.standardOutput = pipe
         process.standardError = pipe
         try process.run()
-        let timeout = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        let timeout = DispatchWorkItem {
+            guard process.isRunning else { return }
+            process.terminate()
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1) {
+                if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
+            }
+        }
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5, execute: timeout)
-        let data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
+        var data = Data()
+        var exceeded = false
+        while true {
+            let chunk = pipe.fileHandleForReading.readData(ofLength: 8_192)
+            if chunk.isEmpty { break }
+            let remaining = max(262_144 - data.count, 0)
+            data.append(contentsOf: chunk.prefix(remaining))
+            exceeded = exceeded || chunk.count > remaining
+        }
         process.waitUntilExit()
         timeout.cancel()
-        let output = String(decoding: data.prefix(262_144), as: UTF8.self)
+        guard !exceeded else { throw FanError("The fan helper returned too much data.") }
+        let output = String(decoding: data, as: UTF8.self)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard process.terminationStatus == 0 else {
             throw FanError(output.isEmpty ? "The fan helper did not respond." : output)
