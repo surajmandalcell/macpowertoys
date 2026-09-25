@@ -54,7 +54,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? 240 + CGFloat(service.localPorts.count) * 56 : 620
+            selectedPort == nil ? 280 + CGFloat(service.localPorts.count) * 64 : 620
         case .forward:
             400 + CGFloat(service.tunnels.count) * 48 + CGFloat(service.remotePorts.count) * 28
         case .alerts:
@@ -218,7 +218,8 @@ struct PortmanPanelView: View {
                      ? "freed by stopping \(selectedCleanupProcesses.count) server\(selectedCleanupProcesses.count == 1 ? "" : "s")"
                      : focusedSegment.map {
                         "\(String(format: "%.1f", Double($0.memoryBytes) / Double(max(1, ProcessInfo.processInfo.physicalMemory)) * 100))% of RAM · \(String(format: "%.1f", $0.cpuPercent))% CPU"
-                     } ?? (showingMacMemory ? "used by this Mac" : "used by \(uniquePorts.count) servers"))
+                     } ?? (showingMacMemory ? "used by this Mac"
+                          : "used by \(uniquePorts.count) server\(uniquePorts.count == 1 ? "" : "s")"))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                 if !cleanupMode {
                     Picker("Memory scope", selection: $showingMacMemory) {
@@ -226,6 +227,8 @@ struct PortmanPanelView: View {
                         Text("Mac").tag(true)
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityLabel("Memory scope")
                     .controlSize(.mini)
                     .frame(width: 130)
                     .padding(.top, 4)
