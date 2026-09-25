@@ -33,6 +33,18 @@
   with several servers. Confirm the segmented choices, memory legend, server
   rows, and footer remain readable without a vertical word or cut-off control.
 
+## Portman Empty Servers Layout
+
+- **Symptom:** With no listeners, the empty-state explanation was clipped below
+  the menu-bar panel; a taller fix left a large blank area below the card.
+- **Cause:** The original 200pt empty placeholder and then a 375pt fixed panel
+  did not match the compact empty card's height.
+- **Invariant:** The 330pt empty overview shows both lines of the card, a small
+  bottom inset, and numeric `0 KB` while retaining equal-width tabs.
+- **Check:** Hosted run `36140052984` passed the empty-text visibility assertion.
+  Its 400pt capture shows the complete card and a small bottom inset; check the
+  same state in the final signed app when focus-safe inspection is available.
+
 ## Portman Menu Hit Targets And Detail Charts
 
 - **Symptom:** The owner could switch tabs only by clicking text, row hover
