@@ -30,6 +30,10 @@ final class PortmanUITests: XCTestCase {
         XCTAssertEqual(row.frame.width, bar.frame.width, accuracy: 1)
         let sort = app.descendants(matching: .any)["portman.sort"]
         XCTAssertTrue(sort.isHittable, "Sort by is clipped below the four-server panel")
+        let panel = app.windows.containing(.button, identifier: "portman.sort").firstMatch
+        XCTAssertTrue(panel.exists)
+        XCTAssertLessThanOrEqual(sort.frame.maxY + 8, panel.frame.maxY,
+                                 "The footer needs visible space below its controls")
         attach(app.screenshot(), named: "Portman four servers and footer")
     }
 
