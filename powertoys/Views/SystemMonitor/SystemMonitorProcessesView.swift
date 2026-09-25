@@ -16,6 +16,13 @@ nonisolated enum SystemMonitorProcessSorting {
     static func sorted(_ processes: [SystemMonitorProcess], by column: ProcessSortColumn,
                        descending: Bool) -> [SystemMonitorProcess] {
         processes.sorted { left, right in
+            let unavailable: (Bool, Bool) = switch column {
+            case .cpu: (left.cpuPercent == nil, right.cpuPercent == nil)
+            case .memory: (left.started == 0 && left.residentBytes == 0,
+                           right.started == 0 && right.residentBytes == 0)
+            case .name, .pid: (false, false)
+            }
+            if unavailable.0 != unavailable.1 { return !unavailable.0 }
             let order: ComparisonResult
             switch column {
             case .name: order = left.name.localizedStandardCompare(right.name)
