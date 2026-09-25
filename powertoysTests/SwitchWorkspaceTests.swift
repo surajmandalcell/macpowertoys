@@ -27,6 +27,11 @@ final class SwitchWorkspaceTests: XCTestCase {
         let first = try XCTUnwrap(model.accounts.first { $0.identity.email == "first@example.test" })
         let second = try XCTUnwrap(model.accounts.first { $0.identity.email == "second@example.test" })
         await model.makeDefault(first.id)
+        await model.refresh()
+        XCTAssertTrue(model.discoveries.contains { $0.identity?.accountID == "account-first" })
+        XCTAssertFalse(model.importableDiscoveries.contains {
+            $0.identity?.accountID == "account-first"
+        })
         model.selectedAccountID = second.id
 
         for size in [NSSize(width: 1_024, height: 720), NSSize(width: 880, height: 600)] {
@@ -66,7 +71,8 @@ final class SwitchWorkspaceTests: XCTestCase {
     private func attachTrayRender(model: SwitchWorkspaceModel, scheme: ColorScheme) async throws {
         let size = NSSize(width: 360, height: 240)
         let host = NSHostingView(rootView: SwitchTrayView(model: model)
-            .frame(width: size.width, height: size.height)
+            .frame(width: size.width, height: size.height, alignment: .top)
+            .background(Color(nsColor: .windowBackgroundColor))
             .environment(\.colorScheme, scheme))
         host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         host.frame = NSRect(origin: .zero, size: size)

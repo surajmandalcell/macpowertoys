@@ -33,6 +33,23 @@ final class SwitchWorkspaceModel {
 
     var accounts: [AccountRecord] { snapshot?.status.accounts ?? [] }
     var discoveries: [DiscoveredSource] { snapshot?.discoveries ?? [] }
+    var importableDiscoveries: [DiscoveredSource] {
+        discoveries.filter { source in
+            guard source.support == .supportedChatGPT || source.support == .supportedOAuth else {
+                return false
+            }
+            return !accounts.contains { account in
+                if account.source.standardizedFileURL == source.path.standardizedFileURL { return true }
+                guard let identity = source.identity else { return false }
+                return account.identity.providerID == identity.providerID
+                    && account.identity.authMode == identity.authMode
+                    && identity.userID != nil && account.identity.userID == identity.userID
+                    && identity.accountID != nil && account.identity.accountID == identity.accountID
+                    && (identity.providerID != .grokBuild
+                        || account.identity.workspaceID == identity.workspaceID)
+            }
+        }
+    }
     var selectedAccount: AccountRecord? {
         accounts.first { $0.id == selectedAccountID }
     }

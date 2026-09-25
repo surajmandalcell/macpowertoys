@@ -101,6 +101,7 @@ struct SwitchWindowView: View {
         .frame(width: 68)
         .frame(maxHeight: .infinity)
         .background(Color(red: 0.09, green: 0.12, blue: 0.18))
+        .environment(\.colorScheme, .dark)
     }
 
     private func railButton(_ symbol: String, label: String, selected: Bool,
@@ -118,7 +119,7 @@ struct SwitchWindowView: View {
                 }
                 .contentShape(RoundedRectangle(cornerRadius: 10))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
         .focusEffectDisabled()
         .focused($focusedRailItem, equals: label)
         .accessibilityLabel(label)
@@ -619,9 +620,7 @@ struct SwitchWindowView: View {
 
     @ViewBuilder
     private var discoveredSources: some View {
-        let sources = model.discoveries.filter {
-            $0.support == .supportedChatGPT || $0.support == .supportedOAuth
-        }
+        let sources = model.importableDiscoveries
         if !sources.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("AVAILABLE TO IMPORT")
