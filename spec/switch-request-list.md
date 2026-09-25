@@ -14,7 +14,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Code complete; live check pending | Manage supported accounts in the applet. | Discover/import, sign in, switch defaults, verify, view all available rate-limit buckets, credits, and account activity, and remove accounts through Core with errors and recovery states visible. |
 | Hosted verified; live check pending | Preserve standalone Switch's remaining account actions in MacPowerToys. | Open the selected provider, copy its saved auth path, reorder accounts, and inspect source, import, last-use, and workspace details. The combined MacPowerToys menu offers quick account switching and usage on demand. |
 | Hosted verified; live check pending | Keep MacPowerToys lightweight: account management, sign-in, import, default switching, verification, usage, and account recovery. Conversation browsing and cleanup stay in standalone Switch. | No conversation or cleanup route, scan, or destructive action in the MacPowerToys applet. Recovery and linked-settings repair remain reachable. |
-| Layout rendered; final hosted navigation pending | Follow the standalone Switch window's flow: narrow functional rail, page title and refresh strip, persistent account list, and adjacent Identity, Usage, activity, and account-detail panels. Keep the original icon. Include Accounts, Backup, and relevant Settings; omit Chat History and Cleanup as agreed. | Compare the port with `switch/docs/screenshots/accounts-dark.png` at 1120×740, then inspect light and dark, empty and populated, Backup, Settings, and minimum-width states. Every visible rail action must work. |
+| Hosted layout and navigation verified; installed account flow pending | Follow the standalone Switch window's flow: narrow functional rail, page title and refresh strip, persistent account list, and adjacent Identity, Usage, activity, and account-detail panels. Keep the original icon. Include Accounts, Backup, and relevant Settings; omit Chat History and Cleanup as agreed. | Compare the port with `switch/docs/screenshots/accounts-dark.png` at 1120×740, then inspect light and dark, empty and populated, Backup, Settings, and minimum-width states. Every visible rail action must work. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
@@ -31,10 +31,9 @@ passed the full macOS suite, built an installable archive, and confirmed the
 duplicate import suggestion is gone. Its updated quick-menu renders have a
 proper background in both appearances. Account-changing actions remain verified
 with synthetic Core tests; the owner's saved accounts were not touched.
-The earlier installed app reports source commit `dc97280`; the latest Switch UI
-commits have hosted verification but are not installed locally. The earlier
-install gate recorded successful signature verification. A sandboxed repeat
-returned `CSSMERR_TP_NOT_TRUSTED`, so it cannot establish a trust failure.
+An earlier installed app reported source commit `dc97280`. Its install gate
+recorded successful signature verification. A sandboxed repeat returned
+`CSSMERR_TP_NOT_TRUSTED`, so it could not establish a trust failure.
 A targeted hosted UI test opens Switch through its supported CLI route and
 traverses Accounts and Recovery. Run 36131532331 passed unit tests but Xcode
 could not spawn its separate UI-test Debug app. A separate build output and
@@ -52,7 +51,7 @@ Accounts/Recovery navigation, and opening About, with window captures.
 Run 36150672552 captured empty and populated Accounts at 880pt and 1,024pt in
 light and dark, plus Recovery and the quick menu. The focus-outline assertion
 was corrected, and the full hosted macOS suite passed in run 36153836043.
-The signed installed app still needs a focus-preserving final check.
+That header-tab revision was superseded by the original-layout revision below.
 
 The original-layout revision now has the standalone 48-point icon rail,
 200-point account list, title strip, Identity and Usage panels, activity grid,
@@ -66,5 +65,11 @@ modifier and thin scroller on the activity grid; both are fixed in the next
 revision. That run also had an unrelated Portman failure. Hosted Switch UI run
 36184481199 opened Switch from the launcher, then found the Add control under
 a different accessibility element type; the test now queries the identifier
-and opens the provider menu. The next hosted run must verify those fixes and
-capture a populated Usage panel with synthetic data.
+and opens the provider menu. The final focused navigation run 36188088138
+passed Accounts, Backup, Settings, About, and the Add provider menu. Full hosted
+run 36188072379 passed every job, including synthetic Core actions, and captured
+populated Accounts and Settings at 1120pt and 880pt in both appearances plus
+the compact menu. Their visual review found no remaining layout defect. The
+installed app and helper both report source commit `d30b7a1`, which contains
+this Switch revision. A live account and recovery check in the installed app
+remains open; synthetic verification did not touch the owner's saved accounts.
