@@ -88,7 +88,7 @@
       "name": "disk-explorer",
       "title": "Disk Explorer",
       "description": "Open Disk Explorer",
-      "icon": "extension-icon.png",
+      "icon": "disk-explorer.png",
       "mode": "no-view"
     },
     {

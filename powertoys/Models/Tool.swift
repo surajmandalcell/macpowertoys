@@ -285,7 +285,7 @@ struct DiskExplorerTool: Tool {
     let name = "Disk Explorer"
     let description = "Scan disks and folders, explore their space in a treemap or ring chart, and review files before removal."
     let icon = "internaldrive"
-    let logoAsset = ""
+    let logoAsset = "DiskExplorerLogo"
     let category = ToolCategory.files
 
     let manual = [

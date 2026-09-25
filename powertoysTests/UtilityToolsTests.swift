@@ -15,6 +15,7 @@ final class UtilityToolsTests: XCTestCase {
         "TextExtractorLogo",
         "InputDevicesLogoA",
         "SystemCareLogo",
+        "DiskExplorerLogo",
         "SystemMonitorLogo",
         "NetToysLogo"
     ]
@@ -62,10 +63,16 @@ final class UtilityToolsTests: XCTestCase {
             let iconFiles = try FileManager.default.contentsOfDirectory(
                 at: assetsRoot.appendingPathComponent("\(assetName).imageset", isDirectory: true),
                 includingPropertiesForKeys: nil
-            ).filter { $0.pathExtension == "svg" }
+            ).filter { ["svg", "png"].contains($0.pathExtension) }
             XCTAssertFalse(iconFiles.isEmpty, assetName)
 
             for iconFile in iconFiles {
+                if iconFile.pathExtension == "png" {
+                    let bitmap = try XCTUnwrap(NSBitmapImageRep(data: Data(contentsOf: iconFile)))
+                    XCTAssertEqual(bitmap.pixelsWide, 512, iconFile.path)
+                    XCTAssertEqual(bitmap.pixelsHigh, 512, iconFile.path)
+                    continue
+                }
                 let source = String(decoding: try Data(contentsOf: iconFile), as: UTF8.self)
                 XCTAssertNotNil(
                     source.range(
@@ -133,6 +140,7 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "text-extractor"), "TextExtractorLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoA")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-care"), "SystemCareLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "disk-explorer"), "DiskExplorerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-monitor"), "SystemMonitorLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "nettoys"), "NetToysLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
