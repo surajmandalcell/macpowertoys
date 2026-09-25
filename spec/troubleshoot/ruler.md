@@ -2,18 +2,22 @@
 
 ## Automated Ruler Window Checks
 
-- **Symptom:** A macOS logout confirmation appeared during app-scoped shortcut
-  attempts to dismiss the borderless Ruler overlay; Ruler remained open.
-- **Cause:** The keyboard delivery target could not be verified from the
-  borderless overlay. The Ruler accessibility state stayed unchanged after the
-  shortcut calls, so continuing with another key was unsafe.
-- **Invariant:** Once the Ruler overlay is open, keep automation read-only unless
+- **Symptom:** A macOS logout confirmation appeared while the borderless Ruler
+  overlay stayed open.
+- **Cause:** The automation sent `Command+W`, observed that Ruler remained open,
+  then sent `Command+Q` to the same unverified keyboard target. The earlier
+  `CMD+W` form had already failed with `keyNotFound("CMD")`. The session trace
+  proves this unsafe sequence; it does not prove how macOS routed the last key.
+- **Invariant:** Native desktop automation does not send synthetic keyboard
+  shortcuts. Once the Ruler overlay is open, use read-only inspection unless
   an explicit visible Ruler control can be used without changing the owner's
-  focus. Do not send keyboard shortcuts or click the covered launcher.
+  focus. Never click the covered launcher or try another input after an
+  unchanged accessibility state.
 - **Check:** Confirm the overlay by app-scoped screenshot and accessibility
-  state, then stop UI input. If a system session dialog appears, ask the owner
-  to use Cancel before any further UI action or app replacement. Non-GUI
-  verification may continue.
+  state. Use a verified Ruler control or a documented non-GUI close path; if
+  neither exists, leave the overlay open. If a system session dialog appears,
+  ask the owner to use Cancel before any further UI input. Non-GUI verification
+  may continue.
 
 ## FreeRuler Parity Drift
 
