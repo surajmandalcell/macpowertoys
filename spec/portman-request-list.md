@@ -81,9 +81,15 @@ process checks did not take desktop focus. A private host and live menu-bar
 interactions still need owner-approved inspection.
 
 The current source adds a hosted UI test for normal `--open portman` launch and
-Servers, Forward, Alerts, and Settings navigation. These interactions still
-need a passing hosted run and screenshot review. The local compile-only check
-could not resolve Swift packages because GitHub DNS was unavailable in the
-owner session; a Swift syntax parse passed. The installed `dc97280` copy is
-older than these new accessibility labels and must be replaced after the
-hosted check passes.
+Servers, Forward, Alerts, and Settings navigation. The owner's live review
+then identified the icon, hit targets, detail charts, spacing, and Forward
+selection issues listed above. Their source fixes include a socket status
+glyph, full-width controls, compact charts and header, Return actions,
+multi-selection, Clear scan, scan cancellation, and tab-specific monitoring.
+Swift syntax, the SVG, and asset JSON passed static checks. Hosted run
+`36134013052` could not compile this revision because a CPU `BarMark` width
+modifier was invalid; the chart now passes width in its initializer. A local
+compile-only build reached unrelated, concurrently edited Disk Explorer code
+and stopped on a type-check timeout there. The revised Portman build, hosted
+interaction and screenshot checks, and replacement of installed `dc97280`
+remain open.
