@@ -15,7 +15,9 @@ rules, and before inspecting or changing implementation files.
 
 ## Mandatory Current Build Rule
 
-- Always build, open, test, install, and report the latest source state only.
+- A focus-preserving owner request limits verification to compile-only and
+  static checks on the active desktop; see [Verification](verification.md).
+- Any build, open, test, install, or report must use the latest source state.
 - Commit the complete source state and confirm the worktree is clean before the
   final visual launch or installation.
 - Before opening an app, confirm its embedded `MPTSourceCommit` equals current

@@ -1,5 +1,22 @@
 # Verification Troubleshooting
 
+## Test Actions Must Leave The Owner's Desktop Alone
+
+- **Symptom:** During Xcode test execution on the shared Mac, the owner saw a
+  removable-volume access prompt for `MacPowerToys.app` and a Gatekeeper
+  "damaged" dialog for `powertoysUITests-Runner.app`.
+- **Cause:** Test actions on the owner's active desktop can launch app bundles
+  and prompt through macOS privacy or Gatekeeper services. The two prompts were
+  observed while tests ran concurrently; their exact originating test action
+  was not established.
+- **Invariant:** When the owner requests focus-preserving verification, use
+  compile-only Xcode builds and read-only/static checks on this account. Run
+  app and UI test executables only in an isolated macOS account or VM. Do not
+  click privacy or Gatekeeper decisions on the owner's behalf.
+- **Check:** Before a test command, inspect whether it launches an app or test
+  runner. In the focus-preserving workflow, issue `xcodebuild build` rather
+  than `xcodebuild test` and confirm no new app or runner process was started.
+
 ## README Window Screenshots
 
 - **Symptom:** Product screenshots sit on white rectangles, lose their window
@@ -25,8 +42,10 @@
   is still wrong.
 - **Cause:** Verification stopped at the build or inspected an older binary.
 - **Invariant:** Run the smallest static check, build the final source state,
-  then exercise every changed state in the running final binary. Rebuild after
-  any reconciliation or edit made following visual QA.
+  then exercise every changed state in the running final binary only when
+  desktop interaction is permitted or an isolated account or VM is available.
+  Under a focus-preserving request, stop at the compile-only check and report
+  the unverified interaction states. Rebuild after any edit following visual QA.
 - **Check:** Record the exact final build result and inspect default, hover,
   selected, disabled, settings, and dismissal states that the change touches.
 
@@ -51,8 +70,10 @@
 - **Cause:** The Xcode automation harness failed to bootstrap; this is not a
   product assertion result.
 - **Invariant:** Distinguish harness failure from app failure. Retry the smallest
-  signed runner once, then use live accessibility and visual interaction as the
-  fallback while reporting the harness limitation.
+  signed runner once in an isolated account or VM, then use live accessibility
+  and visual interaction there while reporting the harness limitation. Do not
+  retry or use that fallback on the owner's active desktop when focus must stay
+  undisturbed.
 - **Check:** Inspect the result bundle message. Never report an early runner exit
   as a passing or failing product test.
 
@@ -66,8 +87,9 @@
   `codesign --verify --deep --strict` before launch. If a signed runner cannot
   connect, use live accessibility and visual smoke testing instead.
 - **Check:** Confirm no `powertoysUITests-Runner` process exists, dismiss any
-  remaining dialog normally, and do not claim the system helper was killed when
-  only its dialog was closed.
+  remaining dialog normally only when desktop interaction is permitted, and do
+  not claim the system helper was killed when only its dialog was closed. Under
+  a focus-preserving request, leave the dialog untouched for the owner.
 
 ## Installation Gate
 
@@ -76,7 +98,8 @@
 - **Cause:** The transfer gate or final install step was skipped.
 - **Invariant:** Read the transfer state before UI smoke tests and installation.
   Never replace or relaunch the installed app during an active transfer. When
-  clear, install and relaunch the final verified build before handoff.
+  clear, install and relaunch the final verified build before handoff only when
+  desktop interaction is permitted; otherwise defer installation and report it.
 - **Check:** Confirm no active transfer, install the final Release product, and
   confirm the installed process is running.
 
