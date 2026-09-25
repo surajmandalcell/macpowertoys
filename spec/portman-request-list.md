@@ -178,6 +178,10 @@ remaining behind its actions. The revised source gives overview rows a wider
 hover surface, preserves their inner text gutter, and crossfades the fixed
 trailing metrics slot to inset link/stop actions. The overview no longer scans
 or displays unrelated whole-Mac memory, and a single underline moves between
-equal tab cells without crossfading the entire page. Verify this revision in a
-hosted UI run and install the resulting clean signed commit without launching
-XCTest on the owner's desktop.
+equal tab cells without crossfading the entire page. Hosted run
+[36168580633](https://github.com/surajmandalcell/macpowertoys/actions/runs/36168580633)
+passed its fresh-runner Portman UI tests. The inspected rest, row-hover, and
+link-hover captures show the wider inset selection, the complete metrics swap,
+and the link's blue hover state at the actual 400-point width. The local app and
+test bundles compiled without launching XCTest on the owner's desktop, and the
+signed Release build passed strict signature verification.
