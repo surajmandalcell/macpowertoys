@@ -27,8 +27,10 @@ final class TrayFanUITests: XCTestCase {
         setup.click()
 
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForExistence(timeout: 5))
-        let setupNote = app.staticTexts["MacPowerToys includes fan control. macOS may ask you to allow its background item once; there is no package or Terminal command to install."]
-        XCTAssertTrue(setupNote.exists)
+        let setupNote = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "MacPowerToys includes fan control."
+        )).firstMatch
+        XCTAssertEqual(setupNote.label, "MacPowerToys includes fan control. macOS may ask you to allow its background item once; there is no package or Terminal command to install.")
         XCTAssertGreaterThan(setupNote.frame.height, 20)
         XCTAssertTrue(app.buttons["Enable Fan Control"].exists)
         XCTAssertTrue(app.buttons["Check Again"].exists)
