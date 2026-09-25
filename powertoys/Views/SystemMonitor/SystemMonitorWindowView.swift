@@ -7,7 +7,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case memory = "Memory"
     case network = "Network"
     case disk = "Disk"
-    case remote = "Remote"
+    case remote = "Remote Stats"
     case about = "About"
 
     var id: String { rawValue }

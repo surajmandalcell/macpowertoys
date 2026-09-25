@@ -10,41 +10,29 @@ struct SystemMonitorRemoteView: View {
     @State private var reading: SystemMonitorRemoteReading?
     @State private var lastUpdated: Date?
     @State private var errorMessage: String?
-    @State private var copiedCommand = false
+    @State private var refreshGeneration = 0
     private var platform: SystemMonitorRemotePlatform {
         SystemMonitorRemotePlatform(rawValue: platformName) ?? .linux
     }
 
     var body: some View {
-        WorkspacePage("Remote") {
-            Button(connected ? "Disconnect" : "Connect", systemImage: connected ? "link.slash" : "link") {
-                if connected {
-                    disconnect()
-                } else if SystemMonitorRemoteProtocol.validHost(host) {
-                    poller = SystemMonitorRemotePoller()
-                    reading = nil
-                    errorMessage = nil
-                    connected = true
-                } else {
-                    errorMessage = SystemMonitorRemoteError.unsafeHost.localizedDescription
-                }
-            }
-            .accessibilityIdentifier("system-monitor.remote.connection")
-        } content: {
+        WorkspacePage("Remote Stats") {} content: {
             VStack(alignment: .leading, spacing: 10) {
                 Text("CONNECTION").utilitySectionHeader()
                 HStack(spacing: 10) {
                     TextField("SSH host", text: $host, prompt: Text("Host or alias from SSH config"))
                         .textFieldStyle(.roundedBorder)
                         .disabled(connected)
+                        .onSubmit { if !connected { connect() } }
                         .accessibilityIdentifier("system-monitor.remote.host")
                     Picker("Refresh", selection: $interval) {
+                        Text("Manual only").tag(0)
                         Text("30 seconds").tag(30)
                         Text("60 seconds").tag(60)
                         Text("2 minutes").tag(120)
+                        Text("5 minutes").tag(300)
                     }
                     .frame(width: 170)
-                    .disabled(connected)
                 }
                 Picker("System", selection: $platformName) {
                     ForEach(SystemMonitorRemotePlatform.allCases) { system in
@@ -54,19 +42,25 @@ struct SystemMonitorRemoteView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 290)
                 .disabled(connected)
-                Text("Use an SSH host you can already reach. Readings stop on disconnect or when you leave this page.")
+                Text(connected
+                     ? "Refresh changes apply now. Disconnect to change the host or system."
+                     : "Use an SSH host you can already reach. Readings stop on disconnect or when you leave this page.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 HStack(spacing: 10) {
+                    Button(connected ? "Disconnect" : "Connect", systemImage: connected ? "link.slash" : "link") {
+                        connected ? disconnect() : connect()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(connected ? .gray : .accentColor)
+                    .accessibilityIdentifier("system-monitor.remote.connection")
+                    if connected {
+                        Button("Refresh Now", systemImage: "arrow.clockwise") { refreshGeneration += 1 }
+                    }
                     Button("Open Terminal", systemImage: "terminal") { openTerminal() }
                         .disabled(!SystemMonitorRemoteProtocol.validHost(host))
-                    if copiedCommand {
-                        Text("SSH command copied. Paste it in Terminal.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
                 }
-                .controlSize(.small)
+                .controlSize(.regular)
             }
             .utilitySectionCard()
 
@@ -117,7 +111,7 @@ struct SystemMonitorRemoteView: View {
                 .frame(maxWidth: .infinity, minHeight: 240)
             }
         }
-        .task(id: connected) {
+        .task(id: "\(connected):\(interval):\(refreshGeneration)") {
             guard connected else { return }
             while !Task.isCancelled {
                 do {
@@ -132,6 +126,7 @@ struct SystemMonitorRemoteView: View {
                     connected = false
                     return
                 }
+                guard interval > 0 else { return }
                 try? await Task.sleep(for: .seconds(max(interval, 30)))
             }
         }
@@ -154,12 +149,28 @@ struct SystemMonitorRemoteView: View {
         lastUpdated = nil
     }
 
+    private func connect() {
+        guard SystemMonitorRemoteProtocol.validHost(host) else {
+            errorMessage = SystemMonitorRemoteError.unsafeHost.localizedDescription
+            return
+        }
+        poller = SystemMonitorRemotePoller()
+        reading = nil
+        lastUpdated = nil
+        errorMessage = nil
+        connected = true
+    }
+
     private func openTerminal() {
-        guard SystemMonitorRemoteProtocol.validHost(host) else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString("ssh \(host)", forType: .string)
-        copiedCommand = true
-        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+        guard SystemMonitorRemoteProtocol.validHost(host),
+              let address = URL(string: "ssh://\(host)") else { return }
+        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+        NSWorkspace.shared.open([address], withApplicationAt: terminal,
+                                configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            if let error {
+                Task { @MainActor in errorMessage = "Could not open Terminal: \(error.localizedDescription)" }
+            }
+        }
     }
 
     private func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
