@@ -165,14 +165,17 @@ final class PortmanUITests: XCTestCase {
         let idle = app.textFields["Idle hours"]
         XCTAssertTrue(idle.isHittable, "The idle-hours field is not editable")
         idle.click()
-        idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "6\n")
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("6\n")
         XCTAssertEqual(Double((idle.value as? String) ?? ""), 6)
         idle.click()
-        idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "99\n")
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("99\n")
         XCTAssertEqual(Double((idle.value as? String) ?? ""), 6,
                        "Out-of-range cleanup input replaced the saved value")
         idle.click()
-        idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "4\n")
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("4\n")
 
         forward.click()
         XCTAssertTrue(app.buttons["Forward 0 selected"].waitForExistence(timeout: 5),
