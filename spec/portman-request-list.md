@@ -117,10 +117,16 @@ selection reset, and Settings. Its capture showed equal tab widths but clipped
 the zero-server empty state. Run `36138772279` passed after replacing the tall
 empty placeholder with a compact card, yet the card's second line still fell
 below the 300-point panel. The empty overview now budgets the card's full
-height, shows numeric `0 KB`, and has a hosted visibility assertion. Recheck
-that capture and the final signed build before closing the request.
+height, shows numeric `0 KB`, and has a hosted visibility assertion. Its hosted
+capture and the remaining signed-install gate are recorded below.
 
 Run `36139447108` passed the fresh hosted Portman navigation and empty-text
 visibility checks. Its Servers capture shows equal tab widths and the complete
 empty-state message, but leaves excess space below that card. The zero-server
-panel is now 330 points rather than 375; its final capture is pending.
+panel is now 330 points rather than 375.
+
+Hosted run `36140052984` passed the empty-text assertion and captured the
+330-point panel with the full card and a small bottom inset. Run `36140955732`
+passed Portman's fresh-runner UI navigation and the hosted unit-test step after
+the new Mac Tweaks registry expectations were corrected. The signed installed
+copy still needs the final source-stamp replacement.
