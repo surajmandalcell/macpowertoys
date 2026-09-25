@@ -10,7 +10,22 @@
   The hovered item's name must appear in the footer, and the footer's frame
   must begin below the plot in both chart modes.
 - **Check:** The hosted Diskman UI test locates both rows, compares their
-  frames with the plots, and matches each hover name to the footer text.
+  frames with the plots, then checks that hover replaces the prompt with a
+  named item and a nonempty detail value.
+
+## Visible Hover Detail Has An Empty Accessibility Value
+
+- **Symptom:** Hosted run `36163079254` captured updated footer text below both
+  plots, but XCTest read an empty chart value. A test that compared the footer
+  with that value failed; the earlier chart-value hover assertion could pass
+  against the empty string without proving hover worked.
+- **Cause:** The footer's combined child accessibility did not expose its
+  changing name and detail as a reliable pair on macOS.
+- **Invariant:** Each footer is its own accessible element with an explicit
+  dynamic label and value. Hover changes the label from the default prompt to
+  an item name and supplies a nonempty detail value. The plot stays separate.
+- **Check:** The hosted UI test asserts the default prompt before hover, then
+  the named footer and detail value afterward, in both chart modes.
 
 ## Partial Scan Rearranges The Map
 
