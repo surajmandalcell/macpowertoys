@@ -20,3 +20,8 @@ The owner's active desktop is not an acceptable test environment for app-hosted
 or UI test runners. Live checks remain pending until an isolated macOS account
 or VM is available. A history scan already in flight may finish after the
 window closes; opening the workspace does not start background polling.
+
+Verification on 2026-09-25: compile-only Debug and Release builds passed;
+Raycast lint, build, and icon parity passed; the headless Switch Core suite
+passed 184 tests with 2 optional private-copy fixture tests skipped. The
+MacPowerToys window was not launched for this final verification pass.
