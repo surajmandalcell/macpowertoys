@@ -30,7 +30,7 @@ product name is Diskman.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Stop live boxes snapping and keep the hover detail below the chart. | Treemap tile identity, its bounded item set, and split topology stay stable as weights cross during a scan; individual frames interpolate and zero-size skeleton entries appear in the first snapshot. Rings use the same live membership rule and animated arcs. On completion, both views select the largest measured entries once and animate the change, so a large late-named item is not trapped in Other. Both charts reserve a 40-point detail row below the plot. Hosted run `36168349745` passed the cutoff regression, UI navigation, and light and dark renders. | Confirm motion in the final signed app. |
-| Verify | Match the app's restrained chrome and update the chart palette. | The chart uses a muted blue, green, coral, violet, and gold set inspired by Apple, Google, and Anthropic, with the shared neutral background and existing button/spacing components. The scan status reserves a constant height. Light and dark chart renders and the refreshed hover captures from `36156271971` were inspected after reducing washout. | Inspect the final installed app. |
+| Verify | Match the app's restrained chrome and update the chart palette. | The chart uses a muted blue, green, coral, violet, and gold set inspired by Apple, Google, and Anthropic, with the shared neutral background and existing button/spacing components. The scan status reserves a constant height. Hover now brightens only the focused item, so other colors stay clear. Hosted run `36193151541` passed; its dark ring render shows soft dividers instead of black gaps, and light-mode hover captures keep the selected item legible. | Inspect the final installed app. |
 | Done | Rename the product to Diskman and organize the sidebar around Analyze and Modify. | Launcher, window, Raycast label, and manual say Diskman. Analyze groups folders and mounted volumes; Modify opens physical disk management. The prior route ID and saved settings are preserved. | Verify final signed UI. |
 | Verify | Keep Analyze's scan separate from Modify. | A page switch cancels the Analyze scan and removes its status footer. Hosted normal-mode run `36173007922` passed the Modify assertion and captured the disk inventory's own progress state without the scan footer. A separate normal-launch capture from run `36171513372` showed the visualization without an unsolicited event-access prompt. | Inspect the final signed window and its permission-dependent states. |
 | Verify | Add safe native disk and partition management. | Modify lists physical media and partition/volume structure. Native actions include verification, selected-volume repair, mount/unmount/eject, rename, erase volume/disk, repartition, add/delete/resize partitions, APFS volume and container operations, and zero-fill. Writes are limited to writable removable/external physical media with a resolvable I/O Registry media instance; the app compares that instance and the disk layout again immediately before execution and requires typed device-ID review for data-loss actions. APFS operations exclude shared-store containers and reject a changed container reference. Hosted run `36189567926` passed the replacement-media identity regression, other safety tests, Modify UI, and light/dark renders. Two read-only lookups of the authorized SD card returned the same media instance. | Inspect the updated signed app; a physical hot-swap was not performed. |
@@ -52,11 +52,12 @@ and [disktree's zoom and removal workflow](https://github.com/tobi/disktree).
 These are behavior references. The scanner, layout, and drawing remain native
 Swift implementations.
 
-Diskman's latest focused hosted run `36189567926` passed its unit and UI jobs,
+Diskman's latest focused hosted run `36193151541` passed its unit and UI jobs,
 including progressive scans, chart hover and navigation, Modify inventory,
 the review sheet, media identity, and light/dark renders. Full hosted run
-`36189567934` passed. The locally installed app and embedded network helper
-at `5ba62fc` passed strict code-sign verification with team `GF57JXJF5A`,
-and the app launched from `/Applications/MacPowerToys.app` in the background.
+`36192321188` passed before the final dark-ring divider change. The prior
+locally installed app and embedded network helper at `5ba62fc` passed strict
+code-sign verification with team `GF57JXJF5A` and launched from
+`/Applications/MacPowerToys.app` in the background.
 Direct inspection of that installed window was blocked by Computer Use access
 to MacPowerToys; hosted UI captures provide the interaction evidence above.
