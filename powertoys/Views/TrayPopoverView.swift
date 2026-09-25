@@ -1509,7 +1509,7 @@ struct SystemMonitorTrayView: View {
                 .frame(height: 10)
                 .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
         .background(SystemMonitorPalette.gradient(surface), in: RoundedRectangle(cornerRadius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10).strokeBorder(surface.opacity(0.25))
