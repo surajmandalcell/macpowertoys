@@ -72,6 +72,10 @@ final class DiskExplorerUITests: XCTestCase {
         let hoveredTile = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: treemap)
         XCTAssertEqual(XCTWaiter.wait(for: [hoveredTile], timeout: 5), .completed)
+        let tileName = try XCTUnwrap(treemap.value as? String)
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", tileName), object: treemapDetails
+        )], timeout: 5), .completed)
         attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
         let drilledFolder = XCTNSPredicateExpectation(
@@ -89,6 +93,10 @@ final class DiskExplorerUITests: XCTestCase {
         let hoveredRing = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: rings)
         XCTAssertEqual(XCTWaiter.wait(for: [hoveredRing], timeout: 5), .completed)
+        let ringName = try XCTUnwrap(rings.value as? String)
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", ringName), object: ringDetails
+        )], timeout: 5), .completed)
         attach(window.screenshot(), named: "Diskman Ring Hover")
     }
 
