@@ -1028,7 +1028,7 @@ final class NetToysTests: XCTestCase {
         let server = Task.detached {
             for connection in 0..<2 {
                 var pollItem = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
-                guard Darwin.poll(&pollItem, 1, 1_000) > 0 else { return }
+                guard Darwin.poll(&pollItem, 1, 5_000) > 0 else { return }
                 let client = Darwin.accept(descriptor, nil, nil)
                 guard client >= 0 else { return }
                 defer { close(client) }
