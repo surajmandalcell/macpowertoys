@@ -65,6 +65,8 @@ enum TweakPreferences {
         case "music.half-stars": return [.flag("Allow half-star ratings", "com.apple.Music", "allow-half-stars")]
         case "finder.column-sizing" where ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 15:
             return [.flag("Automatically size columns", finder, "_FXEnableColumnAutoSizing")]
+        case "apps.automatic-termination" where version.majorVersion == 15:
+            return [.flag("Disable native automatic termination", global, "NSDisableAutomaticTermination")]
         default: return []
         }
     }
