@@ -21,6 +21,7 @@ struct PortmanPanelView: View {
     @State private var selectedCleanupProcesses = Set<String>()
     @State private var pendingCleanupPorts: [PortmanLocalPort] = []
     @State private var pendingStop: PortmanLocalPort?
+    @State private var pendingRestart: PortmanLocalPort?
     @State private var hoveredTime: Date?
     @State private var highlightedProcessID: String?
     @State private var hoveredRowID: String?
@@ -160,6 +161,7 @@ struct PortmanPanelView: View {
             hoveredTime = nil
             if let selectedPort {
                 await service.loadMetadata(for: selectedPort)
+                await service.loadRestartAvailability(for: selectedPort)
                 await service.loadSession(for: selectedPort)
                 await service.loadGitHubLinks(for: selectedPort)
             }
@@ -170,6 +172,13 @@ struct PortmanPanelView: View {
             Button("Stop PID \(port.pid)", role: .destructive) { service.stopLocal(port) }
         } message: { port in
             Text("Port \(port.port) will stop. Eligible child processes may also stop.")
+        }
+        .confirmationDialog("Restart this server?", isPresented: Binding(
+            get: { pendingRestart != nil }, set: { if !$0 { pendingRestart = nil } }
+        ), presenting: pendingRestart) { port in
+            Button("Restart PID \(port.pid)") { service.restartLocal(port) }
+        } message: { port in
+            Text("Port \(port.port) will stop, then Portman will run its saved command in the same folder. Output goes to Library/Logs/MacPowerToys/Portman.")
         }
         .confirmationDialog("Stop selected server processes?", isPresented: Binding(
             get: { !pendingCleanupPorts.isEmpty },
@@ -489,6 +498,17 @@ struct PortmanPanelView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.secondary)
                 if port.canStop {
+                    Button { pendingRestart = port } label: {
+                        Image(systemName: "arrow.clockwise").frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .disabled(!service.restartableIDs.contains(port.id)
+                              || service.restartingIDs.contains(port.id))
+                    .help(service.restartableIDs.contains(port.id)
+                          ? "Restart with the original command and environment"
+                          : "Restart requires the original command, environment, and folder")
+                    .accessibilityLabel("Restart process for port \(port.port)")
                     Button { pendingStop = port } label: {
                         Image(systemName: "stop.circle").frame(width: 24, height: 24)
                     }
@@ -651,6 +671,8 @@ struct PortmanPanelView: View {
                         }
                     }
                     if port.canStop {
+                        Button("Restart with saved command…") { pendingRestart = port }
+                            .disabled(!service.restartableIDs.contains(port.id))
                         Button("Stop process tree…", role: .destructive) { pendingStop = port }
                     }
                 } label: {

@@ -29,7 +29,7 @@ actor PortmanSessionResolver {
     private var indexedAt = Date.distantPast
 
     func resolve(pid: Int32, started: UInt64, userID: UInt32, folder: String) -> PortmanSession? {
-        if let id = Self.claudeSessionID(pid: pid, started: started, userID: userID) {
+        if let id = Self.claudeSessionID(pid: pid, started: started, userID: userID, folder: folder) {
             return PortmanSession(kind: .claude, id: id)
         }
         guard folder.hasPrefix(NSHomeDirectory() + "/") else { return nil }
@@ -42,49 +42,15 @@ actor PortmanSessionResolver {
         return nil
     }
 
-    private static func claudeSessionID(pid: Int32, started: UInt64, userID: UInt32) -> UUID? {
-        var info = proc_bsdinfo()
-        let infoSize = Int32(MemoryLayout<proc_bsdinfo>.size)
-        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, infoSize) == infoSize,
-              info.pbi_uid == userID,
-              info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec == started else { return nil }
-
-        var mib: [Int32] = [CTL_KERN, KERN_ARGMAX]
-        var argMax: Int32 = 0
-        var size = MemoryLayout<Int32>.size
-        guard sysctl(&mib, 2, &argMax, &size, nil, 0) == 0, argMax > 0 else { return nil }
-        var bytes = [UInt8](repeating: 0, count: Int(argMax))
-        mib = [CTL_KERN, KERN_PROCARGS2, pid]
-        size = bytes.count
-        guard sysctl(&mib, 3, &bytes, &size, nil, 0) == 0 else { return nil }
-        return sessionID(in: Array(bytes.prefix(size)))
+    private static func claudeSessionID(pid: Int32, started: UInt64, userID: UInt32, folder: String) -> UUID? {
+        let launch = PortmanLaunch.inspect(pid: pid, started: started,
+                                           userID: userID, folder: folder)
+        return launch?.environment["CLAUDE_CODE_SESSION_ID"].flatMap(UUID.init(uuidString:))
     }
 
     nonisolated static func sessionID(in bytes: [UInt8]) -> UUID? {
-        guard bytes.count >= 4 else { return nil }
-        let count = bytes.prefix(4).enumerated().reduce(UInt32(0)) {
-            $0 | (UInt32($1.element) << ($1.offset * 8))
-        }
-        guard count <= 1_024 else { return nil }
-        var index = 4
-        func read() -> String? {
-            guard index < bytes.count else { return nil }
-            let start = index
-            while index < bytes.count, bytes[index] != 0 { index += 1 }
-            guard index < bytes.count else { return nil }
-            let text = String(decoding: bytes[start..<index], as: UTF8.self)
-            index += 1
-            return text
-        }
-        guard read() != nil else { return nil } // executable path
-        while index < bytes.count, bytes[index] == 0 { index += 1 }
-        for _ in 0..<count { guard read() != nil else { return nil } }
-        while let entry = read() {
-            if entry.hasPrefix("CLAUDE_CODE_SESSION_ID=") {
-                return UUID(uuidString: String(entry.dropFirst("CLAUDE_CODE_SESSION_ID=".count)))
-            }
-        }
-        return nil
+        PortmanLaunch.parse(bytes, folder: "/")?.environment["CLAUDE_CODE_SESSION_ID"]
+            .flatMap(UUID.init(uuidString:))
     }
 
     private func refreshCodexIndex() {

@@ -9,9 +9,18 @@ final class PortmanTests: XCTestCase {
             "/bin/node\0\0node\0server.js\0SECRET=private\0CLAUDE_CODE_SESSION_ID=\(id.uuidString)\0".utf8
         )
         XCTAssertEqual(PortmanSessionResolver.sessionID(in: bytes), id)
+        let launch = PortmanLaunch.parse(bytes, folder: "/tmp")
+        XCTAssertEqual(launch?.executable, "/bin/node")
+        XCTAssertEqual(launch?.arguments, ["node", "server.js"])
+        XCTAssertEqual(launch?.environment["SECRET"], "private")
+        XCTAssertEqual(launch?.replayable, true)
         XCTAssertNil(PortmanSessionResolver.sessionID(in: [2, 0, 0, 0] + Array(
             "/bin/node\0\0node\0CLAUDE_CODE_SESSION_ID=bad\0".utf8
         )))
+        let rewritten = PortmanLaunch.parse([1, 0, 0, 0] + Array(
+            "/bin/node\0\0npm run dev\0PATH=/usr/bin\0".utf8
+        ), folder: "/tmp")
+        XCTAssertEqual(rewritten?.replayable, false)
     }
 
     func testGitHubLinksAcceptOnlyPlainGitHubRemotes() {
