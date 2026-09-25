@@ -29,9 +29,10 @@
   hosted Xcode 27 Mac on code pushes or manual dispatch. It uses ad hoc signing,
   the `TEST_SESSION=isolated` gate, installs rclone for Cloud Sync integration
   tests, and saves PNG XCTest attachments as `tray-renders` for offscreen review.
-  The unit command skips UI tests; a separate hosted step runs only Switch
-  navigation UI tests and exports their window screenshots. Local owner-session
-  checks remain compile-only.
+  The unit command skips UI tests; a separate hosted step runs Switch
+  navigation in test mode and Portman menu-bar navigation after a normal app
+  launch. It exports screenshots for both. Local owner-session checks remain
+  compile-only.
 - **Check:** Match the successful workflow run to the tested commit and inspect
   its XCTest result and tray renders. Run `36097325950` at `fbe1721` passed 842
   tests, with five skips and zero failures, and saved 13 PNG attachments. Its

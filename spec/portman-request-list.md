@@ -65,3 +65,11 @@ not Portman product code. A read-only native Computer inspection of the live
 menu-bar panel was denied by automatic approval review; the hosted renders and
 process checks did not take desktop focus. A private host and live menu-bar
 interactions still need owner-approved inspection.
+
+The current source adds a hosted UI test for normal `--open portman` launch and
+Servers, Forward, Alerts, and Settings navigation. These interactions still
+need a passing hosted run and screenshot review. The local compile-only check
+could not resolve Swift packages because GitHub DNS was unavailable in the
+owner session; a Swift syntax parse passed. The installed `dc97280` copy is
+older than these new accessibility labels and must be replaced after the
+hosted check passes.
