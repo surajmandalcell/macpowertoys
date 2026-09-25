@@ -2,7 +2,7 @@ import AppKit
 import QuickLook
 import SwiftUI
 
-private enum DiskExplorerPage {
+private enum DiskExplorerPage: Hashable {
     case explore
     case settings
     case about
@@ -37,6 +37,7 @@ struct DiskExplorerWindowView: View {
         HStack(spacing: 0) {
             sidebar.frame(width: UtilityLayout.dataSidebarWidth)
             content
+                .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .safeAreaInset(edge: .bottom, spacing: 0) { statusInset }
                 .background(Color(nsColor: .windowBackgroundColor))
