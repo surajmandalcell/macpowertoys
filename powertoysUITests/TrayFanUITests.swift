@@ -1,6 +1,10 @@
 import XCTest
 
 final class TrayFanUITests: XCTestCase {
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
     @MainActor
     func testUnavailableFanOpensSetupPopover() {
         let app = XCUIApplication()
@@ -10,7 +14,7 @@ final class TrayFanUITests: XCTestCase {
         defer { app.terminate() }
 
         app.activate()
-        let tray = app.menuBars.statusItems["MacPowerToys"]
+        let tray = app.menuBars.statusItems["MenuBarIcon"]
         XCTAssertTrue(tray.waitForExistence(timeout: 10))
         tray.click()
 
