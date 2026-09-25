@@ -161,4 +161,68 @@ final class PortmanTests: XCTestCase {
         XCTAssertThrowsError(try PortmanScanner.stop(stale))
         XCTAssertTrue(child.isRunning)
     }
+
+    func testRestartReopensAListeningServer() async throws {
+        guard FileManager.default.isExecutableFile(atPath: "/usr/bin/python3") else {
+            throw XCTSkip("The hosted Mac has no Python 3 executable.")
+        }
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portman-restart-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        let socketFD = socket(AF_INET, SOCK_STREAM, 0)
+        XCTAssertGreaterThanOrEqual(socketFD, 0)
+        var chosenPort: UInt16?
+        for candidate in UInt16(9000)...UInt16(9999) {
+            var address = sockaddr_in()
+            address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            address.sin_family = sa_family_t(AF_INET)
+            address.sin_port = candidate.bigEndian
+            address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+            let bound = withUnsafePointer(to: &address) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    Darwin.bind(socketFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+            if bound == 0 { chosenPort = candidate; break }
+        }
+        close(socketFD)
+        let port = try XCTUnwrap(chosenPort)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.arguments = ["-m", "http.server", String(port), "--bind", "127.0.0.1"]
+        process.currentDirectoryURL = folder
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        var restarted: PortmanLocalPort?
+        defer {
+            if let restarted { try? PortmanScanner.stop(restarted) }
+            if process.isRunning { process.terminate(); process.waitUntilExit() }
+            let log = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Logs/MacPowerToys/Portman/port-\(port).log")
+            try? FileManager.default.removeItem(at: log)
+        }
+
+        var original: PortmanLocalPort?
+        for _ in 0..<20 {
+            original = try PortmanScanner.localPorts(range: port...port)
+                .first { $0.pid == process.processIdentifier }
+            if original != nil { break }
+            try await Task.sleep(for: .milliseconds(250))
+        }
+        let listener = try XCTUnwrap(original)
+        XCTAssertNotNil(PortmanLaunch.capture(listener, folder: folder.path))
+        try await PortmanRestart.run(listener, folder: folder.path)
+
+        for _ in 0..<20 {
+            restarted = try PortmanScanner.localPorts(range: port...port)
+                .first { $0.pid != process.processIdentifier }
+            if restarted != nil { break }
+            try await Task.sleep(for: .milliseconds(250))
+        }
+        XCTAssertNotNil(restarted, "Restart must create a new listener on the same port.")
+    }
 }
