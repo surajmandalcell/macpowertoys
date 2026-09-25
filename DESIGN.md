@@ -379,8 +379,9 @@ Canonical anatomy:
 ```
 
 - The SwiftUI scene content and sidebar are fixed at 1200×720 and 220pt, so the
-  980pt content pane holds exactly four 220pt cards with 16pt gaps inside its
-  24pt padding (4 × 220 + 3 × 16 + 48 = 976). The captured `NSWindow` frame adds
+  980pt content pane holds four flexible cards with 16pt gaps inside its
+  24pt padding. Cards target 220pt; a scroll view may reserve about 16pt, making
+  each rendered card about 217pt. The captured `NSWindow` frame adds
   32pt above that content size. Never shrink the content to force a smaller
   outer capture. Do not resize, collapse, or add an inspector.
 - The sidebar title is `MacPowerToys`, centered in the 40pt top strip and 84pt
@@ -399,8 +400,8 @@ Canonical anatomy:
 - Launch opens `All Tools` with an empty search. Restore a prior selection only
   within the same running launcher session, never across a fresh app launch.
 - `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
-  padding, an adaptive grid with 220pt minimum columns and 16pt row/column gaps.
-  The 1200pt launcher shows four cards in each row.
+  padding, four flexible columns, and 16pt row/column gaps. The 1200pt launcher
+  shows four cards in each row even when the scroll view reserves width.
 - A launcher tool card is at least 172pt high at default text sizes, with 12pt outer
   padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
   name; up to five lines of 12pt secondary description so the current built-in

@@ -8,6 +8,10 @@ enum UtilityLayout {
     static let launcherGridSpacing: CGFloat = 16
     static let launcherContentInset: CGFloat = 24
     static let launcherColumnCount = 4
+    static let launcherGridColumns = Array(
+        repeating: GridItem(.flexible(), spacing: launcherGridSpacing),
+        count: launcherColumnCount
+    )
     static let launcherContentSize = NSSize(width: 1_200, height: 720)
     static let dataSidebarWidth: CGFloat = 240
     static let workspaceMinimumContentWidth: CGFloat = 640

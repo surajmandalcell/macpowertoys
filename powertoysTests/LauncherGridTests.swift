@@ -1,0 +1,47 @@
+import AppKit
+import SwiftUI
+import XCTest
+@testable import powertoys
+
+@MainActor
+final class LauncherGridTests: XCTestCase {
+    func testFourCardsFitWithScrollerWidthReserved() {
+        let contentWidth = UtilityLayout.launcherContentSize.width
+            - UtilityLayout.compactSidebarWidth
+            - 2 * UtilityLayout.launcherContentInset
+            - 16
+        let grid = LazyVGrid(
+            columns: UtilityLayout.launcherGridColumns,
+            spacing: UtilityLayout.launcherGridSpacing
+        ) {
+            ForEach(0..<4, id: \.self) { _ in
+                Color.gray.frame(height: 40)
+            }
+        }
+        .frame(width: contentWidth)
+
+        let host = NSHostingView(rootView: grid)
+        XCTAssertEqual(host.fittingSize.height, 40)
+    }
+
+    func testLauncherFourColumnRender() throws {
+        let size = NSSize(width: 980, height: 676)
+        let host = NSHostingView(
+            rootView: AllToolsGridView(selectedTool: .constant("all-tools"))
+                .frame(width: size.width, height: size.height)
+                .environment(\.colorScheme, .dark)
+        )
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "Launcher — Four Columns — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}

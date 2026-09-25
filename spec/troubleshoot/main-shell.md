@@ -8,8 +8,23 @@
   even though the built-in descriptions need up to five lines at four columns.
 - **Invariant:** Keep the four-column 1,200pt launcher layout and give its cards
   enough height for the complete built-in copy at the standard text size.
-- **Check:** In the current signed app, inspect all ten built-in cards. Their
+- **Check:** In the current signed app, inspect all built-in cards. Their
   descriptions are complete and their Open and enable controls remain aligned.
+
+## Launcher Adaptive Grid Falls To Three Columns
+
+- **Symptom:** The 1,200pt launcher shows three cards per row although its
+  specification and width-only test expect four.
+- **Cause:** Four 220pt adaptive cards, gaps, and padding need 976pt of the
+  nominal 980pt pane. The scroll view can reserve about 16pt for its scroller.
+  At the resulting 916pt grid width, an offscreen SwiftUI repro places four
+  sample cards on two rows instead of one.
+- **Invariant:** Use four flexible columns at the standard launcher width, so
+  the cards share the available grid width even with the scroller reservation.
+  Keep complete descriptions and the aligned enable/Open row.
+- **Check:** `LauncherGridTests` renders four cards at 916pt in one row and saves
+  a dark launcher image in the isolated macOS run. Inspect the exact signed app
+  only when desktop interaction is allowed.
 
 ## Compact Tool Enablement
 

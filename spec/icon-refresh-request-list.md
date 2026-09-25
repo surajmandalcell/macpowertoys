@@ -34,7 +34,7 @@ selects replacements. Present all 30 choices together at full size and at
 small launcher sizes, with no preselected option.
 
 The owner also proposed shorter, wider launcher cards in two columns. Show a
-reviewable comparison against the current four-column layout before changing
+reviewable comparison against the specified four-column layout before changing
 the launcher. The proposed layout is a design option, not yet an approved
 production change.
 
@@ -42,7 +42,7 @@ The 30 individually generated 512px RGBA choices and the switchable layout
 study are in `tmp/icon-round-2/index.index2.html`; `prompts.md` records every
 concept. A headless desktop render loaded every option and the compact layout,
 and all 30 sources have transparent tile corners. At the standard 980pt content
-width, the current four-column grid shows 12 of 13 built-in cards completely;
+width, the modeled four-column grid shows 12 of 13 built-in cards completely;
 the proposed 80pt, two-column rows show all 13. The gallery keeps each 512px
 source one click away and displays it at 64px and 16px. No icon or layout had
 been selected at that review point.
@@ -62,3 +62,12 @@ The owner's current launcher screenshot has **three** columns, despite the
 four-column specification and earlier gallery model. Diagnose that mismatch
 and make a four-column comparison based on the real pane width. Keep the
 short two-column layout as a separate option until the owner chooses.
+
+P01 is now the exact production `PortmanLogo` source. The new comparison at
+`tmp/icon-round-3/index.index2.html` shows the six references, twelve new
+variations, and switchable three-, four-, and two-column launcher previews.
+The old adaptive grid needed 976pt to fit four 220pt cards in the 980pt pane;
+the observed scroller reservation leaves about 964pt before padding. An
+offscreen SwiftUI repro places four sample cards on two rows at the resulting
+916pt grid width. Four flexible columns place them on one row. The corrected
+four-column launcher is a trial pending the owner's layout decision.
