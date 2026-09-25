@@ -137,6 +137,8 @@ struct FanControlView: View {
                 NSPasteboard.general.setString(command, forType: .string)
             } label: {
                 Image(systemName: "doc.on.doc")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .focusEffectDisabled()
