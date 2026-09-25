@@ -27,3 +27,7 @@ The interaction pass draws on [DaisyDisk's map and hover navigation](https://dai
 and [disktree's zoom and removal workflow](https://github.com/tobi/disktree).
 These are behavior references. The scanner, layout, and drawing remain native
 Swift implementations.
+
+Hosted full run `36142313540` passed 872 tests with 5 skips and no failures;
+its Portman UI job and installable archive build also passed. Disk Explorer's
+focused UI and chart run is `36141822640`.
