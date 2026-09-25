@@ -17,6 +17,7 @@ struct PortmanPanelView: View {
 
     @State private var service = PortmanService.shared
     @State private var page = Page.local
+    @State private var settingsContentHeight: CGFloat = 0
     @State private var selectedPortID: String?
     @State private var host = ""
     @State private var aliases: [String] = []
@@ -74,7 +75,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? (service.localPorts.isEmpty ? 300 : 254 + CGFloat(service.localPorts.count) * 56)
+            selectedPort == nil ? (service.localPorts.isEmpty ? 300 : 276 + CGFloat(service.localPorts.count) * 56)
                 : 455 + (showingMore ? 110 : 0)
                     + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
         case .forward:
@@ -83,7 +84,7 @@ struct PortmanPanelView: View {
                    ? 62 + CGFloat(service.remotePorts.count) * 42
                         + (expandedRemotePort == nil ? 0 : 48) : 0)
         case .settings:
-            620
+            settingsContentHeight > 0 ? settingsContentHeight + 90 : 620
         }
         let available = (NSScreen.main?.visibleFrame.height ?? 900) * 0.72
         return min(available, min(650, max(300, target)))
@@ -144,7 +145,11 @@ struct PortmanPanelView: View {
                         if let selectedPort { localDetail(selectedPort) }
                         else { localOverview }
                     case .forward: forwardingPage
-                    case .settings: PortmanSettingsView()
+                    case .settings:
+                        PortmanSettingsView()
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                                settingsContentHeight = $0
+                            }
                     }
                 }
                 .id(page)
@@ -1508,7 +1513,7 @@ struct PortmanSettingsView: View {
         }
         .font(.system(size: 11))
         .controlSize(.small)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .confirmationDialog("Stop eligible servers automatically?", isPresented: $pendingAutomaticCleanup) {
             Button("Enable Automatic", role: .destructive) {
                 cleanupMode = PortmanCleanupMode.automatic.rawValue
