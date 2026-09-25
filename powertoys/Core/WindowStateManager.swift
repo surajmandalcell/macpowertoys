@@ -65,6 +65,7 @@ final class WindowStateManager {
         "text-extractor",
         "input-devices",
         "system-care",
+        "disk-explorer",
         "system-monitor",
         "nettoys"
     ]

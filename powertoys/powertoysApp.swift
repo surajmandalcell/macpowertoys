@@ -157,6 +157,15 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["system-care"]))
         .restorationBehavior(.disabled)
 
+        Window("Disk Explorer", id: "disk-explorer") {
+            DiskExplorerWindowView()
+                .utilityMotionPolicy()
+        }
+        .defaultSize(width: 1240, height: 800)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["disk-explorer"]))
+        .restorationBehavior(.disabled)
+
         Window("System Monitor", id: "system-monitor") {
             SystemMonitorWindowView()
                 .utilityMotionPolicy()
