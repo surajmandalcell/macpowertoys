@@ -5,6 +5,7 @@ Checked 2026-09-25. The target families are macOS 15.8, 26.7, and 27.0. The supp
 Verdicts:
 
 - **Control coded**: a scoped preference editor, exact original-value and absent-key backup, conflict check, rollback action, and activation guidance exist. New writes are gated to researched OS minors; restore stays available after an OS update. Behavioral certification is still required on each target OS.
+- **Existing control reused**: Mac Tweaks exposes an already implemented MacPowerToys service and its persisted controls in the same window.
 - **Apple shortcut**: searchable documentation and, where there is one owning app, a button to open Finder, Screenshot, or System Settings exist. The native control already belongs to Apple; exact pane navigation is not yet implemented.
 - **Issue**: the feature is feasible or plausible, but the key, scope, permission path, side effects, lifecycle, or version behavior is unresolved. It has no live toggle.
 - **Cannot ship universally**: the stated old recipe is obsolete, broken, or unsafe as one control across all three OS families. Alternatives may exist and would need their own feature record.
@@ -43,6 +44,12 @@ The control engine writes only selected keys via exact CFPreferences domains, sa
 
 The current TinkerTool matrices document the visible feature families; nix-darwin documents most underlying key names and types. Apple documents the Dock lock keys in its [device-management source](https://github.com/apple/device-management/blob/release/mdm/profiles/com.apple.dock.yaml) and the network metadata control in [SMB browsing guidance](https://support.apple.com/en-us/102064). These sources do not replace runtime checks. [TinkerTool 15](https://www.bresink.com/osx/0TinkerTool10/details.html), [TinkerTool 26/27](https://www.bresink.com/osx/0TinkerTool/details.html), [Dock keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/dock.nix), [Finder keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/finder.nix), [global keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/NSGlobalDomain.nix), [capture keys](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/system/defaults/screencapture.nix).
 
+## Existing running control exposed in Mac Tweaks (1)
+
+| ID | Implementation and remaining check |
+| --- | --- |
+| `helper.keep-awake` | Reuses `AwakeService` and `AwakeSettingsView`: timed, until-date, and indefinite power assertions persist in MacPowerToys. The app must keep running. Check actual sleep behavior on each target OS and supported hardware. |
+
 ## Apple settings shown as searchable documentation (25)
 
 These are implementable as convenience links or, after version-specific UI checks, as mirrored controls. The app opens Finder, Screenshot, or System Settings where one owner is clear, then tells the user where to find the selected choice. The grouped built-in-app entry provides instructions without a launch button. It does not claim direct pane navigation or silently write Apple's native controls. [Apple System Settings guide](https://support.apple.com/guide/mac-help/change-system-settings-mh15217/mac), [Screenshot options](https://support.apple.com/guide/mac-help/take-a-screenshot-mh26782/mac), [window tiling](https://support.apple.com/guide/mac-help/tile-app-windows-mchlef287e5d/mac).
@@ -75,7 +82,7 @@ These are implementable as convenience links or, after version-specific UI check
 | `native.units` | General/Language & Region and Control Center clock. |
 | `native.app-options` | Safari, TextEdit, Activity Monitor, Messages; each app owns its UI. |
 
-## Issues to resolve before offering a control (73)
+## Issues to resolve before offering a control (72)
 
 ### Other hidden preferences (24)
 
@@ -154,7 +161,7 @@ Finder column sizing is in the coded-control table because the editor is gated t
 
 [Apple startup control](https://support.apple.com/en-us/120622), [Apple power scheduling](https://support.apple.com/guide/mac-help/schedule-your-mac-to-turn-on-or-off-mchl40376151/mac), [Apple archived HID note](https://developer.apple.com/library/archive/technotes/tn2450/_index.html), [nix-darwin PAM implementation](https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/security/pam.nix).
 
-### Running enhancements (20)
+### Running enhancements (19)
 
 These are technically plausible as dedicated helpers, extensions, or event monitors. They are not persistent `defaults` switches. Mic Lock is already the example of a narrow running feature in Mac Tweaks. Each new enhancement needs a lifecycle while the app window is closed, permission state, logout/restart behavior, conflict handling, and target-OS testing. [Supercharge feature inventory](https://sindresorhus.com/supercharge), [LinearMouse feature inventory](https://linearmouse.app/en/).
 
@@ -175,7 +182,6 @@ These are technically plausible as dedicated helpers, extensions, or event monit
 | `helper.middle-click` | Gesture recognition and event injection without native conflicts. |
 | `helper.media-keys` | Media key ownership across players and system versions. |
 | `helper.clipboard-clear` | Clipboard ownership, sensitive content, lock event, timer lifecycle. |
-| `helper.keep-awake` | Scoped power assertion lifecycle; works only while helper runs. |
 | `helper.airdrop-workflow` | Received-file identification and folder access without moving unrelated files. |
 | `helper.mouse-scroll` | Device discrimination and Input Monitoring permission. |
 | `helper.pointer-profiles` | Per-device acceleration and reconnect handling. |
