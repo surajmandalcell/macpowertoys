@@ -97,6 +97,13 @@
       "description": "Open NetToys",
       "icon": "nettoys.png",
       "mode": "no-view"
+    },
+    {
+      "name": "switch",
+      "title": "Switch",
+      "description": "Open Switch accounts",
+      "icon": "switch.png",
+      "mode": "no-view"
     }
   ],
   "dependencies": {
