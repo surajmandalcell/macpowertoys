@@ -5,6 +5,7 @@ final class PortmanUITests: XCTestCase {
     func testNormalLaunchOpensMenuBarPanelAndNavigates() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launch()
         defer { app.terminate() }
 

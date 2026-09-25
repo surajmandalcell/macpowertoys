@@ -48,6 +48,10 @@ struct MacPowerToysApp: App {
     private func configureApplication() {
         appDelegate.configureApplication {
             DeepLinkHandler.shared.setOpenWindowAction(openWindow)
+            if AppRuntime.isUITesting {
+                DeepLinkHandler.shared.handleCLIArguments()
+                return
+            }
             guard !AppRuntime.isRunningTests else { return }
             await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
             DeepLinkHandler.shared.handleCLIArguments()
