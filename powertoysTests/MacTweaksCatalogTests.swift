@@ -16,6 +16,12 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertFalse(TweakPreferences.supportsWrites(for: "finder.column-sizing", on: .init(majorVersion: 27, minorVersion: 0, patchVersion: 0)))
     }
 
+    func testEveryCatalogueCategoryAppearsOnceInSidebar() {
+        let grouped = TweakCatalog.sidebarGroups.flatMap(\.categories)
+        XCTAssertEqual(grouped.count, Set(grouped).count)
+        XCTAssertEqual(Set(grouped), Set(TweakCatalog.items.map(\.category)).union([TweakSearch.micLock.category]))
+    }
+
     func testExactPreferenceUndoRestoresAbsentAndExistingValues() throws {
         let domain = "com.macpowertoys.tweak-test.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))

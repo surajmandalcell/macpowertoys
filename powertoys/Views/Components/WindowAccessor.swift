@@ -26,7 +26,7 @@ private class WindowAccessorView: NSView {
     ])
     private static let workspaceWindowIdentifiers = Set([
         "main", "rclone", "logs", "input-devices",
-        "system-care", "disk-explorer", "system-monitor", "nettoys", "switch"
+        "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"
     ])
 
     let windowIdentifier: String
