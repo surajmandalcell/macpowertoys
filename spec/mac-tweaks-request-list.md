@@ -9,7 +9,7 @@
 - [x] Show the current input, live mute and input volume when the device supports them, and an input-level meter only while the window is open.
 - [x] Provide Refresh Devices and Revive Audio recovery actions with clear results. Revive Audio requests administrator approval before restarting CoreAudio.
 - [x] Offer MacPowerToys launch at login so an enabled Mic Lock can resume after sign-in.
-- [ ] Verify device changes, permission states, and the current installed app without adding microphone controls to any menu bar.
+- [ ] Verify device changes, permission states, and the current installed app. Local test-bundle compilation passed; hosted unit tests passed in run 36142313540. Mac Tweaks has no tray tab or separate menu-bar item.
 
 Release and test bundles compile. The local desktop policy does not allow launching XCTest here.
 
