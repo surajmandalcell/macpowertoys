@@ -1,6 +1,18 @@
 import XCTest
 
 final class MacTweaksUITests: XCTestCase {
+    @MainActor func testDarkAppearanceCapture() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-AppleInterfaceStyle", "Dark", "--open", "mac-tweaks"]
+        app.launch()
+        defer { app.terminate() }
+
+        let window = app.windows["Mac Tweaks"]
+        XCTAssertTrue(window.waitForExistence(timeout: 30))
+        XCTAssertTrue(window.buttons["mac-tweaks.card.mic-lock"].waitForExistence(timeout: 10))
+        attach(window.screenshot(), named: "Mac Tweaks Input Dark")
+    }
+
     @MainActor func testGroupedSidebarCardsAndSearchInNormalApp() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "mac-tweaks"]
