@@ -8,6 +8,8 @@ private final class DiskManagementModel {
     private(set) var message: String?
     private(set) var error: String?
 
+    init(disks: [ManagedDisk] = []) { self.disks = disks }
+
     func fail(_ error: Error) { self.error = error.localizedDescription }
 
     func refresh() async {
@@ -44,7 +46,8 @@ private struct PendingDiskRequest: Identifiable {
 }
 
 struct DiskModifyView: View {
-    @State private var model = DiskManagementModel()
+    private let previewDisks: [ManagedDisk]?
+    @State private var model: DiskManagementModel
     @State private var diskID: String?
     @State private var partitionID: String?
     @State private var action = DiskAction.verify
@@ -55,6 +58,12 @@ struct DiskModifyView: View {
     @State private var pending: PendingDiskRequest?
     @State private var typedDiskID = ""
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @MainActor init(previewDisks: [ManagedDisk]? = nil) {
+        self.previewDisks = previewDisks
+        _model = State(initialValue: DiskManagementModel(disks: previewDisks ?? []))
+        _diskID = State(initialValue: previewDisks?.first?.id)
+    }
 
     private var disk: ManagedDisk? {
         model.disks.first { $0.id == diskID }
@@ -129,7 +138,7 @@ struct DiskModifyView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
-        .task { await model.refresh() }
+        .task { if previewDisks == nil { await model.refresh() } }
         .onChange(of: diskID) { _, _ in partitionID = nil; action = .verify }
         .onChange(of: partitionID) { _, _ in action = .verify }
         .onChange(of: action) { _, newValue in

@@ -110,7 +110,7 @@ struct DiskTreemapView: View {
                     } label: {
                         RoundedRectangle(cornerRadius: 5)
                             .fill(tile.color.opacity(hoveredID == nil || tile.id == hoveredID ||
-                                                     tile.id == selectedID ? 1 : 0.62))
+                                                     tile.id == selectedID ? 1 : 0.78))
                             .overlay {
                                 RoundedRectangle(cornerRadius: 5)
                                     .strokeBorder(hoveredID == tile.id || selectedID == tile.id ?
@@ -264,7 +264,7 @@ struct DiskSunburstView: View {
                 DiskRingShape(start: segment.start, end: segment.end,
                               inner: segment.inner, outer: segment.outer)
                     .fill(segment.color.opacity(hoveredID == nil ||
-                        segment.id == hoveredID || segment.id == selectedID ? 0.96 : 0.55))
+                        segment.id == hoveredID || segment.id == selectedID ? 0.96 : 0.78))
                     .overlay {
                         DiskRingShape(start: segment.start, end: segment.end,
                                       inner: segment.inner, outer: segment.outer)
