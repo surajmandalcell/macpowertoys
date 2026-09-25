@@ -26,13 +26,17 @@ The owner reviewed the live panel and requested these corrections:
 - Keep closed-panel and non-Servers tab monitoring inexpensive.
 
 The next live review requested a smaller menu-bar and panel glyph, inset server
-hover rows, compact side actions that leave the graph visible and hide the
-memory number on hover, and clear explanations for the Servers/Mac memory
-scope. The active tab line must touch the structural divider and move with the
-shared short motion policy. Forward must accept `user@IP`, prompt for an SSH
-password when key access fails, allow a password retry without persisting the
-credential, and identify scanned ports by service or process. Port rows should
-show full available detail on hover and reveal more on click, including a
+hover rows, compact side actions, and a tab line flush with the divider.
+The owner's later screenshot supersedes the earlier row and memory treatment:
+the hover surface extends farther toward both edges while retaining inner text
+padding; link and stop replace both the sparkline and memory number in a fixed
+trailing slot, with blue and red hover feedback. The overview shows only memory
+used by listening processes, not whole-Mac usage. Tab changes keep labels and
+content stable while one underline moves briefly across the divider. Forward
+must accept `user@IP`, prompt for an SSH password when key access fails, allow
+a password retry without persisting the credential, and identify scanned ports
+by service or process. Port rows should show full available detail on hover
+and reveal more on click, including a
 Node command or Docker name when the remote host exposes it. The panel should
 match the compact, neutral style of the combined MacPowerToys menu bar.
 OpenSSH records a new host key on first connection and still rejects a changed
@@ -41,7 +45,7 @@ key. Portman never saves the SSH password.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | In progress | Route every Portman entry point to one full menu-bar panel, with a count-bearing status item. | The source has one dedicated 400-point panel and status item. The launcher Open action and deep link route there; a Raycast command builds offline, and Xcode extracted a discoverable Spotlight App Shortcut. The separate window, shallow combined tab, and duplicate launcher settings form are gone; the launcher detail now shows only the tool guide. | Verify all entry routes, count, and dismissal in the final signed app. |
-| In progress | Recreate the reference's connected overview and detail states in the menu bar. | The panel has a whole-Mac segmented memory bar, stable port colors, linked row/bar hover, sparklines, expandable metadata and process tree, ten-minute history with a threshold line, and shared memory/CPU chart hover. Hovering a memory segment now changes the heading, large memory amount, RAM share, and CPU while row hover only highlights the segment. The scan hides system and GUI listeners by default, retains CLI runtimes packaged inside an app bundle, and can show all listeners. Hosted run `36119359116` saved a one-server overview and light/dark detail at 400 points. The memory axis reads GB/MB across ten minutes, and the compact detail keeps its Open localhost action visible even at the hosted screen's 488-point panel cap. | Inspect segment/row hover, disclosure, and dismissal states in the final signed app. |
+| In progress | Recreate the reference's connected overview and detail states in the menu bar. | The panel has a listening-process memory breakdown, stable port colors, linked row/bar hover, sparklines at rest, expandable metadata and process tree, ten-minute history with a threshold line, and shared memory/CPU chart hover. Hovering a memory segment changes the heading, large memory amount, RAM share, and CPU while row hover highlights the segment. The scan hides system and GUI listeners by default, retains CLI runtimes packaged inside an app bundle, and can show all listeners. Hosted run `36119359116` saved a one-server overview and light/dark detail at 400 points. The memory axis reads GB/MB across ten minutes, and the compact detail keeps its Open localhost action visible even at the hosted screen's 488-point panel cap. | Inspect the revised row swap, segment hover, disclosure, and dismissal in a hosted render and final signed app. |
 | In progress | Preserve the reference's cleanup and process-tree actions, with protection and accurate reclaimed-memory preview. | Stop checks same-user identity and process start before SIGTERM, and checks child identity and parent before signaling. After a configurable three-second grace period, it sends SIGKILL only to still-running processes with the original start time and user. Restart uses the same grace policy. The cleanup estimate deduplicates process identities and leaves alerting servers unselected. Cleanup suggestions cover deleted folders, four observed idle hours, and three running days by default. Off hides suggestions, Ask announces fresh suggestions when Mac notifications are enabled, and opt-in Automatic sends stop requests for fresh eligible processes without selecting warnings or protected processes. Manual stopping still requires confirmation. Detail offers Restart only when the same process still exposes a runnable executable, arguments, environment, and folder. Restart rechecks identity, waits for the listener to release, and writes output to a Portman log. Hosted run `36111474606` passed the cleanup policy and changed-process force-stop tests; run `36107019320` relaunched a real rclone listener. Run `36119359116` saved selected-cleanup renders in both appearances: the memory estimate and footer fit, and the final Stop action is visibly red. | Verify destructive confirmation and process-tree behavior in the signed UI. |
 | In progress | Preserve alerts, settings, and applicable session/preview links from the reference. | The panel has active and snoozed alert states, adjustable memory/growth limits, scan range and interval (two seconds by default), protected process names, listener scope, idle threshold, a configurable global shortcut, and an installed-editor preference with Finder fallback. The detail menu opens a discovered project folder in that editor. Notifications are opt-in with permission status, an actionable snooze, and hysteresis before a repeated alert. An opt-in detail link reads the exact Claude Code session ID from the process environment or labels a recent Codex folder match; it only copies a resume command. A separate opt-in checks public GitHub pull requests and successful preview deployments over an ephemeral, credential-free connection; verified links appear in detail. | Verify editor, session, preview, notification, alert, and settings states in isolation. Private repository lookups require a future credential-safe design. |
 | In progress | Discover remote listening ports over SSH aliases or `user@IP` and forward selected ports to localhost. | The scan parses `ss` or `lsof`, accepts manual ports, and starts `ssh -N -L` bound to 127.0.0.1. Key login remains the default. Password login uses the existing memory-only askpass channel, prompts and retries in the panel, and disables public-key attempts for that connection. A first-use host key is accepted while a changed key is rejected. Process names appear in scan rows; opening a row fetches its command and Docker port mapping once. A tunnel becomes Running only after its own SSH process opens the local listener. Disabling Portman closes its tunnels. Hosted run `36117442936` exercised key-based remote scan, HTTP through loopback, duplicate mapping, stop, and an occupied local port. Run `36122992178` verified unexpected SSH exit changes the tunnel to Failed. Run `36150132160` exercised password rejection and metadata parsing without a Portman test failure; its unit job failed unrelated focus-style checks. Run `36150985951` passed the fresh-runner password prompt, retry, Cancel, Return-to-add, selection reset, and Settings UI checks. | Verify successful password login against a private host, live process and Docker context, and final signed UI. |
@@ -148,9 +152,8 @@ and helper at `1319b8e` passed strict signature checks and launched from
 `/Applications` in the background. Recheck their source stamps against current
 `HEAD` at final handoff after any later repository commits.
 
-The owner's latest review drove smaller Portman glyphs, inset full-row server
-hover, side link/stop actions that preserve the sparkline, clear Listening apps
-and Whole Mac memory labels, and a tab underline flush with the divider. The
+The owner's earlier review drove smaller Portman glyphs, inset full-row server
+hover, side link/stop actions, and a tab underline flush with the divider. The
 Forward page now accepts `user@IP`, offers a memory-only SSH password sheet and
 retry, identifies scanned processes, and loads command and Docker details on
 row disclosure. Hosted run `36150132160` exposed a modal-sheet test mistake and
@@ -169,3 +172,12 @@ same source stamp, passed strict signature verification under team
 `GF57JXJF5A`, and were launched from `/Applications` without a local UI test.
 Recheck the installed stamp against `HEAD` at handoff because other applets
 share this repository.
+
+The latest screenshot showed the hover surface still too narrow and the graph
+remaining behind its actions. The revised source gives overview rows a wider
+hover surface, preserves their inner text gutter, and crossfades the fixed
+trailing metrics slot to inset link/stop actions. The overview no longer scans
+or displays unrelated whole-Mac memory, and a single underline moves between
+equal tab cells without crossfading the entire page. Verify this revision in a
+hosted UI run and install the resulting clean signed commit without launching
+XCTest on the owner's desktop.

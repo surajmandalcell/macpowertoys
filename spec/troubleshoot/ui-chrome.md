@@ -94,23 +94,26 @@
 
 ## Portman Dense Menu-Bar Rows And SSH Host Context
 
-- **Symptom:** Portman's large glyphs, edge-to-edge server hover, hidden hover
-  graph, detached tab underline, and sparse remote-port rows made the panel
-  look unlike the combined MacPowerToys menu. Servers/Mac did not explain the
-  memory scopes. A direct `user@IP` host could not use an SSH password.
-- **Cause:** The row swapped its graph for actions, the tab indicator sat above
-  a separate divider, the memory picker used ambiguous names, and both SSH
-  paths forced key-only authentication. The remote scan kept only port numbers.
+- **Symptom:** After the first refinement, server hover still sat too far inside
+  the 400pt panel, the graph remained visible beside the hover actions, the
+  Whole Mac memory scope showed unrelated processes, and tab changes felt
+  awkward. A direct `user@IP` host previously lacked password login.
+- **Cause:** The overview and row each added a horizontal gutter, hover actions
+  were inserted beside the metrics rather than replacing them, the memory
+  breakdown used whole-Mac statistics, and a conditional matched-geometry line
+  moved while the page body faded. Both SSH paths originally forced key login.
 - **Invariant:** Use the smaller socket glyph in the status item and header.
-  Inset the neutral full-row hover; keep the graph and replace the memory
-  number with compact side actions on hover. The selected tab line covers the
-  divider and follows the shared reduced-motion policy. Name memory scopes by
-  what they include. Accept `user@IP`; use the in-memory SSH askpass channel
-  for a password and retry, then clear it on exit. Show the remote process
-  name, with command and Docker context only when the row is opened.
+  Give rows a wider inset hover surface and preserve inner text padding. Keep
+  one fixed trailing slot: graph plus memory at rest, link plus stop on hover,
+  with blue/red action feedback and no width shift. Show only listening-process
+  memory. One underline occupies the divider and slides between equal tab
+  cells; tab content does not fade, and Reduce Motion disables the slide.
+  Accept `user@IP`; use the in-memory SSH askpass channel for a password and
+  retry, then clear it on exit. Show the remote process name, with command and
+  Docker context only when the row is opened.
 - **Check:** Compile without launching on the owner's desktop. On a hosted Mac,
-  inspect Servers at rest and hover, tab changes, both memory scopes, the SSH
-  password sheet and retry, scanned remote-port disclosure, and Forward exit.
+  inspect Servers at rest, row hover, link hover, tab changes, the listener-only
+  memory bar, SSH password retry, remote-port disclosure, and Forward exit.
   A rejected password must allow retry while Forward is open; leaving Forward
   or closing the panel must dismiss that sheet and clear the in-memory secret.
   The sheet is modal, so Cancel precedes tab navigation. Authentication errors
