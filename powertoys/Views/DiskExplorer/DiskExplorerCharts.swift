@@ -72,21 +72,19 @@ struct DiskTreemapView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.45) }
 
-    private var tiles: [DiskChartTile] {
-        let largest = directory.children.sorted {
-            measure.weight($0, apparent: apparent) > measure.weight($1, apparent: apparent)
-        }
-        let shown = largest.prefix(80).sorted { $0.id < $1.id }
+    var tiles: [DiskChartTile] {
+        let ordered = directory.children.sorted { $0.id < $1.id }
+        let shown = ordered.prefix(80)
         var result = shown.enumerated().map { index, entry in
             DiskChartTile(entry: entry, label: entry.name, weight: max(1, measure.weight(entry, apparent: apparent)),
                           detail: measure.detail(entry, apparent: apparent),
                           color: DiskChartPalette.color(for: entry, index: index, measure: measure))
         }
-        let remaining = largest.dropFirst(80).reduce(Int64(0)) {
+        let remaining = ordered.dropFirst(80).reduce(Int64(0)) {
             $0 + max(1, measure.weight($1, apparent: apparent))
         }
-        if largest.count > 80 {
-            let measured = largest.dropFirst(80).reduce(Int64(0)) {
+        if ordered.count > 80 {
+            let measured = ordered.dropFirst(80).reduce(Int64(0)) {
                 $0 + measure.weight($1, apparent: apparent)
             }
             let detail = measure == .files ? "\(measured.formatted()) files" :
@@ -199,7 +197,7 @@ struct DiskTreemapView: View {
     }
 }
 
-private struct DiskRingSegment {
+struct DiskRingSegment {
     let id: String
     let entry: DiskEntry?
     let label: String
@@ -338,21 +336,20 @@ struct DiskSunburstView: View {
         return segments.reversed().first { $0.contains(angle: angle, radius: distance) }
     }
 
-    private static func segments(for root: DiskEntry, apparent: Bool,
-                                 measure: DiskChartMeasure, radius: CGFloat) -> [DiskRingSegment] {
+    static func segments(for root: DiskEntry, apparent: Bool,
+                         measure: DiskChartMeasure, radius: CGFloat) -> [DiskRingSegment] {
         var result: [DiskRingSegment] = []
         let levels = root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
             root.children.contains { !$0.children.isEmpty } ? 2 : 1
         let band = CGFloat(0.68) / CGFloat(levels)
         func add(_ parent: DiskEntry, start: Double, end: Double, depth: Int, colorIndex: Int) {
             guard depth < 3 else { return }
-            let ranked = parent.children
-                .sorted { measure.weight($0, apparent: apparent) > measure.weight($1, apparent: apparent) }
-            let total = ranked.reduce(Int64(0)) { $0 + max(1, measure.weight($1, apparent: apparent)) }
+            let ordered = parent.children.sorted { $0.id < $1.id }
+            let total = ordered.reduce(Int64(0)) { $0 + max(1, measure.weight($1, apparent: apparent)) }
             guard total > 0 else { return }
             var angle = start
             let limit = depth == 0 ? 24 : 12
-            let children = ranked.prefix(limit).sorted { $0.id < $1.id }
+            let children = ordered.prefix(limit)
             let inner = radius * (0.30 + CGFloat(depth) * band)
             let outer = radius * (0.30 + CGFloat(depth + 1) * band) - 2
             for (index, child) in children.enumerated() {
@@ -368,8 +365,8 @@ struct DiskSunburstView: View {
                     colorIndex: depth == 0 ? index : colorIndex)
                 angle = next
             }
-            if ranked.count > limit {
-                let remaining = ranked.dropFirst(limit).reduce(Int64(0)) {
+            if ordered.count > limit {
+                let remaining = ordered.dropFirst(limit).reduce(Int64(0)) {
                     $0 + measure.weight($1, apparent: apparent)
                 }
                 let detail = measure == .files ? "\(remaining.formatted()) files" :
