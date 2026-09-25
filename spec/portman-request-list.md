@@ -162,5 +162,10 @@ inspected; the retry sheet is contained without an error overflowing below it.
 The local app and test bundles compiled without launching either on the owner's
 desktop. Hosted run `36153836043` passed 879 unit tests with five skips and
 zero failures; its Portman and Fan UI jobs passed, and its app archive built.
-The signed installed copy still predates these changes. Recheck the final
-commit and install it only after its own hosted run passes.
+Hosted run `36156271937` passed its Portman and Fan UI jobs and the unit-test
+step for the final implementation; its archive step was still running when
+this note was written. The installed app and helper at `d1f9e83` carried the
+same source stamp, passed strict signature verification under team
+`GF57JXJF5A`, and were launched from `/Applications` without a local UI test.
+Recheck the installed stamp against `HEAD` at handoff because other applets
+share this repository.
