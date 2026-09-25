@@ -57,7 +57,7 @@ struct MacTweaksWindowView: View {
         .confirmationDialog("Restart Mac audio?", isPresented: $showReviveConfirmation) {
             Button("Revive Audio") { reviveAudio() }
         } message: {
-            Text("Audio in other apps may stop briefly. Restart may fail without administrator access.")
+            Text("Audio in other apps may stop briefly. macOS may ask for administrator approval.")
         }
     }
 
@@ -215,12 +215,11 @@ struct MacTweaksWindowView: View {
     }
 
     private func reviveAudio() {
-        // ponytail: current-user restart may fail on protected systems; add a privileged helper when recovery must work there.
         reviveMessage = "Restarting audio…"
         Task.detached {
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
-            process.arguments = ["coreaudiod"]
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", "do shell script \"/usr/bin/killall coreaudiod\" with administrator privileges"]
             let pipe = Pipe()
             process.standardError = pipe
             let result: String
@@ -230,7 +229,7 @@ struct MacTweaksWindowView: View {
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 process.waitUntilExit()
                 result = process.terminationStatus == 0 ? "Audio restarted. Refreshing devices…" :
-                    "Could not restart audio. \(detail.isEmpty ? "Administrator access may be required." : detail)"
+                    "Could not restart audio. \(detail.isEmpty ? "Administrator approval may be required." : detail)"
             } catch {
                 result = "Could not restart audio: \(error.localizedDescription)"
             }
