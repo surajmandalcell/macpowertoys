@@ -414,19 +414,34 @@ final class PortmanService {
 
     private var monitoringCount = 0
     private var monitoringTask: Task<Void, Never>?
+    private var lastScanAt = Date.distantPast
     private var processes: [UUID: Process] = [:]
     private var remoteRequestID = UUID()
     private var notifiedProcessIDs = Set<String>()
 
     func beginMonitoring() {
         monitoringCount += 1
+        if monitoringCount == 2 {
+            monitoringTask?.cancel()
+            monitoringTask = nil
+        }
         guard monitoringTask == nil else { return }
         monitoringTask = Task {
             while !Task.isCancelled {
-                await refreshLocal()
-                try? await Task.sleep(for: .seconds(PortmanPreferences.scanInterval))
+                if Self.shouldRunScan(ownerCount: monitoringCount, lastScanAt: lastScanAt,
+                                      now: Date(), interval: PortmanPreferences.scanInterval) {
+                    await refreshLocal()
+                }
+                let interval = PortmanPreferences.scanInterval
+                try? await Task.sleep(for: .seconds(monitoringCount > 1 ? interval : max(interval, 30)))
             }
         }
+    }
+
+    nonisolated static func shouldRunScan(
+        ownerCount: Int, lastScanAt: Date, now: Date, interval: TimeInterval
+    ) -> Bool {
+        ownerCount > 0 && (ownerCount > 1 || now.timeIntervalSince(lastScanAt) >= max(interval, 30))
     }
 
     func endMonitoring() {
@@ -434,6 +449,7 @@ final class PortmanService {
         guard monitoringCount == 0 else { return }
         monitoringTask?.cancel()
         monitoringTask = nil
+        lastScanAt = .distantPast
         localPorts = []
         history = [:]
         metadata = [:]
@@ -446,6 +462,7 @@ final class PortmanService {
     }
 
     func refreshLocal() async {
+        lastScanAt = Date()
         do {
             let range = PortmanPreferences.scanRange
             let snapshot = try await Task.detached(priority: .utility) {

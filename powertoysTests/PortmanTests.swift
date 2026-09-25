@@ -248,6 +248,20 @@ final class PortmanTests: XCTestCase {
             memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
     }
 
+    func testClosedPortmanUsesLowDutyScanInterval() {
+        let now = Date(timeIntervalSince1970: 100)
+        func shouldScan(_ owners: Int, _ secondsAgo: TimeInterval, interval: TimeInterval = 2) -> Bool {
+            PortmanService.shouldRunScan(ownerCount: owners,
+                                         lastScanAt: now.addingTimeInterval(-secondsAgo),
+                                         now: now, interval: interval)
+        }
+        XCTAssertFalse(shouldScan(0, 60))
+        XCTAssertFalse(shouldScan(1, 29))
+        XCTAssertTrue(shouldScan(1, 30))
+        XCTAssertFalse(shouldScan(1, 30, interval: 60))
+        XCTAssertTrue(shouldScan(2, 0))
+    }
+
     func testLocalScannerFindsAnActualListeningSocket() throws {
         let preference = "portman.showAllListeners"
         let previous = UserDefaults.standard.object(forKey: preference)
