@@ -1,9 +1,86 @@
 import AIManagerCore
+import AppKit
+import SwiftUI
 import XCTest
 @testable import powertoys
 
 @MainActor
 final class SwitchWorkspaceTests: XCTestCase {
+    func testWorkspaceRendersSyntheticPagesInLightAndDark() async throws {
+        let files = FileManager.default
+        let root = files.temporaryDirectory
+            .appendingPathComponent("mpt-switch-render-\(UUID().uuidString)", isDirectory: true)
+        defer { try? files.removeItem(at: root) }
+        let paths = ManagerPaths.environment(["AI_MANAGER_ROOT": root.path])
+        let model = SwitchWorkspaceModel(paths: paths)
+        await model.load()
+
+        let source = root.appending(path: "source")
+        try files.createDirectory(at: source, withIntermediateDirectories: true)
+        let claims = try JSONSerialization.data(withJSONObject: [
+            "email": "switch@example.test", "chatgpt_user_id": "render-user",
+            "chatgpt_account_id": "render-account", "workspace_id": "render-workspace"
+        ])
+        let payload = claims.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let auth = try JSONSerialization.data(withJSONObject: ["tokens": [
+            "id_token": "header.\(payload).signature",
+            "access_token": "synthetic-access", "refresh_token": "synthetic-refresh",
+            "account_id": "render-account"
+        ]])
+        try auth.write(to: source.appending(path: "auth.json"))
+        await model.reviewImport(source: source, mode: .full)
+        await model.commitImport(decisions: [:])
+        XCTAssertEqual(model.accounts.count, 1)
+
+        let sessions = paths.sharedRoot.appending(path: "sessions")
+        try files.createDirectory(at: sessions, withIntermediateDirectories: true)
+        let records: [[String: Any]] = [
+            ["type": "session_meta", "payload": ["id": "render", "cwd": "/Projects/Example"]],
+            ["type": "response_item", "payload": ["type": "message", "role": "user",
+                "content": [["type": "input_text", "text": "How do I organize my projects?"]]]],
+            ["type": "response_item", "payload": ["type": "message", "role": "assistant",
+                "content": [["type": "output_text", "text": "Start with a small set of clear folders."]]]]
+        ]
+        let transcript = try records.map { try JSONSerialization.data(withJSONObject: $0) }
+            .reduce(into: Data()) { data, line in
+                data.append(line)
+                data.append(10)
+            }
+        try transcript.write(to: sessions.appending(path: "render.jsonl"))
+        await model.loadHistory()
+        if let id = model.history.threads.first?.id {
+            await model.selectThread(id, query: "", filter: .all)
+        }
+        await model.loadCleanup()
+        XCTAssertNil(model.errorMessage)
+
+        for scheme in [ColorScheme.light, .dark] {
+            for page in SwitchPage.allCases {
+                let size = NSSize(width: 1_024, height: 720)
+                let host = NSHostingView(rootView: SwitchWindowView(model: model, initialPage: page)
+                    .frame(width: size.width, height: size.height)
+                    .environment(\.colorScheme, scheme))
+                host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                host.frame = NSRect(origin: .zero, size: size)
+                host.layoutSubtreeIfNeeded()
+                try await Task.sleep(for: .milliseconds(200))
+                host.layoutSubtreeIfNeeded()
+
+                let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: representation)
+                let image = NSImage(size: size)
+                image.addRepresentation(representation)
+                let attachment = XCTAttachment(image: image)
+                attachment.name = "Switch — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
+    }
+
     func testWorkspaceLoadsIsolatedCoreStoreWithoutStandaloneApp() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mpt-switch-test-\(UUID().uuidString)", isDirectory: true)
