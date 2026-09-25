@@ -37,9 +37,9 @@
   UI automation positioned its pointer relative to that small text frame.
 - **Invariant:** Expose the ring canvas as one chart element with the full chart
   frame, dynamic hovered-item value, and its existing label and hint.
-- **Check:** Run the hosted ring-hover UI assertion and inspect its screenshot
-  for a highlighted segment and matching center label. Run `36140917852`
-  established the failure with a pointer aimed through the center-text frame.
+- **Check:** Run `36140917852` established the failure with a pointer aimed
+  through the center-text frame. Run `36141822640` passed the ring-hover UI
+  assertion and captured a highlighted segment with a matching center label.
 
 ## Plain File Actions Show A Mismatched Focus Outline
 
