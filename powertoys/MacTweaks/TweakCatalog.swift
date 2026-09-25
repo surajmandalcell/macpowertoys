@@ -199,4 +199,10 @@ X|Historical|avoid.split-dark|Split dark appearance|The separate menu and app da
                              "Menu bar", "Built-in apps", "Appearance", "Regional formats",
                              "Diagnostics", "Launchpad", "Power and hardware", "Continuity",
                              "Developer controls", "Enhancements", "Historical"]
+
+    static let sidebarGroups: [(title: String, categories: [String])] = [
+        ("Everyday", ["Input", "Dock", "Finder", "Windows and dialogs", "Screenshots", "Appearance", "Built-in apps"]),
+        ("System", ["Power and hardware", "Menu bar", "Regional formats", "Diagnostics", "Continuity"]),
+        ("Explore", ["Launchpad", "Developer controls", "Enhancements", "Historical"])
+    ]
 }

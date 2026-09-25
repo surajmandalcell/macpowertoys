@@ -1,5 +1,12 @@
 # Mac Tweaks request list
 
+## Navigation and visual correction, 2026-09-26
+
+- [ ] Replace the flat item sidebar with one level of grouped category navigation. Show the selected category's settings as scrollable cards in the content pane.
+- [ ] Keep long setting names out of the narrow sidebar. Use distinct category symbols, clear category groups, and the PowerToys menu-bar panel's neutral surfaces and compact spacing.
+- [ ] Align the Mac Tweaks traffic lights and sidebar title on the shared 40pt workspace title strip.
+- [ ] Capture the final installed window, inspect its alignment and density, and correct visible defects before handoff.
+
 ## Expanded catalogue request, 2026-09-25
 
 - [x] Account for every record in the supplied 130-entry research catalogue with a per-feature implementation status and reason. Treat its availability marks as research evidence, not runtime certification. See `spec/mac-tweaks-compatibility.md`.

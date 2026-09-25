@@ -3,6 +3,8 @@ import SwiftUI
 
 struct TweakDetailView: View {
     let item: TweakItem
+    let backTitle: String
+    let onBack: () -> Void
 
     @State private var selections: [String: Int] = [:]
     @State private var message: String?
@@ -18,7 +20,10 @@ struct TweakDetailView: View {
     }
 
     var body: some View {
-        WorkspacePage(item.title, subtitle: item.category) {
+        WorkspacePage(item.title, subtitle: item.category, actions: {
+            Button(backTitle, systemImage: "chevron.left", action: onBack)
+                .accessibilityIdentifier("mac-tweaks.back")
+        }) {
             VStack(alignment: .leading, spacing: 18) {
                 Text(item.summary)
                     .font(.system(size: 14))

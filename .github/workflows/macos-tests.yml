@@ -94,6 +94,35 @@ jobs:
           path: ${{ runner.temp }}/portman-ui-renders
           if-no-files-found: warn
 
+  mac-tweaks-ui:
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise Mac Tweaks in a fresh hosted Mac session
+        run: |
+          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-mac-tweaks-ui" \
+            -resultBundlePath "$RUNNER_TEMP/mac-tweaks-ui.xcresult" \
+            -destination 'platform=macOS' -parallel-testing-enabled NO \
+            -only-testing:powertoysUITests/MacTweaksUITests \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
+            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
+      - name: Export Mac Tweaks captures
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/mac-tweaks-ui.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/mac-tweaks-ui.xcresult" --output-path "$RUNNER_TEMP/mac-tweaks-ui-renders" --filter '*.png'
+          fi
+      - name: Save Mac Tweaks captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-tweaks-ui-renders
+          path: ${{ runner.temp }}/mac-tweaks-ui-renders
+          if-no-files-found: warn
+
   tray-fan-ui:
     runs-on: xcode-27
     timeout-minutes: 15

@@ -5,7 +5,8 @@ import SwiftUI
 
 struct MacTweaksWindowView: View {
     @State private var search = ""
-    @State private var selectedID = "mic-lock"
+    @State private var selectedCategory = "Input"
+    @State private var selectedID: String?
     @State private var micLock = MicLockService.shared
     @State private var meter = MicInputLevelMonitor()
     @State private var showReviveConfirmation = false
@@ -13,10 +14,14 @@ struct MacTweaksWindowView: View {
     @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginMessage: String?
 
-    private var matches: [TweakItem] { TweakSearch.results(for: search) }
+    private var isSearching: Bool { !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var allItems: [TweakItem] { [TweakSearch.micLock] + TweakCatalog.items }
+    private var visibleItems: [TweakItem] {
+        isSearching ? TweakSearch.results(for: search) : allItems.filter { $0.category == selectedCategory }
+    }
 
     private var selectedItem: TweakItem? {
-        matches.first(where: { $0.id == selectedID }) ?? (search.isEmpty ? TweakSearch.micLock : matches.first)
+        allItems.first { $0.id == selectedID }
     }
 
     var body: some View {
@@ -25,11 +30,10 @@ struct MacTweaksWindowView: View {
             Group {
                 if selectedItem?.id == "mic-lock" { micLockPage }
                 else if let selectedItem {
-                    TweakDetailView(item: selectedItem)
+                    TweakDetailView(item: selectedItem, backTitle: backTitle) { selectedID = nil }
                         .id(selectedItem.id)
                 } else {
-                    ContentUnavailableView.search(text: search)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    categoryPage
                 }
             }
             .background(Color(nsColor: .windowBackgroundColor))
@@ -49,6 +53,7 @@ struct MacTweaksWindowView: View {
             meter.stop()
             if meter.permission == .authorized { meter.start() }
         }
+        .onChange(of: search) { _, _ in selectedID = nil }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             micLock.refreshControls()
         }
@@ -72,25 +77,30 @@ struct MacTweaksWindowView: View {
                     .accessibilityLabel("Search tweaks")
                     .padding(.bottom, 12)
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 3) {
-                        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            ForEach(TweakCatalog.categories, id: \.self) { category in
-                                let items = matches.filter { $0.category == category }
-                                if !items.isEmpty {
-                                    Text(category.uppercased())
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.top, 12)
-                                        .padding(.bottom, 3)
-                                    ForEach(items) { item in sidebarItem(item) }
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        ForEach(TweakCatalog.sidebarGroups.indices, id: \.self) { groupIndex in
+                            let group = TweakCatalog.sidebarGroups[groupIndex]
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(group.title.uppercased())
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.bottom, 4)
+                                ForEach(group.categories, id: \.self) { category in
+                                    SidebarRow(icon: icon(for: category), title: shortTitle(for: category),
+                                               isSelected: !isSearching && selectedCategory == category) {
+                                        selectedCategory = category
+                                        selectedID = nil
+                                        search = ""
+                                    }
+                                    .accessibilityIdentifier("mac-tweaks.category.\(category)")
+                                    .accessibilityLabel(category)
                                 }
                             }
-                        } else {
-                            ForEach(matches) { item in sidebarItem(item) }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 20)
                 }
                 .thinScrollIndicators()
             }
@@ -100,12 +110,92 @@ struct MacTweaksWindowView: View {
         }
     }
 
-    private func sidebarItem(_ item: TweakItem) -> some View {
-        SidebarRow(icon: item.id == "mic-lock" ? "mic" : icon(for: item.category),
-                   title: item.title, isSelected: selectedItem?.id == item.id) {
-            selectedID = item.id
+    private var backTitle: String {
+        isSearching ? "Results" : shortTitle(for: selectedCategory)
+    }
+
+    private var categoryPage: some View {
+        WorkspacePage(isSearching ? "Search results" : selectedCategory,
+                      subtitle: "\(visibleItems.count) \(visibleItems.count == 1 ? "setting" : "settings")") {
+            if visibleItems.isEmpty {
+                ContentUnavailableView.search(text: search)
+                Button("Clear search") { search = "" }
+            } else if isSearching {
+                VStack(spacing: 8) {
+                    ForEach(visibleItems) { item in settingCard(item) }
+                }
+                .frame(maxWidth: 760, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(["Controls", "Apple settings", "Research", "Historical"], id: \.self) { section in
+                        let items = visibleItems.filter { sectionName(for: $0) == section }
+                        if !items.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(section.uppercased())
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                ForEach(items) { item in settingCard(item) }
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: 760, alignment: .leading)
+            }
         }
-        .accessibilityIdentifier("mac-tweaks.item.\(item.id)")
+    }
+
+    private func settingCard(_ item: TweakItem) -> some View {
+        Button {
+            selectedID = item.id
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(item.title)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
+                    Text(isSearching ? item.category : sectionName(for: item))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                Text(item.summary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
+        .accessibilityIdentifier("mac-tweaks.card.\(item.id)")
+        .accessibilityLabel("\(item.title), \(item.category), \(sectionName(for: item)). \(item.summary)")
+    }
+
+    private func sectionName(for item: TweakItem) -> String {
+        if item.id == "mic-lock" || item.id == "helper.keep-awake" || TweakPreferences.supportsWrites(for: item.id) {
+            return "Controls"
+        }
+        if item.kind == .native || item.id == "finder.column-sizing" && ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 {
+            return "Apple settings"
+        }
+        return item.kind == .historical ? "Historical" : "Research"
+    }
+
+    private func shortTitle(for category: String) -> String {
+        switch category {
+        case "Windows and dialogs": "Windows"
+        case "Built-in apps": "Apps"
+        case "Power and hardware": "Power"
+        case "Regional formats": "Formats"
+        case "Developer controls": "Developer"
+        default: category
+        }
     }
 
     private func icon(for category: String) -> String {
@@ -115,9 +205,16 @@ struct MacTweaksWindowView: View {
         case "Input": "keyboard"
         case "Screenshots": "camera.viewfinder"
         case "Appearance": "paintbrush"
-        case "Power and hardware": "power"
+        case "Power and hardware": "bolt"
         case "Menu bar": "menubar.rectangle"
-        case "Built-in apps": "app"
+        case "Built-in apps": "square.grid.2x2"
+        case "Windows and dialogs": "macwindow"
+        case "Regional formats": "globe"
+        case "Diagnostics": "waveform.path.ecg"
+        case "Launchpad": "square.grid.3x3"
+        case "Continuity": "link"
+        case "Developer controls": "chevron.left.forwardslash.chevron.right"
+        case "Enhancements": "slider.horizontal.3"
         case "Historical": "archivebox"
         default: "slider.horizontal.3"
         }
@@ -125,6 +222,8 @@ struct MacTweaksWindowView: View {
 
     private var micLockPage: some View {
         WorkspacePage("Mic Lock", subtitle: "Keep Bluetooth headsets on high-quality output", actions: {
+            Button(backTitle, systemImage: "chevron.left") { selectedID = nil }
+                .accessibilityIdentifier("mac-tweaks.back")
             Button("Refresh Devices", systemImage: "arrow.clockwise") { micLock.refresh() }
                 .accessibilityIdentifier("mac-tweaks.refresh")
         }) {

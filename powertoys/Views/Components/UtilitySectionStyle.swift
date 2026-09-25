@@ -68,7 +68,7 @@ enum UtilityLayout {
             return netToysMinimumContentSize
         case "rclone", "system-care", "disk-explorer", "switch":
             sidebarWidth = dataSidebarWidth
-        case "logs", "input-devices", "system-monitor":
+        case "logs", "input-devices", "system-monitor", "mac-tweaks":
             sidebarWidth = compactSidebarWidth
         default:
             return nil
