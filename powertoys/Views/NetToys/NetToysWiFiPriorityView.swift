@@ -100,6 +100,7 @@ struct NetToysWiFiPriorityView: View {
             await model.refresh()
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
                 model.helperStatus = NetToysConfigurationStore.status()
             }
         }
