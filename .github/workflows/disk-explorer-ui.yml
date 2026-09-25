@@ -12,6 +12,37 @@ on:
       - powertoysUITests/DiskExplorerUITests.swift
 
 jobs:
+  disk-explorer-unit:
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run focused Disk Explorer unit and render checks
+        run: |
+          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-disk-explorer-unit" \
+            -resultBundlePath "$RUNNER_TEMP/disk-explorer-unit.xcresult" \
+            -destination 'platform=macOS' -parallel-testing-enabled NO \
+            -only-testing:powertoysTests/DiskExplorerTests \
+            -only-testing:powertoysTests/DiskExplorerRenderTests \
+            -only-testing:powertoysTests/FocusEffectTests \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
+            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
+      - name: Export chart renders
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/disk-explorer-unit.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/disk-explorer-unit.xcresult" --output-path "$RUNNER_TEMP/disk-explorer-unit-renders" --filter '*.png'
+          fi
+      - name: Save chart renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: disk-explorer-unit-renders
+          path: ${{ runner.temp }}/disk-explorer-unit-renders
+          if-no-files-found: warn
+
   disk-explorer-ui:
     runs-on: xcode-27
     timeout-minutes: 15
