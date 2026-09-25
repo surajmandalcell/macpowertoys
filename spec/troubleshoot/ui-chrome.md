@@ -145,16 +145,17 @@
 
 ## Portman Cleanup Number Editing
 
-- **Symptom:** Replacing the idle threshold `4` with `6` produced `64` in the
-  hosted Settings panel, even after Delete was sent to the focused field.
-- **Cause:** A formatted numeric `TextField` wrote every intermediate edit
-  directly to `@AppStorage`; the stored value immediately reformatted the
-  field while it was still being edited.
+- **Symptom:** Clicking the idle threshold `4`, sending Delete, then typing
+  `6` produced `64` in the hosted Settings panel.
+- **Cause:** The test did not select the existing value. A click can put the
+  caret before the digit, where Backspace cannot remove it; typing `6` then
+  prepends to `4`. This failure alone does not establish a storage-binding
+  defect.
 - **Invariant:** Keep the cleanup threshold as a text draft while editing.
   On Return, save only an integer inside that setting's range; otherwise
   restore the last valid value. The three cleanup number fields share this
   behavior.
-- **Check:** In the real panel, replace `4` with `6` and press Return; the
+- **Check:** Select the existing value, replace `4` with `6`, and press Return; the
   displayed and saved value must be `6`. Enter `99` for the idle threshold;
   it must revert to `6` without changing the saved value.
 
