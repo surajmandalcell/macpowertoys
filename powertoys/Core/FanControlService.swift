@@ -3,58 +3,30 @@ import Foundation
 import Observation
 import ServiceManagement
 
-nonisolated enum FanPreset: String, CaseIterable, Identifiable, Sendable {
-    case auto = "Auto"
-    case cool = "Cool"
-    case max = "Max"
-
-    var id: String { rawValue }
-}
-
-nonisolated struct FanReading: Decodable, Sendable {
-    let index: Int
-    let actualRPM: Double?
-    let maximumRPM: Double?
-    let mode: String?
-}
-
-nonisolated struct FanSnapshot: Sendable {
-    let fans: [FanReading]
-    let profile: String?
-    let canControl: Bool
-
-    var averageRPM: Int? {
-        let values = fans.compactMap(\.actualRPM).filter { $0.isFinite && $0 >= 0 }
-        guard values.count == fans.count, !values.isEmpty else { return nil }
-        let average = values.reduce(0, +) / Double(values.count)
-        return average < 100_000 ? Int(average.rounded()) : nil
-    }
-
-    var utilization: Int? {
-        let fractions = fans.compactMap { fan -> Double? in
-            guard let actual = fan.actualRPM, let maximum = fan.maximumRPM,
-                  actual.isFinite, actual >= 0, maximum.isFinite, maximum > 0 else { return nil }
-            return min(max(actual / maximum, 0), 1)
-        }
-        guard fractions.count == fans.count, !fractions.isEmpty else { return nil }
-        return Int((fractions.reduce(0, +) / Double(fractions.count) * 100).rounded())
-    }
-
-    var detectedPreset: FanPreset? {
-        guard !fans.isEmpty else { return nil }
-        return switch profile {
-        case "auto" where fans.allSatisfy({ ["auto", "system"].contains($0.mode?.lowercased() ?? "") }): .auto
-        case "full": .max
-        default: nil
-        }
-    }
-
-    var hasExternalManualControl: Bool {
-        profile == nil && fans.contains { ["manual", "forced"].contains($0.mode?.lowercased() ?? "") }
-    }
-}
-
 nonisolated enum FanCommand {
+    private final class HelperReply: @unchecked Sendable {
+        private let lock = NSLock()
+        private let semaphore = DispatchSemaphore(value: 0)
+        private var result: String?
+
+        func finish(_ value: String) {
+            lock.lock()
+            guard result == nil else { lock.unlock(); return }
+            result = value
+            lock.unlock()
+            semaphore.signal()
+        }
+
+        func wait(seconds: Double = 8) -> String {
+            guard semaphore.wait(timeout: .now() + seconds) == .success else {
+                return "The built-in fan helper did not respond."
+            }
+            lock.lock()
+            defer { lock.unlock() }
+            return result ?? "The built-in fan helper did not respond."
+        }
+    }
+
     private struct JSONStatus: Decodable {
         let profile: String?
         let fans: [FanReading]
@@ -145,8 +117,47 @@ nonisolated enum FanCommand {
     }
 
     private static func applyOnQueue(_ preset: FanPreset) throws {
-        guard let smctlPath else { throw FanError("Install smctl to enable fan control.") }
-        _ = try run(smctlPath, arguments(for: preset))
+        if let smctlPath {
+            _ = try run(smctlPath, arguments(for: preset))
+        } else {
+            try applyBuiltIn(preset)
+        }
+    }
+
+    private static func applyBuiltIn(_ preset: FanPreset) throws {
+        let reply = HelperReply()
+        let (connection, proxy) = helperConnection(reply: reply)
+        proxy?.applyFanPreset(preset.rawValue) { reply.finish($0) }
+        if proxy == nil { reply.finish("The built-in fan helper is unavailable.") }
+        let message = reply.wait()
+        connection.invalidate()
+        if !message.isEmpty { throw FanError(message) }
+    }
+
+    static func helperSourceCommit() -> String? {
+        let reply = HelperReply()
+        let (connection, proxy) = helperConnection(reply: reply)
+        proxy?.neighborSnapshot { _, commit in reply.finish(commit) }
+        if proxy == nil { reply.finish("") }
+        let commit = reply.wait(seconds: 2)
+        connection.invalidate()
+        return commit.count == 40 && commit.allSatisfy(\.isHexDigit) ? commit : nil
+    }
+
+    private static func helperConnection(reply: HelperReply) -> (NSXPCConnection, NetToysNeighborXPCProtocol?) {
+        let connection = NSXPCConnection(
+            machServiceName: NetToysNeighborServiceContract.machServiceName,
+            options: .privileged
+        )
+        connection.remoteObjectInterface = NSXPCInterface(with: NetToysNeighborXPCProtocol.self)
+        connection.setCodeSigningRequirement(NetToysNeighborServiceContract.helperRequirement)
+        connection.interruptionHandler = { reply.finish("The built-in fan helper stopped.") }
+        connection.invalidationHandler = { reply.finish("The built-in fan helper is unavailable.") }
+        connection.resume()
+        let proxy = connection.remoteObjectProxyWithErrorHandler {
+            reply.finish($0.localizedDescription)
+        } as? NetToysNeighborXPCProtocol
+        return (connection, proxy)
     }
 
     static func run(_ executable: String, _ arguments: [String]) throws -> String {
@@ -209,6 +220,7 @@ final class FanControlService {
     private var coolResetTask: Task<Void, Never>?
     private var ownsManualControl = false
     private var hasPendingManualCommand = false
+    private var helperCommit: String?
     private var revision = 0
 
     private init() { Self.current = self }
@@ -216,7 +228,32 @@ final class FanControlService {
     var pollOwnerCount: Int { pollTask == nil ? 0 : 1 }
     var isAvailable: Bool { snapshot?.fans.isEmpty == false }
     var canControl: Bool { snapshot?.canControl == true }
-    var canRestoreAutomatic: Bool { ownsManualControl && FanCommand.smctlPath != nil }
+    var canRestoreAutomatic: Bool {
+        (ownsManualControl || snapshot?.hasExternalManualControl == true)
+            && (FanCommand.smctlPath != nil || NetToysNeighborServiceManager.shared.isEnabled)
+    }
+    var needsApproval: Bool { NetToysNeighborServiceManager.shared.status == .requiresApproval }
+    var needsHelperUpdate: Bool {
+        guard let helperCommit else { return false }
+        return helperCommit != Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
+    }
+
+    func enableControl() async {
+        let manager = NetToysNeighborServiceManager.shared
+        if needsHelperUpdate {
+            do { try await manager.restart() }
+            catch { errorMessage = error.localizedDescription; return }
+            helperCommit = nil
+        }
+        guard manager.enable(openSettings: false) else {
+            errorMessage = needsApproval
+                ? "Allow MacPowerToys under Background App Activity in Login Items."
+                : "macOS could not enable the built-in fan helper."
+            return
+        }
+        errorMessage = nil
+        await refresh()
+    }
 
     func start(owner: String) {
         guard owners.insert(owner).inserted, pollTask == nil else { return }
@@ -239,14 +276,28 @@ final class FanControlService {
         let currentRevision = revision
         let result = await Task.detached(priority: .utility) { FanCommand.read() }.value
         guard currentRevision == revision, !owners.isEmpty else { return }
+        if NetToysNeighborServiceManager.shared.isEnabled, helperCommit == nil {
+            helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
+        }
+        guard currentRevision == revision, !owners.isEmpty else { return }
         hasCompletedRead = true
-        snapshot = result
-        if !ownsManualControl { selectedPreset = result?.detectedPreset }
+        if let result {
+            let nativeControl = NetToysNeighborServiceManager.shared.isEnabled
+                && !needsHelperUpdate && helperCommit != nil
+                && !result.fans.isEmpty
+                && (!result.hasExternalManualControl || ownsManualControl)
+                && result.fans.allSatisfy { ["auto", "manual", "system"].contains($0.mode ?? "") }
+            snapshot = FanSnapshot(fans: result.fans, profile: result.profile,
+                                   canControl: result.canControl || nativeControl)
+        } else {
+            snapshot = nil
+        }
+        if !ownsManualControl { selectedPreset = snapshot?.detectedPreset }
     }
 
     func select(_ preset: FanPreset) {
         guard !isChanging,
-              snapshot?.canControl == true || (preset == .auto && ownsManualControl) else { return }
+              snapshot?.canControl == true || (preset == .auto && canRestoreAutomatic) else { return }
         isChanging = true
         hasPendingManualCommand = preset != .auto
         errorMessage = nil
