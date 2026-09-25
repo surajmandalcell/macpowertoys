@@ -65,6 +65,11 @@ struct SwitchWindowView: View {
         }
         .onChange(of: messageQuery) { scheduleMessageSearch() }
         .onChange(of: messageFilterMask) { scheduleMessageSearch() }
+        .onChange(of: model.cleanupItems) {
+            selectedCleanupIDs.formIntersection(Set(
+                model.cleanupItems.filter { $0.exclusionReason == nil }.map(\.id)
+            ))
+        }
         .onChange(of: model.importPlan?.id) {
             importDecisions = Dictionary(uniqueKeysWithValues:
                 (model.importPlan?.conflicts ?? []).map { ($0.relativePath, .keepShared) }
