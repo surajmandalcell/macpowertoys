@@ -38,6 +38,9 @@ final class PortmanUITests: XCTestCase {
         app.buttons["Continue"].click()
         XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5),
                       "Submitting the password dismissed the Portman panel")
+        XCTAssertTrue(app.staticTexts["Authentication failed. Enter the password again."].waitForExistence(timeout: 10),
+                      "A rejected SSH password did not offer a retry")
+        app.buttons["Cancel"].click()
         let remotePort = app.textFields["Remote port to add"]
         remotePort.click()
         remotePort.typeText("3000\n")
