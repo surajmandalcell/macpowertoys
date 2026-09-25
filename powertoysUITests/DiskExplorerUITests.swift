@@ -21,6 +21,7 @@ final class DiskExplorerUITests: XCTestCase {
             attach(window.screenshot(), named: "Diskman Modify")
         } else {
             XCTAssertTrue(window.staticTexts["No Physical Disks"].exists)
+            XCTAssertFalse(window.descendants(matching: .any)["diskman.inventoryError"].exists)
             attach(window.screenshot(), named: "Diskman Modify Empty")
         }
     }

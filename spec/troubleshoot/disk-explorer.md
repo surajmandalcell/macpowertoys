@@ -16,18 +16,19 @@
   prior weight-based grouping. Hosted chart navigation and motion captures
   must confirm stable live transitions in both appearances.
 
-## Hosted Modify Check Has No Physical Disk
+## Hosted Modify Inventory Fails To Decode
 
-- **Symptom:** The hosted UI test reaches Modify but cannot find a physical
-  disk row to select.
-- **Cause:** The virtualized macOS runner exposes no physical media through
-  `diskutil`, while Modify intentionally filters out virtual disks.
-- **Invariant:** Keep the physical-media guard. Verify the hosted empty state
-  and render a representative removable disk offscreen in both appearances;
-  exercise actual writes only on the identified local SD card.
-- **Check:** The hosted Modify UI test accepts a physical row or the explicit
-  No Physical Disks state. `testModifyLayoutInBothAppearances` captures the
-  populated page without launching it on the owner desktop.
+- **Symptom:** The hosted UI test reaches Modify but shows No Physical Disks
+  alongside a plist-format error.
+- **Cause:** The command runner merged `diskutil` diagnostics into stdout;
+  any diagnostic corrupts a valid plist before the inventory parser reads it.
+- **Invariant:** Parse stdout alone for inventory commands, keep useful merged
+  diagnostics for write operations, and show the empty state only without a
+  read error. Keep virtual disks out of the writable device list.
+- **Check:** The hosted workflow validates `diskutil list -plist`, and the UI
+  check rejects an inventory error when no physical disk row exists.
+  `testModifyLayoutInBothAppearances` captures a populated SD layout without
+  launching it on the owner desktop. Actual writes stay on the identified SD.
 
 ## Disk Repair Requests An Interactive Whole-Disk Prompt
 

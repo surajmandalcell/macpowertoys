@@ -52,6 +52,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Check hosted disk inventory format
+        run: |
+          diskutil list -plist > "$RUNNER_TEMP/disk-list.plist"
+          plutil -lint "$RUNNER_TEMP/disk-list.plist"
       - name: Run Diskman UI navigation on the hosted Mac
         run: |
           xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \

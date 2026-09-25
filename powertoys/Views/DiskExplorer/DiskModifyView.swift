@@ -20,6 +20,7 @@ private final class DiskManagementModel {
             disks = try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value
             error = nil
         } catch {
+            disks = []
             self.error = error.localizedDescription
         }
     }
@@ -34,6 +35,7 @@ private final class DiskManagementModel {
             }.value.trimmingCharacters(in: .whitespacesAndNewlines)
             disks = try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value
         } catch {
+            disks = []
             self.error = error.localizedDescription
         }
         isBusy = false
@@ -107,6 +109,9 @@ struct DiskModifyView: View {
                     } else if model.isBusy && model.disks.isEmpty {
                         ProgressView("Reading physical disks…")
                             .frame(maxWidth: .infinity, minHeight: 260)
+                    } else if model.error != nil {
+                        ContentUnavailableView("Couldn’t Read Disks", systemImage: "externaldrive.badge.xmark",
+                                               description: Text("Refresh to try again."))
                     } else {
                         ContentUnavailableView(model.disks.isEmpty ? "No Physical Disks" : "Select a Disk",
                                                systemImage: "externaldrive",
@@ -125,6 +130,7 @@ struct DiskModifyView: View {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.red)
                             .textSelection(.enabled)
+                            .accessibilityIdentifier("diskman.inventoryError")
                     }
                     if let message = model.message, !message.isEmpty {
                         Text(message)
