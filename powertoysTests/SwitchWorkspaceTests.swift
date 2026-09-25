@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class SwitchWorkspaceTests: XCTestCase {
-    func testAppletRendersSyntheticAccountsAndRecoveryInLightAndDark() async throws {
+    func testAppletRendersOriginalAccountsBackupAndSettingsLayout() async throws {
         let files = FileManager.default
         let root = files.temporaryDirectory
             .appendingPathComponent("mpt-switch-render-\(UUID().uuidString)", isDirectory: true)
@@ -14,7 +14,7 @@ final class SwitchWorkspaceTests: XCTestCase {
         let model = SwitchWorkspaceModel(paths: ManagerPaths.environment(["AI_MANAGER_ROOT": root.path]))
         await model.load()
 
-        for size in [NSSize(width: 1_024, height: 720), NSSize(width: 880, height: 600)] {
+        for size in [NSSize(width: 1_120, height: 740), NSSize(width: 880, height: 600)] {
             for scheme in [ColorScheme.light, .dark] {
                 try await attachRender(of: .accounts, model: model, size: size,
                                        scheme: scheme, state: "Empty")
@@ -34,7 +34,7 @@ final class SwitchWorkspaceTests: XCTestCase {
         })
         model.selectedAccountID = second.id
 
-        for size in [NSSize(width: 1_024, height: 720), NSSize(width: 880, height: 600)] {
+        for size in [NSSize(width: 1_120, height: 740), NSSize(width: 880, height: 600)] {
             for scheme in [ColorScheme.light, .dark] {
                 for page in SwitchPage.allCases {
                     try await attachRender(of: page, model: model, size: size,

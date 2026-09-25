@@ -197,7 +197,7 @@ struct MacPowerToysApp: App {
             SwitchWindowView()
                 .utilityMotionPolicy()
         }
-        .defaultSize(width: 1_040, height: 700)
+        .defaultSize(width: 1_120, height: 740)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["switch"]))
         .restorationBehavior(.disabled)
