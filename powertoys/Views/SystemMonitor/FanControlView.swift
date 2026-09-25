@@ -43,7 +43,7 @@ struct FanControlView: View {
             if compact { compactContent } else { expandedContent }
         }
         .padding(.leading, compact ? TrayPopoverLayout.horizontalInset + 4 : 14)
-        .padding(.trailing, compact ? 0 : 14)
+        .padding(.trailing, compact ? 4 : 14)
         .padding(.vertical, compact ? 8 : 14)
         .background(compact ? Color.clear : Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
