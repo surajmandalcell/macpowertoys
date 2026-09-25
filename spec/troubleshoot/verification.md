@@ -33,6 +33,8 @@
   navigation in test mode and Portman menu-bar navigation after a normal app
   launch. It exports screenshots for both. Local owner-session checks remain
   compile-only.
+  `.github/workflows/switch-ui.yml` can be dispatched manually for a focused
+  Switch check when frequent pushes supersede the longer shared workflow.
 - **Check:** Match the successful workflow run to the tested commit and inspect
   its XCTest result and tray renders. Run `36097325950` at `fbe1721` passed 842
   tests, with five skips and zero failures, and saved 13 PNG attachments. Its
