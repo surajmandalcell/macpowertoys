@@ -165,6 +165,19 @@
   `/Applications` process started through `open -g`, and the saved remote host
   remained `oci1`.
 
+## Development Signature Trust Rejection
+
+- **Symptom:** `codesign --verify --deep --strict` passes, but a live
+  Security.framework check reports `CSSMERR_TP_NOT_TRUSTED`.
+- **Cause:** Structural signature validity and macOS trust evaluation are
+  separate checks. The embedded Apple Development certificate may be valid
+  while the local trust policy still rejects it.
+- **Invariant:** Keep owner-session tests off the desktop and run interaction
+  checks on the hosted Mac. Do not inspect or change the owner's Keychain trust.
+- **Check:** Confirm the installed app runs from `/Applications`, inspect the
+  embedded certificate dates without reading Keychain items, and report live
+  interaction as unverified until macOS accepts the local signature.
+
 ## Raycast Local Install Drift
 
 - **Symptom:** The signed app is current, but Raycast keeps old tool icons or
