@@ -20,6 +20,7 @@ final class DiskExplorerRenderTests: XCTestCase {
             let host = NSHostingView(rootView:
                 DiskModifyView(previewDisks: [card])
                     .frame(width: size.width, height: size.height)
+                    .background(Color(nsColor: .windowBackgroundColor))
                     .environment(\.colorScheme, scheme)
             )
             host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)

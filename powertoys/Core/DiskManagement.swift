@@ -297,20 +297,20 @@ nonisolated enum DiskManagement {
     }
 
     private static func plist(_ arguments: [String]) throws -> [String: Any] {
-        let data = try execute(arguments)
-        guard let value = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+        let data = try execute(arguments, plistOutput: true)
+        guard let value = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
             throw DiskManagementError.command("Could not read disk details from macOS.")
         }
         return value
     }
 
-    private static func execute(_ arguments: [String]) throws -> Data {
+    private static func execute(_ arguments: [String], plistOutput: Bool = false) throws -> Data {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = pipe
+        process.standardError = plistOutput ? FileHandle.nullDevice : pipe
         try process.run()
         let output = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
