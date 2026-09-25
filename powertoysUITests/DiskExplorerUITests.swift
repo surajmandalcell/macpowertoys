@@ -26,6 +26,13 @@ final class DiskExplorerUITests: XCTestCase {
         tabs.descendants(matching: .any)["Visualization"].click()
         XCTAssertTrue(contents.waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Disk Explorer Visualization")
+
+        let statistics = window.buttons["diskExplorer.statistics"]
+        XCTAssertTrue(statistics.waitForExistence(timeout: 5))
+        statistics.click()
+        XCTAssertTrue(app.staticTexts["Measured So Far"].waitForExistence(timeout: 5)
+                      || app.staticTexts["Scan Statistics"].exists)
+        attach(app.screenshot(), named: "Disk Explorer Scan Statistics")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {
