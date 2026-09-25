@@ -3,6 +3,26 @@ import Darwin
 @testable import powertoys
 
 final class DiskExplorerTests: XCTestCase {
+    func testScannerPublishesMeasuredFoldersBeforeItFinishes() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        for name in ["first", "second"] {
+            let folder = root.appendingPathComponent(name)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(repeating: 7, count: 8192).write(to: folder.appendingPathComponent("data.bin"))
+        }
+
+        let snapshots = DiskSnapshotRecorder()
+        let final = try DiskExplorerScanner.scan(root) { snapshots.append($0) }
+        let partial = snapshots.values
+        XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.children.count == 2 })
+        XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.allocatedBytes > 0 &&
+            $0.root.children.contains(where: { $0.allocatedBytes > 0 }) })
+        XCTAssertTrue(final.isComplete)
+        XCTAssertEqual(final.root.allocatedBytes, try duBytes(root))
+    }
+
     func testScannerMatchesDuAndDoesNotFollowLinks() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -69,4 +89,11 @@ final class DiskExplorerTests: XCTestCase {
         let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         return try XCTUnwrap(Int64(text.split(whereSeparator: \.isWhitespace).first ?? "")) * 512
     }
+}
+
+private final class DiskSnapshotRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var snapshots: [DiskScanResult] = []
+    func append(_ snapshot: DiskScanResult) { lock.withLock { snapshots.append(snapshot) } }
+    var values: [DiskScanResult] { lock.withLock { snapshots } }
 }
