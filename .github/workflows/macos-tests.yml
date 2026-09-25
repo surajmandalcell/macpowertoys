@@ -37,13 +37,16 @@ jobs:
           path: ${{ runner.temp }}/macos-test-summary.json
           if-no-files-found: warn
       - name: Export tray renders
+        if: always()
         run: |
-          result=$(find "$RUNNER_TEMP/macpowertoys-derived/Logs/Test" -maxdepth 1 -type d -name '*.xcresult' -print -quit)
-          test -n "$result"
-          xcrun xcresulttool export attachments --path "$result" --output-path "$RUNNER_TEMP/tray-renders" --filter '*.png'
+          result=$(find "$RUNNER_TEMP/macpowertoys-derived/Logs/Test" -maxdepth 1 -type d -name '*.xcresult' -print -quit 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            xcrun xcresulttool export attachments --path "$result" --output-path "$RUNNER_TEMP/tray-renders" --filter '*.png'
+          fi
       - name: Save tray renders
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tray-renders
           path: ${{ runner.temp }}/tray-renders
-          if-no-files-found: error
+          if-no-files-found: warn
