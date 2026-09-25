@@ -56,3 +56,9 @@ conversation search with the list, and renders messages as a transcript.
 The hosted macOS test workflow captures synthetic account and conversation
 states in light and dark for visual review without disturbing the owner's
 desktop. The signed app itself still needs live interaction review.
+
+Hosted macOS runs `36098210860` and `36099151715` passed. The first 1,024pt
+renders exposed clipped Roles and Copy Shown actions; the corrected 880pt and
+1,024pt light/dark renders show both labels in full. Account status and path
+presentation were tightened in the same correction. Live window chrome,
+keyboard traversal, sheets, and installation remain unverified.

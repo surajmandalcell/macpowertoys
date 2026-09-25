@@ -68,6 +68,19 @@
   Menus and buttons share one centerline. Start System Care work on every page
   and confirm the status stays at the bottom without unused space below it.
 
+## Switch Transcript Actions At Minimum Width
+
+- **Symptom:** The conversation detail search field left only a chevron for
+  Roles and almost no visible Copy Shown button.
+- **Cause:** The search field had elevated layout priority, so SwiftUI compressed
+  the trailing actions before the field at the workspace minimum width.
+- **Invariant:** The search field takes remaining width while the Roles menu and
+  Copy Shown button retain their intrinsic widths. Keep all three controls in
+  the same 24pt action row.
+- **Check:** Inspect synthetic Switch conversation renders at 880 and 1,024pt
+  in light and dark. Both trailing labels must be legible without clipping.
+  Confirm keyboard operation in the signed app when live interaction is allowed.
+
 ## Workspace Minimum Window Sizes
 
 - **Symptom:** A newly added workspace can be resized until its sidebar,
