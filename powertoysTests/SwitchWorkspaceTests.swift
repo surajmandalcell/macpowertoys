@@ -43,11 +43,11 @@ final class SwitchWorkspaceTests: XCTestCase {
                 }
             }
         }
+        XCTAssertEqual(model.selectedAccount?.verification.state.rawValue,
+                       VerificationState.verifiedWithCodex.rawValue)
         for scheme in [ColorScheme.light, .dark] {
             try await attachTrayRender(model: model, scheme: scheme)
         }
-        XCTAssertEqual(model.selectedAccount?.verification.state.rawValue,
-                       VerificationState.verifiedWithCodex.rawValue)
     }
 
     private func attachRender(of page: SwitchPage, model: SwitchWorkspaceModel,
