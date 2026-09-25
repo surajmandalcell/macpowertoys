@@ -1,4 +1,5 @@
 import AIManagerCore
+import AppKit
 import Foundation
 import Observation
 
@@ -16,9 +17,11 @@ final class SwitchWorkspaceModel {
     var selectedAccountID: UUID?
 
     private let manager: AccountManager?
+    private let paths: ManagerPaths
     private let startupError: String?
 
     init(paths: ManagerPaths = .environment()) {
+        self.paths = paths
         do {
             manager = try AccountManager(paths: paths)
             startupError = nil
@@ -57,6 +60,29 @@ final class SwitchWorkspaceModel {
             _ = try await manager.switchDefault(to: id)
             self.apply(try await manager.refreshAccounts(includeDiscoveries: false))
         }
+    }
+
+    func openAccount(_ id: UUID) async {
+        guard let manager, let account = accounts.first(where: { $0.id == id }) else { return }
+        await perform {
+            if self.snapshot?.status.isDefault(account) != true {
+                _ = try await manager.switchDefault(to: id)
+                self.apply(try await manager.refreshAccounts(includeDiscoveries: false))
+            }
+            let spec = try await manager.launchSpec(accountID: id)
+            let script = try self.makeLaunchArtifact(spec)
+            if self.paths.isolationRoot == nil && !NSWorkspace.shared.open(script) {
+                throw AIManagerError.operationFailed("Terminal could not open this account.")
+            }
+        }
+    }
+
+    func moveAccount(_ id: UUID, by offset: Int) async {
+        guard let manager, let source = accounts.firstIndex(where: { $0.id == id }),
+              accounts.indices.contains(source + offset) else { return }
+        var ids = accounts.map(\.id)
+        ids.insert(ids.remove(at: source), at: source + offset)
+        await perform { self.snapshot?.status = try await manager.reorderAccounts(ids) }
     }
 
     func verify(_ id: UUID) async {
@@ -196,6 +222,33 @@ final class SwitchWorkspaceModel {
             selectedAccountID = refreshed.status.firstDefaultAccountID ?? refreshed.status.accounts.first?.id
         }
         if login == nil { login = refreshed.pendingLoginSessions.first }
+    }
+
+    private func makeLaunchArtifact(_ spec: LaunchSpec) throws -> URL {
+        let directory = paths.applicationSupport.appending(path: "Launch", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
+        let url = directory.appending(path: "Open MacPowerToys Switch.command")
+        var exports = ["CODEX_HOME", "GROK_HOME"].compactMap { key in
+            spec.environment[key].map { "export \(key)=\(shellQuote($0))" }
+        }
+        if paths.isolationRoot != nil, let home = spec.environment["HOME"] {
+            exports.append("export HOME=\(shellQuote(home))")
+        }
+        let command = ([spec.executable.path] + spec.arguments).map(shellQuote).joined(separator: " ")
+        let workingDirectory = spec.workingDirectory.map { "cd \(shellQuote($0.path))\n" } ?? ""
+        let contents = (
+            ["#!/bin/zsh", "set -e", "unset OPENAI_API_KEY CODEX_ACCESS_TOKEN XAI_API_KEY"]
+                + exports + [workingDirectory + "exec \(command)"]
+        ).joined(separator: "\n") + "\n"
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+        return url
+    }
+
+    private func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     private func perform(_ action: () async throws -> Void) async {

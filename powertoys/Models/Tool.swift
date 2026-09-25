@@ -395,21 +395,22 @@ struct PortmanTool: Tool {
 struct SwitchTool: Tool {
     let id = "switch"
     let name = "Switch"
-    let description = "Keep CLI accounts together, switch the active account, and review Codex conversations and usage."
+    let description = "Keep CLI accounts together, switch identities, and review usage."
     let icon = "person.2"
     let logoAsset = "SwitchLogo"
     let category = ToolCategory.dev
-    let searchKeywords = ["account", "codex", "grok", "conversation", "usage"]
+    let hasTrayTab = true
+    let searchKeywords = ["account", "codex", "grok", "usage"]
 
     let manual = [
         ToolManualSection(title: "Accounts", points: [
             "Sign in to Codex CLI or Grok Build, or import an existing account folder.",
             "Choose Make Default to switch the account used by the corresponding CLI.",
-            "Verify access and refresh usage from the account detail view."
+            "Verify access, open the selected CLI, and refresh usage from the account detail view."
         ]),
         ToolManualSection(title: "Shared Store", points: [
-            "Switch.app is optional. This workspace and Switch.app use the same account store when both are installed.",
-            "Conversations shows the shared Codex history; Maintenance shows interrupted operations that need recovery."
+            "Switch.app is optional. This applet and Switch.app use the same account store when both are installed.",
+            "Recovery shows interrupted operations and linked settings that need repair."
         ])
     ]
 

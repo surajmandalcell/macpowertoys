@@ -3,6 +3,7 @@
 //  powertoys
 //
 
+import AIManagerCore
 import SwiftUI
 
 enum TrayTab: String, CaseIterable, Identifiable {
@@ -12,6 +13,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
     case systemCare = "system-care"
     case systemMonitor = "system-monitor"
     case netToys = "nettoys"
+    case switchAccounts = "switch"
 
     var id: String { rawValue }
 
@@ -23,6 +25,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .systemCare: "System Care"
         case .systemMonitor: "System Monitor"
         case .netToys: "NetToys"
+        case .switchAccounts: "Switch"
         }
     }
 
@@ -34,6 +37,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .systemCare: "internaldrive"
         case .systemMonitor: "chart.xyaxis.line"
         case .netToys: "network"
+        case .switchAccounts: "person.2"
         }
     }
 
@@ -54,6 +58,7 @@ enum TrayPopoverLayout {
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
         .cloudSync, .inputDevices, .systemCare, .systemMonitor, .netToys,
+        .switchAccounts,
     ]
 
     static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {
@@ -234,6 +239,8 @@ struct TrayPopoverView: View {
             SystemMonitorTrayView()
         case .netToys:
             NetToysTrayView()
+        case .switchAccounts:
+            SwitchTrayView()
         }
     }
 
@@ -586,6 +593,110 @@ private struct TrayToolHeader: View {
         .padding(.top, 5)
         .padding(.bottom, 3)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SwitchTrayView: View {
+    @State private var model = SwitchWorkspaceModel()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TrayToolHeader(tab: .switchAccounts)
+            HStack {
+                Text("CLI ACCOUNTS")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Refresh", systemImage: "arrow.clockwise") {
+                    Task { await model.refresh() }
+                }
+                .labelStyle(.iconOnly)
+                .help("Refresh accounts")
+                .disabled(model.isWorking)
+            }
+            .controlSize(.small)
+            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            .padding(.top, 6)
+            .padding(.bottom, 7)
+
+            if model.snapshot == nil && model.isWorking {
+                ProgressView("Loading accounts…")
+                    .frame(maxWidth: .infinity, minHeight: 96)
+            } else if model.accounts.isEmpty {
+                EmptyStateView(icon: "person.crop.circle.badge.plus", message: "No saved accounts")
+                    .frame(height: 96)
+            } else {
+                LazyVStack(spacing: 3) {
+                    ForEach(model.accounts) { account in
+                        let isDefault = model.snapshot?.status.isDefault(account) == true
+                        Button {
+                            Task { await model.makeDefault(account.id) }
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: account.identity.providerID == .codex
+                                      ? "chevron.left.forwardslash.chevron.right" : "bolt.fill")
+                                    .font(.system(size: 13))
+                                    .frame(width: 22)
+                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .lineLimit(1)
+                                    Text(account.identity.providerID == .codex ? "Codex CLI" : "Grok Build")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 8)
+                                if let percent = model.usage[account.id]?.rateLimits?.defaultBucket?.primary?.usedPercent {
+                                    Text("\(percent)% used")
+                                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                }
+                                if isDefault {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.tint)
+                                        .accessibilityLabel("Default")
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .frame(height: 44)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(isDefault ? Color.accentColor.opacity(0.09) : Color.clear,
+                                        in: RoundedRectangle(cornerRadius: 8))
+                            .contentShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
+                        .disabled(isDefault || model.isWorking)
+                        .accessibilityIdentifier("switch.tray.account.\(account.id)")
+                        .accessibilityValue(isDefault ? "Default" : "Make default")
+                    }
+                }
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+
+                if model.accounts.contains(where: { $0.identity.providerID == .codex }) {
+                    Button("Refresh Usage") {
+                        Task {
+                            for account in model.accounts where account.identity.providerID == .codex {
+                                await model.loadUsage(account.id)
+                            }
+                        }
+                    }
+                    .controlSize(.small)
+                    .disabled(model.isWorking)
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+        .task { await model.load() }
+        .alert("Switch needs attention", isPresented: Binding(
+            get: { model.errorMessage != nil },
+            set: { if !$0 { model.errorMessage = nil } }
+        )) {
+            Button("OK") { model.errorMessage = nil }
+        } message: {
+            Text(model.errorMessage ?? "")
+        }
     }
 }
 

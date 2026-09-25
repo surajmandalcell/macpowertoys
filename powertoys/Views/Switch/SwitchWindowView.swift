@@ -15,6 +15,8 @@ struct SwitchWindowView: View {
     @State private var page: SwitchPage
     @State private var showingDelete = false
     @State private var showingAbout = false
+    @State private var showingAccountDetails = false
+    @State private var copiedAuthPath = false
     @State private var importDecisions: [String: ConflictChoice] = [:]
     @State private var grokCode = ""
     @State private var conflictToResolve: RecoveryOperation?
@@ -112,6 +114,7 @@ struct SwitchWindowView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .accessibilityLabel(label)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .help(label)
@@ -208,9 +211,22 @@ struct SwitchWindowView: View {
                         in: RoundedRectangle(cornerRadius: 9))
             .contentShape(RoundedRectangle(cornerRadius: 9))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 9))
         .accessibilityValue(selected ? "Selected" : "")
         .help(account.identity.email ?? account.identity.accountID ?? account.home.path)
+        .contextMenu {
+            Button(model.snapshot?.status.isDefault(account) == true ? "Open \(providerName(account))" : "Use & Open \(providerName(account))") {
+                Task { await model.openAccount(account.id) }
+            }
+            Button("Make Default") { Task { await model.makeDefault(account.id) } }
+                .disabled(model.snapshot?.status.isDefault(account) == true)
+            Button("Copy Auth Path") { copyAuthPath(account) }
+            Divider()
+            Button("Move Up") { Task { await model.moveAccount(account.id, by: -1) } }
+                .disabled(model.accounts.first?.id == account.id)
+            Button("Move Down") { Task { await model.moveAccount(account.id, by: 1) } }
+                .disabled(model.accounts.last?.id == account.id)
+        }
     }
 
     @ViewBuilder
@@ -223,6 +239,7 @@ struct SwitchWindowView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     accountDetails(account)
                     if account.identity.providerID == .codex { accountUsage(account) }
+                    accountMetadata(account)
                 }
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -268,6 +285,19 @@ struct SwitchWindowView: View {
             ? "chevron.left.forwardslash.chevron.right" : "bolt.fill"
     }
 
+    private func providerName(_ account: AccountRecord) -> String {
+        account.identity.providerID == .codex ? "Codex" : "Grok Build"
+    }
+
+    private func copyAuthPath(_ account: AccountRecord) {
+        NSPasteboard.general.clearContents()
+        copiedAuthPath = NSPasteboard.general.setString(account.credentialFile.path, forType: .string)
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            copiedAuthPath = false
+        }
+    }
+
     private func accountDetails(_ account: AccountRecord) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 14) {
@@ -301,6 +331,16 @@ struct SwitchWindowView: View {
                 if model.snapshot?.status.isDefault(account) != true {
                     Button("Make Default") { Task { await model.makeDefault(account.id) } }
                         .buttonStyle(.borderedProminent)
+                }
+                if model.snapshot?.status.isDefault(account) == true {
+                    Button("Open \(providerName(account))") {
+                        Task { await model.openAccount(account.id) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Button("Use & Open \(providerName(account))") {
+                        Task { await model.openAccount(account.id) }
+                    }
                 }
                 Button("Verify Access") { Task { await model.verify(account.id) } }
                 Button("Remove…", role: .destructive) { showingDelete = true }
@@ -439,6 +479,43 @@ struct SwitchWindowView: View {
         }
         .padding(14)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func accountMetadata(_ account: AccountRecord) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            QuietDivider()
+            DisclosureGroup("Account details", isExpanded: $showingAccountDetails) {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let workspace = account.identity.workspaceID {
+                        metadataRow("Workspace", value: workspace)
+                    }
+                    metadataRow("Saved auth", value: account.credentialFile.path)
+                    metadataRow("Source", value: account.source.path)
+                    metadataRow("Imported", value: account.importedAt.formatted(date: .abbreviated, time: .shortened))
+                    metadataRow("Last used", value: account.lastUsedAt?.formatted(date: .abbreviated, time: .shortened)
+                                ?? "Not launched yet")
+                    Button(copiedAuthPath ? "Copied" : "Copy Auth Path") { copyAuthPath(account) }
+                        .controlSize(.small)
+                }
+                .padding(.top, 8)
+            }
+            .font(.system(size: 13, weight: .medium))
+        }
+    }
+
+    private func metadataRow(_ label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 76, alignment: .leading)
+            Text(value)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+                .help(value)
+        }
     }
 
     @ViewBuilder

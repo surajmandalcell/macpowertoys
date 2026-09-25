@@ -91,6 +91,8 @@ final class SwitchWorkspaceTests: XCTestCase {
         XCTAssertEqual(model.accounts.count, 2)
         let first = try XCTUnwrap(model.accounts.first { $0.identity.email == "first@example.test" })
         let second = try XCTUnwrap(model.accounts.first { $0.identity.email == "second@example.test" })
+        await model.moveAccount(second.id, by: -1)
+        XCTAssertEqual(model.accounts.map(\.id), [second.id, first.id])
 
         await model.makeDefault(second.id)
         XCTAssertNil(model.errorMessage)
@@ -99,6 +101,39 @@ final class SwitchWorkspaceTests: XCTestCase {
         XCTAssertNil(model.errorMessage)
         XCTAssertEqual(model.accounts.map(\.id), [first.id])
         XCTAssertEqual(model.snapshot?.status.firstDefaultAccountID, first.id)
+    }
+
+    func testOpeningAnIsolatedAccountPreparesLaunchWithoutStartingTerminal() async throws {
+        let files = FileManager.default
+        let root = files.temporaryDirectory
+            .appendingPathComponent("mpt-switch-open-\(UUID().uuidString)", isDirectory: true)
+        defer { try? files.removeItem(at: root) }
+        try files.createDirectory(at: root, withIntermediateDirectories: true)
+        let executable = root.appending(path: "codex")
+        try "#!/bin/sh\nexit 0\n".write(to: executable, atomically: true, encoding: .utf8)
+        try files.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let paths = ManagerPaths.environment([
+            "AI_MANAGER_ROOT": root.path,
+            "AI_MANAGER_CODEX_EXECUTABLE": executable.path
+        ])
+        let model = SwitchWorkspaceModel(paths: paths)
+        await model.load()
+        try await importAccount(named: "first", into: model, root: root)
+        try await importAccount(named: "second", into: model, root: root)
+        let first = try XCTUnwrap(model.accounts.first { $0.identity.email == "first@example.test" })
+        let second = try XCTUnwrap(model.accounts.first { $0.identity.email == "second@example.test" })
+        await model.makeDefault(first.id)
+
+        await model.openAccount(second.id)
+
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.snapshot?.status.firstDefaultAccountID, second.id)
+        let script = paths.applicationSupport.appending(path: "Launch/Open MacPowerToys Switch.command")
+        let contents = try String(contentsOf: script, encoding: .utf8)
+        XCTAssertTrue(contents.contains("unset OPENAI_API_KEY CODEX_ACCESS_TOKEN XAI_API_KEY"))
+        XCTAssertTrue(contents.contains("exec '\(executable.path)'"))
+        XCTAssertEqual(try files.attributesOfItem(atPath: script.path)[.posixPermissions] as? Int,
+                       0o700)
     }
 
     private func importAccount(named name: String, into model: SwitchWorkspaceModel,
