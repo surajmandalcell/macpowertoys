@@ -14,6 +14,17 @@ final class PortmanTests: XCTestCase {
         )))
     }
 
+    func testGitHubLinksAcceptOnlyPlainGitHubRemotes() {
+        let https = PortmanGitHubLookup.repository(from: "https://github.com/surajmandalcell/macpowertoys.git")
+        XCTAssertEqual(https?.owner, "surajmandalcell")
+        XCTAssertEqual(https?.name, "macpowertoys")
+        let ssh = PortmanGitHubLookup.repository(from: "git@github.com:surajmandalcell/macpowertoys.git")
+        XCTAssertEqual(ssh?.name, "macpowertoys")
+        XCTAssertNil(PortmanGitHubLookup.repository(from: "https://other.example/owner/repo.git"))
+        XCTAssertNil(PortmanGitHubLookup.repository(from: "https://token:secret@github.com/owner/repo.git"))
+        XCTAssertNil(PortmanGitHubLookup.repository(from: "https://github.com/owner/repo.git?token=secret"))
+    }
+
     func testLocalScanKeepsListeningPortsAndProcessStats() {
         let lsof = """
         p42

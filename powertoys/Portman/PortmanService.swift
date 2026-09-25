@@ -90,6 +90,7 @@ nonisolated struct PortmanMetadata: Sendable {
     let folder: String
     let project: String
     let branch: String?
+    let root: String?
 }
 
 nonisolated struct PortmanSample: Identifiable, Sendable {
@@ -365,7 +366,8 @@ nonisolated enum PortmanScanner {
         return PortmanMetadata(
             folder: folder,
             project: URL(fileURLWithPath: projectFolder).lastPathComponent,
-            branch: branch?.isEmpty == false ? branch : nil
+            branch: branch?.isEmpty == false ? branch : nil,
+            root: project?.isEmpty == false ? project : nil
         )
     }
 
@@ -393,6 +395,7 @@ final class PortmanService {
     private(set) var history: [String: [PortmanSample]] = [:]
     private(set) var metadata: [String: PortmanMetadata] = [:]
     private(set) var sessions: [String: PortmanSession] = [:]
+    private(set) var githubLinks: [String: PortmanGitHubLinks] = [:]
     private(set) var systemMemoryUsedBytes: Int64 = 0
     private(set) var lastConnectionAt: [String: Date] = [:]
     private(set) var snoozedUntil: [String: Date] = [:]
@@ -429,6 +432,7 @@ final class PortmanService {
         history = [:]
         metadata = [:]
         sessions = [:]
+        githubLinks = [:]
         lastConnectionAt = [:]
         notifiedProcessIDs = []
     }
@@ -457,6 +461,7 @@ final class PortmanService {
             history = history.filter { key, _ in ports.contains { $0.id == key } }
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
             sessions = sessions.filter { key, _ in ports.contains { $0.id == key } }
+            githubLinks = githubLinks.filter { key, _ in ports.contains { $0.id == key } }
             lastConnectionAt = lastConnectionAt.filter { key, _ in ports.contains { $0.processID == key } }
             snoozedUntil = snoozedUntil.filter { key, until in
                 until > now && ports.contains { $0.processID == key }
@@ -521,6 +526,20 @@ final class PortmanService {
               UserDefaults.standard.bool(forKey: "portman.sessionLinksEnabled"),
               localPorts.contains(where: { $0.id == port.id }) else { return }
         sessions[port.id] = session
+    }
+
+    func loadGitHubLinks(for port: PortmanLocalPort) async {
+        guard UserDefaults.standard.bool(forKey: "portman.publicGitHubLinksEnabled") else {
+            githubLinks.removeValue(forKey: port.id)
+            return
+        }
+        guard let details = metadata[port.id],
+              let root = details.root, let branch = details.branch else { return }
+        let links = await PortmanGitHubLookup.shared.lookup(root: root, branch: branch)
+        guard !Task.isCancelled,
+              UserDefaults.standard.bool(forKey: "portman.publicGitHubLinksEnabled"),
+              localPorts.contains(where: { $0.id == port.id }) else { return }
+        githubLinks[port.id] = links
     }
 
     func refreshRemote(host: String) async {

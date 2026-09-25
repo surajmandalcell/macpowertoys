@@ -28,6 +28,7 @@ struct PortmanPanelView: View {
     @State private var showingMore = false
     @State private var showingProcesses = false
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
+    @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
 
     private let portColors: [Color] = [
         Color(red: 0.43, green: 0.78, blue: 0.93),
@@ -155,11 +156,12 @@ struct PortmanPanelView: View {
         .onChange(of: service.localPorts.map(\.processID)) {
             selectedCleanupProcesses.formIntersection(Set(service.localPorts.map(\.processID)))
         }
-        .task(id: "\(selectedPortID ?? "")|\(sessionLinksEnabled)") {
+        .task(id: "\(selectedPortID ?? "")|\(sessionLinksEnabled)|\(publicGitHubLinksEnabled)") {
             hoveredTime = nil
             if let selectedPort {
                 await service.loadMetadata(for: selectedPort)
                 await service.loadSession(for: selectedPort)
+                await service.loadGitHubLinks(for: selectedPort)
             }
         }
         .confirmationDialog("Stop this server process?", isPresented: Binding(
@@ -519,6 +521,15 @@ struct PortmanPanelView: View {
                 }
                 .font(.system(size: 12))
             }
+            if let links = service.githubLinks[port.id],
+               let url = links.pullRequestURL, let number = links.pullRequestNumber {
+                HStack {
+                    Text("Pull request").foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
+                    Button("#\(number) ↗") { NSWorkspace.shared.open(url) }
+                        .buttonStyle(.plain)
+                }
+                .font(.system(size: 12))
+            }
             Button(showingMore ? "Less" : "More details") { showingMore.toggle() }
                 .font(.system(size: 11)).buttonStyle(.plain)
                 .focusEffectDisabled()
@@ -535,6 +546,9 @@ struct PortmanPanelView: View {
                     detailRow("Session ID", session.id.uuidString.lowercased())
                 }
                 detailRow("Running", port.uptime)
+                if let note = service.githubLinks[port.id]?.note {
+                    Text(note).font(.system(size: 10)).foregroundStyle(.secondary)
+                }
             }
             QuietDivider()
             HStack(alignment: .firstTextBaseline) {
@@ -617,6 +631,11 @@ struct PortmanPanelView: View {
                 Button("Open localhost:\(port.port)") { openLocal(port.port) }
                     .buttonStyle(.borderedProminent)
                 Spacer()
+                if let preview = service.githubLinks[port.id]?.previewURL {
+                    Button("Preview ↗") { NSWorkspace.shared.open(preview) }
+                        .buttonStyle(.bordered)
+                        .help(preview.absoluteString)
+                }
                 Menu {
                     Button("Copy URL") {
                         NSPasteboard.general.clearContents()
@@ -934,6 +953,7 @@ struct PortmanSettingsView: View {
     @AppStorage("portman.showAllListeners") private var showAllListeners = false
     @AppStorage("portman.notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
+    @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1024,6 +1044,9 @@ struct PortmanSettingsView: View {
             Text("Integrations").font(.system(size: 12, weight: .medium))
             Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
             Text("When you open a server, Portman checks its process for a Claude Code session and recent local Codex sessions for a folder match. A link copies a resume command.")
+                .font(.system(size: 10)).foregroundStyle(.secondary)
+            Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
+            Text("Checks public pull requests and previews for this project's branch. Private repositories and saved GitHub credentials are not used.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
             if !compact {
                 Button("Open Portman in menu bar") { ToolActionRouter.shared.open(toolID: "portman") }
