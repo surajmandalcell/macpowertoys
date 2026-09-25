@@ -74,6 +74,136 @@ final class PortmanTests: XCTestCase {
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 0, localPort: 4200))
     }
 
+    @MainActor
+    func testSSHForwardCarriesTrafficThroughLoopback() async throws {
+        let rclone = try PortmanScanner.run("/usr/bin/which", ["rclone"])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertTrue(FileManager.default.isExecutableFile(atPath: rclone))
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portman-ssh-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appendingPathComponent("source")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try Data("portman-forward-ok".utf8).write(to: source.appendingPathComponent("probe.txt"))
+
+        func unusedPort() throws -> UInt16 {
+            let descriptor = socket(AF_INET, SOCK_STREAM, 0)
+            guard descriptor >= 0 else { throw NSError(domain: "PortmanTests", code: 1) }
+            defer { close(descriptor) }
+            var address = sockaddr_in()
+            address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            address.sin_family = sa_family_t(AF_INET)
+            address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+            let bound = withUnsafePointer(to: &address) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    Darwin.bind(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+            guard bound == 0 else { throw NSError(domain: "PortmanTests", code: 2) }
+            var size = socklen_t(MemoryLayout<sockaddr_in>.size)
+            let named = withUnsafeMutablePointer(to: &address) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    getsockname(descriptor, $0, &size)
+                }
+            }
+            guard named == 0 else { throw NSError(domain: "PortmanTests", code: 3) }
+            return UInt16(bigEndian: address.sin_port)
+        }
+
+        let remotePort = try unusedPort()
+        let server = Process()
+        server.executableURL = URL(fileURLWithPath: rclone)
+        server.arguments = ["serve", "http", source.path, "--addr", "127.0.0.1:\(remotePort)",
+                            "--config", "/dev/null"]
+        server.standardInput = FileHandle.nullDevice
+        server.standardOutput = FileHandle.nullDevice
+        server.standardError = FileHandle.nullDevice
+        try server.run()
+        defer { if server.isRunning { server.terminate(); server.waitUntilExit() } }
+
+        let hostKey = folder.appendingPathComponent("host_key")
+        let clientKey = folder.appendingPathComponent("client_key")
+        for key in [hostKey, clientKey] {
+            _ = try PortmanScanner.run("/usr/bin/ssh-keygen",
+                                       ["-q", "-t", "ed25519", "-N", "", "-f", key.path])
+        }
+        let sshPort = try unusedPort()
+        let knownHosts = folder.appendingPathComponent("known_hosts")
+        let publicHostKey = try String(contentsOf: hostKey.appendingPathExtension("pub"), encoding: .utf8)
+        try "portman-test \(publicHostKey)".write(to: knownHosts, atomically: true, encoding: .utf8)
+        let authorizedKeys = folder.appendingPathComponent("authorized_keys")
+        try FileManager.default.copyItem(at: clientKey.appendingPathExtension("pub"), to: authorizedKeys)
+        let serverConfig = folder.appendingPathComponent("sshd_config")
+        try """
+        Port \(sshPort)
+        ListenAddress 127.0.0.1
+        HostKey \(hostKey.path)
+        AuthorizedKeysFile \(authorizedKeys.path)
+        PasswordAuthentication no
+        KbdInteractiveAuthentication no
+        UsePAM no
+        StrictModes no
+        PidFile \(folder.appendingPathComponent("sshd.pid").path)
+        """.write(to: serverConfig, atomically: true, encoding: .utf8)
+        let clientConfig = folder.appendingPathComponent("ssh_config")
+        try """
+        Host portman-test
+            HostName 127.0.0.1
+            Port \(sshPort)
+            User \(NSUserName())
+            IdentityFile \(clientKey.path)
+            IdentitiesOnly yes
+            HostKeyAlias portman-test
+            UserKnownHostsFile \(knownHosts.path)
+            GlobalKnownHostsFile /dev/null
+        """.write(to: clientConfig, atomically: true, encoding: .utf8)
+        let sshLog = folder.appendingPathComponent("sshd.log")
+        FileManager.default.createFile(atPath: sshLog.path, contents: nil)
+        let sshLogHandle = try FileHandle(forWritingTo: sshLog)
+        defer { try? sshLogHandle.close() }
+        let sshd = Process()
+        sshd.executableURL = URL(fileURLWithPath: "/usr/sbin/sshd")
+        sshd.arguments = ["-D", "-e", "-f", serverConfig.path]
+        sshd.standardInput = FileHandle.nullDevice
+        sshd.standardOutput = sshLogHandle
+        sshd.standardError = sshLogHandle
+        try sshd.run()
+        defer { if sshd.isRunning { sshd.terminate(); sshd.waitUntilExit() } }
+        var sshReady = false
+        for _ in 0..<20 {
+            sshReady = PortmanScanner.tunnelIsListening(pid: sshd.processIdentifier, localPort: sshPort)
+            if sshReady { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(sshReady, (try? String(contentsOf: sshLog, encoding: .utf8)) ?? "sshd did not listen")
+
+        let localPort = try unusedPort()
+        let tunnel = Process()
+        tunnel.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+        tunnel.arguments = ["-F", clientConfig.path]
+            + (try PortmanScanner.tunnelArguments(host: "portman-test", remotePort: remotePort,
+                                                  localPort: localPort))
+        tunnel.standardInput = FileHandle.nullDevice
+        tunnel.standardOutput = FileHandle.nullDevice
+        tunnel.standardError = FileHandle.nullDevice
+        try tunnel.run()
+        defer { if tunnel.isRunning { tunnel.terminate(); tunnel.waitUntilExit() } }
+
+        var response: String?
+        for _ in 0..<30 {
+            if PortmanScanner.tunnelIsListening(pid: tunnel.processIdentifier, localPort: localPort) {
+                response = try? PortmanScanner.run("/usr/bin/curl",
+                    ["--silent", "--show-error", "--fail", "--max-time", "2",
+                     "http://127.0.0.1:\(localPort)/probe.txt"])
+                if response != nil { break }
+            }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        let log = (try? String(contentsOf: sshLog, encoding: .utf8)) ?? ""
+        XCTAssertEqual(response, "portman-forward-ok", "SSH forwarding failed: \(log)")
+    }
+
     func testLocalRangeAndProcessTableParsing() {
         let lsof = "p42\ncnode\nn127.0.0.1:3000\nn127.0.0.1:9000\n"
         let ps = "42 1024 1.5 00:07:12 node server.js\n"
