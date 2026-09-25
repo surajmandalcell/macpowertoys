@@ -13,8 +13,9 @@ targets, not just a port list.
 The owner reviewed the live panel and requested these corrections:
 
 - Use a monochrome menu-bar glyph derived from Portman's socket icon.
-- Make each tab and server row respond across its visible width. Use a link
-  symbol for open actions and show stop symbols in red on hover.
+- Give Servers, Forward, and Alerts equal full-width tab cells, hit targets,
+  and underline lengths; make each server row respond across its visible width.
+  Use a link symbol for open actions and show stop symbols in red on hover.
 - Remove excess popover height. Keep detail charts aligned, prevent the CPU
   plot from spilling past its axes, and reserve space for the shared hover time.
   Move the localhost and more-actions controls into the detail header; the
@@ -88,8 +89,12 @@ glyph, full-width controls, compact charts and header, Return actions,
 multi-selection, Clear scan, scan cancellation, and tab-specific monitoring.
 Swift syntax, the SVG, and asset JSON passed static checks. Hosted run
 `36134013052` could not compile this revision because a CPU `BarMark` width
-modifier was invalid; the chart now passes width in its initializer. A local
-compile-only build reached unrelated, concurrently edited Disk Explorer code
-and stopped on a type-check timeout there. The revised Portman build, hosted
-interaction and screenshot checks, and replacement of installed `dc97280`
-remain open.
+modifier was invalid; the chart now passes width in its initializer. Run
+`36134700387` compiled and ran the app tests, then failed the repository's
+focus-style check for five Portman controls. Source now suppresses the
+mismatched native outline on those controls. The owner's second review found
+unequal tab spacing, so the buttons and their container now stretch equally;
+the hosted appearance test also captures Alerts. A local compile-only build
+reached unrelated, concurrently edited Disk Explorer code and stopped on a
+type-check timeout there. The next hosted build, interaction and screenshot
+checks, and replacement of installed `dc97280` remain open.
