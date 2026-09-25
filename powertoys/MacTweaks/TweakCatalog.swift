@@ -18,6 +18,27 @@ struct TweakItem: Identifiable {
     let summary: String
     let keywords: [String]
     let patterns: [String]
+
+    var researchCoverage: String {
+        switch kind {
+        case .preference: "Documented for macOS 15, 26, and 27"
+        case .native: "Apple setting on macOS 15, 26, and 27"
+        case .versioned:
+            switch id {
+            case "finder.column-sizing": "Hidden on 15 and 26.0; native from 26.1"
+            case _ where id.hasPrefix("launchpad."): "Legacy Launchpad on macOS 15 only"
+            case "appearance.corners", "appearance.sidebars": "Documented from macOS 26.4 and on 27"
+            case "appearance.menu-icons": "Documented on 26; 27 unverified"
+            case "windows.edge-grab", "input.text-drag": "Documented on 15 and 26; 27 unverified"
+            case "input.layout-popup", "safari.bookmarks": "Documented on 26 and 27; 15 unverified"
+            default: "Documented on 15; 26 and 27 unverified"
+            }
+        case .advanced: id == "hardware.auto-start" ? "Apple documents macOS 15 or later on Apple silicon laptops" : "Apple documents 15 and 26; 27 unverified"
+        case .candidate: "Behavior unverified on the target systems"
+        case .helper: "Requires a running implementation; target-system support unverified"
+        case .historical: "No supported three-version recipe"
+        }
+    }
 }
 
 enum TweakCatalog {
