@@ -1551,6 +1551,14 @@ nonisolated struct MACVendorDatabase: Sendable {
 }
 
 nonisolated enum NetToysScanExport {
+    enum ExportError: LocalizedError {
+        case tooLarge
+
+        var errorDescription: String? {
+            "The saved scan exceeds the 32 MiB import limit. Export fewer results."
+        }
+    }
+
     private struct SavedResults: Codable {
         let version: Int
         let results: [NetToysScanResult]
@@ -1559,7 +1567,9 @@ nonisolated enum NetToysScanExport {
     static func savedResults(_ results: [NetToysScanResult]) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(SavedResults(version: 1, results: results))
+        let data = try encoder.encode(SavedResults(version: 1, results: results))
+        guard data.count <= NetToysFileImport.resultsByteLimit else { throw ExportError.tooLarge }
+        return data
     }
 
     static func csv(_ results: [NetToysScanResult], includeHeader: Bool = true) -> String {
