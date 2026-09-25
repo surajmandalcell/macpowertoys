@@ -33,6 +33,32 @@
   with several servers. Confirm the segmented choices, memory legend, server
   rows, and footer remain readable without a vertical word or cut-off control.
 
+## Portman Port Numbers And Initial Charts
+
+- **Symptom:** Hosted renders showed `:9,000` and `localhost:49,194`, while a
+  newly opened server detail had no memory or CPU chart.
+- **Cause:** SwiftUI's integer interpolation localized identifiers with
+  thousands separators. The detail hid both charts until a second scan.
+- **Invariant:** Render ports and PIDs as literal strings in labels, actions,
+  tooltips, and accessibility names. Show chart context from the first sample
+  and mark the latest memory value.
+- **Check:** Inspect four- and five-digit ports in hosted overview, detail,
+  and active-forward renders. Capture detail after one and multiple samples
+  and confirm the plots remain visible.
+
+## Portman Forward Results After Reopening
+
+- **Symptom:** An active-forward render showed `Listening on` with no host and
+  remote ports from an earlier scan below a blank host field.
+- **Cause:** Scan results live in the shared service, while a new panel starts
+  with empty local host and discovery state; both empty strings compared equal.
+- **Invariant:** Show and size the discovered-port list only when a nonempty
+  host matches the panel's last scan. Keep active tunnel mappings visible
+  independently of the current scan form.
+- **Check:** Scan a host, start a tunnel, close the panel, then reopen Forward.
+  Its mapping remains visible, and no unnamed remote-port list appears until
+  a host is scanned again.
+
 ## Portman Closed-Menu Scan Cost
 
 - **Symptom:** The menu-only Portman owner starts a full socket and process
