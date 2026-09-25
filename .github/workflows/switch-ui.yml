@@ -1,0 +1,36 @@
+name: Switch UI navigation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  switch-ui:
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rclone for the app host
+        run: brew install rclone
+      - name: Run Switch UI navigation on the hosted Mac
+        run: |
+          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-switch-ui" \
+            -resultBundlePath "$RUNNER_TEMP/switch-ui.xcresult" \
+            -destination 'platform=macOS' -parallel-testing-enabled NO \
+            -only-testing:powertoysUITests/SwitchUITests \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
+            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
+      - name: Export window captures
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/switch-ui.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/switch-ui.xcresult" --output-path "$RUNNER_TEMP/switch-ui-renders" --filter '*.png'
+          fi
+      - name: Save window captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: switch-ui-renders
+          path: ${{ runner.temp }}/switch-ui-renders
+          if-no-files-found: warn
