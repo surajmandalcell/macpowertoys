@@ -532,6 +532,38 @@
   relaunch and confirm the sort, then inspect a normal and a protected process.
   Confirm Quit remains guarded against PID reuse.
 
+- **Symptom:** A selected process looks frozen, shows hundreds of gigabytes of
+  unexplained virtual memory, or offers a path that is awkward to copy.
+- **Cause:** The detail panel had no visible sample time or copy action and
+  labeled virtual address space as memory. It omitted parent/child context and
+  selected-process network endpoints.
+- **Invariant:** Resolve selected detail from the newest PID-and-start-time
+  sample and show its update time. Explain that virtual address space includes
+  mapped or reserved ranges and is not physical RAM. Provide Copy Path for a
+  real executable, parent and child context, and a persisted hierarchy option
+  that keeps every PID and sorts siblings by the chosen column. Query network
+  endpoints with a bounded, selected-PID-only `lsof` call every 30 seconds;
+  cancel it when selection or page changes.
+- **Check:** Select a changing process, watch two update times and values,
+  copy its path, inspect the virtual-memory help, and compare grouped and flat
+  lists. Confirm no port subprocess runs with no selection.
+
+- **Symptom:** Return does nothing in the remote host field, changing refresh
+  requires a disconnect, or Open Terminal opens an idle shell.
+- **Cause:** The field had no submit action, Refresh was disabled while
+  connected, and Terminal received only an app-open request while the SSH
+  command went to the clipboard.
+- **Invariant:** Name the destination Remote Stats. Return starts the same
+  validated connection as Connect. Refresh offers Manual, 30, 60, 120, and
+  300 seconds; changing it or pressing Refresh Now restarts the page-owned
+  polling task without installing a remote daemon. The selected cadence is
+  persisted. Disconnect and page exit cancel polling. Open Terminal passes an
+  `ssh://` URL to Terminal only after the user presses it. Use regular-height
+  connection actions with balanced native padding.
+- **Check:** Use an SSH alias, press Return, change refresh while connected,
+  select Manual and confirm no second automatic sample, then disconnect.
+  Open Terminal from the action and confirm it starts the selected SSH session.
+
 - **Symptom:** A protected-process fallback can leave Processes loading when
   `/bin/ps` stalls or emits excessive output.
 - **Cause:** The fallback read its pipe to EOF and waited for exit before
