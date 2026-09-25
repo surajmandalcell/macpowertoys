@@ -29,10 +29,13 @@ final class LauncherGridTests: XCTestCase {
         let host = NSHostingView(
             rootView: AllToolsGridView(selectedTool: .constant("all-tools"))
                 .frame(width: size.width, height: size.height)
+                .background(Color(nsColor: .windowBackgroundColor))
                 .environment(\.colorScheme, .dark)
         )
         host.appearance = NSAppearance(named: .darkAqua)
         host.frame = NSRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         host.layoutSubtreeIfNeeded()
 
         let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
