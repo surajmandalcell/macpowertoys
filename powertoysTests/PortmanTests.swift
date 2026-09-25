@@ -241,6 +241,38 @@ final class PortmanTests: XCTestCase {
         }
         service.stopTunnel(tunnelID)
         XCTAssertFalse(service.tunnels.contains { $0.id == tunnelID })
+
+        let occupiedPort = try unusedPort()
+        let blocker = socket(AF_INET, SOCK_STREAM, 0)
+        guard blocker >= 0 else { throw NSError(domain: "PortmanTests", code: 4) }
+        defer { close(blocker) }
+        var blockedAddress = sockaddr_in()
+        blockedAddress.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        blockedAddress.sin_family = sa_family_t(AF_INET)
+        blockedAddress.sin_port = occupiedPort.bigEndian
+        blockedAddress.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+        let bound = withUnsafePointer(to: &blockedAddress) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.bind(blocker, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        guard bound == 0, Darwin.listen(blocker, 1) == 0 else {
+            throw NSError(domain: "PortmanTests", code: 5)
+        }
+        XCTAssertTrue(service.forward(host: "portman-test", remotePort: remotePort,
+                                      localPort: occupiedPort, configurationFile: clientConfig))
+        let failedID = try XCTUnwrap(service.tunnels.first { $0.localPort == occupiedPort }?.id)
+        var failure: String?
+        for _ in 0..<30 {
+            if let tunnel = service.tunnels.first(where: { $0.id == failedID }),
+               case .failed(let message) = tunnel.state {
+                failure = message
+                break
+            }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        XCTAssertNotNil(failure, "A local port already in use must leave a failed tunnel, not Connecting.")
+        service.stopTunnel(failedID)
     }
 
     func testLocalRangeAndProcessTableParsing() {
