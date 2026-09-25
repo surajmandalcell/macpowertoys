@@ -8,8 +8,9 @@ struct PortmanPanelView: View {
         case local = "Servers", forward = "Forward", alerts = "Alerts", settings = "Settings"
     }
 
-    init(initialPage: Page = .local) {
+    init(initialPage: Page = .local, initialPortID: String? = nil) {
         _page = State(initialValue: initialPage)
+        _selectedPortID = State(initialValue: initialPortID)
     }
 
     @State private var service = PortmanService.shared
