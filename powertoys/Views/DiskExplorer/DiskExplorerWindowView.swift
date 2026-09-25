@@ -689,10 +689,15 @@ private struct DiskExplorerReviewSheet: View {
     let includeHidden: Bool
     @State private var confirmPermanent = false
 
+    private var markedCountDescription: String {
+        let count = model.markedEntries.count
+        return count == 1 ? "1 item" : "\(count) items"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Review Items").font(.system(size: 17, weight: .medium))
-            Text("\(model.markedEntries.count) items · \(model.markedBytes.diskSize)")
+            Text("\(markedCountDescription) · \(model.markedBytes.diskSize)")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
             QuietDivider()
             List {
@@ -701,8 +706,9 @@ private struct DiskExplorerReviewSheet: View {
                         Image(systemName: entry.kind == .directory ? "folder" : "doc")
                         VStack(alignment: .leading) {
                             Text(entry.name).lineLimit(1)
-                            Text(entry.url.path).font(.system(size: 10)).foregroundStyle(.secondary)
-                                .lineLimit(1).truncationMode(.middle)
+                            Text(entry.url.path).font(.system(size: 11)).foregroundStyle(.secondary)
+                                .lineLimit(2).truncationMode(.middle)
+                                .textSelection(.enabled).help(entry.url.path)
                         }
                         Spacer()
                         Text(entry.allocatedBytes.diskSize).monospacedDigit()
@@ -732,7 +738,7 @@ private struct DiskExplorerReviewSheet: View {
         .padding(20)
         .frame(width: 620, height: 480)
         .confirmationDialog(
-            "Permanently delete \(model.markedEntries.count) items?",
+            "Permanently delete \(markedCountDescription)?",
             isPresented: $confirmPermanent
         ) {
             Button("Delete Permanently", role: .destructive) {
