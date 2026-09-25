@@ -559,6 +559,7 @@ struct DiskExplorerWindowView: View {
                                 NSWorkspace.shared.activateFileViewerSelecting([entry.url])
                             }
                             .labelStyle(.iconOnly).buttonStyle(.plain)
+                            .focusEffectDisabled()
                             .help("Show in Finder")
                             if model.result?.isComplete == true,
                                let root = model.result?.root.url,
@@ -568,6 +569,8 @@ struct DiskExplorerWindowView: View {
                                     model.toggleMark(entry)
                                 }
                                 .labelStyle(.iconOnly).buttonStyle(.plain)
+                                .focusEffectDisabled()
+                                .help(model.marks[entry.id] == nil ? "Mark for Removal" : "Unmark")
                             }
                         }
                         .font(.system(size: 11))

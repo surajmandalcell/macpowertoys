@@ -300,6 +300,9 @@ struct DiskSunburstView: View {
     private static func segments(for root: DiskEntry, apparent: Bool,
                                  measure: DiskChartMeasure, radius: CGFloat) -> [DiskRingSegment] {
         var result: [DiskRingSegment] = []
+        let levels = root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
+            root.children.contains { !$0.children.isEmpty } ? 2 : 1
+        let band = CGFloat(0.68) / CGFloat(levels)
         func add(_ parent: DiskEntry, start: Double, end: Double, depth: Int, colorIndex: Int) {
             guard depth < 3 else { return }
             let children = parent.children.filter { measure.weight($0, apparent: apparent) > 0 }
@@ -308,8 +311,8 @@ struct DiskSunburstView: View {
             guard total > 0 else { return }
             var angle = start
             let limit = depth == 0 ? 24 : 12
-            let inner = radius * (0.30 + CGFloat(depth) * 0.23)
-            let outer = radius * (0.52 + CGFloat(depth) * 0.23)
+            let inner = radius * (0.30 + CGFloat(depth) * band)
+            let outer = radius * (0.30 + CGFloat(depth + 1) * band) - 2
             for (index, child) in children.prefix(limit).enumerated() {
                 let next = angle + (end - start) * Double(measure.weight(child, apparent: apparent)) / Double(total)
                 let tint = DiskChartPalette.color(for: child, index: depth == 0 ? index : colorIndex,
