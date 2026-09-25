@@ -2,9 +2,9 @@
 
 ## Navigation and visual correction, 2026-09-26
 
-- [ ] Replace the flat item sidebar with one level of grouped category navigation. Show the selected category's settings as scrollable cards in the content pane.
-- [ ] Keep long setting names out of the narrow sidebar. Use distinct category symbols, clear category groups, and the PowerToys menu-bar panel's neutral surfaces and compact spacing.
-- [ ] Align the Mac Tweaks traffic lights and sidebar title on the shared 40pt workspace title strip.
+- [x] Replace the flat item sidebar with one level of grouped category navigation. Show the selected category's settings as scrollable cards in the content pane. Hosted UI run `36182911001` navigated Input, Finder, Power, detail, and ranked search.
+- [x] Keep long setting names out of the narrow sidebar. Use distinct category symbols, clear category groups, and the PowerToys menu-bar panel's neutral surfaces and compact spacing. The hosted 900 × 620 captures show single-line sidebar rows and scrollable neutral cards.
+- [x] Align the Mac Tweaks traffic lights and sidebar title on the shared 40pt workspace title strip. The hosted window capture shows the centered native controls and title.
 - [ ] Capture the final installed window, inspect its alignment and density, and correct visible defects before handoff.
 
 ## Expanded catalogue request, 2026-09-25
