@@ -2,7 +2,7 @@ import AIManagerCore
 import AppKit
 import SwiftUI
 
-private enum SwitchPage: String, CaseIterable, Identifiable {
+enum SwitchPage: String, CaseIterable, Identifiable {
     case accounts = "Accounts"
     case conversations = "Conversations"
     case maintenance = "Maintenance"
@@ -18,8 +18,8 @@ private enum SwitchPage: String, CaseIterable, Identifiable {
 }
 
 struct SwitchWindowView: View {
-    @State private var model = SwitchWorkspaceModel()
-    @State private var page = SwitchPage.accounts
+    @State private var model: SwitchWorkspaceModel
+    @State private var page: SwitchPage
     @State private var showingDelete = false
     @State private var importDecisions: [String: ConflictChoice] = [:]
     @State private var grokCode = ""
@@ -33,6 +33,16 @@ struct SwitchWindowView: View {
     @State private var isMessageSearchPending = false
     @State private var messageQuery = ""
     @AppStorage("switch.messageFilterMask") private var messageFilterMask = ChatMessageFilter.all.rawValue
+
+    init() {
+        _model = State(initialValue: SwitchWorkspaceModel())
+        _page = State(initialValue: .accounts)
+    }
+
+    init(model: SwitchWorkspaceModel, initialPage: SwitchPage) {
+        _model = State(initialValue: model)
+        _page = State(initialValue: initialPage)
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -109,8 +119,16 @@ struct SwitchWindowView: View {
                         SidebarRow(
                             icon: destination.icon,
                             title: destination.rawValue,
-                            isSelected: page == destination
-                        ) { page = destination }
+                            isSelected: page == destination && (
+                                destination != .accounts || model.accounts.isEmpty
+                            )
+                        ) {
+                            page = destination
+                            if destination == .accounts && !model.accounts.isEmpty {
+                                model.selectedAccountID = model.snapshot?.status.firstDefaultAccountID
+                                    ?? model.accounts.first?.id
+                            }
+                        }
                         .accessibilityIdentifier("switch.page.\(destination.id)")
                     }
                 }
@@ -165,18 +183,9 @@ struct SwitchWindowView: View {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .disabled(model.isWorking)
-                Menu {
-                    ForEach(AccountManager.providerCatalog.filter { $0.availability == .enabled }) { provider in
-                        Button(provider.displayName) {
-                            Task { await model.beginLogin(providerID: provider.id) }
-                        }
-                    }
-                    Divider()
-                    Button("Import from Folder…") { chooseImportFolder() }
-                } label: {
-                    Label("Add Account", systemImage: "plus")
-                }
-                .disabled(model.isWorking)
+                addAccountMenu
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.isWorking)
             }
 
             if model.snapshot == nil && model.isWorking {
@@ -184,65 +193,87 @@ struct SwitchWindowView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let account = model.selectedAccount {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 24) {
                         accountDetails(account)
                         if account.identity.providerID == .codex { accountUsage(account) }
                         discoveredSources
                     }
-                    .padding(UtilityLayout.horizontalInset)
+                    .padding(24)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .thinScrollIndicators()
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        ContentUnavailableView(
-                            "No saved accounts",
-                            systemImage: "person.crop.circle.badge.plus",
-                            description: Text("Sign in or import an existing CLI account to begin.")
-                        )
-                        .frame(maxWidth: .infinity)
+                    VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Image(systemName: "person.crop.square")
+                                .font(.system(size: 28, weight: .ultraLight))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 48, height: 48, alignment: .leading)
+                            Text("Your accounts, in one place")
+                                .font(.system(size: 21, weight: .medium))
+                            Text("Add a CLI account to switch identities, review usage, and keep your conversations together.")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            addAccountMenu
+                                .buttonStyle(.borderedProminent)
+                                .disabled(model.isWorking)
+                        }
+                        .frame(maxWidth: 400, alignment: .leading)
+                        .padding(.top, 60)
                         discoveredSources
                     }
-                    .padding(UtilityLayout.horizontalInset)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .thinScrollIndicators()
             }
         }
     }
 
-    private func accountDetails(_ account: AccountRecord) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
-                        .font(.system(size: 17, weight: .semibold))
-                        .lineLimit(1)
-                    if model.snapshot?.status.isDefault(account) == true {
-                        Text("Default")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 0)
+    private var addAccountMenu: some View {
+        Menu {
+            ForEach(AccountManager.providerCatalog.filter { $0.availability == .enabled }) { provider in
+                Button(provider.displayName) {
+                    Task { await model.beginLogin(providerID: provider.id) }
                 }
-                Text(account.identity.providerID == .codex ? "Codex CLI" : "Grok Build")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
             }
+            Divider()
+            Button("Import from Folder…") { chooseImportFolder() }
+        } label: {
+            Label("Add Account", systemImage: "plus")
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("ACCESS").utilitySectionHeader()
-                Text(account.verification.detail)
-                    .font(.system(size: 12))
-            }
-            VStack(alignment: .leading, spacing: 5) {
-                Text("HOME").utilitySectionHeader()
-                Text(account.home.path)
+    private func accountDetails(_ account: AccountRecord) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: account.identity.providerID == .codex
+                    ? "chevron.left.forwardslash.chevron.right" : "sparkles")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(width: 46, height: 46)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
+                        .font(.system(size: 21, weight: .medium))
+                        .lineLimit(1)
+                        .help(account.identity.email ?? account.identity.accountID ?? account.home.path)
+                    HStack(spacing: 8) {
+                        Text(account.identity.providerID == .codex ? "Codex CLI" : "Grok Build")
+                        if model.snapshot?.status.isDefault(account) == true {
+                            Text("·")
+                            Label("Default", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.tint)
+                        }
+                    }
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
+                }
+                Spacer(minLength: 0)
             }
 
             HStack(spacing: 8) {
@@ -259,8 +290,32 @@ struct SwitchWindowView: View {
             }
             .controlSize(.small)
             .disabled(model.isWorking)
+
+            QuietDivider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Access")
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 76, alignment: .leading)
+                    Text(account.verification.detail)
+                        .font(.system(size: 12))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Home")
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 76, alignment: .leading)
+                    Text(account.home.path)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
         }
-        .utilitySectionCard()
         .confirmationDialog(
             "Remove \(account.identity.email ?? "this account")?",
             isPresented: $showingDelete,
@@ -289,7 +344,7 @@ struct SwitchWindowView: View {
     private func accountUsage(_ account: AccountRecord) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Usage").font(.system(size: 13, weight: .semibold))
+                Text("Usage").font(.system(size: 13, weight: .medium))
                 Spacer()
                 Button("Refresh Usage") { Task { await model.loadUsage(account.id) } }
                     .controlSize(.small)
@@ -305,11 +360,13 @@ struct SwitchWindowView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
-                if let primary = limits.primary {
-                    usageRow(title: "Current window", window: primary)
-                }
-                if let secondary = limits.secondary {
-                    usageRow(title: "Longer window", window: secondary)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
+                    if let primary = limits.primary {
+                        usageRow(title: "Current window", window: primary)
+                    }
+                    if let secondary = limits.secondary {
+                        usageRow(title: "Longer window", window: secondary)
+                    }
                 }
                 if let total = model.usage[account.id]?.usage?.lifetimeTokens {
                     Text("\(total.formatted()) lifetime tokens")
@@ -322,23 +379,24 @@ struct SwitchWindowView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .utilitySectionCard()
+        .padding(.top, 4)
     }
 
     private func usageRow(title: String, window: CodexRateLimitWindowSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(window.usedPercent.map { "\($0)% used" } ?? "Unavailable")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.system(size: 12))
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Text(window.usedPercent.map { "\($0)%" } ?? "—")
+                .font(.system(size: 24, weight: .medium, design: .rounded))
+                .contentTransition(.numericText())
             if let percent = window.usedPercent {
                 ProgressView(value: Double(percent), total: 100)
-                    .accessibilityLabel(title)
+                    .accessibilityLabel("\(title), \(percent)% used")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .utilitySectionCard()
     }
 
     @ViewBuilder
@@ -348,7 +406,8 @@ struct SwitchWindowView: View {
         }
         if !sources.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Available to import").font(.system(size: 13, weight: .semibold))
+                QuietDivider()
+                Text("Available to import").font(.system(size: 13, weight: .medium))
                 ForEach(sources) { source in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -369,75 +428,78 @@ struct SwitchWindowView: View {
                     }
                 }
             }
-            .utilitySectionCard()
         }
     }
 
     private var conversationsPage: some View {
         VStack(spacing: 0) {
             NetToysPageHeader(title: "Conversations", subtitle: "Shared Codex history") {
-                TextField("Search conversations", text: $model.historyQuery)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 200)
-                    .onSubmit { Task { await model.searchHistory() } }
-                    .accessibilityLabel("Search conversations")
-                    .disabled(model.isLoadingHistory)
                 Button("Refresh") { Task { await model.loadHistory() } }
                     .disabled(model.isLoadingHistory)
             }
             HStack(spacing: 0) {
-                ScrollView {
-                    LazyVStack(spacing: 4) {
-                        HStack {
-                            Text("\(model.history.matchingThreadCount.formatted()) conversations")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            if model.isLoadingHistory && model.history.totalThreadCount == 0 {
-                                ProgressView().controlSize(.small)
-                            }
+                VStack(spacing: 0) {
+                    TextField("Search conversations", text: $model.historyQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { Task { await model.searchHistory() } }
+                        .accessibilityLabel("Search conversations")
+                        .disabled(model.isLoadingHistory)
+                        .padding(12)
+                    HStack {
+                        Text("\(model.history.matchingThreadCount.formatted()) conversations")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if model.isLoadingHistory && model.history.totalThreadCount == 0 {
+                            ProgressView().controlSize(.small)
                         }
-                        .padding(.bottom, 6)
-                        ForEach(model.history.threads) { thread in
-                            Button {
-                                messageSearchTask?.cancel()
-                                isMessageSearchPending = false
-                                Task {
-                                    await model.selectThread(
-                                        thread.id, query: messageQuery, filter: messageFilter
-                                    )
-                                }
-                            } label: {
-                                HStack(alignment: .top, spacing: 6) {
-                                    VStack(alignment: .leading, spacing: 4) {
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    ScrollView {
+                        LazyVStack(spacing: 3) {
+                            ForEach(model.history.threads) { thread in
+                                Button {
+                                    messageSearchTask?.cancel()
+                                    isMessageSearchPending = false
+                                    Task {
+                                        await model.selectThread(
+                                            thread.id, query: messageQuery, filter: messageFilter
+                                        )
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 5) {
                                         Text(thread.title)
                                             .font(.system(size: 12, weight: .medium))
                                             .lineLimit(2)
-                                        Text(thread.updatedAt, style: .date)
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        HStack(spacing: 4) {
+                                            Text(thread.updatedAt, style: .date)
+                                            Text("·")
+                                            Text("\(thread.messageCount.formatted()) messages")
+                                        }
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
                                     }
-                                    Spacer(minLength: 0)
-                                    if model.selectedThreadID == thread.id {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .accessibilityHidden(true)
-                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 9)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(model.selectedThreadID == thread.id
+                                        ? Color.accentColor.opacity(0.1) : Color.clear)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .contentShape(Rectangle())
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
-                                .background(model.selectedThreadID == thread.id
-                                    ? Color.accentColor.opacity(0.1) : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .buttonStyle(UtilityInteractionButtonStyle())
+                                .focusEffectDisabled()
+                                .accessibilityValue(model.selectedThreadID == thread.id ? "Selected" : "")
                             }
-                            .buttonStyle(UtilityInteractionButtonStyle())
-                            .accessibilityValue(model.selectedThreadID == thread.id ? "Selected" : "")
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 12)
                     }
-                    .padding(12)
+                    .thinScrollIndicators()
                 }
-                .thinScrollIndicators()
-                .frame(width: 280)
+                .frame(width: 260)
                 .background(Color(nsColor: .controlBackgroundColor))
                 QuietDivider()
                 if let id = model.selectedThreadID,
@@ -491,9 +553,9 @@ struct SwitchWindowView: View {
 
     private func conversationDetail(_ thread: ChatThreadSummary) -> some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(thread.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 17, weight: .medium))
                     .lineLimit(1)
                     .help(thread.title)
                 HStack(spacing: 6) {
@@ -510,7 +572,8 @@ struct SwitchWindowView: View {
                 .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
 
             HStack(spacing: 6) {
                 TextField("Search messages", text: $messageQuery)
@@ -536,8 +599,8 @@ struct SwitchWindowView: View {
                 .disabled(isMessageSearchPending || (model.selectedThread?.messages.isEmpty ?? true))
             }
             .controlSize(.small)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 10)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
             QuietDivider()
 
             if isMessageSearchPending || model.isLoadingMessages {
@@ -545,7 +608,7 @@ struct SwitchWindowView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let detail = model.selectedThread {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         if !messageQuery.isEmpty || messageFilter != .all {
                             Text("\(detail.matchingMessageCount.formatted()) matching messages")
                                 .font(.system(size: 11))
@@ -556,18 +619,19 @@ struct SwitchWindowView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         ForEach(detail.messages) { message in
-                            VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .top, spacing: 14) {
                                 Text(message.role.displayName)
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(.secondary)
+                                    .frame(width: 64, alignment: .leading)
                                 Text(message.text)
                                     .font(.system(size: 12))
+                                    .lineSpacing(3)
                                     .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .padding(10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.primary.opacity(0.03))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .padding(.vertical, 14)
+                            QuietDivider()
                         }
                         if detail.nextOffset != nil {
                             Button("Load More Messages") {
@@ -577,7 +641,7 @@ struct SwitchWindowView: View {
                             .disabled(model.isLoadingMoreMessages)
                         }
                     }
-                    .padding(12)
+                    .padding(.horizontal, 20)
                 }
                 .thinScrollIndicators()
             } else {
@@ -602,7 +666,7 @@ struct SwitchWindowView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Recovery").font(.system(size: 13, weight: .semibold))
+                        Text("Recovery").font(.system(size: 13, weight: .medium))
                         if model.pendingRecovery.isEmpty {
                             Text("No interrupted operations need recovery.")
                                 .font(.system(size: 12))
@@ -626,11 +690,11 @@ struct SwitchWindowView: View {
                             }
                         }
                     }
-                    .utilitySectionCard()
+                    QuietDivider()
                     if !model.linkedSettingsIssues.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Linked settings need review")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.system(size: 13, weight: .medium))
                             ForEach(model.linkedSettingsIssues) { issue in
                                 HStack(spacing: 12) {
                                     VStack(alignment: .leading, spacing: 4) {
@@ -648,12 +712,12 @@ struct SwitchWindowView: View {
                                 }
                             }
                         }
-                        .utilitySectionCard()
+                        QuietDivider()
                     }
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text("Conversation cleanup")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.system(size: 13, weight: .medium))
                             Spacer()
                             Button("Review Selected…") {
                                 Task { await model.reviewCleanup(ids: selectedCleanupIDs) }
@@ -692,10 +756,10 @@ struct SwitchWindowView: View {
                             }
                         }
                     }
-                    .utilitySectionCard()
+                    QuietDivider()
                     if !model.cleanupTrash.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Switch Trash").font(.system(size: 13, weight: .semibold))
+                            Text("Switch Trash").font(.system(size: 13, weight: .medium))
                             ForEach(model.cleanupTrash) { batch in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 3) {
@@ -715,21 +779,17 @@ struct SwitchWindowView: View {
                                 .disabled(model.isWorking)
                             }
                         }
-                        .utilitySectionCard()
+                        QuietDivider()
                     }
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Shared data").font(.system(size: 13, weight: .semibold))
+                        Text("Shared data").font(.system(size: 13, weight: .medium))
                         Text(model.snapshot?.status.sharedRoot.path ?? "Loading…")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
-                        Text("Switch.app and MacPowerToys use the same account store. Switch.app is optional.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
                     }
-                    .utilitySectionCard()
                 }
-                .padding(UtilityLayout.horizontalInset)
+                .padding(24)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .thinScrollIndicators()
