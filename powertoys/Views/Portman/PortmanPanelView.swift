@@ -93,6 +93,8 @@ struct PortmanPanelView: View {
                     Image(systemName: page == .settings ? "xmark" : "gearshape")
                 }
                 .help(page == .settings ? "Close settings" : "Portman settings")
+                .accessibilityLabel(page == .settings ? "Close Portman settings" : "Portman settings")
+                .accessibilityIdentifier("portman.settings")
             }
             .font(.system(size: 12))
             .buttonStyle(.plain)
@@ -119,6 +121,7 @@ struct PortmanPanelView: View {
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
+                    .accessibilityIdentifier("portman.page.\(destination.rawValue)")
                 }
                 Spacer()
             }
