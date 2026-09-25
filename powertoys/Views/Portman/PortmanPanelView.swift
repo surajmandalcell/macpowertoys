@@ -24,6 +24,7 @@ struct PortmanPanelView: View {
     @State private var pendingRestart: PortmanLocalPort?
     @State private var hoveredTime: Date?
     @State private var highlightedProcessID: String?
+    @State private var hoveredSegmentID: String?
     @State private var hoveredRowID: String?
     @State private var showingMacMemory = false
     @State private var showingMore = false
@@ -196,21 +197,28 @@ struct PortmanPanelView: View {
     }
 
     private var localOverview: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let focusedSegment = cleanupMode ? nil : usageSegments.first { $0.port.processID == hoveredSegmentID }
+        return VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Spacer()
-                Text(cleanupMode ? "Clean up" : "Servers")
+                Text(cleanupMode ? "Clean up" : focusedSegment.map {
+                    "\(service.metadata[$0.port.id]?.project ?? $0.port.command) :\($0.port.port)"
+                } ?? "Servers")
                     .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
                 Spacer()
             }
             VStack(spacing: 4) {
-                Text(ByteCountFormatter.string(fromByteCount: showingMacMemory && !cleanupMode
-                    ? service.systemMemoryUsedBytes : overviewMemory, countStyle: .memory))
+                Text(ByteCountFormatter.string(fromByteCount: focusedSegment?.memoryBytes
+                    ?? (showingMacMemory && !cleanupMode ? service.systemMemoryUsedBytes : overviewMemory),
+                    countStyle: .memory))
                     .font(.system(size: 28, weight: .medium, design: .monospaced))
                     .monospacedDigit()
                 Text(cleanupMode
                      ? "freed by stopping \(selectedCleanupProcesses.count) server\(selectedCleanupProcesses.count == 1 ? "" : "s")"
-                     : showingMacMemory ? "used by this Mac" : "used by \(uniquePorts.count) servers")
+                     : focusedSegment.map {
+                        "\(String(format: "%.1f", Double($0.memoryBytes) / Double(max(1, ProcessInfo.processInfo.physicalMemory)) * 100))% of RAM · \(String(format: "%.1f", $0.cpuPercent))% CPU"
+                     } ?? (showingMacMemory ? "used by this Mac" : "used by \(uniquePorts.count) servers"))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                 if !cleanupMode {
                     Picker("Memory scope", selection: $showingMacMemory) {
@@ -422,7 +430,10 @@ struct PortmanPanelView: View {
                         Rectangle().fill(portColor(segment.port))
                             .frame(width: max(1, geometry.size.width * Double(segment.memoryBytes) / Double(physical)))
                             .opacity(highlightedProcessID == nil || highlightedProcessID == segment.port.processID ? 1 : 0.45)
-                            .onHover { highlightedProcessID = $0 ? segment.port.processID : nil }
+                            .onHover { inside in
+                                hoveredSegmentID = inside ? segment.port.processID : nil
+                                highlightedProcessID = inside ? segment.port.processID : nil
+                            }
                             .help("Port \(segment.port.port): \(memoryString(segment.memoryBytes))")
                     }
                     Rectangle().fill(Color.primary.opacity(0.25))
