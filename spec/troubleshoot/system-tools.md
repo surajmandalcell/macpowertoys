@@ -449,6 +449,20 @@
 
 ## System Monitor
 
+- **Symptom:** Graphs stop short of card edges, Load shows unlabeled averages,
+  pending menu readings say Waiting, and the installed app still says Remote.
+- **Cause:** Card padding also inset the graph; Overview joined the 1-, 5-, and
+  15-minute loads without labels; pending labels were long; `/Applications`
+  still ran an older source revision. The saved `oci1` host remained in defaults.
+- **Invariant:** Let graph strokes and fills reach the card edge while retaining
+  header padding. Show the 1-minute Load value as the main number, explain it
+  as average CPU demand, and label longer averages only on the CPU detail page.
+  Use `...` until a Monitor reading exists. Install the committed, signed app
+  without clearing remote preferences or taking focus.
+- **Check:** Compile the Monitor app and test bundles without launching them.
+  Confirm zero active transfers, `oci1` still saved, and the installed source
+  stamp and process match the new clean `HEAD` after background handoff.
+
 - **Symptom:** Overview is a sparse four-card summary with no visual history,
   or body subtitles leave a large dead band below the titlebar.
 - **Cause:** The detailed sampler exposed more data than the overview rendered,

@@ -1065,7 +1065,7 @@ private struct SystemMonitorTrayView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 metric(
                     "CPU", symbol: "cpu", value: percent(sample?.cpuUsage),
-                    detail: loadDetail, level: sample?.cpuUsage,
+                    detail: "All cores", level: sample?.cpuUsage,
                     values: service.history.compactMap(\.cpuUsage)
                 )
                 metric(
@@ -1084,7 +1084,7 @@ private struct SystemMonitorTrayView: View {
                     values: service.history.compactMap(\.diskUsage)
                 )
                 metric(
-                    "Network", symbol: "network", value: sample?.networkDownload.map(Self.rate) ?? "Waiting",
+                    "Network", symbol: "network", value: sample?.networkDownload.map(Self.rate) ?? "...",
                     detail: "Up \(sample?.networkUpload.map(Self.rate) ?? "—")", level: nil,
                     values: service.history.compactMap { point in
                         guard let down = point.networkDownload, let up = point.networkUpload else { return nil }
@@ -1106,10 +1106,11 @@ private struct SystemMonitorTrayView: View {
                     tint: thermalTint
                 )
                 metric(
-                    "Load", symbol: "chart.bar", value: loadValue,
-                    detail: loadAverageDetail, level: loadLevel,
+                    "Load · 1 min", symbol: "chart.bar", value: loadValue,
+                    detail: "Average CPU demand", level: loadLevel,
                     values: service.history.compactMap { $0.loadAverage.map { $0.0 } }
                 )
+                .help("Load is the average number of processes running or ready for a CPU. Compare it with \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs. It is not a percent.")
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
             .padding(.top, 4)
@@ -1131,25 +1132,29 @@ private struct SystemMonitorTrayView: View {
         tint: Color? = nil
     ) -> some View {
         let color = tint ?? level.map(Self.usageTint) ?? .gray
-        return VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                Image(systemName: symbol).font(.caption2.weight(.medium)).foregroundStyle(color)
-                Text(title).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
-                Spacer(minLength: 0)
+        return VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 5) {
+                    Image(systemName: symbol).font(.caption2.weight(.medium)).foregroundStyle(color)
+                    Text(title).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                Text(value)
+                    .font(.system(size: 18, weight: .semibold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            Text(value)
-                .font(.system(size: 18, weight: .semibold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            .padding(.horizontal, 11)
+            .padding(.top, 11)
+            Spacer(minLength: 5)
             TrayMetricSparkline(values: values, color: color)
                 .frame(height: 18)
         }
-        .padding(11)
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
         .background(
             LinearGradient(colors: [color.opacity(0.19), color.opacity(0.08)],
@@ -1159,15 +1164,11 @@ private struct SystemMonitorTrayView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 10).strokeBorder(color.opacity(0.18))
         }
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private func percent(_ value: Double?) -> String {
-        value.map { "\(Int($0.rounded()))%" } ?? "Waiting"
-    }
-
-    private var loadDetail: String {
-        guard let load = sample?.loadAverage else { return "Waiting for first sample" }
-        return "1m \(load.0.formatted(.number.precision(.fractionLength(1))))"
+        value.map { "\(Int($0.rounded()))%" } ?? "..."
     }
 
     private var memoryDetail: String {
@@ -1181,12 +1182,7 @@ private struct SystemMonitorTrayView: View {
     }
 
     private var loadValue: String {
-        sample?.loadAverage.map { $0.0.formatted(.number.precision(.fractionLength(2))) } ?? "Waiting"
-    }
-
-    private var loadAverageDetail: String {
-        guard let load = sample?.loadAverage else { return "1, 5, and 15 minute" }
-        return "5m \(load.1.formatted(.number.precision(.fractionLength(1)))) · 15m \(load.2.formatted(.number.precision(.fractionLength(1))))"
+        sample?.loadAverage.map { $0.0.formatted(.number.precision(.fractionLength(2))) } ?? "..."
     }
 
     private var loadLevel: Double? {

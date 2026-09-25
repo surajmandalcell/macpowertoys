@@ -834,13 +834,13 @@ final class SystemMonitorTests: XCTestCase {
                 item: SystemMonitorMenuItemConfiguration(metric: .cpu),
                 sample: firstDelta
             ).value,
-            "Waiting"
+            "..."
         )
         XCTAssertTrue(
             SystemMonitorMenuRenderer.render(
                 item: SystemMonitorMenuItemConfiguration(metric: .network),
                 sample: firstDelta
-            ).value.contains("Waiting")
+            ).value.contains("...")
         )
         XCTAssertEqual(
             SystemMonitorMenuSchedule.dueMetrics(
