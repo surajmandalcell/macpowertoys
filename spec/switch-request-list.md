@@ -30,3 +30,8 @@ The cleanup path was checked again with a synthetic conversation after wiring
 Core's shared activity ledger: a headless run moved the reviewed file to
 recoverable Trash and retained its 123-token activity record. The MacPowerToys
 test bundle compiled without executing its app host or UI runner.
+
+A second headless run entered Maintenance without first opening Conversations,
+confirmed the conversation title, moved it to Trash, and restored it with the
+title intact. Account verification now clears cached usage when Core reports
+that sign-in is needed; the workspace hides usage in that state.

@@ -55,9 +55,9 @@ final class SwitchWorkspaceTests: XCTestCase {
 
         let model = SwitchWorkspaceModel(paths: paths)
         await model.load()
-        await model.loadHistory()
         await model.loadCleanup()
         let item = try XCTUnwrap(model.cleanupItems.first)
+        XCTAssertEqual(item.title, "Synthetic conversation")
         XCTAssertNil(item.exclusionReason)
         await model.reviewCleanup(ids: [item.id])
         XCTAssertNotNil(model.cleanupPlan)
@@ -72,5 +72,11 @@ final class SwitchWorkspaceTests: XCTestCase {
         )
         let projects = try await activity.projectActivity(on: "2026-09-18")
         XCTAssertEqual(projects.reduce(0) { $0 + $1.tokens }, 123)
+
+        let batch = try XCTUnwrap(model.cleanupTrash.first)
+        await model.restoreTrash(batch.id)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertTrue(files.fileExists(atPath: source.path))
+        XCTAssertEqual(model.cleanupItems.first?.title, "Synthetic conversation")
     }
 }

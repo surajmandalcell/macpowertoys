@@ -81,7 +81,7 @@ final class SwitchWorkspaceModel {
         isWorking = true
         errorMessage = nil
         let result = await manager.checkAccount(accountID: id)
-        if let checkedUsage = result.usage { usage[id] = checkedUsage }
+        usage[id] = result.usage
         do {
             snapshot?.status = try await manager.status()
             if result.verification.state == .needsSignIn {
@@ -94,7 +94,8 @@ final class SwitchWorkspaceModel {
     }
 
     func loadUsage(_ id: UUID) async {
-        guard let manager else { return }
+        guard let manager, !isWorking else { return }
+        usage[id] = nil
         await perform {
             self.usage[id] = try await manager.readCodexAccountUsage(accountID: id)
         }
@@ -238,12 +239,7 @@ final class SwitchWorkspaceModel {
 
     func loadCleanup() async {
         guard let manager else { return }
-        await perform {
-            self.cleanupItems = try await manager.cleanupInventory(
-                summaries: await self.historyIndex.cleanupSummaries()
-            )
-            self.cleanupTrash = try await manager.cleanupTrash()
-        }
+        await perform { try await self.refreshCleanup(manager) }
     }
 
     func reviewCleanup(ids: Set<String>) async {
@@ -262,7 +258,9 @@ final class SwitchWorkspaceModel {
                 try await self.historyIndex.preserveActivity(for: sources)
             }
             self.cleanupPlan = nil
-            self.cleanupItems = try await manager.cleanupInventory()
+            self.cleanupItems = try await manager.cleanupInventory(
+                summaries: await self.historyIndex.cleanupSummaries()
+            )
             self.cleanupTrash = try await manager.cleanupTrash()
         }
     }
@@ -273,7 +271,9 @@ final class SwitchWorkspaceModel {
         guard let manager else { return }
         await perform {
             try await manager.restoreCleanupTrash(id)
-            self.cleanupItems = try await manager.cleanupInventory()
+            self.cleanupItems = try await manager.cleanupInventory(
+                summaries: await self.historyIndex.cleanupSummaries()
+            )
             self.cleanupTrash = try await manager.cleanupTrash()
         }
     }
@@ -333,6 +333,12 @@ final class SwitchWorkspaceModel {
         }.value
         activityCache = cache
         await historyIndex.attachActivityCache(cache)
+    }
+
+    private func refreshCleanup(_ manager: AccountManager) async throws {
+        _ = try await historyIndex.refresh()
+        cleanupItems = try await manager.cleanupInventory(summaries: await historyIndex.cleanupSummaries())
+        cleanupTrash = try await manager.cleanupTrash()
     }
 
     private func perform(_ action: () async throws -> Void) async {
