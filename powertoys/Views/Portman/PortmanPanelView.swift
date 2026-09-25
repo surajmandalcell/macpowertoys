@@ -403,13 +403,15 @@ struct PortmanPanelView: View {
     }
 
     private var suggestedCleanupIDs: Set<String> {
-        Set(uniquePorts.filter { port in
-            guard port.canStop, service.warning(for: port) == nil else { return false }
-            if let folder = service.metadata[port.id]?.folder,
-               folder.hasSuffix(" (deleted)") { return true }
-            guard !port.hasConnections,
-                  let lastConnection = service.lastConnectionAt[port.processID] else { return false }
-            return Date().timeIntervalSince(lastConnection) >= PortmanPreferences.idleSuggestionHours * 3_600
+        let now = Date()
+        return Set(uniquePorts.filter { port in
+            PortmanCleanupPolicy.suggested(
+                port: port, hasWarning: service.warning(for: port) != nil,
+                folder: service.metadata[port.id]?.folder,
+                lastConnectionAt: service.lastConnectionAt[port.processID], now: now,
+                idleHours: PortmanPreferences.idleSuggestionHours,
+                runningDays: PortmanPreferences.runningSuggestionDays
+            )
         }.map(\.processID))
     }
 
@@ -986,7 +988,8 @@ struct PortmanSettingsView: View {
     @AppStorage("portman.scanInterval") private var scanInterval = 2.0
     @AppStorage("portman.memoryAlertMB") private var memoryAlertMB = 2_048
     @AppStorage("portman.growthAlertMB") private var growthAlertMB = 500
-    @AppStorage("portman.idleHours") private var idleHours = 8.0
+    @AppStorage("portman.idleHours") private var idleHours = 4.0
+    @AppStorage("portman.runningDays") private var runningDays = 3.0
     @AppStorage("portman.protectedCommands") private var protectedCommands = ""
     @AppStorage("portman.showAllListeners") private var showAllListeners = false
     @AppStorage("portman.notificationsEnabled") private var notificationsEnabled = false
@@ -1076,7 +1079,8 @@ struct PortmanSettingsView: View {
             QuietDivider()
             Text("Clean up").font(.system(size: 12, weight: .medium))
             Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
-            Text("Only servers observed without connections for this long are suggested. Warnings are not selected automatically.")
+            Stepper("Suggest after \(Int(runningDays)) running days", value: $runningDays, in: 1...30, step: 1)
+            Text("Deleted folders and idle or long-running servers are suggested. Warnings stay unselected.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
             QuietDivider()
             Text("Integrations").font(.system(size: 12, weight: .medium))

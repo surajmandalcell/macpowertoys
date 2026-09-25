@@ -28,6 +28,10 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
             && pid > 1 && pid != getpid()
             && !PortmanPreferences.protectedCommands.contains(command.lowercased())
     }
+
+    func isLongRunning(at now: Date, days: Double) -> Bool {
+        started > 0 && now.timeIntervalSince1970 - Double(started) / 1_000_000 >= days * 86_400
+    }
 }
 
 nonisolated enum PortmanPreferences {
@@ -55,7 +59,12 @@ nonisolated enum PortmanPreferences {
 
     static var idleSuggestionHours: Double {
         let value = UserDefaults.standard.double(forKey: "portman.idleHours")
-        return value >= 1 && value <= 72 ? value : 8
+        return value >= 1 && value <= 72 ? value : 4
+    }
+
+    static var runningSuggestionDays: Double {
+        let value = UserDefaults.standard.double(forKey: "portman.runningDays")
+        return value >= 1 && value <= 30 ? value : 3
     }
 
     static var showAllListeners: Bool {
@@ -72,6 +81,19 @@ nonisolated enum PortmanPreferences {
         return builtIn.union(custom.split(separator: ",").map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         })
+    }
+}
+
+nonisolated enum PortmanCleanupPolicy {
+    static func suggested(
+        port: PortmanLocalPort, hasWarning: Bool, folder: String?, lastConnectionAt: Date?,
+        now: Date, idleHours: Double, runningDays: Double
+    ) -> Bool {
+        guard port.canStop, !hasWarning else { return false }
+        if folder?.hasSuffix(" (deleted)") == true { return true }
+        if port.isLongRunning(at: now, days: runningDays) { return true }
+        guard !port.hasConnections, let lastConnectionAt else { return false }
+        return now.timeIntervalSince(lastConnectionAt) >= idleHours * 3_600
     }
 }
 
