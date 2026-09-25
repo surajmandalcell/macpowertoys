@@ -44,5 +44,21 @@ concept. A headless desktop render loaded every option and the compact layout,
 and all 30 sources have transparent tile corners. At the standard 980pt content
 width, the current four-column grid shows 12 of 13 built-in cards completely;
 the proposed 80pt, two-column rows show all 13. The gallery keeps each 512px
-source one click away and displays it at 64px and 16px. The owner has not yet
-selected any icon or approved the layout change.
+source one click away and displays it at 64px and 16px. No icon or layout had
+been selected at that review point.
+
+## Owner selection and third-round review
+
+On 2026-09-25, the owner selected **P01 Patch socket** for Portman. Promote
+that exact 512px icon to the production asset; this icon choice is final.
+System Monitor remains undecided. Generate two further variations each from
+M02 Scope trace, M03 Core pulse, and M08 Fan sensor, exploring different
+accent palettes and material treatments without losing each silhouette.
+Text Extractor remains undecided. Generate two further variations each from
+T01 Scan beam, T02 Lifted strip, and T03 Capture corners. Make the act of
+scanning a line or sentence clear at small size; avoid decorative AI motifs.
+
+The owner's current launcher screenshot has **three** columns, despite the
+four-column specification and earlier gallery model. Diagnose that mismatch
+and make a four-column comparison based on the real pane width. Keep the
+short two-column layout as a separate option until the owner chooses.
