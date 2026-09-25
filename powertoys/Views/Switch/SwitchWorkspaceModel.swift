@@ -282,6 +282,9 @@ final class SwitchWorkspaceModel {
         guard let manager else { return }
         await perform {
             let selected = self.cleanupItems.filter { ids.contains($0.id) }
+            guard !selected.isEmpty else {
+                throw AIManagerError.operationFailed("Select conversations before reviewing Cleanup.")
+            }
             try await self.prepareActivityCache()
             self.cleanupPlan = try await manager.reviewCleanup(selected)
         }

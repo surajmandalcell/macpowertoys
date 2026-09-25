@@ -46,3 +46,7 @@ detail API. A synthetic 121-message transcript was checked headlessly: the
 first 100 and remaining 21 loaded in order, a response beyond the first page
 matched a two-term search, the prompt filter excluded it, and export contained
 only the shown result. The app and test bundles compiled without a launch.
+
+Cleanup selection now drops entries that disappeared or became protected after
+a shared-store refresh. A headless check confirmed that a stale ID cannot open
+an empty cleanup review.
