@@ -16,6 +16,25 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(SystemMonitorTrayPage.sensors.metrics, [.thermal])
     }
 
+    @MainActor
+    func testMonitorHomeFitsShortMenuBody() throws {
+        let suiteName = "SystemMonitorHomeHeight.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
+
+        let host = NSHostingView(rootView: SystemMonitorTrayView()
+            .defaultAppStorage(defaults)
+            .frame(width: TrayPopoverLayout.width))
+        host.layoutSubtreeIfNeeded()
+        XCTAssertLessThanOrEqual(
+            host.fittingSize.height,
+            TrayPopoverLayout.maximumBodyHeight(screenHeight: 680),
+            "Home must show all summary cards and Fan on a short menu-bar display"
+        )
+    }
+
     func testMonitorSubprocessOutputIsBounded() async throws {
         do {
             _ = try await SSHProcessRunner.run(
