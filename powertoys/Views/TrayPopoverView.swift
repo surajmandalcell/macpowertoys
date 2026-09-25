@@ -510,7 +510,7 @@ private struct AwakeTrayRow: View {
                 .pickerStyle(.segmented)
                 .tint(Color.primary.opacity(0.18))
                 .labelsHidden()
-                .frame(width: 176)
+                .frame(width: 204)
             }
             if let assertionError = service.assertionError {
                 Text(assertionError)
@@ -521,7 +521,6 @@ private struct AwakeTrayRow: View {
             }
         }
         .padding(.leading, TrayPopoverLayout.horizontalInset + 4)
-        .padding(.trailing, TrayPopoverLayout.horizontalInset)
         .padding(.vertical, 8)
     }
 }
