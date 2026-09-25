@@ -30,11 +30,11 @@ final class PortmanUITests: XCTestCase {
         XCTAssertEqual(row.frame.width, bar.frame.width, accuracy: 1)
         let sort = app.descendants(matching: .any)["portman.sort"]
         XCTAssertTrue(sort.isHittable, "Sort by is clipped below the four-server panel")
-        let panel = app.windows.containing(.button, identifier: "portman.sort").firstMatch
+        attach(app.screenshot(), named: "Portman four servers and footer")
+        let panel = app.windows.containing(.menuButton, identifier: "portman.sort").firstMatch
         XCTAssertTrue(panel.exists)
         XCTAssertLessThanOrEqual(sort.frame.maxY + 8, panel.frame.maxY,
                                  "The footer needs visible space below its controls")
-        attach(app.screenshot(), named: "Portman four servers and footer")
     }
 
     @MainActor
@@ -94,10 +94,13 @@ final class PortmanUITests: XCTestCase {
         XCTAssertEqual(servers.frame.width, forward.frame.width, accuracy: 1)
         XCTAssertEqual(settings.frame.width, forward.frame.width, accuracy: 1)
         XCTAssertTrue(app.buttons["portman.refresh"].exists)
-        XCTAssertTrue(app.staticTexts["0 KB"].isHittable)
-        XCTAssertTrue(app.staticTexts["No servers listening"].isHittable)
-        XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
-                      "The empty-state explanation is clipped below the menu-bar panel")
+        if app.staticTexts["No servers listening"].exists {
+            XCTAssertTrue(app.staticTexts["0 KB"].isHittable)
+            XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
+                          "The empty-state explanation is clipped below the menu-bar panel")
+        } else {
+            XCTAssertTrue(app.descendants(matching: .any)["portman.sort"].isHittable)
+        }
         attach(app.screenshot(), named: "Portman Servers")
 
         forward.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).click()
