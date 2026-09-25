@@ -17,6 +17,7 @@ final class TrayFanUITests: XCTestCase {
         let tray = app.menuBars.statusItems["MenuBarIcon"]
         XCTAssertTrue(tray.waitForExistence(timeout: 10))
         tray.click()
+        app.buttons["tray.tab.home"].click()
         XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Fan Cool"].exists)
         XCTAssertTrue(app.buttons["Fan Max"].exists)
