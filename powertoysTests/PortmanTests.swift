@@ -467,10 +467,11 @@ final class PortmanTests: XCTestCase {
             if let previous { UserDefaults.standard.set(previous, forKey: preference) }
             else { UserDefaults.standard.removeObject(forKey: preference) }
         }
-        let folder = FileManager.default.temporaryDirectory
+        let fixture = FileManager.default.temporaryDirectory
             .appendingPathComponent("portman-restart-\(UUID().uuidString)")
+        let folder = fixture.appendingPathComponent("preview-server")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        defer { try? FileManager.default.removeItem(at: fixture) }
 
         let socketFD = socket(AF_INET, SOCK_STREAM, 0)
         XCTAssertGreaterThanOrEqual(socketFD, 0)
