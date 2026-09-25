@@ -266,7 +266,7 @@ struct TrayPopoverView: View {
     }
 }
 
-private struct TrayMeasuredScroll<Content: View>: View {
+struct TrayMeasuredScroll<Content: View>: View {
     @ViewBuilder let content: Content
     @State private var contentHeight = TrayPopoverLayout.minimumBodyHeight
 
@@ -277,6 +277,7 @@ private struct TrayMeasuredScroll<Content: View>: View {
     var body: some View {
         ScrollView {
             content
+                .frame(width: TrayPopoverLayout.width, alignment: .topLeading)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .thinScrollIndicators()

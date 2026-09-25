@@ -183,10 +183,10 @@ final class TrayPopoverLayoutTests: XCTestCase {
         )
     }
 
-    func testEmptyStateFillsLeadingTrayColumn() {
+    func testEmptyStateFillsMeasuredTrayScrollColumn() {
         var emptyStateWidth: CGFloat = 0
         let host = NSHostingView(rootView:
-            VStack(alignment: .leading, spacing: 0) {
+            TrayMeasuredScroll {
                 EmptyStateView(icon: "cloud", message: "No transfers yet")
                     .frame(height: 96)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
