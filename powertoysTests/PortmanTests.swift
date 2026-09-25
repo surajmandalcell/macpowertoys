@@ -278,21 +278,16 @@ final class PortmanTests: XCTestCase {
         XCTAssertTrue(service.forward(host: "portman-test", remotePort: remotePort,
                                       localPort: droppedPort, configurationFile: clientConfig))
         let droppedID = try XCTUnwrap(service.tunnels.first { $0.localPort == droppedPort }?.id)
-        var sshPID: Int32?
+        let sshPID = try XCTUnwrap(service.processID(forTunnel: droppedID))
         var wasRunning = false
         for _ in 0..<30 {
-            let owners = (try? PortmanScanner.run("/usr/sbin/lsof",
-                ["-nP", "-iTCP:\(droppedPort)", "-sTCP:LISTEN", "-c", "ssh", "-Fp"],
-                emptyExitIsSuccess: true)) ?? ""
-            sshPID = owners.split(whereSeparator: \.isNewline)
-                .first(where: { $0.first == "p" }).flatMap { Int32($0.dropFirst()) }
             if let tunnel = service.tunnels.first(where: { $0.id == droppedID }),
-               case .running = tunnel.state, sshPID != nil { wasRunning = true; break }
+               case .running = tunnel.state { wasRunning = true; break }
             try await Task.sleep(for: .milliseconds(200))
         }
         XCTAssertTrue(wasRunning, "The second tunnel must reach Forwarding before an unexpected exit.")
-        let exitedPID = try XCTUnwrap(sshPID, "The second tunnel never opened its local port.")
-        XCTAssertEqual(Darwin.kill(exitedPID, SIGTERM), 0)
+        XCTAssertTrue(PortmanScanner.tunnelIsListening(pid: sshPID, localPort: droppedPort))
+        XCTAssertEqual(Darwin.kill(sshPID, SIGTERM), 0)
         var dropped = false
         for _ in 0..<30 {
             if let tunnel = service.tunnels.first(where: { $0.id == droppedID }),
@@ -300,8 +295,9 @@ final class PortmanTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(200))
         }
         XCTAssertTrue(dropped, "An unexpected SSH exit must replace Forwarding with a failed state. "
-            + "Listener remains: \(PortmanScanner.tunnelIsListening(pid: exitedPID, localPort: droppedPort)); "
-            + "process remains: \(Darwin.kill(exitedPID, 0) == 0).")
+            + "Listener remains: \(PortmanScanner.tunnelIsListening(pid: sshPID, localPort: droppedPort)); "
+            + "process remains: \(Darwin.kill(sshPID, 0) == 0); "
+            + "tunnel: \(String(describing: service.tunnels.first { $0.id == droppedID })).")
         for scheme in [ColorScheme.light, .dark] {
             let host = NSHostingView(rootView: PortmanPanelView(initialPage: .forward)
                 .environment(\.colorScheme, scheme))

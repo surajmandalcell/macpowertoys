@@ -801,6 +801,10 @@ final class PortmanService {
         NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
 
+    func processID(forTunnel id: UUID) -> Int32? {
+        processes[id]?.processIdentifier
+    }
+
     func stopLocal(_ port: PortmanLocalPort) {
         do {
             try PortmanScanner.stop(port)
