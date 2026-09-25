@@ -980,7 +980,7 @@ struct PortmanSettingsView: View {
     @State private var service = PortmanService.shared
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
     @AppStorage("portman.scanUpperPort") private var upperPort = 9999
-    @AppStorage("portman.scanInterval") private var scanInterval = 5.0
+    @AppStorage("portman.scanInterval") private var scanInterval = 2.0
     @AppStorage("portman.memoryAlertMB") private var memoryAlertMB = 2_048
     @AppStorage("portman.growthAlertMB") private var growthAlertMB = 500
     @AppStorage("portman.idleHours") private var idleHours = 8.0

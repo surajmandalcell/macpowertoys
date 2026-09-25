@@ -40,7 +40,7 @@ nonisolated enum PortmanPreferences {
 
     static var scanInterval: TimeInterval {
         let value = UserDefaults.standard.double(forKey: "portman.scanInterval")
-        return value >= 2 && value <= 60 ? value : 5
+        return value >= 2 && value <= 60 ? value : 2
     }
 
     static var memoryAlertBytes: Int64 {
