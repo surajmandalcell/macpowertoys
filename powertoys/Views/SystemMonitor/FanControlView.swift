@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct FanControlView: View {
@@ -6,7 +5,6 @@ struct FanControlView: View {
     var compact = false
 
     @State private var service = FanControlService.shared
-    @State private var showsSetup = false
     @Environment(\.colorSchemeContrast) private var contrast
 
     private var rpm: String {
@@ -45,7 +43,7 @@ struct FanControlView: View {
             if compact { compactContent } else { expandedContent }
         }
         .padding(.leading, compact ? TrayPopoverLayout.horizontalInset + 4 : 14)
-        .padding(.trailing, compact ? TrayPopoverLayout.horizontalInset : 14)
+        .padding(.trailing, compact ? 4 : 14)
         .padding(.vertical, compact ? 8 : 14)
         .background(compact ? Color.clear : Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
@@ -54,81 +52,21 @@ struct FanControlView: View {
         }
         .onAppear { service.start(owner: owner) }
         .onDisappear { service.stop(owner: owner) }
-        .onChange(of: service.canControl) { _, canControl in
-            if canControl { showsSetup = false }
-        }
     }
 
     private var compactContent: some View {
-        HStack(spacing: 6) {
-            fanIdentity
-            Spacer(minLength: 4)
-            if service.hasCompletedRead && !service.canControl {
-                Button { showsSetup = true } label: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.orange)
-                        .frame(width: 28, height: 28)
-                        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 7))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
-                .accessibilityLabel("Set up fan control")
-                .accessibilityHint(detail)
-                .accessibilityIdentifier("fan-control.setup")
-                .help(detail)
-                .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
-            }
-            compactPresets
-        }
-    }
-
-    private var setupPopover: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            Label("Enable fan control", systemImage: "fanblades")
-                .font(.system(size: 14, weight: .semibold))
-            Text(detail)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Divider()
-            Text("1  Install smctl")
-                .font(.system(size: 12, weight: .semibold))
-            Text("Install the fan utility for your Mac. RPM reading works without it.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            Link("Open smctl installation guide", destination: URL(string: "https://github.com/leaperone/smctl#install")!)
-                .font(.system(size: 11))
-            Text("2  Approve its helper")
-                .font(.system(size: 12, weight: .semibold))
-            Text("Run this in Terminal and approve the administrator request:")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                Text("sudo smctl daemon install")
-                    .font(.system(size: 11, design: .monospaced))
-                    .lineLimit(1)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                fanIdentity
                 Spacer(minLength: 4)
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString("sudo smctl daemon install", forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Copy helper installation command")
-                .help("Copy command")
+                compactPresets
             }
-            .padding(8)
-            .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
-            HStack {
-                Spacer()
-                Button("Check again") { Task { await service.refresh() } }
-                    .controlSize(.small)
+            if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
+                Text(detail)
+                    .foregroundStyle(service.errorMessage == nil ? Color.secondary : Color.red)
+                    .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(width: 292, alignment: .leading)
-        .padding(15)
     }
 
     private var expandedContent: some View {
