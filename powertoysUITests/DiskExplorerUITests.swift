@@ -1,6 +1,22 @@
 import XCTest
 
 final class DiskExplorerUITests: XCTestCase {
+    @MainActor func testNormalLaunchOpensDiskmanWithoutTestMode() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
+        app.launch()
+        defer { app.terminate() }
+
+        let window = app.windows["Diskman"]
+        XCTAssertTrue(window.waitForExistence(timeout: 30))
+        XCTAssertTrue(window.descendants(matching: .any)["diskExplorer.scan"].waitForExistence(timeout: 10))
+        attach(window.screenshot(), named: "Diskman Normal Launch")
+
+        window.buttons["Manage Disks"].click()
+        XCTAssertTrue(window.staticTexts["Modify"].waitForExistence(timeout: 10))
+        attach(window.screenshot(), named: "Diskman Normal Modify")
+    }
+
     @MainActor func testModifyShowsPhysicalDisksWithoutWriting() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
