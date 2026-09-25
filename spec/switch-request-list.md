@@ -31,14 +31,17 @@ passed the full macOS suite, built an installable archive, and confirmed the
 duplicate import suggestion is gone. Its updated quick-menu renders have a
 proper background in both appearances. Account-changing actions remain verified
 with synthetic Core tests; the owner's saved accounts were not touched.
-The installed app reports the tested source commit. The install gate recorded
-successful signature verification; a sandboxed repeat returned
-`CSSMERR_TP_NOT_TRUSTED`, so that repeat cannot establish a trust failure.
+The earlier installed app reports source commit `dc97280`; the latest Switch UI
+commits have hosted verification but are not installed locally. The earlier
+install gate recorded successful signature verification. A sandboxed repeat
+returned `CSSMERR_TP_NOT_TRUSTED`, so it cannot establish a trust failure.
 A targeted hosted UI test opens Switch through its supported CLI route and
 traverses Accounts and Recovery. Run 36131532331 passed unit tests but Xcode
 could not spawn its separate UI-test Debug app. A separate build output and
 explicit entitlements fixed that launch error. The Switch-only hosted workflow
 avoids cancellation by unrelated shared CI pushes. Run 36137254239 passed both
 the CLI navigation and launcher-to-Switch route on a 1024pt display, and its
-screenshots confirm the launcher header actions remain visible. The owner's
-desktop was not used for testing.
+screenshots confirm the launcher header actions remain visible. Run 36138071917
+passed again after removing the duplicate launcher action and captured the
+three-column All Tools grid at 1024pt. The owner's desktop was not used for
+testing.
