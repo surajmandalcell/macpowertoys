@@ -19,6 +19,16 @@
   `make test` without the isolated-session flag exits before Xcode starts.
   `build-for-testing` compiles both bundles without launching an app or runner.
 
+## Local Entitlements In Package Builds
+
+- **Symptom:** `make build` stops while packaging the AIManager Swift package.
+- **Cause:** A relative command-line `CODE_SIGN_ENTITLEMENTS` path resolves from
+  the package checkout, where `powertoys/Local.entitlements` does not exist.
+- **Invariant:** Pass the absolute local entitlement path to Xcode for both
+  development-signed and ad-hoc builds.
+- **Check:** A compile-only Release build succeeds and its resulting app passes
+  `codesign --verify --deep --strict` without launching an executable.
+
 ## README Window Screenshots
 
 - **Symptom:** Product screenshots sit on white rectangles, lose their window
