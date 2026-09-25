@@ -31,7 +31,7 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertLessThanOrEqual(
             host.fittingSize.height,
             TrayPopoverLayout.maximumBodyHeight(screenHeight: 680),
-            "Home must show all summary cards and Fan on a short menu-bar display"
+            "Home must show all summary cards on a short menu-bar display"
         )
     }
 

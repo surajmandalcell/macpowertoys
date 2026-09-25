@@ -445,10 +445,6 @@ private struct TrayHomeView: View {
                 if toolIDs.contains("awake") {
                     AwakeTrayRow()
                 }
-                if SettingsManager.shared.isToolEnabled("system-monitor") {
-                    FanControlView(owner: "tray-home", compact: true)
-                        .padding(.vertical, 4)
-                }
             }
         }
     }
@@ -1192,7 +1188,7 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
         switch self {
         case .home: "square.grid.2x2"
         case .cpu: "cpu"
-        case .gpu: "rectangle.3.group"
+        case .gpu: "gpu-card"
         case .memory: "memorychip"
         case .network: "network"
         case .disk: "internaldrive"
@@ -1230,8 +1226,7 @@ struct SystemMonitorTrayView: View {
                     Button {
                         pageID = item.rawValue
                     } label: {
-                        Image(systemName: item.symbol)
-                            .font(.system(size: 12, weight: .medium))
+                        monitorIcon(item.symbol)
                             .frame(maxWidth: .infinity, minHeight: 30)
                             .contentShape(Rectangle())
                     }
@@ -1269,7 +1264,7 @@ struct SystemMonitorTrayView: View {
                     values: service.history.compactMap(\.cpuUsage), surfaceTint: SystemMonitorPalette.teal
                 ))
                 summary(.gpu, metric(
-                    "GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage, metric: .gpu),
+                    "GPU", symbol: "gpu-card", value: percent(sample?.gpuUsage, metric: .gpu),
                     detail: "Graphics utilization", level: sample?.gpuUsage,
                     values: service.history.compactMap(\.gpuUsage), surfaceTint: SystemMonitorPalette.blue
                 ))
@@ -1297,13 +1292,13 @@ struct SystemMonitorTrayView: View {
                     detail: batteryDetail,
                     level: sample?.batteryPercent.map(Double.init),
                     values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                    tint: batteryTint, surfaceTint: SystemMonitorPalette.gold
+                    surfaceTint: SystemMonitorPalette.gold
                 ))
                 summary(.sensors, metric(
                     "Thermal", symbol: "thermometer.medium", value: sample?.thermalState ?? "Unavailable",
                     detail: "System pressure", level: thermalLevel,
                     values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                    tint: thermalTint, surfaceTint: SystemMonitorPalette.green
+                    surfaceTint: SystemMonitorPalette.green
                 ))
                 summary(.cpu, identifier: "load", metric(
                     "Load · 1 min", symbol: "chart.bar", value: loadValue,
@@ -1314,8 +1309,6 @@ struct SystemMonitorTrayView: View {
                 .help("Load is the average number of processes running or ready for a CPU. Compare it with \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs. It is not a percent.")
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-            FanControlView(owner: "system-monitor-tray", compact: true)
-                .padding(.top, 4)
         }
     }
 
@@ -1345,7 +1338,7 @@ struct SystemMonitorTrayView: View {
                 ])
                 .help("Load is the average number of processes running or ready for a CPU. It is not a percentage.")
             case .gpu:
-                detailHero("GPU", symbol: "rectangle.3.group", value: percent(sample?.gpuUsage, metric: .gpu),
+                detailHero("GPU", symbol: "gpu-card", value: percent(sample?.gpuUsage, metric: .gpu),
                            detail: "Graphics utilization", level: sample?.gpuUsage,
                            values: service.history.compactMap(\.gpuUsage), tint: SystemMonitorPalette.blue)
             case .memory:
@@ -1402,9 +1395,13 @@ struct SystemMonitorTrayView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label(title, systemImage: symbol)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        monitorIcon(symbol)
+                            .foregroundStyle(tint)
+                            .brightness(colorScheme == .dark ? 0 : -0.23)
+                        Text(title).foregroundStyle(.secondary)
+                    }
+                    .font(.system(size: 12, weight: .medium))
                     Text(value)
                         .font(.system(size: 30, weight: .semibold))
                         .monospacedDigit()
@@ -1482,13 +1479,14 @@ struct SystemMonitorTrayView: View {
         tint: Color? = nil,
         surfaceTint: Color? = nil
     ) -> some View {
-        let color = tint ?? level.map(Self.usageTint) ?? .gray
+        let color = surfaceTint ?? tint ?? level.map(Self.usageTint) ?? .gray
         let surface = surfaceTint ?? color
         return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
-                    Image(systemName: symbol).font(.caption2.weight(.medium))
-                        .foregroundStyle(colorScheme == .dark ? color : .primary)
+                    monitorIcon(symbol)
+                        .foregroundStyle(color)
+                        .brightness(colorScheme == .dark ? 0 : -0.23)
                     Text(title).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                 }
@@ -1515,6 +1513,16 @@ struct SystemMonitorTrayView: View {
             RoundedRectangle(cornerRadius: 10).strokeBorder(surface.opacity(0.25))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .shadow(color: surface.opacity(0.1), radius: 5, y: 2)
+    }
+
+    @ViewBuilder
+    private func monitorIcon(_ symbol: String) -> some View {
+        if symbol == "gpu-card" {
+            GPUCardIcon().frame(width: 13, height: 13)
+        } else {
+            Image(systemName: symbol).font(.system(size: 12, weight: .medium))
+        }
     }
 
     private func percent(_ value: Double?, metric: SystemMonitorMenuMetric) -> String {
@@ -1556,23 +1564,6 @@ struct SystemMonitorTrayView: View {
     }
 
     private var thermalLevel: Double? { Self.thermalLevel(sample?.thermalState) }
-
-    private var thermalTint: Color {
-        switch sample?.thermalState {
-        case "Critical": .red
-        case "Serious": .orange
-        case "Fair": .blue
-        default: .green
-        }
-    }
-
-    private var batteryTint: Color {
-        guard let percent = sample?.batteryPercent else { return .gray }
-        if sample?.batteryCharging == true { return .green }
-        if percent < 20 { return .red }
-        if percent < 50 { return .orange }
-        return .blue
-    }
 
     nonisolated private static func usageTint(_ value: Double) -> Color {
         if value >= 90 { return .red }
