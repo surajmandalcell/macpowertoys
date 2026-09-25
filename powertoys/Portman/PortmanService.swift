@@ -396,6 +396,8 @@ final class PortmanService {
     private(set) var metadata: [String: PortmanMetadata] = [:]
     private(set) var sessions: [String: PortmanSession] = [:]
     private(set) var githubLinks: [String: PortmanGitHubLinks] = [:]
+    private(set) var restartableIDs = Set<String>()
+    private(set) var restartingIDs = Set<String>()
     private(set) var systemMemoryUsedBytes: Int64 = 0
     private(set) var lastConnectionAt: [String: Date] = [:]
     private(set) var snoozedUntil: [String: Date] = [:]
@@ -433,6 +435,8 @@ final class PortmanService {
         metadata = [:]
         sessions = [:]
         githubLinks = [:]
+        restartableIDs = []
+        restartingIDs = []
         lastConnectionAt = [:]
         notifiedProcessIDs = []
     }
@@ -462,6 +466,7 @@ final class PortmanService {
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
             sessions = sessions.filter { key, _ in ports.contains { $0.id == key } }
             githubLinks = githubLinks.filter { key, _ in ports.contains { $0.id == key } }
+            restartableIDs.formIntersection(Set(ports.map(\.id)))
             lastConnectionAt = lastConnectionAt.filter { key, _ in ports.contains { $0.processID == key } }
             snoozedUntil = snoozedUntil.filter { key, until in
                 until > now && ports.contains { $0.processID == key }
@@ -540,6 +545,33 @@ final class PortmanService {
               UserDefaults.standard.bool(forKey: "portman.publicGitHubLinksEnabled"),
               localPorts.contains(where: { $0.id == port.id }) else { return }
         githubLinks[port.id] = links
+    }
+
+    func loadRestartAvailability(for port: PortmanLocalPort) async {
+        guard let folder = metadata[port.id]?.folder else { return }
+        let available = await Task.detached(priority: .utility) {
+            PortmanLaunch.capture(port, folder: folder) != nil
+        }.value
+        guard !Task.isCancelled, localPorts.contains(where: { $0.id == port.id }) else { return }
+        if available { restartableIDs.insert(port.id) }
+        else { restartableIDs.remove(port.id) }
+    }
+
+    func restartLocal(_ port: PortmanLocalPort) {
+        guard let folder = metadata[port.id]?.folder,
+              restartableIDs.contains(port.id),
+              restartingIDs.insert(port.id).inserted else { return }
+        controlError = nil
+        Task {
+            do {
+                try await Task.detached(priority: .utility) {
+                    try await PortmanRestart.run(port, folder: folder)
+                }.value
+                try? await Task.sleep(for: .seconds(1))
+                await refreshLocal()
+            } catch { controlError = "Restart failed: \(error.localizedDescription)" }
+            restartingIDs.remove(port.id)
+        }
     }
 
     func refreshRemote(host: String) async {
