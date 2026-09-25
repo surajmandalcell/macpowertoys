@@ -28,11 +28,13 @@
 - **Invariant:** `.github/workflows/macos-tests.yml` runs the unit suite in a
   hosted Xcode 27 Mac on code pushes or manual dispatch. It uses ad hoc signing,
   the `TEST_SESSION=isolated` gate, installs rclone for Cloud Sync integration
-  tests, and skips UI tests. Local owner-session checks remain compile-only.
+  tests, skips UI tests, and saves PNG XCTest attachments as `tray-renders` for
+  offscreen review. Local owner-session checks remain compile-only.
 - **Check:** Match the successful workflow run to the tested commit and inspect
-  its XCTest result. Run `36096121530` at `1fddb1a` passed 842 tests, with five
-  skips and zero failures. A passing build alone does not count as an executed
-  test.
+  its XCTest result and tray renders. Run `36096121530` at `1fddb1a` passed 842
+  tests, with five skips and zero failures. That run predates artifact upload;
+  a later run must supply the renders. A passing build alone does not count as
+  an executed test.
 
 ## Local Entitlements In Package Builds
 
