@@ -118,6 +118,12 @@ final class DiskExplorerModel {
     private var generation = 0
     private(set) var marks: [String: DiskEntry] = [:]
 
+    init(preview: DiskScanResult? = nil) {
+        result = preview
+        current = preview?.root
+        sourceURL = preview?.root.url
+    }
+
     var markedEntries: [DiskEntry] { DiskRemoval.topLevel(Array(marks.values)) }
     var markedBytes: Int64 { markedEntries.reduce(0) { $0 + $1.allocatedBytes } }
 
@@ -127,7 +133,8 @@ final class DiskExplorerModel {
         cancel()
         generation += 1
         let scanGeneration = generation
-        if sourceURL != url { result = nil; current = nil }
+        result = nil
+        current = nil
         sourceURL = url
         isScanning = true
         scannedEntries = 0
@@ -136,7 +143,7 @@ final class DiskExplorerModel {
         marks = [:]
         let session = DiskScanSession { [weak self] count in
             Task { @MainActor [weak self] in
-                guard self?.generation == scanGeneration else { return }
+                guard self?.generation == scanGeneration, self?.isScanning == true else { return }
                 self?.scannedEntries = count
             }
         }
@@ -144,11 +151,17 @@ final class DiskExplorerModel {
         scanTask = Task { [weak self] in
             do {
                 let snapshot = try await Task.detached(priority: .userInitiated) {
-                    try DiskExplorerScanner.scan(url, includeHidden: includeHidden, session: session)
+                    try DiskExplorerScanner.scan(url, includeHidden: includeHidden, session: session) { [weak self] partial in
+                        Task { @MainActor [weak self] in
+                            guard let self, self.generation == scanGeneration, self.isScanning,
+                                  self.result?.isComplete != true,
+                                  partial.scannedAt >= (self.result?.scannedAt ?? .distantPast) else { return }
+                            self.apply(partial)
+                        }
+                    }
                 }.value
-                guard let self, self.generation == scanGeneration else { return }
-                self.result = snapshot
-                self.current = snapshot.root
+                guard let self, self.generation == scanGeneration, self.isScanning else { return }
+                self.apply(snapshot)
                 self.isScanning = false
                 self.scanSession = nil
                 self.scanTask = nil
@@ -175,13 +188,27 @@ final class DiskExplorerModel {
 
     func leave() { cancel(); result = nil; current = nil; marks = [:] }
 
+    private func apply(_ snapshot: DiskScanResult) {
+        let path = current?.id
+        result = snapshot
+        var node = snapshot.root
+        if let path {
+            while node.id != path,
+                  let next = node.children.first(where: { path == $0.id || path.hasPrefix($0.id + "/") }) {
+                node = next
+            }
+        }
+        current = node
+    }
+
     func navigate(to entry: DiskEntry) {
         guard entry.kind == .directory else { return }
         current = entry
     }
 
     func toggleMark(_ entry: DiskEntry) {
-        guard let root = result?.root.url, DiskRemoval.isAllowed(entry, under: root) else { return }
+        guard let result, result.isComplete,
+              DiskRemoval.isAllowed(entry, under: result.root.url) else { return }
         if marks.removeValue(forKey: entry.id) != nil { return }
         guard !marks.keys.contains(where: { entry.id.hasPrefix($0 + "/") }) else { return }
         marks = marks.filter { !$0.key.hasPrefix(entry.id + "/") }
@@ -189,7 +216,8 @@ final class DiskExplorerModel {
     }
 
     func removeMarked(permanently: Bool, includeHidden: Bool) {
-        guard let sourceURL, let root = result?.root, !isRemoving else { return }
+        guard let sourceURL, let result, result.isComplete, !isRemoving else { return }
+        let root = result.root
         let entries = markedEntries
         guard !entries.isEmpty else { return }
         let removalGeneration = generation
