@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import AppIntents
 
 @main
 struct MacPowerToysApp: App {
@@ -26,6 +27,7 @@ struct MacPowerToysApp: App {
     let modelContainer: ModelContainer
 
     init() {
+        PortmanShortcuts.updateAppShortcutParameters()
         do {
             let schema = Schema([LogEntry.self, TransferRecord.self])
             let config: ModelConfiguration
@@ -187,16 +189,6 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["nettoys"]))
         .restorationBehavior(.disabled)
 
-        Window("Portman", id: "portman") {
-            PortmanWindowView()
-                .utilityMotionPolicy()
-        }
-        .defaultSize(width: 560, height: 520)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["portman"]))
-        .restorationBehavior(.disabled)
-
         Window("Switch", id: "switch") {
             SwitchWindowView()
                 .utilityMotionPolicy()
@@ -218,6 +210,28 @@ struct MacPowerToysApp: App {
 extension MacPowerToysApp {
     static func handleIncomingURL(_ url: URL) {
         DeepLinkHandler.shared.handle(url: url)
+    }
+}
+
+struct OpenPortmanIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open Portman"
+    static let description = IntentDescription("Show Portman in the menu bar.")
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult {
+        await MainActor.run { PortmanMenuController.shared.show() }
+        return .result()
+    }
+}
+
+struct PortmanShortcuts: AppShortcutsProvider {
+    static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: OpenPortmanIntent(),
+            phrases: ["Open Portman in \(.applicationName)", "Show Portman in \(.applicationName)"],
+            shortTitle: "Portman",
+            systemImageName: "circle.grid.2x2.fill"
+        )
     }
 }
 

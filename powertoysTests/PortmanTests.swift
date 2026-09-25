@@ -41,6 +41,43 @@ final class PortmanTests: XCTestCase {
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 0, localPort: 4200))
     }
 
+    func testLocalRangeAndProcessTableParsing() {
+        let lsof = "p42\ncnode\nn127.0.0.1:3000\nn127.0.0.1:9000\n"
+        let ps = "42 1024 1.5 00:07:12 node server.js\n"
+        XCTAssertEqual(PortmanScanner.parseLocal(lsof, ps, range: 8000...9999).map(\.port), [9000])
+        let table = "42 1 1024 1.5 node\n43 42 512 0.2 vite\ninvalid\n"
+        let processes = PortmanScanner.parseProcessTable(table)
+        XCTAssertEqual(processes.map(\.pid), [42, 43])
+        XCTAssertEqual(processes[1].parentPID, 42)
+        XCTAssertEqual(processes[1].memoryBytes, 512 * 1_024)
+    }
+
+    func testDevelopmentListenerFilterKeepsCLIAndHidesSystemApps() {
+        let user = geteuid()
+        func port(_ command: String, _ launch: String, _ uid: UInt32) -> PortmanLocalPort {
+            PortmanLocalPort(pid: 42, port: 3000, address: "127.0.0.1:3000",
+                             command: command, launchCommand: launch, memoryBytes: 0,
+                             cpuPercent: 0, uptime: "0:01", started: 1, userID: uid)
+        }
+        XCTAssertTrue(PortmanScanner.isDevelopmentListener(port("node", "node server.js", user)))
+        XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("ControlCenter", "/System/Library/ControlCenter.app/Contents/MacOS/ControlCenter", user)))
+        XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("adb", "/opt/homebrew/bin/adb", user)))
+        XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("node", "node server.js", user &+ 1)))
+    }
+
+    func testNotificationRearmsOnlyWellBelowBothLimits() {
+        let mb: Int64 = 1_024 * 1_024
+        XCTAssertFalse(PortmanService.canRearmNotification(
+            memoryBytes: 1_900 * mb, growthBytes: 0,
+            memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
+        XCTAssertFalse(PortmanService.canRearmNotification(
+            memoryBytes: 100 * mb, growthBytes: 400 * mb,
+            memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
+        XCTAssertTrue(PortmanService.canRearmNotification(
+            memoryBytes: 100 * mb, growthBytes: 100 * mb,
+            memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
+    }
+
     func testLocalScannerFindsAnActualListeningSocket() throws {
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         XCTAssertGreaterThanOrEqual(descriptor, 0)

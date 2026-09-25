@@ -1,5 +1,23 @@
 # UI Chrome Troubleshooting
 
+## Portman Menu-Bar Workflow
+
+- **Symptom:** The Portman tray showed a short list of unrelated listeners and
+  an Open button while the useful server, cleanup, and forwarding controls
+  lived in a separate window.
+- **Cause:** The initial implementation split one task across a reduced
+  combined-menu tab and a compact applet window, and counted system listeners
+  as development servers.
+- **Invariant:** Portman has one full menu-bar panel, a count-bearing status
+  item, and one route from the launcher, Raycast, Spotlight shortcut, and deep
+  link. The default list focuses on user-owned development listeners; Settings
+  can include other listeners. The panel contains overview, detail, cleanup,
+  alerts, settings, and SSH forwarding.
+- **Check:** Compile the current source without launching on the owner's
+  desktop. In an isolated macOS session, open every entry route and inspect
+  overview, selected server, cleanup, active/snoozed alerts, settings, and SSH
+  tunnel states at the real menu-bar width.
+
 ## Tool Icon Tile Template
 
 - **Symptom:** One tool icon has sharper corners, different cutoffs, or a

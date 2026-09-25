@@ -99,6 +99,13 @@
       "mode": "no-view"
     },
     {
+      "name": "portman",
+      "title": "Portman",
+      "description": "Open Portman in the menu bar",
+      "icon": "portman.png",
+      "mode": "no-view"
+    },
+    {
       "name": "switch",
       "title": "Switch",
       "description": "Open Switch accounts",

@@ -18,7 +18,7 @@ final class AppDelegateTests: XCTestCase {
     func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
         for toolID in [
             "main", "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys", "portman",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
         ] {
             let url = URL(string: "macpowertoys://open/\(toolID)")!
             XCTAssertFalse(AppDelegate.requiresManualURLRouting(url), toolID)
@@ -26,6 +26,7 @@ final class AppDelegateTests: XCTestCase {
 
         for url in [
             URL(string: "macpowertoys://open/ruler")!,
+            URL(string: "macpowertoys://open/portman")!,
             URL(string: "macpowertoys://run/awake.toggle")!,
             URL(string: "macpowertoys://open/nettoys?targets=192.168.1.0%2F24&ports=22%2C443")!,
         ] {
@@ -104,7 +105,7 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys", "portman",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
         ] {
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: "\(toolID)-settings"), toolID)
@@ -116,7 +117,7 @@ final class AppDelegateTests: XCTestCase {
     func testQuitCommandClosesEachNativeSubAppScope() {
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys", "portman",
+            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
         ] {
             let toolWindow = CloseTrackingWindow(identifier: toolID)
             let settingsWindow = CloseTrackingWindow(identifier: "\(toolID)-settings")

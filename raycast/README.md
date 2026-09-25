@@ -4,8 +4,8 @@
 
 # MacPowerToys for Raycast
 
-Launch MacPowerToys or any of its eleven built-in tools from Raycast Root Search.
-Each command opens the matching native Mac window through the local
+Launch MacPowerToys or its built-in tools from Raycast Root Search.
+Each command opens the matching utility or menu-bar panel through the local
 `macpowertoys://` URL scheme. The extension runs no background service.
 
 <p align="center">
@@ -19,7 +19,7 @@ Each command opens the matching native Mac window through the local
 | App               | MacPowerToys                                            |
 | Screen            | Ruler, Color Picker, Text Extractor                     |
 | System            | Awake, Input Devices, System Care, System Monitor, Logs |
-| Files and network | Cloud Sync, Disk Explorer, NetToys                      |
+| Files and network | Cloud Sync, Disk Explorer, NetToys, Portman             |
 
 ## Local installation
 

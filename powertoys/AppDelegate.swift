@@ -36,7 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let nativeSceneToolIDs: Set<String> = [
         "main", "rclone", "logs", "awake", "color-picker",
-        "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "portman", "switch",
+        "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch",
     ]
 
     static func requiresManualURLRouting(_ url: URL) -> Bool {
@@ -129,7 +129,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "system-monitor": "SystemMonitorLogo",
         "disk-explorer": "DiskExplorerLogo",
         "nettoys": "NetToysLogo",
-        "portman": "PortmanLogo",
         "switch": "SwitchLogo"
     ]
 
@@ -171,11 +170,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
 
-            NSMenu.popUpContextMenu(
-                self.statusItemContextMenu(),
-                with: event,
-                for: statusButton
-            )
+            let menu = PortmanMenuController.shared.owns(button: statusButton)
+                ? PortmanMenuController.shared.contextMenu()
+                : self.statusItemContextMenu()
+            NSMenu.popUpContextMenu(menu, with: event, for: statusButton)
             return nil
         }
 

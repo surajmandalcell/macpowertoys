@@ -209,6 +209,9 @@ final class UtilityToolsTests: XCTestCase {
     }
 
     func testDefaultGlobalShortcuts() {
+        let portman = GlobalShortcutAction.portman.defaultShortcut
+        XCTAssertEqual(portman.display, "⌥⌘P")
+        XCTAssertTrue(GlobalShortcutManager.usesCarbonHotKey(for: portman))
         let textExtractor = GlobalShortcutAction.textExtractor.defaultShortcut
         XCTAssertEqual(textExtractor.keyCode, UInt32(kVK_ANSI_2))
         XCTAssertEqual(textExtractor.carbonModifiers, UInt32(shiftKey | cmdKey))

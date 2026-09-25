@@ -1,6 +1,11 @@
 import Darwin
 import Foundation
 import Observation
+import UserNotifications
+
+extension Notification.Name {
+    static let portmanSnapshotChanged = Notification.Name("portmanSnapshotChanged")
+}
 
 nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     let pid: Int32
@@ -8,19 +13,77 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     let address: String
     let command: String
     let launchCommand: String
-    let memoryBytes: Int64
-    let cpuPercent: Double
+    var memoryBytes: Int64
+    var cpuPercent: Double
     let uptime: String
     let started: UInt64
     let userID: UInt32
+    var processes: [PortmanProcess] = []
+    var hasConnections = false
 
     var processID: String { "\(pid):\(started)" }
     var id: String { "\(processID):\(port)" }
     var canStop: Bool {
-        started > 0 && userID == geteuid() && pid > 1 && pid != getpid()
-            && !["postgres", "mysqld", "mariadbd", "mongod", "redis-server", "docker", "ssh"]
-                .contains(command.lowercased())
+        started > 0 && PortmanScanner.isDevelopmentListener(self)
+            && pid > 1 && pid != getpid()
+            && !PortmanPreferences.protectedCommands.contains(command.lowercased())
     }
+}
+
+nonisolated enum PortmanPreferences {
+    static var scanRange: ClosedRange<UInt16> {
+        let defaults = UserDefaults.standard
+        let lower = UInt16(clamping: defaults.integer(forKey: "portman.scanLowerPort"))
+        let upper = UInt16(clamping: defaults.integer(forKey: "portman.scanUpperPort"))
+        return lower > 0 && upper >= lower ? lower...upper : 3000...9999
+    }
+
+    static var scanInterval: TimeInterval {
+        let value = UserDefaults.standard.double(forKey: "portman.scanInterval")
+        return value >= 2 && value <= 60 ? value : 5
+    }
+
+    static var memoryAlertBytes: Int64 {
+        let value = UserDefaults.standard.integer(forKey: "portman.memoryAlertMB")
+        return Int64(value > 0 ? min(value, 1_000_000) : 2_048) * 1_024 * 1_024
+    }
+
+    static var growthAlertBytes: Int64 {
+        let value = UserDefaults.standard.integer(forKey: "portman.growthAlertMB")
+        return Int64(value > 0 ? min(value, 1_000_000) : 500) * 1_024 * 1_024
+    }
+
+    static var idleSuggestionHours: Double {
+        let value = UserDefaults.standard.double(forKey: "portman.idleHours")
+        return value >= 1 && value <= 72 ? value : 8
+    }
+
+    static var showAllListeners: Bool {
+        UserDefaults.standard.bool(forKey: "portman.showAllListeners")
+    }
+
+    static var notificationsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "portman.notificationsEnabled")
+    }
+
+    static var protectedCommands: Set<String> {
+        let builtIn: Set<String> = ["postgres", "mysqld", "mariadbd", "mongod", "redis-server", "docker", "ssh"]
+        let custom = UserDefaults.standard.string(forKey: "portman.protectedCommands") ?? ""
+        return builtIn.union(custom.split(separator: ",").map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        })
+    }
+}
+
+nonisolated struct PortmanProcess: Identifiable, Sendable {
+    let pid: Int32
+    let parentPID: Int32
+    let command: String
+    let memoryBytes: Int64
+    let cpuPercent: Double
+    let started: UInt64
+    let userID: UInt32
+    var id: Int32 { pid }
 }
 
 nonisolated struct PortmanMetadata: Sendable {
@@ -83,7 +146,8 @@ nonisolated enum PortmanScanner {
 
     static func parseLocal(
         _ lsof: String, _ ps: String,
-        identities: [Int32: (UInt64, UInt32)] = [:]
+        identities: [Int32: (UInt64, UInt32)] = [:],
+        range: ClosedRange<UInt16> = 3000...9999
     ) -> [PortmanLocalPort] {
         var details: [Int32: (Int64, Double, String, String)] = [:]
         for line in ps.split(whereSeparator: \.isNewline) {
@@ -104,7 +168,7 @@ nonisolated enum PortmanScanner {
             case "c": command = value
             case "n":
                 guard let pid, let port = UInt16(value.split(separator: ":").last ?? ""),
-                      port > 0, (3000...9999).contains(port) else { continue }
+                      port > 0, range.contains(port) else { continue }
                 let id = "\(pid):\(port)"
                 guard seen.insert(id).inserted else { continue }
                 let detail = details[pid]
@@ -121,7 +185,7 @@ nonisolated enum PortmanScanner {
         return result.sorted { $0.port < $1.port }
     }
 
-    static func localPorts() throws -> [PortmanLocalPort] {
+    static func localPorts(range: ClosedRange<UInt16> = 3000...9999) throws -> [PortmanLocalPort] {
         let lsof = try run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:LISTEN", "-Fpcn"],
                            emptyExitIsSuccess: true)
         let pids = Set(lsof.split(whereSeparator: \.isNewline)
@@ -140,7 +204,79 @@ nonisolated enum PortmanScanner {
                                    info.pbi_uid)
             }
         }
-        return parseLocal(lsof, ps, identities: identities)
+        var ports = parseLocal(lsof, ps, identities: identities, range: range)
+        let established = (try? run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:ESTABLISHED", "-Fp"],
+                                    emptyExitIsSuccess: true)) ?? ""
+        let connectedPIDs = Set(established.split(whereSeparator: \.isNewline)
+            .filter { $0.first == "p" }.compactMap { Int32($0.dropFirst()) })
+        let table = (try? run("/bin/ps", ["-A", "-o", "pid=,ppid=,rss=,%cpu=,comm="])) ?? ""
+        let processes = parseProcessTable(table)
+        let children = Dictionary(grouping: processes, by: \.parentPID)
+        for index in ports.indices {
+            var tree = [PortmanProcess]()
+            var visited: Set<Int32> = [ports[index].pid]
+            var pending = [ports[index].pid]
+            while let parent = pending.popLast() {
+                for child in children[parent] ?? [] where visited.insert(child.pid).inserted {
+                    var info = proc_bsdinfo()
+                    let size = withUnsafeMutablePointer(to: &info) {
+                        proc_pidinfo(child.pid, PROC_PIDTBSDINFO, 0, $0,
+                                     Int32(MemoryLayout<proc_bsdinfo>.size))
+                    }
+                    guard size == MemoryLayout<proc_bsdinfo>.size,
+                          info.pbi_uid == ports[index].userID else { continue }
+                    tree.append(PortmanProcess(
+                        pid: child.pid, parentPID: child.parentPID, command: child.command,
+                        memoryBytes: child.memoryBytes, cpuPercent: child.cpuPercent,
+                        started: info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec,
+                        userID: info.pbi_uid
+                    ))
+                    pending.append(child.pid)
+                }
+            }
+            ports[index].processes = tree
+            ports[index].hasConnections = connectedPIDs.contains(ports[index].pid)
+                || tree.contains { connectedPIDs.contains($0.pid) }
+            ports[index].memoryBytes += tree.reduce(0) { $0 + $1.memoryBytes }
+            ports[index].cpuPercent += tree.reduce(0) { $0 + $1.cpuPercent }
+        }
+        return PortmanPreferences.showAllListeners ? ports : ports.filter(isDevelopmentListener)
+    }
+
+    static func isDevelopmentListener(_ port: PortmanLocalPort) -> Bool {
+        guard port.userID == geteuid() else { return false }
+        let command = port.command.lowercased()
+        let launch = port.launchCommand.lowercased()
+        if ["adb", "ardagent", "controlcenter", "ssh", "megasyn", "megasync"]
+            .contains(command) { return false }
+        return !launch.hasPrefix("/system/") && !launch.hasPrefix("/usr/libexec/")
+            && !launch.contains(".app/contents/macos/")
+    }
+
+    static func parseProcessTable(_ output: String) -> [PortmanProcess] {
+        output.split(whereSeparator: \.isNewline).compactMap { line in
+            let fields = line.split(maxSplits: 4, whereSeparator: \.isWhitespace)
+            guard fields.count == 5, let pid = Int32(fields[0]),
+                  let parent = Int32(fields[1]), let rss = Int64(fields[2]),
+                  let cpu = Double(fields[3]) else { return nil }
+            return PortmanProcess(pid: pid, parentPID: parent, command: String(fields[4]),
+                                  memoryBytes: rss * 1024, cpuPercent: cpu,
+                                  started: 0, userID: UInt32.max)
+        }
+    }
+
+    static func systemMemoryUsed() -> Int64 {
+        var stats = vm_statistics64()
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &stats) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+            }
+        }
+        guard result == KERN_SUCCESS else { return 0 }
+        let pageSize = Int64(vm_kernel_page_size)
+        return Int64(stats.active_count + stats.inactive_count + stats.wire_count
+                     + stats.compressor_page_count) * pageSize
     }
 
     static func stop(_ port: PortmanLocalPort) throws {
@@ -152,6 +288,20 @@ nonisolated enum PortmanScanner {
         let started = info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec
         guard bytes == MemoryLayout<proc_bsdinfo>.size,
               started == port.started, info.pbi_uid == port.userID else { throw StopError.changed }
+        for child in port.processes.reversed()
+            where child.userID == port.userID && child.started > 0
+                && !PortmanPreferences.protectedCommands.contains(
+                    URL(fileURLWithPath: child.command).lastPathComponent.lowercased()) {
+            var current = proc_bsdinfo()
+            let size = withUnsafeMutablePointer(to: &current) {
+                proc_pidinfo(child.pid, PROC_PIDTBSDINFO, 0, $0, Int32(MemoryLayout<proc_bsdinfo>.size))
+            }
+            let identity = current.pbi_start_tvsec * 1_000_000 + current.pbi_start_tvusec
+            if size == MemoryLayout<proc_bsdinfo>.size && identity == child.started
+                && current.pbi_uid == port.userID && current.pbi_ppid == child.parentPID {
+                _ = kill(child.pid, SIGTERM)
+            }
+        }
         guard kill(port.pid, SIGTERM) == 0 else { throw StopError.system(errno) }
     }
 
@@ -242,6 +392,11 @@ final class PortmanService {
     private(set) var tunnels: [PortmanTunnel] = []
     private(set) var history: [String: [PortmanSample]] = [:]
     private(set) var metadata: [String: PortmanMetadata] = [:]
+    private(set) var systemMemoryUsedBytes: Int64 = 0
+    private(set) var lastConnectionAt: [String: Date] = [:]
+    private(set) var snoozedUntil: [String: Date] = [:]
+    private(set) var notificationStatus = "Not requested"
+    var notificationError: String?
     var localError: String?
     var controlError: String?
     var forwardingError: String?
@@ -251,6 +406,7 @@ final class PortmanService {
     private var monitoringTask: Task<Void, Never>?
     private var processes: [UUID: Process] = [:]
     private var remoteRequestID = UUID()
+    private var notifiedProcessIDs = Set<String>()
 
     func beginMonitoring() {
         monitoringCount += 1
@@ -258,7 +414,7 @@ final class PortmanService {
         monitoringTask = Task {
             while !Task.isCancelled {
                 await refreshLocal()
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: .seconds(PortmanPreferences.scanInterval))
             }
         }
     }
@@ -271,16 +427,26 @@ final class PortmanService {
         localPorts = []
         history = [:]
         metadata = [:]
+        lastConnectionAt = [:]
+        notifiedProcessIDs = []
     }
 
     func refreshLocal() async {
         do {
-            let ports = try await Task.detached(priority: .utility) { try PortmanScanner.localPorts() }.value
+            let range = PortmanPreferences.scanRange
+            let snapshot = try await Task.detached(priority: .utility) {
+                (try PortmanScanner.localPorts(range: range), PortmanScanner.systemMemoryUsed())
+            }.value
             guard !Task.isCancelled, monitoringCount > 0 else { return }
+            let ports = snapshot.0
             localPorts = ports
+            systemMemoryUsedBytes = snapshot.1
             localError = nil
             let now = Date()
             for port in ports {
+                if port.hasConnections || lastConnectionAt[port.processID] == nil {
+                    lastConnectionAt[port.processID] = now
+                }
                 history[port.id, default: []].append(PortmanSample(
                     date: now, memoryBytes: port.memoryBytes, cpuPercent: port.cpuPercent
                 ))
@@ -288,6 +454,41 @@ final class PortmanService {
             }
             history = history.filter { key, _ in ports.contains { $0.id == key } }
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
+            lastConnectionAt = lastConnectionAt.filter { key, _ in ports.contains { $0.processID == key } }
+            snoozedUntil = snoozedUntil.filter { key, until in
+                until > now && ports.contains { $0.processID == key }
+            }
+            notifiedProcessIDs = notifiedProcessIDs.filter { processID in
+                guard let port = ports.first(where: { $0.processID == processID }) else { return false }
+                let growth = history[port.id].flatMap { samples in
+                    samples.last.flatMap { last in
+                        samples.first(where: { $0.date >= last.date.addingTimeInterval(-600) })
+                            .map { last.memoryBytes - $0.memoryBytes }
+                    }
+                } ?? 0
+                return !Self.canRearmNotification(
+                    memoryBytes: port.memoryBytes, growthBytes: growth,
+                    memoryLimit: PortmanPreferences.memoryAlertBytes,
+                    growthLimit: PortmanPreferences.growthAlertBytes
+                )
+            }
+            if PortmanPreferences.notificationsEnabled && notificationStatus == "Allowed" {
+                for port in ports where (snoozedUntil[port.processID] ?? .distantPast) <= now {
+                    guard let warning = warning(for: port),
+                          notifiedProcessIDs.insert(port.processID).inserted else { continue }
+                    let content = UNMutableNotificationContent()
+                    content.title = "Port :\(port.port) needs attention"
+                    content.body = warning
+                    content.categoryIdentifier = "PORTMAN_ALERT"
+                    content.userInfo = ["processID": port.processID]
+                    do {
+                        try await UNUserNotificationCenter.current().add(UNNotificationRequest(
+                            identifier: "portman.\(port.processID)", content: content, trigger: nil
+                        ))
+                    } catch { notificationError = error.localizedDescription }
+                }
+            }
+            NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
         } catch {
             guard !Task.isCancelled, monitoringCount > 0 else { return }
             localError = error.localizedDescription
@@ -350,6 +551,7 @@ final class PortmanService {
             processes[id] = process
             tunnels.append(PortmanTunnel(id: id, host: host, remotePort: remotePort,
                                          localPort: localPort, state: .connecting))
+            NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
             Task { [weak self] in
                 for _ in 0..<25 {
                     guard let self, let index = tunnels.firstIndex(where: { $0.id == id }),
@@ -362,6 +564,7 @@ final class PortmanService {
                           case .connecting = tunnels[current].state, process.isRunning else { return }
                     if ready {
                         tunnels[current].state = .running
+                        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
                         return
                     }
                     try? await Task.sleep(for: .milliseconds(400))
@@ -369,6 +572,7 @@ final class PortmanService {
                 guard let self, let index = tunnels.firstIndex(where: { $0.id == id }),
                       case .connecting = tunnels[index].state else { return }
                 tunnels[index].state = .failed("SSH did not open local port \(localPort).")
+                NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
                 if process.isRunning { process.terminate() }
             }
             forwardingError = nil
@@ -383,6 +587,7 @@ final class PortmanService {
         if let process = processes[id], process.isRunning { process.terminate() }
         processes.removeValue(forKey: id)
         tunnels.removeAll { $0.id == id }
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
 
     func stopLocal(_ port: PortmanLocalPort) {
@@ -391,6 +596,77 @@ final class PortmanService {
             controlError = nil
             Task { await refreshLocal() }
         } catch { controlError = error.localizedDescription }
+    }
+
+    func warning(for port: PortmanLocalPort) -> String? {
+        let sustainedSamples = Array(history[port.id]?.suffix(3) ?? [])
+        if sustainedSamples.count == 3
+            && sustainedSamples.allSatisfy({ $0.memoryBytes >= PortmanPreferences.memoryAlertBytes }) {
+            let limit = ByteCountFormatter.string(fromByteCount: PortmanPreferences.memoryAlertBytes,
+                                                  countStyle: .memory)
+            return "Memory above \(limit)"
+        }
+        guard let samples = history[port.id], let last = samples.last,
+              let first = samples.first(where: { $0.date >= last.date.addingTimeInterval(-600) }),
+              last.memoryBytes - first.memoryBytes >= PortmanPreferences.growthAlertBytes else {
+            return nil
+        }
+        let minutes = max(1, Int(last.date.timeIntervalSince(first.date) / 60))
+        let growth = (last.memoryBytes - first.memoryBytes) / (1_024 * 1_024)
+        return "+\(growth) MB in \(minutes)m"
+    }
+
+    func snooze(_ port: PortmanLocalPort) {
+        snooze(processID: port.processID)
+    }
+
+    func snooze(processID: String) {
+        snoozedUntil[processID] = Date().addingTimeInterval(3_600)
+        notifiedProcessIDs.remove(processID)
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
+    }
+
+    func rearm(_ port: PortmanLocalPort) {
+        snoozedUntil.removeValue(forKey: port.processID)
+        notifiedProcessIDs.remove(port.processID)
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
+    }
+
+    func resetNotificationDelivery() {
+        notifiedProcessIDs = []
+    }
+
+    nonisolated static func canRearmNotification(
+        memoryBytes: Int64, growthBytes: Int64, memoryLimit: Int64, growthLimit: Int64
+    ) -> Bool {
+        memoryBytes < memoryLimit * 85 / 100 && growthBytes < growthLimit * 60 / 100
+    }
+
+    func refreshNotificationStatus() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        notificationStatus = switch settings.authorizationStatus {
+        case .notDetermined: "Not requested"
+        case .denied: "Denied in System Settings"
+        case .authorized, .provisional, .ephemeral:
+            settings.notificationCenterSetting == .disabled ? "Disabled in System Settings" : "Allowed"
+        @unknown default: "Unavailable"
+        }
+    }
+
+    func enableNotifications() async {
+        do {
+            let allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
+            UserDefaults.standard.set(allowed, forKey: "portman.notificationsEnabled")
+            notificationError = nil
+        } catch {
+            UserDefaults.standard.set(false, forKey: "portman.notificationsEnabled")
+            notificationError = error.localizedDescription
+        }
+        await refreshNotificationStatus()
+    }
+
+    var activeAlerts: [PortmanLocalPort] {
+        localPorts.filter { warning(for: $0) != nil && (snoozedUntil[$0.processID] ?? .distantPast) <= Date() }
     }
 
     func stopLocalProcesses(_ ports: [PortmanLocalPort]) {
@@ -408,6 +684,7 @@ final class PortmanService {
         for process in processes.values where process.isRunning { process.terminate() }
         processes.removeAll()
         tunnels.removeAll()
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
 
     private func tunnelEnded(id: UUID, status: Int32, message: String) {
@@ -415,6 +692,7 @@ final class PortmanService {
         guard let index = tunnels.firstIndex(where: { $0.id == id }) else { return }
         if case .failed = tunnels[index].state { return }
         tunnels[index].state = .failed(message.isEmpty ? "SSH exited with status \(status)." : message)
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
 }
 
