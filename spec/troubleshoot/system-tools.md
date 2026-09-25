@@ -2,6 +2,19 @@
 
 ## NetToys
 
+### Scanner Reverse DNS Deadline
+
+- **Symptom:** One local listener scan streamed its HTTP server field, but the
+  complete scan waited 35.1 seconds for an unresolved hostname on the hosted
+  Mac.
+- **Cause:** Blocking `getnameinfo` had no deadline and held the host task open.
+- **Invariant:** Query the system DNS responder for a PTR record with a
+  1.5-second deadline, accept only bounded valid name data, and publish
+  protocol fields while the hostname query runs.
+- **Check:** Hosted run `36096121530` passes the streaming and malformed PTR
+  checks; the same one-host fixture completes in 1.57 seconds. Confirm real
+  network hostnames in the final signed app.
+
 - **Symptom:** The NetToys tray tab shows only switches, so current anchor,
   Wi-Fi priority, and network issue state requires opening the full app.
 - **Cause:** The compact surface had no persistent progressive disclosure.

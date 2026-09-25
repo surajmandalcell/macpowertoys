@@ -1,5 +1,18 @@
 # Ruler Troubleshooting
 
+## Ruler Dimensions In Hosted Tests
+
+- **Symptom:** A ruler-settings test passed on the owner's display but failed
+  on the hosted Mac when entered millimeters produced a 150-point or 120-point
+  ruler instead of the required 200-point minimum.
+- **Cause:** Fixed millimeter inputs converted to different pixel lengths on
+  different displays. Whole-pixel conversion also shifted the displayed
+  millimeters by more than the test's fixed 0.15 tolerance.
+- **Invariant:** Derive test inputs above the 200-point minimum from the active
+  screen's dots per millimeter. Compare the displayed value within half a pixel
+  plus its one-decimal rounding allowance.
+- **Check:** The complete hosted run `36096121530` passes `RulerCoreTests`.
+
 ## Automated Ruler Window Checks
 
 - **Symptom:** A macOS logout confirmation appeared while the borderless Ruler
