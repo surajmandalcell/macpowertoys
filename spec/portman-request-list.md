@@ -24,11 +24,12 @@ Xcode tests coincided with macOS privacy and Gatekeeper prompts. Build-only and
 static checks are allowed here; executable interaction checks require an
 isolated macOS account or VM.
 
-The hosted macOS unit-test run [36105699663](https://github.com/surajmandalcell/macpowertoys/actions/runs/36105699663)
-passed at `309f310` and saved a Portman dark-panel attachment, alongside the
-scanner, alert-policy, and listener-restart tests. The local build-for-testing
-passed without launching either bundle. An ad-hoc signed universal Release app
-for `309f310` passed `codesign --verify --deep --strict`; the newer source
-commit needs a final build after the hosted test fixture and interval change.
+The hosted macOS unit-test run [36107019320](https://github.com/surajmandalcell/macpowertoys/actions/runs/36107019320)
+passed at `f0f820c`, including an actual local SSH tunnel carrying HTTP traffic,
+the listener-restart test, scanner and alert-policy tests, and a saved Portman
+dark-panel attachment. The local build-for-testing passed without launching
+either bundle. The ad-hoc signed universal Release app passed
+`codesign --verify --deep --strict`. Its embedded source revision must match
+the final committed `HEAD` before installation.
 The installed `/Applications` copy is older; installation and live UI review
 remain deferred under the focus-preserving verification rule.
