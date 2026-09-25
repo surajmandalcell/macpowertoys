@@ -14,6 +14,9 @@ final class DiskExplorerUITests: XCTestCase {
 
         window.buttons["Manage Disks"].click()
         XCTAssertTrue(window.staticTexts["Modify"].waitForExistence(timeout: 10))
+        XCTAssertFalse(window.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS[c] 'chart updates live'"
+        )).firstMatch.exists)
         attach(window.screenshot(), named: "Diskman Normal Modify")
     }
 

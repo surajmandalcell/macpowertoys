@@ -62,7 +62,9 @@ struct DiskExplorerWindowView: View {
             content
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom, spacing: 0) { statusInset }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if page == .explore { statusInset }
+                }
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
@@ -75,6 +77,9 @@ struct DiskExplorerWindowView: View {
             }
         }
         .onDisappear { model.leave() }
+        .onChange(of: page) { _, next in
+            if next != .explore { model.cancel() }
+        }
         .onChange(of: includeHidden) { _, newValue in
             if let source = model.sourceURL { model.start(source, includeHidden: newValue) }
         }
