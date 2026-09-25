@@ -4,6 +4,36 @@ import SwiftUI
 @testable import powertoys
 
 final class DiskExplorerTests: XCTestCase {
+    func testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross() {
+        func directory(lastWeight: Int64) -> DiskEntry {
+            let url = URL(fileURLWithPath: "/tmp/diskman-chart-membership")
+            let children = (0..<81).map { index in
+                let weight = index == 80 ? lastWeight : Int64(200 - index)
+                return DiskEntry(url: url.appendingPathComponent(String(format: "item-%03d", index)),
+                                 kind: .file, allocatedBytes: weight, apparentBytes: weight,
+                                 fileCount: 1, directoryCount: 0, modifiedAt: .distantPast,
+                                 device: 1, inode: UInt64(index + 2))
+            }
+            let total = children.reduce(Int64(0)) { $0 + $1.allocatedBytes }
+            return DiskEntry(url: url, kind: .directory, allocatedBytes: total,
+                             apparentBytes: total, fileCount: 81, directoryCount: 1,
+                             modifiedAt: .distantPast, device: 1, inode: 1, children: children)
+        }
+
+        let before = directory(lastWeight: 1)
+        let after = directory(lastWeight: 1_000)
+        func treemapIDs(_ root: DiskEntry) -> Set<String> {
+            let view = DiskTreemapView(directory: root, apparent: false, measure: .space, select: { _ in })
+            return Set(view.tiles.compactMap { $0.entry?.id })
+        }
+        func ringIDs(_ root: DiskEntry) -> Set<String> {
+            Set(DiskSunburstView.segments(for: root, apparent: false, measure: .space, radius: 200)
+                .compactMap { $0.entry?.id })
+        }
+        XCTAssertEqual(treemapIDs(before), treemapIDs(after))
+        XCTAssertEqual(ringIDs(before), ringIDs(after))
+    }
+
     func testTreemapKeepsTileGroupsWhenMeasuredSizesCross() {
         func tiles(_ weights: [Int64]) -> [DiskChartTile] {
             weights.enumerated().map { index, weight in
