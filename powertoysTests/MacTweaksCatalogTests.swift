@@ -34,6 +34,13 @@ final class MacTweaksCatalogTests: XCTestCase {
         try store.restore([field])
         XCTAssertNil(store.value(for: field))
 
+        try store.apply([field], selections: [field.identity: 0])
+        CFPreferencesSetValue(field.key as CFString, nil, domain as CFString,
+                              kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+        XCTAssertTrue(CFPreferencesSynchronize(domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost))
+        try store.restore([field])
+        XCTAssertFalse(store.hasBackup(for: [field]))
+
         CFPreferencesSetValue(field.key as CFString, false as CFPropertyList, domain as CFString,
                               kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
         XCTAssertTrue(CFPreferencesSynchronize(domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost))

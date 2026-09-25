@@ -189,21 +189,28 @@ final class TweakPreferenceStore {
     func restore(_ fields: [TweakPreferenceField]) throws {
         var writes: [(TweakPreferenceField, Any?)] = []
         var before: [(TweakPreferenceField, Any?)] = []
+        var cleared: [String] = []
         for field in fields {
             guard let record = records[field.identity] else { continue }
             let current = value(for: field)
-            guard record.lastWritten == current.flatMap(archive) else {
+            let currentData = current.flatMap(archive)
+            if currentData == record.original {
+                cleared.append(field.identity)
+                continue
+            }
+            guard record.lastWritten == currentData else {
                 throw TweakPreferenceError.changedElsewhere(field.key)
             }
             before.append((field, current))
             writes.append((field, record.original.flatMap(unarchive)))
+            cleared.append(field.identity)
         }
-        guard !writes.isEmpty else { return }
+        guard !cleared.isEmpty else { return }
         for (field, value) in writes { set(value, for: field) }
         do {
             try synchronizeAndCheck(writes)
             var next = records
-            for (field, _) in writes { next.removeValue(forKey: field.identity) }
+            for identity in cleared { next.removeValue(forKey: identity) }
             try persist(next)
             records = next
         } catch {
