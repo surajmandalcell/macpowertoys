@@ -87,7 +87,7 @@ struct PortmanPanelView: View {
             settingsContentHeight > 0 ? settingsContentHeight + 90 : 620
         }
         let available = (NSScreen.main?.visibleFrame.height ?? 900) * 0.72
-        return min(available, min(650, max(300, target)))
+        return min(available, min(650, max(page == .settings ? 260 : 300, target)))
     }
 
     var body: some View {
