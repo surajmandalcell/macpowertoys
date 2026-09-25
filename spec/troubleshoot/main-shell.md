@@ -180,6 +180,7 @@
   short-screen height regression after the summary cards were compacted. The
   hosted tray UI check also taps a secondary tab and summary card, then reopens
   the menu to verify the saved selection without using the owner's desktop.
+  Run `36159003700` passed both tray UI cases and captured live CPU details.
 
 ## Fan And Awake Tray Alignment
 
