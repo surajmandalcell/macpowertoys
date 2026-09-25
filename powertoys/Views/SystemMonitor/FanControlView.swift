@@ -71,10 +71,14 @@ struct FanControlView: View {
                     Text(rpm)
                         .font(.system(size: 24, weight: .semibold))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .utilityAnimation(value: rpm)
                     Text(utilization + " of max")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .utilityAnimation(value: utilization)
                 }
                 Text(detail)
                     .font(.system(size: 11))
@@ -120,6 +124,8 @@ struct FanControlView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .utilityAnimation(value: rpm + utilization)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
