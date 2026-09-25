@@ -60,7 +60,8 @@ struct FanControlView: View {
                 Spacer(minLength: 4)
                 compactPresets
             }
-            if service.errorMessage != nil || (service.canRestoreAutomatic && !service.canControl) {
+            if service.errorMessage != nil || (service.canRestoreAutomatic && !service.canControl)
+                || (service.snapshot != nil && !service.canControl) {
                 Text(detail)
                     .foregroundStyle(service.errorMessage == nil ? Color.secondary : Color.red)
                     .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
@@ -140,6 +141,8 @@ struct FanControlView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Fan, \(rpm), \(utilization) of maximum speed")
+        .accessibilityHint(detail)
+        .help(detail)
     }
 
     private var presetButtons: some View {
