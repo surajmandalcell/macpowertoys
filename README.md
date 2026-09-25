@@ -51,6 +51,7 @@
 | | **Disk Explorer** | Scan disks and folders, explore space in treemaps or rings, and review files before removal. |
 | <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
 | <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.svg" width="30" alt=""> | **Portman** | Inspect local development ports and forward selected ports from a private SSH server to localhost. |
+| <img src="powertoys/Assets.xcassets/SwitchLogo.imageset/icon.svg" width="30" alt=""> | **Switch** | Manage CLI accounts, review Codex conversations and usage, and recover interrupted account changes. |
 
 ## Designed for the Mac
 
@@ -98,6 +99,9 @@ Open `powertoys.xcodeproj` and run the `powertoys` scheme, or
 use `make build ADHOC=1` on a Mac without an Apple Development
 identity. Raycast users can import the `raycast` directory;
 the extension exposes the launcher and shortcuts to supported tools.
+
+Switch is also available as a separate app; MacPowerToys uses its shared Core
+without requiring that app. See the [integration diagram and update path](docs/switch-core.md).
 
 > [!NOTE]
 > Personal-team signing works on the signing Mac. Public,
