@@ -35,6 +35,7 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(PortmanScanner.parseRemote(output), [3000, 6006])
         let arguments = try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 3000, localPort: 4200)
         XCTAssertTrue(arguments.contains("127.0.0.1:4200:localhost:3000"))
+        XCTAssertTrue(arguments.contains("ConnectTimeout=5"))
         XCTAssertEqual(arguments.suffix(2), ["--", "my-server"])
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "-oProxyCommand=bad", remotePort: 3000, localPort: 4200))
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 0, localPort: 4200))
@@ -62,6 +63,8 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(listen(descriptor, 1), 0)
         let ports = try PortmanScanner.localPorts()
         XCTAssertTrue(ports.contains { $0.port == port && $0.pid == getpid() })
+        XCTAssertTrue(PortmanScanner.tunnelIsListening(pid: getpid(), localPort: port))
+        XCTAssertFalse(PortmanScanner.tunnelIsListening(pid: getpid(), localPort: port + 1))
     }
 
     func testStopRejectsAChangedProcessIdentity() throws {
