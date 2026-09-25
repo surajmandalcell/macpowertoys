@@ -71,6 +71,11 @@ nonisolated enum PortmanPreferences {
         return value >= 1 && value <= 30 ? value : 3
     }
 
+    static var forceQuitSeconds: Double {
+        let value = UserDefaults.standard.double(forKey: "portman.forceQuitSeconds")
+        return value >= 1 && value <= 30 ? value : 3
+    }
+
     static var cleanupMode: PortmanCleanupMode {
         PortmanCleanupMode(rawValue: UserDefaults.standard.string(forKey: "portman.cleanupMode") ?? "") ?? .ask
     }
@@ -333,28 +338,47 @@ nonisolated enum PortmanScanner {
 
     static func stop(_ port: PortmanLocalPort) throws {
         guard port.canStop else { throw StopError.protected }
-        var info = proc_bsdinfo()
-        let bytes = withUnsafeMutablePointer(to: &info) {
-            proc_pidinfo(port.pid, PROC_PIDTBSDINFO, 0, $0, Int32(MemoryLayout<proc_bsdinfo>.size))
+        guard matches(pid: port.pid, started: port.started, userID: port.userID) else {
+            throw StopError.changed
         }
-        let started = info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec
-        guard bytes == MemoryLayout<proc_bsdinfo>.size,
-              started == port.started, info.pbi_uid == port.userID else { throw StopError.changed }
         for child in port.processes.reversed()
             where child.userID == port.userID && child.started > 0
                 && !PortmanPreferences.protectedCommands.contains(
                     URL(fileURLWithPath: child.command).lastPathComponent.lowercased()) {
-            var current = proc_bsdinfo()
-            let size = withUnsafeMutablePointer(to: &current) {
-                proc_pidinfo(child.pid, PROC_PIDTBSDINFO, 0, $0, Int32(MemoryLayout<proc_bsdinfo>.size))
-            }
-            let identity = current.pbi_start_tvsec * 1_000_000 + current.pbi_start_tvusec
-            if size == MemoryLayout<proc_bsdinfo>.size && identity == child.started
-                && current.pbi_uid == port.userID && current.pbi_ppid == child.parentPID {
+            if matches(pid: child.pid, started: child.started, userID: port.userID,
+                       parentPID: child.parentPID) {
                 _ = kill(child.pid, SIGTERM)
             }
         }
         guard kill(port.pid, SIGTERM) == 0 else { throw StopError.system(errno) }
+    }
+
+    static func forceStopIfUnchanged(_ port: PortmanLocalPort) {
+        guard port.canStop else { return }
+        for child in port.processes.reversed()
+            where child.userID == port.userID && child.started > 0
+                && !PortmanPreferences.protectedCommands.contains(
+                    URL(fileURLWithPath: child.command).lastPathComponent.lowercased()) {
+            if matches(pid: child.pid, started: child.started, userID: port.userID) {
+                _ = kill(child.pid, SIGKILL)
+            }
+        }
+        if matches(pid: port.pid, started: port.started, userID: port.userID) {
+            _ = kill(port.pid, SIGKILL)
+        }
+    }
+
+    private static func matches(
+        pid: Int32, started: UInt64, userID: UInt32, parentPID: Int32? = nil
+    ) -> Bool {
+        var info = proc_bsdinfo()
+        let bytes = withUnsafeMutablePointer(to: &info) {
+            proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, $0, Int32(MemoryLayout<proc_bsdinfo>.size))
+        }
+        return bytes == MemoryLayout<proc_bsdinfo>.size
+            && info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec == started
+            && info.pbi_uid == userID
+            && (parentPID.map { info.pbi_ppid == $0 } ?? true)
     }
 
     static func parseRemote(_ output: String) -> [UInt16] {
@@ -770,6 +794,7 @@ final class PortmanService {
         do {
             try PortmanScanner.stop(port)
             controlError = nil
+            scheduleForceStop(port)
             Task { await refreshLocal() }
         } catch { controlError = error.localizedDescription }
     }
@@ -880,11 +905,24 @@ final class PortmanService {
         var stopped = Set<Int32>()
         var failures: [String] = []
         for port in ports where stopped.insert(port.pid).inserted {
-            do { try PortmanScanner.stop(port) }
+            do {
+                try PortmanScanner.stop(port)
+                scheduleForceStop(port)
+            }
             catch { failures.append("PID \(port.pid): \(error.localizedDescription)") }
         }
         controlError = failures.isEmpty ? nil : failures.joined(separator: "\n")
         Task { await refreshLocal() }
+    }
+
+    private func scheduleForceStop(_ port: PortmanLocalPort) {
+        let delay = PortmanPreferences.forceQuitSeconds
+        Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            PortmanScanner.forceStopIfUnchanged(port)
+            await refreshLocal()
+        }
     }
 
     func stopAll() {

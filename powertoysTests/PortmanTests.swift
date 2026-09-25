@@ -352,7 +352,16 @@ final class PortmanTests: XCTestCase {
                                      command: "sleep", launchCommand: "sleep 30", memoryBytes: 0,
                                      cpuPercent: 0, uptime: "0:01", started: started + 1, userID: geteuid())
         XCTAssertThrowsError(try PortmanScanner.stop(stale))
+        PortmanScanner.forceStopIfUnchanged(stale)
         XCTAssertTrue(child.isRunning)
+        let exited = expectation(description: "Matched process exits after force quit")
+        child.terminationHandler = { _ in exited.fulfill() }
+        let current = PortmanLocalPort(pid: child.processIdentifier, port: 9000, address: "127.0.0.1:9000",
+                                       command: "sleep", launchCommand: "sleep 30", memoryBytes: 0,
+                                       cpuPercent: 0, uptime: "0:01", started: started, userID: geteuid())
+        PortmanScanner.forceStopIfUnchanged(current)
+        wait(for: [exited], timeout: 2)
+        XCTAssertEqual(child.terminationStatus, SIGKILL)
     }
 
     @MainActor
