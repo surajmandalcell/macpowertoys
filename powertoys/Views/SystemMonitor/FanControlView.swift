@@ -63,7 +63,7 @@ struct FanControlView: View {
         HStack(spacing: 6) {
             fanIdentity
             Spacer(minLength: 4)
-            if service.hasCompletedRead && !service.canControl {
+            if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
                 Button { showsSetup = true } label: {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .semibold))
@@ -73,7 +73,7 @@ struct FanControlView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
-                .accessibilityLabel("Set up fan control")
+                .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
                 .accessibilityHint(detail)
                 .accessibilityIdentifier("fan-control.setup")
                 .help(detail)
