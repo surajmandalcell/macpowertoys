@@ -184,12 +184,15 @@
 - **Symptom:** Fan looks like a separate badge, or both Fan and Awake waste
   space on the right while Fan and RPM split into two lines.
 - **Cause:** The compact Fan used a tinted card and stacked text; both rows
-  added 8pt to the tray's 12pt gutter on both sides. A later 4pt trailing
-  clearance put their control ends beyond the Home action buttons; Fan's
-  read-only sentence also made its row taller.
+  added 8pt to the tray's 12pt gutter on both sides. Fan's read-only sentence
+  also made its row taller. The native Awake picker draws its visible edge
+  about 12pt inside its frame, so giving it another 12pt outer trailing inset
+  leaves its buttons visibly short of the Home action edge.
 - **Invariant:** Compact Fan uses the plain Awake-row pattern and a native
-  segmented control. Both rows use a 16pt leading inset and the Home action
-  buttons' 12pt trailing gutter, aligning their right edges. When control is
+  segmented control. Both rows use a 16pt leading inset and their visible
+  controls end at the Home action buttons' 12pt gutter. Awake needs no extra
+  trailing padding because of the native picker's internal inset; Fan needs
+  the explicit 12pt trailing padding. When control is
   unavailable, an amber setup button sits immediately before Auto and opens
   installation and helper-approval steps. A failed command uses the same slot
   for its error and retry guidance; status stays out of the row. Popover
