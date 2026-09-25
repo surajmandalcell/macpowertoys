@@ -59,7 +59,11 @@ final class SwitchUITests: XCTestCase {
         XCTAssertTrue(backup.exists)
         XCTAssertTrue(settings.exists)
         XCTAssertTrue(app.buttons["switch.appearance"].exists)
-        XCTAssertTrue(app.buttons["switch.add"].exists)
+        let add = app.descendants(matching: .any).matching(identifier: "switch.add").firstMatch
+        XCTAssertTrue(add.exists)
+        add.click()
+        XCTAssertTrue(app.menuItems["Codex CLI"].waitForExistence(timeout: 5))
+        app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
         XCTAssertTrue(app.buttons["switch.about"].exists)
         XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch Accounts")
