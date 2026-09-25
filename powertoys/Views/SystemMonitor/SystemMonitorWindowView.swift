@@ -5,7 +5,8 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case processes = "Processes"
     case processor = "CPU"
     case memory = "Memory"
-    case network = "Network & Disk"
+    case network = "Network"
+    case disk = "Disk"
     case remote = "Remote"
     case about = "About"
 
@@ -15,7 +16,8 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .overview: Set(SystemMonitorMenuMetric.allCases)
         case .processor: [.cpu, .thermal]
         case .memory: [.memory]
-        case .network: [.network, .disk]
+        case .network: [.network]
+        case .disk: [.disk]
         case .processes, .remote, .about: []
         }
     }
@@ -25,6 +27,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .processor: "cpu"
         case .memory: "memorychip"
         case .network: "network"
+        case .disk: "internaldrive"
         case .processes: "list.bullet.rectangle"
         case .remote: "server.rack"
         case .about: "info.circle"
@@ -85,6 +88,7 @@ struct SystemMonitorWindowView: View {
         case .processor: processorPage
         case .memory: memoryPage
         case .network: networkPage
+        case .disk: diskPage
         case .processes: SystemMonitorProcessesView()
         case .remote: SystemMonitorRemoteView()
         case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
@@ -297,18 +301,30 @@ struct SystemMonitorWindowView: View {
     }
 
     private var networkPage: some View {
-        WorkspacePage("Network & Disk") {
-            HStack(spacing: 8) { menuPlacement(.network); menuPlacement(.disk) }
+        WorkspacePage("Network") {
+            menuPlacement(.network)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
                 metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
                 metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
-                metricCard(icon: "internaldrive", title: "Disk Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "Not available", detail: diskDetail)
             }
             LazyVGrid(columns: chartColumns, spacing: 12) {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
                 chartCard(title: "Upload", suffix: "/s", values: service.history.compactMap(\.networkUpload), formatter: Self.rate)
             }
+        }
+    }
+
+    private var diskPage: some View {
+        WorkspacePage("Disk") {
+            menuPlacement(.disk)
+        } content: {
+            LazyVGrid(columns: metricColumns, spacing: 12) {
+                metricCard(icon: "internaldrive", title: "Used", value: service.snapshot?.diskUsed.map(\.bytes) ?? "Not available", detail: diskDetail)
+                metricCard(icon: "internaldrive.fill", title: "Available", value: diskAvailable, detail: "Startup volume")
+                metricCard(icon: "chart.pie", title: "Utilization", value: service.snapshot?.diskUsage.percent ?? "Not available", detail: "Startup volume")
+            }
+            chartCard(title: "Disk Utilization", suffix: "%", values: service.history.compactMap(\.diskUsage))
         }
     }
 
@@ -341,6 +357,11 @@ struct SystemMonitorWindowView: View {
     private var diskDetail: String {
         guard let used = service.snapshot?.diskUsed, let total = service.snapshot?.diskTotal else { return "Startup volume" }
         return "\(used.bytes) of \(total.bytes)"
+    }
+
+    private var diskAvailable: String {
+        guard let used = service.snapshot?.diskUsed, let total = service.snapshot?.diskTotal else { return "Not available" }
+        return max(total - used, 0).bytes
     }
 
     private var batteryDetail: String {
