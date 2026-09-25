@@ -4,6 +4,61 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    func testProcessCPUUsesElapsedTimeAndRejectsCounterReset() {
+        let percent = SystemMonitorProcessUsage.percent(
+            previous: 1_000, current: 5_000, elapsed: 2,
+            nanosecondsPerTick: 1_000_000
+        )
+        XCTAssertEqual(percent, 200)
+        XCTAssertNil(SystemMonitorProcessUsage.percent(
+            previous: 5_000, current: 1_000, elapsed: 2, nanosecondsPerTick: 1_000_000
+        ))
+    }
+
+    func testNativeProcessSampleIncludesCurrentProcess() async {
+        let processes = await SystemMonitorProcessSampler().sample()
+        XCTAssertTrue(processes.contains { $0.pid == getpid() && !$0.name.isEmpty })
+    }
+
+    @MainActor
+    func testProcessesPageRendersAtProductionSize() throws {
+        let host = NSHostingView(rootView: SystemMonitorProcessesView()
+            .frame(width: 940, height: 780)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .environment(\.colorScheme, .dark))
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: host.bounds.size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "System Monitor Processes — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testNonMetricPagesReleaseDetailedSampling() {
+        let service = SystemMonitorService(
+            menuSettings: SystemMonitorMenuSettings(), toolEnabled: true, observesWake: false
+        )
+        service.startDetailed(metrics: [])
+        XCTAssertEqual(service.timerOwnerCount, 0)
+        service.updateDetailed(metrics: [.memory])
+        XCTAssertEqual(service.timerOwnerCount, 1)
+        service.updateDetailed(metrics: [])
+        XCTAssertEqual(service.timerOwnerCount, 0)
+        service.startDetailed(owner: "tray")
+        XCTAssertEqual(service.timerOwnerCount, 1)
+        service.stopDetailed(owner: "tray")
+        service.stopDetailed()
+        XCTAssertEqual(service.timerOwnerCount, 0)
+    }
+
     func testOverviewOmitsRedundantHistoryCards() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

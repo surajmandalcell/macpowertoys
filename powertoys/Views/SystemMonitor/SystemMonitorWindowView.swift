@@ -5,16 +5,27 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case processor = "Processor"
     case memory = "Memory"
     case network = "Network & Disk"
+    case processes = "Processes"
     case menuBar = "Menu Bar"
     case about = "About"
 
     var id: String { rawValue }
+    var detailedMetrics: Set<SystemMonitorMenuMetric> {
+        switch self {
+        case .overview: Set(SystemMonitorMenuMetric.allCases)
+        case .processor: [.cpu, .thermal]
+        case .memory: [.memory]
+        case .network: [.network, .disk]
+        case .processes, .menuBar, .about: []
+        }
+    }
     var icon: String {
         switch self {
         case .overview: "chart.xyaxis.line"
         case .processor: "cpu"
         case .memory: "memorychip"
         case .network: "network"
+        case .processes: "list.bullet.rectangle"
         case .menuBar: "menubar.rectangle"
         case .about: "info.circle"
         }
@@ -35,7 +46,10 @@ struct SystemMonitorWindowView: View {
         }
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "system-monitor"))
-        .onAppear { service.startDetailed() }
+        .onAppear { service.startDetailed(metrics: page.detailedMetrics) }
+        .onChange(of: page) { _, newPage in
+            service.updateDetailed(metrics: newPage.detailedMetrics)
+        }
         .onDisappear { service.stopDetailed() }
     }
 
@@ -64,6 +78,7 @@ struct SystemMonitorWindowView: View {
         case .processor: processorPage
         case .memory: memoryPage
         case .network: networkPage
+        case .processes: SystemMonitorProcessesView()
         case .menuBar: menuBarPage
         case .about: ToolAboutView(toolId: "system-monitor", showsSettings: false)
         }
