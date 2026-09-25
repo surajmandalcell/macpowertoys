@@ -192,6 +192,7 @@ struct SwitchWindowView: View {
                     .padding(UtilityLayout.horizontalInset)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
+                .thinScrollIndicators()
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
@@ -205,6 +206,7 @@ struct SwitchWindowView: View {
                     }
                     .padding(UtilityLayout.horizontalInset)
                 }
+                .thinScrollIndicators()
             }
         }
     }
@@ -434,6 +436,7 @@ struct SwitchWindowView: View {
                     }
                     .padding(12)
                 }
+                .thinScrollIndicators()
                 .frame(width: 280)
                 .background(Color(nsColor: .controlBackgroundColor))
                 QuietDivider()
@@ -576,6 +579,7 @@ struct SwitchWindowView: View {
                     }
                     .padding(12)
                 }
+                .thinScrollIndicators()
             } else {
                 ContentUnavailableView("Conversation unavailable", systemImage: "text.bubble")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -728,6 +732,7 @@ struct SwitchWindowView: View {
                 .padding(UtilityLayout.horizontalInset)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .thinScrollIndicators()
         }
         .confirmationDialog(
             "Delete these conversations permanently?",
@@ -807,6 +812,7 @@ struct SwitchWindowView: View {
                         }
                     }
                 }
+                .thinScrollIndicators()
                 Text("Move to Switch Trash is reversible until you delete that trash batch permanently.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
@@ -907,6 +913,7 @@ struct SwitchWindowView: View {
                         }
                     }
                 }
+                .thinScrollIndicators()
                 Spacer(minLength: 0)
                 HStack {
                     Button("Cancel") { model.dismissImport() }
