@@ -529,14 +529,15 @@ final class AppDelegateTests: XCTestCase {
     func testSingleClickRunsAfterDelay() async throws {
         let coordinator = StatusItemClickCoordinator(delay: 0.01)
         var singleClicks = 0
+        let delivered = expectation(description: "Single click dispatched")
 
         coordinator.handle(
             clickCount: 1,
-            singleClick: { singleClicks += 1 },
+            singleClick: { singleClicks += 1; delivered.fulfill() },
             doubleClick: {}
         )
 
-        try await Task.sleep(nanoseconds: 50_000_000)
+        await fulfillment(of: [delivered], timeout: 1)
 
         XCTAssertEqual(singleClicks, 1)
     }
