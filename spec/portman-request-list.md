@@ -23,3 +23,10 @@ The owner requested that verification leave the active desktop alone after
 Xcode tests coincided with macOS privacy and Gatekeeper prompts. Build-only and
 static checks are allowed here; executable interaction checks require an
 isolated macOS account or VM.
+
+The hosted macOS unit-test run [36100785006](https://github.com/surajmandalcell/macpowertoys/actions/runs/36100785006)
+passed at `6180580`, including the Portman scanner and alert-policy tests.
+The local build-for-testing passed without launching either bundle. An ad-hoc
+signed arm64 Release app for `6180580` passed `codesign --verify --deep --strict`.
+The installed `/Applications` copy is older; installation and live UI review
+remain deferred under the focus-preserving verification rule.
