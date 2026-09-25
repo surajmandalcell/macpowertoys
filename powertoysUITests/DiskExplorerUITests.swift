@@ -63,6 +63,9 @@ final class DiskExplorerUITests: XCTestCase {
         let treemap = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.treemap").firstMatch
         XCTAssertTrue(treemap.waitForExistence(timeout: 10))
+        let treemapDetails = window.descendants(matching: .any)["diskExplorer.treemapDetails"]
+        XCTAssertTrue(treemapDetails.exists)
+        XCTAssertGreaterThanOrEqual(treemapDetails.frame.minY, treemap.frame.maxY - 2)
         let currentFolder = treemap.label
         let tile = treemap.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
         tile.hover()
@@ -79,6 +82,9 @@ final class DiskExplorerUITests: XCTestCase {
         let rings = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.rings").firstMatch
         XCTAssertTrue(rings.waitForExistence(timeout: 5))
+        let ringDetails = window.descendants(matching: .any)["diskExplorer.ringDetails"]
+        XCTAssertTrue(ringDetails.exists)
+        XCTAssertGreaterThanOrEqual(ringDetails.frame.minY, rings.frame.maxY - 2)
         rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
         let hoveredRing = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: rings)
