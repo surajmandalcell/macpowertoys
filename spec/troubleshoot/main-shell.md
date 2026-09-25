@@ -142,10 +142,11 @@
 - **Cause:** The compact Fan used a tinted card and stacked text; both rows
   added 8pt to the tray's 12pt gutter on both sides.
 - **Invariant:** Compact Fan uses the plain Awake-row pattern and a native
-  segmented control. Both rows use a 16pt leading inset and no trailing inset.
-  Size each native picker to its rendered width so it reaches the right edge
-  without clipping. The fan icon uses Awake's neutral tint, and Fan, RPM, and
-  utilization share one line. Leave 18pt below the Fan row.
+  segmented control. Both rows use a 16pt leading inset and only 4pt of
+  trailing clearance, the least that keeps the native rounded ends visible.
+  Size each native picker to its rendered width. The fan icon uses Awake's
+  neutral tint, and Fan, RPM, and utilization share one line. Leave 18pt below
+  the Fan row.
 - **Check:** Inspect Home and System Monitor in the production-width tray in
   light and dark, including both row edges, the bottom edge, live RPM, and
   disabled fan controls.
