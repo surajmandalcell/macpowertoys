@@ -56,6 +56,7 @@ struct PortmanWindowView: View {
                     case .forward: forwardingPage
                     }
                 }
+                .utilityContentTransition(value: page)
                 .padding(.horizontal, UtilityLayout.horizontalInset)
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
