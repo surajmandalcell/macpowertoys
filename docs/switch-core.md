@@ -1,8 +1,10 @@
 # Switch Core in MacPowerToys
 
-Switch is a built-in MacPowerToys workspace backed by the versioned
+Switch is a built-in MacPowerToys applet backed by the versioned
 `AIManagerCore` Swift package from the separate Switch repository. Switch.app is
 optional. The two apps have different SwiftUI interfaces and share only Core.
+MacPowerToys exposes account switching, sign-in, import, usage, and recovery.
+Conversation browsing and cleanup stay in standalone Switch.
 
 ```text
 Switch repository                         MacPowerToys repository
@@ -28,4 +30,5 @@ installed MacPowerToys binary.
 
 Automated MacPowerToys tests set `AI_MANAGER_ROOT` to a disposable directory.
 They do not inspect real auth files or the user's login Keychain. The normal
-workspace uses Core's standard paths only when the user opens Switch.
+applet uses Core's standard paths only when the user opens Switch. It does not
+construct a chat index or scan conversation history.
