@@ -28,6 +28,8 @@ struct SystemMonitorRemoteView: View {
                         .accessibilityIdentifier("system-monitor.remote.host")
                     Picker("Refresh", selection: $interval) {
                         Text("Manual only").tag(0)
+                        Text("5 seconds").tag(5)
+                        Text("10 seconds").tag(10)
                         Text("30 seconds").tag(30)
                         Text("60 seconds").tag(60)
                         Text("2 minutes").tag(120)
@@ -68,7 +70,7 @@ struct SystemMonitorRemoteView: View {
                         Label("Open Terminal", systemImage: "terminal")
                             .utilityActionLabel()
                     }
-                        .disabled(!SystemMonitorRemoteProtocol.validHost(host))
+                    .disabled(!SystemMonitorRemoteProtocol.validHost(host))
                 }
                 .controlSize(.large)
             }
@@ -138,7 +140,7 @@ struct SystemMonitorRemoteView: View {
                     return
                 }
                 guard interval > 0 else { return }
-                try? await Task.sleep(for: .seconds(max(interval, 30)))
+                try? await Task.sleep(for: .seconds(max(interval, 5)))
             }
         }
         .onDisappear { disconnect() }
