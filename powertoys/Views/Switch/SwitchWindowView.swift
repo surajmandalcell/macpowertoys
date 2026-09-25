@@ -274,9 +274,13 @@ struct SwitchWindowView: View {
                 Spacer()
                 Button("Refresh Usage") { Task { await model.loadUsage(account.id) } }
                     .controlSize(.small)
-                    .disabled(model.isWorking)
+                    .disabled(model.isWorking || account.verification.state == .needsSignIn)
             }
-            if let limits = model.usage[account.id]?.rateLimits?.defaultBucket {
+            if account.verification.state == .needsSignIn {
+                Text("Sign in again to view usage for this account.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            } else if let limits = model.usage[account.id]?.rateLimits?.defaultBucket {
                 if let plan = model.usage[account.id]?.account?.plan {
                     Text(plan)
                         .font(.system(size: 12))
