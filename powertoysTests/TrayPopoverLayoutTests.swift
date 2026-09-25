@@ -211,6 +211,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
             (.systemCare, .dark, "System Care — Dark"),
             (.systemMonitor, .dark, "System Monitor — Dark"),
             (.netToys, .dark, "NetToys — Dark"),
+            (.portman, .dark, "Portman — Dark"),
         ] {
             let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))
             attachment.name = "Menu Bar — \(name)"
