@@ -34,4 +34,6 @@ The installed app reports the tested source commit. The install gate recorded
 successful signature verification; a sandboxed repeat returned
 `CSSMERR_TP_NOT_TRUSTED`, so that repeat cannot establish a trust failure.
 A targeted hosted UI test now opens Switch from the launcher and traverses
-Accounts and Recovery; its first run is pending.
+Accounts and Recovery. Run 36131532331 passed unit tests but Xcode could not
+spawn its separate UI-test Debug app. The UI run now uses its own build output
+and the same explicit entitlements as the passing unit build; retry pending.
