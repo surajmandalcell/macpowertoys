@@ -29,6 +29,9 @@ account management and captures Accounts and Recovery in light and dark at
 880pt and 1,024pt, plus the compact Switch menu. Hosted run 36129347170
 passed the full macOS suite, built an installable archive, and confirmed the
 duplicate import suggestion is gone. Its updated quick-menu renders have a
-proper background in both appearances. Live interaction remains unverified;
-the installed app reports the tested source commit but macOS currently rejects
-its local signature with `CSSMERR_TP_NOT_TRUSTED`.
+proper background in both appearances. Live interaction remains unverified.
+The installed app reports the tested source commit. The install gate recorded
+successful signature verification; a sandboxed repeat returned
+`CSSMERR_TP_NOT_TRUSTED`, so that repeat cannot establish a trust failure.
+A targeted hosted UI test now opens Switch from the launcher and traverses
+Accounts and Recovery; its first run is pending.

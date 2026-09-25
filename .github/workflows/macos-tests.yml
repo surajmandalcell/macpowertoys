@@ -21,6 +21,15 @@ jobs:
         run: brew install rclone
       - name: Run unit tests in the hosted Mac
         run: TEST_SESSION=isolated ADHOC=1 make test DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
+      - name: Exercise Switch navigation in the hosted Mac
+        run: |
+          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-derived" \
+            -resultBundlePath "$RUNNER_TEMP/switch-ui.xcresult" \
+            -destination 'platform=macOS' -parallel-testing-enabled NO \
+            -only-testing:powertoysUITests/SwitchUITests \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
       - name: Build installable app archive
         run: |
           ADHOC=1 make build DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
@@ -62,4 +71,17 @@ jobs:
         with:
           name: tray-renders
           path: ${{ runner.temp }}/tray-renders
+          if-no-files-found: warn
+      - name: Export Switch UI screenshots
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/switch-ui.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/switch-ui.xcresult" --output-path "$RUNNER_TEMP/switch-ui-renders" --filter '*.png'
+          fi
+      - name: Save Switch UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: switch-ui-renders
+          path: ${{ runner.temp }}/switch-ui-renders
           if-no-files-found: warn
