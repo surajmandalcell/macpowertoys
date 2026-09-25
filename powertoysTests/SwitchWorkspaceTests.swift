@@ -69,25 +69,25 @@ final class SwitchWorkspaceTests: XCTestCase {
         add(attachment)
     }
 
-    private func sampleUsage() -> CodexAccountUsageSnapshot {
+    private func sampleUsage(now: Date = .now) -> CodexAccountUsageSnapshot {
         let main = CodexRateLimitBucketSnapshot(
             id: "codex", name: "Codex", plan: "Plus", model: "gpt-5.6-sol",
             primary: .init(usedPercent: 42, windowDurationMinutes: 300,
-                           resetsAt: .now.addingTimeInterval(84 * 60)),
+                           resetsAt: now.addingTimeInterval(84 * 60)),
             secondary: .init(usedPercent: 53, windowDurationMinutes: 10_080,
-                             resetsAt: .now.addingTimeInterval(172_740)),
+                             resetsAt: now.addingTimeInterval(172_740)),
             credits: .init(hasCredits: true, unlimited: false, balance: "12.50"),
             spendControlReached: false)
         let fast = CodexRateLimitBucketSnapshot(
             id: "fast", name: "Fast models", plan: "Plus", model: "gpt-5.6-luna",
             primary: .init(usedPercent: 50, windowDurationMinutes: 1_440,
-                           resetsAt: .now.addingTimeInterval(7_140)),
+                           resetsAt: now.addingTimeInterval(7_140)),
             secondary: nil, credits: nil, spendControlReached: false)
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         let daily = (0..<90).map { offset in
-            CodexDailyUsageSnapshot(startDate: formatter.string(from: Date.now.addingTimeInterval(-Double(offset) * 86_400)),
+            CodexDailyUsageSnapshot(startDate: formatter.string(from: now.addingTimeInterval(-Double(offset) * 86_400)),
                                     tokens: offset.isMultiple(of: 5) ? 0 : Int64(10_000 + offset * 900))
         }
         return CodexAccountUsageSnapshot(
@@ -98,7 +98,7 @@ final class SwitchWorkspaceTests: XCTestCase {
             usage: .init(lifetimeTokens: 2_800_000, peakDailyTokens: 184_000,
                          currentStreakDays: 4, longestStreakDays: 12,
                          longestRunningTurnSeconds: 214),
-            dailyUsage: daily, fetchedAt: .now)
+            dailyUsage: daily, fetchedAt: now)
     }
 
     private func attachTrayRender(model: SwitchWorkspaceModel, scheme: ColorScheme) async throws {
@@ -155,10 +155,11 @@ final class SwitchWorkspaceTests: XCTestCase {
         SwitchTrayUsagePreferences.useDefault(for: accountID, defaults: defaults)
         XCTAssertNil(SwitchTrayUsagePreferences.explicitValue(for: accountID, defaults: defaults))
         XCTAssertEqual(SwitchTrayUsagePreferences.percentageLabel(used: 120, showUsed: false), "0% left")
-        let snapshot = sampleUsage()
-        let sinceReset = SwitchTrayTokenPeriod.sinceReset.tokens(in: snapshot)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let snapshot = sampleUsage(now: now)
+        let sinceReset = SwitchTrayTokenPeriod.sinceReset.tokens(in: snapshot, now: now)
         XCTAssertGreaterThan(sinceReset, 0)
-        XCTAssertLessThan(sinceReset, SwitchTrayTokenPeriod.weekly.tokens(in: snapshot))
+        XCTAssertLessThan(sinceReset, SwitchTrayTokenPeriod.weekly.tokens(in: snapshot, now: now))
     }
 
     func testAccountImportSwitchAndRemovalUseIsolatedCoreStore() async throws {
