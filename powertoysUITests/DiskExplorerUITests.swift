@@ -74,7 +74,7 @@ final class DiskExplorerUITests: XCTestCase {
             predicate: NSPredicate(format: "label != %@", "Point to a block to inspect it"),
             object: treemapDetails
         )], timeout: 5), .completed)
-        XCTAssertFalse((treemapDetails.value as? String ?? "").isEmpty)
+        XCTAssertNotNil(treemapDetails.label.range(of: #", [0-9]"#, options: .regularExpression))
         attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
         let drilledFolder = XCTNSPredicateExpectation(
@@ -94,7 +94,7 @@ final class DiskExplorerUITests: XCTestCase {
             predicate: NSPredicate(format: "label != %@", "Point to a ring to inspect it"),
             object: ringDetails
         )], timeout: 5), .completed)
-        XCTAssertFalse((ringDetails.value as? String ?? "").isEmpty)
+        XCTAssertNotNil(ringDetails.label.range(of: #", [0-9]"#, options: .regularExpression))
         attach(window.screenshot(), named: "Diskman Ring Hover")
     }
 

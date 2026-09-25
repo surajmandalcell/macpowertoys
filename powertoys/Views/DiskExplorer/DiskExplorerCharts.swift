@@ -170,8 +170,8 @@ struct DiskTreemapView: View {
             .frame(height: 40)
             .contentTransition(.opacity)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(hovered?.label ?? "Point to a block to inspect it")
-            .accessibilityValue(hovered?.detail ?? "")
+            .accessibilityLabel(hovered.map { "\($0.label), \($0.detail)" } ??
+                                "Point to a block to inspect it")
             .accessibilityIdentifier("diskExplorer.treemapDetails")
         }
         .onChange(of: directory.id) { _, _ in hoveredID = nil; selectedID = nil }
@@ -354,8 +354,8 @@ struct DiskSunburstView: View {
                 .frame(height: 40)
                 .contentTransition(.opacity)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(focused?.label ?? "Point to a ring to inspect it")
-                .accessibilityValue(focused?.detail ?? "")
+                .accessibilityLabel(focused.map { "\($0.label), \($0.detail)" } ??
+                                    "Point to a ring to inspect it")
                 .accessibilityIdentifier("diskExplorer.ringDetails")
             }
         }
