@@ -250,8 +250,12 @@ nonisolated enum PortmanScanner {
         let launch = port.launchCommand.lowercased()
         if ["adb", "ardagent", "controlcenter", "ssh", "megasyn", "megasync"]
             .contains(command) { return false }
-        return !launch.hasPrefix("/system/") && !launch.hasPrefix("/usr/libexec/")
-            && !launch.contains(".app/contents/macos/")
+        guard !launch.hasPrefix("/system/"), !launch.hasPrefix("/usr/libexec/") else { return false }
+        if launch.contains(".app/contents/macos/") {
+            return ["node", "python", "python3", "ruby", "php", "java", "deno", "bun"]
+                .contains(command)
+        }
+        return true
     }
 
     static func parseProcessTable(_ output: String) -> [PortmanProcess] {
