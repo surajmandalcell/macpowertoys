@@ -18,6 +18,19 @@
   overview, selected server, cleanup, active/snoozed alerts, settings, and SSH
   tunnel states at the real menu-bar width.
 
+## Portman Server Overview Height
+
+- **Symptom:** The Memory scope label wraps vertically and the live server row
+  falls below the visible menu-bar panel.
+- **Cause:** The segmented picker renders its redundant visible label inside a
+  narrow slot, while the overview height budgets too little space per server.
+- **Invariant:** Hide the picker's visible label but keep its accessibility
+  name. Give the overview enough height to show the memory summary and server
+  rows within the screen-height cap.
+- **Check:** Review a 400pt-wide hosted render with one live server, then one
+  with several servers. Confirm the segmented choices, memory legend, server
+  rows, and footer remain readable without a vertical word or cut-off row.
+
 ## Tool Icon Tile Template
 
 - **Symptom:** One tool icon has sharper corners, different cutoffs, or a
