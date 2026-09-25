@@ -163,6 +163,7 @@ struct DiskTreemapView: View {
             .padding(.horizontal, 12)
             .frame(height: 40)
             .contentTransition(.opacity)
+            .accessibilityIdentifier("diskExplorer.treemapDetails")
         }
         .accessibilityLabel("Treemap of \(directory.name)")
         .accessibilityValue(hoveredID.flatMap { id in tiles.first { $0.id == id }?.label } ??
@@ -254,75 +255,103 @@ struct DiskSunburstView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let radius = max(0, min(geometry.size.width, geometry.size.height) / 2 - 10)
+            let plotHeight = max(0, geometry.size.height - 41)
+            let radius = max(0, min(geometry.size.width, plotHeight) / 2 - 10)
             let segments = Self.segments(for: directory, apparent: apparent, measure: measure, radius: radius)
-            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
             let focused = segments.first { $0.id == hoveredID } ?? segments.first { $0.id == selectedID }
-            ForEach(segments, id: \.id) { segment in
-                DiskRingShape(start: segment.start, end: segment.end,
-                              inner: segment.inner, outer: segment.outer)
-                    .fill(segment.color.opacity(hoveredID == nil ||
-                        segment.id == hoveredID || segment.id == selectedID ? 0.96 : 0.78))
-                    .overlay {
+            VStack(spacing: 0) {
+                ZStack {
+                    ForEach(segments, id: \.id) { segment in
                         DiskRingShape(start: segment.start, end: segment.end,
                                       inner: segment.inner, outer: segment.outer)
-                            .stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 2)
+                            .fill(segment.color.opacity(hoveredID == nil ||
+                                segment.id == hoveredID || segment.id == selectedID ? 0.96 : 0.78))
+                            .overlay {
+                                DiskRingShape(start: segment.start, end: segment.end,
+                                              inner: segment.inner, outer: segment.outer)
+                                    .stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 2)
+                            }
+                            .animation(chartAnimation, value: segment.start)
+                            .animation(chartAnimation, value: segment.end)
+                            .animation(chartAnimation, value: segment.inner)
+                            .animation(chartAnimation, value: segment.outer)
+                            .transition(reduceMotion ? .identity : .opacity)
                     }
-                    .animation(chartAnimation, value: segment.start)
-                    .animation(chartAnimation, value: segment.end)
-                    .animation(chartAnimation, value: segment.inner)
-                    .animation(chartAnimation, value: segment.outer)
-                    .transition(reduceMotion ? .identity : .opacity)
-            }
-            .animation(chartAnimation, value: segments.map(\.id))
-            Rectangle().fill(.clear).contentShape(Rectangle())
-            .onContinuousHover { phase in
-                let next: DiskRingSegment?
-                switch phase {
-                case .active(let point): next = Self.hitTest(segments, at: point, center: center)
-                case .ended: next = nil
-                }
-                if hoveredID != next?.id {
-                    withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion,
-                                                          duration: UtilityMotion.interactionDuration)) {
-                        hoveredID = next?.id
-                        hoveredLabel = next?.label
+                    .animation(chartAnimation, value: segments.map(\.id))
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            let next: DiskRingSegment?
+                            switch phase {
+                            case .active(let point): next = Self.hitTest(segments, at: point, center: center)
+                            case .ended: next = nil
+                            }
+                            if hoveredID != next?.id {
+                                withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion,
+                                                                      duration: UtilityMotion.interactionDuration)) {
+                                    hoveredID = next?.id
+                                    hoveredLabel = next?.label
+                                }
+                            }
+                        }
+                        .gesture(SpatialTapGesture().onEnded { value in
+                            if let segment = Self.hitTest(segments, at: value.location, center: center),
+                               let entry = segment.entry {
+                                selectedID = entry.id
+                                select(entry)
+                            }
+                        })
+                    if let focused {
+                        DiskRingShape(start: focused.start, end: focused.end,
+                                      inner: focused.inner, outer: focused.outer)
+                            .stroke(.white.opacity(0.98), lineWidth: 2.5)
+                            .shadow(color: focused.color.opacity(0.65), radius: 8)
+                            .transition(reduceMotion ? .identity : .opacity)
+                            .allowsHitTesting(false)
                     }
-                }
-            }
-            .gesture(SpatialTapGesture().onEnded { value in
-                if let segment = Self.hitTest(segments, at: value.location, center: center),
-                   let entry = segment.entry {
-                    selectedID = entry.id
-                    select(entry)
-                }
-            })
-            if let focused {
-                DiskRingShape(start: focused.start, end: focused.end,
-                              inner: focused.inner, outer: focused.outer)
-                    .stroke(.white.opacity(0.98), lineWidth: 2.5)
-                    .shadow(color: focused.color.opacity(0.65), radius: 8)
-                    .transition(reduceMotion ? .identity : .opacity)
+                    VStack(spacing: 3) {
+                        Text(directory.name)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(2).multilineTextAlignment(.center)
+                        Text(measure.detail(directory, apparent: apparent))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    .frame(width: radius * 0.56)
+                    .position(center)
                     .allowsHitTesting(false)
+                }
+                .frame(height: plotHeight)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Ring chart of \(directory.name)")
+                .accessibilityValue(hoveredLabel ?? "\(directory.children.count) items")
+                .accessibilityHint("Point to a segment for its name and size; select it to inspect or open")
+                .accessibilityIdentifier("diskExplorer.rings")
+                QuietDivider()
+                HStack(spacing: 10) {
+                    Image(systemName: focused?.entry?.kind == .directory ? "folder.fill" : "circle.grid.2x2")
+                        .foregroundStyle(focused?.color ?? .secondary)
+                    Text(focused?.label ?? "Point to a ring to inspect it")
+                        .lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 12)
+                    if let focused {
+                        Text(focused.detail).monospacedDigit().fixedSize()
+                        if let entry = focused.entry, measure.weight(entry, apparent: apparent) > 0,
+                           measure.weight(directory, apparent: apparent) > 0 {
+                            Text(Double(measure.weight(entry, apparent: apparent)) /
+                                 Double(measure.weight(directory, apparent: apparent)),
+                                 format: .percent.precision(.fractionLength(1)))
+                                .monospacedDigit().foregroundStyle(.secondary).fixedSize()
+                        }
+                    }
+                }
+                .font(.system(size: 11, weight: .medium))
+                .padding(.horizontal, 12)
+                .frame(height: 40)
+                .contentTransition(.opacity)
+                .accessibilityIdentifier("diskExplorer.ringDetails")
             }
-            VStack(spacing: 3) {
-                Text(focused?.label ?? directory.name)
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(2).multilineTextAlignment(.center)
-                Text(focused?.detail ?? measure.detail(directory, apparent: apparent))
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .frame(width: radius * 0.56)
-            .position(center)
-            .allowsHitTesting(false)
-            .utilityContentTransition(value: focused?.id ?? directory.id)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ring chart of \(directory.name)")
-        .accessibilityValue(hoveredLabel ?? "\(directory.children.count) items")
-        .accessibilityHint("Point to a segment for its name and size; select it to inspect or open")
-        .accessibilityIdentifier("diskExplorer.rings")
         .onChange(of: directory.id) { _, _ in hoveredID = nil; hoveredLabel = nil; selectedID = nil }
     }
 
