@@ -298,8 +298,10 @@ struct SwitchWindowView: View {
                     Text("Access")
                         .font(.system(size: 12, weight: .medium))
                         .frame(width: 76, alignment: .leading)
-                    Text(account.verification.detail)
+                    Label(verificationTitle(account.verification.state),
+                          systemImage: verificationSymbol(account.verification.state))
                         .font(.system(size: 12))
+                        .help(account.verification.detail)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -309,8 +311,9 @@ struct SwitchWindowView: View {
                     Text(account.home.path)
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
                         .truncationMode(.middle)
+                        .help(account.home.path)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -341,14 +344,35 @@ struct SwitchWindowView: View {
         model.accounts.filter { $0.id != account.id && $0.identity.providerID == account.identity.providerID }
     }
 
+    private func verificationTitle(_ state: VerificationState) -> String {
+        switch state {
+        case .imported: "Saved, not checked"
+        case .needsSignIn: "Sign-in required"
+        case .verifiedLocally: "Credentials valid"
+        case .verifiedWithCodex: "Access verified"
+        case .unsupported: "Unsupported account"
+        }
+    }
+
+    private func verificationSymbol(_ state: VerificationState) -> String {
+        switch state {
+        case .imported: "clock"
+        case .needsSignIn: "exclamationmark.circle"
+        case .verifiedLocally, .verifiedWithCodex: "checkmark.circle"
+        case .unsupported: "xmark.circle"
+        }
+    }
+
     private func accountUsage(_ account: AccountRecord) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Usage").font(.system(size: 13, weight: .medium))
                 Spacer()
-                Button("Refresh Usage") { Task { await model.loadUsage(account.id) } }
-                    .controlSize(.small)
-                    .disabled(model.isWorking || account.verification.state == .needsSignIn)
+                Button(model.usage[account.id] == nil ? "Load Usage" : "Refresh Usage") {
+                    Task { await model.loadUsage(account.id) }
+                }
+                .controlSize(.small)
+                .disabled(model.isWorking || account.verification.state == .needsSignIn)
             }
             if account.verification.state == .needsSignIn {
                 Text("Sign in again to view usage for this account.")
@@ -578,8 +602,7 @@ struct SwitchWindowView: View {
             HStack(spacing: 6) {
                 TextField("Search messages", text: $messageQuery)
                     .textFieldStyle(.roundedBorder)
-                    .frame(minWidth: 90)
-                    .layoutPriority(1)
+                    .frame(minWidth: 90, maxWidth: .infinity)
                     .onSubmit { scheduleMessageSearch(immediate: true) }
                     .accessibilityLabel("Search messages in this conversation")
                 Menu("Roles") {
@@ -589,6 +612,7 @@ struct SwitchWindowView: View {
                     Toggle("Other", isOn: roleBinding(.other))
                 }
                 .help("Filter messages by role")
+                .fixedSize()
                 Button("Copy Shown") {
                     guard let detail = model.selectedThread else { return }
                     NSPasteboard.general.clearContents()
@@ -597,6 +621,7 @@ struct SwitchWindowView: View {
                     )
                 }
                 .disabled(isMessageSearchPending || (model.selectedThread?.messages.isEmpty ?? true))
+                .fixedSize()
             }
             .controlSize(.small)
             .padding(.horizontal, 20)
@@ -786,6 +811,9 @@ struct SwitchWindowView: View {
                         Text(model.snapshot?.status.sharedRoot.path ?? "Loading…")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(model.snapshot?.status.sharedRoot.path ?? "")
                             .textSelection(.enabled)
                     }
                 }
