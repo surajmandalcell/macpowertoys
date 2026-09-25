@@ -8,11 +8,12 @@ nonisolated struct ManagedPartition: Identifiable, Sendable {
     let size: Int64
     let mountPoint: String?
     let uuid: String?
+    let fileSystem: String?
     let apfsContainer: String?
     let isAPFSVolume: Bool
 
     init(id: String, name: String, content: String, size: Int64,
-         mountPoint: String?, uuid: String?, apfsContainer: String? = nil,
+         mountPoint: String?, uuid: String?, fileSystem: String? = nil, apfsContainer: String? = nil,
          isAPFSVolume: Bool = false) {
         self.id = id
         self.name = name
@@ -20,8 +21,15 @@ nonisolated struct ManagedPartition: Identifiable, Sendable {
         self.size = size
         self.mountPoint = mountPoint
         self.uuid = uuid
+        self.fileSystem = fileSystem
         self.apfsContainer = apfsContainer
         self.isAPFSVolume = isAPFSVolume
+    }
+
+    var displayType: String {
+        if isAPFSVolume { return "APFS volume" }
+        if apfsContainer != nil { return "APFS container" }
+        return fileSystem ?? content
     }
 }
 
@@ -259,12 +267,18 @@ nonisolated enum DiskManagement {
             let partitions = (entry["Partitions"] as? [[String: Any]] ?? []).flatMap { part -> [ManagedPartition] in
                 guard let partID = part["DeviceIdentifier"] as? String, validID(partID) else { return [] }
                 let apfs = apfsByStore[partID]
+                let mountPoint = part["MountPoint"] as? String
+                let fileSystem = mountPoint.flatMap {
+                    (try? URL(fileURLWithPath: $0).resourceValues(forKeys: [.volumeLocalizedFormatDescriptionKey]))?
+                        .volumeLocalizedFormatDescription
+                }
                 let physical = ManagedPartition(
                     id: partID, name: part["VolumeName"] as? String ?? partID,
                     content: part["Content"] as? String ?? "Unknown",
                     size: (part["Size"] as? NSNumber)?.int64Value ?? 0,
-                    mountPoint: part["MountPoint"] as? String,
+                    mountPoint: mountPoint,
                     uuid: part["VolumeUUID"] as? String,
+                    fileSystem: fileSystem,
                     apfsContainer: apfs?.reference
                 )
                 return [physical] + (apfs?.volumes ?? [])
