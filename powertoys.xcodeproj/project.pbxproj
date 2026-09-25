@@ -14,6 +14,7 @@
 		A10000000000000000000004 /* NetToysHelperRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* NetToysHelperRuntime.swift */; };
 		A10000000000000000000005 /* MacPowerToysNetHelper.app in Embed Login Items */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* MacPowerToysNetHelper.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A10000000000000000000021 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */; };
+		A10000000000000000000024 /* NativeFanReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* NativeFanReader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +48,7 @@
 		A10000000000000000000009 /* NetToysScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysScanner.swift; sourceTree = SOURCE_ROOT; };
 		A1000000000000000000000A /* NetToysHelperRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysHelperRuntime.swift; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "com.surajmandal.macpowertoys.nettoys-neighbor.plist"; sourceTree = SOURCE_ROOT; };
+		A10000000000000000000025 /* NativeFanReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/Core/NativeFanReader.swift; sourceTree = SOURCE_ROOT; };
 		1BDFA94E2F08A44C009A9009 /* powertoys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = powertoys.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1BDFA95B2F08A44C009A9009 /* powertoysTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = powertoysTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1BDFA9652F08A44C009A9009 /* powertoysUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = powertoysUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -375,6 +377,7 @@
 				A10000000000000000000002 /* NetToysRuntime.swift in Sources */,
 				A10000000000000000000003 /* NetToysScanner.swift in Sources */,
 				A10000000000000000000004 /* NetToysHelperRuntime.swift in Sources */,
+				A10000000000000000000024 /* NativeFanReader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

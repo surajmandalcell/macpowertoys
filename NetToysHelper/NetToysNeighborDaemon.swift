@@ -29,4 +29,17 @@ final class NetToysNeighborService: NSObject, NetToysNeighborXPCProtocol, @unche
         let sourceCommit = Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String ?? ""
         reply(ARPTable.neighborCacheData(), sourceCommit)
     }
+
+    func applyFanPreset(_ preset: String, reply: @escaping (String) -> Void) {
+        guard let mode = FanPreset(rawValue: preset) else {
+            reply("Unsupported fan preset.")
+            return
+        }
+        do {
+            try NativeFanReader.apply(mode)
+            reply("")
+        } catch {
+            reply(error.localizedDescription)
+        }
+    }
 }

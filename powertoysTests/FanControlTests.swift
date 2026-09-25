@@ -1,3 +1,4 @@
+import Darwin
 import XCTest
 @testable import powertoys
 
@@ -63,6 +64,14 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(NativeFanReader.decodeNumber([0x12, 0x34], type: "ui16", littleEndianIntegers: true), 0x3412)
         XCTAssertEqual(NativeFanReader.decodeNumber([0x12, 0x34], type: "ui16", littleEndianIntegers: false), 0x1234)
         XCTAssertNil(NativeFanReader.decodeNumber([0x12], type: "ui16"))
+        XCTAssertEqual(NativeFanReader.encodeNumber(3_462, type: "fpe2"), [0x36, 0x18])
+        XCTAssertEqual(NativeFanReader.encodeNumber(3_462, type: "flt "), [0x00, 0x60, 0x58, 0x45])
+        XCTAssertNil(NativeFanReader.encodeNumber(100_000, type: "fpe2"))
+    }
+
+    func testFanWritesRejectAnUnprivilegedProcess() {
+        guard geteuid() != 0 else { return }
+        XCTAssertThrowsError(try NativeFanReader.apply(.max))
     }
 
     func testCoolAndMaxOnlyRequestGuardedFullProfile() {

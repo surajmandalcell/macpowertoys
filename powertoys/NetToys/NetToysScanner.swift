@@ -11,6 +11,7 @@ nonisolated enum NetToysNeighborServiceContract {
 
 @objc nonisolated protocol NetToysNeighborXPCProtocol {
     func neighborSnapshot(reply: @escaping (Data?, String) -> Void)
+    func applyFanPreset(_ preset: String, reply: @escaping (String) -> Void)
 }
 
 nonisolated enum NetToysNeighborXPCClient {

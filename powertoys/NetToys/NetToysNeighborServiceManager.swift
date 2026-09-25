@@ -39,4 +39,10 @@ final class NetToysNeighborServiceManager {
     }
 
     func refresh() { revision &+= 1 }
+
+    func restart() async throws {
+        try await service.unregister()
+        try service.register()
+        refresh()
+    }
 }

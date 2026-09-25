@@ -1,9 +1,65 @@
 import Foundation
 import IOKit
+import Darwin
+
+nonisolated enum FanPreset: String, CaseIterable, Identifiable, Sendable {
+    case auto = "Auto"
+    case cool = "Cool"
+    case max = "Max"
+
+    var id: String { rawValue }
+}
+
+nonisolated struct FanReading: Decodable, Sendable {
+    let index: Int
+    let actualRPM: Double?
+    let maximumRPM: Double?
+    let mode: String?
+}
+
+nonisolated struct FanSnapshot: Sendable {
+    let fans: [FanReading]
+    let profile: String?
+    let canControl: Bool
+
+    var averageRPM: Int? {
+        let values = fans.compactMap(\.actualRPM).filter { $0.isFinite && $0 >= 0 }
+        guard values.count == fans.count, !values.isEmpty else { return nil }
+        let average = values.reduce(0, +) / Double(values.count)
+        return average < 100_000 ? Int(average.rounded()) : nil
+    }
+
+    var utilization: Int? {
+        let fractions = fans.compactMap { fan -> Double? in
+            guard let actual = fan.actualRPM, let maximum = fan.maximumRPM,
+                  actual.isFinite, actual >= 0, maximum.isFinite, maximum > 0 else { return nil }
+            return min(max(actual / maximum, 0), 1)
+        }
+        guard fractions.count == fans.count, !fractions.isEmpty else { return nil }
+        return Int((fractions.reduce(0, +) / Double(fractions.count) * 100).rounded())
+    }
+
+    var detectedPreset: FanPreset? {
+        guard !fans.isEmpty else { return nil }
+        return switch profile {
+        case "auto" where fans.allSatisfy({ ["auto", "system"].contains($0.mode?.lowercased() ?? "") }): .auto
+        case "full": .max
+        default: nil
+        }
+    }
+
+    var hasExternalManualControl: Bool {
+        profile == nil && fans.contains { ["manual", "forced"].contains($0.mode?.lowercased() ?? "") }
+    }
+}
 
 // Adapted from smctl's MIT-licensed SMCCore at ca68174f8cdafc53778908c67d77117cb754e9ef.
-// This reader never writes SMC keys; fan changes remain in smctl's guarded daemon.
+// SMC writes run only inside the signed, privileged MacPowerToys helper.
 nonisolated enum NativeFanReader {
+    private struct ControlError: LocalizedError {
+        let errorDescription: String?
+        init(_ message: String) { errorDescription = message }
+    }
     private typealias Bytes20 = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
@@ -80,6 +136,117 @@ nonisolated enum NativeFanReader {
         }
         guard count == 0 || !fans.isEmpty else { return nil }
         return FanSnapshot(fans: fans, profile: nil, canControl: false)
+    }
+
+    static func apply(_ preset: FanPreset) throws {
+        guard geteuid() == 0 else { throw ControlError("Fan control needs macOS approval.") }
+        guard hasExpectedLayout else { throw ControlError("This Mac uses an unsupported SMC layout.") }
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
+        guard service != 0 else { throw ControlError("The fan controller is unavailable.") }
+        defer { IOObjectRelease(service) }
+        var connection: io_connect_t = 0
+        guard IOServiceOpen(service, mach_task_self_, 0, &connection) == KERN_SUCCESS else {
+            throw ControlError("The fan controller could not be opened.")
+        }
+        defer { IOServiceClose(connection) }
+
+        guard let countValue = number("FNum", connection: connection),
+              countValue.isFinite, (1.0...8.0).contains(countValue) else {
+            throw ControlError("No supported fans were found.")
+        }
+        let indices = 0..<Int(countValue)
+        let modes = try indices.map { index -> String in
+            guard let key = ["F\(index)Md", "F\(index)md"].first(where: { read($0, connection: connection) != nil }),
+                  let raw = read(key, connection: connection)?.bytes.first,
+                  [0, 1, 3].contains(raw) else {
+                throw ControlError("Fan \(index) has no supported control mode.")
+            }
+            return key
+        }
+        let testKey = read("Ftst", connection: connection) == nil ? nil : "Ftst"
+        if preset == .auto {
+            for key in modes {
+                guard write(key, bytes: [0], connection: connection) else {
+                    throw ControlError("The fan could not return to macOS control.")
+                }
+            }
+            if let testKey, !write(testKey, bytes: [0], connection: connection) {
+                throw ControlError("The fan diagnostic mode could not be cleared.")
+            }
+            return
+        }
+
+        let targets = try indices.map { index -> (String, [UInt8]) in
+            guard let maximum = number("F\(index)Mx", connection: connection),
+                  maximum.isFinite, maximum > 0, maximum < 100_000,
+                  let key = ["F\(index)Tg", "F\(index)tg"].first(where: { read($0, connection: connection) != nil }),
+                  let value = read(key, connection: connection),
+                  let encoded = encodeNumber(maximum, type: value.type) else {
+                throw ControlError("Fan \(index) has no safe maximum target.")
+            }
+            return (key, encoded)
+        }
+        do {
+            if let testKey {
+                guard write(testKey, bytes: [1], connection: connection) else {
+                    throw ControlError("macOS did not unlock fan control.")
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            for index in indices {
+                guard write(modes[index], bytes: [1], connection: connection),
+                      write(targets[index].0, bytes: targets[index].1, connection: connection) else {
+                    throw ControlError("Fan \(index) rejected the maximum speed.")
+                }
+            }
+            guard indices.allSatisfy({ read(modes[$0], connection: connection)?.bytes.first == 1 }) else {
+                throw ControlError("macOS did not retain manual fan control.")
+            }
+        } catch {
+            for key in modes { _ = write(key, bytes: [0], connection: connection) }
+            if let testKey { _ = write(testKey, bytes: [0], connection: connection) }
+            throw error
+        }
+    }
+
+    static func encodeNumber(_ value: Double, type: String) -> [UInt8]? {
+        guard value.isFinite, value >= 0, value < 100_000 else { return nil }
+        let normalized = [type, String(type.reversed())]
+        if normalized.contains("flt ") {
+            let bits = Float(value).bitPattern
+            return [UInt8(truncatingIfNeeded: bits), UInt8(truncatingIfNeeded: bits >> 8),
+                    UInt8(truncatingIfNeeded: bits >> 16), UInt8(truncatingIfNeeded: bits >> 24)]
+        }
+        if normalized.contains("fpe2"), value * 4 <= Double(UInt16.max) {
+            let bits = UInt16((value * 4).rounded())
+            return [UInt8(truncatingIfNeeded: bits >> 8), UInt8(truncatingIfNeeded: bits)]
+        }
+        if normalized.contains("ui16"), value <= Double(UInt16.max) {
+            let bits = UInt16(value.rounded())
+            #if arch(arm64)
+            return [UInt8(truncatingIfNeeded: bits), UInt8(truncatingIfNeeded: bits >> 8)]
+            #else
+            return [UInt8(truncatingIfNeeded: bits >> 8), UInt8(truncatingIfNeeded: bits)]
+            #endif
+        }
+        return nil
+    }
+
+    private static func write(_ key: String, bytes: [UInt8], connection: io_connect_t) -> Bool {
+        let chars = Array(key.utf8)
+        guard chars.count == 4 else { return false }
+        let code = chars.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        var infoRequest = SMCRequest()
+        infoRequest.key = code
+        infoRequest.command = 9
+        guard let info = call(infoRequest, connection: connection),
+              info.keyInfo.dataSize == UInt32(bytes.count) else { return false }
+        var request = SMCRequest()
+        request.key = code
+        request.keyInfo = info.keyInfo
+        request.command = 6
+        withUnsafeMutableBytes(of: &request.bytes) { $0.copyBytes(from: bytes) }
+        return call(request, connection: connection) != nil
     }
 
     private static func number(_ key: String, connection: io_connect_t) -> Double? {

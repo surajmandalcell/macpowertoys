@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 struct FanControlView: View {
@@ -22,16 +23,20 @@ struct FanControlView: View {
         if let error = service.errorMessage { return error }
         guard let snapshot = service.snapshot else { return "Fan data unavailable" }
         guard !snapshot.fans.isEmpty else { return "No fans detected" }
-        guard snapshot.canControl else {
-            if service.canRestoreAutomatic { return "Fan helper unavailable · try Auto" }
-            if FanCommand.smctlPath != nil {
-                return snapshot.fans.contains { $0.mode?.hasPrefix("unknown") == true }
-                    ? "Fan control unavailable on this Mac"
-                    : "Fan helper unavailable · finish setup"
+        guard service.canControl else {
+            if service.canRestoreAutomatic {
+                return snapshot.hasExternalManualControl
+                    ? "Manual control active · Auto restores macOS"
+                    : "Fan helper unavailable · try Auto"
+            }
+            if service.needsApproval { return "Allow MacPowerToys in Login Items" }
+            if service.needsHelperUpdate { return "Update the built-in fan helper" }
+            if snapshot.fans.contains(where: { $0.mode?.hasPrefix("unknown") == true }) {
+                return "Fan control unavailable on this Mac"
             }
             return snapshot.hasExternalManualControl
                 ? "Manual fan speed set elsewhere · read only"
-                : "Read only · install smctl and approve its helper"
+                : "Read only · enable built-in fan control"
         }
         switch service.selectedPreset {
         case .auto: return "Controlled by macOS"
@@ -58,6 +63,7 @@ struct FanControlView: View {
         .onChange(of: service.canControl) { _, canControl in
             if canControl { showsSetup = false }
         }
+        .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
     }
 
     private var compactContent: some View {
@@ -78,7 +84,6 @@ struct FanControlView: View {
                 .accessibilityHint(detail)
                 .accessibilityIdentifier("fan-control.setup")
                 .help(detail)
-                .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
             }
             compactPresets
         }
@@ -92,61 +97,28 @@ struct FanControlView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if service.canControl {
-                Text("Choose Auto, Cool, or Max to retry.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            } else {
-                Divider()
-                Text("1  Install smctl")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("Install with Homebrew, or use the guide for other methods.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                commandRow("brew install leaperone/smctl/smctl", accessibilityLabel: "Copy smctl installation command")
-                Link("Other installation methods", destination: URL(string: "https://github.com/leaperone/smctl#install")!)
-                    .font(.system(size: 11))
-                Text("2  Approve its helper")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("Run this in Terminal. macOS will ask for administrator approval.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                commandRow("sudo smctl daemon install", accessibilityLabel: "Copy helper installation command")
-                HStack {
-                    Spacer()
-                    Button("Check again") { Task { await service.refresh() } }
-                        .controlSize(.small)
+            Text("MacPowerToys includes fan control. macOS may ask you to allow its background item once; there is no package or Terminal command to install.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                if service.needsApproval {
+                    Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
+                        .buttonStyle(.borderedProminent)
+                } else if !service.canControl {
+                    Button(service.needsHelperUpdate ? "Update Fan Helper" : "Enable Fan Control") {
+                        Task { await service.enableControl() }
+                    }
+                        .buttonStyle(.borderedProminent)
                 }
+                Button("Check Again") { Task { await service.refresh() } }
+                    .buttonStyle(.bordered)
             }
+            .controlSize(.regular)
+            .frame(minHeight: 34)
         }
         .frame(width: 292, alignment: .leading)
         .padding(15)
-    }
-
-    private func commandRow(_ command: String, accessibilityLabel: String) -> some View {
-        HStack(spacing: 6) {
-            Text(command)
-                .font(.system(size: 11, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Spacer(minLength: 4)
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(command, forType: .string)
-            } label: {
-                Image(systemName: "doc.on.doc")
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .focusEffectDisabled()
-            .accessibilityLabel(accessibilityLabel)
-            .help("Copy command")
-        }
-        .padding(8)
-        .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
     }
 
     private var expandedContent: some View {
@@ -179,8 +151,9 @@ struct FanControlView: View {
                 presetButtons
                 if !service.canControl && (service.isAvailable || service.snapshot == nil)
                     && !(service.snapshot?.fans.contains { $0.mode?.hasPrefix("unknown") == true } ?? false) {
-                    Link("Set up fan control", destination: URL(string: "https://github.com/leaperone/smctl/releases/latest")!)
-                        .font(.system(size: 11))
+                    Button("Enable fan control") { showsSetup = true }
+                        .buttonStyle(.bordered)
+                        .controlSize(.regular)
                 }
             }
         }
