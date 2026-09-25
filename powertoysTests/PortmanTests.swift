@@ -84,6 +84,18 @@ final class PortmanTests: XCTestCase {
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 0, localPort: 4200))
     }
 
+    func testRemotePortSelectionExtendsAndClearsShiftRange() {
+        let visible: [UInt16] = [3000, 3001, 3002, 3003]
+        let range = PortmanPanelView.remoteSelection([3000], port: 3003, selecting: true,
+                                                     anchor: 3000, visible: visible, extendRange: true)
+        XCTAssertEqual(range, Set(visible))
+        let cleared = PortmanPanelView.remoteSelection(range, port: 3002, selecting: false,
+                                                       anchor: 3000, visible: visible, extendRange: true)
+        XCTAssertEqual(cleared, [3003])
+        XCTAssertEqual(PortmanPanelView.remoteSelection([], port: 3003, selecting: true,
+                                                        anchor: nil, visible: visible, extendRange: true), [3003])
+    }
+
     @MainActor
     func testSSHForwardCarriesTrafficThroughLoopback() async throws {
         let rclone = try XCTUnwrap(Self.rclonePath, "Homebrew rclone is required for hosted Portman tests.")
