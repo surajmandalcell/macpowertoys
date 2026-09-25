@@ -748,10 +748,14 @@ final class PortmanService {
         process.standardError = errors
         process.terminationHandler = { [weak self] terminated in
             let status = terminated.terminationStatus
+            // Report the exit before stderr draining, which can wait for an inherited writer.
+            Task { @MainActor [weak self] in self?.tunnelEnded(id: id, status: status, message: "") }
             let data = errors.fileHandleForReading.readDataToEndOfFile()
             let message = String(decoding: data.prefix(2048), as: UTF8.self)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            Task { @MainActor [weak self] in self?.tunnelEnded(id: id, status: status, message: message) }
+            if !message.isEmpty {
+                Task { @MainActor [weak self] in self?.tunnelEnded(id: id, status: status, message: message) }
+            }
         }
         do {
             try process.run()
@@ -942,7 +946,7 @@ final class PortmanService {
     private func tunnelEnded(id: UUID, status: Int32, message: String) {
         processes.removeValue(forKey: id)
         guard let index = tunnels.firstIndex(where: { $0.id == id }) else { return }
-        if case .failed = tunnels[index].state { return }
+        if case .failed = tunnels[index].state, message.isEmpty { return }
         tunnels[index].state = .failed(message.isEmpty ? "SSH exited with status \(status)." : message)
         NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
