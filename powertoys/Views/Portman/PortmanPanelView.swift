@@ -129,7 +129,7 @@ struct PortmanPanelView: View {
                         else { localOverview }
                     case .forward: forwardingPage
                     case .alerts: alertsPage
-                    case .settings: PortmanSettingsView(compact: true)
+                    case .settings: PortmanSettingsView()
                     }
                 }
                 .utilityContentTransition(value: page)
@@ -983,7 +983,6 @@ struct PortmanPanelView: View {
 }
 
 struct PortmanSettingsView: View {
-    var compact = false
     @State private var service = PortmanService.shared
     @State private var pendingAutomaticCleanup = false
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
@@ -1139,14 +1138,9 @@ struct PortmanSettingsView: View {
             Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
             Text("Checks public pull requests and previews for this project's branch. Private repositories and saved GitHub credentials are not used.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
-            if !compact {
-                Button("Open Portman in menu bar") { ToolActionRouter.shared.open(toolID: "portman") }
-                    .controlSize(.small)
-            }
         }
         .font(.system(size: 11))
         .controlSize(.small)
-        .padding(compact ? 0 : 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task { await service.refreshNotificationStatus() }
         .onChange(of: notificationsEnabled) { service.resetNotificationDelivery() }
