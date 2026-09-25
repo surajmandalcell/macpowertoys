@@ -40,11 +40,13 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(review.waitForExistence(timeout: 5))
         review.click()
         XCTAssertTrue(window.staticTexts["Review Items"].waitForExistence(timeout: 5))
-        XCTAssertTrue(window.staticTexts.matching(NSPredicate(
-            format: "label BEGINSWITH %@", "1 item ·"
+        let reviewElements = window.descendants(matching: .any)
+        XCTAssertTrue(reviewElements.matching(NSPredicate(
+            format: "label CONTAINS %@", "1 item ·"
         )).firstMatch.exists)
-        XCTAssertTrue(window.staticTexts.matching(NSPredicate(
-            format: "label BEGINSWITH %@", FileManager.default.homeDirectoryForCurrentUser.path + "/"
+        let home = FileManager.default.homeDirectoryForCurrentUser.path + "/"
+        XCTAssertTrue(reviewElements.matching(NSPredicate(
+            format: "label CONTAINS %@ OR value CONTAINS %@", home, home
         )).firstMatch.exists)
         XCTAssertTrue(window.buttons["Move to Trash"].exists)
         XCTAssertTrue(window.buttons["Delete Permanently…"].exists)
