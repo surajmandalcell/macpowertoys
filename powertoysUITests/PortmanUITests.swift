@@ -40,6 +40,7 @@ final class PortmanUITests: XCTestCase {
                       "Submitting the password dismissed the Portman panel")
         XCTAssertTrue(app.staticTexts["Authentication failed. Enter the password again."].waitForExistence(timeout: 10),
                       "A rejected SSH password did not offer a retry")
+        attach(app.screenshot(), named: "Portman SSH Retry")
         app.buttons["Cancel"].click()
         XCTAssertFalse(app.secureTextFields["Password"].exists,
                        "Cancel kept the SSH password prompt open")
