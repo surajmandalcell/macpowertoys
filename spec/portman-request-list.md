@@ -10,6 +10,20 @@ server appear on loopback on this Mac. The native reference's overview, detail,
 cleanup, alerts, settings, and contextual actions are the design and behavior
 targets, not just a port list.
 
+The owner reviewed the live panel and requested these corrections:
+
+- Use a monochrome menu-bar glyph derived from Portman's socket icon.
+- Make each tab and server row respond across its visible width. Use a link
+  symbol for open actions and show stop symbols in red on hover.
+- Remove excess popover height. Keep detail charts aligned, prevent the CPU
+  plot from spilling past its axes, and reserve space for the shared hover time.
+  Move the localhost and more-actions controls into the detail header; the
+  more-actions control must not show a second down arrow.
+- Let Return run the relevant Forward form action. Widen the manual remote-port
+  field, support Select all and Shift-click range selection after a scan, and
+  provide Clear scan. Leaving Forward clears its pending selection.
+- Keep closed-panel and non-Servers tab monitoring inexpensive.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | In progress | Route every Portman entry point to one full menu-bar panel, with a count-bearing status item. | The source has one dedicated 400-point panel and status item. The launcher Open action and deep link route there; a Raycast command builds offline, and Xcode extracted a discoverable Spotlight App Shortcut. The separate window, shallow combined tab, and duplicate launcher settings form are gone; the launcher detail now shows only the tool guide. | Verify all entry routes, count, and dismissal in the final signed app. |
