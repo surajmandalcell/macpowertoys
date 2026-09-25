@@ -71,3 +71,11 @@ the observed scroller reservation leaves about 964pt before padding. An
 offscreen SwiftUI repro places four sample cards on two rows at the resulting
 916pt grid width. Four flexible columns place them on one row. The corrected
 four-column launcher is a trial pending the owner's layout decision.
+
+All twelve new sources are 512px RGBA PNGs. The third-round gallery loaded
+all options in isolated headless Chrome at desktop and narrow widths, and the
+four-column preview kept the description and controls clear. A compile-only
+app and test build succeeded. Both `LauncherGridTests` passed in the hosted
+macOS run; the first full run failed separate Portman assertions, which were
+corrected before the next hosted run. No owner-desktop app or test runner was
+opened.
