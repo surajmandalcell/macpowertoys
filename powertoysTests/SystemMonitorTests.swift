@@ -4,6 +4,37 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    func testRemoteLinuxParserAndSSHHostBoundary() throws {
+        let output = """
+        MPT1
+        cpu 100 0 50 850 0 0 0 0 0 0
+        MemTotal: 1000 kB
+        MemAvailable: 250 kB
+        0.25 0.50 1.00 1/100 123
+        Inter-|   Receive                                                |  Transmit
+         face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+            lo: 10 0 0 0 0 0 0 0 20 0 0 0 0 0 0 0
+          eth0: 100 0 0 0 0 0 0 0 200 0 0 0 0 0 0 0
+        /dev/vda1 4000 1000 3000 25% /
+        """
+        let sample = try SystemMonitorRemoteProtocol.parse(output)
+        XCTAssertEqual(sample.cpuTotal, 1_000)
+        XCTAssertEqual(sample.cpuIdle, 850)
+        XCTAssertEqual(sample.memoryTotal, 1_024_000)
+        XCTAssertEqual(sample.memoryAvailable, 256_000)
+        XCTAssertEqual(sample.received, 100)
+        XCTAssertEqual(sample.sent, 200)
+        XCTAssertEqual(sample.diskTotal, 4_096_000)
+        XCTAssertEqual(sample.diskUsed, 1_024_000)
+        XCTAssertEqual(sample.load, [0.25, 0.5, 1])
+        XCTAssertTrue(SystemMonitorRemoteProtocol.validHost("admin@server-1"))
+        XCTAssertFalse(SystemMonitorRemoteProtocol.validHost("-oProxyCommand=sh"))
+        XCTAssertFalse(SystemMonitorRemoteProtocol.validHost("server;reboot"))
+        XCTAssertThrowsError(try SystemMonitorRemoteProtocol.parse(
+            output.replacingOccurrences(of: "MemTotal: 1000", with: "MemTotal: 18446744073709551615")
+        ))
+    }
+
     func testProcessCPUUsesElapsedTimeAndRejectsCounterReset() {
         let percent = SystemMonitorProcessUsage.percent(
             previous: 1_000, current: 5_000, elapsed: 2,
@@ -37,6 +68,26 @@ final class SystemMonitorTests: XCTestCase {
         image.addRepresentation(representation)
         let attachment = XCTAttachment(image: image)
         attachment.name = "System Monitor Processes — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testRemotePageRendersDisconnectedState() throws {
+        let host = NSHostingView(rootView: SystemMonitorRemoteView()
+            .frame(width: 940, height: 780)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .environment(\.colorScheme, .dark))
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
+        host.layoutSubtreeIfNeeded()
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: host.bounds.size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "System Monitor Remote — Dark"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
