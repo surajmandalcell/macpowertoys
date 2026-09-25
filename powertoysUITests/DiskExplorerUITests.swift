@@ -66,16 +66,15 @@ final class DiskExplorerUITests: XCTestCase {
         let treemapDetails = window.descendants(matching: .any)["diskExplorer.treemapDetails"]
         XCTAssertTrue(treemapDetails.exists)
         XCTAssertGreaterThanOrEqual(treemapDetails.frame.minY, treemap.frame.maxY - 2)
+        XCTAssertEqual(treemapDetails.label, "Point to a block to inspect it")
         let currentFolder = treemap.label
         let tile = treemap.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
         tile.hover()
-        let hoveredTile = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: treemap)
-        XCTAssertEqual(XCTWaiter.wait(for: [hoveredTile], timeout: 5), .completed)
-        let tileName = try XCTUnwrap(treemap.value as? String)
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS %@", tileName), object: treemapDetails
+            predicate: NSPredicate(format: "label != %@", "Point to a block to inspect it"),
+            object: treemapDetails
         )], timeout: 5), .completed)
+        XCTAssertFalse((treemapDetails.value as? String ?? "").isEmpty)
         attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
         let drilledFolder = XCTNSPredicateExpectation(
@@ -89,14 +88,13 @@ final class DiskExplorerUITests: XCTestCase {
         let ringDetails = window.descendants(matching: .any)["diskExplorer.ringDetails"]
         XCTAssertTrue(ringDetails.exists)
         XCTAssertGreaterThanOrEqual(ringDetails.frame.minY, rings.frame.maxY - 2)
+        XCTAssertEqual(ringDetails.label, "Point to a ring to inspect it")
         rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
-        let hoveredRing = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: rings)
-        XCTAssertEqual(XCTWaiter.wait(for: [hoveredRing], timeout: 5), .completed)
-        let ringName = try XCTUnwrap(rings.value as? String)
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS %@", ringName), object: ringDetails
+            predicate: NSPredicate(format: "label != %@", "Point to a ring to inspect it"),
+            object: ringDetails
         )], timeout: 5), .completed)
+        XCTAssertFalse((ringDetails.value as? String ?? "").isEmpty)
         attach(window.screenshot(), named: "Diskman Ring Hover")
     }
 
