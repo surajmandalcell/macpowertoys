@@ -1215,7 +1215,7 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     }
 }
 
-private struct SystemMonitorTrayView: View {
+struct SystemMonitorTrayView: View {
     @State private var service = SystemMonitorService.shared
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
     @Environment(\.colorScheme) private var colorScheme
@@ -1383,7 +1383,7 @@ private struct SystemMonitorTrayView: View {
             case .sensors:
                 detailHero("Sensors", symbol: "thermometer.medium",
                            value: sample?.thermalState ?? "Unavailable", detail: "System thermal pressure",
-                           level: thermalLevel,
+                           level: nil,
                            values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
                            tint: SystemMonitorPalette.green)
             case .home:
@@ -1483,7 +1483,7 @@ private struct SystemMonitorTrayView: View {
         let color = tint ?? level.map(Self.usageTint) ?? .gray
         let surface = surfaceTint ?? color
         return VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Image(systemName: symbol).font(.caption2.weight(.medium))
                         .foregroundStyle(colorScheme == .dark ? color : .primary)
@@ -1500,13 +1500,14 @@ private struct SystemMonitorTrayView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .padding(.horizontal, 11)
-            .padding(.top, 11)
-            Spacer(minLength: 5)
+            .padding(.horizontal, 10)
+            .padding(.top, 6)
+            Spacer(minLength: 0)
             TrayMetricSparkline(values: values, color: color)
-                .frame(height: 18)
+                .frame(height: 10)
+                .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
         .background(SystemMonitorPalette.gradient(surface), in: RoundedRectangle(cornerRadius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10).strokeBorder(surface.opacity(0.25))
