@@ -593,11 +593,13 @@ what happened and the next available action.
 ### Switch Account Applet
 
 Switch is task-focused like an applet but uses a resizable workspace-sized
-window so account selection, actions, and usage remain visible together. Its
-68pt dark rail is icon-only and contains only Accounts, Recovery, and About.
-Saved identities belong in a 256pt list inside Accounts, beside the selected
-account's details. The selected account, current default, access state, and
-available action must be distinguishable without relying on color alone.
+window so account selection, actions, and usage remain visible together. The
+window header shows the original Switch icon and name, labeled Accounts and
+Recovery destinations, and visible About and Refresh controls. Saved identities
+form the only sidebar, beside the selected account's details. The applet uses
+native light and dark surfaces instead of forcing a dark navigation rail. The
+selected account, current default, access state, and available action must be
+distinguishable without relying on color alone.
 Recovery handles interrupted operations and linked settings; conversation
 browsing and cleanup remain in standalone Switch. Keep the minimum window at
 880×600 and check both appearances at that size before release.
@@ -856,7 +858,7 @@ variant weakens the deliberate temperature and contrast difference.
 | System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
-| Switch | Midnight | Porcelain | Two account silhouettes with a forward exchange arrow |
+| Switch | Original Switch mark | Original light and dark neutral tiles | Approved standalone Switch icon artwork |
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
 the prior identities for these six tools. They use 512px PNG image sets with

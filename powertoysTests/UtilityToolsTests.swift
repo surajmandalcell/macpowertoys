@@ -17,6 +17,7 @@ final class UtilityToolsTests: XCTestCase {
         "SystemCareLogo",
         "DiskExplorerLogo",
         "SystemMonitorLogo",
+        "SwitchLogo",
         "NetToysLogo"
     ]
 
