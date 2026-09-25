@@ -16,12 +16,23 @@ private enum DiskEntrySort: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum DiskResultTab: String, CaseIterable, Identifiable {
+    case visualization = "Visualization"
+    case largestFiles = "Largest Files"
+    var id: String { rawValue }
+}
+
 struct DiskExplorerWindowView: View {
-    @State private var model = DiskExplorerModel()
+    @State private var model: DiskExplorerModel
+    private let scansOnAppear: Bool
     @State private var page = DiskExplorerPage.explore
     @State private var search = ""
     @State private var sort = DiskEntrySort.size
     @State private var visibleLimit = 250
+    @State private var resultTab = DiskResultTab.visualization
+    @State private var showsContents = false
+    @State private var showsStatistics = false
+    @State private var largestSearch = ""
     @State private var selectedFile: DiskEntry?
     @State private var previewURL: URL?
     @State private var showingReview = false
@@ -29,9 +40,21 @@ struct DiskExplorerWindowView: View {
     @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var chart: DiskChartStyle { DiskChartStyle(rawValue: chartStyle) ?? .treemap }
     private var measure: DiskChartMeasure { DiskChartMeasure(rawValue: chartMeasure) ?? .space }
+
+    @MainActor init() {
+        self.init(model: DiskExplorerModel())
+    }
+
+    @MainActor init(model: DiskExplorerModel, scansOnAppear: Bool = true,
+                    initialTab: DiskResultTab = .visualization) {
+        _model = State(initialValue: model)
+        _resultTab = State(initialValue: initialTab)
+        self.scansOnAppear = scansOnAppear
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -46,14 +69,19 @@ struct DiskExplorerWindowView: View {
         .background(WindowAccessor(identifier: "disk-explorer"))
         .onAppear {
             model.refreshVolumes()
-            model.start(model.sourceURL ?? FileManager.default.homeDirectoryForCurrentUser,
-                        includeHidden: includeHidden)
+            if scansOnAppear {
+                model.start(model.sourceURL ?? FileManager.default.homeDirectoryForCurrentUser,
+                            includeHidden: includeHidden)
+            }
         }
         .onDisappear { model.leave() }
         .onChange(of: includeHidden) { _, newValue in
             if let source = model.sourceURL { model.start(source, includeHidden: newValue) }
         }
         .quickLookPreview($previewURL)
+        .popover(item: $selectedFile) { file in
+            fileInspector(file).frame(width: 440)
+        }
         .sheet(isPresented: $showingReview) {
             DiskExplorerReviewSheet(model: model, includeHidden: includeHidden)
         }
@@ -71,16 +99,14 @@ struct DiskExplorerWindowView: View {
                         title: volume.name,
                         isSelected: page == .explore && model.sourceURL == volume.url
                     ) {
-                        page = .explore
-                        model.start(volume.url, includeHidden: includeHidden)
+                        startScan(volume.url)
                     }
                     .help(volume.url.path)
                 }
                 Text("FOLDERS").utilitySectionHeader().padding(.leading, 8).padding(.top, 15)
                 SidebarRow(icon: "house", title: "Home Folder",
                            isSelected: page == .explore && model.sourceURL == FileManager.default.homeDirectoryForCurrentUser) {
-                    page = .explore
-                    model.start(FileManager.default.homeDirectoryForCurrentUser, includeHidden: includeHidden)
+                    startScan(FileManager.default.homeDirectoryForCurrentUser)
                 }
                 SidebarRow(icon: "folder.badge.plus", title: "Choose Folder…", isSelected: false) {
                     chooseFolder()
@@ -117,11 +143,31 @@ struct DiskExplorerWindowView: View {
             "Disk Explorer",
             subtitle: model.sourceURL?.path ?? "Choose a volume or folder",
             actions: {
+                Menu("Scan", systemImage: "internaldrive") {
+                    Button("Home Folder") {
+                        startScan(FileManager.default.homeDirectoryForCurrentUser)
+                    }
+                    ForEach(model.volumes) { volume in
+                        Button(volume.name) { startScan(volume.url) }
+                    }
+                    Divider()
+                    Button("Choose Folder…") { chooseFolder() }
+                }
                 if model.isScanning {
                     Button("Stop", systemImage: "stop.fill") { model.cancel() }
                 } else if let source = model.sourceURL {
                     Button("Rescan", systemImage: "arrow.clockwise") {
                         model.start(source, includeHidden: includeHidden)
+                    }
+                }
+                if model.result != nil {
+                    Button("Scan Statistics", systemImage: "info.circle") {
+                        showsStatistics.toggle()
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Scan statistics")
+                    .popover(isPresented: $showsStatistics) {
+                        scanStatistics.frame(width: 260).padding(16)
                     }
                 }
                 Button("Review \(model.markedEntries.count)", systemImage: "tray.full") {
@@ -133,8 +179,11 @@ struct DiskExplorerWindowView: View {
             if let current = model.current, let snapshot = model.result {
                 exploredContent(current, snapshot: snapshot)
             } else if model.isScanning {
-                ContentUnavailableView("Scanning", systemImage: "internaldrive",
-                                       description: Text("\(model.scannedEntries.formatted()) items checked"))
+                VStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading the first folders…")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                }
                     .frame(maxWidth: .infinity, minHeight: 480)
             } else {
                 ContentUnavailableView("Choose a Disk", systemImage: "internaldrive",
@@ -145,63 +194,85 @@ struct DiskExplorerWindowView: View {
     }
 
     private func exploredContent(_ current: DiskEntry, snapshot: DiskScanResult) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if model.isScanning {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Scanning · \(model.scannedEntries.formatted()) items checked")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-            }
-            breadcrumbs(for: current, root: snapshot.root)
-            HStack(spacing: 18) {
-                metric("Used here", current.bytes(apparent: apparentSize).diskSize)
-                metric("Files", current.fileCount.formatted())
-                metric("Folders", max(current.directoryCount - 1, 0).formatted())
-                if let volume = model.volumes.first(where: { $0.url == model.sourceURL }),
-                   let available = volume.available {
-                    metric("Free on disk", available.diskSize)
-                }
-                Spacer()
-            }
-            QuietDivider()
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Picker("View", selection: $chartStyle) {
-                    ForEach(DiskChartStyle.allCases) { style in
-                        Label(style.rawValue, systemImage: style.symbol).tag(style.rawValue)
+                Picker("Results", selection: $resultTab) {
+                    ForEach(DiskResultTab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
                     }
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
-                Picker("Measure", selection: $chartMeasure) {
-                    ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
-                }
-                .fixedSize()
                 Spacer()
-                TextField("Search this folder", text: $search)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 210)
-                    .accessibilityLabel("Search files in current folder")
-                Picker("Sort", selection: $sort) {
-                    ForEach(DiskEntrySort.allCases) { value in Text(value.rawValue).tag(value) }
+                if resultTab == .visualization {
+                    Picker("View", selection: $chartStyle) {
+                        ForEach(DiskChartStyle.allCases) { style in
+                            Label(style.rawValue, systemImage: style.symbol).tag(style.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                    Picker("Measure", selection: $chartMeasure) {
+                        ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
+                    }
+                    .fixedSize()
+                    Button {
+                        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                            showsContents.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(showsContents ? .accentColor : nil)
+                    .accessibilityLabel(showsContents ? "Hide Contents" : "Show Contents")
+                    .help(showsContents ? "Hide Contents" : "Show Contents")
+                } else {
+                    TextField("Filter largest files", text: $largestSearch)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 230)
                 }
-                .fixedSize()
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 16) {
-                    chartView(current).frame(minWidth: 400, maxWidth: .infinity).frame(height: 480)
-                    entriesView(current).frame(width: 340, height: 480)
-                }
-                VStack(spacing: 16) {
-                    chartView(current).frame(height: 420)
-                    entriesView(current).frame(height: 420)
+            HStack(spacing: 8) {
+                breadcrumbs(for: current, root: snapshot.root)
+                if !snapshot.isComplete {
+                    Text(model.isScanning ? "LIVE · MEASURED SO FAR" : "PARTIAL SCAN")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.orange)
+                        .fixedSize()
                 }
             }
-            if current.id == snapshot.root.id && !snapshot.largestFiles.isEmpty {
+            if resultTab == .visualization {
+                HStack(alignment: .top, spacing: 12) {
+                    ZStack {
+                        chartView(current)
+                            .id(current.id)
+                            .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.96)))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 520)
+                    if showsContents {
+                        VStack(spacing: 0) {
+                            HStack(spacing: 8) {
+                                TextField("Search Contents", text: $search)
+                                    .textFieldStyle(.roundedBorder)
+                                Picker("Sort", selection: $sort) {
+                                    ForEach(DiskEntrySort.allCases) { value in
+                                        Text(value.rawValue).tag(value)
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(width: 90)
+                            }
+                            .padding(8)
+                            entriesView(current)
+                        }
+                        .frame(width: 290, height: 520)
+                        .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+            } else {
                 largestFiles(snapshot.largestFiles)
-            }
-            if let file = selectedFile {
-                fileInspector(file)
             }
             if snapshot.unreadableCount > 0 {
                 HStack(spacing: 8) {
@@ -218,6 +289,28 @@ struct DiskExplorerWindowView: View {
             }
         }
         .onChange(of: current.id) { _, _ in search = ""; visibleLimit = 250; selectedFile = nil }
+    }
+
+    private var scanStatistics: some View {
+        let current = model.current
+        let snapshot = model.result
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(snapshot?.isComplete == true ? "Scan Statistics" : "Measured So Far")
+                .font(.system(size: 13, weight: .semibold))
+            metric("Used here", current?.bytes(apparent: apparentSize).diskSize ?? "—")
+            HStack(spacing: 18) {
+                metric("Files", current?.fileCount.formatted() ?? "—")
+                metric("Folders", max((current?.directoryCount ?? 1) - 1, 0).formatted())
+            }
+            if let volume = model.volumes.first(where: { $0.url == model.sourceURL }),
+               let available = volume.available {
+                metric("Free on disk", available.diskSize)
+            }
+            if let snapshot, snapshot.unreadableCount > 0 {
+                Text("\(snapshot.unreadableCount.formatted()) unreadable items")
+                    .font(.system(size: 11)).foregroundStyle(.orange)
+            }
+        }
     }
 
     private func metric(_ title: String, _ value: String) -> some View {
@@ -241,7 +334,11 @@ struct DiskExplorerWindowView: View {
         return ScrollView(.horizontal) {
             HStack(spacing: 4) {
                 ForEach(nodes) { entry in
-                    Button(entry.name) { model.navigate(to: entry) }
+                    Button(entry.name) {
+                        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                            model.navigate(to: entry)
+                        }
+                    }
                         .buttonStyle(.borderless)
                         .focusEffectDisabled()
                     if entry.id != nodes.last?.id {
@@ -256,7 +353,16 @@ struct DiskExplorerWindowView: View {
     @ViewBuilder private func chartView(_ directory: DiskEntry) -> some View {
         VStack(spacing: 0) {
             Group {
-                if chart == .treemap {
+                if directory.children.isEmpty && model.isScanning {
+                    VStack(spacing: 9) {
+                        ProgressView().controlSize(.small)
+                        Text("Scanning this folder…")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if directory.children.isEmpty {
+                    ContentUnavailableView("No Measured Items", systemImage: "square.dashed")
+                } else if chart == .treemap {
                     DiskTreemapView(directory: directory, apparent: apparentSize, measure: measure, select: inspect)
                 } else {
                     DiskSunburstView(directory: directory, apparent: apparentSize, measure: measure, select: inspect)
@@ -265,15 +371,16 @@ struct DiskExplorerWindowView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             if measure == .age {
                 HStack(spacing: 14) {
-                    ageKey("7 days", color: .mint)
-                    ageKey("30 days", color: .teal)
-                    ageKey("1 year", color: .blue)
-                    ageKey("Older", color: .purple)
+                    ageKey("7 days", color: DiskChartPalette.color(1))
+                    ageKey("30 days", color: DiskChartPalette.color(6))
+                    ageKey("1 year", color: DiskChartPalette.color(0))
+                    ageKey("Older", color: DiskChartPalette.color(3))
                 }
                 .padding(.horizontal, 12).padding(.bottom, 8)
             }
         }
-        .background(Color.primary.opacity(0.03))
+        .background(LinearGradient(colors: [Color.accentColor.opacity(0.07), Color.primary.opacity(0.025)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -354,13 +461,15 @@ struct DiskExplorerWindowView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(entry.url.path, forType: .string)
                 }
-                if let root = model.result?.root.url, DiskRemoval.isAllowed(entry, under: root) {
+                if model.result?.isComplete == true,
+                   let root = model.result?.root.url, DiskRemoval.isAllowed(entry, under: root) {
                     Button(model.marks[entry.id] == nil ? "Mark for Removal" : "Unmark") {
                         model.toggleMark(entry)
                     }
                 }
             }
-            if let root = model.result?.root.url, DiskRemoval.isAllowed(entry, under: root) {
+            if model.result?.isComplete == true,
+               let root = model.result?.root.url, DiskRemoval.isAllowed(entry, under: root) {
                 Button { model.toggleMark(entry) } label: {
                     Image(systemName: model.marks[entry.id] == nil ? "plus.circle" : "checkmark.circle.fill")
                         .frame(width: 26, height: 28)
@@ -376,7 +485,9 @@ struct DiskExplorerWindowView: View {
 
     private func inspect(_ entry: DiskEntry) {
         if entry.kind == .directory {
-            model.navigate(to: entry)
+            withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                model.navigate(to: entry)
+            }
         } else {
             selectedFile = entry
         }
@@ -401,39 +512,86 @@ struct DiskExplorerWindowView: View {
     }
 
     private func largestFiles(_ files: [DiskEntry]) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("LARGEST FILES").utilitySectionHeader()
-            ForEach(files.prefix(12)) { entry in
-                HStack(spacing: 8) {
-                    Image(systemName: "doc").foregroundStyle(.secondary)
-                    Button(entry.url.path) { selectedFile = entry }
-                        .buttonStyle(.borderless)
-                        .focusEffectDisabled()
-                        .lineLimit(1).truncationMode(.middle)
-                    Spacer()
-                    Text(entry.allocatedBytes.diskSize).monospacedDigit().foregroundStyle(.secondary)
-                    Button("Show in Finder", systemImage: "arrow.up.right.square") {
-                        NSWorkspace.shared.activateFileViewerSelecting([entry.url])
+        let matches = largestSearch.isEmpty ? files : files.filter {
+            $0.url.path.localizedStandardContains(largestSearch)
+        }
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(model.isScanning ? "Largest files measured so far" : "Largest files")
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Text("\(matches.count) of \(files.count)")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            QuietDivider()
+            if matches.isEmpty {
+                ContentUnavailableView(model.isScanning ? "Finding Large Files" : "No Matching Files",
+                                       systemImage: "doc.text.magnifyingglass")
+                    .frame(maxWidth: .infinity, minHeight: 300)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(matches.indices, id: \.self) { index in
+                        let entry = matches[index]
+                        HStack(spacing: 10) {
+                            Text("\(index + 1)").monospacedDigit()
+                                .foregroundStyle(.tertiary).frame(width: 28, alignment: .trailing)
+                            Button { selectedFile = entry } label: {
+                                HStack(spacing: 9) {
+                                    Image(systemName: "doc.fill").foregroundStyle(.secondary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.name).lineLimit(1).truncationMode(.middle)
+                                            .foregroundStyle(.primary)
+                                        Text(entry.url.deletingLastPathComponent().path)
+                                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                                            .lineLimit(1).truncationMode(.middle)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Text(entry.allocatedBytes.diskSize)
+                                        .monospacedDigit().foregroundStyle(.secondary).fixedSize()
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 42)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+                            .accessibilityLabel("Inspect \(entry.name)")
+                            Button("Show in Finder", systemImage: "arrow.up.right.square") {
+                                NSWorkspace.shared.activateFileViewerSelecting([entry.url])
+                            }
+                            .labelStyle(.iconOnly).buttonStyle(.plain)
+                            .help("Show in Finder")
+                            if model.result?.isComplete == true,
+                               let root = model.result?.root.url,
+                               DiskRemoval.isAllowed(entry, under: root) {
+                                Button(model.marks[entry.id] == nil ? "Mark for Removal" : "Unmark", systemImage: model.marks[entry.id] == nil ?
+                                       "plus.circle" : "checkmark.circle.fill") {
+                                    model.toggleMark(entry)
+                                }
+                                .labelStyle(.iconOnly).buttonStyle(.plain)
+                            }
+                        }
+                        .font(.system(size: 11))
+                        .padding(.horizontal, 10)
+                        QuietDivider()
                     }
-                    .labelStyle(.iconOnly)
-                    .help("Show in Finder")
                 }
-                .font(.system(size: 11))
             }
         }
-        .padding(12)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     @ViewBuilder private var statusInset: some View {
-        if model.isScanning || model.isRemoving || model.errorMessage != nil || model.operationMessage != nil {
+        if model.isScanning || model.isRemoving || model.errorMessage != nil ||
+           model.operationMessage != nil || model.result?.isComplete == false {
             VStack(spacing: 0) {
                 QuietDivider()
                 HStack(spacing: 8) {
                     if model.isScanning || model.isRemoving { ProgressView().controlSize(.small) }
                     Text(model.errorMessage ?? model.operationMessage ??
-                         (model.isRemoving ? "Removing selected items…" : "Scanning…"))
+                         (model.isRemoving ? "Removing selected items…" :
+                          model.isScanning ? "Scanning · \(model.scannedEntries.formatted()) items checked; chart updates live" :
+                          "Scan stopped. Results are partial; scan again before removal."))
                         .font(.system(size: 11)).lineLimit(2)
                     Spacer()
                 }
@@ -450,9 +608,16 @@ struct DiskExplorerWindowView: View {
         panel.allowsMultipleSelection = false
         panel.prompt = "Scan"
         if panel.runModal() == .OK, let url = panel.url {
-            page = .explore
-            model.start(url, includeHidden: includeHidden)
+            startScan(url)
         }
+    }
+
+    private func startScan(_ url: URL) {
+        page = .explore
+        resultTab = .visualization
+        selectedFile = nil
+        showsStatistics = false
+        model.start(url, includeHidden: includeHidden)
     }
 
     private func openFullDiskAccessSettings() {
