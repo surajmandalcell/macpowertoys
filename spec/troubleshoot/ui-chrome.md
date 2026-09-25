@@ -232,19 +232,23 @@
 
 ## Switch Applet Hierarchy
 
-- **Symptom:** Saved accounts and optional conversation and maintenance pages
-  occupied the sidebar, making the MacPowerToys plugin look like a reduced copy
-  of the standalone Switch workspace.
-- **Cause:** The integration reused a full workspace navigation model for a
-  lightweight account-switching task.
-- **Invariant:** Use a narrow icon-only rail for Accounts and Recovery. Saved
-  identities live in the Accounts pane; selection and actions stay beside them.
-  Chat browsing and cleanup remain in standalone Switch.
-- **Check:** Inspect Accounts and Recovery at 880pt and 1,024pt in light and dark.
-  The rail contains no account identity; Make Default, Verify, Add, Import,
-  Remove, Open, account details, usage, and recovery remain reachable without
-  clipping. In the combined menu, account rows switch the default and usage
-  refreshes on demand.
+- **Symptom:** The applet showed an unrelated two-person icon, a forced-dark
+  icon rail with unlabeled destinations, and large empty areas in Accounts and
+  Recovery. The rail appeared nonfunctional beside the saved-account list.
+- **Cause:** The first integration invented an icon and added a second sidebar
+  for a two-destination workflow. Its custom dark surface did not follow the
+  applet's native light and dark appearances.
+- **Invariant:** Use the approved standalone Switch icon in all tool surfaces.
+  The window header visibly labels Accounts, Recovery, About, and Refresh;
+  saved identities form the only sidebar. The selected account and actions sit
+  beside them. Empty Accounts shows a direct Add Account and Import path;
+  empty Recovery explains that no repair is needed. Chat browsing and cleanup
+  remain in standalone Switch.
+- **Check:** Inspect Accounts and Recovery at 880pt and 1,024pt in light and
+  dark, including empty and selected-account states. Make Default, Verify,
+  Add, Import, Remove, Open, account details, usage, and recovery remain
+  reachable without clipping. In the combined menu, account rows switch the
+  default and usage refreshes on demand.
 
 ## Workspace Minimum Window Sizes
 

@@ -122,7 +122,6 @@ struct FanControlView: View {
                         Image(systemName: "doc.on.doc")
                     }
                     .buttonStyle(.borderless)
-                    .focusEffectDisabled()
                     .accessibilityLabel("Copy helper installation command")
                     .help("Copy command")
                 }

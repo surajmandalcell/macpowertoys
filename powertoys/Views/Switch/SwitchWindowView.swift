@@ -95,7 +95,6 @@ struct SwitchWindowView: View {
                     .background(page == destination ? Color.primary.opacity(0.09) : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 7))
                     .buttonStyle(.plain)
-                    .focusEffectDisabled()
                     .accessibilityIdentifier("switch.page.\(destination.id)")
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
             }
@@ -265,7 +264,6 @@ struct SwitchWindowView: View {
                     .padding(.top, 10)
                 Button("Import from Folder…") { chooseImportFolder() }
                     .buttonStyle(.plain)
-                    .focusEffectDisabled()
                     .foregroundStyle(.tint)
                     .disabled(model.isWorking)
             }
