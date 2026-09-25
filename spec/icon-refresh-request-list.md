@@ -96,7 +96,9 @@ header. Preserve the full built-in descriptions, separate card/enable/Open
 actions, and four columns at the standard 980pt pane width.
 
 The app and Raycast assets are byte-for-byte copies of the selected M02 and
-T01 PNGs. The isolated Raycast build and icon sync check pass. Hosted macOS
+T01 PNGs. The isolated Raycast build and icon sync check pass. The local
+Raycast extension was rebuilt without opening it, and both installed PNGs
+match the selected originals byte for byte. Hosted macOS
 [run 36124794622](https://github.com/surajmandalcell/macpowertoys/actions/runs/36124794622)
 passed and saved native 980×676 dark and light launcher captures. All 13 cards
 are fully visible in four columns; the previous 172pt cards clipped the last
