@@ -24,9 +24,10 @@
   and can be opened. Largest Files has its own tab; counts sit in a header
   popover. Ring bands adapt to the visible tree depth, and chart hover shows
   the item name and size. Respect Reduce Motion for navigation.
-- **Check:** Inspect 1120 × 760 offscreen renders in both appearances for both
-  charts and the Largest Files tab. Run the hosted Disk Explorer UI route to
-  exercise Scan, Contents, and tab navigation without touching the owner desktop.
+- **Check:** Hosted run `36138597977` passed the focused scanner, render, and
+  focus checks. Its 1120 × 760 renders cover both appearances and both charts;
+  the UI route exercised Scan, Contents, tabs, and statistics without touching
+  the owner desktop. Keep hover and drill actions in the hosted UI check.
 
 ## Plain File Actions Show A Mismatched Focus Outline
 
@@ -35,6 +36,6 @@
 - **Cause:** Their plain button style lacked the shared focus-effect override.
 - **Invariant:** Pair each plain or borderless custom action with
   `.focusEffectDisabled()` and keep its accessible name and hover help.
-- **Check:** Require
+- **Check:**
   `FocusEffectTests.testCustomButtonStylesSuppressTheMismatchedSystemOutline`
-  to pass in the hosted unit suite.
+  passed in hosted run `36138597977`.
