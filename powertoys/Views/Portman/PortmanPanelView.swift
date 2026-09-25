@@ -1117,6 +1117,7 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
             NSStatusBar.system.removeStatusItem(item)
             self.item = nil
             PortmanService.shared.endMonitoring()
+            PortmanService.shared.stopAll()
         }
     }
 
