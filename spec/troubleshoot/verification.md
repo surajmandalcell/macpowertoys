@@ -156,6 +156,12 @@
   `sh scripts/check-prebuilt-install.sh` and verify the hosted artifact's source
   stamp and local signature. Run the normal install gate without bringing the
   app forward.
+- **Verified fallback:** Hosted run `36129347170` passed and archived commit
+  `dc97280`. Local signing kept the app and login helper on team `GF57JXJF5A`;
+  `codesign --verify --deep --strict` passed. With zero active transfers,
+  `make install PREBUILT_APP=... ALLOW_INSTALL=1` replaced the old app. A new
+  `/Applications` process started through `open -g`, and the saved remote host
+  remained `oci1`.
 
 ## Raycast Local Install Drift
 
