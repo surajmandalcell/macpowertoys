@@ -365,6 +365,28 @@ final class PortmanTests: XCTestCase {
     }
 
     @MainActor
+    func testPortmanForwardAndSettingsRenderInBothAppearances() throws {
+        for page in [PortmanPanelView.Page.forward, .settings] {
+            for scheme in [ColorScheme.light, .dark] {
+                let host = NSHostingView(rootView: PortmanPanelView(initialPage: page)
+                    .environment(\.colorScheme, scheme))
+                host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                host.frame = NSRect(x: 0, y: 0, width: 400,
+                                    height: page == .settings ? 620 : 400)
+                host.layoutSubtreeIfNeeded()
+                let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: representation)
+                let image = NSImage(size: host.bounds.size)
+                image.addRepresentation(representation)
+                let attachment = XCTAttachment(image: image)
+                attachment.name = "Portman — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
+    }
+
+    @MainActor
     func testRestartReopensAListeningServer() async throws {
         let rclone = try XCTUnwrap(Self.rclonePath, "Homebrew rclone is required for hosted Portman tests.")
         let preference = "portman.showAllListeners"
