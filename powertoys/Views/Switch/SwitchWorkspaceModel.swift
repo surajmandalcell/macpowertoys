@@ -20,7 +20,7 @@ final class SwitchWorkspaceModel {
     var selectedAccountID: UUID?
 
     private let manager: AccountManager?
-    private let paths: ManagerPaths
+    let paths: ManagerPaths
     private let startupError: String?
 
     init(paths: ManagerPaths = .environment()) {
@@ -139,6 +139,13 @@ final class SwitchWorkspaceModel {
             usageErrors[id] = error.localizedDescription
         }
     }
+
+    #if DEBUG
+    func setUsageForRender(_ snapshot: CodexAccountUsageSnapshot, accountID: UUID) {
+        usage[accountID] = snapshot
+        usageAttempts.insert(accountID)
+    }
+    #endif
 
     func beginLogin(providerID: ProviderID) async {
         guard let manager else { return }
