@@ -166,14 +166,14 @@
 
 ## Monitor Summary On Short Displays
 
-- **Symptom:** The Monitor Home grid loses its last card row and the Fan control
-  below the visible menu-bar panel, despite a large blank area in a fixed-size
-  offscreen capture.
+- **Symptom:** The Monitor Home grid loses its last card row below the visible
+  menu-bar panel, despite a large blank area in a fixed-size offscreen capture.
 - **Cause:** Eight 88pt summary cards plus the new secondary tab row exceeded
   the tray body's 70-percent screen-height cap on a short display.
-- **Invariant:** At 360pt width, Home shows all eight summary values and Fan
-  within the capped body on a 680pt visible screen. Detail tabs keep their
-  natural content height and the panel still scrolls on smaller screens.
+- **Invariant:** At 360pt width, Home shows all eight summary values within the
+  capped body on a 680pt visible screen. Fan appears only on Sensors. Detail
+  tabs keep their natural content height and the panel still scrolls on smaller
+  screens.
 - **Check:** Measure the natural Home height against the short-screen cap and
   inspect light and dark production-width renders. The first hosted render at
   `294c5a2` exposed the cutoff; hosted run `36152200305` passed the
@@ -184,30 +184,23 @@
 
 ## Fan And Awake Tray Alignment
 
-- **Symptom:** Fan looks like a separate badge, or both Fan and Awake waste
-  space on the right while Fan and RPM split into two lines.
+- **Symptom:** Fan looks like a separate badge or Fan and RPM split into two
+  lines at tray width.
 - **Cause:** The compact Fan used a tinted card and stacked text; both rows
   added 8pt to the tray's 12pt gutter on both sides. Fan's read-only sentence
   also made its row taller. The native Awake picker draws its visible edge
   about 12pt inside its frame, so giving it another 12pt outer trailing inset
   leaves its buttons visibly short of the Home action edge.
-- **Invariant:** Compact Fan uses the plain Awake-row pattern and a native
-  segmented control. Both rows use a 16pt leading inset and their visible
-  controls end at the Home action buttons' 12pt gutter. Awake needs no extra
-  trailing padding because of the native picker's internal inset; Fan needs
-  the explicit 12pt trailing padding. When control is
-  unavailable, an amber setup button sits immediately before Auto and opens
-  installation and helper-approval steps. A failed command uses the same slot
-  for its error and retry guidance; status stays out of the row. Popover
-  instructions wrap, and both copyable commands remain visible at tray width.
-  Size each native picker to its rendered width. The fan icon uses Awake's
-  neutral tint, and Fan, RPM, and utilization share one line. Leave 18pt below
-  the Fan row.
-- **Check:** Inspect Home and System Monitor in the production-width tray in
-  light and dark, including both row edges, the bottom edge, live RPM, and
-  disabled fan controls. Open and dismiss the setup popover in an isolated
-  session, check both explanation heights and command buttons, and confirm it
-  never starts privileged installation itself.
+- **Invariant:** Compact Fan appears only in Monitor Sensors. It uses the plain
+  Awake-row pattern, a 16pt leading inset, a 12pt trailing inset, and a native
+  segmented control. Fan, RPM, and utilization share one line; its icon stays
+  neutral. When control is unavailable, an amber setup button opens the
+  built-in-helper approval flow. There is no separate package or Terminal
+  command. The popup keeps a 34pt action target and 18pt bottom clearance.
+- **Check:** Inspect Monitor Home and Sensors at production tray width in light
+  and dark. Home has no Fan row; Sensors shows live RPM, disabled controls, and
+  the bounded approval explanation without clipping. The app never approves
+  its own macOS background item.
 
 ## Menu-Bar Tool Placement
 

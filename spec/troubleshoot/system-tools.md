@@ -1,5 +1,21 @@
 # System Tools Troubleshooting
 
+## System Monitor Fan Control Packaging
+
+- **Symptom:** Fan controls direct users to install `smctl` and a second helper
+  even though MacPowerToys already bundles a signed background service.
+- **Cause:** Fan writes used an external CLI while the built-in SMC reader was
+  read-only.
+- **Invariant:** The Sensors page alone owns Fan UI and polling. The signed
+  MacPowerToys daemon accepts only Auto, Cool, or Max from the signed app,
+  validates supported SMC keys and hardware maximum RPM, and restores Auto on
+  a failed write or normal app exit. Setup may register the bundled service;
+  macOS still owns Background App Activity approval. Check the running daemon's
+  source stamp so an old helper is updated before the new XPC method is used.
+- **Check:** Compile app and helper, verify XPC signing requirements and
+  bounded preset/encoding tests, then test approval, maximum, and Auto on an
+  isolated Mac. Never approve a system prompt on the owner's desktop.
+
 ## NetToys
 
 ### Scanner Reverse DNS Deadline

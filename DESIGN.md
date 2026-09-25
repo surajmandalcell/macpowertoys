@@ -550,14 +550,14 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
-| System Monitor | 1080×720 / 240pt | Overview, Processes, CPU, Memory, Network & Disk, Remote | Full process list, live metric grids, and per-metric menu placement |
+| System Monitor | 1080×720 / 220pt | Overview, Processes, CPU, Memory, Network, Disk, Sensors, Remote Stats | Full process list, live metric grids, and per-metric menu placement |
 
 System Monitor follows the owner's dark, bulkier utility-panel reference. Its
 dark sidebar and content pane use opaque near-black surfaces with a warm cast;
 the selected sidebar row uses a neutral gray fill. Overview and tray metric
-cards use restrained tinted gradients, clear edges, and larger readings. The
-compact Fan control is a plain row aligned with Awake and the metric-card
-inset, with a native segmented control and breathing room below it. Search is
+cards use colored gradients, clear edges, matching icon and graph hues, and
+larger readings. The compact Fan control appears only on Sensors, as a plain
+row with a native segmented control and breathing room below it. Search is
 at least 34pt high with a 12pt horizontal inset. Keep these exceptions inside
 System Monitor; other workspaces retain their shared flat materials.
 
@@ -737,7 +737,7 @@ The tray popover is also subordinate: 360pt wide and no more than 70% of screen
 height. A compact reorderable icon strip sits above one vertically scrollable
 body. The strip takes its intrinsic width while it fits and becomes horizontal
 scrolling only when it reaches the available width. Home keeps Pick Color,
-Extract Text, and Ruler in one direct-action row plus compact Awake and Fan rows;
+Extract Text, and Ruler in one direct-action row plus compact Awake;
 complex tray-capable built-ins get focused operational tabs. App-only tools do
 not get placeholder tabs. Durable
 configuration stays in the launcher or tool window, except Input Devices may
