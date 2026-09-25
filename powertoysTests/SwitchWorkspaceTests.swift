@@ -57,26 +57,27 @@ final class SwitchWorkspaceTests: XCTestCase {
         await model.loadCleanup()
         XCTAssertNil(model.errorMessage)
 
-        for scheme in [ColorScheme.light, .dark] {
-            for page in SwitchPage.allCases {
-                let size = NSSize(width: 1_024, height: 720)
-                let host = NSHostingView(rootView: SwitchWindowView(model: model, initialPage: page)
-                    .frame(width: size.width, height: size.height)
-                    .environment(\.colorScheme, scheme))
-                host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-                host.frame = NSRect(origin: .zero, size: size)
-                host.layoutSubtreeIfNeeded()
-                try await Task.sleep(for: .milliseconds(200))
-                host.layoutSubtreeIfNeeded()
+        for size in [NSSize(width: 1_024, height: 720), NSSize(width: 880, height: 600)] {
+            for scheme in [ColorScheme.light, .dark] {
+                for page in SwitchPage.allCases {
+                    let host = NSHostingView(rootView: SwitchWindowView(model: model, initialPage: page)
+                        .frame(width: size.width, height: size.height)
+                        .environment(\.colorScheme, scheme))
+                    host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                    host.frame = NSRect(origin: .zero, size: size)
+                    host.layoutSubtreeIfNeeded()
+                    try await Task.sleep(for: .milliseconds(200))
+                    host.layoutSubtreeIfNeeded()
 
-                let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-                host.cacheDisplay(in: host.bounds, to: representation)
-                let image = NSImage(size: size)
-                image.addRepresentation(representation)
-                let attachment = XCTAttachment(image: image)
-                attachment.name = "Switch — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
-                attachment.lifetime = .keepAlways
-                add(attachment)
+                    let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                    host.cacheDisplay(in: host.bounds, to: representation)
+                    let image = NSImage(size: size)
+                    image.addRepresentation(representation)
+                    let attachment = XCTAttachment(image: image)
+                    attachment.name = "Switch — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light") — \(Int(size.width))"
+                    attachment.lifetime = .keepAlways
+                    add(attachment)
+                }
             }
         }
     }
