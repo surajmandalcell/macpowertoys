@@ -17,6 +17,24 @@ enum SystemMonitorPalette {
     }
 }
 
+struct SystemMonitorPlacementPicker: View {
+    let metric: SystemMonitorMenuMetric
+    @Binding var selection: SystemMonitorMenuPlacement
+
+    var body: some View {
+        Picker("\(metric.title) menu bar", selection: $selection) {
+            ForEach(SystemMonitorMenuPlacement.allCases) { placement in
+                Text(placement.title).tag(placement)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 204, height: UtilityLayout.workspaceActionHeight)
+        .help("Show \(metric.title) in the combined menu bar item, a separate item, or neither")
+        .accessibilityIdentifier("system-monitor.\(metric.rawValue).menu-placement")
+    }
+}
+
 private enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case overview = "Overview"
     case processes = "Processes"
@@ -130,19 +148,7 @@ struct SystemMonitorWindowView: View {
                 service.updateMenuSettings { $0.setPlacement(placement, for: metric) }
             }
         )
-        return HStack(spacing: 5) {
-            Text(metric.title).font(.system(size: 10)).foregroundStyle(.secondary)
-            Picker("\(metric.title) menu bar", selection: selection) {
-                ForEach(SystemMonitorMenuPlacement.allCases) { placement in
-                    Text(placement.title).tag(placement)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 184)
-        }
-        .help("Show \(metric.title) in the combined menu bar item, a separate item, or neither")
-        .accessibilityIdentifier("system-monitor.\(metric.rawValue).menu-placement")
+        return SystemMonitorPlacementPicker(metric: metric, selection: selection)
     }
 
     private var metricColumns: [GridItem] {
@@ -557,7 +563,7 @@ struct SystemMonitorMenuSettingsView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: 105)
+            .frame(width: 120, height: UtilityLayout.workspaceActionHeight)
             .accessibilityLabel("\(item.metric.title) menu bar placement")
             .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).placement")
 

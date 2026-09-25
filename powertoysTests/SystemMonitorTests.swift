@@ -207,6 +207,20 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     @MainActor
+    func testPlacementPickerKeepsItsBoundsForEverySelection() {
+        for metric in [SystemMonitorMenuMetric.cpu, .memory, .network, .disk] {
+            for placement in SystemMonitorMenuPlacement.allCases {
+                let host = NSHostingView(rootView: SystemMonitorPlacementPicker(
+                    metric: metric, selection: .constant(placement)
+                ))
+                host.layoutSubtreeIfNeeded()
+                XCTAssertEqual(host.fittingSize.width, 204, accuracy: 0.5)
+                XCTAssertEqual(host.fittingSize.height, UtilityLayout.workspaceActionHeight, accuracy: 0.5)
+            }
+        }
+    }
+
+    @MainActor
     func testNonMetricPagesReleaseDetailedSampling() {
         let service = SystemMonitorService(
             menuSettings: SystemMonitorMenuSettings(), toolEnabled: true, observesWake: false
@@ -738,7 +752,7 @@ final class SystemMonitorTests: XCTestCase {
                 .allSatisfy { $0.interval == .global }
         )
         settings.enabled = true
-        XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false), 2)
+        XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false), 10)
     }
 
     func testEffectiveCadenceFloorsProtectDiskBatteryAndThermal() {
@@ -995,6 +1009,44 @@ final class SystemMonitorTests: XCTestCase {
             settings.enabled = false
             controller.configure(settings: settings)
         }
+    }
+
+    @MainActor
+    func testMenuRetainsMeasuredValuesThroughTenSecondRescheduleAndPlacementChanges() throws {
+        let suiteName = "SystemMonitorValueRetention.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let controller = SystemMonitorMenuController(defaults: defaults)
+        var settings = SystemMonitorMenuSettings(
+            enabled: true,
+            items: [
+                SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: true),
+                SystemMonitorMenuItemConfiguration(metric: .network, enabled: true)
+            ]
+        )
+        controller.configure(settings: settings)
+        controller.update(sample: sample(), dueMetrics: [.cpu, .network])
+        XCTAssertEqual(controller.displayedValue(for: .cpu), "42%")
+        XCTAssertFalse(try XCTUnwrap(controller.displayedValue(for: .network)).contains("..."))
+        let groupedIdentities = controller.statusItemIdentities
+        let writesBeforeReschedule = controller.renderedWriteCount
+
+        settings.items[0].interval = .seconds10
+        settings.items[1].interval = .seconds10
+        controller.configure(settings: settings)
+        XCTAssertEqual(controller.displayedValue(for: .cpu), "42%")
+        XCTAssertEqual(controller.renderedWriteCount, writesBeforeReschedule)
+        controller.update(sample: sample(cpuUsage: nil, networkDownload: nil, networkUpload: nil),
+                          dueMetrics: [.cpu, .network])
+        XCTAssertEqual(controller.displayedValue(for: .cpu), "42%")
+        XCTAssertFalse(try XCTUnwrap(controller.displayedValue(for: .network)).contains("..."))
+
+        settings.setPlacement(.separate, for: .cpu)
+        controller.configure(settings: settings)
+        XCTAssertEqual(controller.displayedValue(for: .cpu), "42%")
+        XCTAssertTrue(groupedIdentities.isSubset(of: controller.statusItemIdentities))
+        settings.enabled = false
+        controller.configure(settings: settings)
     }
 
     private func sample(

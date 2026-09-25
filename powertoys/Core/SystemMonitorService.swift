@@ -116,7 +116,7 @@ nonisolated enum SystemMonitorMenuInterval: String, Codable, CaseIterable, Ident
     }
     func seconds(global: TimeInterval) -> TimeInterval {
         switch self {
-        case .global: Self.allowedSeconds.contains(global) ? global : 2
+        case .global: Self.allowedSeconds.contains(global) ? global : 10
         case .seconds1: 1
         case .seconds2: 2
         case .seconds3: 3
@@ -267,7 +267,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
     var items: [SystemMonitorMenuItemConfiguration]
 
     init(schemaVersion: Int = Self.currentSchemaVersion,
-         enabled: Bool = false, mode: SystemMonitorMenuMode = .grouped, interval: TimeInterval = 2,
+         enabled: Bool = false, mode: SystemMonitorMenuMode = .grouped, interval: TimeInterval = 10,
          items: [SystemMonitorMenuItemConfiguration] = Self.defaultItems) {
         self.schemaVersion = schemaVersion
         self.enabled = enabled
@@ -319,7 +319,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
     }
 
     mutating func normalize() {
-        interval = SystemMonitorMenuInterval.allowedSeconds.contains(interval) ? interval : 2
+        interval = SystemMonitorMenuInterval.allowedSeconds.contains(interval) ? interval : 10
         var seen = Set<SystemMonitorMenuMetric>()
         items = items.filter { seen.insert($0.metric).inserted }
         for metric in SystemMonitorMenuMetric.allCases where !seen.contains(metric) {
@@ -361,7 +361,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         schemaVersion = Self.currentSchemaVersion
         enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
         mode = try values.decodeIfPresent(SystemMonitorMenuMode.self, forKey: .mode) ?? .grouped
-        interval = try values.decodeIfPresent(TimeInterval.self, forKey: .interval) ?? 2
+        interval = try values.decodeIfPresent(TimeInterval.self, forKey: .interval) ?? 10
         if let decoded = try values.decodeIfPresent([SystemMonitorMenuItemConfiguration].self, forKey: .items) {
             items = decoded
         } else {
@@ -1012,6 +1012,7 @@ final class SystemMonitorMenuController: NSObject {
         Set(statusItems.values.map(ObjectIdentifier.init))
     }
     var statusItemAutosaveNames: Set<String> { Set(statusItems.values.map(\.autosaveName)) }
+    func displayedValue(for metric: SystemMonitorMenuMetric) -> String? { latestValues[metric] }
 
     func configure(settings: SystemMonitorMenuSettings) {
         guard settings != self.settings else { return }
@@ -1025,33 +1026,46 @@ final class SystemMonitorMenuController: NSObject {
         lastDirectOrder = order
         let oldLayout = layoutSignature(for: self.settings)
         self.settings = settings
-        renderedStateCache.removeAll()
-        latestValues.removeAll()
+        let enabled = Set(settings.enabledItems.map(\.metric))
+        latestValues = settings.enabled ? latestValues.filter { enabled.contains($0.key) } : [:]
         guard oldLayout != layoutSignature(for: settings) else {
-            update(sample: nil, dueMetrics: Set(settings.enabledItems.map(\.metric)))
+            update(sample: nil, dueMetrics: [])
             return
         }
+        renderedStateCache.removeAll()
 
-        statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
-        statusItems.removeAll()
+        let desired = settings.enabled
+            ? Set(settings.separateItems.map { $0.metric.rawValue })
+                .union(settings.combinedItems.isEmpty ? [] : ["group"])
+            : []
+        let obsoleteKeys = statusItems.keys.filter { !desired.contains($0) ||
+            (!positionKeys.isEmpty && $0 != "group") }
+        for key in obsoleteKeys {
+            if let item = statusItems.removeValue(forKey: key) {
+                NSStatusBar.system.removeStatusItem(item)
+            }
+        }
         guard settings.enabled, !settings.enabledItems.isEmpty else { return }
-        if !settings.combinedItems.isEmpty {
+        if !settings.combinedItems.isEmpty && statusItems["group"] == nil {
             statusItems["group"] = makeStatusItem(
                 autosaveName: SystemMonitorStatusItemOrder.groupedAutosaveName
             )
         }
-        for item in settings.separateItems.reversed() {
+        for item in settings.separateItems.reversed() where statusItems[item.metric.rawValue] == nil {
             statusItems[item.metric.rawValue] = makeStatusItem(
                 autosaveName: SystemMonitorStatusItemOrder.autosaveName(for: item.metric)
             )
         }
-        update(sample: nil, dueMetrics: Set(settings.enabledItems.map(\.metric)))
+        update(sample: nil, dueMetrics: [])
     }
 
     func update(sample: SystemMonitorSample?, dueMetrics: Set<SystemMonitorMenuMetric>) {
         guard settings.enabled else { return }
         for item in settings.enabledItems where dueMetrics.contains(item.metric) {
-            latestValues[item.metric] = SystemMonitorMenuRenderer.render(item: item, sample: sample).value
+            let value = SystemMonitorMenuRenderer.render(item: item, sample: sample).value
+            if !value.contains("...") || latestValues[item.metric] == nil {
+                latestValues[item.metric] = value
+            }
         }
         if !settings.combinedItems.isEmpty {
             let state = settings.combinedItems.map(renderedItem)
