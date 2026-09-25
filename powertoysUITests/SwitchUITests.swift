@@ -24,6 +24,11 @@ final class SwitchUITests: XCTestCase {
 
         let launch = app.buttons["tool.switch.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 5))
+        attach(app.screenshot(), named: "Switch Launcher Detail")
+        app.activate()
+        let launchReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hittable == true"), object: launch)
+        XCTAssertEqual(XCTWaiter.wait(for: [launchReady], timeout: 5), .completed)
         launch.click()
 
         let window = app.windows["Switch"]
