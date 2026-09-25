@@ -1436,13 +1436,25 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func show() {
+        let createdStatusItem = item == nil
         start()
-        NSApp.activate(ignoringOtherApps: true)
         Task { @MainActor [weak self] in
-            guard let self, let button = self.item?.button, !self.popover.isShown else { return }
-            self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
-            self.popover.contentSize = NSSize(width: 400, height: 400)
-            self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            if createdStatusItem { try? await Task.sleep(for: .milliseconds(200)) }
+            guard let self else { return }
+            for _ in 0..<20 {
+                guard let button = self.item?.button, !self.popover.isShown else { return }
+                if button.window != nil && button.bounds.width > 0 {
+                    self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
+                    self.popover.contentSize = NSSize(width: 400, height: 400)
+                    self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+                    NSApp.activate(ignoringOtherApps: true)
+                    self.popover.contentViewController?.view.window?.makeKey()
+                    if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            if AppRuntime.isUITesting { NSLog("Portman status item has no visible anchor") }
         }
     }
 
