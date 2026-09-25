@@ -712,7 +712,7 @@ struct SwitchTrayView: View {
                 }
             }
         }
-        .task { if model.snapshot == nil { await model.load() } }
+        .task { await model.load() }
         .alert("Switch needs attention", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
