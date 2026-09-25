@@ -593,6 +593,7 @@ final class RulerCoreTests: XCTestCase {
             let dpmm = dimensionScreen?.dpmm.width ?? NSScreen.defaultDpmm
             let enteredWidthMillimeters = (CGFloat(300) / dpmm).rounded(.up)
             let enteredHeightMillimeters = (CGFloat(250) / dpmm).rounded(.up)
+            let dimensionTolerance = Double(0.5 / dpmm) + 0.05
             let zeroPointBeforeDimensionChange = controller.rulerWindow.zeroPoint()
             settingsController.dimensionWidthField.stringValue = "\(enteredWidthMillimeters)"
             settingsController.dimensionHeightField.stringValue = "\(enteredHeightMillimeters)"
@@ -606,8 +607,8 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(controller.rulerWindow.screenFrame(for: .vertical).height, expectedVerticalLength, accuracy: 0.0001)
             XCTAssertEqual(controller.rulerWindow.zeroPoint().x, zeroPointBeforeDimensionChange.x, accuracy: 0.0001)
             XCTAssertEqual(controller.rulerWindow.zeroPoint().y, zeroPointBeforeDimensionChange.y, accuracy: 0.0001)
-            XCTAssertEqual(settingsController.dimensionWidthField.doubleValue, Double(enteredWidthMillimeters), accuracy: 0.15)
-            XCTAssertEqual(settingsController.dimensionHeightField.doubleValue, Double(enteredHeightMillimeters), accuracy: 0.15)
+            XCTAssertEqual(settingsController.dimensionWidthField.doubleValue, Double(enteredWidthMillimeters), accuracy: dimensionTolerance)
+            XCTAssertEqual(settingsController.dimensionHeightField.doubleValue, Double(enteredHeightMillimeters), accuracy: dimensionTolerance)
             XCTAssertEqual(prefs.defaultHorizontalLength, 640)
             XCTAssertEqual(prefs.defaultVerticalLength, 280)
 
