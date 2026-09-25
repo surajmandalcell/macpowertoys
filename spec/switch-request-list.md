@@ -13,7 +13,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Build verified; live check pending | Use Switch Core without requiring Switch.app or importing its GUI/TUI modules. | A clean MacPowerToys build resolves the pinned Core package and launches with Switch.app absent. |
 | Code complete; live check pending | Manage supported accounts in the workspace. | Discover/import, sign in, switch defaults, verify, view usage, and remove accounts through Core with errors and recovery states visible. |
 | Code complete; live check pending | Provide Switch's conversation and maintenance features where Core supports them. | Browse/search conversations and messages, filter roles, copy shown messages, page through long transcripts, and review cleanup before any destructive action; recovery remains discoverable. |
-| Pending isolated UI check | Match MacPowerToys workspace visual and accessibility rules. | Inspect normal signed UI at default and minimum sizes in light/dark appearances; check loading, empty, selected, error, and keyboard states. |
+| Redesign implemented; visual review pending | Give Switch a deliberate native hierarchy rather than repeated cards: one sidebar selection, prominent account identity and actions, compact usage, a readable conversation transcript, and aligned maintenance sections. | Inspect a current signed build at default and minimum sizes in light/dark appearances; check loading, empty, selected, error, and keyboard states. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling; Core runs history scans with bounded workers; synthetic paths for automated tests; no login Keychain access. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
@@ -50,3 +50,9 @@ only the shown result. The app and test bundles compiled without a launch.
 Cleanup selection now drops entries that disappeared or became protected after
 a shared-store refresh. A headless check confirmed that a stale ID cannot open
 an empty cleanup review.
+
+The workspace redesign removes repeated account and maintenance cards, puts
+conversation search with the list, and renders messages as a transcript.
+The hosted macOS test workflow captures synthetic account and conversation
+states in light and dark for visual review without disturbing the owner's
+desktop. The signed app itself still needs live interaction review.
