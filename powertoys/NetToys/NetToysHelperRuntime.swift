@@ -115,7 +115,7 @@ actor NetToysHelperRuntime {
             wifiFailoverMonitor = WiFiFailoverMonitor()
             wifiFailoverStatus = nil
         }
-        saveStatus(statuses)
+        currentStatuses = statuses
     }
 
     private func check(_ configuredAnchor: SSHAnchorConfiguration) async -> SSHAnchorStatus {
