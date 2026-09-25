@@ -828,10 +828,10 @@ struct PortmanPanelView: View {
                         Button(alias) { host = alias }
                     }
                 } label: {
-                    Image(systemName: "chevron.down")
-                        .frame(width: 24, height: 24).contentShape(Rectangle())
+                    Text("Hosts")
                 }
                 .help("Choose an SSH host")
+                .controlSize(.small)
                 Button("Scan") {
                     selectedRemotePorts = []
                     discoveredHost = host
@@ -881,10 +881,25 @@ struct PortmanPanelView: View {
 
             Button("Forward \(selectedRemotePorts.count) selected") { forwardSelected() }
                 .buttonStyle(.borderedProminent)
+                .tint(selectedRemotePorts.isEmpty || host.isEmpty ? .gray : .accentColor)
                 .controlSize(.small)
                 .disabled(selectedRemotePorts.isEmpty || host.isEmpty)
 
             if let error = service.forwardingError { errorText(error) }
+            if service.tunnels.isEmpty {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "network").foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No active forwards").font(.system(size: 12, weight: .medium))
+                        Text("Local port mappings will appear here.")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
+            }
         }
     }
 
