@@ -4,6 +4,18 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    func testTrayPagesSampleOnlyTheirMetricFamilies() {
+        XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 8)
+        XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))
+        XCTAssertEqual(SystemMonitorTrayPage.cpu.metrics, [.cpu, .thermal])
+        XCTAssertEqual(SystemMonitorTrayPage.gpu.metrics, [.gpu])
+        XCTAssertEqual(SystemMonitorTrayPage.memory.metrics, [.memory])
+        XCTAssertEqual(SystemMonitorTrayPage.network.metrics, [.network])
+        XCTAssertEqual(SystemMonitorTrayPage.disk.metrics, [.disk])
+        XCTAssertEqual(SystemMonitorTrayPage.battery.metrics, [.battery])
+        XCTAssertEqual(SystemMonitorTrayPage.sensors.metrics, [.thermal])
+    }
+
     func testMonitorSubprocessOutputIsBounded() async throws {
         do {
             _ = try await SSHProcessRunner.run(
