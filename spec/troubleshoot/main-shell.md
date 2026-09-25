@@ -169,16 +169,21 @@
 - **Symptom:** Fan looks like a separate badge, or both Fan and Awake waste
   space on the right while Fan and RPM split into two lines.
 - **Cause:** The compact Fan used a tinted card and stacked text; both rows
-  added 8pt to the tray's 12pt gutter on both sides.
+  added 8pt to the tray's 12pt gutter on both sides. A later 4pt trailing
+  clearance put their control ends beyond the Home action buttons; Fan's
+  read-only sentence also made its row taller.
 - **Invariant:** Compact Fan uses the plain Awake-row pattern and a native
-  segmented control. Both rows use a 16pt leading inset and only 4pt of
-  trailing clearance, the least that keeps the native rounded ends visible.
+  segmented control. Both rows use a 16pt leading inset and the Home action
+  buttons' 12pt trailing gutter, aligning their right edges. When control is
+  unavailable, an amber setup button sits immediately before Auto and opens
+  installation and helper-approval steps; status stays out of the row.
   Size each native picker to its rendered width. The fan icon uses Awake's
   neutral tint, and Fan, RPM, and utilization share one line. Leave 18pt below
   the Fan row.
 - **Check:** Inspect Home and System Monitor in the production-width tray in
   light and dark, including both row edges, the bottom edge, live RPM, and
-  disabled fan controls.
+  disabled fan controls. Open and dismiss the setup popover in an isolated
+  session and confirm it never starts privileged installation itself.
 
 ## Menu-Bar Tool Placement
 
