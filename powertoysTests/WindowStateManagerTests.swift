@@ -41,7 +41,7 @@ final class WindowStateManagerTests: XCTestCase {
         for identifier in [
             "main", "rclone", "logs", "awake",
             "color-picker", "text-extractor", "input-devices", "system-care",
-            "system-monitor", "nettoys", "disk-explorer"
+            "system-monitor", "nettoys", "disk-explorer", "portman"
         ] {
             XCTAssertEqual(
                 WindowStateManager.storageIdentifier(for: "\(identifier)-AppWindow-2"),

@@ -67,14 +67,16 @@ final class WindowStateManager {
         "system-care",
         "disk-explorer",
         "system-monitor",
-        "nettoys"
+        "nettoys",
+        "portman"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
         "main",
         "awake",
         "color-picker",
-        "text-extractor"
+        "text-extractor",
+        "portman"
     ]
 
     nonisolated static func storageIdentifier(for identifier: String) -> String? {

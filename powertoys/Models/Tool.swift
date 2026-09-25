@@ -366,6 +366,30 @@ struct NetToysTool: Tool {
     static let shared = NetToysTool()
 }
 
+struct PortmanTool: Tool {
+    let id = "portman"
+    let name = "Portman"
+    let description = "See local development servers and forward private SSH ports to this Mac."
+    let icon = "point.3.connected.trianglepath.dotted"
+    let logoAsset = "PortmanLogo"
+    let category = ToolCategory.dev
+    let hasTrayTab = true
+
+    let manual = [
+        ToolManualSection(title: "Local servers", points: [
+            "Portman lists listening TCP ports 3000–9999 while its window or menu tab is open.",
+            "Open a server to inspect its process, memory, CPU, and recent memory history."
+        ]),
+        ToolManualSection(title: "SSH forwarding", points: [
+            "Enter an SSH host or choose an alias from ~/.ssh/config, then scan its listening ports.",
+            "Select ports and choose local port numbers. Portman binds each tunnel to 127.0.0.1.",
+            "SSH uses your existing keys and known-host policy. A tunnel ends when you stop it or quit MacPowerToys."
+        ])
+    ]
+
+    static let shared = PortmanTool()
+}
+
 // MARK: - Marketplace Tool
 
 struct MarketplaceTool: Tool {
@@ -397,7 +421,8 @@ struct ToolRegistry {
         SystemCareTool.shared,
         DiskExplorerTool.shared,
         SystemMonitorTool.shared,
-        NetToysTool.shared
+        NetToysTool.shared,
+        PortmanTool.shared
     ]
 
     static var allTools: [any Tool] {
