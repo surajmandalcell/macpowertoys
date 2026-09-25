@@ -33,6 +33,30 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Measured So Far"].waitForExistence(timeout: 5)
                       || app.staticTexts["Scan Statistics"].exists)
         attach(app.screenshot(), named: "Disk Explorer Scan Statistics")
+        statistics.click()
+
+        let treemap = window.descendants(matching: .any)["diskExplorer.treemap"]
+        XCTAssertTrue(treemap.waitForExistence(timeout: 10))
+        let currentFolder = treemap.label
+        let tile = treemap.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
+        tile.hover()
+        let hoveredTile = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: treemap)
+        XCTAssertEqual(XCTWaiter.wait(for: [hoveredTile], timeout: 5), .completed)
+        attach(window.screenshot(), named: "Disk Explorer Treemap Hover")
+        tile.click()
+        let drilledFolder = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label != %@", currentFolder), object: treemap)
+        XCTAssertEqual(XCTWaiter.wait(for: [drilledFolder], timeout: 5), .completed)
+
+        window.descendants(matching: .any)["Rings"].click()
+        let rings = window.descendants(matching: .any)["diskExplorer.rings"]
+        XCTAssertTrue(rings.waitForExistence(timeout: 5))
+        rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
+        let hoveredRing = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: rings)
+        XCTAssertEqual(XCTWaiter.wait(for: [hoveredRing], timeout: 5), .completed)
+        attach(window.screenshot(), named: "Disk Explorer Ring Hover")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {
