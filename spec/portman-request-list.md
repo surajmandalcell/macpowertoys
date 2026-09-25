@@ -50,5 +50,11 @@ passed 864 tests, with five skipped and zero failures. The disconnect test
 signaled the exact SSH process owned by Portman and confirmed the Failed state,
 process cleanup, and Stop action. Its light/dark Failed Forward renders showed
 that the error was clipped beside Retry and Stop. The row now gives the error
-its own line and exposes the full message in a tooltip; the revised layout
-compiled locally and awaits hosted render inspection.
+its own line and exposes the full message in a tooltip. Hosted run
+[36123964928](https://github.com/surajmandalcell/macpowertoys/actions/runs/36123964928)
+passed 864 tests, with five skipped and zero failures. Its new light/dark
+Failed Forward renders show the full exit message, local and remote mapping,
+Retry, and Stop at the actual 400pt panel width. A signed universal Release
+build of the Portman revision passed strict app and helper signature checks.
+The installed app still needs the current committed source and a background
+relaunch after the shared checkout's other in-progress edits are complete.
