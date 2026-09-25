@@ -67,7 +67,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? (service.localPorts.isEmpty ? 375 : 300 + CGFloat(service.localPorts.count) * 64)
+            selectedPort == nil ? (service.localPorts.isEmpty ? 330 : 300 + CGFloat(service.localPorts.count) * 64)
                 : 455 + (showingMore ? 110 : 0)
                     + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
         case .forward:
