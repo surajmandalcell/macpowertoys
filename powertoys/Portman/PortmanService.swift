@@ -1,7 +1,6 @@
 import Darwin
 import Foundation
 import Observation
-import UserNotifications
 
 extension Notification.Name {
     static let portmanSnapshotChanged = Notification.Name("portmanSnapshotChanged")
@@ -38,6 +37,31 @@ nonisolated enum PortmanCleanupMode: String, CaseIterable, Sendable {
     case off, ask, automatic
 }
 
+nonisolated enum PortmanServerSort: String, CaseIterable, Sendable {
+    case port, memory, name, cpu
+
+    var label: String { rawValue.capitalized }
+
+    func sorted(_ ports: [PortmanLocalPort]) -> [PortmanLocalPort] {
+        ports.sorted { left, right in
+            switch self {
+            case .port:
+                return left.port < right.port
+            case .memory where left.memoryBytes != right.memoryBytes:
+                return left.memoryBytes > right.memoryBytes
+            case .name:
+                let order = left.command.localizedStandardCompare(right.command)
+                if order != .orderedSame { return order == .orderedAscending }
+            case .cpu where left.cpuPercent != right.cpuPercent:
+                return left.cpuPercent > right.cpuPercent
+            default:
+                break
+            }
+            return left.port < right.port
+        }
+    }
+}
+
 nonisolated enum PortmanPreferences {
     static var scanRange: ClosedRange<UInt16> {
         let defaults = UserDefaults.standard
@@ -49,16 +73,6 @@ nonisolated enum PortmanPreferences {
     static var scanInterval: TimeInterval {
         let value = UserDefaults.standard.double(forKey: "portman.scanInterval")
         return value >= 2 && value <= 60 ? value : 2
-    }
-
-    static var memoryAlertBytes: Int64 {
-        let value = UserDefaults.standard.integer(forKey: "portman.memoryAlertMB")
-        return Int64(value > 0 ? min(value, 1_000_000) : 2_048) * 1_024 * 1_024
-    }
-
-    static var growthAlertBytes: Int64 {
-        let value = UserDefaults.standard.integer(forKey: "portman.growthAlertMB")
-        return Int64(value > 0 ? min(value, 1_000_000) : 500) * 1_024 * 1_024
     }
 
     static var idleSuggestionHours: Double {
@@ -85,17 +99,8 @@ nonisolated enum PortmanPreferences {
         return UserDefaults.standard.object(forKey: key) == nil || UserDefaults.standard.bool(forKey: key)
     }
 
-    static var cleanupNotifications: Bool {
-        let key = "portman.cleanupNotifications"
-        return UserDefaults.standard.object(forKey: key) == nil || UserDefaults.standard.bool(forKey: key)
-    }
-
     static var showAllListeners: Bool {
         UserDefaults.standard.bool(forKey: "portman.showAllListeners")
-    }
-
-    static var notificationsEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "portman.notificationsEnabled")
     }
 
     static var protectedCommands: Set<String> {
@@ -108,16 +113,31 @@ nonisolated enum PortmanPreferences {
 }
 
 nonisolated enum PortmanCleanupPolicy {
+    private static let memoryLimitBytes: Int64 = 2_048 * 1_024 * 1_024
+    private static let growthLimitBytes: Int64 = 500 * 1_024 * 1_024
+
     static func suggested(
-        port: PortmanLocalPort, hasWarning: Bool, folder: String?, lastConnectionAt: Date?,
+        port: PortmanLocalPort, highUsage: Bool, folder: String?, lastConnectionAt: Date?,
         now: Date, idleHours: Double, runningDays: Double,
         mode: PortmanCleanupMode, includeDeletedFolders: Bool
     ) -> Bool {
-        guard mode != .off, port.canStop, !hasWarning else { return false }
+        guard mode != .off, port.canStop, !highUsage else { return false }
         if includeDeletedFolders, let folder, deleted(folder) { return true }
         if port.isLongRunning(at: now, days: runningDays) { return true }
         guard !port.hasConnections, let lastConnectionAt else { return false }
         return now.timeIntervalSince(lastConnectionAt) >= idleHours * 3_600
+    }
+
+    static func highUsage(in samples: [PortmanSample]) -> Bool {
+        let recent = samples.suffix(3)
+        if recent.count == 3 && recent.allSatisfy({ $0.memoryBytes >= memoryLimitBytes }) {
+            return true
+        }
+        guard let last = samples.last,
+              let first = samples.first(where: { $0.date >= last.date.addingTimeInterval(-600) }) else {
+            return false
+        }
+        return last.memoryBytes - first.memoryBytes >= growthLimitBytes
     }
 
     private static func deleted(_ folder: String) -> Bool {
@@ -559,9 +579,6 @@ final class PortmanService {
     private(set) var restartableIDs = Set<String>()
     private(set) var restartingIDs = Set<String>()
     private(set) var lastConnectionAt: [String: Date] = [:]
-    private(set) var snoozedUntil: [String: Date] = [:]
-    private(set) var notificationStatus = "Not requested"
-    var notificationError: String?
     var localError: String?
     var controlError: String?
     var forwardingError: String?
@@ -573,7 +590,6 @@ final class PortmanService {
     private var processes: [UUID: Process] = [:]
     private var authentication: [UUID: (SSHAskpassChannel, Task<Void, Never>)] = [:]
     private var remoteRequestID = UUID()
-    private var notifiedProcessIDs = Set<String>()
     private var handledCleanupProcessIDs = Set<String>()
     private var lastCleanupMode: PortmanCleanupMode?
     private var metadataCheckedIDs = Set<String>()
@@ -582,7 +598,7 @@ final class PortmanService {
         let now = Date()
         return Set(localPorts.filter { port in
             PortmanCleanupPolicy.suggested(
-                port: port, hasWarning: warning(for: port) != nil,
+                port: port, highUsage: PortmanCleanupPolicy.highUsage(in: history[port.id] ?? []),
                 folder: metadata[port.id]?.folder,
                 lastConnectionAt: lastConnectionAt[port.processID], now: now,
                 idleHours: PortmanPreferences.idleSuggestionHours,
@@ -633,7 +649,6 @@ final class PortmanService {
         restartableIDs = []
         restartingIDs = []
         lastConnectionAt = [:]
-        notifiedProcessIDs = []
         handledCleanupProcessIDs = []
         lastCleanupMode = nil
     }
@@ -682,40 +697,7 @@ final class PortmanService {
             githubLinks = githubLinks.filter { key, _ in ports.contains { $0.id == key } }
             restartableIDs.formIntersection(Set(ports.map(\.id)))
             lastConnectionAt = lastConnectionAt.filter { key, _ in ports.contains { $0.processID == key } }
-            snoozedUntil = snoozedUntil.filter { key, until in
-                until > now && ports.contains { $0.processID == key }
-            }
-            notifiedProcessIDs = notifiedProcessIDs.filter { processID in
-                guard let port = ports.first(where: { $0.processID == processID }) else { return false }
-                let growth = history[port.id].flatMap { samples in
-                    samples.last.flatMap { last in
-                        samples.first(where: { $0.date >= last.date.addingTimeInterval(-600) })
-                            .map { last.memoryBytes - $0.memoryBytes }
-                    }
-                } ?? 0
-                return !Self.canRearmNotification(
-                    memoryBytes: port.memoryBytes, growthBytes: growth,
-                    memoryLimit: PortmanPreferences.memoryAlertBytes,
-                    growthLimit: PortmanPreferences.growthAlertBytes
-                )
-            }
-            if PortmanPreferences.notificationsEnabled && notificationStatus == "Allowed" {
-                for port in ports where (snoozedUntil[port.processID] ?? .distantPast) <= now {
-                    guard let warning = warning(for: port),
-                          notifiedProcessIDs.insert(port.processID).inserted else { continue }
-                    let content = UNMutableNotificationContent()
-                    content.title = "Port :\(port.port) needs attention"
-                    content.body = warning
-                    content.categoryIdentifier = "PORTMAN_ALERT"
-                    content.userInfo = ["processID": port.processID]
-                    do {
-                        try await UNUserNotificationCenter.current().add(UNNotificationRequest(
-                            identifier: "portman.\(port.processID)", content: content, trigger: nil
-                        ))
-                    } catch { notificationError = error.localizedDescription }
-                }
-            }
-            await handleCleanupSuggestions()
+            handleCleanupSuggestions()
             NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
         } catch {
             guard !Task.isCancelled, monitoringCount > 0 else { return }
@@ -940,86 +922,15 @@ final class PortmanService {
         } catch { controlError = error.localizedDescription }
     }
 
-    func warning(for port: PortmanLocalPort) -> String? {
-        let sustainedSamples = Array(history[port.id]?.suffix(3) ?? [])
-        if sustainedSamples.count == 3
-            && sustainedSamples.allSatisfy({ $0.memoryBytes >= PortmanPreferences.memoryAlertBytes }) {
-            let limit = ByteCountFormatter.string(fromByteCount: PortmanPreferences.memoryAlertBytes,
-                                                  countStyle: .memory)
-            return "Memory above \(limit)"
-        }
-        guard let samples = history[port.id], let last = samples.last,
-              let first = samples.first(where: { $0.date >= last.date.addingTimeInterval(-600) }),
-              last.memoryBytes - first.memoryBytes >= PortmanPreferences.growthAlertBytes else {
-            return nil
-        }
-        let minutes = max(1, Int(last.date.timeIntervalSince(first.date) / 60))
-        let growth = (last.memoryBytes - first.memoryBytes) / (1_024 * 1_024)
-        return "+\(growth) MB in \(minutes)m"
-    }
-
-    func snooze(_ port: PortmanLocalPort) {
-        snooze(processID: port.processID)
-    }
-
-    func snooze(processID: String) {
-        snoozedUntil[processID] = Date().addingTimeInterval(3_600)
-        notifiedProcessIDs.remove(processID)
-        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
-    }
-
-    func rearm(_ port: PortmanLocalPort) {
-        snoozedUntil.removeValue(forKey: port.processID)
-        notifiedProcessIDs.remove(port.processID)
-        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
-    }
-
-    func resetNotificationDelivery() {
-        notifiedProcessIDs = []
-    }
-
-    nonisolated static func canRearmNotification(
-        memoryBytes: Int64, growthBytes: Int64, memoryLimit: Int64, growthLimit: Int64
-    ) -> Bool {
-        memoryBytes < memoryLimit * 85 / 100 && growthBytes < growthLimit * 60 / 100
-    }
-
-    func refreshNotificationStatus() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        notificationStatus = switch settings.authorizationStatus {
-        case .notDetermined: "Not requested"
-        case .denied: "Denied in System Settings"
-        case .authorized, .provisional, .ephemeral:
-            settings.notificationCenterSetting == .disabled ? "Disabled in System Settings" : "Allowed"
-        @unknown default: "Unavailable"
-        }
-    }
-
-    func enableNotifications() async {
-        do {
-            let allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
-            UserDefaults.standard.set(allowed, forKey: "portman.notificationsEnabled")
-            notificationError = nil
-        } catch {
-            UserDefaults.standard.set(false, forKey: "portman.notificationsEnabled")
-            notificationError = error.localizedDescription
-        }
-        await refreshNotificationStatus()
-    }
-
-    var activeAlerts: [PortmanLocalPort] {
-        localPorts.filter { warning(for: $0) != nil && (snoozedUntil[$0.processID] ?? .distantPast) <= Date() }
-    }
-
-    private func handleCleanupSuggestions() async {
+    private func handleCleanupSuggestions() {
         let mode = PortmanPreferences.cleanupMode
         if mode != lastCleanupMode {
             handledCleanupProcessIDs = []
             lastCleanupMode = mode
         }
+        guard mode == .automatic else { return }
         let ids = suggestedCleanupIDs
         handledCleanupProcessIDs.formIntersection(ids)
-        guard mode != .off else { return }
         var seen = Set<String>()
         let fresh = localPorts.filter {
             ids.contains($0.processID) && seen.insert($0.processID).inserted
@@ -1027,19 +938,7 @@ final class PortmanService {
         }
         guard !fresh.isEmpty else { return }
         handledCleanupProcessIDs.formUnion(fresh.map(\.processID))
-        if mode == .automatic { stopLocalProcesses(fresh) }
-        guard PortmanPreferences.cleanupNotifications,
-              PortmanPreferences.notificationsEnabled, notificationStatus == "Allowed" else { return }
-        let content = UNMutableNotificationContent()
-        content.title = mode == .automatic
-            ? "Portman sent stop requests for \(fresh.count) servers"
-            : "Portman found \(fresh.count) cleanup suggestions"
-        content.body = "Open Portman to review the servers."
-        do {
-            try await UNUserNotificationCenter.current().add(UNNotificationRequest(
-                identifier: "portman.cleanup.\(UUID().uuidString)", content: content, trigger: nil
-            ))
-        } catch { notificationError = error.localizedDescription }
+        stopLocalProcesses(fresh)
     }
 
     func stopLocalProcesses(_ ports: [PortmanLocalPort]) {

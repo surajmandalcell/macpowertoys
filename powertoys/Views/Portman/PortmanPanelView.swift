@@ -1,11 +1,10 @@
 import AppKit
 import Charts
 import SwiftUI
-import UserNotifications
 
 struct PortmanPanelView: View {
     enum Page: String, CaseIterable {
-        case local = "Servers", forward = "Forward", alerts = "Alerts", settings = "Settings"
+        case local = "Servers", forward = "Forward", settings = "Settings"
     }
 
     init(initialPage: Page = .local, initialPortID: String? = nil,
@@ -51,6 +50,7 @@ struct PortmanPanelView: View {
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
     @AppStorage("portman.editor") private var editor = "auto"
+    @AppStorage("portman.serverSort") private var serverSort = PortmanServerSort.port.rawValue
 
     private let portColors: [Color] = [
         Color(red: 0.43, green: 0.78, blue: 0.93),
@@ -74,7 +74,7 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? (service.localPorts.isEmpty ? 300 : 270 + CGFloat(service.localPorts.count) * 64)
+            selectedPort == nil ? (service.localPorts.isEmpty ? 300 : 254 + CGFloat(service.localPorts.count) * 56)
                 : 455 + (showingMore ? 110 : 0)
                     + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
         case .forward:
@@ -82,8 +82,6 @@ struct PortmanPanelView: View {
                 + (!host.isEmpty && discoveredHost == host
                    ? 62 + CGFloat(service.remotePorts.count) * 42
                         + (expandedRemotePort == nil ? 0 : 48) : 0)
-        case .alerts:
-            260 + CGFloat(service.activeAlerts.count) * 92
         case .settings:
             620
         }
@@ -99,18 +97,12 @@ struct PortmanPanelView: View {
                     .frame(width: 13, height: 13)
                 Text("Portman").font(.system(size: 11, weight: .semibold))
                 Spacer()
-                if page == .local {
-                    Button { Task { await service.refreshLocal() } } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .help("Refresh servers")
+                Button { Task { await service.refreshLocal() } } label: {
+                    Image(systemName: "arrow.clockwise")
                 }
-                Button { navigate(to: page == .settings ? .local : .settings) } label: {
-                    Image(systemName: page == .settings ? "xmark" : "gearshape")
-                }
-                .help(page == .settings ? "Close settings" : "Portman settings")
-                .accessibilityLabel(page == .settings ? "Close Portman settings" : "Portman settings")
-                .accessibilityIdentifier("portman.settings")
+                .help("Refresh servers")
+                .accessibilityLabel("Refresh servers")
+                .accessibilityIdentifier("portman.refresh")
             }
             .font(.system(size: 12))
             .buttonStyle(.plain)
@@ -119,41 +111,31 @@ struct PortmanPanelView: View {
             .padding(.vertical, 8)
 
             HStack(spacing: 0) {
-                ForEach([Page.local, .forward, .alerts], id: \.self) { destination in
+                ForEach(Page.allCases, id: \.self) { destination in
                     Button { navigate(to: destination) } label: {
-                        HStack(spacing: 4) {
-                            Text(destination.rawValue)
-                            if destination == .alerts && !service.activeAlerts.isEmpty {
-                                Circle().fill(Color.orange).frame(width: 5, height: 5)
-                            }
-                        }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(page == destination ? Color.primary : Color.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .contentShape(Rectangle())
+                        Text(destination.rawValue)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(page == destination ? Color.primary : Color.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
                     .frame(maxWidth: .infinity)
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(Color.accentColor)
+                            .frame(height: 2)
+                            .opacity(page == destination ? 1 : 0)
+                            .utilityAnimation(value: page, duration: UtilityMotion.interactionDuration)
+                            .allowsHitTesting(false)
+                    }
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
                     .accessibilityIdentifier("portman.page.\(destination.rawValue)")
                 }
             }
             .frame(maxWidth: .infinity)
             .background(alignment: .bottom) { QuietDivider() }
-            .overlay {
-                GeometryReader { geometry in
-                    if page != .settings {
-                        Rectangle()
-                            .fill(Color.accentColor)
-                            .frame(width: geometry.size.width / 3, height: 2)
-                            .position(x: geometry.size.width * (CGFloat(page == .local ? 0 : page == .forward ? 1 : 2) + 0.5) / 3,
-                                      y: geometry.size.height - 1)
-                            .utilityAnimation(value: page)
-                    }
-                }
-                .allowsHitTesting(false)
-            }
 
             ScrollView {
                 Group {
@@ -162,7 +144,6 @@ struct PortmanPanelView: View {
                         if let selectedPort { localDetail(selectedPort) }
                         else { localOverview }
                     case .forward: forwardingPage
-                    case .alerts: alertsPage
                     case .settings: PortmanSettingsView()
                     }
                 }
@@ -337,35 +318,57 @@ struct PortmanPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
             } else {
-                LazyVStack(spacing: 4) {
-                    ForEach(service.localPorts) { port in localRow(port) }
-                }
-                QuietDivider()
-                HStack {
-                    if cleanupMode {
-                        Button("Cancel") { cleanupMode = false; selectedCleanupProcesses = [] }
-                        Spacer()
-                        Button("Stop \(selectedCleanupProcesses.count) · free \(memoryString(overviewMemory))", role: .destructive) {
-                            pendingCleanupPorts = service.localPorts.filter {
-                                selectedCleanupProcesses.contains($0.processID)
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
-                        .disabled(selectedCleanupProcesses.isEmpty)
-                    } else {
-                        Text("\(uniquePorts.count) server\(uniquePorts.count == 1 ? "" : "s") · \(String(format: "%.1f", overviewCPU))% CPU")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button(suggestedCleanupIDs.isEmpty ? "Clean up" : "Clean up \(suggestedCleanupIDs.count)") {
-                            selectedCleanupProcesses = suggestedCleanupIDs
-                            cleanupMode = true
-                        }
-                            .disabled(!service.localPorts.contains(where: \.canStop))
+                VStack(spacing: 8) {
+                    LazyVStack(spacing: 4) {
+                        ForEach(sortedLocalPorts) { port in localRow(port) }
                     }
+                    QuietDivider()
+                    HStack(spacing: 8) {
+                        if cleanupMode {
+                            Button("Cancel") { cleanupMode = false; selectedCleanupProcesses = [] }
+                            Spacer()
+                            Button("Stop \(selectedCleanupProcesses.count) · free \(memoryString(overviewMemory))", role: .destructive) {
+                                pendingCleanupPorts = service.localPorts.filter {
+                                    selectedCleanupProcesses.contains($0.processID)
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.red)
+                            .disabled(selectedCleanupProcesses.isEmpty)
+                        } else {
+                            Text("\(uniquePorts.count) server\(uniquePorts.count == 1 ? "" : "s") · \(String(format: "%.1f", overviewCPU))% CPU")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Menu {
+                                ForEach(PortmanServerSort.allCases, id: \.self) { choice in
+                                    Button {
+                                        serverSort = choice.rawValue
+                                    } label: {
+                                        if serverSort == choice.rawValue {
+                                            Label(choice.label, systemImage: "checkmark")
+                                        } else {
+                                            Text(choice.label)
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Text("Sort by")
+                            }
+                            .menuStyle(.borderlessButton)
+                            .accessibilityIdentifier("portman.sort")
+                            .accessibilityLabel("Sort by")
+                            .accessibilityValue((PortmanServerSort(rawValue: serverSort) ?? .port).label)
+                            Button(suggestedCleanupIDs.isEmpty ? "Clean up" : "Clean up \(suggestedCleanupIDs.count)") {
+                                selectedCleanupProcesses = suggestedCleanupIDs
+                                cleanupMode = true
+                            }
+                                .disabled(!service.localPorts.contains(where: \.canStop))
+                        }
+                    }
+                    .controlSize(.small)
                 }
-                .controlSize(.small)
             }
             if let error = service.localError { errorText(error) }
             if let error = service.controlError { errorText(error) }
@@ -373,7 +376,6 @@ struct PortmanPanelView: View {
     }
 
     private func localRow(_ port: PortmanLocalPort) -> some View {
-        let attention = service.warning(for: port)
         let isHovered = hoveredRowID == port.id
         return HStack(spacing: 8) {
             if cleanupMode {
@@ -411,18 +413,18 @@ struct PortmanPanelView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(service.metadata[port.id]?.branch ?? service.metadata[port.id]?.project ?? port.command)
                                 .font(.system(size: 13, weight: .medium)).lineLimit(1)
-                            Text(attention ?? "\(service.metadata[port.id]?.project ?? port.command) · up \(port.uptime)")
+                            Text("\(service.metadata[port.id]?.project ?? port.command) · up \(port.uptime)")
                                 .font(.system(size: 11))
-                                .foregroundStyle(attention == nil ? Color.secondary : Color.orange)
+                                .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
                         Spacer(minLength: 4)
                         HStack(spacing: 6) {
-                            sparkline(for: port, attention: attention != nil)
+                            sparkline(for: port)
                                 .frame(width: 42, height: 24)
                             Text(memoryString(port.memoryBytes))
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(attention == nil ? Color.primary : Color.orange)
+                                .foregroundStyle(.primary)
                                 .monospacedDigit()
                                 .frame(width: 62, alignment: .trailing)
                         }
@@ -479,7 +481,6 @@ struct PortmanPanelView: View {
         .contentShape(Rectangle())
         .background(isHovered ? Color.primary.opacity(0.06) : .clear,
                     in: RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, 6)
         .opacity(highlightedProcessID == nil || highlightedProcessID == port.processID ? 1 : 0.45)
         .utilityAnimation(value: hoveredRowID, duration: UtilityMotion.interactionDuration)
         .onHover { inside in
@@ -502,6 +503,10 @@ struct PortmanPanelView: View {
     private var uniquePorts: [PortmanLocalPort] {
         var seen = Set<String>()
         return service.localPorts.filter { seen.insert($0.processID).inserted }
+    }
+
+    private var sortedLocalPorts: [PortmanLocalPort] {
+        (PortmanServerSort(rawValue: serverSort) ?? .port).sorted(service.localPorts)
     }
 
     private struct UsageSegment: Identifiable {
@@ -590,13 +595,14 @@ struct PortmanPanelView: View {
         }
         .help("Memory used only by processes listening on scanned ports")
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("portman.memoryBreakdown")
     }
 
-    private func sparkline(for port: PortmanLocalPort, attention: Bool) -> some View {
+    private func sparkline(for port: PortmanLocalPort) -> some View {
         let samples = service.history[port.id] ?? []
         return Chart(samples) { sample in
             LineMark(x: .value("Time", sample.date), y: .value("Memory", sample.memoryBytes))
-                .foregroundStyle(attention ? Color.orange : portColor(port))
+                .foregroundStyle(portColor(port))
                 .lineStyle(StrokeStyle(lineWidth: 1.3))
         }
         .chartXAxis(.hidden)
@@ -701,10 +707,6 @@ struct PortmanPanelView: View {
                     .accessibilityLabel("Stop process tree for port \(String(port.port))")
                 }
             }
-            if let attention = service.warning(for: port) {
-                Label(attention, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11)).foregroundStyle(.orange)
-            }
             if let metadata = service.metadata[port.id], let branch = metadata.branch {
                 detailRow("Branch", branch)
             }
@@ -775,9 +777,6 @@ struct PortmanPanelView: View {
                             .foregroundStyle(portColor(port))
                             .symbolSize(25)
                     }
-                    RuleMark(y: .value("Alert", PortmanPreferences.memoryAlertBytes))
-                        .foregroundStyle(Color.orange.opacity(0.55))
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     if let hovered {
                         RuleMark(x: .value("Time", hovered.date))
                             .foregroundStyle(.secondary)
@@ -787,8 +786,7 @@ struct PortmanPanelView: View {
                     }
                 }
                 .chartXScale(domain: chartStart...chartEnd)
-                .chartYScale(domain: 0...max(PortmanPreferences.memoryAlertBytes * 11 / 10,
-                                             (samples.map(\.memoryBytes).max() ?? 1) * 12 / 10))
+                .chartYScale(domain: 0...max(1, (samples.map(\.memoryBytes).max() ?? 1) * 12 / 10))
                 .chartXAxis(.hidden)
                 .chartYAxis {
                     AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
@@ -922,58 +920,6 @@ struct PortmanPanelView: View {
                         hoveredTime = nil
                     }
                 }
-        }
-    }
-
-    private var alertsPage: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Alerts").font(.system(size: 13, weight: .semibold))
-                Spacer()
-                Text("\(service.activeAlerts.count) active")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            }
-            if service.activeAlerts.isEmpty {
-                ContentUnavailableView("No active alerts", systemImage: "checkmark.circle",
-                                       description: Text("Servers above your memory or growth limits appear here."))
-                    .frame(maxWidth: .infinity, minHeight: 170)
-            }
-            ForEach(service.activeAlerts) { port in
-                HStack(alignment: .top, spacing: 9) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(":\(String(port.port)) · \(service.metadata[port.id]?.project ?? port.command)")
-                            .font(.system(size: 12, weight: .medium))
-                        Text(service.warning(for: port) ?? "")
-                            .font(.system(size: 11)).foregroundStyle(.orange)
-                        HStack {
-                            Button("Inspect") { page = .local; selectedPortID = port.id }
-                            Button("Snooze 1h") { service.snooze(port) }
-                        }
-                        .controlSize(.mini)
-                    }
-                    Spacer()
-                }
-                .padding(.vertical, 6)
-                QuietDivider()
-            }
-            let snoozed = service.localPorts.filter {
-                service.warning(for: $0) != nil
-                    && (service.snoozedUntil[$0.processID] ?? .distantPast) > Date()
-            }
-            if !snoozed.isEmpty {
-                Text("Snoozed").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
-                ForEach(snoozed) { port in
-                    HStack {
-                        Text(":\(String(port.port)) · \(service.warning(for: port) ?? "")")
-                            .font(.system(size: 11)).lineLimit(1)
-                        Spacer()
-                        Button("Rearm") { service.rearm(port) }.controlSize(.mini)
-                    }
-                }
-            }
         }
     }
 
@@ -1391,167 +1337,178 @@ private struct PortmanPasswordSheet: View {
 }
 
 struct PortmanSettingsView: View {
-    @State private var service = PortmanService.shared
+    @State private var search = ""
     @State private var pendingAutomaticCleanup = false
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
     @AppStorage("portman.scanUpperPort") private var upperPort = 9999
     @AppStorage("portman.scanInterval") private var scanInterval = 2.0
-    @AppStorage("portman.memoryAlertMB") private var memoryAlertMB = 2_048
-    @AppStorage("portman.growthAlertMB") private var growthAlertMB = 500
     @AppStorage("portman.idleHours") private var idleHours = 4.0
     @AppStorage("portman.runningDays") private var runningDays = 3.0
     @AppStorage("portman.forceQuitSeconds") private var forceQuitSeconds = 3.0
     @AppStorage("portman.cleanupMode") private var cleanupMode = PortmanCleanupMode.ask.rawValue
     @AppStorage("portman.includeDeletedFolders") private var includeDeletedFolders = true
-    @AppStorage("portman.cleanupNotifications") private var cleanupNotifications = true
     @AppStorage("portman.protectedCommands") private var protectedCommands = ""
     @AppStorage("portman.showAllListeners") private var showAllListeners = false
-    @AppStorage("portman.notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
     @AppStorage("portman.editor") private var editor = "auto"
 
+    private func shows(_ labels: String...) -> Bool {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        return query.isEmpty || labels.contains { $0.localizedStandardContains(query) }
+    }
+
+    private var generalVisible: Bool { shows("Keyboard shortcut", "Open folders in", "editor") }
+    private var portsVisible: Bool {
+        shows("Ports & processes", "Include other listening processes", "Scan ports", "Scan every",
+              "Extra protected process names")
+    }
+    private var cleanupVisible: Bool {
+        shows("Clean up", "Cleanup mode", "Include deleted folders", "Suggest after idle hours",
+              "Suggest after running days", "Force quit after seconds")
+    }
+    private var integrationsVisible: Bool {
+        shows("Integrations", "Link coding sessions", "Find public GitHub links")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Settings").font(.system(size: 13, weight: .semibold))
-            HStack {
-                Text("Keyboard shortcut")
-                Spacer()
-                ShortcutRecorderField(action: .portman)
+            NativeSearchField(text: $search, placeholder: "Search settings")
+                .frame(height: 24)
+                .accessibilityIdentifier("portman.settings.search")
+            if !generalVisible && !portsVisible && !cleanupVisible && !integrationsVisible {
+                Text("No matching settings")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 90)
             }
-            HStack {
-                Text("Open folders in")
-                Spacer()
-                Picker("Open folders in", selection: $editor) {
-                    Text("Automatic").tag("auto")
-                    ForEach(PortmanEditor.installed, id: \.id) { choice in
-                        Text(choice.name).tag(choice.id)
-                    }
-                    Text("Finder").tag("finder")
+            if shows("Keyboard shortcut") {
+                HStack {
+                    Text("Keyboard shortcut")
+                    Spacer()
+                    ShortcutRecorderField(action: .portman)
                 }
-                .labelsHidden().frame(width: 180)
             }
-            QuietDivider()
-            Text("Ports & processes").font(.system(size: 12, weight: .medium))
-            Toggle("Include other listening processes", isOn: $showAllListeners)
-            HStack {
-                Text("Scan ports")
-                Spacer()
-                TextField("From", value: $lowerPort, format: .number)
-                    .frame(width: 60)
-                Text("–")
-                TextField("To", value: $upperPort, format: .number)
-                    .frame(width: 60)
+            if shows("Open folders in", "editor") {
+                HStack {
+                    Text("Open folders in")
+                    Spacer()
+                    Picker("Open folders in", selection: $editor) {
+                        Text("Automatic").tag("auto")
+                        ForEach(PortmanEditor.installed, id: \.id) { choice in
+                            Text(choice.name).tag(choice.id)
+                        }
+                        Text("Finder").tag("finder")
+                    }
+                    .labelsHidden().frame(width: 180)
+                }
             }
-            if lowerPort < 1 || upperPort < lowerPort || upperPort > 65_535 {
+            if portsVisible {
+                if generalVisible { QuietDivider() }
+                Text("Ports & processes").font(.system(size: 12, weight: .medium))
+            }
+            if shows("Ports & processes", "Include other listening processes") {
+                Toggle("Include other listening processes", isOn: $showAllListeners)
+            }
+            if shows("Ports & processes", "Scan ports") {
+                HStack {
+                    Text("Scan ports")
+                    Spacer()
+                    TextField("From", value: $lowerPort, format: .number)
+                        .frame(width: 60)
+                    Text("–")
+                    TextField("To", value: $upperPort, format: .number)
+                        .frame(width: 60)
+                }
+            }
+            if shows("Ports & processes", "Scan ports")
+                && (lowerPort < 1 || upperPort < lowerPort || upperPort > 65_535) {
                 Text("Choose ports between 1 and 65535, with the first no higher than the last.")
                     .foregroundStyle(.red)
             }
-            HStack {
-                Text("Scan every")
-                Spacer()
-                Picker("Scan every", selection: $scanInterval) {
-                    Text("2 seconds").tag(2.0)
-                    Text("5 seconds").tag(5.0)
-                    Text("10 seconds").tag(10.0)
-                    Text("30 seconds").tag(30.0)
+            if shows("Ports & processes", "Scan every") {
+                HStack {
+                    Text("Scan every")
+                    Spacer()
+                    Picker("Scan every", selection: $scanInterval) {
+                        Text("2 seconds").tag(2.0)
+                        Text("5 seconds").tag(5.0)
+                        Text("10 seconds").tag(10.0)
+                        Text("30 seconds").tag(30.0)
+                    }
+                    .labelsHidden().frame(width: 130)
                 }
-                .labelsHidden().frame(width: 130)
             }
-            TextField("Extra protected process names, comma-separated", text: $protectedCommands)
-                .accessibilityLabel("Extra protected process names")
-            Text("Databases, Docker, and SSH are always protected.")
-                .font(.system(size: 10)).foregroundStyle(.secondary)
-            QuietDivider()
-            Text("Alerts").font(.system(size: 12, weight: .medium))
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Mac notifications")
-                    Text(service.notificationStatus)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if service.notificationStatus == "Not requested" {
-                    Button("Enable") { Task { await service.enableNotifications() } }
-                } else if service.notificationStatus == "Allowed" {
-                    Toggle("Mac notifications", isOn: $notificationsEnabled).labelsHidden()
-                } else {
-                    Button("Open Settings") {
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
-                            NSWorkspace.shared.open(url)
+            if shows("Ports & processes", "Extra protected process names") {
+                TextField("Extra protected process names, comma-separated", text: $protectedCommands)
+                    .accessibilityLabel("Extra protected process names")
+                Text("Databases, Docker, and SSH are always protected.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if cleanupVisible {
+                if generalVisible || portsVisible { QuietDivider() }
+                Text("Clean up").font(.system(size: 12, weight: .medium))
+            }
+            if shows("Clean up", "Cleanup mode") {
+                HStack {
+                    Text("Mode")
+                    Spacer()
+                    Picker("Cleanup mode", selection: Binding(
+                        get: { cleanupMode },
+                        set: { value in
+                            if value == PortmanCleanupMode.automatic.rawValue
+                                && cleanupMode != PortmanCleanupMode.automatic.rawValue {
+                                pendingAutomaticCleanup = true
+                            } else { cleanupMode = value }
                         }
+                    )) {
+                        Text("Off").tag(PortmanCleanupMode.off.rawValue)
+                        Text("Ask").tag(PortmanCleanupMode.ask.rawValue)
+                        Text("Automatic").tag(PortmanCleanupMode.automatic.rawValue)
+                    }
+                    .labelsHidden().pickerStyle(.segmented).frame(width: 210)
+                }
+                Group {
+                    if cleanupMode == PortmanCleanupMode.automatic.rawValue {
+                        Text("Automatic stops eligible servers without another prompt and force quits any still running after the grace period. Protected and high-usage servers stay excluded.")
+                    } else if cleanupMode == PortmanCleanupMode.off.rawValue {
+                        Text("Manual cleanup remains available from the server list.")
+                    } else {
+                        Text("Ask highlights eligible servers in the server list.")
                     }
                 }
-            }
-            if let error = service.notificationError {
-                Text(error).foregroundStyle(.red)
-            }
-            HStack {
-                Text("Memory above")
-                Spacer()
-                TextField("MB", value: $memoryAlertMB, format: .number)
-                    .frame(width: 74)
-                Text("MB").foregroundStyle(.secondary)
-            }
-            HStack {
-                Text("Growth in 10 minutes")
-                Spacer()
-                TextField("MB", value: $growthAlertMB, format: .number)
-                    .frame(width: 74)
-                Text("MB").foregroundStyle(.secondary)
-            }
-            if memoryAlertMB < 1 || growthAlertMB < 1 {
-                Text("Alert limits must be greater than zero.").foregroundStyle(.red)
-            }
-            QuietDivider()
-            Text("Clean up").font(.system(size: 12, weight: .medium))
-            HStack {
-                Text("Mode")
-                Spacer()
-                Picker("Cleanup mode", selection: Binding(
-                    get: { cleanupMode },
-                    set: { value in
-                        if value == PortmanCleanupMode.automatic.rawValue
-                            && cleanupMode != PortmanCleanupMode.automatic.rawValue {
-                            pendingAutomaticCleanup = true
-                        } else { cleanupMode = value }
-                    }
-                )) {
-                    Text("Off").tag(PortmanCleanupMode.off.rawValue)
-                    Text("Ask").tag(PortmanCleanupMode.ask.rawValue)
-                    Text("Automatic").tag(PortmanCleanupMode.automatic.rawValue)
-                }
-                .labelsHidden().pickerStyle(.segmented).frame(width: 210)
-            }
-            Toggle("Include deleted folders", isOn: $includeDeletedFolders)
-            Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
-            Stepper("Suggest after \(Int(runningDays)) running days", value: $runningDays, in: 1...30, step: 1)
-            Stepper("Force quit after \(Int(forceQuitSeconds)) seconds", value: $forceQuitSeconds, in: 1...30, step: 1)
-            Toggle("Notify about cleanup", isOn: $cleanupNotifications)
-            Group {
-                if cleanupMode == PortmanCleanupMode.automatic.rawValue {
-                    Text("Automatic stops eligible servers without another prompt and force quits any still running after the grace period. Protected servers and warnings stay excluded.")
-                } else if cleanupMode == PortmanCleanupMode.off.rawValue {
-                    Text("Manual cleanup remains available from the server list.")
-                } else {
-                    Text("Ask suggests eligible servers. Mac notifications appear only when enabled above.")
-                }
-            }
-            .font(.system(size: 10)).foregroundStyle(.secondary)
-            QuietDivider()
-            Text("Integrations").font(.system(size: 12, weight: .medium))
-            Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
-            Text("When you open a server, Portman checks its process for a Claude Code session and recent local Codex sessions for a folder match. A link copies a resume command.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
-            Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
-            Text("Checks public pull requests and previews for this project's branch. Private repositories and saved GitHub credentials are not used.")
-                .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if shows("Clean up", "Include deleted folders") {
+                Toggle("Include deleted folders", isOn: $includeDeletedFolders)
+            }
+            if shows("Clean up", "Suggest after idle hours") {
+                Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
+            }
+            if shows("Clean up", "Suggest after running days") {
+                Stepper("Suggest after \(Int(runningDays)) running days", value: $runningDays, in: 1...30, step: 1)
+            }
+            if shows("Clean up", "Force quit after seconds") {
+                Stepper("Force quit after \(Int(forceQuitSeconds)) seconds", value: $forceQuitSeconds, in: 1...30, step: 1)
+            }
+            if integrationsVisible {
+                if generalVisible || portsVisible || cleanupVisible { QuietDivider() }
+                Text("Integrations").font(.system(size: 12, weight: .medium))
+            }
+            if shows("Integrations", "Link coding sessions") {
+                Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
+                Text("When you open a server, Portman checks its process for a Claude Code session and recent local Codex sessions for a folder match. A link copies a resume command.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if shows("Integrations", "Find public GitHub links") {
+                Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
+                Text("Checks public pull requests and previews for this project's branch. Private repositories and saved GitHub credentials are not used.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
         }
         .font(.system(size: 11))
         .controlSize(.small)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .task { await service.refreshNotificationStatus() }
-        .onChange(of: notificationsEnabled) { service.resetNotificationDelivery() }
         .confirmationDialog("Stop eligible servers automatically?", isPresented: $pendingAutomaticCleanup) {
             Button("Enable Automatic", role: .destructive) {
                 cleanupMode = PortmanCleanupMode.automatic.rawValue
@@ -1594,7 +1551,7 @@ enum PortmanEditor {
 }
 
 @MainActor
-final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
+final class PortmanMenuController: NSObject {
     static let shared = PortmanMenuController()
 
     private var item: NSStatusItem?
@@ -1609,14 +1566,6 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
 
     func start() {
         guard observers.isEmpty else { refresh() ; return }
-        let notifications = UNUserNotificationCenter.current()
-        notifications.setNotificationCategories([UNNotificationCategory(
-            identifier: "PORTMAN_ALERT",
-            actions: [UNNotificationAction(identifier: "PORTMAN_SNOOZE", title: "Snooze 1h")],
-            intentIdentifiers: []
-        )])
-        notifications.delegate = self
-        Task { await PortmanService.shared.refreshNotificationStatus() }
         let center = NotificationCenter.default
         observers = [
             center.addObserver(forName: .toolEnablementChanged, object: nil, queue: .main) { [weak self] _ in
@@ -1735,22 +1684,6 @@ final class PortmanMenuController: NSObject, UNUserNotificationCenterDelegate {
             return count
         }
         button.toolTip = "Portman · \(ports.count) listening · \(forwarded) forwarded"
-        button.contentTintColor = !PortmanService.shared.activeAlerts.isEmpty
-            ? .systemOrange : nil
-    }
-
-    nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        let processID = response.notification.request.content.userInfo["processID"] as? String
-        let snooze = response.actionIdentifier == "PORTMAN_SNOOZE"
-        Task { @MainActor [weak self] in
-            if snooze, let processID { PortmanService.shared.snooze(processID: processID) }
-            else { self?.show() }
-            completionHandler()
-        }
     }
 
     @objc private func toggle() {

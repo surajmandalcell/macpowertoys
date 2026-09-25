@@ -2,6 +2,38 @@ import XCTest
 
 final class PortmanUITests: XCTestCase {
     @MainActor
+    func testFourServerRowsMatchMemoryBarAndShowFooter() throws {
+        var listeners: [Process] = []
+        defer {
+            for listener in listeners where listener.isRunning { listener.terminate() }
+            listeners.forEach { $0.waitUntilExit() }
+        }
+        for port in [7411, 7412, 7413, 7414] {
+            let listener = Process()
+            listener.executableURL = URL(fileURLWithPath: "/usr/bin/nc")
+            listener.arguments = ["-l", String(port)]
+            try listener.run()
+            listeners.append(listener)
+        }
+        Thread.sleep(forTimeInterval: 0.25)
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
+        app.launch()
+        defer { app.terminate() }
+
+        let row = app.buttons["portman.local.7414"]
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        let bar = app.descendants(matching: .any)["portman.memoryBreakdown"]
+        XCTAssertTrue(bar.exists)
+        XCTAssertEqual(row.frame.minX, bar.frame.minX, accuracy: 1)
+        XCTAssertEqual(row.frame.width, bar.frame.width, accuracy: 1)
+        let sort = app.descendants(matching: .any)["portman.sort"]
+        XCTAssertTrue(sort.isHittable, "Sort by is clipped below the four-server panel")
+        attach(app.screenshot(), named: "Portman four servers and footer")
+    }
+
+    @MainActor
     func testServerHoverReplacesMetricsWithActions() throws {
         let listener = Process()
         listener.executableURL = URL(fileURLWithPath: "/usr/bin/nc")
@@ -22,6 +54,13 @@ final class PortmanUITests: XCTestCase {
         let row = app.buttons["portman.local.7265"]
         XCTAssertTrue(row.waitForExistence(timeout: 20), "Portman did not discover the test listener")
         attach(app.screenshot(), named: "Portman server at rest")
+        let sort = app.descendants(matching: .any)["portman.sort"]
+        XCTAssertTrue(sort.waitForExistence(timeout: 5), "Server sorting is missing from the footer")
+        sort.click()
+        let memory = app.menuItems["Memory"]
+        XCTAssertTrue(memory.waitForExistence(timeout: 5))
+        memory.click()
+        attach(app.screenshot(), named: "Portman sorted by memory")
 
         row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
         let link = app.buttons["portman.link.7265"]
@@ -31,6 +70,9 @@ final class PortmanUITests: XCTestCase {
 
         link.hover()
         attach(app.screenshot(), named: "Portman link hover")
+
+        sort.click()
+        app.menuItems["Port"].click()
     }
 
     @MainActor
@@ -44,9 +86,10 @@ final class PortmanUITests: XCTestCase {
         let forward = app.buttons["portman.page.Forward"]
         XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route")
         let servers = app.buttons["portman.page.Servers"]
-        let alerts = app.buttons["portman.page.Alerts"]
+        let settings = app.buttons["portman.page.Settings"]
         XCTAssertEqual(servers.frame.width, forward.frame.width, accuracy: 1)
-        XCTAssertEqual(alerts.frame.width, forward.frame.width, accuracy: 1)
+        XCTAssertEqual(settings.frame.width, forward.frame.width, accuracy: 1)
+        XCTAssertTrue(app.buttons["portman.refresh"].exists)
         XCTAssertTrue(app.staticTexts["0 KB"].isHittable)
         XCTAssertTrue(app.staticTexts["No servers listening"].isHittable)
         XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
@@ -82,18 +125,19 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Forward 1 selected"].waitForExistence(timeout: 5),
                       "Return did not add the manual remote port")
 
-        alerts.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
-        XCTAssertTrue(app.staticTexts["No active alerts"].waitForExistence(timeout: 5)
-                      || app.buttons["Inspect"].exists)
-        attach(app.screenshot(), named: "Portman Alerts")
+        settings.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        attach(app.screenshot(), named: "Portman Settings")
+        let search = app.searchFields["portman.settings.search"]
+        search.click()
+        search.typeText("scan")
+        XCTAssertTrue(app.staticTexts["Scan ports"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Keyboard shortcut"].exists)
+        attach(app.screenshot(), named: "Portman Settings search")
 
         forward.click()
         XCTAssertTrue(app.buttons["Forward 0 selected"].waitForExistence(timeout: 5),
                       "Leaving Forward kept a pending port selection")
-
-        app.buttons["portman.settings"].click()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
-        attach(app.screenshot(), named: "Portman Settings")
 
         servers.click()
         XCTAssertTrue(forward.waitForExistence(timeout: 5))

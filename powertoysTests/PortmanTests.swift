@@ -398,7 +398,7 @@ final class PortmanTests: XCTestCase {
         XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("node", "node server.js", user &+ 1)))
     }
 
-    func testCleanupSuggestionsProtectWarningsAndUseReferenceAges() {
+    func testCleanupSuggestionsProtectHighUsageAndUseReferenceAges() {
         let now = Date(timeIntervalSince1970: 1_000_000)
         func port(started: TimeInterval, command: String = "node", connected: Bool = false) -> PortmanLocalPort {
             var result = PortmanLocalPort(pid: 42, port: 3000, address: "127.0.0.1:3000",
@@ -408,11 +408,11 @@ final class PortmanTests: XCTestCase {
             result.hasConnections = connected
             return result
         }
-        func suggested(_ port: PortmanLocalPort, warning: Bool = false, folder: String? = nil,
+        func suggested(_ port: PortmanLocalPort, highUsage: Bool = false, folder: String? = nil,
                        lastConnection: Date? = nil, mode: PortmanCleanupMode = .ask,
                        includeDeleted: Bool = true) -> Bool {
             PortmanCleanupPolicy.suggested(
-                port: port, hasWarning: warning, folder: folder, lastConnectionAt: lastConnection,
+                port: port, highUsage: highUsage, folder: folder, lastConnectionAt: lastConnection,
                 now: now, idleHours: 4, runningDays: 3,
                 mode: mode, includeDeletedFolders: includeDeleted
             )
@@ -420,7 +420,8 @@ final class PortmanTests: XCTestCase {
         let threeDaysAgo = now.timeIntervalSince1970 - 3 * 86_400
         XCTAssertFalse(suggested(port(started: threeDaysAgo + 1, connected: true)))
         XCTAssertTrue(suggested(port(started: threeDaysAgo, connected: true)))
-        XCTAssertFalse(suggested(port(started: threeDaysAgo), warning: true))
+        XCTAssertFalse(suggested(port(started: threeDaysAgo), highUsage: true))
+        XCTAssertFalse(suggested(port(started: threeDaysAgo), highUsage: true, mode: .automatic))
         XCTAssertFalse(suggested(port(started: threeDaysAgo, command: "postgres")))
         XCTAssertFalse(suggested(port(started: threeDaysAgo), mode: .off))
         XCTAssertTrue(suggested(port(started: now.timeIntervalSince1970 - 60),
@@ -438,17 +439,34 @@ final class PortmanTests: XCTestCase {
         XCTAssertFalse(suggested(port(started: 0), folder: "/project (deleted)"))
     }
 
-    func testNotificationRearmsOnlyWellBelowBothLimits() {
+    func testHighUsageGuardUsesSustainedMemoryAndGrowth() {
         let mb: Int64 = 1_024 * 1_024
-        XCTAssertFalse(PortmanService.canRearmNotification(
-            memoryBytes: 1_900 * mb, growthBytes: 0,
-            memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
-        XCTAssertFalse(PortmanService.canRearmNotification(
-            memoryBytes: 100 * mb, growthBytes: 400 * mb,
-            memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
-        XCTAssertTrue(PortmanService.canRearmNotification(
-            memoryBytes: 100 * mb, growthBytes: 100 * mb,
-            memoryLimit: 2_048 * mb, growthLimit: 500 * mb))
+        let now = Date(timeIntervalSince1970: 1_000)
+        func sample(_ secondsAgo: TimeInterval, _ memoryMB: Int64) -> PortmanSample {
+            PortmanSample(date: now.addingTimeInterval(-secondsAgo),
+                          memoryBytes: memoryMB * mb, cpuPercent: 0)
+        }
+        XCTAssertFalse(PortmanCleanupPolicy.highUsage(in: [sample(10, 100), sample(0, 599)]))
+        XCTAssertTrue(PortmanCleanupPolicy.highUsage(in: [sample(10, 100), sample(0, 600)]))
+        XCTAssertTrue(PortmanCleanupPolicy.highUsage(in: [
+            sample(10, 2_048), sample(5, 2_048), sample(0, 2_048)
+        ]))
+        XCTAssertFalse(PortmanCleanupPolicy.highUsage(in: [sample(601, 100), sample(0, 600)]))
+    }
+
+    func testServerSortUsesPortAscendingAndResourceUsageDescending() {
+        func port(_ number: UInt16, name: String, memory: Int64, cpu: Double) -> PortmanLocalPort {
+            PortmanLocalPort(pid: Int32(number), port: number, address: "127.0.0.1:\(number)",
+                             command: name, launchCommand: name, memoryBytes: memory,
+                             cpuPercent: cpu, uptime: "", started: 1, userID: geteuid())
+        }
+        let ports = [port(8000, name: "node", memory: 20, cpu: 2),
+                     port(3000, name: "python", memory: 10, cpu: 9),
+                     port(5000, name: "bun", memory: 30, cpu: 5)]
+        XCTAssertEqual(PortmanServerSort.port.sorted(ports).map(\.port), [3000, 5000, 8000])
+        XCTAssertEqual(PortmanServerSort.memory.sorted(ports).map(\.port), [5000, 8000, 3000])
+        XCTAssertEqual(PortmanServerSort.name.sorted(ports).map(\.port), [5000, 8000, 3000])
+        XCTAssertEqual(PortmanServerSort.cpu.sorted(ports).map(\.port), [3000, 5000, 8000])
     }
 
     func testClosedPortmanUsesLowDutyScanInterval() {
@@ -542,8 +560,8 @@ final class PortmanTests: XCTestCase {
     }
 
     @MainActor
-    func testPortmanForwardAlertsAndSettingsRenderInBothAppearances() throws {
-        for page in [PortmanPanelView.Page.forward, .alerts, .settings] {
+    func testPortmanForwardAndSettingsRenderInBothAppearances() throws {
+        for page in [PortmanPanelView.Page.forward, .settings] {
             for scheme in [ColorScheme.light, .dark] {
                 let host = NSHostingView(rootView: PortmanPanelView(initialPage: page)
                     .environment(\.colorScheme, scheme))
