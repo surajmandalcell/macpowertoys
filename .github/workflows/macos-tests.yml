@@ -21,17 +21,6 @@ jobs:
         run: brew install rclone
       - name: Run unit tests in the hosted Mac
         run: TEST_SESSION=isolated ADHOC=1 make test DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
-      - name: Exercise Switch and Portman in the hosted Mac
-        run: |
-          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
-            -derivedDataPath "$RUNNER_TEMP/macpowertoys-ui-derived" \
-            -resultBundlePath "$RUNNER_TEMP/app-ui.xcresult" \
-            -destination 'platform=macOS' -parallel-testing-enabled NO \
-            -only-testing:powertoysUITests/SwitchUITests \
-            -only-testing:powertoysUITests/PortmanUITests \
-            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
-            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
-            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
       - name: Build installable app archive
         run: |
           ADHOC=1 make build DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
@@ -74,16 +63,32 @@ jobs:
           name: tray-renders
           path: ${{ runner.temp }}/tray-renders
           if-no-files-found: warn
-      - name: Export app UI screenshots
+
+  portman-ui:
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise Portman in a fresh hosted Mac session
+        run: |
+          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-portman-ui" \
+            -resultBundlePath "$RUNNER_TEMP/portman-ui.xcresult" \
+            -destination 'platform=macOS' -parallel-testing-enabled NO \
+            -only-testing:powertoysUITests/PortmanUITests \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
+            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
+      - name: Export Portman captures
         if: always()
         run: |
-          if [ -d "$RUNNER_TEMP/app-ui.xcresult" ]; then
-            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/app-ui.xcresult" --output-path "$RUNNER_TEMP/app-ui-renders" --filter '*.png'
+          if [ -d "$RUNNER_TEMP/portman-ui.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/portman-ui.xcresult" --output-path "$RUNNER_TEMP/portman-ui-renders" --filter '*.png'
           fi
-      - name: Save app UI screenshots
+      - name: Save Portman captures
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-ui-renders
-          path: ${{ runner.temp }}/app-ui-renders
+          name: portman-ui-renders
+          path: ${{ runner.temp }}/portman-ui-renders
           if-no-files-found: warn
