@@ -168,6 +168,10 @@ final class PortmanUITests: XCTestCase {
         idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "6\n")
         XCTAssertEqual(Double((idle.value as? String) ?? ""), 6)
         idle.click()
+        idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "99\n")
+        XCTAssertEqual(Double((idle.value as? String) ?? ""), 6,
+                       "Out-of-range cleanup input replaced the saved value")
+        idle.click()
         idle.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "4\n")
 
         forward.click()

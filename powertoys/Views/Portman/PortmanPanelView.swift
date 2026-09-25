@@ -1514,9 +1514,7 @@ struct PortmanSettingsView: View {
                 HStack {
                     Text("Suggest after idle")
                     Spacer()
-                    TextField("Idle hours", value: $idleHours, format: .number)
-                        .frame(width: 48).multilineTextAlignment(.trailing)
-                        .onSubmit { idleHours = min(72, max(1, idleHours)) }
+                    PortmanIntegerSettingField("Idle hours", value: $idleHours, range: 1...72)
                     Text("hours").frame(width: 46, alignment: .leading)
                 }
             }
@@ -1524,9 +1522,7 @@ struct PortmanSettingsView: View {
                 HStack {
                     Text("Suggest after running")
                     Spacer()
-                    TextField("Running days", value: $runningDays, format: .number)
-                        .frame(width: 48).multilineTextAlignment(.trailing)
-                        .onSubmit { runningDays = min(30, max(1, runningDays)) }
+                    PortmanIntegerSettingField("Running days", value: $runningDays, range: 1...30)
                     Text("days").frame(width: 46, alignment: .leading)
                 }
             }
@@ -1534,9 +1530,7 @@ struct PortmanSettingsView: View {
                 HStack {
                     Text("Force quit after")
                     Spacer()
-                    TextField("Force quit seconds", value: $forceQuitSeconds, format: .number)
-                        .frame(width: 48).multilineTextAlignment(.trailing)
-                        .onSubmit { forceQuitSeconds = min(30, max(1, forceQuitSeconds)) }
+                    PortmanIntegerSettingField("Force quit seconds", value: $forceQuitSeconds, range: 1...30)
                     Text("seconds").frame(width: 46, alignment: .leading)
                 }
             }
@@ -1573,6 +1567,31 @@ struct PortmanSettingsView: View {
         } message: {
             Text("Portman will send stop requests for eligible servers, including long-running ones, without asking again.")
         }
+    }
+}
+
+private struct PortmanIntegerSettingField: View {
+    let label: String
+    @Binding var value: Double
+    let range: ClosedRange<Int>
+    @State private var draft = ""
+
+    init(_ label: String, value: Binding<Double>, range: ClosedRange<Int>) {
+        self.label = label
+        _value = value
+        self.range = range
+    }
+
+    var body: some View {
+        TextField(label, text: $draft)
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 48)
+            .multilineTextAlignment(.trailing)
+            .onAppear { draft = String(Int(value)) }
+            .onSubmit {
+                if let number = Int(draft), range.contains(number) { value = Double(number) }
+                draft = String(Int(value))
+            }
     }
 }
 
