@@ -199,6 +199,7 @@ final class FanControlService {
     static weak var current: FanControlService?
 
     private(set) var snapshot: FanSnapshot?
+    private(set) var hasCompletedRead = false
     private(set) var selectedPreset: FanPreset?
     private(set) var errorMessage: String?
     private(set) var isChanging = false
@@ -237,6 +238,7 @@ final class FanControlService {
         let currentRevision = revision
         let result = await Task.detached(priority: .utility) { FanCommand.read() }.value
         guard currentRevision == revision, !owners.isEmpty else { return }
+        hasCompletedRead = true
         snapshot = result
         if !ownsManualControl { selectedPreset = result?.detectedPreset }
     }
