@@ -69,9 +69,8 @@ nonisolated enum FanCommand {
     static func read() -> FanSnapshot? {
         if let smctlPath {
             if let output = try? run(smctlPath, ["fan", "status", "--json"]),
-               let status = try? JSONDecoder().decode(JSONStatus.self, from: Data(output.utf8)) {
-                return FanSnapshot(fans: status.fans, profile: status.profile,
-                                   canControl: !status.fans.isEmpty)
+               let snapshot = parseSmctlStatus(output) {
+                return snapshot
             }
             if let output = try? run(smctlPath, ["sensors", "--json"]),
                let status = try? JSONDecoder().decode(JSONStatus.self, from: Data(output.utf8)) {
@@ -83,6 +82,20 @@ nonisolated enum FanCommand {
             return parseStatsFans(output)
         }
         return nil
+    }
+
+    static func parseSmctlStatus(_ output: String) -> FanSnapshot? {
+        guard let status = try? JSONDecoder().decode(JSONStatus.self, from: Data(output.utf8)) else {
+            return nil
+        }
+        let knownModes = ["auto", "manual", "system"]
+        return FanSnapshot(
+            fans: status.fans,
+            profile: status.profile,
+            canControl: !status.fans.isEmpty && status.fans.allSatisfy {
+                knownModes.contains($0.mode?.lowercased() ?? "")
+            }
+        )
     }
 
     static func parseStatsFans(_ output: String) -> FanSnapshot? {

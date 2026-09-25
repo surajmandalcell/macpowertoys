@@ -21,6 +21,11 @@ struct FanControlView: View {
         guard !snapshot.fans.isEmpty else { return "No fans detected" }
         guard snapshot.canControl else {
             if service.canRestoreAutomatic { return "Fan helper unavailable · try Auto" }
+            if FanCommand.smctlPath != nil {
+                return snapshot.fans.contains { $0.mode?.hasPrefix("unknown") == true }
+                    ? "Fan control unavailable on this Mac"
+                    : "Fan helper unavailable · finish setup"
+            }
             return snapshot.hasExternalManualControl
                 ? "Manual fan speed set elsewhere · read only"
                 : "Read only · install smctl and approve its helper"
@@ -89,7 +94,8 @@ struct FanControlView: View {
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 10) {
                 presetButtons
-                if !service.canControl && (service.isAvailable || service.snapshot == nil) {
+                if !service.canControl && (service.isAvailable || service.snapshot == nil)
+                    && !(service.snapshot?.fans.contains { $0.mode?.hasPrefix("unknown") == true } ?? false) {
                     Link("Set up fan control", destination: URL(string: "https://github.com/leaperone/smctl/releases/latest")!)
                         .font(.system(size: 11))
                 }
