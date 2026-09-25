@@ -19,6 +19,19 @@
   `make test` without the isolated-session flag exits before Xcode starts.
   `build-for-testing` compiles both bundles without launching an app or runner.
 
+## Isolated macOS Unit Tests
+
+- **Symptom:** Executable XCTest verification on the owner's Mac can focus the
+  app or trigger a privacy or Gatekeeper dialog.
+- **Cause:** Unit tests launch a host app even when the test code itself has no
+  UI action.
+- **Invariant:** `.github/workflows/macos-tests.yml` runs the unit suite in a
+  hosted Xcode 27 Mac on code pushes or manual dispatch. It uses ad hoc signing,
+  the `TEST_SESSION=isolated` gate, and skips UI tests. Local owner-session
+  checks remain compile-only.
+- **Check:** Match the successful workflow run to the tested commit and inspect
+  its XCTest result. A passing build alone does not count as an executed test.
+
 ## Local Entitlements In Package Builds
 
 - **Symptom:** `make build` stops while packaging the AIManager Swift package.
