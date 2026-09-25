@@ -98,3 +98,11 @@ the hosted appearance test also captures Alerts. A local compile-only build
 reached unrelated, concurrently edited Disk Explorer code and stopped on a
 type-check timeout there. The next hosted build, interaction and screenshot
 checks, and replacement of installed `dc97280` remain open.
+
+Hosted run `36135491916` passed the unit step but its subsequent Portman UI
+step could not find the menu-bar panel. Its failure screenshot shows Local
+Network and Device Control permission dialogs from unrelated app startup in
+front of the desktop. No permission choice was made. Portman UI navigation now
+runs as a separate job on a fresh hosted Mac, while the unit job keeps its
+offscreen renders and installable archive. A local `build-for-testing` of the
+subsequent committed source passed without launching an app or runner.
