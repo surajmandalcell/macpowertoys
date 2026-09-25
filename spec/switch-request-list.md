@@ -75,8 +75,10 @@ an already populated model. The window now loads only a fresh model, and its
 render-state assertion runs before the tray's intentional refresh. Compile-only
 validation and every job in hosted run 36191255746 passed. Its populated
 Accounts renders at 1120pt and 880pt in both appearances show matching Identity
-and Usage state. The installed app and helper currently report `5ba62fc`,
-which contains the original-layout revision but not the final tray-refresh
-correction. An updated signed install remains pending. A
-live account and recovery check in the installed app remains open; synthetic
-verification did not touch the owner's saved accounts.
+and Usage state. Full hosted run 36192321188 also passed every job on the later
+shared code revision. The signed app and helper installed from clean `eef6657`
+pass strict verification, report matching source stamps, and the app runs from
+`/Applications/MacPowerToys.app` after a background launch. A live account and
+recovery check in the installed window remains open because Computer Use access
+to MacPowerToys was rejected by automatic approval review. Synthetic verification
+did not touch the owner's saved accounts.
