@@ -74,6 +74,18 @@
   selection persist. Compare Home and Cloud Sync alignment in light, dark,
   Increased Contrast, and Reduced Transparency.
 
+## Menu-Bar Empty-State Width
+
+- **Symptom:** The Cloud Sync tray icon and “No transfers yet” text sit in a
+  narrow column at the left edge, even though the popover is full width.
+- **Cause:** The empty view could fill only the width proposed by the measured
+  scroll content. The earlier layout check gave it a 360pt parent directly and
+  missed the scroll container's intrinsic-width path.
+- **Invariant:** Give every tray tab the popover's content width inside
+  `TrayMeasuredScroll`, before measuring its height.
+- **Check:** Open an empty Cloud Sync tray in the final signed build. The cloud
+  and text center inside the 360pt body in light and dark appearances.
+
 ## Menu-Bar Tab Density
 
 - **Symptom:** The combined popover becomes a second settings window or a long
