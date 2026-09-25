@@ -107,21 +107,10 @@ final class PortmanUITests: XCTestCase {
         let host = app.textFields["SSH alias or username at IP address"]
         host.click()
         host.typeText("alice@127.0.0.1")
-        app.buttons["Enter SSH password"].click()
-        XCTAssertTrue(app.secureTextFields["Password"].waitForExistence(timeout: 5),
-                      "A direct SSH host did not offer password authentication")
-        attach(app.screenshot(), named: "Portman SSH Password")
-        app.secureTextFields["Password"].click()
-        app.secureTextFields["Password"].typeText("test-password")
-        app.buttons["Continue"].click()
-        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5),
-                      "Submitting the password dismissed the Portman panel")
-        XCTAssertTrue(app.staticTexts["Authentication failed. Enter the password again."].waitForExistence(timeout: 10),
-                      "A rejected SSH password did not offer a retry")
-        attach(app.screenshot(), named: "Portman SSH Retry")
-        app.buttons["Cancel"].click()
+        XCTAssertFalse(app.buttons["Enter SSH password"].exists,
+                       "Forward offered a password before SSH requested one")
         XCTAssertFalse(app.secureTextFields["Password"].exists,
-                       "Cancel kept the SSH password prompt open")
+                       "Entering a host opened a premature password prompt")
         let remotePort = app.textFields["Remote port to add"]
         remotePort.click()
         remotePort.typeText("3000\n")
@@ -134,9 +123,29 @@ final class PortmanUITests: XCTestCase {
         let search = app.searchFields["portman.settings.search"]
         search.click()
         search.typeText("scan")
+        XCTAssertGreaterThan(search.frame.width, 300, "Settings search did not fill the content width")
         XCTAssertTrue(app.staticTexts["Scan ports"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Keyboard shortcut"].exists)
         attach(app.screenshot(), named: "Portman Settings search")
+        let interval = app.buttons["Scan every"]
+        XCTAssertTrue(interval.isHittable, "The scan interval selector is not clickable")
+        interval.click()
+        app.menuItems["5 seconds"].click()
+        XCTAssertEqual(app.buttons["Scan every"].value as? String, "5 seconds",
+                      "Choosing a scan interval did not update the setting")
+        interval.click()
+        app.menuItems["2 seconds"].click()
+        search.click()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4))
+        search.typeText("mode")
+        let cleanup = app.buttons["Cleanup mode"]
+        XCTAssertTrue(cleanup.isHittable, "The cleanup mode selector is not clickable")
+        cleanup.click()
+        app.menuItems["Off"].click()
+        XCTAssertEqual(app.buttons["Cleanup mode"].value as? String, "Off",
+                      "Choosing a cleanup mode did not update the setting")
+        cleanup.click()
+        app.menuItems["Ask"].click()
 
         forward.click()
         XCTAssertTrue(app.buttons["Forward 0 selected"].waitForExistence(timeout: 5),
