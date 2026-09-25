@@ -316,14 +316,27 @@
   edge, or one app invents different title, control, and content offsets.
 - **Cause:** A workspace chose local width or padding literals instead of its
   shared sidebar family and layout metrics.
-- **Invariant:** Launcher, Logs, and Input Devices use the 220pt compact family;
-  Cloud Sync, System Care, and System Monitor use the 240pt data family.
+- **Invariant:** Launcher, Logs, Input Devices, and System Monitor use the 220pt
+  compact family; Cloud Sync and System Care use the 240pt data family.
   Navigation groups have 12pt horizontal
   pane padding. All workspace titles and first controls use the shared 84pt and
   44pt edges.
 - **Check:** Search the complete workspace class for sidebar width, top padding,
   and title-leading literals. Open all six sidebars at default and minimum
   sizes; selected rows keep equal left and right pane clearance.
+
+## Content Action Button Density
+
+- **Symptom:** Disconnect and other content actions look too thin or leave
+  uneven space around their labels.
+- **Cause:** Native text and system-image button initializers plus mixed control
+  sizes made the visible label bounds depend on each call site.
+- **Invariant:** Regular content actions put equal 14pt leading and trailing
+  padding inside their native button and provide at least 36pt label height.
+  Keep compact title-bar actions and card controls at their own density.
+- **Check:** Compare Remote Stats Connect and Disconnect, process detail
+  actions, System Care cleanup actions, and launcher detail Open in the signed
+  build. Confirm even label space, visible focus, and usable disabled states.
 
 ## Launcher Detail Geometry
 
