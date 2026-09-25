@@ -25,6 +25,13 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["1  Install smctl"].exists)
         XCTAssertTrue(app.staticTexts["2  Approve its helper"].exists)
+        let installNote = app.staticTexts["Install with Homebrew, or use the guide for other methods."]
+        let approvalNote = app.staticTexts["Run this in Terminal. macOS will ask for administrator approval."]
+        XCTAssertTrue(installNote.exists)
+        XCTAssertTrue(approvalNote.exists)
+        XCTAssertGreaterThan(installNote.frame.height, 20)
+        XCTAssertGreaterThan(approvalNote.frame.height, 20)
+        XCTAssertTrue(app.buttons["Copy smctl installation command"].exists)
         XCTAssertTrue(app.buttons["Copy helper installation command"].exists)
         XCTAssertTrue(app.buttons["Check again"].exists)
 

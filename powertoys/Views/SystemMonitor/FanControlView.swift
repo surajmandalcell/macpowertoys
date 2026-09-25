@@ -100,34 +100,20 @@ struct FanControlView: View {
                 Divider()
                 Text("1  Install smctl")
                     .font(.system(size: 12, weight: .semibold))
-                Text("Install the fan utility for your Mac. RPM reading works without it.")
+                Text("Install with Homebrew, or use the guide for other methods.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                Link("Open smctl installation guide", destination: URL(string: "https://github.com/leaperone/smctl#install")!)
+                    .fixedSize(horizontal: false, vertical: true)
+                commandRow("brew install leaperone/smctl/smctl", accessibilityLabel: "Copy smctl installation command")
+                Link("Other installation methods", destination: URL(string: "https://github.com/leaperone/smctl#install")!)
                     .font(.system(size: 11))
                 Text("2  Approve its helper")
                     .font(.system(size: 12, weight: .semibold))
-                Text("Run this in Terminal and approve the administrator request:")
+                Text("Run this in Terminal. macOS will ask for administrator approval.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                HStack(spacing: 6) {
-                    Text("sudo smctl daemon install")
-                        .font(.system(size: 11, design: .monospaced))
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString("sudo smctl daemon install", forType: .string)
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                    }
-                    .buttonStyle(.borderless)
-                    .focusEffectDisabled()
-                    .accessibilityLabel("Copy helper installation command")
-                    .help("Copy command")
-                }
-                .padding(8)
-                .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
+                    .fixedSize(horizontal: false, vertical: true)
+                commandRow("sudo smctl daemon install", accessibilityLabel: "Copy helper installation command")
                 HStack {
                     Spacer()
                     Button("Check again") { Task { await service.refresh() } }
@@ -137,6 +123,28 @@ struct FanControlView: View {
         }
         .frame(width: 292, alignment: .leading)
         .padding(15)
+    }
+
+    private func commandRow(_ command: String, accessibilityLabel: String) -> some View {
+        HStack(spacing: 6) {
+            Text(command)
+                .font(.system(size: 11, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 4)
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(command, forType: .string)
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .buttonStyle(.borderless)
+            .focusEffectDisabled()
+            .accessibilityLabel(accessibilityLabel)
+            .help("Copy command")
+        }
+        .padding(8)
+        .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
     }
 
     private var expandedContent: some View {
