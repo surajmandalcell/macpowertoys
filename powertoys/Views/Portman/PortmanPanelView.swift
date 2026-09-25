@@ -301,9 +301,18 @@ struct PortmanPanelView: View {
             memoryBreakdown
 
             if service.localPorts.isEmpty {
-                ContentUnavailableView("No servers listening", systemImage: "network",
-                                       description: Text("Local development ports \(String(PortmanPreferences.scanRange.lowerBound))–\(String(PortmanPreferences.scanRange.upperBound)) will appear here."))
-                    .frame(maxWidth: .infinity, minHeight: 200)
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "network").foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No servers listening").font(.system(size: 12, weight: .medium))
+                        Text("Local development ports \(String(PortmanPreferences.scanRange.lowerBound))–\(String(PortmanPreferences.scanRange.upperBound)) will appear here.")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
             } else {
                 LazyVStack(spacing: 4) {
                     ForEach(service.localPorts) { port in localRow(port) }
