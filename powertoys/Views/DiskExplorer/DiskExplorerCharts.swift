@@ -23,6 +23,19 @@ enum DiskChartMeasure: String, CaseIterable, Identifiable {
         self == .files ? "\(entry.fileCount.formatted()) files" :
             ByteCountFormatter.string(fromByteCount: entry.bytes(apparent: apparent), countStyle: .file)
     }
+
+    func displayedChildren(in directory: DiskEntry, apparent: Bool, limit: Int,
+                           scanComplete: Bool) -> (shown: [DiskEntry], hidden: [DiskEntry]) {
+        let byPath = directory.children.sorted { $0.id < $1.id }
+        guard byPath.count > limit else { return (byPath, []) }
+        guard scanComplete else { return (Array(byPath.prefix(limit)), Array(byPath.dropFirst(limit))) }
+        let topIDs = Set(byPath.sorted {
+            let left = weight($0, apparent: apparent)
+            let right = weight($1, apparent: apparent)
+            return left == right ? $0.id < $1.id : left > right
+        }.prefix(limit).map(\.id))
+        return (byPath.filter { topIDs.contains($0.id) }, byPath.filter { !topIDs.contains($0.id) })
+    }
 }
 
 enum DiskChartPalette {
@@ -66,6 +79,7 @@ struct DiskTreemapView: View {
     let directory: DiskEntry
     let apparent: Bool
     let measure: DiskChartMeasure
+    let scanComplete: Bool
     let select: (DiskEntry) -> Void
     @State private var hoveredID: String?
     @State private var selectedID: String?
@@ -73,18 +87,19 @@ struct DiskTreemapView: View {
     private var chartAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.45) }
 
     var tiles: [DiskChartTile] {
-        let ordered = directory.children.sorted { $0.id < $1.id }
-        let shown = ordered.prefix(80)
+        let selection = measure.displayedChildren(in: directory, apparent: apparent,
+                                                  limit: 80, scanComplete: scanComplete)
+        let shown = selection.shown
         var result = shown.enumerated().map { index, entry in
             DiskChartTile(entry: entry, label: entry.name, weight: max(1, measure.weight(entry, apparent: apparent)),
                           detail: measure.detail(entry, apparent: apparent),
                           color: DiskChartPalette.color(for: entry, index: index, measure: measure))
         }
-        let remaining = ordered.dropFirst(80).reduce(Int64(0)) {
+        let remaining = selection.hidden.reduce(Int64(0)) {
             $0 + max(1, measure.weight($1, apparent: apparent))
         }
-        if ordered.count > 80 {
-            let measured = ordered.dropFirst(80).reduce(Int64(0)) {
+        if !selection.hidden.isEmpty {
+            let measured = selection.hidden.reduce(Int64(0)) {
                 $0 + measure.weight($1, apparent: apparent)
             }
             let detail = measure == .files ? "\(measured.formatted()) files" :
@@ -250,6 +265,7 @@ struct DiskSunburstView: View {
     let directory: DiskEntry
     let apparent: Bool
     let measure: DiskChartMeasure
+    let scanComplete: Bool
     let select: (DiskEntry) -> Void
     @State private var hoveredID: String?
     @State private var hoveredLabel: String?
@@ -261,7 +277,8 @@ struct DiskSunburstView: View {
         GeometryReader { geometry in
             let plotHeight = max(0, geometry.size.height - 41)
             let radius = max(0, min(geometry.size.width, plotHeight) / 2 - 10)
-            let segments = Self.segments(for: directory, apparent: apparent, measure: measure, radius: radius)
+            let segments = Self.segments(for: directory, apparent: apparent, measure: measure,
+                                         radius: radius, scanComplete: scanComplete)
             let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
             let focused = segments.first { $0.id == hoveredID } ?? segments.first { $0.id == selectedID }
             VStack(spacing: 0) {
@@ -373,19 +390,21 @@ struct DiskSunburstView: View {
     }
 
     static func segments(for root: DiskEntry, apparent: Bool,
-                         measure: DiskChartMeasure, radius: CGFloat) -> [DiskRingSegment] {
+                         measure: DiskChartMeasure, radius: CGFloat,
+                         scanComplete: Bool) -> [DiskRingSegment] {
         var result: [DiskRingSegment] = []
         let levels = root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
             root.children.contains { !$0.children.isEmpty } ? 2 : 1
         let band = CGFloat(0.68) / CGFloat(levels)
         func add(_ parent: DiskEntry, start: Double, end: Double, depth: Int, colorIndex: Int) {
             guard depth < 3 else { return }
-            let ordered = parent.children.sorted { $0.id < $1.id }
-            let total = ordered.reduce(Int64(0)) { $0 + max(1, measure.weight($1, apparent: apparent)) }
+            let total = parent.children.reduce(Int64(0)) { $0 + max(1, measure.weight($1, apparent: apparent)) }
             guard total > 0 else { return }
             var angle = start
             let limit = depth == 0 ? 24 : 12
-            let children = ordered.prefix(limit)
+            let selection = measure.displayedChildren(in: parent, apparent: apparent,
+                                                      limit: limit, scanComplete: scanComplete)
+            let children = selection.shown
             let inner = radius * (0.30 + CGFloat(depth) * band)
             let outer = radius * (0.30 + CGFloat(depth + 1) * band) - 2
             for (index, child) in children.enumerated() {
@@ -401,8 +420,8 @@ struct DiskSunburstView: View {
                     colorIndex: depth == 0 ? index : colorIndex)
                 angle = next
             }
-            if ordered.count > limit {
-                let remaining = ordered.dropFirst(limit).reduce(Int64(0)) {
+            if !selection.hidden.isEmpty {
+                let remaining = selection.hidden.reduce(Int64(0)) {
                     $0 + measure.weight($1, apparent: apparent)
                 }
                 let detail = measure == .files ? "\(remaining.formatted()) files" :

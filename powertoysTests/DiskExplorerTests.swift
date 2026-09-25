@@ -22,16 +22,23 @@ final class DiskExplorerTests: XCTestCase {
 
         let before = directory(lastWeight: 1)
         let after = directory(lastWeight: 1_000)
-        func treemapIDs(_ root: DiskEntry) -> Set<String> {
-            let view = DiskTreemapView(directory: root, apparent: false, measure: .space, select: { _ in })
+        func treemapIDs(_ root: DiskEntry, complete: Bool) -> Set<String> {
+            let view = DiskTreemapView(directory: root, apparent: false, measure: .space,
+                                       scanComplete: complete, select: { _ in })
             return Set(view.tiles.compactMap { $0.entry?.id })
         }
-        func ringIDs(_ root: DiskEntry) -> Set<String> {
-            Set(DiskSunburstView.segments(for: root, apparent: false, measure: .space, radius: 200)
+        func ringIDs(_ root: DiskEntry, complete: Bool) -> Set<String> {
+            Set(DiskSunburstView.segments(for: root, apparent: false, measure: .space,
+                                          radius: 200, scanComplete: complete)
                 .compactMap { $0.entry?.id })
         }
-        XCTAssertEqual(treemapIDs(before), treemapIDs(after))
-        XCTAssertEqual(ringIDs(before), ringIDs(after))
+        XCTAssertEqual(treemapIDs(before, complete: false), treemapIDs(after, complete: false))
+        XCTAssertEqual(ringIDs(before, complete: false), ringIDs(after, complete: false))
+        let largest = after.children[80].id
+        XCTAssertFalse(treemapIDs(after, complete: false).contains(largest))
+        XCTAssertFalse(ringIDs(after, complete: false).contains(largest))
+        XCTAssertTrue(treemapIDs(after, complete: true).contains(largest))
+        XCTAssertTrue(ringIDs(after, complete: true).contains(largest))
     }
 
     func testTreemapKeepsTileGroupsWhenMeasuredSizesCross() {
