@@ -131,6 +131,25 @@ final class SystemMonitorTests: XCTestCase {
         }
     }
 
+    func testProcessHierarchyKeepsEveryPIDAndSortsSiblings() {
+        let rows = [
+            SystemMonitorProcess(pid: 1, started: 1, name: "Parent", cpuPercent: 1,
+                                 residentBytes: 1, virtualBytes: 1, threads: 1, parentPID: 0,
+                                 userID: 501, executablePath: "/bin/parent"),
+            SystemMonitorProcess(pid: 2, started: 2, name: "Busy", cpuPercent: 30,
+                                 residentBytes: 1, virtualBytes: 1, threads: 1, parentPID: 1,
+                                 userID: 501, executablePath: "/bin/busy"),
+            SystemMonitorProcess(pid: 3, started: 3, name: "Quiet", cpuPercent: 2,
+                                 residentBytes: 1, virtualBytes: 1, threads: 1, parentPID: 1,
+                                 userID: 501, executablePath: "/bin/quiet"),
+        ]
+        let grouped = SystemMonitorProcessHierarchy.rows(Array(rows.reversed()), by: .cpu, descending: true)
+        XCTAssertEqual(grouped.map(\.process.pid), [1, 2, 3])
+        XCTAssertEqual(grouped.map(\.depth), [0, 1, 1])
+        XCTAssertEqual(SystemMonitorProcessPorts.parse("p42\nnTCP 127.0.0.1:9000\nnTCP 127.0.0.1:9000\nnUDP *:53\n"),
+                       ["TCP 127.0.0.1:9000", "UDP *:53"])
+    }
+
     @MainActor
     func testProcessesPageRendersAtProductionSize() throws {
         let host = NSHostingView(rootView: SystemMonitorProcessesView()

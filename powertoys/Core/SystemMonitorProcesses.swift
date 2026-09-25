@@ -24,6 +24,25 @@ nonisolated enum SystemMonitorProcessUsage {
     }
 }
 
+nonisolated enum SystemMonitorProcessPorts {
+    static func parse(_ output: String) -> [String] {
+        Array(Set(output.split(whereSeparator: \.isNewline)
+            .filter { $0.hasPrefix("n") }
+            .map { String($0.dropFirst()) }
+            .filter { !$0.isEmpty })).sorted().prefix(8).map { $0 }
+    }
+
+    static func endpoints(pid: Int32) async -> [String] {
+        guard let result = try? await SSHProcessRunner.run(
+            executableURL: URL(fileURLWithPath: "/usr/sbin/lsof"),
+            arguments: ["-nP", "-a", "-p", String(pid), "-iTCP", "-iUDP", "-F", "n"],
+            maximumOutputBytes: 65_536,
+            timeout: 3
+        ) else { return [] }
+        return parse(result.standardOutput)
+    }
+}
+
 actor SystemMonitorProcessSampler {
     struct PublicProcessInfo: Sendable {
         let parentPID: Int32
