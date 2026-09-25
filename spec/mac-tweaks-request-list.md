@@ -1,5 +1,14 @@
 # Mac Tweaks request list
 
+## Expanded catalogue request, 2026-09-25
+
+- [ ] Account for every record in the supplied 130-entry research catalogue with a per-feature implementation status and reason. Treat its availability marks as research evidence, not runtime certification.
+- [ ] Group Mac Tweaks into searchable categories. Sidebar search must rank titles, hidden keywords, phrase patterns, synonyms, and reasonable misspellings instantly.
+- [ ] Implement supported preference controls with exact-key backup, durable undo, managed-setting checks, and visible failure states. Batch activation where a target process must refresh.
+- [ ] Keep native settings shortcuts distinct from hidden controls. Show candidate, helper-dependent, and historical entries as documentation without a misleading toggle until their mechanisms and target OS behavior are verified.
+- [ ] Preserve Mic Lock as the first active enhancement. Mac Tweaks remains an on-demand window with no separate menu-bar item.
+- [ ] Verify code paths, build, installed app freshness, and available OS behavior. Report which parts still need macOS 15.8 and 26.7 runtime checks.
+
 ## Current request
 
 - [x] Add Mac Tweaks as an on-demand MacPowerToys window with a searchable list of tweaks. Do not add a Mac Tweaks menu-bar item or tab.
