@@ -392,6 +392,26 @@ struct PortmanTool: Tool {
     static let shared = PortmanTool()
 }
 
+struct MacTweaksTool: Tool {
+    let id = "mac-tweaks"
+    let name = "Mac Tweaks"
+    let description = "Find and control small Mac settings, starting with Mic Lock for Bluetooth headphone sound."
+    let icon = "slider.horizontal.3"
+    let logoAsset = ""
+    let category = ToolCategory.system
+    let searchKeywords = ["mic lock", "microphone", "bluetooth", "airpods", "audio input"]
+
+    let manual = [
+        ToolManualSection(title: "Mic Lock", points: [
+            "Open Mac Tweaks and turn on Mic Lock.",
+            "Choose a primary microphone and up to three fallbacks. A disconnected choice stays saved.",
+            "Mic Lock restores the first available choice when macOS changes input. If none is available, it selects a built-in or other non-wireless input."
+        ])
+    ]
+
+    static let shared = MacTweaksTool()
+}
+
 struct SwitchTool: Tool {
     let id = "switch"
     let name = "Switch"
@@ -450,6 +470,7 @@ struct ToolRegistry {
         SystemMonitorTool.shared,
         NetToysTool.shared,
         PortmanTool.shared,
+        MacTweaksTool.shared,
         SwitchTool.shared
     ]
 

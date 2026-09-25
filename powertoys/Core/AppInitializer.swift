@@ -53,6 +53,9 @@ final class AppInitializer {
             InputDevicesManager.shared.refresh()
         }
         SystemMonitorService.shared.startFromStoredSettings()
+        if SettingsManager.shared.isToolEnabled("mac-tweaks") {
+            MicLockService.shared.startIfNeeded()
+        }
 
         applyStoredTheme()
 
@@ -71,6 +74,7 @@ final class AppInitializer {
         LogManager.shared.info("App shutting down...", source: "AppInitializer")
         IndividualMenuBarController.shared.stop()
         PortmanMenuController.shared.stop()
+        MicLockService.shared.stop()
     }
 
     private func applyStoredTheme() {

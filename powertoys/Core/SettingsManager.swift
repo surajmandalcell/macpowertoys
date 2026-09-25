@@ -165,6 +165,8 @@ final class SettingsManager {
             enabled ? InputDevicesManager.shared.refresh() : InputDevicesManager.shared.stop()
         case "system-monitor":
             SystemMonitorService.shared.setToolEnabled(enabled)
+        case "mac-tweaks":
+            enabled ? MicLockService.shared.startIfNeeded() : MicLockService.shared.stop()
         case "rclone":
             transitioningToolIDs.insert(toolID)
             Task {

@@ -202,6 +202,15 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["switch"]))
         .restorationBehavior(.disabled)
 
+        Window("Mac Tweaks", id: "mac-tweaks") {
+            MacTweaksWindowView()
+                .utilityMotionPolicy()
+        }
+        .defaultSize(width: 900, height: 620)
+        .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: Set(["mac-tweaks"]))
+        .restorationBehavior(.disabled)
+
         MenuBarExtra("MacPowerToys", image: "MenuBarIcon", isInserted: trayBinding) {
             TrayPopoverView()
                 .utilityMotionPolicy()

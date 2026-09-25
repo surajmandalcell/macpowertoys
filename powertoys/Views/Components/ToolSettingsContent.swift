@@ -56,6 +56,16 @@ struct ToolSettingsContent: View {
             NetToysSettingsView()
         case "switch":
             SwitchLauncherSettingsView()
+        case "mac-tweaks":
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Mic Lock and other small Mac settings live in the Mac Tweaks window.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Button("Open Mac Tweaks") { ToolActionRouter.shared.open(toolID: "mac-tweaks") }
+                    .controlSize(.small)
+                Spacer()
+            }
+            .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
         case "input-devices":
             InputDevicesSettingsView()
         case "system-monitor":
