@@ -12,6 +12,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
     case systemCare = "system-care"
     case systemMonitor = "system-monitor"
     case netToys = "nettoys"
+    case portman
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .systemCare: "System Care"
         case .systemMonitor: "System Monitor"
         case .netToys: "NetToys"
+        case .portman: "Portman"
         }
     }
 
@@ -34,6 +36,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .systemCare: "internaldrive"
         case .systemMonitor: "chart.xyaxis.line"
         case .netToys: "network"
+        case .portman: "point.3.connected.trianglepath.dotted"
         }
     }
 
@@ -53,7 +56,7 @@ enum TrayPopoverLayout {
     static let transitionDuration = UtilityMotion.standardDuration
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
-        .cloudSync, .inputDevices, .systemCare, .systemMonitor, .netToys,
+        .cloudSync, .inputDevices, .systemCare, .systemMonitor, .netToys, .portman,
     ]
 
     static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {
@@ -234,6 +237,8 @@ struct TrayPopoverView: View {
             SystemMonitorTrayView()
         case .netToys:
             NetToysTrayView()
+        case .portman:
+            PortmanTrayView()
         }
     }
 
@@ -584,6 +589,68 @@ private struct TrayToolHeader: View {
         .padding(.top, 5)
         .padding(.bottom, 3)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct PortmanTrayView: View {
+    @State private var service = PortmanService.shared
+
+    private var activeTunnelCount: Int {
+        service.tunnels.filter {
+            if case .running = $0.state { return true }
+            return false
+        }.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TrayToolHeader(tab: .portman)
+            HStack {
+                Text("\(service.localPorts.count) listening")
+                Spacer()
+                Text("\(activeTunnelCount) forwarded")
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+
+            ForEach(service.localPorts.prefix(5)) { port in
+                HStack(spacing: 8) {
+                    Text(":\(port.port)")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.primary)
+                    Text(port.command).font(.system(size: 12)).lineLimit(1)
+                    Spacer()
+                    Text(ByteCountFormatter.string(fromByteCount: port.memoryBytes, countStyle: .memory))
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            }
+            if service.localPorts.isEmpty {
+                Text("No local development servers")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            }
+            ForEach(service.tunnels) { tunnel in
+                HStack {
+                    Image(systemName: "arrow.left.arrow.right")
+                    Text("\(tunnel.host):\(tunnel.remotePort) → localhost:\(tunnel.localPort)")
+                        .lineLimit(1)
+                    Spacer()
+                    Button("Stop") { service.stopTunnel(tunnel.id) }
+                        .controlSize(.mini)
+                }
+                .font(.system(size: 11))
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            }
+            Button("Open Portman") { ToolActionRouter.shared.open(toolID: "portman") }
+                .controlSize(.small)
+                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        }
+        .padding(.bottom, 10)
+        .onAppear { service.beginMonitoring() }
+        .onDisappear { service.endMonitoring() }
     }
 }
 
