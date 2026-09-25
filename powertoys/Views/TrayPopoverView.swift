@@ -528,7 +528,7 @@ private struct AwakeTrayRow: View {
             }
         }
         .padding(.leading, TrayPopoverLayout.horizontalInset + 4)
-        .padding(.trailing, TrayPopoverLayout.horizontalInset)
+        .padding(.trailing, 4)
         .padding(.vertical, 8)
     }
 }
