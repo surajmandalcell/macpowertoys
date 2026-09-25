@@ -725,6 +725,17 @@ final class PortmanService {
         isLoadingRemote = false
     }
 
+    func cancelRemoteScan() {
+        remoteRequestID = UUID()
+        isLoadingRemote = false
+    }
+
+    func clearRemoteScan() {
+        cancelRemoteScan()
+        remotePorts = []
+        forwardingError = nil
+    }
+
     @discardableResult
     func forward(host: String, remotePort: UInt16, localPort: UInt16, configurationFile: URL? = nil) -> Bool {
         let arguments: [String]
