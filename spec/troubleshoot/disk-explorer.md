@@ -1,5 +1,17 @@
 # Diskman Troubleshooting
 
+## Analyze Scan Status Leaks Into Modify
+
+- **Symptom:** The normal-mode Modify page showed Analyze's “chart updates live”
+  footer while it was listing physical disks.
+- **Cause:** The scan status inset belonged to every page in the Diskman window,
+  and switching pages did not cancel the Analyze scan.
+- **Invariant:** Reserve the scan footer only on Analyze. Cancel an active scan
+  when leaving Analyze; selecting an Analyze source starts a fresh scan.
+- **Check:** Hosted normal-mode run `36173007922` passed the Modify assertion
+  that the Analyze scan text is absent. Its Modify capture shows only the disk
+  inventory's own progress state.
+
 ## Detail Footer Hidden From Accessibility
 
 - **Symptom:** Hosted run `36162099059` rendered the detail row below each
