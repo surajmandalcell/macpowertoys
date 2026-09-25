@@ -189,6 +189,22 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertLessThanOrEqual(AwakeService.presetLabel(7200).count, 4)
     }
 
+    func testAwakeTimerRunsOnlyForDeadlinesOrAttachedProcesses() {
+        var configuration = AwakeConfiguration()
+        XCTAssertFalse(AwakeService.requiresTimer(configuration))
+        configuration.mode = .indefinite
+        XCTAssertFalse(AwakeService.requiresTimer(configuration))
+        configuration.mode = .timed
+        XCTAssertTrue(AwakeService.requiresTimer(configuration))
+        configuration.mode = .until
+        XCTAssertTrue(AwakeService.requiresTimer(configuration))
+        configuration.mode = .passive
+        configuration.attachedProcessID = 123
+        XCTAssertFalse(AwakeService.requiresTimer(configuration))
+        configuration.mode = .indefinite
+        XCTAssertTrue(AwakeService.requiresTimer(configuration))
+    }
+
     func testActionIDsMapToTools() {
         XCTAssertEqual(ToolActionID.rulerOpen.toolID, "ruler")
         XCTAssertEqual(ToolActionID.colorPickerCopyLast.toolID, "color-picker")
