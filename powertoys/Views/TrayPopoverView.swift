@@ -439,8 +439,7 @@ private struct TrayHomeView: View {
                 }
                 if SettingsManager.shared.isToolEnabled("system-monitor") {
                     FanControlView(owner: "tray-home", compact: true)
-                        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 4)
                 }
             }
         }
@@ -520,7 +519,7 @@ private struct AwakeTrayRow: View {
                     .padding(.leading, 32)
             }
         }
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(.horizontal, TrayPopoverLayout.horizontalInset + 8)
         .padding(.vertical, 8)
     }
 }
@@ -1113,10 +1112,9 @@ private struct SystemMonitorTrayView: View {
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
             .padding(.top, 4)
             FanControlView(owner: "system-monitor-tray", compact: true)
-                .padding(.horizontal, TrayPopoverLayout.horizontalInset)
                 .padding(.top, 8)
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 18)
         .onAppear { service.startDetailed(owner: "tray") }
         .onDisappear { service.stopDetailed(owner: "tray") }
     }
@@ -1149,11 +1147,15 @@ private struct SystemMonitorTrayView: View {
             TrayMetricSparkline(values: values, color: color)
                 .frame(height: 18)
         }
-        .padding(9)
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
-        .background(color.opacity(0.065), in: RoundedRectangle(cornerRadius: 8))
+        .padding(11)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .background(
+            LinearGradient(colors: [color.opacity(0.19), color.opacity(0.08)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.045))
+            RoundedRectangle(cornerRadius: 10).strokeBorder(color.opacity(0.18))
         }
     }
 

@@ -108,8 +108,9 @@ motion:
 MacPowerToys is a dense, quiet, native-feeling macOS utility. It should read like a
 first-party Apple tool that a careful engineer polished: flat surfaces, one accent
 color doing all the talking, small type, generous alignment discipline, zero
-decoration for its own sake. Nothing bounces, glows, or gradients. When in doubt,
-remove chrome rather than add it.
+decoration for its own sake. Nothing bounces or glows. System Monitor has the
+scoped tinted-gradient treatment below; elsewhere, avoid UI gradients. When in
+doubt, remove chrome rather than add it.
 
 Every custom interactive control gives short feedback on hover, press, and
 selection. Content and layout changes keep the existing 0.16-second transition.
@@ -544,7 +545,16 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
-| System Monitor | 1080×720 / 240pt | Metric destinations and menu settings | Live charts and metric grids |
+| System Monitor | 1080×720 / 240pt | Overview, Processes, CPU, Memory, Network & Disk, Remote | Full process list, live metric grids, and per-metric menu placement |
+
+System Monitor follows the owner's dark, bulkier utility-panel reference. Its
+dark sidebar and content pane use opaque near-black surfaces with a warm cast;
+the selected sidebar row uses a neutral gray fill. Overview and tray metric
+cards use restrained tinted gradients, clear edges, and larger readings. The
+compact Fan control is a plain row aligned with Awake and the metric-card
+inset, with a native segmented control and breathing room below it. Search is
+at least 34pt high with a 12pt horizontal inset. Keep these exceptions inside
+System Monitor; other workspaces retain their shared flat materials.
 
 A new workspace's product brief chooses destinations and data, then follows the
 closest content pattern: homogeneous operational items use dense rows; grouped
@@ -1022,8 +1032,9 @@ same metaphor because macOS controls their tint.
   opacities other than 0.1 (0.18 for filled), selection other than accent 0.1,
   native sidebar selection, solid accent tray-tab selection, or the explicit
   Tab Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
-- **Never** use capsule buttons, UI gradients, or baked icon effects. Capsules
-  remain valid only for progress tracks and documented state or count badges.
+- **Never** use capsule buttons or baked icon effects. Capsules remain valid
+  only for progress tracks and documented state or count badges. UI gradients
+  are reserved for System Monitor's metric cards as specified above.
 - **Never** add a second alignment gutter inside one container.
 - **Never** use `.formStyle(.grouped)` where its opaque insets break the shared
   edge. Prefer explicit section cards and labeled rows.
