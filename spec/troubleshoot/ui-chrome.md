@@ -59,6 +59,19 @@
   Its mapping remains visible, and no unnamed remote-port list appears until
   a host is scanned again.
 
+## Portman Failed Forward Message
+
+- **Symptom:** The Failed Forward row clips the SSH error after a few words
+  beside Retry and Stop, so the reason for failure is unreadable.
+- **Cause:** The remote endpoint and failure message shared a single-line label
+  in the narrow 400pt menu-bar panel.
+- **Invariant:** Keep the local endpoint and actions in the row, then give the
+  remote endpoint and error separate lines. The row tooltip contains the full
+  mapping and error when a long SSH message still needs truncation.
+- **Check:** Capture Failed Forward in light and dark appearances at the real
+  panel width after terminating an active SSH tunnel. Read the error and reach
+  Retry and Stop without horizontal clipping.
+
 ## Portman Cleanup And Detail On Short Screens
 
 - **Symptom:** The selected-cleanup Stop button rendered gray, and a 488pt-high
