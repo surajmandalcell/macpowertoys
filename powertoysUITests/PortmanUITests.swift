@@ -2,6 +2,38 @@ import XCTest
 
 final class PortmanUITests: XCTestCase {
     @MainActor
+    func testServerHoverReplacesMetricsWithActions() throws {
+        let listener = Process()
+        listener.executableURL = URL(fileURLWithPath: "/usr/bin/nc")
+        listener.arguments = ["-l", "7265"]
+        try listener.run()
+        defer {
+            if listener.isRunning { listener.terminate() }
+            listener.waitUntilExit()
+        }
+        Thread.sleep(forTimeInterval: 0.25)
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launch()
+        defer { app.terminate() }
+
+        let row = app.buttons["portman.local.7265"]
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "Portman did not discover the test listener")
+        attach(app.screenshot(), named: "Portman server at rest")
+
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
+        let link = app.buttons["portman.link.7265"]
+        XCTAssertTrue(link.waitForExistence(timeout: 5), "Row hover did not show the link action")
+        XCTAssertTrue(app.buttons["portman.stop.7265"].exists)
+        attach(app.screenshot(), named: "Portman server hover")
+
+        link.hover()
+        attach(app.screenshot(), named: "Portman link hover")
+    }
+
+    @MainActor
     func testNormalLaunchOpensMenuBarPanelAndNavigates() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
