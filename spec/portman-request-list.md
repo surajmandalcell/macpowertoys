@@ -46,3 +46,11 @@ the service did not show Failed within six seconds. The callback ordering was
 corrected, and the test now records listener and process state on failure. The
 corrected revision compiled locally without launching the app; hosted runtime
 verification is pending.
+
+Hosted run [36121832154](https://github.com/surajmandalcell/macpowertoys/actions/runs/36121832154)
+again reported a Forwarding tunnel six seconds after its SSH listener and
+signaled process had exited; 863 tests passed, one failed, and five were
+skipped. The next test revision signals the exact `Process` owned by Portman
+instead of inferring its PID from `lsof`, and checks that failed tunnels release
+their process entry. It compiled without a local app or test-host launch;
+hosted verification is pending.
