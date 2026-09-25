@@ -266,6 +266,7 @@ struct PortmanWindowView: View {
                 Label("Servers", systemImage: "chevron.left")
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .font(.system(size: 11))
             .contentShape(Rectangle())
 
