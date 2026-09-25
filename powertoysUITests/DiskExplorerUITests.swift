@@ -35,7 +35,8 @@ final class DiskExplorerUITests: XCTestCase {
         attach(app.screenshot(), named: "Disk Explorer Scan Statistics")
         statistics.click()
 
-        let treemap = window.descendants(matching: .any)["diskExplorer.treemap"]
+        let treemap = window.descendants(matching: .any)
+            .matching(identifier: "diskExplorer.treemap").firstMatch
         XCTAssertTrue(treemap.waitForExistence(timeout: 10))
         let currentFolder = treemap.label
         let tile = treemap.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
@@ -50,7 +51,8 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [drilledFolder], timeout: 5), .completed)
 
         window.descendants(matching: .any)["Rings"].click()
-        let rings = window.descendants(matching: .any)["diskExplorer.rings"]
+        let rings = window.descendants(matching: .any)
+            .matching(identifier: "diskExplorer.rings").firstMatch
         XCTAssertTrue(rings.waitForExistence(timeout: 5))
         rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
         let hoveredRing = XCTNSPredicateExpectation(
