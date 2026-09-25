@@ -12,7 +12,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Code complete; live check pending | Add Switch to the built-in launcher and give it a native full workspace, window routing, Dock identity, and saved window size. | Open from the launcher and a direct tool link; enable and disable it like other tools. |
 | Build verified; live check pending | Use Switch Core without requiring Switch.app or importing its GUI/TUI modules. | A clean MacPowerToys build resolves the pinned Core package and launches with Switch.app absent. |
 | Code complete; live check pending | Manage supported accounts in the workspace. | Discover/import, sign in, switch defaults, verify, view usage, and remove accounts through Core with errors and recovery states visible. |
-| Code complete; live check pending | Provide Switch's conversation and maintenance features where Core supports them. | Browse/search history and review cleanup before any destructive action; recovery remains discoverable. |
+| Code complete; live check pending | Provide Switch's conversation and maintenance features where Core supports them. | Browse/search conversations and messages, filter roles, copy shown messages, page through long transcripts, and review cleanup before any destructive action; recovery remains discoverable. |
 | Pending isolated UI check | Match MacPowerToys workspace visual and accessibility rules. | Inspect normal signed UI at default and minimum sizes in light/dark appearances; check loading, empty, selected, error, and keyboard states. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling; Core runs history scans with bounded workers; synthetic paths for automated tests; no login Keychain access. |
 
@@ -40,3 +40,9 @@ A separate headless run used the exact Core revision pinned by MacPowerToys
 with synthetic credentials. It imported two accounts, changed the default,
 and removed the active account with an explicit replacement. No browser,
 real credential store, or app window was opened.
+
+The message workspace now uses Core's complete-conversation search and paged
+detail API. A synthetic 121-message transcript was checked headlessly: the
+first 100 and remaining 21 loaded in order, a response beyond the first page
+matched a two-term search, the prompt filter excluded it, and export contained
+only the shown result. The app and test bundles compiled without a launch.
