@@ -154,10 +154,12 @@ struct MacTweaksWindowView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.primary)
                     Spacer(minLength: 8)
-                    Text(isSearching ? item.category : sectionName(for: item))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .fixedSize()
+                    if isSearching {
+                        Text(item.category)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                    }
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.tertiary)
