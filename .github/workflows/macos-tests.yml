@@ -1,0 +1,21 @@
+name: macOS unit tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/macos-tests.yml
+      - Makefile
+      - powertoys/**
+      - powertoysTests/**
+      - powertoys.xcodeproj/**
+
+jobs:
+  unit-tests:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit tests in the hosted Mac
+        run: TEST_SESSION=isolated ADHOC=1 make test DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
