@@ -274,6 +274,7 @@ struct DiskSunburstView: View {
             .allowsHitTesting(false)
             .utilityContentTransition(value: focused?.id ?? directory.id)
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ring chart of \(directory.name)")
         .accessibilityValue(hoveredLabel ?? "\(directory.children.count) items")
         .accessibilityHint("Point to a segment for its name and size; select it to inspect or open")
