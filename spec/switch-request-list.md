@@ -51,6 +51,6 @@ first-run state. The empty account list stays hidden until an account or
 importable source exists. Hosted run 36150764154 passed launcher and CLI routes,
 Accounts/Recovery navigation, and opening About, with final window captures.
 Run 36150672552 captured empty and populated Accounts at 880pt and 1,024pt in
-light and dark, plus Recovery and the quick menu. It passed 871 unit tests;
-one unrelated Portman/Tray focus-outline assertion failed. No Switch test
-failed. The signed installed app still needs a focus-preserving final check.
+light and dark, plus Recovery and the quick menu. The focus-outline assertion
+was corrected, and the full hosted macOS suite passed in run 36153836043.
+The signed installed app still needs a focus-preserving final check.
