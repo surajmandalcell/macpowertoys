@@ -1,4 +1,6 @@
 import Darwin
+import AppKit
+import SwiftUI
 import XCTest
 @testable import powertoys
 
@@ -162,6 +164,7 @@ final class PortmanTests: XCTestCase {
         XCTAssertTrue(child.isRunning)
     }
 
+    @MainActor
     func testRestartReopensAListeningServer() async throws {
         guard FileManager.default.isExecutableFile(atPath: "/usr/bin/python3") else {
             throw XCTSkip("The hosted Mac has no Python 3 executable.")
@@ -215,6 +218,28 @@ final class PortmanTests: XCTestCase {
         }
         let listener = try XCTUnwrap(original)
         XCTAssertNotNil(PortmanLaunch.capture(listener, folder: folder.path))
+        let service = PortmanService.shared
+        service.beginMonitoring()
+        defer { service.endMonitoring() }
+        await service.refreshLocal()
+        let panelHasListener = service.localPorts.contains { $0.pid == listener.pid && $0.port == port }
+        XCTAssertTrue(panelHasListener)
+        let host = NSHostingView(rootView: PortmanPanelView().environment(\.colorScheme, .dark))
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(x: 0, y: 0, width: 400, height: 500)
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(200))
+        host.frame.size = host.fittingSize
+        host.layoutSubtreeIfNeeded()
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: host.bounds.size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "Portman — Live Server — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
         try await PortmanRestart.run(listener, folder: folder.path)
 
         for _ in 0..<20 {
