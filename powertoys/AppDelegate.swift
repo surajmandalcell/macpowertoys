@@ -179,8 +179,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         didFinishLaunching = true
         startApplicationIfReady()
-        if AppRuntime.isRunningTests
-            || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo) {
+        if !AppRuntime.isUITesting && (AppRuntime.isRunningTests
+            || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo)) {
             DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
         }
     }

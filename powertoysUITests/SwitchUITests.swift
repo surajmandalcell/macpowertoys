@@ -12,7 +12,7 @@ final class SwitchUITests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
 
         let app = XCUIApplication()
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "main"]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launchEnvironment["AI_MANAGER_ROOT"] = root.path
         app.launch()
