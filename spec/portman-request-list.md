@@ -119,3 +119,8 @@ empty placeholder with a compact card, yet the card's second line still fell
 below the 300-point panel. The empty overview now budgets the card's full
 height, shows numeric `0 KB`, and has a hosted visibility assertion. Recheck
 that capture and the final signed build before closing the request.
+
+Run `36139447108` passed the fresh hosted Portman navigation and empty-text
+visibility checks. Its Servers capture shows equal tab widths and the complete
+empty-state message, but leaves excess space below that card. The zero-server
+panel is now 330 points rather than 375; its final capture is pending.
