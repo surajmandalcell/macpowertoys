@@ -828,22 +828,21 @@ variant weakens the deliberate temperature and contrast difference.
 | Logs | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
 | Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
 | Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
-| Color Picker | Chosen Color | Chosen Color | Colored samples are semantic and fixed |
-| Text Extractor | Chosen Color | Chosen Color | Yellow OCR lens identity is fixed |
-| Input Devices | Chosen Color | Chosen Color | Blue detailed-mouse identity is fixed |
-| System Care | Chosen Color | Chosen Color | S11-08 centered disk-and-eraser identity is fixed |
+| Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
+| Text Extractor | Chosen Color | Chosen Color | Capture card with a selected text strip |
+| Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
+| System Care | Chosen Color | Chosen Color | Cleanup tray with one removable block |
+| Disk Explorer | Chosen Color | Chosen Color | Owner-selected Sector platter |
 | System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
-| NetToys | Porcelain | Porcelain | SV02 pixel monitor identity is fixed in both appearances |
+| NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 
-The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` supersedes
-the fixed-identity decisions above for Color Picker, Text Extractor, Input
-Devices, System Care, and NetToys. Disk Explorer uses the selected Sector
-platter direction. The refresh uses detailed bitmap concept art, so production
-assets for these six tools may use PNG image sets while preserving the shared
-rounded tile shape, appearance, and small-size checks. The unchanged tool
-assets continue to follow the SVG construction rules below.
+The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
+the prior identities for these six tools. They use 512px PNG image sets with
+transparent rounded corners and one universal appearance. Their detailed
+material finish follows the owner-selected Sector platter. All remaining tool
+icons continue to follow the SVG construction rules below.
 
-The base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
+For SVG tools, the base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
 dark asset. Tools that use Chosen Color in both modes keep one universal SVG.
 
@@ -855,8 +854,8 @@ palette or reuse another tool's semantic hue.
 
 ### Construction
 
-- Every active tool-icon appearance uses the same outer SVG template. This rule
-  applies to every tool and to every light and dark variant without exception.
+- Every active SVG tool-icon appearance uses the same outer SVG template. This
+  applies to every remaining SVG tool and light and dark variant.
 - Use a `512 × 512` SVG view box and a full-canvas tile.
 - Define `clipPath id="tile"` with a `512 × 512` rectangle and `rx="112"`.
   Wrap the ground and all artwork in `<g clip-path="url(#tile)">`.
@@ -882,9 +881,10 @@ palette or reuse another tool's semantic hue.
   legacy exception: Cloud Sync and Logs retain their listed
   `#FFFFFF` foregrounds. Neutral Midnight/Porcelain assets always use their own
   closed glyph tokens rather than either white.
-- No decorative outline, gloss, blur, rim light, or soft drop shadow. A gradient
-  is allowed only when color itself is the metaphor or part of an approved
-  legacy Chosen Color asset.
+- SVG icons use no decorative outline, gloss, blur, rim light, or soft drop
+  shadow. A gradient is allowed only when color itself is the metaphor or part
+  of an approved legacy Chosen Color asset. The six bitmap icons above keep
+  their shallow material lighting from the approved visual direction.
 
 The base application icon is the deliberate exception to the tool/plugin SVG
 construction rules above. `powertoys/AppIcon.icon` uses Icon Composer's
@@ -931,11 +931,10 @@ has been changed.
 | Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
-| Color Picker | `#23272E` | `#F7F5F0` | Coral-violet-blue sample |
-| Text Extractor | `#2155B0` | `#FAF6EA` at `.88` | Powder-blue lens and muted sand waves |
-| Input Devices | `#1C1D22` | `#F4F4F5` | OX16 Midnight Tether mouse and solid gray echo |
-| System Care | `#17181B` | `#F3F3F1` | S11-08 gray disk and centered eraser |
 | System Monitor | `#002B26` | `#E0FFF8` | OSM13 teal tidal waveform bands |
+
+The six bitmap identities in the appearance matrix take their colors from
+their approved `icon.png` assets, rather than this SVG palette table.
 
 New Chosen Color tools should receive their own semantic hue unless a documented
 product decision deliberately links them to an existing color. Neutral
@@ -980,11 +979,16 @@ An image set with different appearance assets uses this shape:
 - Keep `preserves-vector-representation` enabled for appearance-aware image
   sets.
 - If both appearances use the same Chosen Color icon, keep a single universal
-  image entry. Do not duplicate an identical dark file.
+  image entry (`icon.svg` or an approved `icon.png`). Do not duplicate an
+  identical dark file.
 - Launcher cards and the Dock use the same named asset. Do not create a separate
   Dock-only color treatment.
 
 ### Generation Workflow
+
+The steps below apply to SVG tool icons. The six bitmap icons named in the
+appearance matrix use 512px RGBA PNG sources, one universal image entry per
+image set, transparent corners, and 512/64/32/16px visual checks.
 
 1. Pick one literal object or action for the tool. Do not combine metaphors.
 2. Sketch and approve one master semantic glyph at 512px using rounded filled
