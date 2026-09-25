@@ -1204,9 +1204,7 @@ actor NetToysScanner {
         update?(result)
         guard reachable, !Task.isCancelled else { return result }
 
-        result.hostname = await HostResolver.reverse(address)
-        if result.hostname != nil { update?(result) }
-
+        async let hostname = HostResolver.reverse(address)
         let metadata = await NetToysProtocolFetchers.collect(
             address: address,
             openPorts: openPorts,
@@ -1221,6 +1219,8 @@ actor NetToysScanner {
             || metadata.netBIOSName != nil || metadata.customText != nil {
             update?(result)
         }
+        result.hostname = await hostname
+        if result.hostname != nil { update?(result) }
         return result
     }
 
