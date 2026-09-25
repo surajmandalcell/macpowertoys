@@ -615,6 +615,19 @@
   select Manual and confirm no second automatic sample, then disconnect.
   Open Terminal from the action and confirm it starts the selected SSH session.
 
+- **Symptom:** A 5-second Remote Stats refresh establishes a fresh SSH
+  connection for every sample.
+- **Cause:** Each bounded remote command launched a new OpenSSH client with no
+  control socket to reuse the authenticated connection.
+- **Invariant:** Reuse a per-user OpenSSH control socket while Remote Stats is
+  connected, keep BatchMode and host validation, and send an explicit master
+  exit on disconnect, page exit, or sample failure. The temporary socket must
+  fit macOS's Unix-domain path limit.
+- **Check:** `ssh -G` resolves ControlMaster, ControlPersist, and the short
+  temporary ControlPath. The focused argument regression keeps the remote
+  command unchanged. On a live host, confirm the second sample reuses the
+  master and no control socket or SSH master remains after Disconnect.
+
 - **Symptom:** A protected-process fallback can leave Processes loading when
   `/bin/ps` stalls or emits excessive output.
 - **Cause:** The fallback read its pipe to EOF and waited for exit before

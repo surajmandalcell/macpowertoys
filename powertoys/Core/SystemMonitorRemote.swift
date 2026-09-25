@@ -78,7 +78,8 @@ nonisolated enum SystemMonitorRemoteProtocol {
         }
     }
 
-    static func arguments(host: String, platform: SystemMonitorRemotePlatform = .linux) throws -> [String] {
+    static func arguments(host: String, platform: SystemMonitorRemotePlatform = .linux,
+                          controlPath: String? = nil) throws -> [String] {
         guard validHost(host) else { throw SystemMonitorRemoteError.unsafeHost }
         let remoteCommand: String
         switch platform {
@@ -88,11 +89,16 @@ nonisolated enum SystemMonitorRemoteProtocol {
             let encoded = Data(windowsScript.utf16.flatMap { [UInt8($0 & 0xff), UInt8($0 >> 8)] }).base64EncodedString()
             remoteCommand = "powershell.exe -NoProfile -NonInteractive -EncodedCommand \(encoded)"
         }
-        return [
+        var options = [
             "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
             "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
-            "-o", "LogLevel=ERROR", "-T", "--", host, remoteCommand,
+            "-o", "LogLevel=ERROR"
         ]
+        if let controlPath {
+            options += ["-o", "ControlMaster=auto", "-o", "ControlPersist=600",
+                        "-o", "ControlPath=\(controlPath)"]
+        }
+        return options + ["-T", "--", host, remoteCommand]
     }
 
     static func parse(_ output: String) throws -> SystemMonitorRemoteCounters {
@@ -203,10 +209,14 @@ actor SystemMonitorRemotePoller {
     private var previous: SystemMonitorRemoteCounters?
     private var previousTime: Date?
     private var previousHost: String?
+    private var sessionHost: String?
+    private var controlPath: String?
 
     func sample(host: String, platform: SystemMonitorRemotePlatform = .linux) async throws -> SystemMonitorRemoteReading {
-        let arguments = try SystemMonitorRemoteProtocol.arguments(host: host, platform: platform)
-        // ponytail: one SSH handshake per sample; use a request-driven session if measured host cost is high.
+        let path = multiplexPath()
+        let arguments = try SystemMonitorRemoteProtocol.arguments(host: host, platform: platform,
+                                                                   controlPath: path)
+        sessionHost = host
         let result = try await SSHProcessRunner.run(
             executableURL: SSHKeyAccessConfiguration.sshURL,
             arguments: arguments,
@@ -240,5 +250,24 @@ actor SystemMonitorRemotePoller {
             memoryTotal: counters.memoryTotal, download: down, upload: up,
             diskUsed: counters.diskUsed, diskTotal: counters.diskTotal, load: counters.load
         )
+    }
+
+    func close() async {
+        guard let sessionHost, let controlPath else { return }
+        self.sessionHost = nil
+        self.controlPath = nil
+        _ = try? await SSHProcessRunner.run(
+            executableURL: SSHKeyAccessConfiguration.sshURL,
+            arguments: ["-o", "BatchMode=yes", "-S", controlPath, "-O", "exit", "--", sessionHost],
+            maximumOutputBytes: 1_024,
+            timeout: 3
+        )
+    }
+
+    private func multiplexPath() -> String {
+        if let controlPath { return controlPath }
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("mpt-%C").path
+        controlPath = path
+        return path
     }
 }

@@ -137,6 +137,7 @@ struct SystemMonitorRemoteView: View {
                     guard !Task.isCancelled else { return }
                     errorMessage = error.localizedDescription
                     connected = false
+                    await poller.close()
                     return
                 }
                 guard interval > 0 else { return }
@@ -162,6 +163,8 @@ struct SystemMonitorRemoteView: View {
     }
 
     private func disconnect() {
+        let stoppedPoller = poller
+        Task { await stoppedPoller.close() }
         connected = false
         reading = nil
         lastUpdated = nil
