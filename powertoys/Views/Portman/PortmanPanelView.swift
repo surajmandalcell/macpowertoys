@@ -747,8 +747,8 @@ struct PortmanPanelView: View {
                 Chart {
                     ForEach(samples) { sample in
                         BarMark(x: .value("Time", sample.date),
-                                y: .value("CPU", sample.cpuPercent))
-                            .width(.fixed(2))
+                                y: .value("CPU", sample.cpuPercent),
+                                width: .fixed(2))
                             .foregroundStyle(hovered?.date == sample.date ? Color.accentColor : Color.secondary.opacity(0.5))
                     }
                     if let hovered {
