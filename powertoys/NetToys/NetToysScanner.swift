@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import dnssd
 
 nonisolated enum NetToysNeighborServiceContract {
     static let daemonPlistName = "com.surajmandal.macpowertoys.nettoys-neighbor.plist"
@@ -1293,25 +1294,51 @@ nonisolated enum HostResolver {
     }
 
     private static func reverseSynchronously(_ address: IPv4Address) -> String? {
-        var socketAddress = sockaddr_in()
-        socketAddress.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-        socketAddress.sin_family = sa_family_t(AF_INET)
-        guard inet_pton(AF_INET, address.description, &socketAddress.sin_addr) == 1 else { return nil }
-        var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-        let result = withUnsafePointer(to: &socketAddress) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                getnameinfo(
-                    $0,
-                    socklen_t(MemoryLayout<sockaddr_in>.size),
-                    &host,
-                    socklen_t(host.count),
-                    nil,
-                    0,
-                    NI_NAMEREQD
-                )
-            }
+        let queryName = address.description.split(separator: ".").reversed().joined(separator: ".") + ".in-addr.arpa."
+        var answer: String?
+        return withUnsafeMutablePointer(to: &answer) { answerPointer in
+            var query: DNSServiceRef?
+            let status = DNSServiceQueryRecord(
+                &query, 0, 0, queryName,
+                UInt16(kDNSServiceType_PTR), UInt16(kDNSServiceClass_IN),
+                { _, flags, _, error, _, _, _, length, data, _, context in
+                    guard error == kDNSServiceErr_NoError,
+                          flags & kDNSServiceFlagsAdd != 0,
+                          let data, let context, length <= 255 else { return }
+                    context.assumingMemoryBound(to: String?.self).pointee =
+                        HostResolver.ptrHostname(from: Data(bytes: data, count: Int(length)))
+                },
+                answerPointer
+            )
+            guard status == kDNSServiceErr_NoError, let query else { return nil }
+            defer { DNSServiceRefDeallocate(query) }
+            let socket = DNSServiceRefSockFD(query)
+            guard socket >= 0 else { return nil }
+            var event = pollfd(fd: socket, events: Int16(POLLIN), revents: 0)
+            guard Darwin.poll(&event, 1, 1_500) > 0,
+                  event.revents & Int16(POLLIN) != 0,
+                  DNSServiceProcessResult(query) == kDNSServiceErr_NoError else { return nil }
+            return answerPointer.pointee
         }
-        return result == 0 ? String(cString: host) : nil
+    }
+
+    static func ptrHostname(from data: Data) -> String? {
+        var labels: [String] = []
+        var offset = 0
+        while offset < data.count {
+            let length = Int(data[offset])
+            offset += 1
+            if length == 0 {
+                return offset == data.count && !labels.isEmpty ? labels.joined(separator: ".") : nil
+            }
+            guard length <= 63, offset + length <= data.count,
+                  let label = String(bytes: data[offset..<(offset + length)], encoding: .utf8),
+                  label.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" })
+            else { return nil }
+            labels.append(label)
+            offset += length
+        }
+        return nil
     }
 }
 
