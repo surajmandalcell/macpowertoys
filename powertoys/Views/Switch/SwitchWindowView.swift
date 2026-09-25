@@ -28,6 +28,7 @@ struct SwitchWindowView: View {
     @State private var model: SwitchWorkspaceModel
     @State private var page: SwitchPage
     @AppStorage("switchAppearanceMode") private var appearanceMode = "system"
+    @AppStorage("switchUsageShowsUsed") private var showUsageAsUsed = true
     @Environment(\.colorScheme) private var systemScheme
     @State private var showingDelete = false
     @State private var showingAbout = false
@@ -567,13 +568,13 @@ struct SwitchWindowView: View {
             HStack {
                 Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
                 Spacer()
-                Text(window.usedPercent.map { "\($0)%" } ?? "—")
+                Text(window.usedPercent.map { showUsageAsUsed ? "\($0)% used" : "\(100 - $0)% left" } ?? "—")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .contentTransition(.numericText())
             }
             if let percent = window.usedPercent {
                 ProgressView(value: Double(min(max(percent, 0), 100)), total: 100)
-                    .accessibilityLabel("\(title), \(percent)% used")
+                    .accessibilityLabel("\(title), \(showUsageAsUsed ? percent : 100 - percent)% \(showUsageAsUsed ? "used" : "left")")
             }
             if let reset = window.resetsAt {
                 Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
@@ -799,34 +800,49 @@ struct SwitchWindowView: View {
     private var settingsPage: some View {
         ScrollView {
             VStack(spacing: 8) {
-                SwitchPanel(title: "Appearance", palette: palette) {
-                    HStack {
-                        Text("Switch window")
-                        Spacer()
-                        Picker("Appearance", selection: $appearanceMode) {
-                            Text("System").tag("system")
-                            Text("Light").tag("light")
-                            Text("Dark").tag("dark")
+                SwitchPanel(title: "App behavior", palette: palette) {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Switch window")
+                            Spacer()
+                            Picker("Appearance", selection: $appearanceMode) {
+                                Text("System").tag("system")
+                                Text("Light").tag("light")
+                                Text("Dark").tag("dark")
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.segmented)
+                            .frame(width: 230)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                        .frame(width: 230)
+                        .padding(16)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Show percentage used")
+                                Text("Turn off to show the percentage left in usage views.")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(palette.muted)
+                            }
+                            Spacer()
+                            Toggle("Show percentage used", isOn: $showUsageAsUsed)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                        }
+                        .padding(16)
+                        .background(palette.panel2.opacity(0.55))
                     }
-                    .padding(16)
                 }
                 SwitchPanel(title: "Data locations", palette: palette) {
-                    metadataRow("Shared home", value: model.snapshot?.status.sharedRoot.path ?? "Loading…")
-                }
-                SwitchPanel(title: "About", palette: palette) {
-                    HStack {
-                        Text("MacPowerToys uses Switch Core for account operations.")
-                            .foregroundStyle(palette.muted)
-                        Spacer()
-                        SwitchActionButton(title: "About Switch", palette: palette) {
-                            showingAbout = true
-                        }
+                    VStack(spacing: 0) {
+                        dataLocationRow("Codex home", detail: "Settings, plugins, and conversations stay here when accounts change.",
+                                        url: model.paths.defaultHome)
+                        dataLocationRow("Codex account vault", detail: "Private Codex auth.json snapshots.",
+                                        url: model.paths.credentialStore, striped: true)
+                        dataLocationRow("Grok Build home", detail: "Grok configuration, rules, and active login.",
+                                        url: model.paths.grokHome)
+                        dataLocationRow("Grok Build account vault", detail: "Private Grok subscription OAuth snapshots.",
+                                        url: model.paths.grokCredentialStore, striped: true)
                     }
-                    .padding(16)
                 }
             }
             .padding(.horizontal, 24)
@@ -834,6 +850,30 @@ struct SwitchWindowView: View {
             .padding(.bottom, 24)
         }
         .thinScrollIndicators()
+    }
+
+    private func dataLocationRow(_ title: String, detail: String, url: URL,
+                                 striped: Bool = false) -> some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 11, weight: .semibold))
+                Text(detail).font(.system(size: 10)).foregroundStyle(palette.muted)
+                Text(url.path)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(palette.muted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                    .help(url.path)
+            }
+            Spacer(minLength: 20)
+            SwitchActionButton(title: "Reveal", symbol: "folder", palette: palette) {
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 68)
+        .background(striped ? palette.panel2.opacity(0.55) : Color.clear)
     }
 
     private var loginSheet: some View {
@@ -1136,6 +1176,7 @@ private struct SwitchActivityGrid: View {
                                             .frame(width: 9, height: 9)
                                     }
                                     .buttonStyle(.plain)
+                                    .focusEffectDisabled()
                                     .help("\(day.date.formatted(date: .abbreviated, time: .omitted)): \(day.tokens.formatted()) tokens")
                                     .accessibilityLabel(day.date.formatted(date: .complete, time: .omitted))
                                     .accessibilityValue("\(day.tokens.formatted()) tokens")
@@ -1147,7 +1188,7 @@ private struct SwitchActivityGrid: View {
                     }
                 }
             }
-            .scrollIndicators(.hidden)
+            .thinScrollIndicators()
             if let selectedDate,
                let day = weeks.flatMap({ $0 }).compactMap({ $0 }).first(where: { $0.date == selectedDate }) {
                 Text("\(selectedDate.formatted(date: .abbreviated, time: .omitted)): \(day.tokens.formatted()) tokens")

@@ -33,6 +33,7 @@ final class SwitchWorkspaceTests: XCTestCase {
             $0.identity?.accountID == "account-first"
         })
         model.selectedAccountID = second.id
+        model.setUsageForRender(sampleUsage(), accountID: second.id)
 
         for size in [NSSize(width: 1_120, height: 740), NSSize(width: 880, height: 600)] {
             for scheme in [ColorScheme.light, .dark] {
@@ -66,6 +67,38 @@ final class SwitchWorkspaceTests: XCTestCase {
         attachment.name = "Switch — \(state) — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light") — \(Int(size.width))"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func sampleUsage() -> CodexAccountUsageSnapshot {
+        let main = CodexRateLimitBucketSnapshot(
+            id: "codex", name: "Codex", plan: "Plus", model: "gpt-5.6-sol",
+            primary: .init(usedPercent: 42, windowDurationMinutes: 300,
+                           resetsAt: .now.addingTimeInterval(84 * 60)),
+            secondary: .init(usedPercent: 53, windowDurationMinutes: 10_080,
+                             resetsAt: .now.addingTimeInterval(172_740)),
+            credits: .init(hasCredits: true, unlimited: false, balance: "12.50"),
+            spendControlReached: false)
+        let fast = CodexRateLimitBucketSnapshot(
+            id: "fast", name: "Fast models", plan: "Plus", model: "gpt-5.6-luna",
+            primary: .init(usedPercent: 50, windowDurationMinutes: 1_440,
+                           resetsAt: .now.addingTimeInterval(7_140)),
+            secondary: nil, credits: nil, spendControlReached: false)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        let daily = (0..<90).map { offset in
+            CodexDailyUsageSnapshot(startDate: formatter.string(from: Date.now.addingTimeInterval(-Double(offset) * 86_400)),
+                                    tokens: offset.isMultiple(of: 5) ? 0 : Int64(10_000 + offset * 900))
+        }
+        return CodexAccountUsageSnapshot(
+            account: .init(kind: "chatgpt", email: "second@example.test", plan: "plus"),
+            requiresOpenAIAuthentication: true,
+            rateLimits: .init(accountID: "account-second", ordinaryUsageAllowed: true,
+                              defaultBucket: main, buckets: ["fast": fast]),
+            usage: .init(lifetimeTokens: 2_800_000, peakDailyTokens: 184_000,
+                         currentStreakDays: 4, longestStreakDays: 12,
+                         longestRunningTurnSeconds: 214),
+            dailyUsage: daily, fetchedAt: .now)
     }
 
     private func attachTrayRender(model: SwitchWorkspaceModel, scheme: ColorScheme) async throws {

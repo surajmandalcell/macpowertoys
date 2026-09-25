@@ -599,6 +599,7 @@ private struct TrayToolHeader: View {
 
 struct SwitchTrayView: View {
     @State private var model: SwitchWorkspaceModel
+    @AppStorage("switchUsageShowsUsed") private var showUsageAsUsed = true
 
     init() {
         _model = State(initialValue: SwitchWorkspaceModel())
@@ -657,7 +658,7 @@ struct SwitchTrayView: View {
                                 }
                                 Spacer(minLength: 8)
                                 if let percent = model.usage[account.id]?.rateLimits?.defaultBucket?.primary?.usedPercent {
-                                    Text("\(percent)% used")
+                                    Text(showUsageAsUsed ? "\(percent)% used" : "\(100 - percent)% left")
                                         .font(.system(size: 10, weight: .medium, design: .rounded))
                                         .foregroundStyle(.secondary)
                                 }
