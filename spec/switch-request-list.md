@@ -73,8 +73,10 @@ the compact menu. Visual review found that the synthetic Usage snapshot could
 be visible while Identity reverted to “Saved, not checked”: the host reloaded
 an already populated model. The window now loads only a fresh model, and its
 render-state assertion runs before the tray's intentional refresh. Compile-only
-validation passed; a hosted rerun and updated installed build remain pending.
-The installed app and helper currently report `5ba62fc`, which contains the
-original-layout revision but not the final tray-refresh correction. A
+validation and every job in hosted run 36191255746 passed. Its populated
+Accounts renders at 1120pt and 880pt in both appearances show matching Identity
+and Usage state. The installed app and helper currently report `5ba62fc`,
+which contains the original-layout revision but not the final tray-refresh
+correction. An updated signed install remains pending. A
 live account and recovery check in the installed app remains open; synthetic
 verification did not touch the owner's saved accounts.
