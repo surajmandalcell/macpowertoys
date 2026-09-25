@@ -33,6 +33,40 @@
   with several servers. Confirm the segmented choices, memory legend, server
   rows, and footer remain readable without a vertical word or cut-off control.
 
+## Portman Menu Hit Targets And Detail Charts
+
+- **Symptom:** The owner could switch tabs only by clicking text, row hover
+  covered only the port and title, and the detail CPU chart spilled past its
+  plot while a hover timestamp moved the layout. Extra space remained below
+  the overview and detail, and the more-actions menu showed a second chevron.
+- **Cause:** The tab and row labels did not claim their full available width;
+  the chart assumed a 100% CPU ceiling and conditionally inserted its time
+  label; and the panel height and footer controls reserved too much space.
+- **Invariant:** Tabs and server rows use full-width hit and hover regions.
+  Detail charts use a shared hover, a CPU ceiling that includes all samples,
+  fixed-width trailing axes, and a permanent timestamp row. The detail header
+  holds localhost and more-actions controls, with no menu indicator, and the
+  panel uses the shortest height that fits its content up to the screen cap.
+- **Check:** In a hosted 400pt render, inspect tab and row hover, a CPU sample
+  above 100%, chart alignment before and during hover, the detail header, and
+  remaining space at the bottom. In an isolated UI session, click blank parts
+  of tabs and rows and confirm the expected navigation.
+
+## Portman Forward Selection And Scan Lifetime
+
+- **Symptom:** Discovered remote ports required one-at-a-time selection, had
+  no Clear scan action, and old selection could persist after changing tabs.
+  Leaving Servers could continue its fast monitoring cadence.
+- **Cause:** Forward kept form selection in panel state without a tab-exit
+  reset, and the panel held a monitoring owner regardless of its active tab.
+- **Invariant:** Scan results support checkbox, Shift-click range, Select all,
+  and Clear scan. Return submits the host scan, manual port, and local mapping.
+  Leaving Forward cancels its scan and clears pending selection; only Servers
+  owns fast monitoring, while the menu-bar status item uses its idle cadence.
+- **Check:** In hosted tests, select and deselect a range, then navigate away
+  and back. Verify scan cancellation and the monitoring interval, and inspect
+  the full-width form and Clear scan control in the 400pt render.
+
 ## Portman Port Numbers And Initial Charts
 
 - **Symptom:** Hosted renders showed `:9,000` and `localhost:49,194`, while a
