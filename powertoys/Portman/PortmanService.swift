@@ -170,16 +170,36 @@ nonisolated enum PortmanScanner {
         return ports.sorted()
     }
 
-    static func remotePorts(host: String) throws -> [UInt16] {
+    static func remotePorts(host: String) async throws -> [UInt16] {
         guard SystemMonitorRemoteProtocol.validHost(host) else {
             throw NSError(domain: "Portman", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
         }
         let command = "LC_ALL=C ss -ltnH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fn"
-        let output = try run("/usr/bin/ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
-                                               "-o", "StrictHostKeyChecking=yes", "-T", "--", host, command],
-                             emptyExitIsSuccess: true)
-        return parseRemote(output)
+        let result = try await SSHProcessRunner.run(
+            executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
+            arguments: ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+                        "-o", "StrictHostKeyChecking=yes", "-T", "--", host, command],
+            environment: ProcessInfo.processInfo.environment,
+            standardInput: Data(),
+            maximumOutputBytes: 1_048_576,
+            timeout: 10
+        )
+        guard result.status == 0 || result.status == 1 && result.standardOutput.isEmpty
+                && result.standardError.isEmpty else {
+            let message = result.standardError.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw NSError(domain: "Portman", code: Int(result.status),
+                          userInfo: [NSLocalizedDescriptionKey: message.isEmpty ? "The SSH scan failed." : message])
+        }
+        return parseRemote(result.standardOutput)
+    }
+
+    static func tunnelIsListening(pid: Int32, localPort: UInt16) -> Bool {
+        guard let output = try? run("/usr/sbin/lsof", ["-nP", "-a", "-p", String(pid),
+                                                     "-iTCP:\(localPort)", "-sTCP:LISTEN", "-Fn"],
+                                    emptyExitIsSuccess: true) else { return false }
+        return output.split(whereSeparator: \.isNewline)
+            .contains { $0.first == "n" && $0.hasSuffix(":\(localPort)") }
     }
 
     static func metadata(pid: Int32) -> PortmanMetadata? {
@@ -204,7 +224,8 @@ nonisolated enum PortmanScanner {
             throw NSError(domain: "Portman", code: 2,
                           userInfo: [NSLocalizedDescriptionKey: "Choose a valid SSH host and ports."])
         }
-        return ["-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+        return ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+                "-o", "ExitOnForwardFailure=yes",
                 "-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=15",
                 "-o", "ServerAliveCountMax=2", "-N", "-L",
                 "127.0.0.1:\(localPort):localhost:\(remotePort)", "--", host]
@@ -287,9 +308,7 @@ final class PortmanService {
         remoteRequestID = requestID
         isLoadingRemote = true
         do {
-            let ports = try await Task.detached(priority: .userInitiated) {
-                try PortmanScanner.remotePorts(host: host)
-            }.value
+            let ports = try await PortmanScanner.remotePorts(host: host)
             guard remoteRequestID == requestID else { return }
             remotePorts = ports
             forwardingError = nil
@@ -331,10 +350,25 @@ final class PortmanService {
             tunnels.append(PortmanTunnel(id: id, host: host, remotePort: remotePort,
                                          localPort: localPort, state: .connecting))
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(1))
+                for _ in 0..<25 {
+                    guard let self, let index = tunnels.firstIndex(where: { $0.id == id }),
+                          case .connecting = tunnels[index].state, process.isRunning else { return }
+                    let pid = process.processIdentifier
+                    let ready = await Task.detached(priority: .utility) {
+                        PortmanScanner.tunnelIsListening(pid: pid, localPort: localPort)
+                    }.value
+                    guard let current = tunnels.firstIndex(where: { $0.id == id }),
+                          case .connecting = tunnels[current].state, process.isRunning else { return }
+                    if ready {
+                        tunnels[current].state = .running
+                        return
+                    }
+                    try? await Task.sleep(for: .milliseconds(400))
+                }
                 guard let self, let index = tunnels.firstIndex(where: { $0.id == id }),
-                      process.isRunning else { return }
-                tunnels[index].state = .running
+                      case .connecting = tunnels[index].state else { return }
+                tunnels[index].state = .failed("SSH did not open local port \(localPort).")
+                if process.isRunning { process.terminate() }
             }
             forwardingError = nil
             return true
@@ -378,6 +412,7 @@ final class PortmanService {
     private func tunnelEnded(id: UUID, status: Int32, message: String) {
         processes.removeValue(forKey: id)
         guard let index = tunnels.firstIndex(where: { $0.id == id }) else { return }
+        if case .failed = tunnels[index].state { return }
         tunnels[index].state = .failed(message.isEmpty ? "SSH exited with status \(status)." : message)
     }
 }
