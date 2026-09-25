@@ -1,64 +1,29 @@
-# Switch workspace request list
+# Switch applet request list
 
 Switch remains a separately installable macOS app. MacPowerToys embeds the
 versioned `AIManagerCore` Swift package from the Switch repository and provides
-its own SwiftUI workspace. Installing Switch.app is optional. Both apps use the
-same account store and Core's cross-process operation lock, so changes made in
+its own lightweight SwiftUI applet. Installing Switch.app is optional. Both apps
+use the same account store and Core's cross-process operation lock, so changes made in
 either app appear in the other after refresh. A Switch Core update reaches
 MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 
 | Status | Requirement | Acceptance |
 |---|---|---|
-| Code complete; live check pending | Add Switch to the built-in launcher and give it a native full workspace, window routing, Dock identity, and saved window size. | Open from the launcher and a direct tool link; enable and disable it like other tools. |
+| Code complete; live check pending | Add Switch to the built-in launcher with window routing, Dock identity, and saved window size. | Open from the launcher and a direct tool link; enable and disable it like other tools. |
 | Build verified; live check pending | Use Switch Core without requiring Switch.app or importing its GUI/TUI modules. | A clean MacPowerToys build resolves the pinned Core package and launches with Switch.app absent. |
-| Code complete; live check pending | Manage supported accounts in the workspace. | Discover/import, sign in, switch defaults, verify, view usage, and remove accounts through Core with errors and recovery states visible. |
-| Code complete; live check pending | Provide Switch's conversation and maintenance features where Core supports them. | Browse/search conversations and messages, filter roles, copy shown messages, page through long transcripts, and review cleanup before any destructive action; recovery remains discoverable. |
-| Redesign implemented; visual review pending | Give Switch a deliberate native hierarchy rather than repeated cards: one sidebar selection, prominent account identity and actions, compact usage, a readable conversation transcript, and aligned maintenance sections. | Inspect a current signed build at default and minimum sizes in light/dark appearances; check loading, empty, selected, error, and keyboard states. |
-| Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling; Core runs history scans with bounded workers; synthetic paths for automated tests; no login Keychain access. |
+| Code complete; live check pending | Manage supported accounts in the applet. | Discover/import, sign in, switch defaults, verify, view usage, and remove accounts through Core with errors and recovery states visible. |
+| Redesign in progress | Keep MacPowerToys lightweight: account management, sign-in, import, default switching, verification, usage, and account recovery. Conversation browsing and cleanup stay in standalone Switch. | No conversation or cleanup route, scan, or destructive action in the MacPowerToys applet. Recovery and linked-settings repair remain reachable. |
+| Redesign in progress | Use an icon-only navigation rail. Put saved accounts in the Accounts pane, never in the rail. Give selection, status, actions, and usage a precise hierarchy that fits the minimum window. | Inspect light and dark renders at default and minimum sizes; check empty, selected, error, and keyboard states. |
+| Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
-or UI test runners. Live checks remain pending until an isolated macOS account
-or VM is available. A history scan already in flight may finish after the
-window closes; opening the workspace does not start background polling.
+or UI test runners. Executable checks and synthetic renders run on hosted macOS;
+local checks compile without launching the app. Account verification clears
+cached usage when Core reports that sign-in is needed.
 
-Verification on 2026-09-25: compile-only Debug and Release builds passed;
-Raycast lint, build, and icon parity passed; the headless Switch Core suite
-passed 184 tests with 2 optional private-copy fixture tests skipped. The
-MacPowerToys window was not launched for this final verification pass.
-
-The cleanup path was checked again with a synthetic conversation after wiring
-Core's shared activity ledger: a headless run moved the reviewed file to
-recoverable Trash and retained its 123-token activity record. The MacPowerToys
-test bundle compiled without executing its app host or UI runner.
-
-A second headless run entered Maintenance without first opening Conversations,
-confirmed the conversation title, moved it to Trash, and restored it with the
-title intact. Account verification now clears cached usage when Core reports
-that sign-in is needed; the workspace hides usage in that state.
-
-A separate headless run used the exact Core revision pinned by MacPowerToys
-with synthetic credentials. It imported two accounts, changed the default,
-and removed the active account with an explicit replacement. No browser,
-real credential store, or app window was opened.
-
-The message workspace now uses Core's complete-conversation search and paged
-detail API. A synthetic 121-message transcript was checked headlessly: the
-first 100 and remaining 21 loaded in order, a response beyond the first page
-matched a two-term search, the prompt filter excluded it, and export contained
-only the shown result. The app and test bundles compiled without a launch.
-
-Cleanup selection now drops entries that disappeared or became protected after
-a shared-store refresh. A headless check confirmed that a stale ID cannot open
-an empty cleanup review.
-
-The workspace redesign removes repeated account and maintenance cards, puts
-conversation search with the list, and renders messages as a transcript.
-The hosted macOS test workflow captures synthetic account and conversation
-states in light and dark for visual review without disturbing the owner's
-desktop. The signed app itself still needs live interaction review.
-
-Hosted macOS runs `36098210860` and `36099151715` passed. The first 1,024pt
-renders exposed clipped Roles and Copy Shown actions; the corrected 880pt and
-1,024pt light/dark renders show both labels in full. Account status and path
-presentation were tightened in the same correction. Live window chrome,
-keyboard traversal, sheets, and installation remain unverified.
+Before the lightweight redesign, synthetic Core checks covered account import,
+default switching, removal, and recovery. Switch Core's chat and cleanup tests
+remain in the standalone repository. The MacPowerToys test bundle now covers
+account management and captures Accounts and Recovery in light and dark at
+880pt and 1,024pt. The redesigned app and test bundle compile without launch;
+hosted visual and interaction review is still pending.

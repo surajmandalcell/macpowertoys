@@ -149,18 +149,19 @@
   Menus and buttons share one centerline. Start System Care work on every page
   and confirm the status stays at the bottom without unused space below it.
 
-## Switch Transcript Actions At Minimum Width
+## Switch Applet Hierarchy
 
-- **Symptom:** The conversation detail search field left only a chevron for
-  Roles and almost no visible Copy Shown button.
-- **Cause:** The search field had elevated layout priority, so SwiftUI compressed
-  the trailing actions before the field at the workspace minimum width.
-- **Invariant:** The search field takes remaining width while the Roles menu and
-  Copy Shown button retain their intrinsic widths. Keep all three controls in
-  the same 24pt action row.
-- **Check:** Inspect synthetic Switch conversation renders at 880 and 1,024pt
-  in light and dark. Both trailing labels must be legible without clipping.
-  Confirm keyboard operation in the signed app when live interaction is allowed.
+- **Symptom:** Saved accounts and optional conversation and maintenance pages
+  occupied the sidebar, making the MacPowerToys plugin look like a reduced copy
+  of the standalone Switch workspace.
+- **Cause:** The integration reused a full workspace navigation model for a
+  lightweight account-switching task.
+- **Invariant:** Use a narrow icon-only rail for Accounts and Recovery. Saved
+  identities live in the Accounts pane; selection and actions stay beside them.
+  Chat browsing and cleanup remain in standalone Switch.
+- **Check:** Inspect Accounts and Recovery at 880pt and 1,024pt in light and dark.
+  The rail contains no account identity; Make Default, Verify, Add, Import,
+  Remove, usage, and recovery remain reachable without clipping.
 
 ## Workspace Minimum Window Sizes
 
