@@ -14,6 +14,8 @@
 	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mac Tweaks reads microphone levels only while its window is open and never saves audio.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

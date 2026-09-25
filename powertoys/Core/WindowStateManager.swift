@@ -69,7 +69,8 @@ final class WindowStateManager {
         "system-monitor",
         "nettoys",
         "portman",
-        "switch"
+        "switch",
+        "mac-tweaks"
     ]
 
     nonisolated private static let fixedSizeIdentifiers: Set<String> = [
