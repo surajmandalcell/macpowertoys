@@ -77,6 +77,7 @@ struct SystemMonitorProcessesView: View {
                     if !search.isEmpty {
                         Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
                             .buttonStyle(.plain)
+                            .focusEffectDisabled()
                             .accessibilityLabel("Clear search")
                     }
                 }
@@ -225,6 +226,7 @@ struct SystemMonitorProcessesView: View {
             .utilitySectionHeader()
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .accessibilityLabel("Sort by \(column.title), \(activeColumn == column ? (descending ? "descending" : "ascending") : "inactive")")
     }
 
