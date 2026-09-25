@@ -235,6 +235,38 @@ final class PortmanTests: XCTestCase {
         XCTAssertFalse(PortmanScanner.isDevelopmentListener(port("node", "node server.js", user &+ 1)))
     }
 
+    func testCleanupSuggestionsProtectWarningsAndUseReferenceAges() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        func port(started: TimeInterval, command: String = "node", connected: Bool = false) -> PortmanLocalPort {
+            var result = PortmanLocalPort(pid: 42, port: 3000, address: "127.0.0.1:3000",
+                                          command: command, launchCommand: "node server.js", memoryBytes: 0,
+                                          cpuPercent: 0, uptime: "", started: UInt64(started * 1_000_000),
+                                          userID: geteuid())
+            result.hasConnections = connected
+            return result
+        }
+        func suggested(_ port: PortmanLocalPort, warning: Bool = false, folder: String? = nil,
+                       lastConnection: Date? = nil) -> Bool {
+            PortmanCleanupPolicy.suggested(
+                port: port, hasWarning: warning, folder: folder, lastConnectionAt: lastConnection,
+                now: now, idleHours: 4, runningDays: 3
+            )
+        }
+        let threeDaysAgo = now.timeIntervalSince1970 - 3 * 86_400
+        XCTAssertFalse(suggested(port(started: threeDaysAgo + 1, connected: true)))
+        XCTAssertTrue(suggested(port(started: threeDaysAgo, connected: true)))
+        XCTAssertFalse(suggested(port(started: threeDaysAgo), warning: true))
+        XCTAssertFalse(suggested(port(started: threeDaysAgo, command: "postgres")))
+        XCTAssertTrue(suggested(port(started: now.timeIntervalSince1970 - 60),
+                                folder: "/project (deleted)"))
+        let oneDayAgo = now.timeIntervalSince1970 - 86_400
+        XCTAssertFalse(suggested(port(started: oneDayAgo),
+                                 lastConnection: now.addingTimeInterval(-4 * 3_600 + 1)))
+        XCTAssertTrue(suggested(port(started: oneDayAgo),
+                                lastConnection: now.addingTimeInterval(-4 * 3_600)))
+        XCTAssertFalse(suggested(port(started: 0), folder: "/project (deleted)"))
+    }
+
     func testNotificationRearmsOnlyWellBelowBothLimits() {
         let mb: Int64 = 1_024 * 1_024
         XCTAssertFalse(PortmanService.canRearmNotification(
