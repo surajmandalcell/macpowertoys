@@ -8,6 +8,9 @@ import Observation
 final class SwitchWorkspaceModel {
     private(set) var snapshot: AccountSnapshot?
     private(set) var usage: [UUID: CodexAccountUsageSnapshot] = [:]
+    private(set) var usageLoading: Set<UUID> = []
+    private(set) var usageErrors: [UUID: String] = [:]
+    private var usageAttempts: Set<UUID> = []
     private(set) var login: AccountLoginSession?
     private(set) var loginState: AccountLoginState?
     private(set) var loginMessage: String?
@@ -119,10 +122,21 @@ final class SwitchWorkspaceModel {
         isWorking = false
     }
 
-    func loadUsage(_ id: UUID) async {
-        guard let manager, !isWorking else { return }
-        await perform {
-            self.usage[id] = try await manager.readCodexAccountUsage(accountID: id)
+    func loadUsage(_ id: UUID, onlyIfNeeded: Bool = false) async {
+        guard let manager, !usageLoading.contains(id),
+              !onlyIfNeeded || !usageAttempts.contains(id),
+              accounts.contains(where: { $0.id == id && $0.identity.providerID == .codex })
+        else { return }
+        usageAttempts.insert(id)
+        usageLoading.insert(id)
+        usageErrors.removeValue(forKey: id)
+        defer { usageLoading.remove(id) }
+        do {
+            usage[id] = try await manager.readCodexAccountUsage(accountID: id)
+        } catch is CancellationError {
+            usageAttempts.remove(id)
+        } catch {
+            usageErrors[id] = error.localizedDescription
         }
     }
 
