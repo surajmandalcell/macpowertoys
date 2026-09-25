@@ -587,6 +587,18 @@ Status must never rely on color alone: pair the semantic tint with text or an
 icon. Empty, error, offline, retrying, paused, and complete states must explain
 what happened and the next available action.
 
+### Switch Account Applet
+
+Switch is task-focused like an applet but uses a resizable workspace-sized
+window so account selection, actions, and usage remain visible together. Its
+68pt dark rail is icon-only and contains only Accounts, Recovery, and About.
+Saved identities belong in a 256pt list inside Accounts, beside the selected
+account's details. The selected account, current default, access state, and
+available action must be distinguishable without relying on color alone.
+Recovery handles interrupted operations and linked settings; conversation
+browsing and cleanup remain in standalone Switch. Keep the minimum window at
+880×600 and check both appearances at that size before release.
+
 ### Compact Applet
 
 A compact applet is a fixed, single-column tool for one immediate purpose, such
