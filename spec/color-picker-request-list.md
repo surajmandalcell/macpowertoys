@@ -5,6 +5,7 @@ direct user correction or verified result changes a status.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Use the new Color Picker eyedropper icon. | `ColorPickerLogo` is a 512px RGBA asset with a violet sample, coral/cyan accents, and one eyedropper. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |
 | Done | Choose no Color Picker menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Focused tests cover each mode, the exact `MacPowerToys.color-picker` autosave name, the Pick Color route, disabled state, legacy migration, combined-tab support, and no-op item refresh. | None. The shared five-tool physical placement, relaunch, and click matrix remains in the main request list. |
 | Done | Keep project counts and color timestamps on their related row. | `4ad3da2` puts each project count beside its name and each timestamp beside its color value. In the normal signed `4662560` build, an intentionally long project name truncated before `0 colors`, and the long NSColor representation truncated before `1 mo ago` and the row actions. | None. |
 | Done | Remove lag while the native color sampler is active. | `5b3d174` rejects overlapping sampler sessions and reuses the row date formatter. A live process watcher in the normal signed `4662560` build detected the native ColorSampler 334.7 ms after the Pick Color action. The action disabled while the sampler was active and recovered after the controlled test restart. | None. |

@@ -8,14 +8,19 @@ previously locked identities for those five tools.
 
 | Status | Request | Acceptance |
 |---|---|---|
-| In progress | Promote Sector platter as Disk Explorer's icon. | Preserve the selected platter, highlighted sector, and read arm; show it in the launcher, Dock, and Raycast. |
-| In progress | Redesign System Care. | Use a distinct care/cleanup object rather than another disk-use chart; keep it legible at 16 px. |
-| In progress | Redesign Text Extractor. | Make selection and on-device text capture recognizable without letters or a generic magnifier. |
-| In progress | Redesign Input Devices. | Show a physical input device and its scroll-control function without turning it into a settings glyph. |
-| In progress | Redesign NetToys. | Show network discovery or connection as a physical/network object, distinct from the drive icons. |
-| In progress | Redesign Color Picker. | Make color sampling the hero; keep it distinct from System Monitor and the other new icons. |
+| Verify | Promote Sector platter as Disk Explorer's icon. | The selected platter is a 512px RGBA asset and is wired into the launcher, Dock, and Raycast. |
+| Verify | Redesign System Care. | A removable coral block leaves an empty slot in a cleanup tray. |
+| Verify | Redesign Text Extractor. | A violet selection band lifts one text strip from an ivory card. |
+| Verify | Redesign Input Devices. | An ivory mouse gives its violet scroll wheel the visual focus. |
+| Verify | Redesign NetToys. | Three recessed network ports connect to one coral cable. |
+| Verify | Redesign Color Picker. | An eyedropper touches a cluster of violet, coral, and cyan samples. |
 
 The six icons should share rounded tiles, strong physical silhouettes, a
 restrained material finish, and useful contrast at launcher and Dock sizes.
 Preview each on light and dark surfaces and at 64 px and 16 px. The tool name
 remains readable even if the smallest icon loses detail.
+
+All six sources and Raycast copies are 512px PNGs. The focused Dock/icon tests,
+Raycast icon sync check, Raycast lint, and Raycast build pass. The comparison
+page is `tmp/icon-refresh/index.html`. Final acceptance still needs the clean,
+signed installed app checked in the launcher and Dock.

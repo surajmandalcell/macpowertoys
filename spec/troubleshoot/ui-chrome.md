@@ -10,11 +10,14 @@
 - **Invariant:** Every active light and dark tool-icon SVG uses a `512 × 512`
   view box, a full-canvas `clipPath id="tile"` rectangle with `rx="112"`, and a
   group that clips the ground and all artwork to that path. This rule applies to
-  every tool. Every launcher, sidebar, grid, and tray rendering path also uses
-  `toolIconTile(size:)`, with a corner radius of `size × 112 ÷ 512`. No tool,
+  every SVG tool. Approved bitmap tool icons are 512px RGBA sources with
+  transparent rounded corners. Every launcher, sidebar, grid, and tray
+  rendering path also uses `toolIconTile(size:)`, with a corner radius of
+  `size × 112 ÷ 512`. No tool,
   appearance, or rendering path is a special case.
-- **Check:** Enumerate every active named tool-logo asset and every SVG in each
-  asset. The source-template, asset-corner, and shared-renderer tests must pass.
+- **Check:** Enumerate every active named tool-logo asset, each referenced PNG,
+  and every active SVG. The source-template, asset-corner, and shared-renderer
+  tests must pass.
   Confirm the installed source commit equals `HEAD`, then inspect the launcher,
   sidebar, tray, and Dock at normal and small sizes.
 
