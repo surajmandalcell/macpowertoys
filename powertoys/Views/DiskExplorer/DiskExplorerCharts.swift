@@ -140,6 +140,12 @@ struct DiskTreemapView: View {
                 }
                 .animation(chartAnimation, value: layout.map(\.id))
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Treemap of \(directory.name)")
+            .accessibilityValue(hoveredID.flatMap { id in tiles.first { $0.id == id }?.label } ??
+                                "\(tiles.count) items")
+            .accessibilityHint("Point to a block for its name and size; select it to inspect or open")
+            .accessibilityIdentifier("diskExplorer.treemap")
             QuietDivider()
             let hovered = tiles.first { $0.id == hoveredID } ?? tiles.first { $0.id == selectedID }
             HStack(spacing: 10) {
@@ -163,13 +169,9 @@ struct DiskTreemapView: View {
             .padding(.horizontal, 12)
             .frame(height: 40)
             .contentTransition(.opacity)
+            .accessibilityElement(children: .combine)
             .accessibilityIdentifier("diskExplorer.treemapDetails")
         }
-        .accessibilityLabel("Treemap of \(directory.name)")
-        .accessibilityValue(hoveredID.flatMap { id in tiles.first { $0.id == id }?.label } ??
-                            "\(tiles.count) items")
-        .accessibilityHint("Point to a block for its name and size; select it to inspect or open")
-        .accessibilityIdentifier("diskExplorer.treemap")
         .onChange(of: directory.id) { _, _ in hoveredID = nil; selectedID = nil }
     }
 
@@ -349,6 +351,7 @@ struct DiskSunburstView: View {
                 .padding(.horizontal, 12)
                 .frame(height: 40)
                 .contentTransition(.opacity)
+                .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("diskExplorer.ringDetails")
             }
         }
