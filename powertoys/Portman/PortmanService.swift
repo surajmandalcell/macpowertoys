@@ -161,6 +161,26 @@ nonisolated struct PortmanTunnel: Identifiable, Sendable {
     var state: State
 }
 
+nonisolated struct PortmanRemotePort: Sendable {
+    let port: UInt16
+    var processName: String?
+    var pid: Int32?
+    var command: String? = nil
+    var container: String? = nil
+
+    var displayName: String {
+        if let container { return "Docker: \(container)" }
+        if let processName, let command,
+           ["node", "bun", "deno", "python", "python3"].contains(processName.lowercased()),
+           let script = command.split(whereSeparator: \.isWhitespace).first(where: { token in
+               [".js", ".mjs", ".cjs", ".ts", ".py"].contains(where: { suffix in token.hasSuffix(suffix) })
+           }) {
+            return "\(processName): \(URL(fileURLWithPath: String(script)).lastPathComponent)"
+        }
+        return processName ?? "Unknown service"
+    }
+}
+
 nonisolated enum PortmanScanner {
     enum StopError: LocalizedError {
         case protected
@@ -382,32 +402,67 @@ nonisolated enum PortmanScanner {
     }
 
     static func parseRemote(_ output: String) -> [UInt16] {
-        var ports = Set<UInt16>()
+        parseRemoteDetails(output).map(\.port)
+    }
+
+    static func parseRemoteDetails(_ output: String) -> [PortmanRemotePort] {
+        var ports: [UInt16: PortmanRemotePort] = [:]
+        var lsofPID: Int32?
+        var lsofCommand: String?
         for line in output.split(whereSeparator: \.isNewline) {
             let fields = line.split(whereSeparator: \.isWhitespace)
             let endpoint: Substring?
-            if line.first == "n" { endpoint = line.dropFirst() }
-            else if fields.count >= 4, fields[0] == "LISTEN" { endpoint = fields[3] }
-            else { endpoint = nil }
+            var processName: String?
+            var pid: Int32?
+            if line.first == "p" { lsofPID = Int32(line.dropFirst()); continue }
+            if line.first == "c" { lsofCommand = String(line.dropFirst()); continue }
+            if line.first == "n" {
+                endpoint = line.dropFirst()
+                processName = lsofCommand
+                pid = lsofPID
+            } else if fields.count >= 4, fields[0] == "LISTEN" {
+                endpoint = fields[3]
+                if let nameStart = line.range(of: "users:((\"") {
+                    let tail = line[nameStart.upperBound...]
+                    processName = tail.split(separator: "\"", maxSplits: 1).first.map(String.init)
+                    if let pidStart = tail.range(of: "pid=") {
+                        pid = Int32(tail[pidStart.upperBound...].prefix(while: \.isNumber))
+                    }
+                }
+            } else { continue }
             if let endpoint, let port = UInt16(endpoint.split(separator: ":").last ?? ""), port > 0 {
-                ports.insert(port)
+                let detail = PortmanRemotePort(port: port, processName: processName, pid: pid)
+                if ports[port]?.processName == nil || detail.processName != nil { ports[port] = detail }
             }
         }
-        return ports.sorted()
+        return ports.values.sorted { $0.port < $1.port }
     }
 
-    static func remotePorts(host: String, configurationFile: URL? = nil) async throws -> [UInt16] {
+    static func authenticationArguments(password: Bool) -> [String] {
+        password
+            ? ["-o", "BatchMode=no", "-o", "NumberOfPasswordPrompts=1",
+               "-o", "PubkeyAuthentication=no",
+               "-o", "PreferredAuthentications=password,keyboard-interactive"]
+            : ["-o", "BatchMode=yes"]
+    }
+
+    static func remotePorts(host: String, password: String? = nil,
+                            configurationFile: URL? = nil) async throws -> [PortmanRemotePort] {
         guard SystemMonitorRemoteProtocol.validHost(host) else {
             throw NSError(domain: "Portman", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
         }
-        let command = "LC_ALL=C ss -ltnH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fn"
+        let command = "LC_ALL=C ss -ltnpH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fpcn"
         let configArguments = configurationFile.map { ["-F", $0.path] } ?? []
+        let channel = try password.map { _ in try SSHAskpassChannel() }
+        let delivery = channel.flatMap { channel in password.map { channel.startDelivery(password: $0) } }
+        defer { delivery?.cancel(); channel?.cleanup() }
         let result = try await SSHProcessRunner.run(
             executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
-            arguments: configArguments + ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
-                        "-o", "StrictHostKeyChecking=yes", "-T", "--", host, command],
-            environment: ProcessInfo.processInfo.environment,
+            arguments: configArguments + authenticationArguments(password: password != nil)
+                + ["-o", "ConnectTimeout=5",
+                        "-o", "StrictHostKeyChecking=accept-new", "-T", "--", host, command],
+            environment: channel?.environment ?? ProcessInfo.processInfo.environment,
             standardInput: Data(),
             maximumOutputBytes: 1_048_576,
             timeout: 10
@@ -418,7 +473,41 @@ nonisolated enum PortmanScanner {
             throw NSError(domain: "Portman", code: Int(result.status),
                           userInfo: [NSLocalizedDescriptionKey: message.isEmpty ? "The SSH scan failed." : message])
         }
-        return parseRemote(result.standardOutput)
+        return parseRemoteDetails(result.standardOutput)
+    }
+
+    static func remoteProcessDetails(host: String, pid: Int32?, port: UInt16,
+                                     password: String? = nil) async throws -> (command: String?, container: String?) {
+        guard SystemMonitorRemoteProtocol.validHost(host) else { return (nil, nil) }
+        let processCommand = pid.map { "LC_ALL=C ps -p \($0) -o args= 2>/dev/null" } ?? ":"
+        let command = processCommand
+            + "; printf '\\nMPT_CONTAINER\\n'; docker ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null || true"
+        let channel = try password.map { _ in try SSHAskpassChannel() }
+        let delivery = channel.flatMap { channel in password.map { channel.startDelivery(password: $0) } }
+        defer { delivery?.cancel(); channel?.cleanup() }
+        let result = try await SSHProcessRunner.run(
+            executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
+            arguments: authenticationArguments(password: password != nil)
+                + ["-o", "ConnectTimeout=5",
+                        "-o", "StrictHostKeyChecking=accept-new", "-T", "--", host,
+                        command],
+            environment: channel?.environment ?? ProcessInfo.processInfo.environment,
+            standardInput: Data(), maximumOutputBytes: 16_384, timeout: 10
+        )
+        return parseRemoteProcessDetails(result.standardOutput, port: port)
+    }
+
+    static func parseRemoteProcessDetails(
+        _ output: String, port: UInt16
+    ) -> (command: String?, container: String?) {
+        let parts = output.components(separatedBy: "\nMPT_CONTAINER\n")
+        let process = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let container = parts.dropFirst().joined(separator: "\n")
+            .split(whereSeparator: \.isNewline)
+            .first { $0.contains(":\(port)->") }
+            .flatMap { $0.split(separator: "|", maxSplits: 1).first }
+            .map(String.init)
+        return (process?.isEmpty == false ? process : nil, container)
     }
 
     static func tunnelIsListening(pid: Int32, localPort: UInt16) -> Bool {
@@ -448,15 +537,18 @@ nonisolated enum PortmanScanner {
     }
 
     static func tunnelArguments(
-        host: String, remotePort: UInt16, localPort: UInt16, configurationFile: URL? = nil
+        host: String, remotePort: UInt16, localPort: UInt16,
+        password: Bool = false, configurationFile: URL? = nil
     ) throws -> [String] {
         guard SystemMonitorRemoteProtocol.validHost(host), remotePort > 0, localPort > 0 else {
             throw NSError(domain: "Portman", code: 2,
                           userInfo: [NSLocalizedDescriptionKey: "Choose a valid SSH host and ports."])
         }
-        return (configurationFile.map { ["-F", $0.path] } ?? []) + ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+        return (configurationFile.map { ["-F", $0.path] } ?? [])
+            + authenticationArguments(password: password)
+            + ["-o", "ConnectTimeout=5",
                 "-o", "ExitOnForwardFailure=yes",
-                "-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=15",
+                "-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=15",
                 "-o", "ServerAliveCountMax=2", "-N", "-L",
                 "127.0.0.1:\(localPort):localhost:\(remotePort)", "--", host]
     }
@@ -469,6 +561,7 @@ final class PortmanService {
 
     private(set) var localPorts: [PortmanLocalPort] = []
     private(set) var remotePorts: [UInt16] = []
+    private(set) var remoteDetails: [UInt16: PortmanRemotePort] = [:]
     private(set) var tunnels: [PortmanTunnel] = []
     private(set) var history: [String: [PortmanSample]] = [:]
     private(set) var metadata: [String: PortmanMetadata] = [:]
@@ -490,6 +583,7 @@ final class PortmanService {
     private var monitoringTask: Task<Void, Never>?
     private var lastScanAt = Date.distantPast
     private var processes: [UUID: Process] = [:]
+    private var authentication: [UUID: (SSHAskpassChannel, Task<Void, Never>)] = [:]
     private var remoteRequestID = UUID()
     private var notifiedProcessIDs = Set<String>()
     private var handledCleanupProcessIDs = Set<String>()
@@ -714,18 +808,22 @@ final class PortmanService {
         }
     }
 
-    func refreshRemote(host: String, configurationFile: URL? = nil) async {
+    func refreshRemote(host: String, password: String? = nil, configurationFile: URL? = nil) async {
         let requestID = UUID()
         remoteRequestID = requestID
         isLoadingRemote = true
         do {
-            let ports = try await PortmanScanner.remotePorts(host: host, configurationFile: configurationFile)
+            let ports = try await PortmanScanner.remotePorts(
+                host: host, password: password, configurationFile: configurationFile
+            )
             guard remoteRequestID == requestID else { return }
-            remotePorts = ports
+            remotePorts = ports.map(\.port)
+            remoteDetails = Dictionary(uniqueKeysWithValues: ports.map { ($0.port, $0) })
             forwardingError = nil
         } catch {
             guard remoteRequestID == requestID else { return }
             remotePorts = []
+            remoteDetails = [:]
             forwardingError = "Could not inspect \(host): \(error.localizedDescription)"
         }
         isLoadingRemote = false
@@ -739,15 +837,29 @@ final class PortmanService {
     func clearRemoteScan() {
         cancelRemoteScan()
         remotePorts = []
+        remoteDetails = [:]
         forwardingError = nil
     }
 
+    func loadRemoteDetails(host: String, port: UInt16, password: String? = nil) async {
+        guard let detail = remoteDetails[port], detail.command == nil,
+              detail.container == nil else { return }
+        let process = try? await PortmanScanner.remoteProcessDetails(
+            host: host, pid: detail.pid, port: port, password: password
+        )
+        guard !Task.isCancelled, remoteDetails[port]?.pid == detail.pid else { return }
+        remoteDetails[port]?.command = process?.command
+        remoteDetails[port]?.container = process?.container
+    }
+
     @discardableResult
-    func forward(host: String, remotePort: UInt16, localPort: UInt16, configurationFile: URL? = nil) -> Bool {
+    func forward(host: String, remotePort: UInt16, localPort: UInt16,
+                 password: String? = nil, configurationFile: URL? = nil) -> Bool {
         let arguments: [String]
         do {
             arguments = try PortmanScanner.tunnelArguments(
-                host: host, remotePort: remotePort, localPort: localPort, configurationFile: configurationFile
+                host: host, remotePort: remotePort, localPort: localPort,
+                password: password != nil, configurationFile: configurationFile
             )
         }
         catch { forwardingError = error.localizedDescription; return false }
@@ -759,6 +871,11 @@ final class PortmanService {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
         process.arguments = arguments
+        let channel: SSHAskpassChannel?
+        do { channel = try password.map { _ in try SSHAskpassChannel() } }
+        catch { forwardingError = "Could not prepare SSH password: \(error.localizedDescription)"; return false }
+        let delivery = channel.flatMap { channel in password.map { channel.startDelivery(password: $0) } }
+        if let channel { process.environment = channel.environment }
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         let errors = Pipe()
@@ -776,6 +893,7 @@ final class PortmanService {
         }
         do {
             try process.run()
+            if let channel, let delivery { authentication[id] = (channel, delivery) }
             processes[id] = process
             tunnels.append(PortmanTunnel(id: id, host: host, remotePort: remotePort,
                                          localPort: localPort, state: .connecting))
@@ -791,6 +909,7 @@ final class PortmanService {
                     guard let current = tunnels.firstIndex(where: { $0.id == id }),
                           case .connecting = tunnels[current].state, process.isRunning else { return }
                     if ready {
+                        endAuthentication(for: id)
                         tunnels[current].state = .running
                         NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
                         return
@@ -800,12 +919,15 @@ final class PortmanService {
                 guard let self, let index = tunnels.firstIndex(where: { $0.id == id }),
                       case .connecting = tunnels[index].state else { return }
                 tunnels[index].state = .failed("SSH did not open local port \(localPort).")
+                endAuthentication(for: id)
                 NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
                 if process.isRunning { process.terminate() }
             }
             forwardingError = nil
             return true
         } catch {
+            delivery?.cancel()
+            channel?.cleanup()
             forwardingError = "Could not start forwarding: \(error.localizedDescription)"
             return false
         }
@@ -813,6 +935,7 @@ final class PortmanService {
 
     func stopTunnel(_ id: UUID) {
         if let process = processes[id], process.isRunning { process.terminate() }
+        endAuthentication(for: id)
         processes.removeValue(forKey: id)
         tunnels.removeAll { $0.id == id }
         NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
@@ -959,17 +1082,25 @@ final class PortmanService {
 
     func stopAll() {
         for process in processes.values where process.isRunning { process.terminate() }
+        for id in Array(authentication.keys) { endAuthentication(for: id) }
         processes.removeAll()
         tunnels.removeAll()
         NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
 
     private func tunnelEnded(id: UUID, status: Int32, message: String) {
+        endAuthentication(for: id)
         processes.removeValue(forKey: id)
         guard let index = tunnels.firstIndex(where: { $0.id == id }) else { return }
         if case .failed = tunnels[index].state, message.isEmpty { return }
         tunnels[index].state = .failed(message.isEmpty ? "SSH exited with status \(status)." : message)
         NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
+    }
+
+    private func endAuthentication(for id: UUID) {
+        guard let (channel, delivery) = authentication.removeValue(forKey: id) else { return }
+        delivery.cancel()
+        channel.cleanup()
     }
 }
 
