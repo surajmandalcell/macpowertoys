@@ -85,6 +85,23 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(detailed[0].pid, 420)
         XCTAssertEqual(detailed[1].processName, "python3")
         XCTAssertEqual(detailed[1].pid, 81)
+        let discovered = PortmanScanner.parseRemoteDiscovery("""
+        LISTEN 0 4096 0.0.0.0:3000 0.0.0.0:*
+        LISTEN 0 4096 127.0.0.1:9030 0.0.0.0:* users:(("docker-proxy",pid=420,fd=7))
+        LISTEN 0 4096 0.0.0.0:22 0.0.0.0:*
+        LISTEN 0 512 127.0.0.1:8000 0.0.0.0:* users:(("llama-server",pid=81,fd=3))
+        MPT_DOCKER
+        wud|0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+        dozzle|127.0.0.1:9030->8080/tcp
+        MPT_SYSTEMD
+        0.0.0.0:22 ssh.socket ssh.service
+        """)
+        XCTAssertEqual(discovered.map(\.port), [22, 3000, 8000, 9030])
+        XCTAssertEqual(discovered.map(\.displayName),
+                       ["ssh.service", "Docker: wud", "llama-server", "Docker: dozzle"])
+        XCTAssertTrue(PortmanScanner.passwordAvailable(
+            in: "Permission denied (publickey,password,keyboard-interactive)."))
+        XCTAssertFalse(PortmanScanner.passwordAvailable(in: "Permission denied (publickey)."))
         var node = detailed[0]
         node.command = "node /srv/app/server.js --watch"
         XCTAssertEqual(node.displayName, "node: server.js")

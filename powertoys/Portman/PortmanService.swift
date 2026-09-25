@@ -452,13 +452,25 @@ nonisolated enum PortmanScanner {
             : ["-o", "BatchMode=yes"]
     }
 
+    static func passwordAvailable(in message: String) -> Bool {
+        let output = message.lowercased()
+        return output.contains("permission denied")
+            && (output.contains("password") || output.contains("keyboard-interactive"))
+    }
+
     static func remotePorts(host: String, password: String? = nil,
                             configurationFile: URL? = nil) async throws -> [PortmanRemotePort] {
         guard SystemMonitorRemoteProtocol.validHost(host) else {
             throw NSError(domain: "Portman", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
         }
-        let command = "LC_ALL=C ss -ltnpH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fpcn"
+        let command = "LC_ALL=C ss -ltnpH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null; "
+            + "sudo -n ss -ltnpH 2>/dev/null || true; "
+            + "printf '\\nMPT_DOCKER\\n'; "
+            + "docker ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null "
+            + "|| sudo -n docker ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null || true; "
+            + "printf '\\nMPT_SYSTEMD\\n'; "
+            + "LC_ALL=C systemctl list-sockets --all --no-legend --no-pager --plain 2>/dev/null || true"
         let configArguments = configurationFile.map { ["-F", $0.path] } ?? []
         let channel = try password.map { _ in try SSHAskpassChannel() }
         let delivery = channel.flatMap { channel in password.map { channel.startDelivery(password: $0) } }
@@ -476,13 +488,45 @@ nonisolated enum PortmanScanner {
         guard result.status == 0 || result.status == 1 && result.standardOutput.isEmpty
                 && result.standardError.isEmpty else {
             let message = result.standardError.trimmingCharacters(in: .whitespacesAndNewlines)
-            let detail = message.localizedCaseInsensitiveContains("Permission denied")
-                ? "Permission denied. Check the SSH password or key."
-                : (message.isEmpty ? "The SSH scan failed." : message)
+            let detail = passwordAvailable(in: message) ? "SSH password required."
+                : (message.localizedCaseInsensitiveContains("Permission denied")
+                   ? "Permission denied. Check SSH key access."
+                   : (message.isEmpty ? "The SSH scan failed." : message))
             throw NSError(domain: "Portman", code: Int(result.status),
                           userInfo: [NSLocalizedDescriptionKey: detail])
         }
-        return parseRemoteDetails(result.standardOutput)
+        return parseRemoteDiscovery(result.standardOutput)
+    }
+
+    static func parseRemoteDiscovery(_ output: String) -> [PortmanRemotePort] {
+        let dockerSplit = output.components(separatedBy: "\nMPT_DOCKER\n")
+        var ports = parseRemoteDetails(dockerSplit[0])
+        guard dockerSplit.count > 1 else { return ports }
+        let systemdSplit = dockerSplit[1].components(separatedBy: "\nMPT_SYSTEMD\n")
+        for line in systemdSplit[0].split(whereSeparator: \.isNewline) {
+            let fields = line.split(separator: "|", maxSplits: 1)
+            guard fields.count == 2 else { continue }
+            let name = String(fields[0])
+            for mapping in fields[1].split(separator: ",") {
+                let sides = mapping.trimmingCharacters(in: .whitespaces).components(separatedBy: "->")
+                guard sides.count == 2,
+                      let port = UInt16(sides[0].split(separator: ":").last ?? ""),
+                      let index = ports.firstIndex(where: { $0.port == port }) else { continue }
+                ports[index].container = name
+            }
+        }
+        if systemdSplit.count > 1 {
+            for line in systemdSplit[1].split(whereSeparator: \.isNewline) {
+                let fields = line.split(whereSeparator: \.isWhitespace)
+                guard fields.count >= 3,
+                      let port = UInt16(fields[0].split(separator: ":").last ?? ""),
+                      let index = ports.firstIndex(where: { $0.port == port }),
+                      ports[index].processName == nil else { continue }
+                let unit = fields.last ?? ""
+                ports[index].processName = unit == "-" ? String(fields[1]) : String(unit)
+            }
+        }
+        return ports
     }
 
     static func remoteProcessDetails(host: String, pid: Int32?, port: UInt16,
@@ -811,13 +855,13 @@ final class PortmanService {
 
     func loadRemoteDetails(host: String, port: UInt16, password: String? = nil) async {
         guard let detail = remoteDetails[port], detail.command == nil,
-              detail.container == nil else { return }
+              detail.pid != nil else { return }
         let process = try? await PortmanScanner.remoteProcessDetails(
             host: host, pid: detail.pid, port: port, password: password
         )
         guard !Task.isCancelled, remoteDetails[port]?.pid == detail.pid else { return }
         remoteDetails[port]?.command = process?.command
-        remoteDetails[port]?.container = process?.container
+        remoteDetails[port]?.container = process?.container ?? detail.container
     }
 
     @discardableResult
