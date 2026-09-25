@@ -27,7 +27,7 @@ struct TweakDetailView: View {
                     Text(item.kind.rawValue)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
-                    if fields.isEmpty {
+                    if fields.isEmpty && item.id != "helper.keep-awake" {
                         Text(item.kind == .historical ? "Unavailable" : "Reference")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(item.kind == .historical ? .red : .secondary)
@@ -38,7 +38,19 @@ struct TweakDetailView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
 
-                if !fields.isEmpty {
+                if item.id == "helper.keep-awake" {
+                    if SettingsManager.shared.isToolEnabled("awake") {
+                        AwakeSettingsView()
+                        Text("The sleep assertion works while MacPowerToys is running. Timed sessions and the selected mode are saved by Awake.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Awake is disabled in MacPowerToys.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Button("Enable Awake") { SettingsManager.shared.setToolEnabled(true, for: "awake") }
+                    }
+                } else if !fields.isEmpty {
                     preferenceForm
                 } else {
                     Text(explanation)
@@ -192,6 +204,7 @@ struct TweakDetailView: View {
         case "power.schedule": url = "https://support.apple.com/guide/mac-help/schedule-your-mac-to-turn-on-or-off-mchl40376151/mac"
         case "input.hid-remap": url = "https://developer.apple.com/library/archive/technotes/tn2450/_index.html"
         case "security.sudo-touchid": url = "https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/security/pam.nix"
+        case "helper.keep-awake": url = nil
         case "native.screenshot-location", "native.screenshot-thumbnail", "native.screenshot-memory":
             url = "https://support.apple.com/guide/mac-help/take-a-screenshot-mh26782/mac"
         case "native.tiling": url = "https://support.apple.com/guide/mac-help/tile-app-windows-mchlef287e5d/mac"
