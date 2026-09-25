@@ -92,3 +92,32 @@ jobs:
           name: portman-ui-renders
           path: ${{ runner.temp }}/portman-ui-renders
           if-no-files-found: warn
+
+  tray-fan-ui:
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise Fan setup in a fresh hosted Mac session
+        run: |
+          xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-tray-fan-ui" \
+            -resultBundlePath "$RUNNER_TEMP/tray-fan-ui.xcresult" \
+            -destination 'platform=macOS' -parallel-testing-enabled NO \
+            -only-testing:powertoysUITests/TrayFanUITests \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
+            MPT_SOURCE_COMMIT="$GITHUB_SHA" test
+      - name: Export Fan setup capture
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/tray-fan-ui.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/tray-fan-ui.xcresult" --output-path "$RUNNER_TEMP/tray-fan-ui-renders" --filter '*.png'
+          fi
+      - name: Save Fan setup capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tray-fan-ui-renders
+          path: ${{ runner.temp }}/tray-fan-ui-renders
+          if-no-files-found: warn
