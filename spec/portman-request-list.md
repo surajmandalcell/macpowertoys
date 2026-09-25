@@ -56,5 +56,12 @@ passed 864 tests, with five skipped and zero failures. Its new light/dark
 Failed Forward renders show the full exit message, local and remote mapping,
 Retry, and Stop at the actual 400pt panel width. A signed universal Release
 build of the Portman revision passed strict app and helper signature checks.
-The installed app still needs the current committed source and a background
-relaunch after the shared checkout's other in-progress edits are complete.
+The signed hosted `dc97280` build was installed and launched from
+`/Applications/MacPowerToys.app` in the background. Its app and helper stamps
+match that tested code revision, the fresh installed process uses the expected
+path, and the Raycast extension contains the Portman command. No Cloud Sync
+transfer was active. Later repository commits changed documentation and tests,
+not Portman product code. A read-only native Computer inspection of the live
+menu-bar panel was denied by automatic approval review; the hosted renders and
+process checks did not take desktop focus. A private host and live menu-bar
+interactions still need owner-approved inspection.
