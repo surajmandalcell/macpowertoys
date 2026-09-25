@@ -1305,7 +1305,7 @@ struct SystemMonitorTrayView: View {
                     values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
                     tint: thermalTint, surfaceTint: SystemMonitorPalette.green
                 ))
-                summary(.cpu, metric(
+                summary(.cpu, identifier: "load", metric(
                     "Load · 1 min", symbol: "chart.bar", value: loadValue,
                     detail: "Average CPU demand", level: loadLevel,
                     values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
@@ -1319,10 +1319,12 @@ struct SystemMonitorTrayView: View {
         }
     }
 
-    private func summary<Content: View>(_ destination: SystemMonitorTrayPage, _ content: Content) -> some View {
+    private func summary<Content: View>(
+        _ destination: SystemMonitorTrayPage, identifier: String? = nil, _ content: Content
+    ) -> some View {
         Button { pageID = destination.rawValue } label: { content }
             .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
-            .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
+            .accessibilityIdentifier("system-monitor.tray.summary.\(identifier ?? destination.rawValue)")
             .accessibilityHint("Show \(destination.title) details")
     }
 
