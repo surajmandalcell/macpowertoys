@@ -151,12 +151,18 @@ final class AwakeService {
 
     private func scheduleTimer() {
         timer?.invalidate()
-        guard configuration.mode != .passive || configuration.attachedProcessID != nil else { return }
+        timer = nil
+        guard Self.requiresTimer(configuration) else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [self] in self.tick() }
         }
         timer?.tolerance = 0.2
+    }
+
+    static func requiresTimer(_ configuration: AwakeConfiguration) -> Bool {
+        guard configuration.mode != .passive else { return false }
+        return configuration.mode != .indefinite || configuration.attachedProcessID != nil
     }
 
     private func tick() {
