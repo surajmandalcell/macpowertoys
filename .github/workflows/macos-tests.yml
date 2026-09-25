@@ -24,12 +24,14 @@ jobs:
       - name: Exercise Switch and Portman in the hosted Mac
         run: |
           xcodebuild -project powertoys.xcodeproj -scheme powertoys-desktop-tests \
-            -derivedDataPath "$RUNNER_TEMP/macpowertoys-derived" \
+            -derivedDataPath "$RUNNER_TEMP/macpowertoys-ui-derived" \
             -resultBundlePath "$RUNNER_TEMP/app-ui.xcresult" \
             -destination 'platform=macOS' -parallel-testing-enabled NO \
             -only-testing:powertoysUITests/SwitchUITests \
             -only-testing:powertoysUITests/PortmanUITests \
             CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/powertoys/Local.entitlements" \
             MPT_SOURCE_COMMIT="$GITHUB_SHA" test
       - name: Build installable app archive
         run: |
