@@ -66,4 +66,16 @@ final class FanControlTests: XCTestCase {
         let unknown = output.replacingOccurrences(of: "\"mode\":\"system\"", with: "\"mode\":\"unknown\"")
         XCTAssertFalse(try XCTUnwrap(FanCommand.parseSmctlStatus(unknown)).canControl)
     }
+
+    func testFanCommandBoundsProcessOutputWithoutHardwareAccess() {
+        XCTAssertThrowsError(try FanCommand.run("/usr/bin/printf", ["%262145s", "x"])) { error in
+            XCTAssertEqual(error.localizedDescription, "The fan helper returned too much data.")
+        }
+    }
+
+    func testFanCommandStopsProcessThatIgnoresTermination() {
+        let started = Date()
+        XCTAssertThrowsError(try FanCommand.run("/bin/sh", ["-c", "trap '' TERM; exec /bin/sleep 30"]))
+        XCTAssertLessThan(Date().timeIntervalSince(started), 9)
+    }
 }
