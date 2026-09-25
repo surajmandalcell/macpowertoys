@@ -164,6 +164,20 @@
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.
 
+## Monitor Summary On Short Displays
+
+- **Symptom:** The Monitor Home grid loses its last card row and the Fan control
+  below the visible menu-bar panel, despite a large blank area in a fixed-size
+  offscreen capture.
+- **Cause:** Eight 88pt summary cards plus the new secondary tab row exceeded
+  the tray body's 70-percent screen-height cap on a short display.
+- **Invariant:** At 360pt width, Home shows all eight summary values and Fan
+  within the capped body on a 680pt visible screen. Detail tabs keep their
+  natural content height and the panel still scrolls on smaller screens.
+- **Check:** Measure the natural Home height against the short-screen cap and
+  inspect light and dark production-width renders. The first hosted render at
+  `294c5a2` exposed the cutoff; the follow-up check is in `0493423`.
+
 ## Fan And Awake Tray Alignment
 
 - **Symptom:** Fan looks like a separate badge, or both Fan and Awake waste
