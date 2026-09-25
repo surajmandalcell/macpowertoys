@@ -22,7 +22,15 @@ final class MacTweaksUITests: XCTestCase {
         attach(window.screenshot(), named: "Mac Tweaks Setting")
         window.buttons["mac-tweaks.back"].click()
 
-        let search = window.textFields["Search tweaks"]
+        let power = window.buttons["mac-tweaks.category.Power and hardware"]
+        XCTAssertTrue(power.exists)
+        XCTAssertLessThanOrEqual(power.frame.height, 30, "A short category label should fit one sidebar row")
+        power.click()
+        XCTAssertTrue(window.buttons["mac-tweaks.card.hardware.auto-start"].waitForExistence(timeout: 5))
+        attach(window.screenshot(), named: "Mac Tweaks Power")
+
+        let search = window.textFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.click()
         search.typeText("screnshot format")
         XCTAssertTrue(window.buttons["mac-tweaks.card.screenshots.format"].waitForExistence(timeout: 5))
