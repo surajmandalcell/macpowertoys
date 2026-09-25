@@ -10,7 +10,7 @@ previously locked identities for those five tools.
 |---|---|---|
 | Verify | Promote Sector platter as Disk Explorer's icon. | The selected platter is a 512px RGBA asset and is wired into the launcher, Dock, and Raycast. |
 | Verify | Redesign System Care. | A removable coral block leaves an empty slot in a cleanup tray. |
-| Verify | Redesign Text Extractor. | A violet selection band lifts one text strip from an ivory card. |
+| Superseded | Redesign Text Extractor. | The lifted-strip treatment was replaced by the owner's final T01 Scan beam choice below. |
 | Verify | Redesign Input Devices. | An ivory mouse gives its violet scroll wheel the visual focus. |
 | Verify | Redesign NetToys. | Three recessed network ports connect to one coral cable. |
 | Verify | Redesign Color Picker. | An eyedropper touches a cluster of violet, coral, and cyan samples. |
@@ -80,3 +80,19 @@ in [run 36101318344](https://github.com/surajmandalcell/macpowertoys/actions/run
 Its 980×676 native SwiftUI capture confirms four cards per row with readable
 descriptions and aligned controls; it is linked from the gallery. No
 owner-desktop app or test runner was opened.
+
+## Final icon and launcher choices
+
+The owner selected the original **M02 Scope trace** for System Monitor and
+**T01 Scan beam** for Text Extractor. Promote those exact 512px sources from
+`tmp/icon-round-2/icons/` to the app assets and Raycast icons. The other
+variations remain review history, not candidates to substitute for the chosen
+files.
+
+The owner chose four columns for All Tools. Each card now places a larger icon
+across two rows: the tool name beside its upper half, then the native enable
+switch and Open button beside its lower half. The description sits below that
+header. Preserve the full built-in descriptions, separate card/enable/Open
+actions, and four columns at the standard 980pt pane width. Verify the actual
+height and readability in a native 980×676 capture; do not infer them from the
+earlier HTML layout study.
