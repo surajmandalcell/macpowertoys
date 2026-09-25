@@ -33,3 +33,8 @@ Keep `spec/system-tools-request-list.md` current when Input Devices, System
 Care, or System Monitor requirements or verification results change.
 
 Keep `goals.md` current when a request list adds or closes current work.
+
+After every local app code or UI change, finish the installed-app handoff in
+`spec/troubleshoot/verification.md`: stop the old process, install the clean
+current commit, relaunch the `/Applications` copy, and verify its source stamp
+and running path. A build or test result alone does not finish the task.

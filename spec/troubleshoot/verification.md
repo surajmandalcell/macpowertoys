@@ -124,15 +124,21 @@
 
 ## Installation Gate
 
-- **Symptom:** A verified build is not installed, or installation interrupts an
-  active Cloud Sync transfer.
-- **Cause:** The transfer gate or final install step was skipped.
-- **Invariant:** Read the transfer state before UI smoke tests and installation.
-  Never replace or relaunch the installed app during an active transfer. When
-  clear, install and relaunch the final verified build before handoff only when
-  desktop interaction is permitted; otherwise defer installation and report it.
-- **Check:** Confirm no active transfer, install the final Release product, and
-  confirm the installed process is running.
+- **Symptom:** A verified source change is reported as done while the installed
+  MacPowerToys process still runs an older build.
+- **Cause:** The agent stopped after a build or test and skipped the installed
+  app replacement and process restart.
+- **Invariant:** Read the Cloud Sync transfer state before installation. Never
+  replace or relaunch during an active transfer. When clear, commit the clean
+  source, stop the running `/Applications` app, run `make install
+  ALLOW_INSTALL=1` with task-unique DerivedData, and launch that exact installed
+  path in the background. Complete this handoff after every local app code or
+  UI change the owner asks to use; do not count a build as installation.
+- **Check:** Confirm no active transfer, a fresh installed process ID and exact
+  `/Applications` executable path, strict signing, and matching `HEAD`, built,
+  installed, and embedded-helper source stamps. If a gate blocks installation,
+  report the installed revision and the exact reason instead of claiming the
+  latest UI is running.
 
 ## Raycast Local Install Drift
 
