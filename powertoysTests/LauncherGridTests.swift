@@ -26,25 +26,27 @@ final class LauncherGridTests: XCTestCase {
 
     func testLauncherFourColumnRender() throws {
         let size = NSSize(width: 980, height: 676)
-        let host = NSHostingView(
-            rootView: AllToolsGridView(selectedTool: .constant("all-tools"))
-                .frame(width: size.width, height: size.height)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .environment(\.colorScheme, .dark)
-        )
-        host.appearance = NSAppearance(named: .darkAqua)
-        host.frame = NSRect(origin: .zero, size: size)
-        host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-        host.layoutSubtreeIfNeeded()
+        for scheme in [ColorScheme.dark, .light] {
+            let host = NSHostingView(
+                rootView: AllToolsGridView(selectedTool: .constant("all-tools"))
+                    .frame(width: size.width, height: size.height)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .environment(\.colorScheme, scheme)
+            )
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(origin: .zero, size: size)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            host.layoutSubtreeIfNeeded()
 
-        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: representation)
-        let image = NSImage(size: size)
-        image.addRepresentation(representation)
-        let attachment = XCTAttachment(image: image)
-        attachment.name = "Launcher — Four Columns — Dark"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Launcher — Four Columns — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 }

@@ -402,11 +402,12 @@ Canonical anatomy:
 - `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
   padding, four flexible columns, and 16pt row/column gaps. The 1200pt launcher
   shows four cards in each row even when the scroll view reserves width.
-- A launcher tool card is at least 172pt high at default text sizes, with 12pt outer
-  padding and 12pt radius. Its anatomy is: 36pt named tool icon; 13pt medium
-  name; up to five lines of 12pt secondary description so the current built-in
-  copy stays visible; an unlabeled mini enable switch
-  bottom-leading; and a native small `Open` button bottom-trailing.
+- A launcher tool card is at least 150pt high at default text sizes, with 12pt outer
+  padding and 12pt radius. Its 48pt icon spans the first two rows: a 13pt medium
+  tool name sits beside the upper half, then an unlabeled native mini enable
+  switch and a native small `Open` button share the row beside the lower half.
+  Up to five lines of 12pt secondary description sit below the icon and header
+  so the current built-in copy stays visible.
   Rest is 0.03. Hover is 0.06
   with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,
   radius 8, y offset 2. Accessibility text may
