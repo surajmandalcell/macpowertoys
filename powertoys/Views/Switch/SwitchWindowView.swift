@@ -442,18 +442,81 @@ struct SwitchWindowView: View {
                 Text("Sign in again to view usage for this account.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-            } else if let limits = model.usage[account.id]?.rateLimits?.defaultBucket {
-                if let plan = model.usage[account.id]?.account?.plan {
-                    Text(plan).font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
-                    if let primary = limits.primary { usageRow("Current window", window: primary) }
-                    if let secondary = limits.secondary { usageRow("Longer window", window: secondary) }
-                }
-                if let total = model.usage[account.id]?.usage?.lifetimeTokens {
-                    Text("\(total.formatted()) lifetime tokens")
+            } else if let snapshot = model.usage[account.id] {
+                HStack(spacing: 8) {
+                    Text(snapshot.account?.plan?.capitalized ?? "Codex usage")
+                        .font(.system(size: 12, weight: .medium))
+                    Spacer()
+                    Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                }
+                if snapshot.rateLimits?.ordinaryUsageAllowed == false {
+                    Label("Ordinary usage is restricted", systemImage: "exclamationmark.circle")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                }
+                let buckets = usageBuckets(snapshot)
+                if buckets.isEmpty {
+                    Text("Rate limits unavailable")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(buckets.indices, id: \.self) { index in
+                    let bucket = buckets[index]
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text(bucket.name ?? bucket.model ?? bucket.id ?? "Rate limits")
+                            .font(.system(size: 12, weight: .medium))
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
+                            if let primary = bucket.primary, primary.usedPercent != nil {
+                                usageRow("Current window", window: primary)
+                            }
+                            if let secondary = bucket.secondary, secondary.usedPercent != nil {
+                                usageRow("Longer window", window: secondary)
+                            }
+                        }
+                        if let credits = bucket.credits {
+                            Text("Credits: \(credits.unlimited == true ? "Unlimited" : credits.balance ?? (credits.hasCredits == true ? "Available" : "None"))")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        if bucket.spendControlReached == true {
+                            Text("Spend control reached")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                if let summary = snapshot.usage {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], spacing: 12) {
+                        if let value = summary.lifetimeTokens {
+                            usageFact("Lifetime", value: value.formatted(.number.notation(.compactName)))
+                        }
+                        if let value = summary.peakDailyTokens {
+                            usageFact("Peak day", value: value.formatted(.number.notation(.compactName)))
+                        }
+                        if let value = summary.currentStreakDays {
+                            usageFact("Current streak", value: "\(value) days")
+                        }
+                        if let value = summary.longestStreakDays {
+                            usageFact("Longest streak", value: "\(value) days")
+                        }
+                        if let value = summary.longestRunningTurnSeconds {
+                            usageFact("Longest turn", value: "\(value) seconds")
+                        }
+                    }
+                }
+                if !snapshot.dailyUsage.isEmpty {
+                    Text("Activity")
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.top, 4)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], spacing: 12) {
+                        ForEach([CodexTokenPeriod.today, .weekly, .monthly, .yearly], id: \.rawValue) { period in
+                            usageFact(period.label,
+                                      value: period.tokens(in: snapshot.dailyUsage, endingAt: .now)
+                                        .formatted(.number.notation(.compactName)))
+                        }
+                    }
                 }
             } else {
                 Text("Load usage to see current rate limits for this account.")
@@ -473,12 +536,42 @@ struct SwitchWindowView: View {
                     .contentTransition(.numericText())
             }
             if let percent = window.usedPercent {
-                ProgressView(value: Double(percent), total: 100)
+                ProgressView(value: Double(min(max(percent, 0), 100)), total: 100)
                     .accessibilityLabel("\(title), \(percent)% used")
+            }
+            if let reset = window.resetsAt {
+                Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(14)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func usageBuckets(_ snapshot: CodexAccountUsageSnapshot) -> [CodexRateLimitBucketSnapshot] {
+        guard let limits = snapshot.rateLimits else { return [] }
+        var seen = Set<String>()
+        var buckets: [CodexRateLimitBucketSnapshot] = []
+        if let bucket = limits.defaultBucket {
+            seen.insert(bucket.id ?? "default")
+            buckets.append(bucket)
+        }
+        for (key, bucket) in limits.buckets.sorted(by: { $0.key < $1.key }) {
+            if seen.insert(bucket.id ?? key).inserted { buckets.append(bucket) }
+        }
+        return buckets.filter {
+            $0.primary?.usedPercent != nil || $0.secondary?.usedPercent != nil
+                || $0.credits != nil || $0.spendControlReached != nil
+        }
+    }
+
+    private func usageFact(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(value).font(.system(size: 13, weight: .medium, design: .rounded))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func accountMetadata(_ account: AccountRecord) -> some View {
