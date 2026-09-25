@@ -52,8 +52,19 @@ in place; the earlier travelling underline entered from an unexpected edge.
 Keep high-usage servers excluded from automatic cleanup independently of the
 removed alert presentation.
 
+The current live review reports that the tab underline still appears to enter
+from unrelated edges. A remote scan of `oci2` labels most listeners as unknown;
+try other available read-only sources such as privileged process metadata,
+containers, and system services before falling back to unknown. Remove the
+always-visible SSH password button; request a password only after SSH reports
+an authentication failure. In Settings, inset the search field consistently,
+align labels left and controls right, replace the ineffective tall cleanup
+steppers, and make every selector usable. Check the actual running UI with
+computer control, without taking over the owner's desktop.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| In progress | Fix the live-reviewed tab, remote identification, password, and Settings defects. | The source now uses an immediate tab line, removes the password button, probes non-interactive privileged `ss`, Docker, and systemd during a scan, and gives Settings full-width search plus compact trailing controls. Read-only `oci2` inspection confirmed that ordinary `ss` hid most process owners while the added sources exposed them. Portman Swift syntax parses; the local app build is temporarily blocked by unrelated in-flight Switch source. | Run the hosted unit and UI checks, install a clean signed build, and exercise each changed control with native app-scoped computer control. |
 | Complete | Match the server rows to the memory bar, sort by Port, Memory, Name, or CPU, and replace Alerts with searchable Settings. | Hosted run `36175966070` passed the Portman UI job and unit-test step. Its normal-mode four-listener capture shows the footer fully inside the panel, and the row and memory bar accessibility frames match. The same job exercised sorting, Forward navigation, and individual Settings filtering; the filtered capture shows the panel ending just below its controls. Alerts delivery and presentation are removed, while high-usage cleanup protection remains. The signed app and helper were installed from clean HEAD and launched in the background without local UI tests. | None for this review. |
 | In progress | Route every Portman entry point to one full menu-bar panel, with a count-bearing status item. | The source has one dedicated 400-point panel and status item. The launcher Open action and deep link route there; a Raycast command builds offline, and Xcode extracted a discoverable Spotlight App Shortcut. The separate window, shallow combined tab, and duplicate launcher settings form are gone; the launcher detail now shows only the tool guide. | Verify all entry routes, count, and dismissal in the final signed app. |
 | In progress | Recreate the reference's connected overview and detail states in the menu bar. | The panel has a listening-process memory breakdown, stable port colors, linked row/bar hover, sparklines at rest, expandable metadata and process tree, ten-minute history, and shared memory/CPU chart hover. Hovering a memory segment changes the heading, large memory amount, RAM share, and CPU while row hover highlights the segment. The scan hides system and GUI listeners by default, retains CLI runtimes packaged inside an app bundle, and can show all listeners. Hosted run `36119359116` saved a one-server overview and light/dark detail at 400 points. The memory axis reads GB/MB across ten minutes, and the compact detail keeps its Open localhost action visible even at the hosted screen's 488-point panel cap. | Inspect the sorted row list, segment hover, disclosure, and dismissal in a hosted render and final signed app. |
@@ -66,6 +77,11 @@ The owner requested that verification leave the active desktop alone after
 Xcode tests coincided with macOS privacy and Gatekeeper prompts. Build-only and
 static checks are allowed here; executable interaction checks require an
 isolated macOS account or VM.
+
+For the latest review the owner also explicitly requested computer-control
+inspection of the running app. Use app-scoped native control on the exact
+installed build only when it preserves their foreground focus; executable
+XCTest still belongs in an isolated macOS environment.
 
 The hosted macOS unit-test run [36119359116](https://github.com/surajmandalcell/macpowertoys/actions/runs/36119359116)
 passed at `a3786e2` with 864 passed, five skipped, and zero failures. It ran
