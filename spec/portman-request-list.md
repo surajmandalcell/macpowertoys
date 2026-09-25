@@ -128,5 +128,7 @@ panel is now 330 points rather than 375.
 Hosted run `36140052984` passed the empty-text assertion and captured the
 330-point panel with the full card and a small bottom inset. Run `36140955732`
 passed Portman's fresh-runner UI navigation and the hosted unit-test step after
-the new Mac Tweaks registry expectations were corrected. The signed installed
-copy still needs the final source-stamp replacement.
+the new Mac Tweaks registry expectations were corrected: 869 tests, five skips,
+zero failures. Run `36142313540` passed the added equality checks for all
+three tab button widths and the visible `0 KB` label. The signed installed copy
+still needs the final source-stamp replacement.
