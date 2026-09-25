@@ -403,16 +403,7 @@ struct PortmanPanelView: View {
     }
 
     private var suggestedCleanupIDs: Set<String> {
-        let now = Date()
-        return Set(uniquePorts.filter { port in
-            PortmanCleanupPolicy.suggested(
-                port: port, hasWarning: service.warning(for: port) != nil,
-                folder: service.metadata[port.id]?.folder,
-                lastConnectionAt: service.lastConnectionAt[port.processID], now: now,
-                idleHours: PortmanPreferences.idleSuggestionHours,
-                runningDays: PortmanPreferences.runningSuggestionDays
-            )
-        }.map(\.processID))
+        service.suggestedCleanupIDs
     }
 
     private func memoryString(_ bytes: Int64) -> String {
@@ -983,6 +974,7 @@ struct PortmanPanelView: View {
 struct PortmanSettingsView: View {
     var compact = false
     @State private var service = PortmanService.shared
+    @State private var pendingAutomaticCleanup = false
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
     @AppStorage("portman.scanUpperPort") private var upperPort = 9999
     @AppStorage("portman.scanInterval") private var scanInterval = 2.0
@@ -990,6 +982,9 @@ struct PortmanSettingsView: View {
     @AppStorage("portman.growthAlertMB") private var growthAlertMB = 500
     @AppStorage("portman.idleHours") private var idleHours = 4.0
     @AppStorage("portman.runningDays") private var runningDays = 3.0
+    @AppStorage("portman.cleanupMode") private var cleanupMode = PortmanCleanupMode.ask.rawValue
+    @AppStorage("portman.includeDeletedFolders") private var includeDeletedFolders = true
+    @AppStorage("portman.cleanupNotifications") private var cleanupNotifications = true
     @AppStorage("portman.protectedCommands") private var protectedCommands = ""
     @AppStorage("portman.showAllListeners") private var showAllListeners = false
     @AppStorage("portman.notificationsEnabled") private var notificationsEnabled = false
@@ -1078,10 +1073,38 @@ struct PortmanSettingsView: View {
             }
             QuietDivider()
             Text("Clean up").font(.system(size: 12, weight: .medium))
+            HStack {
+                Text("Mode")
+                Spacer()
+                Picker("Cleanup mode", selection: Binding(
+                    get: { cleanupMode },
+                    set: { value in
+                        if value == PortmanCleanupMode.automatic.rawValue
+                            && cleanupMode != PortmanCleanupMode.automatic.rawValue {
+                            pendingAutomaticCleanup = true
+                        } else { cleanupMode = value }
+                    }
+                )) {
+                    Text("Off").tag(PortmanCleanupMode.off.rawValue)
+                    Text("Ask").tag(PortmanCleanupMode.ask.rawValue)
+                    Text("Automatic").tag(PortmanCleanupMode.automatic.rawValue)
+                }
+                .labelsHidden().pickerStyle(.segmented).frame(width: 210)
+            }
+            Toggle("Include deleted folders", isOn: $includeDeletedFolders)
             Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
             Stepper("Suggest after \(Int(runningDays)) running days", value: $runningDays, in: 1...30, step: 1)
-            Text("Deleted folders and idle or long-running servers are suggested. Warnings stay unselected.")
-                .font(.system(size: 10)).foregroundStyle(.secondary)
+            Toggle("Notify about cleanup", isOn: $cleanupNotifications)
+            Group {
+                if cleanupMode == PortmanCleanupMode.automatic.rawValue {
+                    Text("Automatic sends stop requests without another prompt. Protected servers and warnings stay excluded.")
+                } else if cleanupMode == PortmanCleanupMode.off.rawValue {
+                    Text("Manual cleanup remains available from the server list.")
+                } else {
+                    Text("Ask suggests eligible servers. Mac notifications appear only when enabled above.")
+                }
+            }
+            .font(.system(size: 10)).foregroundStyle(.secondary)
             QuietDivider()
             Text("Integrations").font(.system(size: 12, weight: .medium))
             Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
@@ -1101,6 +1124,13 @@ struct PortmanSettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task { await service.refreshNotificationStatus() }
         .onChange(of: notificationsEnabled) { service.resetNotificationDelivery() }
+        .confirmationDialog("Stop eligible servers automatically?", isPresented: $pendingAutomaticCleanup) {
+            Button("Enable Automatic", role: .destructive) {
+                cleanupMode = PortmanCleanupMode.automatic.rawValue
+            }
+        } message: {
+            Text("Portman will send stop requests for eligible servers, including long-running ones, without asking again.")
+        }
     }
 }
 

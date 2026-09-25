@@ -246,10 +246,12 @@ final class PortmanTests: XCTestCase {
             return result
         }
         func suggested(_ port: PortmanLocalPort, warning: Bool = false, folder: String? = nil,
-                       lastConnection: Date? = nil) -> Bool {
+                       lastConnection: Date? = nil, mode: PortmanCleanupMode = .ask,
+                       includeDeleted: Bool = true) -> Bool {
             PortmanCleanupPolicy.suggested(
                 port: port, hasWarning: warning, folder: folder, lastConnectionAt: lastConnection,
-                now: now, idleHours: 4, runningDays: 3
+                now: now, idleHours: 4, runningDays: 3,
+                mode: mode, includeDeletedFolders: includeDeleted
             )
         }
         let threeDaysAgo = now.timeIntervalSince1970 - 3 * 86_400
@@ -257,8 +259,14 @@ final class PortmanTests: XCTestCase {
         XCTAssertTrue(suggested(port(started: threeDaysAgo, connected: true)))
         XCTAssertFalse(suggested(port(started: threeDaysAgo), warning: true))
         XCTAssertFalse(suggested(port(started: threeDaysAgo, command: "postgres")))
+        XCTAssertFalse(suggested(port(started: threeDaysAgo), mode: .off))
         XCTAssertTrue(suggested(port(started: now.timeIntervalSince1970 - 60),
                                 folder: "/project (deleted)"))
+        let removedFolder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portman-removed-\(UUID().uuidString)").path
+        XCTAssertTrue(suggested(port(started: now.timeIntervalSince1970 - 60), folder: removedFolder))
+        XCTAssertFalse(suggested(port(started: now.timeIntervalSince1970 - 60),
+                                 folder: "/project (deleted)", includeDeleted: false))
         let oneDayAgo = now.timeIntervalSince1970 - 86_400
         XCTAssertFalse(suggested(port(started: oneDayAgo),
                                  lastConnection: now.addingTimeInterval(-4 * 3_600 + 1)))

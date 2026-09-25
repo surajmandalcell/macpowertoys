@@ -34,6 +34,10 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     }
 }
 
+nonisolated enum PortmanCleanupMode: String, CaseIterable, Sendable {
+    case off, ask, automatic
+}
+
 nonisolated enum PortmanPreferences {
     static var scanRange: ClosedRange<UInt16> {
         let defaults = UserDefaults.standard
@@ -67,6 +71,20 @@ nonisolated enum PortmanPreferences {
         return value >= 1 && value <= 30 ? value : 3
     }
 
+    static var cleanupMode: PortmanCleanupMode {
+        PortmanCleanupMode(rawValue: UserDefaults.standard.string(forKey: "portman.cleanupMode") ?? "") ?? .ask
+    }
+
+    static var includeDeletedFolders: Bool {
+        let key = "portman.includeDeletedFolders"
+        return UserDefaults.standard.object(forKey: key) == nil || UserDefaults.standard.bool(forKey: key)
+    }
+
+    static var cleanupNotifications: Bool {
+        let key = "portman.cleanupNotifications"
+        return UserDefaults.standard.object(forKey: key) == nil || UserDefaults.standard.bool(forKey: key)
+    }
+
     static var showAllListeners: Bool {
         UserDefaults.standard.bool(forKey: "portman.showAllListeners")
     }
@@ -87,13 +105,20 @@ nonisolated enum PortmanPreferences {
 nonisolated enum PortmanCleanupPolicy {
     static func suggested(
         port: PortmanLocalPort, hasWarning: Bool, folder: String?, lastConnectionAt: Date?,
-        now: Date, idleHours: Double, runningDays: Double
+        now: Date, idleHours: Double, runningDays: Double,
+        mode: PortmanCleanupMode, includeDeletedFolders: Bool
     ) -> Bool {
-        guard port.canStop, !hasWarning else { return false }
-        if folder?.hasSuffix(" (deleted)") == true { return true }
+        guard mode != .off, port.canStop, !hasWarning else { return false }
+        if includeDeletedFolders, let folder, deleted(folder) { return true }
         if port.isLongRunning(at: now, days: runningDays) { return true }
         guard !port.hasConnections, let lastConnectionAt else { return false }
         return now.timeIntervalSince(lastConnectionAt) >= idleHours * 3_600
+    }
+
+    private static func deleted(_ folder: String) -> Bool {
+        if folder.hasSuffix(" (deleted)") { return true }
+        var info = stat()
+        return Darwin.lstat(folder, &info) != 0 && (errno == ENOENT || errno == ENOTDIR)
     }
 }
 
@@ -440,6 +465,24 @@ final class PortmanService {
     private var processes: [UUID: Process] = [:]
     private var remoteRequestID = UUID()
     private var notifiedProcessIDs = Set<String>()
+    private var handledCleanupProcessIDs = Set<String>()
+    private var lastCleanupMode: PortmanCleanupMode?
+    private var metadataCheckedIDs = Set<String>()
+
+    var suggestedCleanupIDs: Set<String> {
+        let now = Date()
+        return Set(localPorts.filter { port in
+            PortmanCleanupPolicy.suggested(
+                port: port, hasWarning: warning(for: port) != nil,
+                folder: metadata[port.id]?.folder,
+                lastConnectionAt: lastConnectionAt[port.processID], now: now,
+                idleHours: PortmanPreferences.idleSuggestionHours,
+                runningDays: PortmanPreferences.runningSuggestionDays,
+                mode: PortmanPreferences.cleanupMode,
+                includeDeletedFolders: PortmanPreferences.includeDeletedFolders
+            )
+        }.map(\.processID))
+    }
 
     func beginMonitoring() {
         monitoringCount += 1
@@ -475,12 +518,15 @@ final class PortmanService {
         localPorts = []
         history = [:]
         metadata = [:]
+        metadataCheckedIDs = []
         sessions = [:]
         githubLinks = [:]
         restartableIDs = []
         restartingIDs = []
         lastConnectionAt = [:]
         notifiedProcessIDs = []
+        handledCleanupProcessIDs = []
+        lastCleanupMode = nil
     }
 
     func refreshLocal() async {
@@ -507,6 +553,23 @@ final class PortmanService {
             }
             history = history.filter { key, _ in ports.contains { $0.id == key } }
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
+            metadataCheckedIDs.formIntersection(Set(ports.map(\.id)))
+            if PortmanPreferences.cleanupMode != .off {
+                let pending = ports.filter {
+                    $0.canStop && metadata[$0.id] == nil && metadataCheckedIDs.insert($0.id).inserted
+                }
+                if !pending.isEmpty {
+                    let found = await Task.detached(priority: .utility) {
+                        pending.compactMap { port in
+                            PortmanScanner.metadata(pid: port.pid).map { (port.id, $0) }
+                        }
+                    }.value
+                    guard !Task.isCancelled, monitoringCount > 0 else { return }
+                    for (id, details) in found where localPorts.contains(where: { $0.id == id }) {
+                        metadata[id] = details
+                    }
+                }
+            }
             sessions = sessions.filter { key, _ in ports.contains { $0.id == key } }
             githubLinks = githubLinks.filter { key, _ in ports.contains { $0.id == key } }
             restartableIDs.formIntersection(Set(ports.map(\.id)))
@@ -544,6 +607,7 @@ final class PortmanService {
                     } catch { notificationError = error.localizedDescription }
                 }
             }
+            await handleCleanupSuggestions()
             NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
         } catch {
             guard !Task.isCancelled, monitoringCount > 0 else { return }
@@ -779,6 +843,37 @@ final class PortmanService {
 
     var activeAlerts: [PortmanLocalPort] {
         localPorts.filter { warning(for: $0) != nil && (snoozedUntil[$0.processID] ?? .distantPast) <= Date() }
+    }
+
+    private func handleCleanupSuggestions() async {
+        let mode = PortmanPreferences.cleanupMode
+        if mode != lastCleanupMode {
+            handledCleanupProcessIDs = []
+            lastCleanupMode = mode
+        }
+        let ids = suggestedCleanupIDs
+        handledCleanupProcessIDs.formIntersection(ids)
+        guard mode != .off else { return }
+        var seen = Set<String>()
+        let fresh = localPorts.filter {
+            ids.contains($0.processID) && seen.insert($0.processID).inserted
+                && !handledCleanupProcessIDs.contains($0.processID)
+        }
+        guard !fresh.isEmpty else { return }
+        handledCleanupProcessIDs.formUnion(fresh.map(\.processID))
+        if mode == .automatic { stopLocalProcesses(fresh) }
+        guard PortmanPreferences.cleanupNotifications,
+              PortmanPreferences.notificationsEnabled, notificationStatus == "Allowed" else { return }
+        let content = UNMutableNotificationContent()
+        content.title = mode == .automatic
+            ? "Portman sent stop requests for \(fresh.count) servers"
+            : "Portman found \(fresh.count) cleanup suggestions"
+        content.body = "Open Portman to review the servers."
+        do {
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(
+                identifier: "portman.cleanup.\(UUID().uuidString)", content: content, trigger: nil
+            ))
+        } catch { notificationError = error.localizedDescription }
     }
 
     func stopLocalProcesses(_ ports: [PortmanLocalPort]) {
