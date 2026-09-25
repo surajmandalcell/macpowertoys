@@ -91,7 +91,7 @@ final class UtilityModelTests: XCTestCase {
             "Views/Logs/LogsWindowView.swift": 2,
             "Views/Marketplace/MarketplaceSettingsView.swift": 2,
             "Views/TextExtractor/TextExtractorView.swift": 5,
-            "Views/TrayPopoverView.swift": 12,
+            "Views/TrayPopoverView.swift": 13,
         ]
 
         for (path, expectedCount) in expectedStyleCounts {
