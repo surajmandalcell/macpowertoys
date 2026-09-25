@@ -111,4 +111,11 @@ The first fresh-runner UI capture had no privacy dialog but also no Portman
 panel, which narrowed the failure to cold-launch routing or popover timing.
 The app delegate now routes `--open portman` at launch, independently of SwiftUI
 scene setup, and the controller defers presentation until its status item is
-ready. The hosted UI test remains the acceptance check for this route.
+ready. Hosted run `36138020899` passed the fresh-runner navigation test:
+Servers, edge clicks on Forward and Alerts, Return to add a remote port,
+selection reset, and Settings. Its capture showed equal tab widths but clipped
+the zero-server empty state. Run `36138772279` passed after replacing the tall
+empty placeholder with a compact card, yet the card's second line still fell
+below the 300-point panel. The empty overview now budgets the card's full
+height, shows numeric `0 KB`, and has a hosted visibility assertion. Recheck
+that capture and the final signed build before closing the request.
