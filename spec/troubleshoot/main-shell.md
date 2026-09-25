@@ -177,7 +177,9 @@
 - **Check:** Measure the natural Home height against the short-screen cap and
   inspect light and dark production-width renders. The first hosted render at
   `294c5a2` exposed the cutoff; hosted run `36152200305` passed the
-  short-screen height regression after the summary cards were compacted.
+  short-screen height regression after the summary cards were compacted. The
+  hosted tray UI check also taps a secondary tab and summary card, then reopens
+  the menu to verify the saved selection without using the owner's desktop.
 
 ## Fan And Awake Tray Alignment
 
