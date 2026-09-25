@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SystemMonitorRemoteView: View {
     @AppStorage("systemMonitor.remoteHost") private var host = ""
+    @AppStorage("systemMonitor.remotePlatform") private var platformName = SystemMonitorRemotePlatform.linux.rawValue
     @AppStorage("systemMonitor.remoteInterval") private var interval = 30
     @State private var poller = SystemMonitorRemotePoller()
     @State private var connected = false
@@ -10,9 +11,12 @@ struct SystemMonitorRemoteView: View {
     @State private var lastUpdated: Date?
     @State private var errorMessage: String?
     @State private var copiedCommand = false
+    private var platform: SystemMonitorRemotePlatform {
+        SystemMonitorRemotePlatform(rawValue: platformName) ?? .linux
+    }
 
     var body: some View {
-        WorkspacePage("Remote Linux") {
+        WorkspacePage("Remote") {
             Button(connected ? "Disconnect" : "Connect", systemImage: connected ? "link.slash" : "link") {
                 if connected {
                     disconnect()
@@ -35,14 +39,22 @@ struct SystemMonitorRemoteView: View {
                         .disabled(connected)
                         .accessibilityIdentifier("system-monitor.remote.host")
                     Picker("Refresh", selection: $interval) {
-                        Text("15 seconds").tag(15)
                         Text("30 seconds").tag(30)
                         Text("60 seconds").tag(60)
+                        Text("2 minutes").tag(120)
                     }
                     .frame(width: 170)
                     .disabled(connected)
                 }
-                Text("Use a Linux host you can already reach with SSH.")
+                Picker("System", selection: $platformName) {
+                    ForEach(SystemMonitorRemotePlatform.allCases) { system in
+                        Text(system.rawValue).tag(system.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 290)
+                .disabled(connected)
+                Text("Use an SSH host you can already reach. Readings stop on disconnect or when you leave this page.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 HStack(spacing: 10) {
@@ -82,7 +94,9 @@ struct SystemMonitorRemoteView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
                         metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores")
                         metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))")
-                        metric("Load", value: reading.load.map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · "), detail: "1, 5, and 15 minutes")
+                        if !reading.load.isEmpty {
+                            metric("Load", value: reading.load.map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · "), detail: "1, 5, and 15 minutes")
+                        }
                         metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces")
                         metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces")
                         if let diskUsed = reading.diskUsed, let diskTotal = reading.diskTotal {
@@ -90,7 +104,7 @@ struct SystemMonitorRemoteView: View {
                         }
                     }
                 } else {
-                    ProgressView("Reading Linux system data…")
+                    ProgressView("Reading remote system data…")
                         .frame(maxWidth: .infinity)
                         .padding(30)
                 }
@@ -107,7 +121,7 @@ struct SystemMonitorRemoteView: View {
             guard connected else { return }
             while !Task.isCancelled {
                 do {
-                    let sample = try await poller.sample(host: host)
+                    let sample = try await poller.sample(host: host, platform: platform)
                     guard !Task.isCancelled else { return }
                     reading = sample
                     lastUpdated = Date()
@@ -118,7 +132,7 @@ struct SystemMonitorRemoteView: View {
                     connected = false
                     return
                 }
-                try? await Task.sleep(for: .seconds(max(interval, 15)))
+                try? await Task.sleep(for: .seconds(max(interval, 30)))
             }
         }
         .onDisappear { disconnect() }

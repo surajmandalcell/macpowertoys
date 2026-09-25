@@ -14,8 +14,6 @@
 	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>System Monitor shows paired Bluetooth devices only while its Bluetooth page is open.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

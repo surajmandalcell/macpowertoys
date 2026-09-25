@@ -150,6 +150,8 @@ changes. Never replace a running installation during a transfer.
 - The rclone control API uses a fresh random credential per launch.
 - Marketplace apps require a declared checksum, Developer ID,
   bundle identity, and Apple notarization.
+- You can [build and share a MacPowerToys tool](docs/MARKETPLACE_TOOLS.md) in
+  Swift, Rust, or another language through a Marketplace catalog.
 
 Read the [Privacy Policy](PRIVACY.md),
 [Security Policy](SECURITY.md), and

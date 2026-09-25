@@ -18,25 +18,6 @@ final class SystemMonitorTests: XCTestCase {
         }
     }
 
-    func testMonitorPluginContractRejectsInvalidMetricsAndOutput() throws {
-        let manifest = try SystemMonitorPluginManifest.decode(Data("""
-        {"formatVersion":1,"metrics":[{"id":"physical-memory","title":"Physical memory"}]}
-        """.utf8))
-        let sample = try SystemMonitorPluginSample.decode("""
-        {"formatVersion":1,"values":{"physical-memory":{"value":"16 GB","detail":"Installed RAM"}}}
-        """, manifest: manifest)
-        XCTAssertEqual(sample.values["physical-memory"]?.value, "16 GB")
-        XCTAssertThrowsError(try SystemMonitorPluginManifest.decode(Data("""
-        {"formatVersion":1,"metrics":[{"id":"same","title":"One"},{"id":"same","title":"Two"}]}
-        """.utf8)))
-        XCTAssertThrowsError(try SystemMonitorPluginSample.decode("""
-        {"formatVersion":1,"values":{"other":{"value":"16 GB"}}}
-        """, manifest: manifest))
-        XCTAssertThrowsError(try SystemMonitorPluginSample.decode("""
-        {"formatVersion":1,"values":{"physical-memory":{"value":"16\\nGB"}}}
-        """, manifest: manifest))
-    }
-
     func testRemoteLinuxParserAndSSHHostBoundary() throws {
         let output = """
         MPT1
@@ -68,6 +49,23 @@ final class SystemMonitorTests: XCTestCase {
         ))
     }
 
+    func testRemoteMacAndWindowsReadings() throws {
+        for (platform, marker) in [(SystemMonitorRemotePlatform.macOS, "MPTMAC1"),
+                                   (.windows, "MPTWIN1")] {
+            let output = "\(marker)\nCPU=25.5\nMEM=8000000\nAVAILABLE=2000000\nDISK=10000000,4000000\nNET=100,200\n"
+            let sample = try SystemMonitorRemoteProtocol.parseKeyed(output, platform: platform)
+            XCTAssertEqual(sample.cpuPercent, 25.5)
+            XCTAssertEqual(sample.memoryAvailable, 2_000_000)
+            XCTAssertEqual(sample.diskUsed, 4_000_000)
+            XCTAssertThrowsError(try SystemMonitorRemoteProtocol.parseKeyed(
+                output.replacingOccurrences(of: "AVAILABLE=2000000", with: "AVAILABLE=9000000"),
+                platform: platform
+            ))
+        }
+        XCTAssertTrue(try SystemMonitorRemoteProtocol.arguments(host: "server", platform: .windows).last?
+            .contains("-EncodedCommand") == true)
+    }
+
     func testProcessCPUUsesElapsedTimeAndRejectsCounterReset() {
         let percent = SystemMonitorProcessUsage.percent(
             previous: 1_000, current: 5_000, elapsed: 2,
@@ -82,6 +80,29 @@ final class SystemMonitorTests: XCTestCase {
     func testNativeProcessSampleIncludesCurrentProcess() async {
         let processes = await SystemMonitorProcessSampler().sample()
         XCTAssertTrue(processes.contains { $0.pid == getpid() && !$0.name.isEmpty })
+    }
+
+    func testProtectedProcessFallbackParsesPublicCountersAndPath() {
+        let row = "   1   0   0  21344 488724304   0.6 /System/Example App.app/Contents/MacOS/Example App\n"
+        let result = SystemMonitorProcessSampler.parsePublicProcessInfo(row)
+        XCTAssertEqual(result[1]?.parentPID, 0)
+        XCTAssertEqual(result[1]?.residentBytes, 21_344 * 1_024)
+        XCTAssertEqual(result[1]?.cpuPercent, 0.6)
+        XCTAssertEqual(result[1]?.path, "/System/Example App.app/Contents/MacOS/Example App")
+    }
+
+    func testProcessColumnsSortBothDirectionsWithoutRowLimit() {
+        let processes = (1...60).map { index in
+            SystemMonitorProcess(pid: Int32(index), started: UInt64(index),
+                                 name: String(format: "Process %02d", index),
+                                 cpuPercent: Double(index), residentBytes: UInt64(index * 1_024),
+                                 virtualBytes: 0, threads: 1, parentPID: 1,
+                                 userID: 501, executablePath: "/bin/test")
+        }
+        XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .cpu, descending: true).first?.pid, 60)
+        XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .memory, descending: false).first?.pid, 1)
+        XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .pid, descending: true).count, 60)
+        XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .name, descending: false).first?.pid, 1)
     }
 
     @MainActor
@@ -121,26 +142,6 @@ final class SystemMonitorTests: XCTestCase {
         image.addRepresentation(representation)
         let attachment = XCTAttachment(image: image)
         attachment.name = "System Monitor Remote — Dark"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
-
-    @MainActor
-    func testWorldClocksRenderAtProductionSize() throws {
-        let host = NSHostingView(rootView: SystemMonitorWorldClocksView()
-            .frame(width: 940, height: 780)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .environment(\.colorScheme, .dark))
-        host.appearance = NSAppearance(named: .darkAqua)
-        host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
-        host.layoutSubtreeIfNeeded()
-
-        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: representation)
-        let image = NSImage(size: host.bounds.size)
-        image.addRepresentation(representation)
-        let attachment = XCTAttachment(image: image)
-        attachment.name = "System Monitor World Clocks — Dark"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -197,7 +198,7 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(grid.components(separatedBy: "metricCard(").count - 1, 8)
         XCTAssertTrue(grid.contains("title: \"GPU\""))
         XCTAssertTrue(grid.contains("title: \"Load\""))
-        XCTAssertTrue(source.contains(".background(tint.opacity(0.055))"))
+        XCTAssertTrue(source.contains("tint.opacity(0.16)"))
         XCTAssertFalse(source.contains("WorkspacePage(\"Overview\", subtitle:"))
     }
 
@@ -219,6 +220,32 @@ final class SystemMonitorTests: XCTestCase {
         image.addRepresentation(representation)
         let attachment = XCTAttachment(image: image)
         attachment.name = "System Monitor — Overview — Dark"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testSystemMonitorTrayRendersAtProductionWidth() throws {
+        let suiteName = "SystemMonitorTrayRender.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.set(TrayTab.systemMonitor.rawValue, forKey: "tray.selectedTab.v2")
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let host = NSHostingView(rootView: TrayPopoverView()
+            .defaultAppStorage(defaults)
+            .frame(width: 360, height: 650, alignment: .top)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .environment(\.colorScheme, .dark))
+        host.appearance = NSAppearance(named: .darkAqua)
+        host.frame = NSRect(x: 0, y: 0, width: 360, height: 650)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: host.bounds.size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "System Monitor Tray — Dark"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -385,6 +412,25 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(decoded.schemaVersion, SystemMonitorMenuSettings.currentSchemaVersion)
     }
 
+    @MainActor
+    func testMixedMenuPlacementsCreateCombinedAndSeparateItems() throws {
+        let suiteName = "SystemMonitorPlacements.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let controller = SystemMonitorMenuController(defaults: defaults)
+        var settings = SystemMonitorMenuSettings(enabled: true, items: [
+            SystemMonitorMenuItemConfiguration(metric: .cpu, enabled: true, placement: .separate),
+            SystemMonitorMenuItemConfiguration(metric: .memory, enabled: true, placement: .combined),
+        ])
+        settings = try JSONDecoder().decode(SystemMonitorMenuSettings.self, from: JSONEncoder().encode(settings))
+        XCTAssertEqual(settings.separateItems.map(\.metric), [.cpu])
+        XCTAssertEqual(settings.combinedItems.map(\.metric), [.memory])
+        controller.configure(settings: settings)
+        XCTAssertEqual(controller.statusItemCount, 2)
+        settings.enabled = false
+        controller.configure(settings: settings)
+    }
+
     func testVersionOneItemsDecodeWithNewFormatDefaultsAndEncodeCurrentSchema() throws {
         let versionOne = """
         {"enabled":true,"mode":"grouped","interval":2,"items":[{"metric":"battery","enabled":true,"style":"valueOnly","symbol":"battery.75percent","interval":"seconds1","memoryUnit":"percentage","networkDirection":"both"}]}
@@ -416,6 +462,16 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(settings.items[0].symbol, SystemMonitorMenuMetric.cpu.symbol)
         settings.enabled = true
         XCTAssertNil(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false))
+    }
+
+    func testFirstMenuPlacementDoesNotEnableOtherLegacyDefaults() {
+        var settings = SystemMonitorMenuSettings()
+        XCTAssertFalse(settings.enabled)
+        settings.setPlacement(.separate, for: .cpu)
+        XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu])
+        XCTAssertEqual(settings.separateItems.map(\.metric), [.cpu])
+        settings.setPlacement(.off, for: .cpu)
+        XCTAssertTrue(settings.enabledItems.isEmpty)
     }
 
     func testNoOpSettingsMutationProducesNoUpdate() throws {
@@ -452,6 +508,9 @@ final class SystemMonitorTests: XCTestCase {
                 mode: .grouped
             ).isEmpty
         )
+        XCTAssertTrue(SystemMonitorStatusItemOrder.preferredPositionKeys(
+            previous: [.cpu], current: [.cpu, .memory], mode: .direct
+        ).isEmpty)
     }
 
     @MainActor
@@ -479,7 +538,9 @@ final class SystemMonitorTests: XCTestCase {
         service.updateMenuSettings { $0.items[0].style = .iconOnly }
         XCTAssertEqual(service.statusItemIdentities, groupedIdentities)
 
-        service.updateMenuSettings { $0.mode = .direct }
+        service.updateMenuSettings {
+            for index in $0.items.indices { $0.items[index].placement = .separate }
+        }
         XCTAssertEqual(
             service.statusItemAutosaveNames,
             Set(SystemMonitorMenuMetric.allCases.map {

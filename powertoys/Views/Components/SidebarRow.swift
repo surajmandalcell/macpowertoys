@@ -10,6 +10,7 @@ struct SidebarRow: View {
     let title: String
     var isSelected: Bool = false
     var logoAsset: String? = nil
+    var customSelectionColor: Color? = nil
     let action: () -> Void
 
     @Environment(\.controlActiveState) private var controlActiveState
@@ -51,6 +52,7 @@ struct SidebarRow: View {
 
     private var selectionColor: Color {
         guard isSelected else { return .clear }
+        if let customSelectionColor { return customSelectionColor }
         return Color(nsColor: controlActiveState == .inactive
             ? .unemphasizedSelectedContentBackgroundColor
             : .selectedContentBackgroundColor)
@@ -58,6 +60,7 @@ struct SidebarRow: View {
 
     private var foregroundColor: Color {
         guard isSelected else { return .primary }
+        if customSelectionColor != nil { return .primary }
         return Color(nsColor: controlActiveState == .inactive
             ? .unemphasizedSelectedTextColor
             : .alternateSelectedControlTextColor)
