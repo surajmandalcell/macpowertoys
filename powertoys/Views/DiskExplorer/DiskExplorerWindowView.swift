@@ -372,9 +372,11 @@ struct DiskExplorerWindowView: View {
                 } else if directory.children.isEmpty {
                     ContentUnavailableView("No Measured Items", systemImage: "square.dashed")
                 } else if chart == .treemap {
-                    DiskTreemapView(directory: directory, apparent: apparentSize, measure: measure, select: inspect)
+                    DiskTreemapView(directory: directory, apparent: apparentSize, measure: measure,
+                                    scanComplete: model.result?.isComplete == true, select: inspect)
                 } else {
-                    DiskSunburstView(directory: directory, apparent: apparentSize, measure: measure, select: inspect)
+                    DiskSunburstView(directory: directory, apparent: apparentSize, measure: measure,
+                                     scanComplete: model.result?.isComplete == true, select: inspect)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
