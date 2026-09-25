@@ -589,8 +589,10 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(settingsController.unitSegmentedControl.selectedSegment, Unit.millimeters.rawValue)
             XCTAssertEqual(prefs.unit, .pixels)
 
-            let enteredWidthMillimeters: CGFloat = 100
-            let enteredHeightMillimeters: CGFloat = 80
+            let dimensionScreen = controller.rulerWindow.screen ?? settingsController.window?.screen ?? NSScreen.main
+            let dpmm = dimensionScreen?.dpmm.width ?? NSScreen.defaultDpmm
+            let enteredWidthMillimeters = (CGFloat(300) / dpmm).rounded(.up)
+            let enteredHeightMillimeters = (CGFloat(250) / dpmm).rounded(.up)
             let zeroPointBeforeDimensionChange = controller.rulerWindow.zeroPoint()
             settingsController.dimensionWidthField.stringValue = "\(enteredWidthMillimeters)"
             settingsController.dimensionHeightField.stringValue = "\(enteredHeightMillimeters)"
