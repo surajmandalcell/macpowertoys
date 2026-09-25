@@ -21,3 +21,14 @@ jobs:
         run: brew install rclone
       - name: Run unit tests in the hosted Mac
         run: TEST_SESSION=isolated ADHOC=1 make test DERIVED_DATA="$RUNNER_TEMP/macpowertoys-derived"
+      - name: Export tray renders
+        run: |
+          result=$(find "$RUNNER_TEMP/macpowertoys-derived/Logs/Test" -maxdepth 1 -type d -name '*.xcresult' -print -quit)
+          test -n "$result"
+          xcrun xcresulttool export attachments --path "$result" --output-path "$RUNNER_TEMP/tray-renders" --filter '*.png'
+      - name: Save tray renders
+        uses: actions/upload-artifact@v4
+        with:
+          name: tray-renders
+          path: ${{ runner.temp }}/tray-renders
+          if-no-files-found: error
