@@ -1,4 +1,32 @@
-# Disk Explorer Troubleshooting
+# Diskman Troubleshooting
+
+## Partial Scan Rearranges The Map
+
+- **Symptom:** Treemap boxes appear, disappear, and snap into new places as
+  partial scan sizes change. A hover card covers the map and scan status
+  changes the available body height.
+- **Cause:** The chart repeatedly sorted by current size and chose different
+  binary split groups; Canvas redrew rectangles without interpolating them.
+  Zero-weight entries were hidden until measured.
+- **Invariant:** Keep entries visible from the first folder skeleton, order
+  chosen entries by stable path, split by count, and interpolate each tile or
+  ring segment as measured weights arrive. Keep hover details and scan status
+  in reserved rows outside the plotted region. Reduce Motion stays immediate.
+- **Check:** `testTreemapKeepsTileGroupsWhenMeasuredSizesCross` fails with the
+  prior weight-based grouping. Hosted chart navigation and motion captures
+  must confirm stable live transitions in both appearances.
+
+## Disk Repair Requests An Interactive Whole-Disk Prompt
+
+- **Symptom:** `diskutil repairDisk disk10` prints a question about erasing an
+  EFI partition, then exits with "Repair canceled" when run noninteractively.
+- **Cause:** Whole-disk repair can ask for input and its usage warns that other
+  whole disks might be touched.
+- **Invariant:** Modify exposes noninteractive `repairVolume` only for a
+  selected volume on a guarded removable/external physical disk. Whole-disk
+  verification remains read-only. Never auto-answer a repair prompt.
+- **Check:** The SD card's HFS+ partition passed `repairVolume`; a command
+  construction test rejects whole-disk repair.
 
 ## Scan Count Advances But The Chart Stays Empty
 

@@ -163,7 +163,7 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["system-care"]))
         .restorationBehavior(.disabled)
 
-        Window("Disk Explorer", id: "disk-explorer") {
+        Window("Diskman", id: "disk-explorer") {
             DiskExplorerWindowView()
                 .utilityMotionPolicy()
         }

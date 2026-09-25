@@ -86,8 +86,8 @@
     },
     {
       "name": "disk-explorer",
-      "title": "Disk Explorer",
-      "description": "Open Disk Explorer",
+      "title": "Diskman",
+      "description": "Open Diskman",
       "icon": "disk-explorer.png",
       "mode": "no-view"
     },

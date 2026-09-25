@@ -1,6 +1,26 @@
 import XCTest
 
 final class DiskExplorerUITests: XCTestCase {
+    @MainActor func testModifyShowsPhysicalDisksWithoutWriting() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launch()
+        defer { app.terminate() }
+
+        let window = app.windows["Diskman"]
+        XCTAssertTrue(window.waitForExistence(timeout: 15))
+        window.buttons["Manage Disks"].click()
+        let firstDisk = window.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'diskman.disk.'"
+        )).firstMatch
+        XCTAssertTrue(firstDisk.waitForExistence(timeout: 20))
+        firstDisk.click()
+        XCTAssertTrue(window.staticTexts["PARTITIONS & VOLUMES"].waitForExistence(timeout: 20))
+        XCTAssertTrue(window.staticTexts["OPERATION"].exists)
+        attach(window.screenshot(), named: "Diskman Modify")
+    }
+
     @MainActor func testScanControlsAndResultTabs() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
@@ -8,7 +28,7 @@ final class DiskExplorerUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let window = app.windows["Disk Explorer"]
+        let window = app.windows["Diskman"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         XCTAssertTrue(window.descendants(matching: .any)["diskExplorer.scan"].waitForExistence(timeout: 5))
         let contents = window.buttons["diskExplorer.contents"]
@@ -22,17 +42,17 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(tabs.waitForExistence(timeout: 5))
         tabs.descendants(matching: .any)["Largest Files"].click()
         XCTAssertTrue(window.textFields["Filter largest files"].waitForExistence(timeout: 5))
-        attach(window.screenshot(), named: "Disk Explorer Largest Files")
+        attach(window.screenshot(), named: "Diskman Largest Files")
         tabs.descendants(matching: .any)["Visualization"].click()
         XCTAssertTrue(contents.waitForExistence(timeout: 5))
-        attach(window.screenshot(), named: "Disk Explorer Visualization")
+        attach(window.screenshot(), named: "Diskman Visualization")
 
         let statistics = window.buttons["diskExplorer.statistics"]
         XCTAssertTrue(statistics.waitForExistence(timeout: 5))
         statistics.click()
         XCTAssertTrue(app.staticTexts["Measured So Far"].waitForExistence(timeout: 5)
                       || app.staticTexts["Scan Statistics"].exists)
-        attach(app.screenshot(), named: "Disk Explorer Scan Statistics")
+        attach(app.screenshot(), named: "Diskman Scan Statistics")
         statistics.click()
 
         let treemap = window.descendants(matching: .any)
@@ -44,7 +64,7 @@ final class DiskExplorerUITests: XCTestCase {
         let hoveredTile = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: treemap)
         XCTAssertEqual(XCTWaiter.wait(for: [hoveredTile], timeout: 5), .completed)
-        attach(window.screenshot(), named: "Disk Explorer Treemap Hover")
+        attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
         let drilledFolder = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label != %@", currentFolder), object: treemap)
@@ -58,7 +78,7 @@ final class DiskExplorerUITests: XCTestCase {
         let hoveredRing = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "NOT (value ENDSWITH ' items')"), object: rings)
         XCTAssertEqual(XCTWaiter.wait(for: [hoveredRing], timeout: 5), .completed)
-        attach(window.screenshot(), named: "Disk Explorer Ring Hover")
+        attach(window.screenshot(), named: "Diskman Ring Hover")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {

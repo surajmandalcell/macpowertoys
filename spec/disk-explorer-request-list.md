@@ -1,4 +1,4 @@
-# Disk Explorer request list
+# Diskman request list
 
 Requested on 2026-09-25, using [disktree](https://github.com/tobi/disktree) and
 [DaisyDisk](https://daisydiskapp.com/) as behavior references. This is an
@@ -20,6 +20,27 @@ The scan reports `st_blocks × 512` allocated bytes and counts hard links once.
 APFS clones may share physical blocks, so a marked item's size is not a promise
 of space recovered after removal. Startup-disk results are incomplete when macOS
 denies access to protected locations; the app displays that condition.
+
+## Diskman Analyze and Modify expansion
+
+Requested on 2026-09-25. The internal `disk-explorer` route and saved chart
+preferences remain compatible with existing launchers and user settings; the
+product name is Diskman.
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Stop live boxes snapping and keep the hover detail below the chart. | Treemap tile identity and split topology stay stable as weights cross, individual tile frames interpolate, zero-size skeleton entries are present from the first snapshot, and a fixed 40-point details row sits outside the drawing area. Rings use animated arc shapes and stable sibling order. A regression checks that crossing weights do not move a tile into a different group. | Review hosted motion captures and the signed app. |
+| Verify | Match the app's restrained chrome and update the chart palette. | The chart uses a muted blue, green, coral, violet, and gold set inspired by Apple, Google, and Anthropic, with the shared neutral background and existing button/spacing components. The scan status now reserves a constant height. | Compare light/dark hosted captures and the final installed app. |
+| Done | Rename the product to Diskman and organize the sidebar around Analyze and Modify. | Launcher, window, Raycast label, and manual say Diskman. Analyze groups folders and mounted volumes; Modify opens physical disk management. The prior route ID and saved settings are preserved. | Verify final signed UI. |
+| Verify | Add safe native disk and partition management. | Modify lists physical media and partition/volume structure. Native actions include verification, selected-volume repair, mount/unmount/eject, rename, erase volume/disk, repartition, add/delete/resize partitions, APFS volume and container operations, and zero-fill. Writes are limited to writable removable/external physical media, with an identity recheck immediately before execution and typed device-ID review for data-loss actions. | Compile and run hosted checks; inspect the installed signed app. |
+| Done | Test destructive operations only on the authorized 16 GB SD card. | The test harness checked Secure Digital bus, 15,634,268,160-byte size, `disk10`, and card serial `0x19302912` before every operation. Erase, verify, repartition, rename, mount/unmount, partition delete/add, volume format, HFS+ resize, volume repair, zero-fill, and APFS add/delete/shrink/grow succeeded. The card was restored to one mounted ExFAT volume named `DISKMAN`; `fsck_exfat` reports it is OK. | Eject was left untested so the card remains available without physical reinsertion. |
+
+MiniTool's Windows-specific operations such as BitLocker, drive letters,
+NTFS/FAT conversion, dynamic disks, and MBR repair have no equivalent safe
+macOS operation here. Diskman does not claim to perform them. macOS native
+disk operations and safety boundaries follow [Apple's partitioning guide](https://support.apple.com/en-mk/guide/disk-utility/dskutl14027)
+and [First Aid guidance](https://support.apple.com/en-us/102611); the feature
+inventory was compared with [MiniTool's official guide](https://www.partitionwizard.com/help/).
 
 The interaction pass draws on [DaisyDisk's map and hover navigation](https://daisydiskapp.com/guide/4/en/UnderstandingSunburst/),
 [GrandPerspective's selection and background scan](https://grandperspectiv.sourceforge.net/),

@@ -1,8 +1,24 @@
 import XCTest
 import Darwin
+import SwiftUI
 @testable import powertoys
 
 final class DiskExplorerTests: XCTestCase {
+    func testTreemapKeepsTileGroupsWhenMeasuredSizesCross() {
+        func tiles(_ weights: [Int64]) -> [DiskChartTile] {
+            weights.enumerated().map { index, weight in
+                DiskChartTile(entry: nil, label: String(index), weight: weight,
+                              detail: "", color: .blue)
+            }
+        }
+        let frame = CGRect(x: 0, y: 0, width: 400, height: 200)
+        let before = DiskTreemapView.layout(tiles([8, 6, 3, 2]), in: frame)
+        let after = DiskTreemapView.layout(tiles([30, 1, 1, 1]), in: frame)
+        XCTAssertEqual(before[0].rect.minX, before[1].rect.minX)
+        XCTAssertEqual(after[0].rect.minX, after[1].rect.minX)
+        XCTAssertGreaterThan(after[2].rect.minX, after[1].rect.minX)
+    }
+
     @MainActor func testPartialResultsCannotBeMarkedForRemoval() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

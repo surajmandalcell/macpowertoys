@@ -35,6 +35,10 @@ nonisolated struct ManagedDisk: Identifiable, Sendable {
     let manageable: Bool
     let partitions: [ManagedPartition]
 
+    var unallocatedBytes: Int64 {
+        max(0, size - partitions.filter { !$0.isAPFSVolume }.reduce(0) { $0 + $1.size })
+    }
+
     var identity: String {
         let layout = partitions.map {
             "\($0.id):\($0.content):\($0.isAPFSVolume ? 0 : $0.size):\($0.uuid ?? ""):\($0.name)"
@@ -170,6 +174,9 @@ nonisolated struct DiskRequest: Sendable {
             }
             if action == .partitionDisk && bytes > disk.size - 512_000_000 {
                 throw DiskManagementError.invalidInput("Leave at least 512 MB for the second partition.")
+            }
+            if action == .addPartition && bytes > max(0, disk.unallocatedBytes - 20_000_000) {
+                throw DiskManagementError.invalidInput("The new partition needs more unallocated space.")
             }
         }
         if [.eraseVolume, .deletePartition, .resizePartition].contains(action) && partition?.isAPFSVolume == true {

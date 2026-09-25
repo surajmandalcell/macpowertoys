@@ -43,7 +43,7 @@ final class DiskExplorerRenderTests: XCTestCase {
             let image = NSImage(size: size)
             image.addRepresentation(representation)
             let attachment = XCTAttachment(image: image)
-            attachment.name = "Disk Explorer — \(tab.rawValue) — \(style.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.name = "Diskman — \(tab.rawValue) — \(style.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
             attachment.lifetime = .keepAlways
             add(attachment)
         }
