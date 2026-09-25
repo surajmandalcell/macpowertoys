@@ -12,7 +12,7 @@ enum NetToysResultFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum NetToysExportFormat: String, CaseIterable, Identifiable {
+nonisolated enum NetToysExportFormat: String, CaseIterable, Identifiable, Sendable {
     case savedResults = "NetToys Results"
     case csv = "CSV"
     case text = "Text"
@@ -106,6 +106,7 @@ final class NetToysScannerViewModel {
     var errorMessage: String?
     var isScanning = false
     var isImporting = false
+    var isExporting = false
     var timeoutMilliseconds = 750
     var concurrency = 64
     var launchDelayMilliseconds = 0
@@ -442,50 +443,64 @@ final class NetToysScannerViewModel {
     }
 
     func export(_ format: NetToysExportFormat, rows: [NetToysScanResult]) {
-        guard !rows.isEmpty else { return }
+        guard !rows.isEmpty, !isExporting else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "NetToys Scan.\(format.fileExtension)"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            switch format {
-            case .savedResults:
-                try NetToysScanExport.savedResults(rows).write(to: url, options: .atomic)
-            case .csv:
-                try NetToysScanExport.csv(rows).write(to: url, atomically: true, encoding: .utf8)
-            case .text:
-                try NetToysScanExport.text(rows).write(to: url, atomically: true, encoding: .utf8)
-            case .xml:
-                try NetToysScanExport.xml(rows).write(to: url, atomically: true, encoding: .utf8)
-            case .ipPorts:
-                try NetToysScanExport.ipPorts(rows).write(to: url, atomically: true, encoding: .utf8)
-            case .sql:
-                try NetToysScanExport.sql(rows).write(to: url, atomically: true, encoding: .utf8)
+        isExporting = true
+        Task { [weak self] in
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    switch format {
+                    case .savedResults:
+                        try NetToysScanExport.savedResults(rows).write(to: url, options: .atomic)
+                    case .csv:
+                        try NetToysScanExport.csv(rows).write(to: url, atomically: true, encoding: .utf8)
+                    case .text:
+                        try NetToysScanExport.text(rows).write(to: url, atomically: true, encoding: .utf8)
+                    case .xml:
+                        try NetToysScanExport.xml(rows).write(to: url, atomically: true, encoding: .utf8)
+                    case .ipPorts:
+                        try NetToysScanExport.ipPorts(rows).write(to: url, atomically: true, encoding: .utf8)
+                    case .sql:
+                        try NetToysScanExport.sql(rows).write(to: url, atomically: true, encoding: .utf8)
+                    }
+                }.value
+                self?.errorMessage = nil
+            } catch {
+                self?.errorMessage = error.localizedDescription
             }
-        } catch {
-            errorMessage = error.localizedDescription
+            self?.isExporting = false
         }
     }
 
     func append(_ format: NetToysExportFormat, rows: [NetToysScanResult]) {
-        guard format.canAppend, !rows.isEmpty else { return }
+        guard format.canAppend, !rows.isEmpty, !isExporting else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: format.fileExtension) ?? .plainText]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.prompt = "Append"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            let isEmpty = (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) == 0
-            let value = switch format {
-            case .csv: NetToysScanExport.csv(rows, includeHeader: isEmpty)
-            case .text: NetToysScanExport.text(rows)
-            case .ipPorts: NetToysScanExport.ipPorts(rows)
-            case .sql: NetToysScanExport.sql(rows, includeSchema: isEmpty)
-            case .savedResults, .xml: ""
+        isExporting = true
+        Task { [weak self] in
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    let isEmpty = (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) == 0
+                    let value = switch format {
+                    case .csv: NetToysScanExport.csv(rows, includeHeader: isEmpty)
+                    case .text: NetToysScanExport.text(rows)
+                    case .ipPorts: NetToysScanExport.ipPorts(rows)
+                    case .sql: NetToysScanExport.sql(rows, includeSchema: isEmpty)
+                    case .savedResults, .xml: ""
+                    }
+                    try NetToysScanExport.append(value, to: url)
+                }.value
+                self?.errorMessage = nil
+            } catch {
+                self?.errorMessage = error.localizedDescription
             }
-            try NetToysScanExport.append(value, to: url)
-        } catch {
-            errorMessage = error.localizedDescription
+            self?.isExporting = false
         }
     }
 
@@ -851,7 +866,12 @@ struct NetToysScannerView: View {
                     }
                 }
             }
-            .disabled(sortedResults.isEmpty)
+            .disabled(sortedResults.isEmpty || model.isExporting)
+            if model.isExporting {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Exporting scan results")
+            }
         }
         .controlSize(.small)
         .padding(.horizontal, UtilityLayout.horizontalInset)

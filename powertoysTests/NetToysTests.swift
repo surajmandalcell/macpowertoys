@@ -1537,6 +1537,22 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([result])), [result])
     }
 
+    func testSavedExportRejectsResultsThatCannotBeImported() throws {
+        let result = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("10.0.0.2")),
+            isReachable: true,
+            responseMilliseconds: nil,
+            hostname: nil,
+            macAddress: nil,
+            vendor: nil,
+            openPorts: [],
+            comment: String(repeating: "x", count: NetToysFileImport.resultsByteLimit)
+        )
+        XCTAssertThrowsError(try NetToysScanExport.savedResults([result])) { error in
+            XCTAssertTrue(error is NetToysScanExport.ExportError)
+        }
+    }
+
     @MainActor
     func testScannerViewModelRestoresLatestRunWhenRecreated() throws {
         let older = NetToysScanRun(

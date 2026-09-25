@@ -55,6 +55,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     var recordsHistory = true
     var scanArchive = NetToysScanArchive()
     var isLoading = true
+    var isExporting = false
     var errorMessage: String?
     var locationAuthorizationStatus: CLAuthorizationStatus
     var locationRequestFailed = false
@@ -215,13 +216,21 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func export(_ run: NetToysScanRun) {
+        guard !isExporting else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "NetToys Scan \(run.date.formatted(.iso8601)).csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try NetToysScanExport.csv(run.results).write(to: url, atomically: true, encoding: .utf8)
-        } catch {
-            errorMessage = error.localizedDescription
+        isExporting = true
+        Task { [weak self] in
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    try NetToysScanExport.csv(run.results).write(to: url, atomically: true, encoding: .utf8)
+                }.value
+                self?.errorMessage = nil
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
+            self?.isExporting = false
         }
     }
 
@@ -482,6 +491,7 @@ struct NetToysHistoryView: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(.secondary)
                             Button("Export") { model.export(run) }
+                                .disabled(model.isExporting)
                             Button("Scan Again") {
                                 NotificationCenter.default.post(name: .netToysRescanRun, object: run)
                             }
