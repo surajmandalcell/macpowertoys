@@ -27,6 +27,7 @@ final class NetToysLocalNetworkAccess {
     @ObservationIgnored private var browser: NWBrowser?
 
     func request() {
+        guard !AppRuntime.isUITesting else { return }
         browser?.cancel()
         state = .checking
         let browser = NWBrowser(
