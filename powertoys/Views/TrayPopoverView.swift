@@ -596,8 +596,16 @@ private struct TrayToolHeader: View {
     }
 }
 
-private struct SwitchTrayView: View {
-    @State private var model = SwitchWorkspaceModel()
+struct SwitchTrayView: View {
+    @State private var model: SwitchWorkspaceModel
+
+    init() {
+        _model = State(initialValue: SwitchWorkspaceModel())
+    }
+
+    init(model: SwitchWorkspaceModel) {
+        _model = State(initialValue: model)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

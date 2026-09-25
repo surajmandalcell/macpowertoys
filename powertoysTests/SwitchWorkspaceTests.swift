@@ -37,6 +37,9 @@ final class SwitchWorkspaceTests: XCTestCase {
                 }
             }
         }
+        for scheme in [ColorScheme.light, .dark] {
+            try await attachTrayRender(model: model, scheme: scheme)
+        }
     }
 
     private func attachRender(of page: SwitchPage, model: SwitchWorkspaceModel,
@@ -56,6 +59,26 @@ final class SwitchWorkspaceTests: XCTestCase {
         image.addRepresentation(representation)
         let attachment = XCTAttachment(image: image)
         attachment.name = "Switch — \(state) — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light") — \(Int(size.width))"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func attachTrayRender(model: SwitchWorkspaceModel, scheme: ColorScheme) async throws {
+        let size = NSSize(width: 360, height: 240)
+        let host = NSHostingView(rootView: SwitchTrayView(model: model)
+            .frame(width: size.width, height: size.height)
+            .environment(\.colorScheme, scheme))
+        host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        host.frame = NSRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(200))
+        host.layoutSubtreeIfNeeded()
+        let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: representation)
+        let image = NSImage(size: size)
+        image.addRepresentation(representation)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "Switch — Quick Menu — \(scheme == .dark ? "Dark" : "Light")"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
