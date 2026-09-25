@@ -494,8 +494,8 @@ final class PortmanTests: XCTestCase {
     }
 
     @MainActor
-    func testPortmanForwardAndSettingsRenderInBothAppearances() throws {
-        for page in [PortmanPanelView.Page.forward, .settings] {
+    func testPortmanForwardAlertsAndSettingsRenderInBothAppearances() throws {
+        for page in [PortmanPanelView.Page.forward, .alerts, .settings] {
             for scheme in [ColorScheme.light, .dark] {
                 let host = NSHostingView(rootView: PortmanPanelView(initialPage: page)
                     .environment(\.colorScheme, scheme))
