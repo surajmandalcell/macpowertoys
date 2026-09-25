@@ -300,6 +300,23 @@ final class PortmanTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(200))
         }
         XCTAssertTrue(dropped, "An unexpected SSH exit must replace Forwarding with a failed state.")
+        for scheme in [ColorScheme.light, .dark] {
+            let host = NSHostingView(rootView: PortmanPanelView(initialPage: .forward)
+                .environment(\.colorScheme, scheme))
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+            host.layoutSubtreeIfNeeded()
+            host.frame.size = host.fittingSize
+            host.layoutSubtreeIfNeeded()
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Portman — Failed Forward — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
         service.stopTunnel(droppedID)
     }
 
