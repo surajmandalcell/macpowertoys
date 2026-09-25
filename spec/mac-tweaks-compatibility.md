@@ -4,7 +4,7 @@ Checked 2026-09-25. The target families are macOS 15.8, 26.7, and 27.0. The supp
 
 Verdicts:
 
-- **Control coded**: a scoped preference editor, exact original-value and absent-key backup, conflict check, rollback action, and activation guidance exist. Behavioral certification is still required on each target OS.
+- **Control coded**: a scoped preference editor, exact original-value and absent-key backup, conflict check, rollback action, and activation guidance exist. New writes are gated to researched OS minors; restore stays available after an OS update. Behavioral certification is still required on each target OS.
 - **Apple shortcut**: searchable documentation and, where there is one owning app, a button to open Finder, Screenshot, or System Settings exist. The native control already belongs to Apple; exact pane navigation is not yet implemented.
 - **Issue**: the feature is feasible or plausible, but the key, scope, permission path, side effects, lifecycle, or version behavior is unresolved. It has no live toggle.
 - **Cannot ship universally**: the stated old recipe is obsolete, broken, or unsafe as one control across all three OS families. Alternatives may exist and would need their own feature record.

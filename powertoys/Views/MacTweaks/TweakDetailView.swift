@@ -10,7 +10,7 @@ struct TweakDetailView: View {
     @State private var showRestartConfirmation = false
 
     private var fields: [TweakPreferenceField] { TweakPreferences.fields(for: item.id) }
-    private var canApply: Bool { !fields.isEmpty && fields.allSatisfy { (selections[$0.identity] ?? -2) >= -1 } }
+    private var canApply: Bool { TweakPreferences.supportsWrites(for: item.id) && fields.allSatisfy { (selections[$0.identity] ?? -2) >= -1 } }
     private var restartTarget: String? {
         if item.id.hasPrefix("dock.") { return "Dock" }
         if item.id.hasPrefix("finder.") && item.id != "finder.network-metadata" { return "Finder" }
@@ -89,6 +89,7 @@ struct TweakDetailView: View {
                     .labelsHidden()
                     .frame(maxWidth: 260)
                     .accessibilityLabel(field.label)
+                    .disabled(!TweakPreferences.supportsWrites(for: item.id))
                 }
             }
 
@@ -108,6 +109,14 @@ struct TweakDetailView: View {
             Text(activationNote)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+            if !TweakPreferences.supportsWrites(for: item.id) {
+                Text("New changes are unavailable on this macOS release. You can still restore values saved by Mac Tweaks.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            if let nativeDestination {
+                Button(nativeDestination.label) { NSWorkspace.shared.open(nativeDestination.url) }
+            }
             Text("The preference mapping is documented. Its visible effect still needs checking on each supported macOS release.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
@@ -205,6 +214,7 @@ struct TweakDetailView: View {
     }
 
     private func apply() {
+        guard canApply else { return }
         do {
             try TweakPreferenceStore.shared.apply(fields, selections: selections)
             message = "Saved. Check the visible effect after the indicated restart or sign-in."
