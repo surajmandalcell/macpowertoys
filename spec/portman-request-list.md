@@ -160,4 +160,7 @@ sheet is open. Run `36150985951` passed its dedicated Portman UI job. Its
 Servers, Forward, initial password, retry, Alerts, and Settings captures were
 inspected; the retry sheet is contained without an error overflowing below it.
 The local app and test bundles compiled without launching either on the owner's
-desktop. Full unit CI and signed-install freshness remain to be checked.
+desktop. Hosted run `36153836043` passed 879 unit tests with five skips and
+zero failures; its Portman and Fan UI jobs passed, and its app archive built.
+The signed installed copy still predates these changes. Recheck the final
+commit and install it only after its own hosted run passes.
