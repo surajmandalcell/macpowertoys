@@ -118,6 +118,8 @@ struct SystemMonitorWorldClocksView: View {
                     Button("Remove", systemImage: "xmark", action: remove)
                         .labelStyle(.iconOnly)
                         .buttonStyle(.plain)
+                        .focusEffectDisabled()
+                        .accessibilityLabel("Remove \(title)")
                         .help("Remove \(title)")
                 }
             }
