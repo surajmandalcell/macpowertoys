@@ -25,3 +25,8 @@ Verification on 2026-09-25: compile-only Debug and Release builds passed;
 Raycast lint, build, and icon parity passed; the headless Switch Core suite
 passed 184 tests with 2 optional private-copy fixture tests skipped. The
 MacPowerToys window was not launched for this final verification pass.
+
+The cleanup path was checked again with a synthetic conversation after wiring
+Core's shared activity ledger: a headless run moved the reviewed file to
+recoverable Trash and retained its 123-token activity record. The MacPowerToys
+test bundle compiled without executing its app host or UI runner.
