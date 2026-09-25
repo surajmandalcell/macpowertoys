@@ -4,12 +4,13 @@ TEST_SCHEME := powertoys-desktop-tests
 DERIVED_DATA ?= /tmp/macpowertoys-derived
 SOURCE_COMMIT := $(shell git rev-parse HEAD)
 XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT)
+LOCAL_ENTITLEMENTS := $(abspath powertoys/Local.entitlements)
 
 # Builds use the Apple Development certificate in this Mac's login keychain.
 # ADHOC=1 is the explicit fallback for Macs without that identity.
-SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Development" DEVELOPMENT_TEAM=GF57JXJF5A CODE_SIGN_ENTITLEMENTS=powertoys/Local.entitlements PROVISIONING_PROFILE_SPECIFIER=
+SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Development" DEVELOPMENT_TEAM=GF57JXJF5A CODE_SIGN_ENTITLEMENTS=$(LOCAL_ENTITLEMENTS) PROVISIONING_PROFILE_SPECIFIER=
 ifeq ($(ADHOC),1)
-SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS=powertoys/Local.entitlements
+SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS=$(LOCAL_ENTITLEMENTS)
 endif
 
 build:
