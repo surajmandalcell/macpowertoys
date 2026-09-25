@@ -259,7 +259,7 @@ struct DiskModifyView: View {
                         Circle().fill(DiskChartPalette.color(index)).frame(width: 8, height: 8)
                             .padding(.leading, item.isAPFSVolume ? 16 : 0)
                         Text(item.name).lineLimit(1)
-                        Text(item.content).foregroundStyle(.secondary).lineLimit(1)
+                        Text(item.displayType).foregroundStyle(.secondary).lineLimit(1)
                         Spacer()
                         Text(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))
                             .monospacedDigit().foregroundStyle(.secondary)

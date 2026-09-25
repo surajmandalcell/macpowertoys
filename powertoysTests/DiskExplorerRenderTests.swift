@@ -12,7 +12,8 @@ final class DiskExplorerRenderTests: XCTestCase {
                 ManagedPartition(id: "disk10s1", name: "EFI", content: "EFI",
                                  size: 209_715_200, mountPoint: nil, uuid: nil),
                 ManagedPartition(id: "disk10s2", name: "DISKMAN", content: "Microsoft Basic Data",
-                                 size: 15_424_552_960, mountPoint: "/Volumes/DISKMAN", uuid: "volume")
+                                 size: 15_424_552_960, mountPoint: "/Volumes/DISKMAN", uuid: "volume",
+                                 fileSystem: "ExFAT")
             ]
         )
         let size = NSSize(width: 880, height: 700)
