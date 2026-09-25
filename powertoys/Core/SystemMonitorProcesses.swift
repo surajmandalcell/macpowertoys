@@ -43,7 +43,7 @@ actor SystemMonitorProcessSampler {
         nanosecondsPerTick = Double(timebase.numer) / Double(max(timebase.denom, 1))
     }
 
-    func sample() -> [SystemMonitorProcess] {
+    func sample() async -> [SystemMonitorProcess] {
         let now = Date()
         let estimated = max(Int(proc_listallpids(nil, 0)), 0)
         guard estimated > 0 else { return [] }
@@ -99,7 +99,7 @@ actor SystemMonitorProcessSampler {
             ))
         }
         if !restrictedPIDs.isEmpty {
-            let publicInfo = Self.publicProcessInfo()
+            let publicInfo = await Self.publicProcessInfo()
             processes = processes.map { process in
                 guard restrictedPIDs.contains(process.pid), let info = publicInfo[process.pid] else {
                     return process
@@ -119,19 +119,14 @@ actor SystemMonitorProcessSampler {
         return processes
     }
 
-    private static func publicProcessInfo() -> [Int32: PublicProcessInfo] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-A", "-o", "pid=,ppid=,uid=,rss=,vsz=,%cpu=,comm="]
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return [:] }
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0, data.count <= 2_000_000,
-              let text = String(data: data, encoding: .utf8) else { return [:] }
-        return parsePublicProcessInfo(text)
+    private static func publicProcessInfo() async -> [Int32: PublicProcessInfo] {
+        guard let result = try? await SSHProcessRunner.run(
+            executableURL: URL(fileURLWithPath: "/bin/ps"),
+            arguments: ["-A", "-o", "pid=,ppid=,uid=,rss=,vsz=,%cpu=,comm="],
+            maximumOutputBytes: 2_000_000,
+            timeout: 5
+        ), result.status == 0 else { return [:] }
+        return parsePublicProcessInfo(result.standardOutput)
     }
 
     nonisolated static func parsePublicProcessInfo(_ text: String) -> [Int32: PublicProcessInfo] {

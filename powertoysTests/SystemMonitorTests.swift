@@ -18,6 +18,18 @@ final class SystemMonitorTests: XCTestCase {
         }
     }
 
+    func testMonitorSubprocessHasDeadline() async throws {
+        do {
+            _ = try await SSHProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/bin/sleep"),
+                arguments: ["2"], timeout: 0.1
+            )
+            XCTFail("A stalled process exceeded its deadline")
+        } catch SSHKeyAccessError.timeout {
+            // Expected: the same runner bounds protected-process fallback work.
+        }
+    }
+
     func testRemoteLinuxParserAndSSHHostBoundary() throws {
         let output = """
         MPT1
