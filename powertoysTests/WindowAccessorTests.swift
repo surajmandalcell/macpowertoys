@@ -141,7 +141,7 @@ final class WindowAccessorTests: XCTestCase {
     func testWorkspaceTrafficLightsUseBalancedSharedChrome() throws {
         for identifier in [
             "main", "rclone", "logs", "input-devices",
-            "system-care", "system-monitor", "nettoys"
+            "system-care", "system-monitor", "nettoys", "disk-explorer"
         ] {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
@@ -192,6 +192,7 @@ final class WindowAccessorTests: XCTestCase {
             "system-care": NSSize(width: 880, height: 600),
             "system-monitor": NSSize(width: 880, height: 600),
             "nettoys": NSSize(width: 1_100, height: 700),
+            "disk-explorer": NSSize(width: 880, height: 600),
         ]
 
         for (identifier, expectedSize) in expectedSizes {

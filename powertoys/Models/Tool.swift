@@ -280,6 +280,34 @@ struct SystemCareTool: Tool {
     static let shared = SystemCareTool()
 }
 
+struct DiskExplorerTool: Tool {
+    let id = "disk-explorer"
+    let name = "Disk Explorer"
+    let description = "Scan disks and folders, explore their space in a treemap or ring chart, and review files before removal."
+    let icon = "internaldrive"
+    let logoAsset = ""
+    let category = ToolCategory.files
+
+    let manual = [
+        ToolManualSection(title: "Scan", points: [
+            "Choose a volume, your Home Folder, or another folder to start a scan.",
+            "The scan counts space used on disk, includes hidden files, and reports locations it could not read.",
+            "Stop or rescan from the top bar. Scanning stops when the window closes."
+        ]),
+        ToolManualSection(title: "Explore", points: [
+            "Choose Treemap or Rings. Your choice is remembered.",
+            "Click a folder in the chart or contents list to go inside it. Use the path above the chart to go back.",
+            "Search the current folder, change the sort order, or use Quick Look and Show in Finder for a file."
+        ]),
+        ToolManualSection(title: "Remove", points: [
+            "Mark files or folders, then open Review to check the exact list and total size.",
+            "Move to Trash is recoverable until you empty Trash. Permanent deletion asks again and cannot be undone."
+        ])
+    ]
+
+    static let shared = DiskExplorerTool()
+}
+
 // MARK: - System Monitor Tool
 
 struct SystemMonitorTool: Tool {
@@ -367,6 +395,7 @@ struct ToolRegistry {
         TextExtractorTool.shared,
         InputDevicesTool.shared,
         SystemCareTool.shared,
+        DiskExplorerTool.shared,
         SystemMonitorTool.shared,
         NetToysTool.shared
     ]

@@ -192,6 +192,7 @@ final class DiskExplorerModel {
         guard let sourceURL, let root = result?.root, !isRemoving else { return }
         let entries = markedEntries
         guard !entries.isEmpty else { return }
+        let removalGeneration = generation
         isRemoving = true
         errorMessage = nil
         Task { [weak self] in
@@ -200,7 +201,9 @@ final class DiskExplorerModel {
             }.value
             guard let self else { return }
             self.isRemoving = false
-            if outcome.removed > 0 { self.start(sourceURL, includeHidden: includeHidden) }
+            if outcome.removed > 0 && self.generation == removalGeneration {
+                self.start(sourceURL, includeHidden: includeHidden)
+            }
             self.errorMessage = outcome.errors.isEmpty ? nil : outcome.errors.joined(separator: "\n")
             self.operationMessage = outcome.removed > 0
                 ? "\(outcome.removed) item\(outcome.removed == 1 ? "" : "s") \(permanently ? "deleted" : "moved to Trash")."

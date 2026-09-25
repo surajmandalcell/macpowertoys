@@ -58,6 +58,8 @@ struct ToolSettingsContent: View {
             InputDevicesSettingsView()
         case "system-monitor":
             SystemMonitorMenuSettingsView()
+        case "disk-explorer":
+            DiskExplorerSettingsView()
         case "logs":
             LogsSettingsView()
         default:

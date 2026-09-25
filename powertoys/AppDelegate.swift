@@ -36,7 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let nativeSceneToolIDs: Set<String> = [
         "main", "rclone", "logs", "awake", "color-picker",
-        "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+        "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys",
     ]
 
     static func requiresManualURLRouting(_ url: URL) -> Bool {
