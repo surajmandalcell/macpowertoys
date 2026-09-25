@@ -569,6 +569,7 @@ final class PortmanService {
             systemMemoryUsedBytes = snapshot.1
             localError = nil
             let now = Date()
+            let historyCutoff = now.addingTimeInterval(-600)
             for port in ports {
                 if port.hasConnections || lastConnectionAt[port.processID] == nil {
                     lastConnectionAt[port.processID] = now
@@ -576,7 +577,7 @@ final class PortmanService {
                 history[port.id, default: []].append(PortmanSample(
                     date: now, memoryBytes: port.memoryBytes, cpuPercent: port.cpuPercent
                 ))
-                if history[port.id, default: []].count > 300 { history[port.id]?.removeFirst() }
+                Self.pruneHistory(&history[port.id, default: []], before: historyCutoff)
             }
             history = history.filter { key, _ in ports.contains { $0.id == key } }
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
@@ -640,6 +641,11 @@ final class PortmanService {
             guard !Task.isCancelled, monitoringCount > 0 else { return }
             localError = error.localizedDescription
         }
+    }
+
+    nonisolated static func pruneHistory(_ samples: inout [PortmanSample], before cutoff: Date) {
+        samples.removeAll { $0.date < cutoff }
+        if samples.count > 300 { samples.removeFirst(samples.count - 300) }
     }
 
     func loadMetadata(for port: PortmanLocalPort) async {

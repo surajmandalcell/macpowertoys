@@ -431,6 +431,20 @@ final class PortmanTests: XCTestCase {
         XCTAssertTrue(shouldScan(2, 0))
     }
 
+    func testPortmanHistoryStaysWithinTenMinutesAndThreeHundredSamples() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        var samples = [PortmanSample(date: now.addingTimeInterval(-601),
+                                     memoryBytes: 1, cpuPercent: 1)]
+        samples += (0...300).map { offset in
+            PortmanSample(date: now.addingTimeInterval(Double(offset - 300) * 2),
+                          memoryBytes: 1, cpuPercent: 1)
+        }
+        PortmanService.pruneHistory(&samples, before: now.addingTimeInterval(-600))
+        XCTAssertEqual(samples.count, 300)
+        XCTAssertEqual(samples.first?.date, now.addingTimeInterval(-598))
+        XCTAssertEqual(samples.last?.date, now)
+    }
+
     func testLocalScannerFindsAnActualListeningSocket() throws {
         let preference = "portman.showAllListeners"
         let previous = UserDefaults.standard.object(forKey: preference)
