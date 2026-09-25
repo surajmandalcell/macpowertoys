@@ -142,8 +142,8 @@ struct SystemMonitorWindowView: View {
                 metricCard(
                     icon: "cpu",
                     title: "CPU",
-                    value: service.snapshot?.cpuUsage.percent ?? "...",
-                    detail: loadDetail,
+                    value: service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "...",
+                    detail: "All cores",
                     values: service.history.compactMap(\.cpuUsage),
                     tint: usageTint(service.snapshot?.cpuUsage),
                     featured: true
@@ -279,7 +279,7 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.cpu)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "...", detail: "User + system + nice")
+                metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.map { "\(Int($0.rounded()))%" } ?? "...", detail: "User + system + nice")
                 metricCard(icon: "chart.bar", title: "Load · 1 min", value: loadAverage, detail: loadAverageDetail)
                     .help(loadExplanation)
                 metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System thermal pressure")
@@ -327,10 +327,6 @@ struct SystemMonitorWindowView: View {
             }
             chartCard(title: "Disk Utilization", suffix: "%", values: service.history.compactMap(\.diskUsage))
         }
-    }
-
-    private var loadDetail: String {
-        service.snapshot?.loadAverage.map { "1-min load \($0.0.formatted(.number.precision(.fractionLength(2))))" } ?? "..."
     }
 
     private var loadAverage: String {
