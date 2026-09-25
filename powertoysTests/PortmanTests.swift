@@ -5,6 +5,9 @@ import XCTest
 @testable import powertoys
 
 final class PortmanTests: XCTestCase {
+    private static let rclonePath = ["/opt/homebrew/bin/rclone", "/usr/local/bin/rclone"]
+        .first { FileManager.default.isExecutableFile(atPath: $0) }
+
     func testClaudeSessionIDReadsOnlyEnvironmentAfterArguments() {
         let id = UUID(uuidString: "12345678-1234-1234-1234-123456789abc")!
         let bytes: [UInt8] = [2, 0, 0, 0] + Array(
@@ -76,9 +79,7 @@ final class PortmanTests: XCTestCase {
 
     @MainActor
     func testSSHForwardCarriesTrafficThroughLoopback() async throws {
-        let rclone = try PortmanScanner.run("/usr/bin/which", ["rclone"])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        XCTAssertTrue(FileManager.default.isExecutableFile(atPath: rclone))
+        let rclone = try XCTUnwrap(Self.rclonePath, "Homebrew rclone is required for hosted Portman tests.")
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("portman-ssh-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -302,11 +303,7 @@ final class PortmanTests: XCTestCase {
 
     @MainActor
     func testRestartReopensAListeningServer() async throws {
-        guard let rclone = try? PortmanScanner.run("/usr/bin/which", ["rclone"])
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              FileManager.default.isExecutableFile(atPath: rclone) else {
-            throw XCTSkip("The hosted Mac has no rclone executable.")
-        }
+        let rclone = try XCTUnwrap(Self.rclonePath, "Homebrew rclone is required for hosted Portman tests.")
         let preference = "portman.showAllListeners"
         let previous = UserDefaults.standard.object(forKey: preference)
         UserDefaults.standard.set(true, forKey: preference)
