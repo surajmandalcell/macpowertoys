@@ -7,7 +7,7 @@ struct AllToolsGridView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: UtilityLayout.launcherCardMinimumWidth), spacing: UtilityLayout.launcherGridSpacing)], spacing: UtilityLayout.launcherGridSpacing) {
+            LazyVGrid(columns: UtilityLayout.launcherGridColumns, spacing: UtilityLayout.launcherGridSpacing) {
                 ForEach(ToolRegistry.allTools, id: \.id) { tool in
                     ToolCard(
                         tool: tool,
