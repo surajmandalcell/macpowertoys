@@ -5,14 +5,16 @@ final class FanControlTests: XCTestCase {
     @MainActor
     func testVisibleOwnersShareAndReleaseOnePoller() {
         let service = FanControlService.shared
-        service.start(owner: "fan-test-home")
-        service.start(owner: "fan-test-window")
-        XCTAssertEqual(service.pollOwnerCount, 1)
+        for _ in 0..<25 {
+            service.start(owner: "fan-test-home")
+            service.start(owner: "fan-test-window")
+            XCTAssertEqual(service.pollOwnerCount, 1)
 
-        service.stop(owner: "fan-test-home")
-        XCTAssertEqual(service.pollOwnerCount, 1)
-        service.stop(owner: "fan-test-window")
-        XCTAssertEqual(service.pollOwnerCount, 0)
+            service.stop(owner: "fan-test-home")
+            XCTAssertEqual(service.pollOwnerCount, 1)
+            service.stop(owner: "fan-test-window")
+            XCTAssertEqual(service.pollOwnerCount, 0)
+        }
     }
 
     func testRealFanTextReportsRPMAndPercentWithoutClaimingControl() throws {
