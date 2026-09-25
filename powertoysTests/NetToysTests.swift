@@ -1004,6 +1004,7 @@ final class NetToysTests: XCTestCase {
     }
 
     func testScannerStreamsHostFieldsBeforeTheScanFinishes() async throws {
+        let started = Date()
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         XCTAssertGreaterThanOrEqual(descriptor, 0)
         defer { close(descriptor) }
@@ -1056,6 +1057,13 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(updates.contains { $0.openPorts == [port] && $0.httpServer == nil })
         XCTAssertTrue(updates.contains { $0.httpServer == "\(port): stage-server" })
         XCTAssertEqual(results.first?.httpServer, "\(port): stage-server")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10)
+    }
+
+    func testReverseDNSPTRNameRejectsMalformedWireData() {
+        XCTAssertEqual(HostResolver.ptrHostname(from: Data([9] + Array("localhost".utf8) + [5] + Array("local".utf8) + [0])), "localhost.local")
+        XCTAssertNil(HostResolver.ptrHostname(from: Data([0xc0, 0x0c])))
+        XCTAssertNil(HostResolver.ptrHostname(from: Data([4, 65, 66, 67, 0])))
     }
 
     func testSSHConfigEntriesExposeLiteralHostAddressAndPort() throws {
