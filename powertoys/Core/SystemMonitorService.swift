@@ -600,14 +600,15 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         previousNetwork = nil
     }
 
-    func sample(detailed: Bool, metrics: Set<SystemMonitorMenuMetric>) -> SystemMonitorSample {
+    func sample(detailedMetrics: Set<SystemMonitorMenuMetric>, metrics: Set<SystemMonitorMenuMetric>) -> SystemMonitorSample {
         let now = Date()
-        let needsCPU = detailed || metrics.contains(.cpu)
-        let needsMemory = detailed || metrics.contains(.memory)
-        let needsNetwork = detailed || metrics.contains(.network)
-        let needsGPU = detailed || metrics.contains(.gpu)
-        let needsDisk = detailed || metrics.contains(.disk)
-        let needsBattery = detailed || metrics.contains(.battery)
+        let requested = detailedMetrics.union(metrics)
+        let needsCPU = requested.contains(.cpu)
+        let needsMemory = requested.contains(.memory)
+        let needsNetwork = requested.contains(.network)
+        let needsGPU = requested.contains(.gpu)
+        let needsDisk = requested.contains(.disk)
+        let needsBattery = requested.contains(.battery)
         var unavailableMetrics = Set<SystemMonitorMenuMetric>()
 
         var cpuUsage: Double?
@@ -650,7 +651,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         let battery = needsBattery ? Self.battery() : nil
         if needsBattery && battery == nil { unavailableMetrics.insert(.battery) }
         var loads = [Double](repeating: 0, count: 3)
-        let loadCount = detailed ? getloadavg(&loads, 3) : 0
+        let loadCount = detailedMetrics.contains(.cpu) ? getloadavg(&loads, 3) : 0
 
         return SystemMonitorSample(
             timestamp: now,
@@ -664,7 +665,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
             diskTotal: disk?.total,
             batteryPercent: battery?.percent,
             batteryCharging: battery?.charging,
-            thermalState: detailed || metrics.contains(.thermal) ? Self.thermalState() : nil,
+            thermalState: requested.contains(.thermal) ? Self.thermalState() : nil,
             loadAverage: loadCount == 3 ? (loads[0], loads[1], loads[2]) : nil,
             unavailableMetrics: unavailableMetrics
         )
@@ -772,7 +773,7 @@ final class SystemMonitorService {
     private var timer: DispatchSourceTimer?
     private var wakeObserver: NSObjectProtocol?
     private var unavailableMenuMetrics = Set<SystemMonitorMenuMetric>()
-    private var detailedOwners = Set<String>()
+    private var detailedOwners: [String: Set<SystemMonitorMenuMetric>] = [:]
     private var toolEnabled = true
     private var generation = 0
 
@@ -825,15 +826,22 @@ final class SystemMonitorService {
         toolEnabled = SettingsManager.shared.isToolEnabled("system-monitor")
         reconfigure()
     }
-    func startDetailed(owner: String = "window") {
-        guard detailedOwners.insert(owner).inserted else { return }
-        detailedActive = true
+    func startDetailed(owner: String = "window", metrics: Set<SystemMonitorMenuMetric> = Set(SystemMonitorMenuMetric.allCases)) {
+        guard detailedOwners[owner] == nil else { return }
+        detailedOwners[owner] = metrics
+        detailedActive = detailedOwners.values.contains { !$0.isEmpty }
         unavailableMenuMetrics.removeAll()
         reconfigure()
     }
+    func updateDetailed(owner: String = "window", metrics: Set<SystemMonitorMenuMetric>) {
+        guard detailedOwners[owner] != nil, detailedOwners[owner] != metrics else { return }
+        detailedOwners[owner] = metrics
+        detailedActive = detailedOwners.values.contains { !$0.isEmpty }
+        reconfigure()
+    }
     func stopDetailed(owner: String = "window") {
-        guard detailedOwners.remove(owner) != nil else { return }
-        detailedActive = !detailedOwners.isEmpty
+        guard detailedOwners.removeValue(forKey: owner) != nil else { return }
+        detailedActive = detailedOwners.values.contains { !$0.isEmpty }
         reconfigure()
     }
     func updateMenuSettings(_ change: (inout SystemMonitorMenuSettings) -> Void) {
@@ -870,11 +878,12 @@ final class SystemMonitorService {
                 unavailableMetrics: unavailableMenuMetrics
               ) != nil else { return }
 
-        let detailed = detailedActive
+        let detailedMetrics = detailedOwners.values.reduce(into: Set<SystemMonitorMenuMetric>()) { $0.formUnion($1) }
+        let detailed = !detailedMetrics.isEmpty
         let unavailableMetrics = unavailableMenuMetrics
         let dueTracker = SystemMonitorDueTracker()
         let currentGeneration = generation
-        samplingQueue.sync { sampler.reset() }
+        samplingQueue.async { [sampler] in sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
         source.schedule(deadline: .now())
         source.setEventHandler { [weak self, sampler] in
@@ -885,7 +894,7 @@ final class SystemMonitorService {
                 now: now
             )
             if detailed || !due.isEmpty {
-                let sample = sampler.sample(detailed: detailed, metrics: due)
+                let sample = sampler.sample(detailedMetrics: detailedMetrics, metrics: due)
                 Task { @MainActor [weak self] in
                     self?.receive(sample, detailed: detailed, dueMetrics: due, generation: currentGeneration)
                 }
