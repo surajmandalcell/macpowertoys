@@ -1066,7 +1066,7 @@ struct PortmanPanelView: View {
                 .controlSize(.small)
                 .disabled(selectedRemotePorts.isEmpty || host.isEmpty)
 
-            if let error = service.forwardingError { errorText(error) }
+            if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
             if service.tunnels.isEmpty {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "network").foregroundStyle(.secondary)

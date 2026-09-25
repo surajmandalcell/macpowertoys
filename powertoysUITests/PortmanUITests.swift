@@ -40,14 +40,9 @@ final class PortmanUITests: XCTestCase {
                       "Submitting the password dismissed the Portman panel")
         XCTAssertTrue(app.staticTexts["Authentication failed. Enter the password again."].waitForExistence(timeout: 10),
                       "A rejected SSH password did not offer a retry")
-        alerts.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
+        app.buttons["Cancel"].click()
         XCTAssertFalse(app.secureTextFields["Password"].exists,
-                       "Leaving Forward kept the SSH password prompt open")
-        XCTAssertTrue(app.staticTexts["No active alerts"].waitForExistence(timeout: 5)
-                      || app.buttons["Inspect"].exists)
-        attach(app.screenshot(), named: "Portman Alerts")
-
-        forward.click()
+                       "Cancel kept the SSH password prompt open")
         let remotePort = app.textFields["Remote port to add"]
         remotePort.click()
         remotePort.typeText("3000\n")
@@ -57,6 +52,7 @@ final class PortmanUITests: XCTestCase {
         alerts.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
         XCTAssertTrue(app.staticTexts["No active alerts"].waitForExistence(timeout: 5)
                       || app.buttons["Inspect"].exists)
+        attach(app.screenshot(), named: "Portman Alerts")
 
         forward.click()
         XCTAssertTrue(app.buttons["Forward 0 selected"].waitForExistence(timeout: 5),
