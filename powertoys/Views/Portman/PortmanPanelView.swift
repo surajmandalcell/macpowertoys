@@ -266,6 +266,8 @@ struct PortmanPanelView: View {
                                 selectedCleanupProcesses.contains($0.processID)
                             }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
                         .disabled(selectedCleanupProcesses.isEmpty)
                     } else {
                         Text("\(uniquePorts.count) server\(uniquePorts.count == 1 ? "" : "s") · \(String(format: "%.1f", overviewCPU))% CPU")
@@ -496,7 +498,7 @@ struct PortmanPanelView: View {
         let hovered = hoveredTime.flatMap { time in
             samples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }
         }
-        return VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Button { selectedPortID = nil } label: { Label("Servers", systemImage: "chevron.left") }
                     .buttonStyle(.plain)
@@ -638,7 +640,7 @@ struct PortmanPanelView: View {
                     }
                 }
                 .chartOverlay { proxy in chartHover(proxy) }
-                .frame(height: 115)
+                .frame(height: 100)
                 .accessibilityLabel("Memory history for port \(String(port.port))")
 
                 HStack {
@@ -667,7 +669,7 @@ struct PortmanPanelView: View {
                     }
                 }
                 .chartOverlay { proxy in chartHover(proxy) }
-                .frame(height: 55)
+                .frame(height: 50)
                 .accessibilityLabel("CPU history for port \(String(port.port))")
             }
             if let hovered {
