@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Observation
+import ServiceManagement
 
 nonisolated enum FanPreset: String, CaseIterable, Identifiable, Sendable {
     case auto = "Auto"
