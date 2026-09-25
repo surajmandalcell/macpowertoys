@@ -37,3 +37,12 @@ The owner also proposed shorter, wider launcher cards in two columns. Show a
 reviewable comparison against the current four-column layout before changing
 the launcher. The proposed layout is a design option, not yet an approved
 production change.
+
+The 30 individually generated 512px RGBA choices and the switchable layout
+study are in `tmp/icon-round-2/index.index2.html`; `prompts.md` records every
+concept. A headless desktop render loaded every option and the compact layout,
+and all 30 sources have transparent tile corners. At the standard 980pt content
+width, the current four-column grid shows 12 of 13 built-in cards completely;
+the proposed 80pt, two-column rows show all 13. The gallery keeps each 512px
+source one click away and displays it at 64px and 16px. The owner has not yet
+selected any icon or approved the layout change.
