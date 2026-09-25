@@ -85,7 +85,7 @@ struct SwitchWindowView: View {
         .ignoresSafeArea()
         .preferredColorScheme(schemeOverride)
         .background(WindowAccessor(identifier: "switch"))
-        .task { await model.load() }
+        .task { if model.snapshot == nil { await model.load() } }
         .task(id: model.selectedAccountID) {
             if let id = model.selectedAccountID {
                 await model.loadUsage(id, onlyIfNeeded: true)
