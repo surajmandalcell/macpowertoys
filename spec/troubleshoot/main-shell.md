@@ -191,14 +191,16 @@
   buttons' 12pt trailing gutter, aligning their right edges. When control is
   unavailable, an amber setup button sits immediately before Auto and opens
   installation and helper-approval steps. A failed command uses the same slot
-  for its error and retry guidance; status stays out of the row.
+  for its error and retry guidance; status stays out of the row. Popover
+  instructions wrap, and both copyable commands remain visible at tray width.
   Size each native picker to its rendered width. The fan icon uses Awake's
   neutral tint, and Fan, RPM, and utilization share one line. Leave 18pt below
   the Fan row.
 - **Check:** Inspect Home and System Monitor in the production-width tray in
   light and dark, including both row edges, the bottom edge, live RPM, and
   disabled fan controls. Open and dismiss the setup popover in an isolated
-  session and confirm it never starts privileged installation itself.
+  session, check both explanation heights and command buttons, and confirm it
+  never starts privileged installation itself.
 
 ## Menu-Bar Tool Placement
 
