@@ -1322,6 +1322,7 @@ struct SystemMonitorTrayView: View {
     private func summary<Content: View>(_ destination: SystemMonitorTrayPage, _ content: Content) -> some View {
         Button { pageID = destination.rawValue } label: { content }
             .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
+            .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
             .accessibilityHint("Show \(destination.title) details")
     }
 

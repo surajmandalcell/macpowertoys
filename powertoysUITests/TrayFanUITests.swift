@@ -43,4 +43,38 @@ final class TrayFanUITests: XCTestCase {
         app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
         XCTAssertFalse(app.staticTexts["Enable fan control"].exists)
     }
+
+    @MainActor
+    func testMonitorTabsCardsAndSavedSelection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launch()
+        defer { app.terminate() }
+
+        app.activate()
+        let tray = app.menuBars.statusItems["MenuBarIcon"]
+        XCTAssertTrue(tray.waitForExistence(timeout: 10))
+        tray.click()
+        app.buttons["System Monitor"].click()
+
+        let home = app.buttons["system-monitor.tray.home"]
+        XCTAssertTrue(home.waitForExistence(timeout: 10))
+        home.click()
+        app.buttons["system-monitor.tray.cpu"].click()
+        XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
+
+        home.click()
+        app.buttons["system-monitor.tray.summary.cpu"].click()
+        XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
+
+        tray.click()
+        tray.click()
+        XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
+
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "Monitor CPU after reopening tray"
+        capture.lifetime = .keepAlways
+        add(capture)
+    }
 }
