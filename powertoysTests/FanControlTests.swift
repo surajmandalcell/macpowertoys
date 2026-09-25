@@ -48,4 +48,20 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(FanCommand.arguments(for: .max), ["fan", "profile", "full"])
         XCTAssertEqual(FanCommand.arguments(for: .auto), ["fan", "profile", "auto"])
     }
+
+    func testSmctlStatusRequiresReadableFanModesForControl() throws {
+        let output = """
+        {"profile":"auto","fans":[
+          {"index":0,"actualRPM":3462,"maximumRPM":5777,"mode":"auto"},
+          {"index":1,"actualRPM":3482,"maximumRPM":5777,"mode":"system"}
+        ]}
+        """
+        let snapshot = try XCTUnwrap(FanCommand.parseSmctlStatus(output))
+        XCTAssertTrue(snapshot.canControl)
+        XCTAssertEqual(snapshot.detectedPreset, .auto)
+        XCTAssertEqual(snapshot.utilization, 60)
+
+        let unknown = output.replacingOccurrences(of: "\"mode\":\"system\"", with: "\"mode\":\"unknown\"")
+        XCTAssertFalse(try XCTUnwrap(FanCommand.parseSmctlStatus(unknown)).canControl)
+    }
 }
