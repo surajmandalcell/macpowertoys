@@ -1,8 +1,9 @@
 PROJECT := powertoys.xcodeproj
 SCHEME := powertoys
+TEST_SCHEME := powertoys-desktop-tests
 DERIVED_DATA ?= /tmp/macpowertoys-derived
 SOURCE_COMMIT := $(shell git rev-parse HEAD)
-XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -scheme $(SCHEME) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT)
+XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT)
 
 # Builds use the Apple Development certificate in this Mac's login keychain.
 # ADHOC=1 is the explicit fallback for Macs without that identity.
@@ -12,13 +13,14 @@ SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS=
 endif
 
 build:
-	$(XCODEBUILD) -configuration Release $(SIGNING) build
+	$(XCODEBUILD) -scheme $(SCHEME) -configuration Release $(SIGNING) build
 
 build-for-testing:
-	$(XCODEBUILD) -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
+	$(XCODEBUILD) -scheme $(TEST_SCHEME) -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
 
 test:
-	$(XCODEBUILD) test -destination 'platform=macOS' -only-testing:powertoysTests -skip-testing:powertoysUITests CODE_SIGNING_ALLOWED=NO
+	@test "$(TEST_SESSION)" = "isolated" || (echo "Xcode tests launch MacPowerToys on the desktop. Use make build-for-testing here; run TEST_SESSION=isolated make test in a separate macOS account or VM." && exit 1)
+	$(XCODEBUILD) -scheme $(TEST_SCHEME) test -destination 'platform=macOS' -parallel-testing-enabled NO -only-testing:powertoysTests -skip-testing:powertoysUITests $(SIGNING)
 
 raycast-assets:
 	sh raycast/sync-icons.sh
