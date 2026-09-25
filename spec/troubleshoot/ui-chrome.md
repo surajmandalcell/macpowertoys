@@ -143,6 +143,21 @@
   unrelated controls disappear. Inspect the final signed installed stamp before
   a background launch on the owner's Mac.
 
+## Portman Cleanup Number Editing
+
+- **Symptom:** Replacing the idle threshold `4` with `6` produced `64` in the
+  hosted Settings panel, even after Delete was sent to the focused field.
+- **Cause:** A formatted numeric `TextField` wrote every intermediate edit
+  directly to `@AppStorage`; the stored value immediately reformatted the
+  field while it was still being edited.
+- **Invariant:** Keep the cleanup threshold as a text draft while editing.
+  On Return, save only an integer inside that setting's range; otherwise
+  restore the last valid value. The three cleanup number fields share this
+  behavior.
+- **Check:** In the real panel, replace `4` with `6` and press Return; the
+  displayed and saved value must be `6`. Enter `99` for the idle threshold;
+  it must revert to `6` without changing the saved value.
+
 ## Portman Port Numbers And Initial Charts
 
 - **Symptom:** Hosted renders showed `:9,000` and `localhost:49,194`, while a
