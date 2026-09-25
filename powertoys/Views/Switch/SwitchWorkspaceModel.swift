@@ -26,6 +26,8 @@ final class SwitchWorkspaceModel {
 
     private let manager: AccountManager?
     private let historyIndex: ChatHistoryIndex
+    private let applicationSupport: URL
+    private var activityCache: CodexUsageStatisticsCache?
     private let startupError: String?
 
     init(paths: ManagerPaths = .environment()) {
@@ -40,6 +42,7 @@ final class SwitchWorkspaceModel {
             home: paths.sharedRoot,
             cacheFile: paths.applicationSupport.appending(path: "conversation-index.json")
         )
+        applicationSupport = paths.applicationSupport
     }
 
     var accounts: [AccountRecord] { snapshot?.status.accounts ?? [] }
@@ -247,6 +250,7 @@ final class SwitchWorkspaceModel {
         guard let manager else { return }
         await perform {
             let selected = self.cleanupItems.filter { ids.contains($0.id) }
+            try await self.prepareActivityCache()
             self.cleanupPlan = try await manager.reviewCleanup(selected)
         }
     }
@@ -316,6 +320,19 @@ final class SwitchWorkspaceModel {
             selectedAccountID = refreshed.status.firstDefaultAccountID ?? refreshed.status.accounts.first?.id
         }
         if login == nil { login = refreshed.pendingLoginSessions.first }
+    }
+
+    private func prepareActivityCache() async throws {
+        guard activityCache == nil else { return }
+        let support = applicationSupport
+        let cache = try await Task.detached(priority: .utility) {
+            try CodexUsageStatisticsCache(
+                databaseURL: support.appending(path: "cache/account-usage.sqlite"),
+                activityDatabaseURL: support.appending(path: "activity/daily.sqlite")
+            )
+        }.value
+        activityCache = cache
+        await historyIndex.attachActivityCache(cache)
     }
 
     private func perform(_ action: () async throws -> Void) async {
