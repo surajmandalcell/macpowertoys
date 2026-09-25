@@ -64,17 +64,19 @@ struct PortmanPanelView: View {
     private var panelHeight: CGFloat {
         let target: CGFloat = switch page {
         case .local:
-            selectedPort == nil ? 320 + CGFloat(service.localPorts.count) * 64 : 620
+            selectedPort == nil ? 300 + CGFloat(service.localPorts.count) * 64
+                : 455 + (showingMore ? 110 : 0)
+                    + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
         case .forward:
-            400 + CGFloat(service.tunnels.count) * 48
+            350 + CGFloat(max(0, service.tunnels.count - 1)) * 48
                 + CGFloat(!host.isEmpty && discoveredHost == host ? service.remotePorts.count : 0) * 28
         case .alerts:
-            280 + CGFloat(service.activeAlerts.count) * 92
+            260 + CGFloat(service.activeAlerts.count) * 92
         case .settings:
             620
         }
         let available = (NSScreen.main?.visibleFrame.height ?? 900) * 0.72
-        return min(available, min(650, max(320, target)))
+        return min(available, min(650, max(300, target)))
     }
 
     var body: some View {
@@ -513,16 +515,53 @@ struct PortmanPanelView: View {
         let hovered = hoveredTime.flatMap { time in
             samples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }
         }
+        let cpuCeiling = max(100, ceil((samples.map(\.cpuPercent).max() ?? 0) / 50) * 50)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Button { selectedPortID = nil } label: { Label("Servers", systemImage: "chevron.left") }
                     .buttonStyle(.plain)
-                    .focusEffectDisabled()
                     .font(.system(size: 11))
                 Spacer()
                 Text(service.metadata[port.id]?.project ?? port.command)
                     .font(.system(size: 12, weight: .medium)).lineLimit(1)
                 Spacer()
+                Button { openLocal(port.port) } label: {
+                    Image(systemName: "link").frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .help("Open localhost:\(String(port.port))")
+                .accessibilityLabel("Open localhost port \(String(port.port))")
+                Menu {
+                    Button("Copy URL") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("http://127.0.0.1:\(port.port)/", forType: .string)
+                    }
+                    Button("Copy command") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(port.launchCommand, forType: .string)
+                    }
+                    if let details = service.metadata[port.id],
+                       FileManager.default.fileExists(atPath: details.root ?? details.folder) {
+                        Button("Open in editor") {
+                            PortmanEditor.open(details.root ?? details.folder, preferred: editor)
+                        }
+                        Button("Show folder in Finder") {
+                            NSWorkspace.shared.selectFile(
+                                nil, inFileViewerRootedAtPath: details.root ?? details.folder
+                            )
+                        }
+                    }
+                    if port.canStop {
+                        Button("Restart with saved command…") { pendingRestart = port }
+                            .disabled(!service.restartableIDs.contains(port.id))
+                        Button("Stop process tree…", role: .destructive) { pendingStop = port }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis").frame(width: 24, height: 24)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .accessibilityLabel("More actions for port \(String(port.port))")
             }
 
             HStack(alignment: .firstTextBaseline) {
@@ -550,7 +589,8 @@ struct PortmanPanelView: View {
                     }
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
-                    .foregroundStyle(.red)
+                    .foregroundStyle(hoveredStopPortID == port.id ? .red : .secondary)
+                    .onHover { hoveredStopPortID = $0 ? port.id : nil }
                     .help("Stop port \(String(port.port)) process tree")
                     .accessibilityLabel("Stop process tree for port \(String(port.port))")
                 }
@@ -650,10 +690,12 @@ struct PortmanPanelView: View {
                         AxisValueLabel {
                             if let bytes = value.as(Int64.self) {
                                 Text(bytes == 0 ? "0" : memoryString(bytes))
+                                    .frame(width: 56, alignment: .leading)
                             }
                         }
                     }
                 }
+                .chartPlotStyle { $0.clipped() }
                 .chartOverlay { proxy in chartHover(proxy) }
                 .frame(height: 100)
                 .accessibilityLabel("Memory history for port \(String(port.port))")
@@ -668,6 +710,7 @@ struct PortmanPanelView: View {
                     ForEach(samples) { sample in
                         BarMark(x: .value("Time", sample.date),
                                 y: .value("CPU", sample.cpuPercent))
+                            .width(.fixed(2))
                             .foregroundStyle(hovered?.date == sample.date ? Color.accentColor : Color.secondary.opacity(0.5))
                     }
                     if let hovered {
@@ -676,22 +719,33 @@ struct PortmanPanelView: View {
                     }
                 }
                 .chartXScale(domain: chartStart...chartEnd)
-                .chartYScale(domain: 0...100)
+                .chartYScale(domain: 0...cpuCeiling)
+                .chartXAxis(.hidden)
                 .chartYAxis {
-                    AxisMarks(position: .trailing, values: [0, 50, 100]) { _ in
+                    AxisMarks(position: .trailing, values: [0, cpuCeiling / 2, cpuCeiling]) { value in
                         AxisGridLine()
-                        AxisValueLabel()
+                        AxisValueLabel {
+                            if let cpu = value.as(Double.self) {
+                                Text(String(format: "%.0f", cpu))
+                                    .frame(width: 56, alignment: .leading)
+                            }
+                        }
                     }
                 }
+                .chartPlotStyle { $0.clipped() }
                 .chartOverlay { proxy in chartHover(proxy) }
                 .frame(height: 50)
                 .accessibilityLabel("CPU history for port \(String(port.port))")
             }
-            if let hovered {
-                Text(hovered.date.formatted(date: .omitted, time: .standard))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
+            HStack {
+                Text("10m history")
+                Spacer()
+                Text((hovered?.date ?? samples.last?.date)?.formatted(date: .omitted, time: .standard) ?? "—")
+                    .monospacedDigit()
             }
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .frame(height: 14)
             QuietDivider()
             DisclosureGroup(isExpanded: $showingProcesses) {
                 processRow(pid: port.pid, command: port.command,
@@ -710,47 +764,11 @@ struct PortmanPanelView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            HStack {
-                Button("Open localhost:\(String(port.port))") { openLocal(port.port) }
-                    .buttonStyle(.borderedProminent)
-                Spacer()
-                if let preview = service.githubLinks[port.id]?.previewURL {
-                    Button("Preview ↗") { NSWorkspace.shared.open(preview) }
-                        .buttonStyle(.bordered)
-                        .help(preview.absoluteString)
-                }
-                Menu {
-                    Button("Copy URL") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString("http://127.0.0.1:\(port.port)/", forType: .string)
-                    }
-                    Button("Copy command") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(port.launchCommand, forType: .string)
-                    }
-                    if let details = service.metadata[port.id],
-                       FileManager.default.fileExists(atPath: details.root ?? details.folder) {
-                        Button("Open in editor") {
-                            PortmanEditor.open(details.root ?? details.folder, preferred: editor)
-                        }
-                        Button("Show folder in Finder") {
-                            NSWorkspace.shared.selectFile(
-                                nil, inFileViewerRootedAtPath: details.root ?? details.folder
-                            )
-                        }
-                    }
-                    if port.canStop {
-                        Button("Restart with saved command…") { pendingRestart = port }
-                            .disabled(!service.restartableIDs.contains(port.id))
-                        Button("Stop process tree…", role: .destructive) { pendingStop = port }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis").frame(width: 24, height: 24)
-                }
-                .menuStyle(.borderlessButton)
-                .accessibilityLabel("More actions for port \(String(port.port))")
+            if let preview = service.githubLinks[port.id]?.previewURL {
+                Button("Open preview") { NSWorkspace.shared.open(preview) }
+                    .buttonStyle(.bordered)
+                    .help(preview.absoluteString)
             }
-            .controlSize(.small)
             if let error = service.controlError { errorText(error) }
         }
     }
