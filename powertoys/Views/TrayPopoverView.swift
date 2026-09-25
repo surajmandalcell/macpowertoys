@@ -471,8 +471,8 @@ private struct TrayHomeActionButton: View {
             .frame(maxWidth: .infinity, minHeight: 30)
             .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
-        .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 7))
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -1009,7 +1009,7 @@ private struct SystemCareTrayView: View {
             }
         }
         .padding(10)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 9))
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
     }
 
@@ -1032,7 +1032,7 @@ private struct SystemCareTrayView: View {
                 disabled: manager.selectedCandidateIDs.isEmpty || manager.isWorking
             ) { confirmTrash = true }
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 5))
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
         .font(.system(size: 9))
         .padding(.horizontal, TrayPopoverLayout.horizontalInset)
     }
@@ -1052,7 +1052,7 @@ private struct SystemCareTrayView: View {
                                 .rotationEffect(.degrees(expandedCategories.contains(category) ? 90 : 0))
                                 .frame(width: 22, height: 22)
                         }
-                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 5))
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
                         .accessibilityLabel(expandedCategories.contains(category) ? "Collapse \(category.title)" : "Expand \(category.title)")
                         Image(systemName: category.icon).font(.system(size: 11)).foregroundStyle(.secondary)
                         Text(category.title).font(.system(size: 11, weight: .medium)).lineLimit(1)
