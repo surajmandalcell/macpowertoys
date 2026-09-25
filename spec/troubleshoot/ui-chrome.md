@@ -267,17 +267,22 @@
 - **Cause:** The first integration invented an icon and added a second sidebar
   for a two-destination workflow. Its custom dark surface did not follow the
   applet's native light and dark appearances.
-- **Invariant:** Use the approved standalone Switch icon in all tool surfaces.
-  The window header visibly labels Accounts, Recovery, About, and Refresh;
-  saved identities form the only sidebar. The selected account and actions sit
-  beside them. Empty Accounts shows a direct Add Account and Import path;
-  empty Recovery explains that no repair is needed. Chat browsing and cleanup
-  remain in standalone Switch.
-- **Check:** Inspect Accounts and Recovery at 880pt and 1,024pt in light and
-  dark, including empty and selected-account states. Make Default, Verify,
-  Add, Import, Remove, Open, account details, usage, and recovery remain
-  reachable without clipping. In the combined menu, account rows switch the
-  default and usage refreshes on demand.
+- **Correction:** The next header-tab revision still diverged from standalone
+  Switch: it hid the account list when empty, moved navigation into pills, and
+  presented identity and usage as loose rows with a large blank lower pane.
+  The owner rejected that flow after seeing the running app. The approved
+  reference is `switch/docs/screenshots/accounts-dark.png` and the source
+  `AccountWindow.swift` in the standalone Switch repository.
+- **Invariant:** Keep the approved Switch icon and copy the standalone window's
+  working structure: a narrow functional rail, page title and refresh strip,
+  persistent account list with Add at its foot, and adjacent Identity, Usage,
+  activity, and account-detail panels. Accounts, Backup, and relevant Settings
+  are reachable; Chat History and Cleanup remain in standalone Switch. Match
+  the original compact rows, pane spacing, and light/dark palette.
+- **Check:** Compare the populated 1120×740 dark render against the approved
+  screenshot. Inspect empty and populated Accounts, Backup, and Settings at
+  880pt and 1120pt in both appearances. Exercise every visible rail action and
+  account action in hosted UI tests without activating the owner's desktop.
 
 ## Workspace Minimum Window Sizes
 

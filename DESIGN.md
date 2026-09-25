@@ -595,16 +595,15 @@ what happened and the next available action.
 
 Switch is task-focused like an applet but uses a resizable workspace-sized
 window so account selection, actions, and usage remain visible together. The
-window header shows the original Switch icon and name, labeled Accounts and
-Recovery destinations, and visible About and Refresh controls. Saved identities
-form the only sidebar beside the selected account's details; it stays hidden
-while there are no accounts or importable sources. The applet uses
-native light and dark surfaces instead of forcing a dark navigation rail. The
+window follows standalone Switch's account workspace: a 48pt functional rail,
+48pt page-title strip, persistent 200pt account list, and adjacent Identity,
+Usage, activity, and account-detail panels. The list keeps Add account at its
+foot even when it is empty. Accounts, Backup, and relevant Settings have working
+rail destinations; About, appearance, and Add account remain reachable there.
+Use Switch's original icon and its warm light and charcoal dark palette. The
 selected account, current default, access state, and available action must be
-distinguishable without relying on color alone.
-Recovery handles interrupted operations and linked settings; conversation
-browsing and cleanup remain in standalone Switch. Keep the minimum window at
-880×600 and check both appearances at that size before release.
+distinguishable without relying on color alone. Chat browsing and cleanup stay
+in standalone Switch. Use 1120×740 by default and keep 880×600 usable.
 The combined MacPowerToys menu shows saved identities as compact rows with a
 default indicator and direct switching. Usage loads only on request in that
 menu; opening a menu must not start a recurring account poll.
