@@ -396,15 +396,16 @@ nonisolated enum PortmanScanner {
         return ports.sorted()
     }
 
-    static func remotePorts(host: String) async throws -> [UInt16] {
+    static func remotePorts(host: String, configurationFile: URL? = nil) async throws -> [UInt16] {
         guard SystemMonitorRemoteProtocol.validHost(host) else {
             throw NSError(domain: "Portman", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
         }
         let command = "LC_ALL=C ss -ltnH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fn"
+        let configArguments = configurationFile.map { ["-F", $0.path] } ?? []
         let result = try await SSHProcessRunner.run(
             executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
-            arguments: ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+            arguments: configArguments + ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
                         "-o", "StrictHostKeyChecking=yes", "-T", "--", host, command],
             environment: ProcessInfo.processInfo.environment,
             standardInput: Data(),
@@ -446,12 +447,14 @@ nonisolated enum PortmanScanner {
         )
     }
 
-    static func tunnelArguments(host: String, remotePort: UInt16, localPort: UInt16) throws -> [String] {
+    static func tunnelArguments(
+        host: String, remotePort: UInt16, localPort: UInt16, configurationFile: URL? = nil
+    ) throws -> [String] {
         guard SystemMonitorRemoteProtocol.validHost(host), remotePort > 0, localPort > 0 else {
             throw NSError(domain: "Portman", code: 2,
                           userInfo: [NSLocalizedDescriptionKey: "Choose a valid SSH host and ports."])
         }
-        return ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+        return (configurationFile.map { ["-F", $0.path] } ?? []) + ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
                 "-o", "ExitOnForwardFailure=yes",
                 "-o", "StrictHostKeyChecking=yes", "-o", "ServerAliveInterval=15",
                 "-o", "ServerAliveCountMax=2", "-N", "-L",
@@ -705,12 +708,12 @@ final class PortmanService {
         }
     }
 
-    func refreshRemote(host: String) async {
+    func refreshRemote(host: String, configurationFile: URL? = nil) async {
         let requestID = UUID()
         remoteRequestID = requestID
         isLoadingRemote = true
         do {
-            let ports = try await PortmanScanner.remotePorts(host: host)
+            let ports = try await PortmanScanner.remotePorts(host: host, configurationFile: configurationFile)
             guard remoteRequestID == requestID else { return }
             remotePorts = ports
             forwardingError = nil
@@ -723,9 +726,13 @@ final class PortmanService {
     }
 
     @discardableResult
-    func forward(host: String, remotePort: UInt16, localPort: UInt16) -> Bool {
+    func forward(host: String, remotePort: UInt16, localPort: UInt16, configurationFile: URL? = nil) -> Bool {
         let arguments: [String]
-        do { arguments = try PortmanScanner.tunnelArguments(host: host, remotePort: remotePort, localPort: localPort) }
+        do {
+            arguments = try PortmanScanner.tunnelArguments(
+                host: host, remotePort: remotePort, localPort: localPort, configurationFile: configurationFile
+            )
+        }
         catch { forwardingError = error.localizedDescription; return false }
         guard !tunnels.contains(where: { $0.localPort == localPort && !$0.isFailed }) else {
             forwardingError = "Local port \(localPort) already has a Portman tunnel."

@@ -186,21 +186,26 @@ final class PortmanTests: XCTestCase {
         }
         XCTAssertTrue(sshReady, (try? String(contentsOf: sshLog, encoding: .utf8)) ?? "sshd did not listen")
 
+        let service = PortmanService.shared
+        defer { service.stopAll() }
+        await service.refreshRemote(host: "portman-test", configurationFile: clientConfig)
+        XCTAssertTrue(service.remotePorts.contains(remotePort),
+                      service.forwardingError ?? "SSH scan missed the HTTP listener")
+
         let localPort = try unusedPort()
-        let tunnel = Process()
-        tunnel.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        tunnel.arguments = ["-F", clientConfig.path]
-            + (try PortmanScanner.tunnelArguments(host: "portman-test", remotePort: remotePort,
-                                                  localPort: localPort))
-        tunnel.standardInput = FileHandle.nullDevice
-        tunnel.standardOutput = FileHandle.nullDevice
-        tunnel.standardError = FileHandle.nullDevice
-        try tunnel.run()
-        defer { if tunnel.isRunning { tunnel.terminate(); tunnel.waitUntilExit() } }
+        XCTAssertTrue(service.forward(host: "portman-test", remotePort: remotePort,
+                                      localPort: localPort, configurationFile: clientConfig),
+                      service.forwardingError ?? "SSH did not start")
+        let tunnelID = try XCTUnwrap(service.tunnels.first { $0.localPort == localPort }?.id)
+        func tunnelRunning() -> Bool {
+            guard let tunnel = service.tunnels.first(where: { $0.id == tunnelID }) else { return false }
+            if case .running = tunnel.state { return true }
+            return false
+        }
 
         var response: String?
         for _ in 0..<30 {
-            if PortmanScanner.tunnelIsListening(pid: tunnel.processIdentifier, localPort: localPort) {
+            if tunnelRunning() {
                 response = try? PortmanScanner.run("/usr/bin/curl",
                     ["--silent", "--show-error", "--fail", "--max-time", "2",
                      "http://127.0.0.1:\(localPort)/probe.txt"])
@@ -209,7 +214,33 @@ final class PortmanTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(200))
         }
         let log = (try? String(contentsOf: sshLog, encoding: .utf8)) ?? ""
-        XCTAssertEqual(response, "portman-forward-ok", "SSH forwarding failed: \(log)")
+        XCTAssertEqual(response, "portman-forward-ok",
+                       "SSH forwarding failed: \(service.forwardingError ?? "") \(log)")
+        XCTAssertFalse(service.forward(host: "portman-test", remotePort: remotePort,
+                                       localPort: localPort, configurationFile: clientConfig))
+        XCTAssertTrue(service.forwardingError?.contains("already has a Portman tunnel") == true)
+        XCTAssertTrue(tunnelRunning())
+        service.forwardingError = nil
+
+        for scheme in [ColorScheme.light, .dark] {
+            let host = NSHostingView(rootView: PortmanPanelView(initialPage: .forward)
+                .environment(\.colorScheme, scheme))
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+            host.layoutSubtreeIfNeeded()
+            host.frame.size = host.fittingSize
+            host.layoutSubtreeIfNeeded()
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Portman — Active Forward — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        service.stopTunnel(tunnelID)
+        XCTAssertFalse(service.tunnels.contains { $0.id == tunnelID })
     }
 
     func testLocalRangeAndProcessTableParsing() {
@@ -477,6 +508,27 @@ final class PortmanTests: XCTestCase {
         attachment.name = "Portman — Live Server — Dark"
         attachment.lifetime = .keepAlways
         add(attachment)
+
+        let observed = try XCTUnwrap(service.localPorts.first { $0.pid == listener.pid && $0.port == port })
+        await service.loadMetadata(for: observed)
+        await service.loadRestartAvailability(for: observed)
+        for scheme in [ColorScheme.light, .dark] {
+            let detail = NSHostingView(rootView: PortmanPanelView(initialPortID: observed.id)
+                .environment(\.colorScheme, scheme))
+            detail.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            detail.frame = NSRect(x: 0, y: 0, width: 400, height: 620)
+            detail.layoutSubtreeIfNeeded()
+            detail.frame.size = detail.fittingSize
+            detail.layoutSubtreeIfNeeded()
+            let representation = try XCTUnwrap(detail.bitmapImageRepForCachingDisplay(in: detail.bounds))
+            detail.cacheDisplay(in: detail.bounds, to: representation)
+            let image = NSImage(size: detail.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Portman — Server Detail — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
 
         try await PortmanRestart.run(listener, folder: folder.path)
 
