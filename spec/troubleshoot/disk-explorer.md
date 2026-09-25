@@ -29,6 +29,18 @@
   the UI route exercised Scan, Contents, tabs, and statistics without touching
   the owner desktop. Keep hover and drill actions in the hosted UI check.
 
+## Ring Hover Targets The Center Label
+
+- **Symptom:** A hosted pointer move over a visible ring left its center label
+  unchanged, while treemap hover and folder drill worked.
+- **Cause:** Accessibility exposed the ring's center text as the chart element;
+  UI automation positioned its pointer relative to that small text frame.
+- **Invariant:** Expose the ring canvas as one chart element with the full chart
+  frame, dynamic hovered-item value, and its existing label and hint.
+- **Check:** Run the hosted ring-hover UI assertion and inspect its screenshot
+  for a highlighted segment and matching center label. Run `36140917852`
+  established the failure with a pointer aimed through the center-text frame.
+
 ## Plain File Actions Show A Mismatched Focus Outline
 
 - **Symptom:** Hosted `FocusEffectTests` reported the new Largest Files action
