@@ -85,46 +85,52 @@ struct FanControlView: View {
 
     private var setupPopover: some View {
         VStack(alignment: .leading, spacing: 11) {
-            Label("Enable fan control", systemImage: "fanblades")
+            Label(service.errorMessage == nil ? "Enable fan control" : "Fan control issue", systemImage: "fanblades")
                 .font(.system(size: 14, weight: .semibold))
             Text(detail)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Divider()
-            Text("1  Install smctl")
-                .font(.system(size: 12, weight: .semibold))
-            Text("Install the fan utility for your Mac. RPM reading works without it.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            Link("Open smctl installation guide", destination: URL(string: "https://github.com/leaperone/smctl#install")!)
-                .font(.system(size: 11))
-            Text("2  Approve its helper")
-                .font(.system(size: 12, weight: .semibold))
-            Text("Run this in Terminal and approve the administrator request:")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                Text("sudo smctl daemon install")
-                    .font(.system(size: 11, design: .monospaced))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString("sudo smctl daemon install", forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
+            if service.canControl {
+                Text("Choose Auto, Cool, or Max to retry.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            } else {
+                Divider()
+                Text("1  Install smctl")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Install the fan utility for your Mac. RPM reading works without it.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Link("Open smctl installation guide", destination: URL(string: "https://github.com/leaperone/smctl#install")!)
+                    .font(.system(size: 11))
+                Text("2  Approve its helper")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Run this in Terminal and approve the administrator request:")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text("sudo smctl daemon install")
+                        .font(.system(size: 11, design: .monospaced))
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("sudo smctl daemon install", forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Copy helper installation command")
+                    .help("Copy command")
                 }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Copy helper installation command")
-                .help("Copy command")
-            }
-            .padding(8)
-            .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
-            HStack {
-                Spacer()
-                Button("Check again") { Task { await service.refresh() } }
-                    .controlSize(.small)
+                .padding(8)
+                .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
+                HStack {
+                    Spacer()
+                    Button("Check again") { Task { await service.refresh() } }
+                        .controlSize(.small)
+                }
             }
         }
         .frame(width: 292, alignment: .leading)
