@@ -176,7 +176,8 @@
   segmented control. Both rows use a 16pt leading inset and the Home action
   buttons' 12pt trailing gutter, aligning their right edges. When control is
   unavailable, an amber setup button sits immediately before Auto and opens
-  installation and helper-approval steps; status stays out of the row.
+  installation and helper-approval steps. A failed command uses the same slot
+  for its error and retry guidance; status stays out of the row.
   Size each native picker to its rendered width. The fan icon uses Awake's
   neutral tint, and Fan, RPM, and utilization share one line. Leave 18pt below
   the Fan row.
