@@ -392,6 +392,7 @@ final class PortmanService {
     private(set) var tunnels: [PortmanTunnel] = []
     private(set) var history: [String: [PortmanSample]] = [:]
     private(set) var metadata: [String: PortmanMetadata] = [:]
+    private(set) var sessions: [String: PortmanSession] = [:]
     private(set) var systemMemoryUsedBytes: Int64 = 0
     private(set) var lastConnectionAt: [String: Date] = [:]
     private(set) var snoozedUntil: [String: Date] = [:]
@@ -427,6 +428,7 @@ final class PortmanService {
         localPorts = []
         history = [:]
         metadata = [:]
+        sessions = [:]
         lastConnectionAt = [:]
         notifiedProcessIDs = []
     }
@@ -454,6 +456,7 @@ final class PortmanService {
             }
             history = history.filter { key, _ in ports.contains { $0.id == key } }
             metadata = metadata.filter { key, _ in ports.contains { $0.id == key } }
+            sessions = sessions.filter { key, _ in ports.contains { $0.id == key } }
             lastConnectionAt = lastConnectionAt.filter { key, _ in ports.contains { $0.processID == key } }
             snoozedUntil = snoozedUntil.filter { key, until in
                 until > now && ports.contains { $0.processID == key }
@@ -503,6 +506,21 @@ final class PortmanService {
         if let details, localPorts.contains(where: { $0.id == port.id }) {
             metadata[port.id] = details
         }
+    }
+
+    func loadSession(for port: PortmanLocalPort) async {
+        guard UserDefaults.standard.bool(forKey: "portman.sessionLinksEnabled") else {
+            sessions.removeValue(forKey: port.id)
+            return
+        }
+        guard let folder = metadata[port.id]?.folder else { return }
+        let session = await PortmanSessionResolver.shared.resolve(
+            pid: port.pid, started: port.started, userID: port.userID, folder: folder
+        )
+        guard !Task.isCancelled,
+              UserDefaults.standard.bool(forKey: "portman.sessionLinksEnabled"),
+              localPorts.contains(where: { $0.id == port.id }) else { return }
+        sessions[port.id] = session
     }
 
     func refreshRemote(host: String) async {

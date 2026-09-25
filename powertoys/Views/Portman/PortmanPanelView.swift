@@ -27,6 +27,7 @@ struct PortmanPanelView: View {
     @State private var showingMacMemory = false
     @State private var showingMore = false
     @State private var showingProcesses = false
+    @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
 
     private let portColors: [Color] = [
         Color(red: 0.43, green: 0.78, blue: 0.93),
@@ -154,9 +155,12 @@ struct PortmanPanelView: View {
         .onChange(of: service.localPorts.map(\.processID)) {
             selectedCleanupProcesses.formIntersection(Set(service.localPorts.map(\.processID)))
         }
-        .task(id: selectedPortID) {
+        .task(id: "\(selectedPortID ?? "")|\(sessionLinksEnabled)") {
             hoveredTime = nil
-            if let selectedPort { await service.loadMetadata(for: selectedPort) }
+            if let selectedPort {
+                await service.loadMetadata(for: selectedPort)
+                await service.loadSession(for: selectedPort)
+            }
         }
         .confirmationDialog("Stop this server process?", isPresented: Binding(
             get: { pendingStop != nil }, set: { if !$0 { pendingStop = nil } }
@@ -500,6 +504,21 @@ struct PortmanPanelView: View {
             if let metadata = service.metadata[port.id], let branch = metadata.branch {
                 detailRow("Branch", branch)
             }
+            if let session = service.sessions[port.id] {
+                HStack {
+                    Text("Session").foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
+                    Text(session.label).lineLimit(1)
+                    Spacer()
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(session.resumeCommand, forType: .string)
+                    } label: { Image(systemName: "doc.on.doc") }
+                    .buttonStyle(.plain)
+                    .help("Copy \(session.label) resume command")
+                    .accessibilityLabel("Copy \(session.label) resume command")
+                }
+                .font(.system(size: 12))
+            }
             Button(showingMore ? "Less" : "More details") { showingMore.toggle() }
                 .font(.system(size: 11)).buttonStyle(.plain)
                 .focusEffectDisabled()
@@ -512,6 +531,9 @@ struct PortmanPanelView: View {
                     detailRow("Folder", metadata.folder)
                 }
                 detailRow("Command", port.launchCommand)
+                if let session = service.sessions[port.id] {
+                    detailRow("Session ID", session.id.uuidString.lowercased())
+                }
                 detailRow("Running", port.uptime)
             }
             QuietDivider()
@@ -911,6 +933,7 @@ struct PortmanSettingsView: View {
     @AppStorage("portman.protectedCommands") private var protectedCommands = ""
     @AppStorage("portman.showAllListeners") private var showAllListeners = false
     @AppStorage("portman.notificationsEnabled") private var notificationsEnabled = false
+    @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -996,6 +1019,11 @@ struct PortmanSettingsView: View {
             Text("Clean up").font(.system(size: 12, weight: .medium))
             Stepper("Suggest after \(Int(idleHours)) idle hours", value: $idleHours, in: 1...72, step: 1)
             Text("Only servers observed without connections for this long are suggested. Warnings are not selected automatically.")
+                .font(.system(size: 10)).foregroundStyle(.secondary)
+            QuietDivider()
+            Text("Integrations").font(.system(size: 12, weight: .medium))
+            Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
+            Text("When you open a server, Portman checks its process for a Claude Code session and recent local Codex sessions for a folder match. A link copies a resume command.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
             if !compact {
                 Button("Open Portman in menu bar") { ToolActionRouter.shared.open(toolID: "portman") }
