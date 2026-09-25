@@ -89,7 +89,8 @@ struct SystemMonitorRemoteView: View {
                         metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores", tint: .green)
                         metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))", tint: .red)
                         if !reading.load.isEmpty {
-                            metric("Load", value: reading.load.map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · "), detail: "1, 5, and 15 minutes", tint: .blue)
+                            metric("Load · 1 min", value: reading.load[0].formatted(.number.precision(.fractionLength(2))), detail: "Average CPU demand", tint: .blue)
+                                .help("Load is the average number of processes running or ready for a CPU. It is not a percent.")
                         }
                         metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: .blue)
                         metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: .blue)

@@ -142,7 +142,7 @@ struct SystemMonitorWindowView: View {
                 metricCard(
                     icon: "cpu",
                     title: "CPU",
-                    value: service.snapshot?.cpuUsage.percent ?? "Priming…",
+                    value: service.snapshot?.cpuUsage.percent ?? "...",
                     detail: loadDetail,
                     values: service.history.compactMap(\.cpuUsage),
                     tint: usageTint(service.snapshot?.cpuUsage),
@@ -178,8 +178,8 @@ struct SystemMonitorWindowView: View {
                 metricCard(
                     icon: "arrow.down.circle",
                     title: "Network",
-                    value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…",
-                    detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "not available")",
+                    value: service.snapshot?.networkDownload.map(Self.rate) ?? "...",
+                    detail: "Upload \(service.snapshot?.networkUpload.map(Self.rate) ?? "...")",
                     values: service.history.compactMap { sample in
                         guard let down = sample.networkDownload, let up = sample.networkUpload else { return nil }
                         return max(down, up)
@@ -204,12 +204,13 @@ struct SystemMonitorWindowView: View {
                 )
                 metricCard(
                     icon: "chart.bar",
-                    title: "Load",
+                    title: "Load · 1 min",
                     value: loadAverage,
-                    detail: loadAverageDetail,
+                    detail: "Average CPU demand · \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs",
                     values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
                     tint: usageTint(loadLevel)
                 )
+                .help(loadExplanation)
             }
         }
     }
@@ -226,8 +227,6 @@ struct SystemMonitorWindowView: View {
         ZStack(alignment: .bottom) {
             StatsSparkline(values: values, color: tint)
                 .frame(height: featured ? 78 : 44)
-                .padding(.horizontal, 10)
-                .padding(.bottom, 8)
                 .opacity(0.58)
             VStack(alignment: .leading, spacing: 8) {
                 Label(title, systemImage: icon)
@@ -265,10 +264,11 @@ struct SystemMonitorWindowView: View {
                 Text(values.last.map { formatter($0) + suffix } ?? "Not available")
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
             StatsSparkline(values: values)
                 .frame(height: 80)
         }
-        .padding(14)
         .frame(maxWidth: .infinity)
         .background(Color.primary.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -279,8 +279,9 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.cpu)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "Priming…", detail: "User + system + nice")
-                metricCard(icon: "chart.bar", title: "Load Average", value: loadAverage, detail: "1, 5, and 15 minute run queue")
+                metricCard(icon: "cpu", title: "Usage", value: service.snapshot?.cpuUsage.percent ?? "...", detail: "User + system + nice")
+                metricCard(icon: "chart.bar", title: "Load · 1 min", value: loadAverage, detail: loadAverageDetail)
+                    .help(loadExplanation)
                 metricCard(icon: "thermometer.medium", title: "Thermal", value: service.snapshot?.thermalState ?? "Not available", detail: "System thermal pressure")
             }
             chartCard(title: "CPU Usage", suffix: "%", values: service.history.compactMap(\.cpuUsage))
@@ -305,8 +306,8 @@ struct SystemMonitorWindowView: View {
             menuPlacement(.network)
         } content: {
             LazyVGrid(columns: metricColumns, spacing: 12) {
-                metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
-                metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "Priming…", detail: "All active non-loopback interfaces")
+                metricCard(icon: "arrow.down", title: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "...", detail: "All active non-loopback interfaces")
+                metricCard(icon: "arrow.up", title: "Upload", value: service.snapshot?.networkUpload.map(Self.rate) ?? "...", detail: "All active non-loopback interfaces")
             }
             LazyVGrid(columns: chartColumns, spacing: 12) {
                 chartCard(title: "Download", suffix: "/s", values: service.history.compactMap(\.networkDownload), formatter: Self.rate)
@@ -329,18 +330,20 @@ struct SystemMonitorWindowView: View {
     }
 
     private var loadDetail: String {
-        service.snapshot?.loadAverage.map { "Load \($0.0.formatted(.number.precision(.fractionLength(2))))" } ?? "Waiting for first delta"
+        service.snapshot?.loadAverage.map { "1-min load \($0.0.formatted(.number.precision(.fractionLength(2))))" } ?? "..."
     }
 
     private var loadAverage: String {
-        service.snapshot?.loadAverage.map {
-            [$0.0, $0.1, $0.2].map { $0.formatted(.number.precision(.fractionLength(2))) }.joined(separator: " · ")
-        } ?? "Not available"
+        service.snapshot?.loadAverage.map { $0.0.formatted(.number.precision(.fractionLength(2))) } ?? "..."
     }
 
     private var loadAverageDetail: String {
-        guard let load = service.snapshot?.loadAverage else { return "1, 5, and 15 minute average" }
+        guard let load = service.snapshot?.loadAverage else { return "..." }
         return "5m \(load.1.formatted(.number.precision(.fractionLength(2)))) · 15m \(load.2.formatted(.number.precision(.fractionLength(2))))"
+    }
+
+    private var loadExplanation: String {
+        "Load is the average number of processes running or ready for a CPU. Compare it with \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs. The 1-, 5-, and 15-minute averages show short and longer demand; they are not percentages."
     }
 
     private var loadLevel: Double? {
@@ -848,7 +851,6 @@ private struct StatsSparkline: View {
             }
             context.stroke(path, with: .color(color.opacity(0.72)), lineWidth: 1.5)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
         .accessibilityLabel("Recent \(values.last?.formatted() ?? "unavailable")")
     }
 }
