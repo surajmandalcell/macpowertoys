@@ -116,19 +116,20 @@ struct DiskTreemapView: View {
                 let layout = Self.layout(tiles, in: CGRect(origin: .zero, size: geometry.size).insetBy(dx: 4, dy: 4))
                 ForEach(layout, id: \.id) { tile in
                     let rect = tile.rect.insetBy(dx: 1, dy: 1)
+                    let focused = hoveredID == tile.id || selectedID == tile.id
                     Button {
                         guard let entry = tile.entry else { return }
                         selectedID = entry.id
                         select(entry)
                     } label: {
                         RoundedRectangle(cornerRadius: 5)
-                            .fill(tile.color.opacity(hoveredID == nil || tile.id == hoveredID ||
-                                                     tile.id == selectedID ? 1 : 0.78))
+                            .fill(tile.color)
+                            .brightness(focused ? 0.06 : 0)
                             .overlay {
                                 RoundedRectangle(cornerRadius: 5)
-                                    .strokeBorder(hoveredID == tile.id || selectedID == tile.id ?
+                                    .strokeBorder(focused ?
                                                   Color.white.opacity(0.94) : Color.white.opacity(0.16),
-                                                  lineWidth: hoveredID == tile.id || selectedID == tile.id ? 2 : 1)
+                                                  lineWidth: focused ? 2 : 1)
                             }
                             .overlay(alignment: .topLeading) {
                                 if rect.width > 80 && rect.height > 36 {
@@ -286,12 +287,12 @@ struct DiskSunburstView: View {
                     ForEach(segments, id: \.id) { segment in
                         DiskRingShape(start: segment.start, end: segment.end,
                                       inner: segment.inner, outer: segment.outer)
-                            .fill(segment.color.opacity(hoveredID == nil ||
-                                segment.id == hoveredID || segment.id == selectedID ? 0.96 : 0.78))
+                            .fill(segment.color)
+                            .brightness(hoveredID == segment.id || selectedID == segment.id ? 0.06 : 0)
                             .overlay {
                                 DiskRingShape(start: segment.start, end: segment.end,
                                               inner: segment.inner, outer: segment.outer)
-                                    .stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 2)
+                                    .stroke(Color(nsColor: .controlBackgroundColor), lineWidth: 2)
                             }
                             .animation(chartAnimation, value: segment.start)
                             .animation(chartAnimation, value: segment.end)
