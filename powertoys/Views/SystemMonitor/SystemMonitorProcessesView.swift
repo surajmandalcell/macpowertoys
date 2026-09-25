@@ -75,9 +75,9 @@ struct SystemMonitorProcessesView: View {
                 }
                 .padding(.horizontal, 12)
                 .frame(maxWidth: 400, minHeight: 34)
-                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 9)
+                    RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(searchFocused ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: searchFocused ? 2 : 1)
                 }
                 Spacer(minLength: 0)
@@ -99,7 +99,7 @@ struct SystemMonitorProcessesView: View {
                             .disabled(selected.started == 0)
                     }
                     .controlSize(.small)
-                    Divider()
+                    QuietDivider()
                     Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                         GridRow {
                             detail("CPU", selected.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "Measuring")
