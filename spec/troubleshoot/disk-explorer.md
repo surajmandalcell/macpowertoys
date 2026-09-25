@@ -16,6 +16,19 @@
   prior weight-based grouping. Hosted chart navigation and motion captures
   must confirm stable live transitions in both appearances.
 
+## Hosted Modify Check Has No Physical Disk
+
+- **Symptom:** The hosted UI test reaches Modify but cannot find a physical
+  disk row to select.
+- **Cause:** The virtualized macOS runner exposes no physical media through
+  `diskutil`, while Modify intentionally filters out virtual disks.
+- **Invariant:** Keep the physical-media guard. Verify the hosted empty state
+  and render a representative removable disk offscreen in both appearances;
+  exercise actual writes only on the identified local SD card.
+- **Check:** The hosted Modify UI test accepts a physical row or the explicit
+  No Physical Disks state. `testModifyLayoutInBothAppearances` captures the
+  populated page without launching it on the owner desktop.
+
 ## Disk Repair Requests An Interactive Whole-Disk Prompt
 
 - **Symptom:** `diskutil repairDisk disk10` prints a question about erasing an

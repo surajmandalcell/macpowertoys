@@ -14,11 +14,15 @@ final class DiskExplorerUITests: XCTestCase {
         let firstDisk = window.buttons.matching(NSPredicate(
             format: "identifier BEGINSWITH 'diskman.disk.'"
         )).firstMatch
-        XCTAssertTrue(firstDisk.waitForExistence(timeout: 20))
-        firstDisk.click()
-        XCTAssertTrue(window.staticTexts["PARTITIONS & VOLUMES"].waitForExistence(timeout: 20))
-        XCTAssertTrue(window.staticTexts["OPERATION"].exists)
-        attach(window.screenshot(), named: "Diskman Modify")
+        if firstDisk.waitForExistence(timeout: 10) {
+            firstDisk.click()
+            XCTAssertTrue(window.staticTexts["PARTITIONS & VOLUMES"].waitForExistence(timeout: 20))
+            XCTAssertTrue(window.staticTexts["OPERATION"].exists)
+            attach(window.screenshot(), named: "Diskman Modify")
+        } else {
+            XCTAssertTrue(window.staticTexts["No Physical Disks"].exists)
+            attach(window.screenshot(), named: "Diskman Modify Empty")
+        }
     }
 
     @MainActor func testScanControlsAndResultTabs() throws {

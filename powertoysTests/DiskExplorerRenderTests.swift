@@ -4,6 +4,40 @@ import XCTest
 @testable import powertoys
 
 final class DiskExplorerRenderTests: XCTestCase {
+    @MainActor func testModifyLayoutInBothAppearances() throws {
+        let card = ManagedDisk(
+            id: "disk10", name: "SDXC Reader", size: 15_634_268_160,
+            bus: "Secure Digital", scheme: "GUID_partition_scheme", devicePath: "reader",
+            writable: true, manageable: true, partitions: [
+                ManagedPartition(id: "disk10s1", name: "EFI", content: "EFI",
+                                 size: 209_715_200, mountPoint: nil, uuid: nil),
+                ManagedPartition(id: "disk10s2", name: "DISKMAN", content: "Microsoft Basic Data",
+                                 size: 15_424_552_960, mountPoint: "/Volumes/DISKMAN", uuid: "volume")
+            ]
+        )
+        let size = NSSize(width: 880, height: 700)
+        for scheme in [ColorScheme.dark, .light] {
+            let host = NSHostingView(rootView:
+                DiskModifyView(previewDisks: [card])
+                    .frame(width: size.width, height: size.height)
+                    .environment(\.colorScheme, scheme)
+            )
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(origin: .zero, size: size)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            host.layoutSubtreeIfNeeded()
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Diskman Modify — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
     @MainActor func testResultTabsInBothAppearances() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
