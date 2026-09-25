@@ -6,6 +6,37 @@ final class SwitchUITests: XCTestCase {
     }
 
     @MainActor
+    func testLauncherOpensSwitch() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mpt-switch-launcher-ui-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launchEnvironment["AI_MANAGER_ROOT"] = root.path
+        app.launch()
+        defer { app.terminate() }
+
+        let card = app.descendants(matching: .any)["tool.switch.card"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.click()
+
+        let launch = app.buttons["tool.switch.launch"]
+        XCTAssertTrue(launch.waitForExistence(timeout: 5))
+        attach(app.screenshot(), named: "Switch Launcher Detail")
+        app.activate()
+        let launchReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hittable == true"), object: launch)
+        XCTAssertEqual(XCTWaiter.wait(for: [launchReady], timeout: 5), .completed)
+        launch.click()
+
+        let window = app.windows["Switch"]
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        attach(window.screenshot(), named: "Switch Opened From Launcher")
+    }
+
+    @MainActor
     func testSwitchOpensFromCLIRouteAndNavigatesByIconRail() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mpt-switch-ui-\(UUID().uuidString)", isDirectory: true)
