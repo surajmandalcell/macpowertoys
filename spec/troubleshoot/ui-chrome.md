@@ -19,6 +19,24 @@
   overview, selected server, cleanup, settings, and SSH
   tunnel states at the real menu-bar width.
 
+## Portman Reopened Tab And Panel Height
+
+- **Symptom:** Reopening Portman returned to Servers, a running tunnel's Link
+  button was smaller than Stop, and short Forward pages left blank space below
+  the last row.
+- **Cause:** Every open made a new panel whose selected page was transient
+  `@State` initialized to Servers. Link used a regular-size icon button beside
+  a small Stop button. The panel height used page-specific estimates instead
+  of the rendered content height.
+- **Invariant:** Save the selected page across panel recreation while keeping
+  Forward's pending scan selection transient. Give Link and Stop equal native
+  button dimensions. Measure the active page's content, retain the compact
+  empty-Servers minimum, and cap long pages to the visible screen.
+- **Check:** Hosted run `36210609326` passed tab navigation and the new
+  reopen test; its 400pt Forward and filtered Settings captures have no large
+  blank tail. Its active-forward capture exposed a remaining width mismatch,
+  so inspect a new dark and light render after the Link label-width correction.
+
 ## Portman Cold Menu-Bar Launch
 
 - **Symptom:** A fresh hosted `--open portman` launch displayed no panel even
@@ -313,6 +331,25 @@
   screenshot. Inspect empty and populated Accounts, Backup, and Settings at
   880pt and 1120pt in both appearances. Exercise every visible rail action and
   account action in hosted UI tests without activating the owner's desktop.
+
+## Switch Account Controls
+
+- **Symptom:** The top-left 48-point rail cell contained an off-center native
+  close button. Add was a menu instead of the provider flow, the rail repeated
+  it as a plus icon, and provider rows used generic symbols. An idle Backup page
+  ended in a large disabled recovery button.
+- **Cause:** The applet copied the panel layout but left native window controls
+  and generic host actions in place. The recovery button was shown even when
+  Core reported no pending operation.
+- **Invariant:** Hide only Switch's native traffic lights and center its custom
+  close control in the rail cell. Keep Add at the account-list foot, present
+  the original provider selection with original provider art, and expose
+  recovery actions only when an operation exists. Modal About pages omit the
+  self-Open action. Format usage durations compactly and keep period selection
+  within the usage panel at the minimum window width.
+- **Check:** In hosted and permitted installed-app checks, open Add and About,
+  inspect the 880-point Accounts and Backup pages, toggle Menubar state, and
+  verify close and recovery controls perform their named actions.
 
 ## Workspace Minimum Window Sizes
 

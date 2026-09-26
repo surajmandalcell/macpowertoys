@@ -97,20 +97,22 @@ struct ToolAboutView: View {
                     .accessibilityLabel("Enable \(tool.name)")
                     .accessibilityIdentifier("tool.\(tool.id).enabled")
 
-                Button {
-                    ToolActionRouter.shared.open(toolID: tool.id)
-                    if closeMainWindowAfterOpeningTool {
-                        dismissWindow(id: "main")
+                if !showsModalCloseButton {
+                    Button {
+                        ToolActionRouter.shared.open(toolID: tool.id)
+                        if closeMainWindowAfterOpeningTool {
+                            dismissWindow(id: "main")
+                        }
+                    } label: {
+                        Text("Open").utilityActionLabel()
                     }
-                } label: {
-                    Text("Open").utilityActionLabel()
+                    .accessibilityLabel("Open \(tool.name)")
+                    .accessibilityIdentifier("tool.\(tool.id).launch")
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                    .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
+                    .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
                 }
-                .accessibilityLabel("Open \(tool.name)")
-                .accessibilityIdentifier("tool.\(tool.id).launch")
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
-                .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
-                .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
 
                 if showsModalCloseButton {
                     UtilityModalCloseButton { dismiss() }

@@ -16,6 +16,9 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Hosted verified; live check pending | Keep MacPowerToys lightweight: account management, sign-in, import, default switching, verification, usage, and account recovery. Conversation browsing and cleanup stay in standalone Switch. | No conversation or cleanup route, scan, or destructive action in the MacPowerToys applet. Recovery and linked-settings repair remain reachable. |
 | Hosted layout and navigation verified; installed account flow pending | Follow the standalone Switch window's flow: narrow functional rail, page title and refresh strip, persistent account list, and adjacent Identity, Usage, activity, and account-detail panels. Keep the original icon. Include Accounts, Backup, and relevant Settings; omit Chat History and Cleanup as agreed. | Compare the port with `switch/docs/screenshots/accounts-dark.png` at 1120×740, then inspect light and dark, empty and populated, Backup, Settings, and minimum-width states. Every visible rail action must work. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
+| In progress | Match the original Switch account controls and provider artwork. | Center the custom close control in the 48-point rail cell; remove the redundant rail plus; use the original Add Account provider flow, provider icons, double-check state, and “Use as default” copy. Compact About modals must not show an oversized self-Open action. |
+| In progress | Make Backup and usage layouts clear at the minimum window width. | Backup explains when recovery actions become available and provides a useful destination action; disabled controls remain legible. Activity period and duration values stay inside their panels without wrapping into extra rows. |
+| In progress | Support Claude Code accounts through shared Switch Core. | Both standalone Switch and MacPowerToys discover and switch Claude Code profiles through the same Core package without requiring the standalone app. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
 or UI test runners. Executable checks and synthetic renders run on hosted macOS;
@@ -82,3 +85,9 @@ pass strict verification, report matching source stamps, and the app runs from
 recovery check in the installed window remains open because Computer Use access
 to MacPowerToys was rejected by automatic approval review. Synthetic verification
 did not touch the owner's saved accounts.
+
+The provider images in the applet come from standalone Switch's
+`packages/mac-gui/Resources/Icons`: `ProviderCodex.png`,
+`ProviderClaudeCode.svg`, `ProviderGeminiCLI.svg`,
+`ProviderAntigravityCLI.png`, and `ProviderGlyphs/grok.png`. Their provenance
+remains documented in that repository's `PROVIDER-ICON-PROVENANCE.txt`.

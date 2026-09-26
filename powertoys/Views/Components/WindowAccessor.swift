@@ -85,6 +85,7 @@ private class WindowAccessorView: NSView {
         window.backgroundColor = .clear
         window.tabbingMode = .disallowed
         if windowIdentifier == "switch" {
+            window.standardWindowButton(.closeButton)?.isHidden = true
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
         }
