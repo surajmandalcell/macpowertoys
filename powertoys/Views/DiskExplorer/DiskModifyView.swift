@@ -371,6 +371,7 @@ struct DiskModifyView: View {
                     Button("Whole disk") { withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) { partitionID = nil } }
                         .buttonStyle(.link)
                         .font(.system(size: 11))
+                        .accessibilityIdentifier("diskman.wholeDisk")
                 }
             }
             if let partition, let next = disk.nextPhysicalPartition(after: partition.id),
