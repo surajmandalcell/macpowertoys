@@ -4,10 +4,10 @@
 
 - [x] Show only working Mac Tweaks controls and saved-value recovery in the app. Keep the rest of the 130-entry research catalogue in the compatibility document, not as placeholder cards or sidebar categories.
 - [x] Use one consistent compact disclosure row for every visible setting. Open the working control inside its card, keep one card open at a time, and retain category and ranked search context.
-- [ ] Stop microphone control polling and input-level monitoring when Mic Lock is collapsed. Verify category switching and search do not stall.
+- [x] Stop microphone control polling and input-level monitoring when Mic Lock is collapsed. Hosted run `36211588257` expanded and collapsed Mic Lock, switched Finder cards, and opened a typo-matched search result.
 - [ ] Inspect collapsed, expanded, and search screenshots from the final build and correct any visible density or alignment defects.
 
-The app and UI test bundle compiled locally. Hosted run `36210967511` stopped before UI launch on an unrelated System Monitor tray compile error; the current shared HEAD includes its fix. Hosted interaction and screenshot checks remain open.
+The app and UI test bundle compiled locally. Hosted run `36210967511` stopped before UI launch on an unrelated System Monitor tray compile error. Run `36211588257` passed Mac Tweaks UI, and its collapsed, Mic Lock, Finder, Power, and search captures were reviewed. A compact Mic Lock spacing correction still needs its final capture and installed-app check.
 
 ## Navigation and visual correction, 2026-09-26
 
