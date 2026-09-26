@@ -22,6 +22,13 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertEqual(Set(grouped), Set(TweakCatalog.items.map(\.category)).union([TweakSearch.micLock.category]))
     }
 
+    func testEveryWorkingCardHasAnExample() {
+        let workingIDs = TweakCatalog.items
+            .filter { !TweakPreferences.fields(for: $0.id).isEmpty }
+            .map(\.id) + ["mic-lock", "helper.keep-awake"]
+        XCTAssertTrue(workingIDs.filter { TweakExample.forID($0) == nil }.isEmpty)
+    }
+
     func testExactPreferenceUndoRestoresAbsentAndExistingValues() throws {
         let domain = "com.macpowertoys.tweak-test.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))

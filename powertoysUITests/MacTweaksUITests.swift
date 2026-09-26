@@ -35,6 +35,14 @@ final class MacTweaksUITests: XCTestCase {
         XCTAssertFalse(window.buttons["mac-tweaks.apply.finder.hidden-files"].exists)
         XCTAssertTrue(window.buttons["mac-tweaks.apply.finder.quit"].waitForExistence(timeout: 5))
 
+        window.buttons["mac-tweaks.category.Dock"].click()
+        let firstDockCard = window.buttons["mac-tweaks.card.dock.reveal-delay"]
+        XCTAssertTrue(firstDockCard.waitForExistence(timeout: 5))
+        firstDockCard.click()
+        window.scrollViews.element(boundBy: 1).swipeUp()
+        XCTAssertTrue(firstDockCard.isHittable, "The first result should remain visible while later cards scroll")
+        attach(window.screenshot(), named: "Mac Tweaks Pinned First Result")
+
         let power = window.buttons["mac-tweaks.category.Power and hardware"]
         XCTAssertTrue(power.exists)
         XCTAssertLessThanOrEqual(power.frame.height, 30, "A short category label should fit one sidebar row")
@@ -51,6 +59,12 @@ final class MacTweaksUITests: XCTestCase {
         window.buttons["mac-tweaks.card.screenshots.format"].click()
         XCTAssertTrue(window.buttons["mac-tweaks.apply.screenshots.format"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Mac Tweaks Search Expanded")
+
+        window.buttons["Clear search"].firstMatch.click()
+        search.click()
+        search.typeText("search ")
+        XCTAssertTrue(window.staticTexts["No matches for “search”"].waitForExistence(timeout: 5))
+        attach(window.screenshot(), named: "Mac Tweaks Empty Search")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {
