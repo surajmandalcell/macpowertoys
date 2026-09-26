@@ -157,3 +157,19 @@
 - **Check:**
   `FocusEffectTests.testCustomButtonStylesSuppressTheMismatchedSystemOutline`
   passed in hosted run `36138597977`.
+
+## Forced ExFAT Merge Can Report Success After Cancellation
+
+- **Symptom:** `diskutil mergePartitions force ExFAT` prints “Merge canceled”
+  when its format prompt receives no answer, yet exits with status 0.
+- **Cause:** `force` chooses the erase path but does not answer diskutil's
+  separate confirmation prompt. A detached app process has no interactive
+  stdin, so exit status alone is not proof of a completed merge.
+- **Invariant:** Diskman sends `y` to that command only after the user reviews
+  both partition IDs and types the physical disk ID. Other diskutil commands
+  receive null stdin. Treat “Merge canceled” as an error, retain the disk list,
+  and refresh inventory after the command.
+- **Check:** On the authorized 16 GB SD card, the unconfirmed command canceled
+  with status 0 and left both ExFAT partitions. Supplying `y` completed the
+  merge, erased the marker on the first partition, and passed `verifyVolume`.
+  The card was restored to one mounted `DISKMAN` ExFAT volume.
