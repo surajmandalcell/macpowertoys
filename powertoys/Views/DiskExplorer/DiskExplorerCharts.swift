@@ -81,6 +81,7 @@ struct DiskTreemapView: View {
     let measure: DiskChartMeasure
     let scanComplete: Bool
     let select: (DiskEntry) -> Void
+    var onHoverDetail: (String?) -> Void = { _ in }
     @State private var hoveredID: String?
     @State private var selectedID: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -111,8 +112,7 @@ struct DiskTreemapView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            GeometryReader { geometry in
+        GeometryReader { geometry in
                 let layout = Self.layout(tiles, in: CGRect(origin: .zero, size: geometry.size).insetBy(dx: 4, dy: 4))
                 ForEach(layout, id: \.id) { tile in
                     let rect = tile.rect.insetBy(dx: 1, dy: 1)
@@ -148,7 +148,10 @@ struct DiskTreemapView: View {
                     .accessibilityLabel("\(tile.label), \(tile.detail)")
                     .frame(width: max(0, rect.width), height: max(0, rect.height))
                     .position(x: rect.midX, y: rect.midY)
-                    .onHover { inside in hoveredID = inside ? tile.id : (hoveredID == tile.id ? nil : hoveredID) }
+                    .onHover { inside in
+                        hoveredID = inside ? tile.id : (hoveredID == tile.id ? nil : hoveredID)
+                        onHoverDetail(tiles.first { $0.id == hoveredID }.map { "\($0.label) · \($0.detail)" })
+                    }
                     .animation(chartAnimation, value: rect)
                     .animation(UtilityMotion.animation(reduceMotion: reduceMotion,
                                                       duration: UtilityMotion.interactionDuration), value: hoveredID)
@@ -158,38 +161,12 @@ struct DiskTreemapView: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Treemap of \(directory.name)")
-            .accessibilityValue(hoveredID.flatMap { id in tiles.first { $0.id == id }?.label } ??
+            .accessibilityValue(hoveredID.flatMap { id in
+                tiles.first { $0.id == id }.map { "\($0.label), \($0.detail)" }
+            } ??
                                 "\(tiles.count) items")
-            .accessibilityHint("Point to a block for its name and size; select it to inspect or open")
+            .accessibilityHint("Select a block to inspect or open it")
             .accessibilityIdentifier("diskExplorer.treemap")
-            QuietDivider()
-            let hovered = tiles.first { $0.id == hoveredID } ?? tiles.first { $0.id == selectedID }
-            HStack(spacing: 10) {
-                Image(systemName: hovered?.entry?.kind == .directory ? "folder.fill" : "circle.grid.2x2")
-                    .foregroundStyle(hovered?.color ?? .secondary)
-                Text(hovered?.label ?? "Point to a block to inspect it")
-                    .lineLimit(1).truncationMode(.middle)
-                Spacer(minLength: 12)
-                if let hovered {
-                    Text(hovered.detail).monospacedDigit().fixedSize()
-                    if let entry = hovered.entry, measure.weight(entry, apparent: apparent) > 0,
-                       measure.weight(directory, apparent: apparent) > 0 {
-                        Text(Double(measure.weight(entry, apparent: apparent)) /
-                             Double(measure.weight(directory, apparent: apparent)),
-                             format: .percent.precision(.fractionLength(1)))
-                            .monospacedDigit().foregroundStyle(.secondary).fixedSize()
-                    }
-                }
-            }
-            .font(.system(size: 11, weight: .medium))
-            .padding(.horizontal, 12)
-            .frame(height: 40)
-            .contentTransition(.opacity)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(hovered.map { "\($0.label), \($0.detail)" } ??
-                                "Point to a block to inspect it")
-            .accessibilityIdentifier("diskExplorer.treemapDetails")
-        }
         .onChange(of: directory.id) { _, _ in hoveredID = nil; selectedID = nil }
     }
 
@@ -268,8 +245,8 @@ struct DiskSunburstView: View {
     let measure: DiskChartMeasure
     let scanComplete: Bool
     let select: (DiskEntry) -> Void
+    var onHoverDetail: (String?) -> Void = { _ in }
     @State private var hoveredID: String?
-    @State private var hoveredLabel: String?
     @State private var selectedID: String?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -277,14 +254,13 @@ struct DiskSunburstView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let plotHeight = max(0, geometry.size.height - 41)
+            let plotHeight = geometry.size.height
             let radius = max(0, min(geometry.size.width, plotHeight) / 2 - 10)
             let segments = Self.segments(for: directory, apparent: apparent, measure: measure,
                                          radius: radius, scanComplete: scanComplete)
             let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
             let focused = segments.first { $0.id == hoveredID } ?? segments.first { $0.id == selectedID }
-            VStack(spacing: 0) {
-                ZStack {
+            ZStack {
                     ForEach(segments, id: \.id) { segment in
                         DiskRingShape(start: segment.start, end: segment.end,
                                       inner: segment.inner, outer: segment.outer)
@@ -314,7 +290,7 @@ struct DiskSunburstView: View {
                                 withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion,
                                                                       duration: UtilityMotion.interactionDuration)) {
                                     hoveredID = next?.id
-                                    hoveredLabel = next?.label
+                                    onHoverDetail(next.map { "\($0.label) · \($0.detail)" })
                                 }
                             }
                         }
@@ -348,38 +324,12 @@ struct DiskSunburstView: View {
                 .frame(height: plotHeight)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Ring chart of \(directory.name)")
-                .accessibilityValue(hoveredLabel ?? "\(directory.children.count) items")
-                .accessibilityHint("Point to a segment for its name and size; select it to inspect or open")
+                .accessibilityValue(focused.map { "\($0.label), \($0.detail)" } ??
+                                    "\(directory.children.count) items")
+                .accessibilityHint("Select a segment to inspect or open it")
                 .accessibilityIdentifier("diskExplorer.rings")
-                QuietDivider()
-                HStack(spacing: 10) {
-                    Image(systemName: focused?.entry?.kind == .directory ? "folder.fill" : "circle.grid.2x2")
-                        .foregroundStyle(focused?.color ?? .secondary)
-                    Text(focused?.label ?? "Point to a ring to inspect it")
-                        .lineLimit(1).truncationMode(.middle)
-                    Spacer(minLength: 12)
-                    if let focused {
-                        Text(focused.detail).monospacedDigit().fixedSize()
-                        if let entry = focused.entry, measure.weight(entry, apparent: apparent) > 0,
-                           measure.weight(directory, apparent: apparent) > 0 {
-                            Text(Double(measure.weight(entry, apparent: apparent)) /
-                                 Double(measure.weight(directory, apparent: apparent)),
-                                 format: .percent.precision(.fractionLength(1)))
-                                .monospacedDigit().foregroundStyle(.secondary).fixedSize()
-                        }
-                    }
-                }
-                .font(.system(size: 11, weight: .medium))
-                .padding(.horizontal, 12)
-                .frame(height: 40)
-                .contentTransition(.opacity)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(focused.map { "\($0.label), \($0.detail)" } ??
-                                    "Point to a ring to inspect it")
-                .accessibilityIdentifier("diskExplorer.ringDetails")
-            }
         }
-        .onChange(of: directory.id) { _, _ in hoveredID = nil; hoveredLabel = nil; selectedID = nil }
+        .onChange(of: directory.id) { _, _ in hoveredID = nil; selectedID = nil }
     }
 
     private static func hitTest(_ segments: [DiskRingSegment], at point: CGPoint,

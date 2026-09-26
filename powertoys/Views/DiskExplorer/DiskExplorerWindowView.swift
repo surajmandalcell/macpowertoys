@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import QuickLook
 import SwiftUI
 
@@ -33,6 +34,8 @@ struct DiskExplorerWindowView: View {
     @State private var resultTab = DiskResultTab.visualization
     @State private var showsContents = false
     @State private var showsStatistics = false
+    @State private var showsUnreadableInfo = false
+    @State private var hoveredDetail: String?
     @State private var largestSearch = ""
     @State private var selectedFile: DiskEntry?
     @State private var previewURL: URL?
@@ -102,12 +105,17 @@ struct DiskExplorerWindowView: View {
                 model.start(source, includeHidden: newValue)
             }
         }
+        .onChange(of: chartStyle) { _, _ in hoveredDetail = nil }
+        .onChange(of: resultTab) { _, _ in hoveredDetail = nil }
         .quickLookPreview($previewURL)
         .popover(item: $selectedFile) { file in
             fileInspector(file).frame(width: 440)
         }
         .sheet(isPresented: $showingReview) {
             DiskExplorerReviewSheet(model: model, includeHidden: includeHidden)
+        }
+        .sheet(item: $diskManagement.blockedEject) { blocked in
+            blockedEjectSheet(blocked)
         }
     }
 
@@ -135,10 +143,6 @@ struct DiskExplorerWindowView: View {
                     .help(volume.url.path)
                 }
                 Text("MODIFY").utilitySectionHeader().padding(.leading, 8).padding(.top, 15)
-                SidebarRow(icon: "externaldrive.badge.plus", title: "Manage Disks",
-                           isSelected: page == .modify && diskManagement.selectedDiskID == nil) {
-                    page = .modify
-                }
                 ForEach(diskManagement.disks) { disk in
                     modifyDiskRow(disk)
                 }
@@ -164,35 +168,70 @@ struct DiskExplorerWindowView: View {
 
     private func modifyDiskRow(_ disk: ManagedDisk) -> some View {
         let locked = diskManagement.isLocked(disk)
-        return Button {
-            withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+        return HStack(spacing: 2) {
+            Button {
+                withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                    diskManagement.select(disk)
+                    page = .modify
+                }
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: disk.bus == "Secure Digital" ? "sdcard" : "externaldrive")
+                        .font(.system(size: 15)).frame(width: 20)
+                        .foregroundStyle(diskManagement.selectedDiskID == disk.id && page == .modify ?
+                                         Color.accentColor : Color.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(disk.name).lineLimit(1)
+                        Text("\(disk.id) · \(ByteCountFormatter.string(fromByteCount: disk.size, countStyle: .file))")
+                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if locked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                }
+                .font(.system(size: 11, weight: .medium))
+                .padding(.leading, 8).frame(minHeight: 42)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
+            .focusEffectDisabled()
+            .accessibilityLabel("\(disk.name), /dev/\(disk.id), \(locked ? "locked" : "unlocked")")
+            .accessibilityAddTraits(diskManagement.selectedDiskID == disk.id && page == .modify ? .isSelected : [])
+            .accessibilityIdentifier("diskman.disk.\(disk.id)")
+            Button {
                 diskManagement.select(disk)
                 page = .modify
-            }
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: disk.bus == "Secure Digital" ? "sdcard" : "externaldrive")
-                    .font(.system(size: 15)).frame(width: 20)
-                    .foregroundStyle(diskManagement.selectedDiskID == disk.id && page == .modify ?
-                                     Color.accentColor : Color.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(disk.name).lineLimit(1)
-                    Text("\(disk.id) · \(ByteCountFormatter.string(fromByteCount: disk.size, countStyle: .file))")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                #if DEBUG
+                if diskManagement.isPreview {
+                    diskManagement.blockedEject = BlockedDiskEject(
+                        disk: disk,
+                        blockers: [DiskEjectBlocker(pid: 12345, name: "Example Editor",
+                                                    started: 1, userID: geteuid())],
+                        reason: "The disk is in use."
+                    )
+                } else {
+                    Task { await diskManagement.eject(disk) }
                 }
-                Spacer(minLength: 0)
-                if locked {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
-                }
+                #else
+                Task { await diskManagement.eject(disk) }
+                #endif
+            } label: {
+                Image(systemName: "eject")
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 27, height: 30)
+                    .contentShape(Rectangle())
             }
-            .font(.system(size: 11, weight: .medium))
-            .padding(.horizontal, 8).frame(minHeight: 42)
-            .contentShape(Rectangle())
+            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+            .focusEffectDisabled()
+            .disabled(locked || !disk.manageable || diskManagement.isBusy)
+            .help(locked ? "Unlock this disk before ejecting" : "Eject /dev/\(disk.id)")
+            .accessibilityLabel("Eject \(disk.name)")
+            .accessibilityIdentifier("diskman.eject.\(disk.id)")
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
         .background(diskManagement.selectedDiskID == disk.id && page == .modify ?
-                    Color.accentColor.opacity(0.12) : .clear,
+                    Color.accentColor.opacity(0.1) : .clear,
                     in: RoundedRectangle(cornerRadius: 8))
         .contextMenu {
             Button(locked ? "Unlock Disk" : "Lock Disk", systemImage: locked ? "lock.open" : "lock.fill") {
@@ -200,9 +239,53 @@ struct DiskExplorerWindowView: View {
             }
             .disabled(diskManagement.isBusy || diskManagement.isPreview)
         }
-        .accessibilityLabel("\(disk.name), /dev/\(disk.id), \(locked ? "locked" : "unlocked")")
-        .accessibilityAddTraits(diskManagement.selectedDiskID == disk.id && page == .modify ? .isSelected : [])
-        .accessibilityIdentifier("diskman.disk.\(disk.id)")
+    }
+
+    private func blockedEjectSheet(_ blocked: BlockedDiskEject) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label("Disk is in use", systemImage: "externaldrive.badge.xmark")
+                .font(.system(size: 17, weight: .semibold))
+            Text("These processes have files open on \(blocked.disk.name). Save your work before closing them.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(blocked.blockers) { blocker in
+                        HStack {
+                            Text(blocker.name)
+                            Spacer()
+                            Text("PID \(blocker.pid)").foregroundStyle(.secondary)
+                        }
+                        .font(.system(size: 12))
+                    }
+                }
+            }
+            .frame(maxHeight: 180)
+            Text(blocked.reason).font(.system(size: 11)).foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            HStack {
+                Spacer()
+                Button("Cancel") { diskManagement.blockedEject = nil }
+                Button("Close and Eject") {
+                    diskManagement.blockedEject = nil
+                    Task { await diskManagement.eject(blocked.disk, closing: blocked.blockers) }
+                }
+                .disabled(diskManagement.isPreview || !blocked.blockers.allSatisfy(\.canQuit))
+                .accessibilityIdentifier("diskman.quitAndEject")
+                Button("Force Quit and Eject") {
+                    diskManagement.blockedEject = nil
+                    Task { await diskManagement.eject(blocked.disk, closing: blocked.blockers, force: true) }
+                }
+                .tint(.red)
+                .disabled(diskManagement.isPreview || !blocked.blockers.allSatisfy(\.canQuit))
+                .accessibilityIdentifier("diskman.forceQuitAndEject")
+            }
+            if blocked.blockers.contains(where: { !$0.canQuit }) {
+                Text("A protected or other-user process must be closed outside Diskman.")
+                    .font(.system(size: 11)).foregroundStyle(.orange)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
     }
 
     @ViewBuilder private var content: some View {
@@ -238,6 +321,7 @@ struct DiskExplorerWindowView: View {
         WorkspacePage(
             "Diskman",
             subtitle: model.sourceURL?.path ?? "Choose a volume or folder",
+            fillsAvailableHeight: true,
             actions: {
                 Menu("Scan", systemImage: "internaldrive") {
                     Button("Home Folder") {
@@ -304,12 +388,40 @@ struct DiskExplorerWindowView: View {
                 .accessibilityIdentifier("diskExplorer.resultTabs")
                 Spacer()
                 if resultTab == .visualization {
+                    Text("VIEW").font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    if snapshot.unreadableCount > 0 {
+                        Button {
+                            showsUnreadableInfo.toggle()
+                        } label: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Color.yellow.opacity(0.7))
+                                .frame(width: 24, height: 24)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .focusEffectDisabled()
+                        .accessibilityLabel("\(snapshot.unreadableCount.formatted()) items could not be read")
+                        .accessibilityIdentifier("diskExplorer.unreadableInfo")
+                        .help("\(snapshot.unreadableCount.formatted()) items could not be read")
+                        .popover(isPresented: $showsUnreadableInfo) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("\(snapshot.unreadableCount.formatted()) items could not be read")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("Their sizes are missing from this scan. macOS may require Full Disk Access.")
+                                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                                Button("Full Disk Access Settings") { openFullDiskAccessSettings() }
+                            }
+                            .padding(14).frame(width: 260)
+                        }
+                    }
                     Picker("View", selection: $chartStyle) {
                         ForEach(DiskChartStyle.allCases) { style in
                             Label(style.rawValue, systemImage: style.symbol).tag(style.rawValue)
                         }
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                     .fixedSize()
                     Picker("Measure", selection: $chartMeasure) {
                         ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
@@ -335,6 +447,13 @@ struct DiskExplorerWindowView: View {
             }
             HStack(spacing: 8) {
                 breadcrumbs(for: current, root: snapshot.root)
+                if let hoveredDetail, resultTab == .visualization {
+                    Text(hoveredDetail)
+                        .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1).truncationMode(.middle)
+                        .frame(maxWidth: 260, alignment: .trailing)
+                        .accessibilityIdentifier("diskExplorer.hoverDetail")
+                }
                 if !snapshot.isComplete {
                     Text(model.isScanning ? "LIVE · MEASURED SO FAR" : "PARTIAL SCAN")
                         .font(.system(size: 10, weight: .semibold))
@@ -349,8 +468,7 @@ struct DiskExplorerWindowView: View {
                             .id(current.id)
                             .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.96)))
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 520)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if showsContents {
                         VStack(spacing: 0) {
                             HStack(spacing: 8) {
@@ -367,28 +485,19 @@ struct DiskExplorerWindowView: View {
                             .padding(8)
                             entriesView(current)
                         }
-                        .frame(width: 290, height: 520)
+                        .frame(width: 290)
+                        .frame(maxHeight: .infinity)
                         .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
                     }
                 }
+                .frame(maxHeight: .infinity)
             } else {
                 largestFiles(snapshot.largestFiles)
-            }
-            if snapshot.unreadableCount > 0 {
-                HStack(spacing: 8) {
-                    Image(systemName: "lock.shield")
-                    Text("\(snapshot.unreadableCount.formatted()) items could not be read. This scan is incomplete.")
-                    Spacer()
-                    Button("Full Disk Access Settings") { openFullDiskAccessSettings() }
-                        .controlSize(.small)
-                }
-                .font(.system(size: 11))
-                .padding(10)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .frame(maxHeight: .infinity)
             }
         }
-        .onChange(of: current.id) { _, _ in search = ""; selectedFile = nil }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onChange(of: current.id) { _, _ in search = ""; selectedFile = nil; hoveredDetail = nil }
     }
 
     private var scanStatistics: some View {
@@ -464,10 +573,12 @@ struct DiskExplorerWindowView: View {
                     ContentUnavailableView("No Measured Items", systemImage: "square.dashed")
                 } else if chart == .treemap {
                     DiskTreemapView(directory: directory, apparent: apparentSize, measure: measure,
-                                    scanComplete: model.result?.isComplete == true, select: inspect)
+                                    scanComplete: model.result?.isComplete == true, select: inspect,
+                                    onHoverDetail: { hoveredDetail = $0 })
                 } else {
                     DiskSunburstView(directory: directory, apparent: apparentSize, measure: measure,
-                                     scanComplete: model.result?.isComplete == true, select: inspect)
+                                     scanComplete: model.result?.isComplete == true, select: inspect,
+                                     onHoverDetail: { hoveredDetail = $0 })
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -623,7 +734,8 @@ struct DiskExplorerWindowView: View {
                                        systemImage: "doc.text.magnifyingglass")
                     .frame(maxWidth: .infinity, minHeight: 300)
             } else {
-                LazyVStack(spacing: 0) {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
                     ForEach(matches.indices, id: \.self) { index in
                         let entry = matches[index]
                         HStack(spacing: 10) {
@@ -670,7 +782,9 @@ struct DiskExplorerWindowView: View {
                         .padding(.horizontal, 10)
                         QuietDivider()
                     }
+                    }
                 }
+                .thinScrollIndicators()
             }
         }
         .background(Color.primary.opacity(0.03))

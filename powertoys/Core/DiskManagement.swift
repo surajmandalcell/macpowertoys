@@ -1,5 +1,7 @@
 import Foundation
 import IOKit
+import Darwin
+import AppKit
 
 nonisolated struct ManagedPartition: Identifiable, Sendable {
     let id: String
@@ -81,6 +83,18 @@ nonisolated enum DiskManagementError: LocalizedError {
         case .invalidInput(let message): message
         case .command(let message): message
         }
+    }
+}
+
+nonisolated struct DiskEjectBlocker: Identifiable, Sendable {
+    let pid: Int32
+    let name: String
+    let started: UInt64
+    let userID: UInt32
+    var id: Int32 { pid }
+    var canQuit: Bool {
+        userID == geteuid() && pid != getpid() &&
+        !["Finder", "Dock", "launchd", "kernel_task", "MacPowerToys"].contains(name)
     }
 }
 
@@ -302,7 +316,8 @@ nonisolated enum DiskManagement {
                 return ManagedPartition(id: id, name: value["Name"] as? String ?? id,
                                         content: "APFS Volume",
                                         size: (value["CapacityInUse"] as? NSNumber)?.int64Value ?? 0,
-                                        mountPoint: nil, uuid: value["APFSVolumeUUID"] as? String,
+                                        mountPoint: value["MountPoint"] as? String,
+                                        uuid: value["APFSVolumeUUID"] as? String,
                                         apfsContainer: reference, isAPFSVolume: true)
             }
             if let storeID = singleAPFSStoreID(container["PhysicalStores"] as? [[String: Any]] ?? []) {
@@ -394,6 +409,81 @@ nonisolated enum DiskManagement {
         }
         let output = try execute(arguments)
         return String(decoding: output, as: UTF8.self)
+    }
+
+    static func ejectBlockers(on disk: ManagedDisk) -> [DiskEjectBlocker] {
+        var found: [Int32: DiskEjectBlocker] = [:]
+        for mount in Set(disk.partitions.compactMap(\.mountPoint)) {
+            guard mount.hasPrefix("/Volumes/"),
+                  let output = try? executeProgram("/usr/sbin/lsof", ["-nP", "-Fpc", "+f", "--", mount]) else {
+                continue
+            }
+            for (pid, name) in parseLsofProcesses(String(decoding: output, as: UTF8.self)) {
+                guard let info = processInfo(pid) else { continue }
+                found[pid] = DiskEjectBlocker(pid: pid, name: name,
+                                              started: info.started, userID: info.userID)
+            }
+        }
+        return found.values.sorted { $0.name == $1.name ? $0.pid < $1.pid : $0.name < $1.name }
+    }
+
+    static func quitBlockersAndEject(_ blockers: [DiskEjectBlocker], request: DiskRequest,
+                                    force: Bool = false) throws -> String {
+        guard request.action == .eject, blockers.allSatisfy(\.canQuit), !blockers.isEmpty else {
+            throw DiskManagementError.invalidInput("These processes cannot be closed by Diskman.")
+        }
+        // Recheck the disk, lock, and live open files before sending any signal.
+        let current = try inventory().first { $0.id == request.disk.id }
+        guard let current, current.identity == request.disk.identity else { throw DiskManagementError.changedDevice }
+        guard current.manageable, !DiskWriteLock.isLocked(current) else { throw DiskManagementError.lockedDevice }
+        let live = Dictionary(uniqueKeysWithValues: ejectBlockers(on: current).map { ($0.pid, $0) })
+        for blocker in blockers {
+            guard let now = live[blocker.pid], now.started == blocker.started,
+                  now.userID == blocker.userID, now.canQuit else { continue }
+            let closed: Bool
+            if !force, let app = NSRunningApplication(processIdentifier: blocker.pid) {
+                closed = app.terminate()
+            } else {
+                closed = kill(blocker.pid, force ? SIGKILL : SIGTERM) == 0
+            }
+            guard closed else {
+                throw DiskManagementError.command("Could not close \(blocker.name) (PID \(blocker.pid)).")
+            }
+        }
+        Thread.sleep(forTimeInterval: 1)
+        return try run(request)
+    }
+
+    static func parseLsofProcesses(_ output: String) -> [(Int32, String)] {
+        var pid: Int32?
+        var result: [(Int32, String)] = []
+        for line in output.split(whereSeparator: \.isNewline) {
+            if line.first == "p" { pid = Int32(line.dropFirst()) }
+            if line.first == "c", let pid { result.append((pid, String(line.dropFirst()))) }
+        }
+        return result
+    }
+
+    private static func processInfo(_ pid: Int32) -> (started: UInt64, userID: UInt32)? {
+        var info = proc_bsdinfo()
+        let bytes = withUnsafeMutablePointer(to: &info) {
+            proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, $0, Int32(MemoryLayout<proc_bsdinfo>.size))
+        }
+        guard bytes == MemoryLayout<proc_bsdinfo>.size else { return nil }
+        return (info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec, info.pbi_uid)
+    }
+
+    private static func executeProgram(_ path: String, _ arguments: [String]) throws -> Data {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        let output = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return output
     }
 
     private static func plist(_ arguments: [String]) throws -> [String: Any] {
