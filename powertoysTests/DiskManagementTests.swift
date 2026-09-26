@@ -135,6 +135,9 @@ final class DiskManagementTests: XCTestCase {
         XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
                                               action: .mergePartitions, name: "EFI", format: "ExFAT",
                                               scheme: "", size: "").arguments())
+        XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
+                                              action: .eraseVolume, name: "EFI", format: "ExFAT",
+                                              scheme: "", size: "").arguments())
         XCTAssertThrowsError(try DiskRequest(disk: exfatDisk, partition: exfatDisk.partitions[2],
                                               action: .mergePartitions, name: "Last", format: "ExFAT",
                                               scheme: "", size: "").arguments())

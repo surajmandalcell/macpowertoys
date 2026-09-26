@@ -97,7 +97,8 @@ struct DiskModifyView: View {
         if [.eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action), partition.isAPFSVolume {
             return "Select its physical APFS container partition."
         }
-        if [.deletePartition, .mergePartitions].contains(action), partition.content == "EFI" {
+        if [.rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action),
+            partition.content == "EFI" {
             return "The EFI system partition cannot be changed here."
         }
         if action == .resizePartition && partition.content != "Apple_HFS" {
