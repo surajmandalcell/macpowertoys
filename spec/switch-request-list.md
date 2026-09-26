@@ -18,7 +18,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
 | In progress | Match the original Switch account controls and provider artwork. | Center the custom close control in the 48-point rail cell; remove the redundant rail plus; use the original Add Account provider flow, provider icons, double-check state, and “Use as default” copy. Compact About modals must not show an oversized self-Open action. |
 | In progress | Make Backup and usage layouts clear at the minimum window width. | Backup explains when recovery actions become available and provides a useful destination action; disabled controls remain legible. Activity period and duration values stay inside their panels without wrapping into extra rows. |
-| In progress | Support Claude Code accounts through shared Switch Core. | Both standalone Switch and MacPowerToys discover and switch Claude Code profiles through the same Core package without requiring the standalone app. |
+| Core and standalone verified; applet hosted check pending | Support Claude Code accounts through shared Switch Core. | Both standalone Switch and MacPowerToys list, sign in to, and switch managed Claude Code profiles through the same Core package without requiring the standalone app. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
 or UI test runners. Executable checks and synthetic renders run on hosted macOS;
@@ -91,3 +91,12 @@ The provider images in the applet come from standalone Switch's
 `ProviderClaudeCode.svg`, `ProviderGeminiCLI.svg`,
 `ProviderAntigravityCLI.png`, and `ProviderGlyphs/grok.png`. Their provenance
 remains documented in that repository's `PROVIDER-ICON-PROVENANCE.txt`.
+
+Switch Core v3.3.0 includes isolated Claude Code profiles. Its 185 Core tests
+pass with synthetic homes, and the standalone UI builds and CLI acceptance passes.
+MacPowerToys resolves the renamed `switch.git` package at v3.3.0. Hosted run
+36211479231 exposed five missing custom-control focus modifiers in Switch; run
+36211622600 exposed a brittle static-text query in the Add Account UI test.
+Both are corrected in source. Offscreen renders from the first run also showed
+the close symbol shifted out of its 48pt cell; the rail width is corrected for
+the next hosted visual pass.
