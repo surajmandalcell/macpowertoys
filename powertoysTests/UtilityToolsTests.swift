@@ -18,7 +18,8 @@ final class UtilityToolsTests: XCTestCase {
         "DiskExplorerLogo",
         "SystemMonitorLogo",
         "SwitchLogo",
-        "NetToysLogo"
+        "NetToysLogo",
+        "MacTweaksLogo"
     ]
 
     func testDockIconInsetsFullCanvasToOpticalBounds() throws {
@@ -144,6 +145,7 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "disk-explorer"), "DiskExplorerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-monitor"), "SystemMonitorLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "nettoys"), "NetToysLogo")
+        XCTAssertEqual(AppDelegate.dockIconAsset(for: "mac-tweaks"), "MacTweaksLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
     }

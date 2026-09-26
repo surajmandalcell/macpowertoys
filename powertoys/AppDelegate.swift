@@ -131,7 +131,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "system-monitor": "SystemMonitorLogo",
         "disk-explorer": "DiskExplorerLogo",
         "nettoys": "NetToysLogo",
-        "switch": "SwitchLogo"
+        "switch": "SwitchLogo",
+        "mac-tweaks": "MacTweaksLogo"
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {
