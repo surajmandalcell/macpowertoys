@@ -1,37 +1,51 @@
 import SwiftUI
 
 enum SystemMonitorPalette {
-    // Coolors: 264653-2a9d8f-e9c46a-f4a261-e76f51 and
-    // 004e64-00a5cf-9fffcb-25a18e-7ae582 and 457b9d-a8dadc-f1faee-e63946.
-    static let teal = Color(red: 42.0 / 255, green: 157.0 / 255, blue: 143.0 / 255)
-    static let coral = Color(red: 231.0 / 255, green: 111.0 / 255, blue: 81.0 / 255)
-    static let gold = Color(red: 233.0 / 255, green: 196.0 / 255, blue: 106.0 / 255)
-    static let orange = Color(red: 244.0 / 255, green: 162.0 / 255, blue: 97.0 / 255)
-    static let cyan = Color(red: 0, green: 165.0 / 255, blue: 207.0 / 255)
-    static let green = Color(red: 122.0 / 255, green: 229.0 / 255, blue: 130.0 / 255)
-    static let blue = Color(red: 69.0 / 255, green: 123.0 / 255, blue: 157.0 / 255)
+    static let accent = Color(red: 0.96, green: 0.24, blue: 0.29)
+    static let teal = accent
+    static let coral = accent
+    static let gold = accent
+    static let orange = accent
+    static let cyan = accent
+    static let green = accent
+    static let blue = accent
 
     static func surface(_ tint: Color, radius: CGFloat = 12) -> some View {
-        Canvas { context, size in
+        SystemMonitorDitherSurface(tint: tint, radius: radius)
+    }
+}
+
+private struct SystemMonitorDitherSurface: View {
+    let tint: Color
+    let radius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Canvas(opaque: true) { context, size in
             let bounds = CGRect(origin: .zero, size: size)
             let shape = Path(roundedRect: bounds, cornerRadius: radius)
-            context.fill(shape, with: .color(tint.opacity(0.17)))
+            let dark = colorScheme == .dark
+            context.fill(shape, with: .color(dark
+                ? Color(red: 0.145, green: 0.145, blue: 0.155)
+                : Color(red: 0.96, green: 0.96, blue: 0.965)))
             context.clip(to: shape)
-            context.drawLayer { layer in
-                layer.addFilter(.blur(radius: 42))
-                layer.fill(
-                    Path(ellipseIn: CGRect(x: -size.width * 0.4, y: -size.height * 0.9,
-                                           width: size.width, height: size.height * 1.5)),
-                    with: .color(tint.opacity(0.55))
-                )
-                layer.fill(
-                    Path(ellipseIn: CGRect(x: size.width * 0.55, y: size.height * 0.45,
-                                           width: size.width * 0.7, height: size.height)),
-                    with: .color(tint.opacity(0.33))
-                )
+            let order = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+            let pitch: CGFloat = 4
+            var dots = Path()
+            for row in 0..<Int(ceil(size.height / pitch)) {
+                for column in 0..<Int(ceil(size.width / pitch)) {
+                    let x = CGFloat(column) * pitch
+                    let y = CGFloat(row) * pitch
+                    let horizontal = x / max(size.width, 1)
+                    let vertical = y / max(size.height, 1)
+                    let density = 0.10 + 0.33 * horizontal + 0.31 * vertical
+                    guard CGFloat(order[(row % 4) * 4 + column % 4]) / 16 < density else { continue }
+                    dots.addEllipse(in: CGRect(x: x + 1.15, y: y + 1.15, width: 1.7, height: 1.7))
+                }
             }
+            context.fill(dots, with: .color(tint.opacity(dark ? 0.42 : 0.32)))
         }
-            .allowsHitTesting(false)
+        .allowsHitTesting(false)
     }
 }
 
@@ -68,7 +82,7 @@ struct SystemMonitorPlacementPicker: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .frame(width: 204, height: UtilityLayout.workspaceActionHeight)
-        .help("Show \(metric.title) in the combined menu bar item, a separate item, or neither")
+        .help("Show \(metric.title) in the grouped System Monitor item, a separate item, or neither")
         .accessibilityIdentifier("system-monitor.\(metric.rawValue).menu-placement")
     }
 }
@@ -123,7 +137,7 @@ struct SystemMonitorWindowView: View {
                 .utilityContentTransition(value: page)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(colorScheme == .dark
-                    ? Color(red: 0.115, green: 0.108, blue: 0.102)
+                    ? Color(red: 0.075, green: 0.075, blue: 0.082)
                     : Color(nsColor: .windowBackgroundColor))
         }
         .ignoresSafeArea()
@@ -138,7 +152,7 @@ struct SystemMonitorWindowView: View {
     private var sidebar: some View {
         ZStack(alignment: .topLeading) {
             (colorScheme == .dark
-                ? Color(red: 0.13, green: 0.122, blue: 0.116)
+                ? Color(red: 0.105, green: 0.105, blue: 0.113)
                 : Color(nsColor: .controlBackgroundColor))
             SidebarTitle(text: "System Monitor")
             VStack(spacing: 4) {
@@ -222,7 +236,7 @@ struct SystemMonitorWindowView: View {
                     featured: true
                 )
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 metricCard(
                     icon: "gpu-card",
                     title: "GPU",
@@ -319,11 +333,11 @@ struct SystemMonitorWindowView: View {
             .padding(featured ? 18 : 14)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(height: featured ? 158 : 112)
+        .frame(height: featured ? 158 : 142)
         .background(SystemMonitorPalette.surface(surface))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(surface.opacity(0.25)) }
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.12)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: surface.opacity(0.1), radius: 7, y: 3)
+        .shadow(color: .black.opacity(0.18), radius: 7, y: 3)
     }
 
     private func chartCard(

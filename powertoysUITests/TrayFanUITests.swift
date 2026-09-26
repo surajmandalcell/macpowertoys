@@ -10,6 +10,7 @@ final class TrayFanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] = "1"
         app.launch()
         defer { app.terminate() }
 
@@ -20,17 +21,17 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(tray.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         tray.click()
         app.buttons["tray.tab.home"].click()
-        XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Fan Cool"].exists)
-        XCTAssertTrue(app.buttons["Fan Max"].exists)
-        XCTAssertTrue(app.buttons["fan-control.setup"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
+        XCTAssertFalse(app.buttons["Fan Auto"].exists)
 
         let homeCapture = XCTAttachment(screenshot: app.screenshot())
-        homeCapture.name = "Global Home fan presets and warning"
+        homeCapture.name = "Main menu without System Monitor"
         homeCapture.lifetime = .keepAlways
         add(homeCapture)
 
-        app.buttons["tray.tab.system-monitor"].click()
+        let monitor = app.menuBars.statusItems.matching(identifier: "SystemMonitorMenuBarItem").firstMatch
+        XCTAssertTrue(monitor.waitForExistence(timeout: 10))
+        monitor.click()
         app.buttons["system-monitor.tray.home"].click()
         XCTAssertFalse(app.buttons["fan-control.setup"].exists)
         XCTAssertFalse(app.buttons["Fan Auto"].exists)
@@ -62,6 +63,7 @@ final class TrayFanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] = "1"
         app.launch()
         defer { app.terminate() }
 
@@ -71,18 +73,15 @@ final class TrayFanUITests: XCTestCase {
         )).firstMatch
         XCTAssertTrue(tray.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         tray.click()
-        let monitorTab = app.buttons["tray.tab.system-monitor"]
-        monitorTab.hover()
-        let hoverCapture = XCTAttachment(screenshot: app.screenshot())
-        hoverCapture.name = "Combined menu tab hover without outline"
-        hoverCapture.lifetime = .keepAlways
-        add(hoverCapture)
-        monitorTab.click()
+        XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
+        let monitor = app.menuBars.statusItems.matching(identifier: "SystemMonitorMenuBarItem").firstMatch
+        XCTAssertTrue(monitor.waitForExistence(timeout: 10))
+        monitor.click()
 
         let home = app.buttons["system-monitor.tray.home"]
         XCTAssertTrue(home.waitForExistence(timeout: 10))
         let tabsCapture = XCTAttachment(screenshot: app.screenshot())
-        tabsCapture.name = "Monitor tabs before interaction"
+        tabsCapture.name = "Dedicated Monitor popup with labeled tabs"
         tabsCapture.lifetime = .keepAlways
         add(tabsCapture)
         home.click()
@@ -93,8 +92,8 @@ final class TrayFanUITests: XCTestCase {
         app.buttons["system-monitor.tray.summary.cpu"].click()
         XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
 
-        tray.click()
-        tray.click()
+        monitor.click()
+        monitor.click()
         XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
 
         let capture = XCTAttachment(screenshot: app.screenshot())
