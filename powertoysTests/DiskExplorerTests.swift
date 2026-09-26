@@ -90,6 +90,8 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.children.count == 2 })
         XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.allocatedBytes > 0 &&
             $0.root.children.contains(where: { $0.allocatedBytes > 0 }) })
+        XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.children.count == 2 &&
+            $0.root.fileCount == 0 && $0.root.children.allSatisfy { $0.allocatedBytes > 0 } })
         XCTAssertTrue(final.isComplete)
         XCTAssertEqual(final.root.allocatedBytes, try duBytes(root))
     }
