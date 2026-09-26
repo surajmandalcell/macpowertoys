@@ -12,23 +12,25 @@ enum SystemMonitorPalette {
     static let blue = Color(red: 69.0 / 255, green: 123.0 / 255, blue: 157.0 / 255)
 
     static func surface(_ tint: Color, radius: CGFloat = 12) -> some View {
-        RoundedRectangle(cornerRadius: radius)
-            .fill(tint.opacity(0.17))
-            .overlay(alignment: .topLeading) {
-                Circle()
-                    .fill(tint.opacity(0.55))
-                    .frame(width: 160, height: 160)
-                    .blur(radius: 45)
-                    .offset(x: -45, y: -85)
+        Canvas { context, size in
+            let bounds = CGRect(origin: .zero, size: size)
+            let shape = Path(roundedRect: bounds, cornerRadius: radius)
+            context.fill(shape, with: .color(tint.opacity(0.17)))
+            context.clip(to: shape)
+            context.drawLayer { layer in
+                layer.addFilter(.blur(radius: 42))
+                layer.fill(
+                    Path(ellipseIn: CGRect(x: -size.width * 0.4, y: -size.height * 0.9,
+                                           width: size.width, height: size.height * 1.5)),
+                    with: .color(tint.opacity(0.55))
+                )
+                layer.fill(
+                    Path(ellipseIn: CGRect(x: size.width * 0.55, y: size.height * 0.45,
+                                           width: size.width * 0.7, height: size.height)),
+                    with: .color(tint.opacity(0.33))
+                )
             }
-            .overlay(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(tint.opacity(0.33))
-                    .frame(width: 130, height: 130)
-                    .blur(radius: 43)
-                    .offset(x: 40, y: 80)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: radius))
+        }
             .allowsHitTesting(false)
     }
 }

@@ -71,6 +71,10 @@ final class TrayFanUITests: XCTestCase {
 
         let home = app.buttons["system-monitor.tray.home"]
         XCTAssertTrue(home.waitForExistence(timeout: 10))
+        let tabsCapture = XCTAttachment(screenshot: app.screenshot())
+        tabsCapture.name = "Monitor tabs before interaction"
+        tabsCapture.lifetime = .keepAlways
+        add(tabsCapture)
         home.click()
         app.buttons["system-monitor.tray.cpu"].click()
         XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
