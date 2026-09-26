@@ -3,6 +3,8 @@ import Charts
 import SwiftUI
 
 struct PortmanPanelView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     enum Page: String, CaseIterable {
         case local = "Servers", forward = "Forward", settings = "Settings"
     }
@@ -117,6 +119,8 @@ struct PortmanPanelView: View {
                         Text(destination.rawValue)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(page == destination ? Color.primary : Color.secondary)
+                            .animation(UtilityMotion.animation(reduceMotion: reduceMotion),
+                                       value: page == destination)
                             .frame(maxWidth: .infinity, minHeight: 36)
                             .contentShape(Rectangle())
                     }
@@ -128,6 +132,8 @@ struct PortmanPanelView: View {
                             .fill(Color.accentColor)
                             .frame(height: 2)
                             .opacity(page == destination ? 1 : 0)
+                            .animation(UtilityMotion.animation(reduceMotion: reduceMotion),
+                                       value: page == destination)
                             .allowsHitTesting(false)
                     }
                     .accessibilityAddTraits(page == destination ? .isSelected : [])
