@@ -68,6 +68,7 @@ nonisolated enum DiskManagementError: LocalizedError {
     case invalidDevice
     case changedDevice
     case unsafeDevice
+    case lockedDevice
     case invalidInput(String)
     case command(String)
 
@@ -76,9 +77,29 @@ nonisolated enum DiskManagementError: LocalizedError {
         case .invalidDevice: "The disk identifier is invalid. Refresh and try again."
         case .changedDevice: "The disk or its partitions changed. Refresh before trying again."
         case .unsafeDevice: "Diskman only modifies physical, writable removable or external disks."
+        case .lockedDevice: "This disk is locked in Diskman. Unlock it before making changes."
         case .invalidInput(let message): message
         case .command(let message): message
         }
+    }
+}
+
+nonisolated enum DiskWriteLock {
+    private static let defaultsKey = "diskman.writeLocks"
+
+    private static func key(for disk: ManagedDisk) -> String {
+        "\(disk.size)|\(disk.bus)|\(disk.devicePath)|\(disk.mediaRegistryID.map(String.init) ?? "missing")"
+    }
+
+    static func isLocked(_ disk: ManagedDisk, defaults: UserDefaults = .standard) -> Bool {
+        let saved = defaults.dictionary(forKey: defaultsKey) as? [String: Bool] ?? [:]
+        return saved[key(for: disk)] ?? true
+    }
+
+    static func setLocked(_ locked: Bool, for disk: ManagedDisk, defaults: UserDefaults = .standard) {
+        var saved = defaults.dictionary(forKey: defaultsKey) as? [String: Bool] ?? [:]
+        saved[key(for: disk)] = locked
+        defaults.set(saved, forKey: defaultsKey)
     }
 }
 
@@ -335,6 +356,9 @@ nonisolated enum DiskManagement {
             throw DiskManagementError.invalidDevice
         }
         let arguments = try request.arguments()
+        if request.action != .verify && DiskWriteLock.isLocked(request.disk) {
+            throw DiskManagementError.lockedDevice
+        }
         let current = try inventory().first { $0.id == request.disk.id }
         guard let current, current.identity == request.disk.identity else {
             throw DiskManagementError.changedDevice
@@ -349,6 +373,9 @@ nonisolated enum DiskManagement {
         guard request.action == .verify || current.manageable else {
             throw DiskManagementError.unsafeDevice
         }
+        if request.action != .verify && DiskWriteLock.isLocked(current) {
+            throw DiskManagementError.lockedDevice
+        }
         if request.action == .mergePartitions, let first = request.partition {
             if arguments.starts(with: ["mergePartitions", "force"]) {
                 let details = try plist(["info", "-plist", first.id])
@@ -361,6 +388,9 @@ nonisolated enum DiskManagement {
             guard try inventory().first(where: { $0.id == current.id })?.identity == current.identity else {
                 throw DiskManagementError.changedDevice
             }
+        }
+        if request.action != .verify && DiskWriteLock.isLocked(current) {
+            throw DiskManagementError.lockedDevice
         }
         let output = try execute(arguments)
         return String(decoding: output, as: UTF8.self)
