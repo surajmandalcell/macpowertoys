@@ -29,6 +29,7 @@ enum SystemMonitorPalette {
                     .offset(x: 40, y: 80)
             }
             .clipShape(RoundedRectangle(cornerRadius: radius))
+            .allowsHitTesting(false)
     }
 }
 
