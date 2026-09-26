@@ -1732,6 +1732,7 @@ final class PortmanMenuController: NSObject {
             item = newItem
             newItem.button?.target = self
             newItem.button?.action = #selector(toggle)
+            newItem.button?.setAccessibilityIdentifier("portman.statusItem")
             newItem.button?.sendAction(on: [.leftMouseUp])
             PortmanService.shared.beginMonitoring()
             updateButton()
