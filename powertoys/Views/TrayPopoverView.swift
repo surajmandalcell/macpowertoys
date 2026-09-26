@@ -186,7 +186,6 @@ struct TrayPopoverView: View {
                 reorder: reorder
             )
             .padding(3)
-            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
 
             Spacer(minLength: 8)
 

@@ -123,7 +123,10 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertTrue(source.contains("Color(nsColor: .windowBackgroundColor).ignoresSafeArea()"))
         XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
-        XCTAssertTrue(source.contains("colorSchemeContrast"))
+        let chrome = try XCTUnwrap(source.components(separatedBy: "private var topChrome: some View {").dropFirst().first)
+            .components(separatedBy: "@ViewBuilder")[0]
+        XCTAssertFalse(chrome.contains(".strokeBorder"))
+        XCTAssertFalse(chrome.contains(".background(Color.primary.opacity(0.035)"))
     }
 
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
