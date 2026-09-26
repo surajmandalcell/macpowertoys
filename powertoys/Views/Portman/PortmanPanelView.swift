@@ -1675,7 +1675,7 @@ final class PortmanMenuController: NSObject {
         Task { @MainActor [weak self] in
             if createdStatusItem { try? await Task.sleep(for: .milliseconds(200)) }
             guard let self else { return }
-            for _ in 0..<20 {
+            for _ in 0..<200 {
                 guard let button = self.item?.button, !self.popover.isShown else { return }
                 if button.window != nil && button.bounds.width > 0 {
                     self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
