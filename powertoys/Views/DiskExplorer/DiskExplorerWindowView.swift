@@ -447,11 +447,14 @@ struct DiskExplorerWindowView: View {
             }
             HStack(spacing: 8) {
                 breadcrumbs(for: current, root: snapshot.root)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(-1)
                 if let hoveredDetail, resultTab == .visualization {
                     Text(hoveredDetail)
                         .font(.system(size: 11, weight: .medium))
                         .lineLimit(1).truncationMode(.middle)
                         .frame(width: 260, alignment: .trailing)
+                        .accessibilityLabel(hoveredDetail)
                         .help(hoveredDetail)
                         .accessibilityIdentifier("diskExplorer.hoverDetail")
                 }

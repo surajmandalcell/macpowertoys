@@ -170,7 +170,8 @@ final class DiskExplorerUITests: XCTestCase {
         tile.hover()
         let hoverDetail = window.descendants(matching: .any)["diskExplorer.hoverDetail"]
         XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
-        XCTAssertNotNil(hoverDetail.label.range(of: #"[0-9]"#, options: .regularExpression))
+        XCTAssertNotNil(hoverDetail.label.range(of: #"[0-9]"#, options: .regularExpression),
+                        hoverDetail.debugDescription)
         attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
         let drilledFolder = XCTNSPredicateExpectation(
@@ -184,7 +185,8 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertFalse(window.staticTexts["Point to a ring to inspect it"].exists)
         rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
         XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
-        XCTAssertNotNil(hoverDetail.label.range(of: #"[0-9]"#, options: .regularExpression))
+        XCTAssertNotNil(hoverDetail.label.range(of: #"[0-9]"#, options: .regularExpression),
+                        hoverDetail.debugDescription)
         attach(window.screenshot(), named: "Diskman Ring Hover")
     }
 
