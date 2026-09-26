@@ -10,13 +10,14 @@ struct PortmanPanelView: View {
         case local = "Servers", forward = "Forward", settings = "Settings"
     }
 
-    init(initialPage: Page? = nil, initialPortID: String? = nil,
+    init(initialPage: Page? = nil, initialHost: String? = nil, initialPortID: String? = nil,
          initialCleanupProcessID: String? = nil) {
         let savedPage = UserDefaults.standard.string(forKey: Self.selectedPageKey)
             .flatMap(Page.init(rawValue:)) ?? .local
         _page = State(initialValue: initialPage
                       ?? (initialPortID != nil || initialCleanupProcessID != nil ? .local : savedPage))
         _selectedPortID = State(initialValue: initialPortID)
+        _host = State(initialValue: initialHost ?? "")
         _cleanupMode = State(initialValue: initialCleanupProcessID != nil)
         _selectedCleanupProcesses = State(initialValue: Set(initialCleanupProcessID.map { [$0] } ?? []))
     }
@@ -193,6 +194,7 @@ struct PortmanPanelView: View {
                 remoteScanTask?.cancel()
                 remoteDetailTask?.cancel()
                 service.clearRemoteScan()
+                discoveredHost = ""
                 selectedRemotePorts = []
                 lastSelectedRemotePort = nil
                 localPortInputs = [:]
@@ -213,6 +215,7 @@ struct PortmanPanelView: View {
             remoteScanTask?.cancel()
             remoteDetailTask?.cancel()
             service.clearRemoteScan()
+            discoveredHost = ""
             selectedRemotePorts = []
             lastSelectedRemotePort = nil
             localPortInputs = [:]
@@ -971,14 +974,32 @@ struct PortmanPanelView: View {
                 .disabled(host.isEmpty || service.isLoadingRemote)
                 .controlSize(.small)
             }
-            if service.isLoadingRemote { ProgressView("Checking remote ports…").controlSize(.small) }
-            Text("Ports stay on the server. Portman binds each tunnel to 127.0.0.1 on this Mac.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+            if service.isLoadingRemote {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                        .accessibilityHidden(true)
+                    Text("Scanning \(host)…")
+                        .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Button("Cancel") {
+                        remoteScanTask?.cancel()
+                        service.clearRemoteScan()
+                    }
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Scanning ports on \(host)")
+            }
 
             if !host.isEmpty && discoveredHost == host {
                 QuietDivider()
                 HStack {
-                    Text("Listening on \(host)").font(.system(size: 12, weight: .medium))
+                    Text("\(service.remotePorts.count) ports on \(host)")
+                        .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
                     Spacer()
                     Button("Clear scan") { clearRemoteScan() }
@@ -1002,7 +1023,7 @@ struct PortmanPanelView: View {
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
                     ForEach(service.remotePorts, id: \.self) { port in remoteRow(port) }
-                } else if !service.isLoadingRemote && service.forwardingError == nil {
+                } else {
                     Text("No listening ports found. You can add a remote port manually.")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
@@ -1022,14 +1043,16 @@ struct PortmanPanelView: View {
                 remoteRow($0)
             }
 
-            Button("Forward \(selectedRemotePorts.count) selected") { forwardSelected() }
-                .buttonStyle(.borderedProminent)
-                .tint(selectedRemotePorts.isEmpty || host.isEmpty ? .gray : .accentColor)
-                .controlSize(.small)
-                .disabled(selectedRemotePorts.isEmpty || host.isEmpty)
+            if !service.isLoadingRemote || !selectedRemotePorts.isEmpty {
+                Button("Forward \(selectedRemotePorts.count) selected") { forwardSelected() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(selectedRemotePorts.isEmpty || host.isEmpty ? .gray : .accentColor)
+                    .controlSize(.small)
+                    .disabled(selectedRemotePorts.isEmpty || host.isEmpty)
+            }
 
             if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
-            if service.tunnels.isEmpty {
+            if service.tunnels.isEmpty && !service.isLoadingRemote {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "network").foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 3) {
@@ -1042,6 +1065,10 @@ struct PortmanPanelView: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
+            }
+            if !service.isLoadingRemote {
+                Text("Local forwards bind to 127.0.0.1.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
         }
     }
@@ -1194,18 +1221,22 @@ struct PortmanPanelView: View {
     }
 
     private func startRemoteScan(password: String?) {
-        guard !host.isEmpty else { return }
+        guard !host.isEmpty, !service.isLoadingRemote else { return }
         let target = host
         remoteScanTask?.cancel()
-        service.cancelRemoteScan()
+        service.clearRemoteScan()
         selectedRemotePorts = []
         lastSelectedRemotePort = nil
-        discoveredHost = target
+        discoveredHost = ""
         expandedRemotePort = nil
         remoteScanTask = Task {
             await service.refreshRemote(host: target, password: password)
-            guard !Task.isCancelled, page == .forward, host == target,
-                  service.forwardingError?.contains("SSH password required.") == true else { return }
+            guard !Task.isCancelled, page == .forward, host == target else { return }
+            if service.forwardingError == nil {
+                discoveredHost = target
+                return
+            }
+            guard service.forwardingError?.contains("SSH password required.") == true else { return }
             sshPassword = nil
             passwordPromptError = password == nil ? nil : "Authentication failed. Enter the password again."
             passwordPromptHost = target

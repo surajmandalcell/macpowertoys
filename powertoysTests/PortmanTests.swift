@@ -578,9 +578,15 @@ final class PortmanTests: XCTestCase {
 
     @MainActor
     func testPortmanForwardAndSettingsRenderInBothAppearances() throws {
-        for page in [PortmanPanelView.Page.forward, .settings] {
+        let service = PortmanService.shared
+        defer { service.clearRemoteScan() }
+        for (page, scanning) in [(PortmanPanelView.Page.forward, false), (.settings, false), (.forward, true)] {
+            service.clearRemoteScan()
+            service.isLoadingRemote = scanning
             for scheme in [ColorScheme.light, .dark] {
-                let host = NSHostingView(rootView: PortmanPanelView(initialPage: page)
+                let host = NSHostingView(rootView: PortmanPanelView(
+                    initialPage: page, initialHost: scanning ? "oci1" : nil
+                )
                     .environment(\.colorScheme, scheme))
                 host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
                 host.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
@@ -592,7 +598,7 @@ final class PortmanTests: XCTestCase {
                 let image = NSImage(size: host.bounds.size)
                 image.addRepresentation(representation)
                 let attachment = XCTAttachment(image: image)
-                attachment.name = "Portman — \(page.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
+                attachment.name = "Portman — \(scanning ? "Scanning" : page.rawValue) — \(scheme == .dark ? "Dark" : "Light")"
                 attachment.lifetime = .keepAlways
                 add(attachment)
             }
