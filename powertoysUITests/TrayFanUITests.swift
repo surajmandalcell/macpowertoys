@@ -29,7 +29,8 @@ final class TrayFanUITests: XCTestCase {
         homeCapture.lifetime = .keepAlways
         add(homeCapture)
 
-        let monitor = app.menuBars.statusItems.matching(identifier: "SystemMonitorMenuBarItem").firstMatch
+        tray.click()
+        let monitor = app.menuBars.statusItems["SystemMonitorMenuBarItem"]
         XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
         app.buttons["system-monitor.tray.home"].click()
@@ -74,7 +75,8 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(tray.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         tray.click()
         XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
-        let monitor = app.menuBars.statusItems.matching(identifier: "SystemMonitorMenuBarItem").firstMatch
+        tray.click()
+        let monitor = app.menuBars.statusItems["SystemMonitorMenuBarItem"]
         XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
 
