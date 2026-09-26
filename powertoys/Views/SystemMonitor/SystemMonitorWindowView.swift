@@ -292,8 +292,9 @@ struct SystemMonitorWindowView: View {
         let surface = surfaceTint ?? tint
         return ZStack(alignment: .bottom) {
             SystemMonitorDitherSparkline(values: values, color: surface)
-                .frame(height: featured ? 78 : 44)
+                .frame(height: featured ? 36 : 24)
                 .opacity(0.58)
+                .allowsHitTesting(false)
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
                     Group {
