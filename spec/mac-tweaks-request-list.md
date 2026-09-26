@@ -1,5 +1,14 @@
 # Mac Tweaks request list
 
+## Pinned result and visual examples, 2026-09-26
+
+- [x] Keep the first visible setting row at the top of the content pane while the remaining results scroll. Its expanded controls remain in the scrollable body.
+- [x] Add short, replayable examples inside each working setting card. Explain the setting's effect with specific before and after states, match the neutral MacPowerToys style, and stop motion when the card closes. Respect Reduce Motion.
+- [x] Align the empty-search action with its message and put expanded form controls on one trailing edge.
+- [ ] Inspect collapsed, expanded, search, scrolling, light, and dark states in the final signed build.
+
+Release app and test bundles compile. The hosted or installed interaction check is still pending.
+
 ## Tool icon, 2026-09-26
 
 - [x] Present three distinct Mac Tweaks icon options at launcher and small sizes.

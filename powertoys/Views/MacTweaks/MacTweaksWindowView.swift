@@ -4,6 +4,7 @@ import ServiceManagement
 import SwiftUI
 
 struct MacTweaksWindowView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var search = ""
     @State private var selectedCategory = "Input"
     @State private var expandedID: String?
@@ -15,6 +16,7 @@ struct MacTweaksWindowView: View {
     @State private var loginMessage: String?
 
     private var isSearching: Bool { !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var trimmedSearch: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var allItems: [TweakItem] {
         [TweakSearch.micLock] + TweakCatalog.items.filter { item in
             item.id == "helper.keep-awake" || TweakPreferences.supportsWrites(for: item.id) ||
@@ -118,12 +120,32 @@ struct MacTweaksWindowView: View {
         WorkspacePage(isSearching ? "Search results" : selectedCategory,
                       subtitle: "\(visibleItems.count) \(visibleItems.count == 1 ? "setting" : "settings")") {
             if visibleItems.isEmpty {
-                ContentUnavailableView.search(text: search)
-                Button("Clear search") { search = "" }
-            } else {
-                VStack(spacing: 6) {
-                    ForEach(visibleItems) { item in
-                        settingCard(item)
+                VStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                    Text("No matches for “\(trimmedSearch)”")
+                        .font(.system(size: 14, weight: .medium))
+                    Text("Try another setting name or related word.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Button("Clear search") { search = "" }
+                        .controlSize(.small)
+                        .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, minHeight: 260)
+            } else if let first = visibleItems.first {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        VStack(spacing: 6) {
+                            if expandedID == first.id { settingCardDetail(first) }
+                            ForEach(visibleItems.dropFirst()) { item in settingCard(item) }
+                        }
+                        .padding(.top, expandedID == first.id ? 0 : 6)
+                    } header: {
+                        settingCardHeader(first)
+                            .background(Color(nsColor: .windowBackgroundColor))
                     }
                 }
                 .frame(maxWidth: 760, alignment: .leading)
@@ -132,49 +154,66 @@ struct MacTweaksWindowView: View {
     }
 
     private func settingCard(_ item: TweakItem) -> some View {
-        let isExpanded = expandedID == item.id
-        return VStack(spacing: 0) {
-            Button {
-                expandedID = isExpanded ? nil : item.id
-            } label: {
-                HStack(spacing: 12) {
-                    Text(item.title)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Spacer(minLength: 8)
-                    if isSearching {
-                        Text(item.category)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .fixedSize()
-                    }
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 14)
-                .frame(minHeight: 42)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 12))
-            .accessibilityIdentifier("mac-tweaks.card.\(item.id)")
-            .accessibilityLabel(item.title)
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-            if isExpanded {
-                Divider().padding(.horizontal, 14)
-                Group {
-                    if item.id == "mic-lock" { micLockControls }
-                    else {
-                        TweakDetailView(item: item) {
-                            if !TweakPreferences.supportsWrites(for: item.id) { expandedID = nil }
-                        }
-                    }
-                }
-                .padding(14)
-            }
+        VStack(spacing: 0) {
+            settingCardHeader(item)
+            if expandedID == item.id { settingCardDetail(item) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func settingCardHeader(_ item: TweakItem) -> some View {
+        let isExpanded = expandedID == item.id
+        return Button {
+            withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                expandedID = isExpanded ? nil : item.id
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Text(item.title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                if isSearching {
+                    Text(item.category)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 42)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 12))
+        .accessibilityIdentifier("mac-tweaks.card.\(item.id)")
+        .accessibilityLabel(item.title)
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+        .background(Color.primary.opacity(0.03),
+                    in: UnevenRoundedRectangle(topLeadingRadius: 12,
+                                               bottomLeadingRadius: isExpanded ? 0 : 12,
+                                               bottomTrailingRadius: isExpanded ? 0 : 12,
+                                               topTrailingRadius: 12))
+    }
+
+    private func settingCardDetail(_ item: TweakItem) -> some View {
+        VStack(spacing: 0) {
+            Divider().padding(.horizontal, 14)
+            Group {
+                if item.id == "mic-lock" { micLockControls }
+                else {
+                    TweakDetailView(item: item) {
+                        if !TweakPreferences.supportsWrites(for: item.id) { expandedID = nil }
+                    }
+                }
+            }
+            .padding(14)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.03),
+                    in: UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
     }
 
     private func shortTitle(for category: String) -> String {
@@ -230,6 +269,7 @@ struct MacTweaksWindowView: View {
                 .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
             }
 
+            TweakExampleView(item: TweakSearch.micLock)
             currentInputSection
             savedInputSection
             Button("Refresh Devices", systemImage: "arrow.clockwise") { micLock.refresh() }
@@ -272,7 +312,7 @@ struct MacTweaksWindowView: View {
             Text("Current input").font(.system(size: 13, weight: .medium))
             Text(micLock.devices.first(where: { $0.id == micLock.currentUID })?.name ?? "No input available")
                 .font(.system(size: 13))
-            HStack(spacing: 16) {
+            HStack(spacing: 18) {
                 if let muted = micLock.muted {
                     Toggle("Muted", isOn: Binding(
                         get: { micLock.muted ?? muted },
@@ -281,11 +321,16 @@ struct MacTweaksWindowView: View {
                     .accessibilityIdentifier("mac-tweaks.mic-lock.muted")
                 } else { Text("Mute unavailable").foregroundStyle(.secondary) }
                 if let volume = micLock.volume {
-                    Slider(value: Binding(
-                        get: { Double(micLock.volume ?? volume) },
-                        set: { micLock.setVolume(Float($0)) }
-                    ), in: 0...1) { Text("Input volume") }
-                    .frame(maxWidth: 260)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Input volume")
+                        Slider(value: Binding(
+                            get: { Double(micLock.volume ?? volume) },
+                            set: { micLock.setVolume(Float($0)) }
+                        ), in: 0...1) { Text("Input volume") }
+                        .labelsHidden()
+                        .accessibilityLabel("Input volume")
+                    }
+                    .frame(maxWidth: 240)
                 } else { Text("Input volume unavailable").foregroundStyle(.secondary) }
             }
             .font(.system(size: 12))
@@ -317,6 +362,7 @@ struct MacTweaksWindowView: View {
                     Text(index == 0 ? "Primary" : "Fallback \(index)")
                         .font(.system(size: 12))
                         .frame(width: 80, alignment: .leading)
+                    Spacer(minLength: 8)
                     Picker("", selection: Binding(
                         get: { micLock.savedInputs[index]?.uid ?? "" },
                         set: { micLock.setSavedInput($0.isEmpty ? nil : $0, at: index) }
@@ -331,7 +377,7 @@ struct MacTweaksWindowView: View {
                         }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: 340)
+                    .frame(width: 320)
                     .accessibilityLabel(index == 0 ? "Primary microphone" : "Fallback \(index) microphone")
                 }
             }

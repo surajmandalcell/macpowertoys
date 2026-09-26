@@ -22,6 +22,7 @@ struct TweakDetailView: View {
             Text(item.summary)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
+            TweakExampleView(item: item)
             if item.id == "helper.keep-awake" {
                 if SettingsManager.shared.isToolEnabled("awake") {
                     AwakeSettingsView()
@@ -47,7 +48,7 @@ struct TweakDetailView: View {
                 HStack(spacing: 14) {
                     Text(field.label)
                         .font(.system(size: 12))
-                        .frame(width: 220, alignment: .leading)
+                    Spacer(minLength: 16)
                     Picker(field.label, selection: Binding(
                         get: { selections[field.identity] ?? -2 },
                         set: { selections[field.identity] = $0 }
@@ -61,7 +62,7 @@ struct TweakDetailView: View {
                         }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: 260)
+                    .frame(width: 240)
                     .accessibilityLabel(field.label)
                     .disabled(!TweakPreferences.supportsWrites(for: item.id))
                 }
