@@ -12,11 +12,16 @@
   is a visible target, and its actions require that target. EFI shows an ESP
   protection label and cannot be edited as a partition. Every newly seen media
   instance starts locked; Diskman's command path checks the saved lock before
-  running a modifying command. Verify stays read-only.
-- **Check:** The latest Debug app and focused test bundles compile. Read-only
-  inventory identifies `disk6` as the 1 TB `External1TB` disk and `disk10` as
+  running a modifying command. Verify stays read-only. Refresh the read-only
+  inventory when Diskman opens and select the first available disk in the
+  shared model, so opening Modify after inventory is already loaded has a
+  target.
+- **Check:** Hosted run `36243071361` passed the Modify sidebar, three-column
+  actions, EFI accessibility, lock unit tests, and light/dark APFS hierarchy
+  renders. The later proactive-inventory fix and its regression test compile;
+  hosted execution remains open. Read-only inventory identifies `disk6` as
+  the 1 TB `External1TB` disk and `disk10` as
   the authorized 15,634,268,160-byte SD card with serial `0x19302912`.
-  Hosted UI and unit execution remain to be checked.
 
 ## Modify Review Has Two Buttons With The Same Title
 
