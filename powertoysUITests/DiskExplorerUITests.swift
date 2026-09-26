@@ -76,19 +76,25 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(merge.isEnabled)
         attach(window.screenshot(), named: "Diskman Modify Actions")
         merge.click()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
-            format: "label CONTAINS 'Both partitions will be erased'"
-        )).firstMatch.waitForExistence(timeout: 5))
         app.buttons["diskman.reviewAction"].click()
         XCTAssertTrue(app.staticTexts["Review disk operation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS 'ExFAT merge erases both'"
+        )).firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["diskman.confirmDevice"].exists)
         XCTAssertFalse(app.buttons["Merge with next"].isEnabled)
         attach(app.screenshot(), named: "Diskman Merge Review Preview")
         app.buttons["Cancel"].click()
         window.buttons["diskman.map.disk91s3"].click()
+        XCTAssertTrue(window.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS '/dev/disk91s3'"
+        )).firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(merge.isEnabled)
-        window.buttons["Whole disk"].click()
-        XCTAssertFalse(window.buttons["Whole disk"].exists)
+        attach(window.screenshot(), named: "Diskman Map Selection")
+        let wholeDisk = window.descendants(matching: .any)["Whole disk"]
+        XCTAssertTrue(wholeDisk.exists)
+        wholeDisk.click()
+        XCTAssertFalse(wholeDisk.exists)
     }
 
     @MainActor func testScanControlsAndResultTabs() throws {
