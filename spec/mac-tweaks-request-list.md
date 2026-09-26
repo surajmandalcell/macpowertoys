@@ -2,7 +2,7 @@
 
 ## Tool icon, 2026-09-26
 
-- [x] Present three distinct Mac Tweaks icon options at launcher and small sizes in `tmp/mac-tweaks-icon-options/contact-sheet.png`.
+- [x] Present three distinct Mac Tweaks icon options at launcher and small sizes.
 - [x] The owner selected 01 Faders. Use that exact artwork for the launcher and the Mac Tweaks Dock icon.
 - [ ] Verify the selected icon in the signed installed app at launcher and Dock sizes.
 
