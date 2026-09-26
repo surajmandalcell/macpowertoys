@@ -43,6 +43,7 @@ class RulerColorWell: NSColorWell {
 
     override func awakeFromNib() {
         super.awakeFromNib()
+        focusRingType = .none
         configureForOpaqueColors()
     }
 
@@ -116,9 +117,14 @@ class RulerColorWell: NSColorWell {
         color.setFill()
         path.fill()
 
-        (window?.firstResponder == self ? NSColor.keyboardFocusIndicatorColor : NSColor.separatorColor).setStroke()
-        path.lineWidth = window?.firstResponder == self ? 3 : 1
+        NSColor.separatorColor.setStroke()
+        path.lineWidth = 1
         path.stroke()
+        if window?.firstResponder == self {
+            NSColor.controlAccentColor.setFill()
+            let dot = NSRect(x: bounds.maxX - 9, y: bounds.maxY - 9, width: 6, height: 6)
+            NSBezierPath(ovalIn: dot).fill()
+        }
     }
 
     private func configureForOpaqueColors() {
