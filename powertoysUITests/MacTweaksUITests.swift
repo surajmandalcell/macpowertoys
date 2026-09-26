@@ -69,7 +69,7 @@ final class MacTweaksUITests: XCTestCase {
 
     @MainActor func testDarkExamplesAndEmptySearch() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-AppleInterfaceStyle", "Dark",
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-appTheme", "Dark",
                                "--open", "mac-tweaks"]
         app.launch()
         defer { app.terminate() }
