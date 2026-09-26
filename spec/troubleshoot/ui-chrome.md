@@ -36,9 +36,9 @@
   close and reopen the popup, then passed its saved-Forward assertion. Its
   400pt Forward capture has no large blank tail. The combined tray and Monitor
   already persist their tab selection; an earlier tray UI run passed reopen.
-  A later width edit gives Link and Stop matching 28pt labels and the same
-  native control size; inspect a new active-forward render before closing this
-  request.
+  Run `36212055219` passed the Portman UI job and exported dark and light
+  active-forward renders. Both show Link and Stop at the same visible width
+  and height after matching their 28pt labels and small native control size.
 
 ## Portman Cold Menu-Bar Launch
 
