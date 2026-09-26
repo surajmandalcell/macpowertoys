@@ -36,6 +36,21 @@ final class DiskManagementTests: XCTestCase {
         }
     }
 
+    @MainActor func testInventorySelectsFirstDiskAndClearsRemovedTargets() {
+        let model = DiskManagementModel()
+        model.updateDisks([card])
+        XCTAssertEqual(model.selectedDiskID, card.id)
+        model.selectedPartitionID = card.partitions[0].id
+
+        let changed = ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
+                                  scheme: card.scheme, devicePath: card.devicePath, writable: true,
+                                  manageable: true, mediaRegistryID: card.mediaRegistryID, partitions: [])
+        model.updateDisks([changed])
+        XCTAssertNil(model.selectedPartitionID)
+        model.updateDisks([])
+        XCTAssertNil(model.selectedDiskID)
+    }
+
     func testDestructiveCommandsTargetOnlyTheReviewedDevice() throws {
         let erase = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
                                 name: "Diskman", format: "ExFAT", scheme: "GPT", size: "4G")
