@@ -56,7 +56,7 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertFalse(window.staticTexts["Review Items"].exists)
     }
 
-    @MainActor func testModifyShowsPhysicalDisksWithoutWriting() throws {
+    @MainActor func testModifyActionsAndMergeReviewWithoutWriting() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
@@ -66,31 +66,29 @@ final class DiskExplorerUITests: XCTestCase {
         let window = app.windows["Diskman"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         window.buttons["Manage Disks"].click()
-        let firstDisk = window.buttons.matching(NSPredicate(
-            format: "identifier BEGINSWITH 'diskman.disk.'"
-        )).firstMatch
-        if firstDisk.waitForExistence(timeout: 10) {
-            firstDisk.click()
-            XCTAssertTrue(window.staticTexts["DISK MAP"].waitForExistence(timeout: 20))
-            XCTAssertTrue(window.staticTexts["PARTITION & CAPACITY"].exists)
-            XCTAssertTrue(window.staticTexts["VOLUMES & FORMATS"].exists)
-            XCTAssertTrue(window.buttons["diskman.action.Resize partition"].exists)
-            XCTAssertTrue(window.buttons["diskman.action.Merge with next"].exists)
-            XCTAssertTrue(window.buttons["diskman.action.Delete partition"].exists)
-            let firstPartition = window.buttons.matching(NSPredicate(
-                format: "identifier BEGINSWITH 'diskman.partition.'"
-            )).firstMatch
-            if firstPartition.exists {
-                firstPartition.click()
-                XCTAssertTrue(window.buttons["Whole disk"].waitForExistence(timeout: 5))
-                window.buttons["Whole disk"].click()
-            }
-            attach(window.screenshot(), named: "Diskman Modify")
-        } else {
-            XCTAssertTrue(window.staticTexts["No Physical Disks"].exists)
-            XCTAssertFalse(window.descendants(matching: .any)["diskman.inventoryError"].exists)
-            attach(window.screenshot(), named: "Diskman Modify Empty")
-        }
+        XCTAssertTrue(window.buttons["diskman.disk.disk91"].waitForExistence(timeout: 10))
+        XCTAssertTrue(window.staticTexts["DISK MAP"].waitForExistence(timeout: 20))
+        XCTAssertTrue(window.staticTexts["PARTITION & CAPACITY"].exists)
+        XCTAssertTrue(window.staticTexts["VOLUMES & FORMATS"].exists)
+        XCTAssertFalse(window.buttons["diskman.action.Resize partition"].isEnabled)
+        XCTAssertTrue(window.buttons["diskman.action.Delete partition"].isEnabled)
+        let merge = window.buttons["diskman.action.Merge with next"]
+        XCTAssertTrue(merge.isEnabled)
+        attach(window.screenshot(), named: "Diskman Modify Actions")
+        merge.click()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS 'Both partitions will be erased'"
+        )).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["diskman.reviewAction"].click()
+        XCTAssertTrue(app.staticTexts["Review disk operation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["diskman.confirmDevice"].exists)
+        XCTAssertFalse(app.buttons["Merge with next"].isEnabled)
+        attach(app.screenshot(), named: "Diskman Merge Review Preview")
+        app.buttons["Cancel"].click()
+        window.buttons["diskman.map.disk91s3"].click()
+        XCTAssertFalse(merge.isEnabled)
+        window.buttons["Whole disk"].click()
+        XCTAssertFalse(window.buttons["Whole disk"].exists)
     }
 
     @MainActor func testScanControlsAndResultTabs() throws {
