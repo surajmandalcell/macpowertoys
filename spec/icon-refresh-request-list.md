@@ -99,8 +99,9 @@ On 2026-09-26, the owner requested the enable switch and Open button sit
 directly beside each other in every All Tools card. The prior spacer sent Open
 to the card's far edge. Keep both actions beside the icon's lower half.
 
-Mac Tweaks needs a distinct tool icon. Present several options for selection;
-do not replace its generic symbol until the owner chooses one.
+The owner selected **01 Faders** for Mac Tweaks on 2026-09-26. Promote the
+exact approved SVG to the tool asset and use it in the launcher and Dock. The
+app does not currently have a Mac Tweaks Raycast command.
 
 The app and Raycast assets are byte-for-byte copies of the selected M02 and
 T01 PNGs. The isolated Raycast build and icon sync check pass. The local

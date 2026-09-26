@@ -854,6 +854,7 @@ variant weakens the deliberate temperature and contrast difference.
 | NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
 | Switch | Original Switch mark | Original light and dark neutral tiles | Approved standalone Switch icon artwork |
+| Mac Tweaks | Chosen Color | Chosen Color | Owner-selected 01 Faders in both appearances |
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
 the prior identities for these six tools. They use 512px PNG image sets with
@@ -951,6 +952,7 @@ has been changed.
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | System Monitor | `#002B26` | `#E0FFF8` | OSM13 teal tidal waveform bands |
+| Mac Tweaks | `#25262B` and `#32333A` panel | `#F7F5F0` faders | `#AC86E8` center handle |
 
 The six bitmap identities in the appearance matrix take their colors from
 their approved `icon.png` assets, rather than this SVG palette table.

@@ -3,7 +3,10 @@
 ## Tool icon, 2026-09-26
 
 - [x] Present three distinct Mac Tweaks icon options at launcher and small sizes in `tmp/mac-tweaks-icon-options/contact-sheet.png`.
-- [ ] Replace the generic symbol with the owner's selected icon.
+- [x] The owner selected 01 Faders. Use that exact artwork for the launcher and the Mac Tweaks Dock icon.
+- [ ] Verify the selected icon in the signed installed app at launcher and Dock sizes.
+
+The promoted SVG matches 01 Faders byte for byte, and the Release asset catalog contains `MacTweaksLogo`. Local installation remains pending because the development signature fails strict trust verification with `CSSMERR_TP_NOT_TRUSTED`.
 
 ## Inline controls and catalogue correction, 2026-09-26
 

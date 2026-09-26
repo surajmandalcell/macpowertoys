@@ -402,7 +402,7 @@ struct MacTweaksTool: Tool {
     let name = "Mac Tweaks"
     let description = "Find and control small Mac settings, starting with Mic Lock for Bluetooth headphone sound."
     let icon = "slider.horizontal.3"
-    let logoAsset = ""
+    let logoAsset = "MacTweaksLogo"
     let category = ToolCategory.system
     let searchKeywords = ["mic lock", "microphone", "bluetooth", "airpods", "audio input"]
 
