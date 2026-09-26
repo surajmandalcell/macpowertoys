@@ -81,8 +81,6 @@ struct ToolCard: View {
                 .accessibilityLabel("Enable \(tool.name)")
                 .accessibilityIdentifier("tool.\(tool.id).quick-toggle")
 
-                Spacer()
-
                 Button("Open", action: openAction)
                 .accessibilityIdentifier("tool.\(tool.id).open")
                 .buttonStyle(.bordered)

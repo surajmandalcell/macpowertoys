@@ -95,6 +95,13 @@ switch and Open button beside its lower half. The description sits below that
 header. Preserve the full built-in descriptions, separate card/enable/Open
 actions, and four columns at the standard 980pt pane width.
 
+On 2026-09-26, the owner requested the enable switch and Open button sit
+directly beside each other in every All Tools card. The prior spacer sent Open
+to the card's far edge. Keep both actions beside the icon's lower half.
+
+Mac Tweaks needs a distinct tool icon. Present several options for selection;
+do not replace its generic symbol until the owner chooses one.
+
 The app and Raycast assets are byte-for-byte copies of the selected M02 and
 T01 PNGs. The isolated Raycast build and icon sync check pass. The local
 Raycast extension was rebuilt without opening it, and both installed PNGs

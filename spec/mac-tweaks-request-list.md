@@ -1,5 +1,10 @@
 # Mac Tweaks request list
 
+## Tool icon, 2026-09-26
+
+- [x] Present three distinct Mac Tweaks icon options at launcher and small sizes in `tmp/mac-tweaks-icon-options/contact-sheet.png`.
+- [ ] Replace the generic symbol with the owner's selected icon.
+
 ## Inline controls and catalogue correction, 2026-09-26
 
 - [x] Show only working Mac Tweaks controls and saved-value recovery in the app. Keep the rest of the 130-entry research catalogue in the compatibility document, not as placeholder cards or sidebar categories.
