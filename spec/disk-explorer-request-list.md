@@ -27,6 +27,29 @@ Requested on 2026-09-25. The internal `disk-explorer` route and saved chart
 preferences remain compatible with existing launchers and user settings; the
 product name is Diskman.
 
+### Modify redesign correction, 2026-09-26
+
+The owner rejected the Modify screen's single Action picker and sparse card
+layout. Replace them with direct, grouped operations beside an interactive disk
+map and partition list. A selected disk or partition must make its available
+actions and unsupported actions clear without opening a catch-all menu. Keep
+before/after review and device-identity checks before writes. Adapt the ordered
+dither, subtle color bloom, and tactile selection of
+[Dither Kit](https://www.tripwire.sh/dither-kit) to native SwiftUI without making
+the map harder to read. Verify format, delete, resize, and merge behavior on
+only the authorized 16 GB SD card, then restore its usable ExFAT state.
+
+[MiniTool's main-window guide](https://www.partitionwizard.com/help/partition-wizard-main-window.html),
+[KDE Partition Manager](https://docs.kde.org/stable_kf6/en/partitionmanager/partitionmanager/usermanual.html),
+and [GParted](https://gparted.org/display-doc.php?name=help-manual) all put
+device navigation, a disk map, a partition list, and direct actions in the main
+workspace. `diskutil resizeVolume` supports Journaled HFS+ only on this Mac;
+the authorized ExFAT volume returned “file system format does not support
+resizing” for a read-only limits request. `diskutil mergePartitions` preserves
+the first partition only when its file system is resizable. Its other source
+partitions lose data; forcing a merge erases the first one too. The UI must
+state these limits, not claim MiniTool's data-preserving NTFS merge behavior.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Stop live boxes snapping and keep the hover detail below the chart. | Treemap tile identity, its bounded item set, and split topology stay stable as weights cross during a scan; individual frames interpolate and zero-size skeleton entries appear in the first snapshot. Rings use the same live membership rule and animated arcs. On completion, both views select the largest measured entries once and animate the change, so a large late-named item is not trapped in Other. Both charts reserve a 40-point detail row below the plot. Hosted run `36168349745` passed the cutoff regression, UI navigation, and light and dark renders. | Confirm motion in the final signed app. |
