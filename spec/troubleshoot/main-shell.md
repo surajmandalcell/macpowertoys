@@ -108,8 +108,9 @@
   at the available width and scroll only after overflow. Home places Pick
   Color, Extract Text, and Ruler in one direct-action row, followed by one
   compact Awake row. Complex tray-capable built-ins own focused tabs in this
-  default order: Cloud Sync, Input Devices, System Care, System Monitor, and
-  NetToys. App-only tools such as Logs never appear. Keep separate Open
+  default order: Cloud Sync, Input Devices, System Care, and NetToys. System
+  Monitor owns a separate menu-bar popup. App-only tools such as Logs never
+  appear. Keep separate Open
   MacPowerToys, Settings, and Quit controls and no divider below the strip. Pin
   the tab group to the leading edge and those three app controls to one fixed
   trailing group; do not distribute the six controls as one centered row. Use
@@ -184,10 +185,9 @@
   menu-bar panel, despite a large blank area in a fixed-size offscreen capture.
 - **Cause:** Eight 88pt summary cards plus the new secondary tab row exceeded
   the tray body's 70-percent screen-height cap on a short display.
-- **Invariant:** At 360pt width, Monitor Home shows all eight summary values
-  within the capped body on a 680pt visible screen. Fan appears on Monitor
-  Sensors and the combined menu's global Home. Detail tabs keep their natural
-  content height and the panel still scrolls on smaller
+- **Invariant:** At 440pt width, the dedicated Monitor popup shows all eight
+  summary values in a 560pt panel. Fan appears only on Monitor Sensors. Detail
+  tabs keep their natural content height and the panel still scrolls on smaller
   screens.
 - **Check:** Measure the natural Home height against the short-screen cap and
   inspect light and dark production-width renders. The first hosted render at
@@ -206,17 +206,17 @@
   also made its row taller. The native Awake picker draws its visible edge
   about 12pt inside its frame, so giving it another 12pt outer trailing inset
   leaves its buttons visibly short of the Home action edge.
-- **Invariant:** Compact Fan appears in the combined menu's global Home and
-  Monitor Sensors, never on Monitor Home or other Monitor pages. It uses the plain
+- **Invariant:** Compact Fan appears on Monitor Sensors only, never on the main
+  combined menu, Monitor Home, or other Monitor pages. It uses the plain
   Awake-row pattern, a 16pt leading inset, a 12pt trailing inset, and a native
   three-option control. Fan, RPM, and utilization share one line; its icon stays
   neutral. Auto, Cool, and Max remain visible while unavailable options are
   disabled. When control is unavailable, a bare amber warning glyph opens the
   built-in-helper approval flow. There is no separate package or Terminal
   command. The popup keeps a 34pt action target and 18pt bottom clearance.
-- **Check:** Inspect global Home, Monitor Home, and Sensors at production tray
-  width in light and dark. Global Home and Sensors show Fan; Monitor Home does
-  not. Check live RPM, disabled controls, and the bounded approval explanation
+- **Check:** Inspect global Home, Monitor Home, and Sensors at production popup
+  width in light and dark. Only Sensors shows Fan. Check live RPM, disabled
+  controls, and the bounded approval explanation
   without clipping. The app never approves
   its own macOS background item.
 

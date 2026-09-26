@@ -42,16 +42,16 @@
   fan row in both appearances. They do not prove native menu-bar placement or
   live fan hardware. A passing build alone does not count as an executed test.
 
-## Menu Bar UI Test Starting Tab
+## Menu Bar UI Test Starting Surface
 
 - **Symptom:** The fan setup test passes alone but cannot find its button after
-  the Monitor navigation test runs first.
-- **Cause:** The combined menu saves its selected tab in `@AppStorage`, and
-  relaunching the app within the same hosted test job retains that choice.
-- **Invariant:** Each menu-bar UI test selects the tab it needs after opening
-  the status item. A test of saved selection may leave that preference set.
-- **Check:** Run both tray UI tests in one hosted job; Monitor navigation and
-  Fan setup must pass regardless of execution order.
+  another Monitor navigation test changes the saved page.
+- **Cause:** The dedicated Monitor popup saves its page in `@AppStorage`, and
+  relaunching the app within one hosted job retains that choice.
+- **Invariant:** Menu-bar tests select the main or dedicated Monitor status item
+  and the page they need. The main popup never exposes Monitor or Fan.
+- **Check:** Run both tray UI tests in one hosted job, in either order. Confirm
+  both popup paths and Sensors fan setup while preserving the saved page test.
 
 ## Local Entitlements In Package Builds
 

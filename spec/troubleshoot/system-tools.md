@@ -10,7 +10,7 @@
   `com.tw93.MoleApp.systemhelper` in `SMPrivilegedExecutables` and installs that
   helper in `/Library/PrivilegedHelperTools`. Its simpler setup does not remove
   the privileged-write requirement.
-- **Invariant:** The combined menu's global Home and Monitor Sensors own Fan UI
+- **Invariant:** Monitor Sensors alone owns Fan UI
   and polling; other Monitor pages do not. The signed
   MacPowerToys daemon accepts only Auto, Cool, or Max from the signed app,
   validates supported SMC keys and hardware maximum RPM, and restores Auto on
@@ -470,6 +470,24 @@
 
 ## System Monitor
 
+- **Symptom:** The main menu still contains Monitor and Fan while a Monitor
+  status item opens the full window; its cards look like smooth, differently
+  colored gradients despite the requested Dither Kit reference.
+- **Cause:** The main tab list and global Home included Monitor content, status
+  clicks routed to the tool window, and card Canvas surfaces used blurred
+  colored ellipses rather than visible ordered dithering.
+- **Invariant:** Keep Monitor out of the main menu. Every grouped or separate
+  Monitor status item opens the same 440pt popup with labeled tabs and all
+  eight Home statistics. An enabled Monitor menu has at least one metric;
+  restore RAM for an empty saved selection and default to RAM for new users.
+  Use neutral near-black cards with one red accent and visible ordered dots,
+  without smooth color washes. Fan is available only on Sensors.
+- **Check:** Capture the window and dedicated popup in dark and light from the
+  exact source-stamped build; inspect card pixels, alignment, and clipping.
+  Exercise grouped and separate status-item clicks, page selection, and final
+  metric removal in hosted interaction tests. Install the signed clean HEAD
+  without taking focus.
+
 - **Symptom:** Selecting a 10-second menu cadence or changing Off, Combined,
   and Separate sends a measured value back to `...` and can move unrelated
   menu-bar items. The title-bar selector also moves within its action area.
@@ -490,16 +508,16 @@
   bounds for all four metrics and three choices, then inspect the hosted tray
   render and the signed app without taking desktop focus.
 
-- **Symptom:** Overview, Remote Stats, and tray metric cards feel dull or use
-  unrelated colors, while the Monitor sidebar wastes content width.
-- **Cause:** Card fills were derived from live status tints and weak gradients;
-  Monitor inherited the 240pt data-sidebar width despite short navigation.
-- **Invariant:** Use one named Coolors-derived color family for card surfaces
-  in all three Monitor views, keep live status color on the graph or icon, and
-  preserve readable text in both appearances. Use the 220pt sidebar and give
-  the returned space to content; other workspaces keep their widths.
-- **Check:** Compare offscreen light and dark Overview, tray, and disconnected
-  Remote Stats renders, then inspect the signed app without taking focus.
+- **Symptom:** The old tinted-card scheme uses unrelated colors and leaves
+  Overview sparse, while the Monitor sidebar wastes content width.
+- **Cause:** Card fills followed individual metric tints and the lower grid
+  packed three columns into two short rows. Monitor inherited the 240pt data
+  sidebar despite short navigation.
+- **Invariant:** Use the shared dithered neutral card and red accent above.
+  Use two Overview columns and taller cards; keep the 220pt sidebar and give
+  the returned space to content. Other workspaces keep their widths.
+- **Check:** Compare dark and light Overview, dedicated popup, and Remote Stats
+  renders, then inspect the signed app without taking focus.
 
 - **Symptom:** Graphs stop short of card edges, Load shows unlabeled averages,
   pending menu readings say Waiting, and the installed app still says Remote.

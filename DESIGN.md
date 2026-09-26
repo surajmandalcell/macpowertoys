@@ -108,7 +108,7 @@ MacPowerToys is a dense, quiet, native-feeling macOS utility. It should read lik
 first-party Apple tool that a careful engineer polished: flat surfaces, one accent
 color doing all the talking, small type, generous alignment discipline, zero
 decoration for its own sake. Nothing bounces. System Monitor has the
-scoped blurred-color treatment below; elsewhere, avoid decorative glows. When in
+scoped dithered dark treatment below; elsewhere, avoid decorative glows. When in
 doubt, remove chrome rather than add it.
 
 Every custom interactive control gives short feedback on hover, press, and
@@ -550,13 +550,16 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
 | System Monitor | 1080×720 / 220pt | Overview, Processes, CPU, Memory, Network, Disk, Sensors, Remote Stats | Full process list, live metric grids, and per-metric menu placement |
 
-System Monitor follows the owner's dark, bulkier utility-panel reference. Its
-dark sidebar and content pane use opaque near-black surfaces with a warm cast;
-the selected sidebar row uses a neutral gray fill. Overview and tray metric
-cards use softly blurred color blooms, clear edges, matching icon and graph hues, and
-larger readings. The compact Fan control appears on the combined menu's global
-Home and Monitor Sensors, as a plain row with three visible presets and breathing
-room below it. It does not appear on other Monitor pages. Search is
+System Monitor follows the owner's OnePlus-inspired near-black utility-panel
+reference. Its sidebar and content pane use opaque neutral surfaces; the
+selected sidebar row uses a neutral gray fill. Overview, Remote Stats, and its
+dedicated menu-bar popup use visible ordered-dot dithering on neutral cards,
+one consistent red accent for icons and charts, clear edges, and large readings.
+No smooth colored wash sits behind the values. The dedicated 440pt popup has
+labeled metric tabs and opens from every Monitor menu-bar item. The main
+MacPowerToys popup contains no Monitor tab, metrics, or Fan row. Compact Fan
+appears only on Monitor Sensors with three visible presets and space below it.
+Search is
 at least 34pt high with a 12pt horizontal inset. Keep these exceptions inside
 System Monitor; other workspaces retain their shared flat materials.
 
@@ -1059,7 +1062,7 @@ same metaphor because macOS controls their tint.
   Tab Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
 - **Never** use capsule buttons or baked icon effects. Capsules remain valid
   only for progress tracks and documented state or count badges. System Monitor
-  alone uses the blurred card blooms specified above.
+  alone uses the ordered-dot card surfaces specified above.
 - **Never** add a second alignment gutter inside one container.
 - **Never** use `.formStyle(.grouped)` where its opaque insets break the shared
   edge. Prefer explicit section cards and labeled rows.
