@@ -324,7 +324,7 @@ struct SystemMonitorTool: Tool {
     let icon = "chart.xyaxis.line"
     let logoAsset = "SystemMonitorLogo"
     let category = ToolCategory.system
-    let hasTrayTab = true
+    let hasTrayTab = false
 
     let manual = [
         ToolManualSection(title: "Detailed Monitoring", points: [
@@ -333,8 +333,8 @@ struct SystemMonitorTool: Tool {
             "Closing the window stops detailed updates."
         ]),
         ToolManualSection(title: "Menu Bar", points: [
-            "Enable a grouped summary or individual CPU, memory, and network items.",
-            "Choose a 1, 2, 3, or 5 second interval. Disabling the menu item stops its timer completely."
+            "Enable a grouped System Monitor item or separate metric items; either opens the Monitor popup.",
+            "RAM is selected by default. Choose a refresh interval in settings, or turn the menu off to stop its timer."
         ])
     ]
 
