@@ -514,7 +514,13 @@ struct SystemMonitorMenuSettingsView: View {
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DISPLAY").utilitySectionHeader()
+            Toggle("Show System Monitor in Menu Bar", isOn: menuSetting(
+                get: { $0.enabled },
+                set: { $0.enabled = $1 }
+            ))
+            .accessibilityIdentifier("system-monitor.menu.enabled")
             globalIntervalControl
+                .disabled(!service.menuSettings.enabled)
         }
         .utilitySectionCard()
     }

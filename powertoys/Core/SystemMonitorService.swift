@@ -309,7 +309,9 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
 
     mutating func setPlacement(_ placement: SystemMonitorMenuPlacement, for metric: SystemMonitorMenuMetric) {
         guard let index = items.firstIndex(where: { $0.metric == metric }) else { return }
-        if enabled && placement == .off && items[index].enabled && enabledItems.count == 1 { return }
+        if enabled && placement == .off && items[index].enabled && enabledItems.count == 1 {
+            enabled = false
+        }
         if !enabled && placement != .off {
             for itemIndex in items.indices { items[itemIndex].enabled = false }
         }
