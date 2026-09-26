@@ -140,7 +140,16 @@ struct DiskExplorerWindowView: View {
     @ViewBuilder private var content: some View {
         switch page {
         case .explore: explorerPage
-        case .modify: DiskModifyView()
+        case .modify:
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1" {
+                DiskModifyView(previewDisks: [Self.modifyPreviewDisk], previewPartitionID: "disk91s2")
+            } else {
+                DiskModifyView()
+            }
+            #else
+            DiskModifyView()
+            #endif
         case .settings:
             WorkspacePage("Settings") {
                 DiskExplorerSettingsView(unreadableCount: model.result?.unreadableCount)
@@ -149,6 +158,21 @@ struct DiskExplorerWindowView: View {
             ToolAboutView(toolId: "disk-explorer", showsSettings: false)
         }
     }
+
+    #if DEBUG
+    private static let modifyPreviewDisk = ManagedDisk(
+        id: "disk91", name: "Preview SD card", size: 15_634_268_160,
+        bus: "Secure Digital", scheme: "GUID_partition_scheme", devicePath: "hosted-preview",
+        writable: true, manageable: true, mediaRegistryID: 1, partitions: [
+            ManagedPartition(id: "disk91s1", name: "EFI", content: "EFI", size: 209_715_200,
+                             mountPoint: nil, uuid: nil),
+            ManagedPartition(id: "disk91s2", name: "FIRST", content: "Microsoft Basic Data",
+                             size: 4_000_000_000, mountPoint: nil, uuid: "first", fileSystem: "ExFAT"),
+            ManagedPartition(id: "disk91s3", name: "SECOND", content: "Microsoft Basic Data",
+                             size: 11_422_455_808, mountPoint: nil, uuid: "second", fileSystem: "ExFAT")
+        ]
+    )
+    #endif
 
     private var explorerPage: some View {
         WorkspacePage(
