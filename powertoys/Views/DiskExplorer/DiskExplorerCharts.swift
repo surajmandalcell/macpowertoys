@@ -123,7 +123,7 @@ struct DiskTreemapView: View {
                         select(entry)
                     } label: {
                         RoundedRectangle(cornerRadius: 5)
-                            .fill(tile.color)
+                            .fill(tile.color.gradient)
                             .brightness(focused ? 0.06 : 0)
                             .overlay {
                                 RoundedRectangle(cornerRadius: 5)
@@ -288,7 +288,7 @@ struct DiskSunburstView: View {
                     ForEach(segments, id: \.id) { segment in
                         DiskRingShape(start: segment.start, end: segment.end,
                                       inner: segment.inner, outer: segment.outer)
-                            .fill(segment.color)
+                            .fill(segment.color.gradient)
                             .brightness(hoveredID == segment.id || selectedID == segment.id ? 0.06 : 0)
                             .overlay {
                                 DiskRingShape(start: segment.start, end: segment.end,
