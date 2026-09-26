@@ -120,12 +120,10 @@ final class PortmanUITests: XCTestCase {
         let host = app.textFields["SSH alias or username at IP address"]
         host.click()
         host.typeText("-bad\n")
-        let invalidHostError = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS %@", "Enter a valid SSH host"))
-            .firstMatch
+        let invalidHostError = app.descendants(matching: .any)["portman.forwarding.error"]
         if !invalidHostError.waitForExistence(timeout: 5) {
             attach(app.screenshot(), named: "Portman invalid host")
-            XCTFail("The invalid SSH host did not show an error")
+            XCTFail("The invalid SSH host did not show an error.\n\(app.debugDescription)")
         }
         XCTAssertFalse(app.staticTexts["0 ports on -bad"].exists,
                        "A failed scan was presented as a completed result")
@@ -203,7 +201,8 @@ final class PortmanUITests: XCTestCase {
         app.typeText("4\n")
 
         forward.click()
-        XCTAssertTrue(app.buttons["Forward 0 selected"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.textFields["Remote port to add"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Forward 1 selected"].exists,
                       "Leaving Forward kept a pending port selection")
 
         servers.click()
