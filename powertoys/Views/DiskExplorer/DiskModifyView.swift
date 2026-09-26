@@ -362,6 +362,8 @@ struct DiskModifyView: View {
                 Text(partition.map { "SELECTED  /dev/\($0.id)  ·  \($0.name)" } ?? "SELECTED  WHOLE DISK")
                     .utilitySectionHeader()
                     .lineLimit(1)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(partition.map { "Selected /dev/\($0.id), \($0.name)" } ?? "Selected whole disk")
                     .accessibilityIdentifier("diskman.selectedTarget")
                 Spacer(minLength: 4)
                 if partition != nil {
@@ -630,11 +632,14 @@ struct DiskModifyView: View {
             if request.action == .mergePartitions,
                let first = request.partition,
                let next = request.disk.nextPhysicalPartition(after: first.id) {
-                Text(first.fileSystem == "ExFAT"
-                     ? "ExFAT merge erases both /dev/\(first.id) and /dev/\(next.id)."
-                     : "Journaled HFS+ merge keeps /dev/\(first.id) and erases /dev/\(next.id).")
+                let consequence = first.fileSystem == "ExFAT"
+                    ? "ExFAT merge erases both /dev/\(first.id) and /dev/\(next.id)."
+                    : "Journaled HFS+ merge keeps /dev/\(first.id) and erases /dev/\(next.id)."
+                Text(consequence)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.orange)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(consequence)
                     .accessibilityIdentifier("diskman.mergeConsequence")
             }
             if request.action == .wipeDisk {

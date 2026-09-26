@@ -80,7 +80,7 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Review disk operation"].waitForExistence(timeout: 5))
         let consequence = app.descendants(matching: .any)["diskman.mergeConsequence"]
         XCTAssertTrue(consequence.waitForExistence(timeout: 5))
-        XCTAssertTrue(consequence.label.contains("ExFAT merge erases both"))
+        XCTAssertTrue(consequence.label.contains("ExFAT merge erases both"), consequence.label)
         XCTAssertTrue(app.textFields["diskman.confirmDevice"].exists)
         XCTAssertFalse(app.buttons["Merge with next"].isEnabled)
         attach(app.screenshot(), named: "Diskman Merge Review Preview")
@@ -88,7 +88,7 @@ final class DiskExplorerUITests: XCTestCase {
         window.buttons["diskman.map.disk91s3"].click()
         let selectedTarget = window.descendants(matching: .any)["diskman.selectedTarget"]
         XCTAssertTrue(selectedTarget.waitForExistence(timeout: 5))
-        XCTAssertTrue(selectedTarget.label.contains("/dev/disk91s3"))
+        XCTAssertTrue(selectedTarget.label.contains("/dev/disk91s3"), selectedTarget.label)
         XCTAssertFalse(merge.isEnabled)
         attach(window.screenshot(), named: "Diskman Map Selection")
         let wholeDisk = window.descendants(matching: .any)["Whole disk"]
