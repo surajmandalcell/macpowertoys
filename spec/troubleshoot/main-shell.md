@@ -169,9 +169,10 @@
 - **Symptom:** The MacPowerToys status glyph looks slightly too large, and an
   outline appears around the popover's tab bar after opening or hovering it.
 - **Cause:** The menu extra displays its 16pt asset at intrinsic size, while
-  the tab strip adds a rounded stroke around every tab.
+  the tab strip adds a rounded container stroke and background.
 - **Invariant:** Size the native menu-extra label at 14pt. Keep the tab strip
-  borderless, with quiet fill on hover, press, selection, and keyboard focus.
+  free of an outer container, with quiet fill on hover, press, selection, and
+  keyboard focus.
   Do not remove keyboard activation or accessibility names.
 - **Check:** Compare the signed installed status item and open popover in light
   and dark. Hover and Tab through tabs and the trailing actions; no rectangular
