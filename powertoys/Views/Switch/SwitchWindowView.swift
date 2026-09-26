@@ -110,7 +110,7 @@ struct SwitchWindowView: View {
         )) { importSheet }
         .sheet(isPresented: $showingAbout) {
             ToolAboutView(toolId: "switch", showsModalCloseButton: true)
-                .frame(width: 540, height: 280)
+                .frame(width: 540, height: 300)
         }
         .alert("Switch needs attention", isPresented: Binding(
             get: { model.errorMessage != nil },
