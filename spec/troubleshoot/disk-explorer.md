@@ -1,5 +1,23 @@
 # Diskman Troubleshooting
 
+## Modify Device Scope And Write Locks
+
+- **Symptom:** Modify had a second disk rail inside its body, APFS child rows had
+  no connector, and disk-wide actions stayed available while a partition was
+  selected. EFI looked like an ordinary deletable partition.
+- **Cause:** Disk selection lived only in `DiskModifyView`; its body owned the
+  device list, and partition rows used padding without drawing a hierarchy.
+  The command path checked device identity but had no saved write lock.
+- **Invariant:** One selection drives the main sidebar and Modify. Whole disk
+  is a visible target, and its actions require that target. EFI shows an ESP
+  protection label and cannot be edited as a partition. Every newly seen media
+  instance starts locked; Diskman's command path checks the saved lock before
+  running a modifying command. Verify stays read-only.
+- **Check:** The latest Debug app and focused test bundles compile. Read-only
+  inventory identifies `disk6` as the 1 TB `External1TB` disk and `disk10` as
+  the authorized 15,634,268,160-byte SD card with serial `0x19302912`.
+  Hosted UI and unit execution remain to be checked.
+
 ## Modify Review Has Two Buttons With The Same Title
 
 - **Symptom:** Hosted UI checks found the merge warning and selection, then
