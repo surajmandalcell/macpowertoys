@@ -254,6 +254,13 @@ nonisolated struct DiskRequest: Sendable {
 nonisolated enum DiskManagement {
     private static let executable = URL(fileURLWithPath: "/usr/sbin/diskutil")
 
+    static func resizeLimits(for partitionID: String, apfs: Bool) throws -> String {
+        guard validID(partitionID) else { throw DiskManagementError.invalidDevice }
+        let arguments = apfs ? ["apfs", "resizeContainer", partitionID, "limits"] :
+            ["resizeVolume", partitionID, "limits"]
+        return String(decoding: try execute(arguments), as: UTF8.self)
+    }
+
     static func inventory() throws -> [ManagedDisk] {
         let list = try plist(["list", "-plist"])
         let entries = list["AllDisksAndPartitions"] as? [[String: Any]] ?? []
@@ -334,6 +341,19 @@ nonisolated enum DiskManagement {
         guard request.action == .verify || current.manageable else {
             throw DiskManagementError.unsafeDevice
         }
+        if request.action == .mergePartitions, let first = request.partition {
+            if arguments.starts(with: ["mergePartitions", "force"]) {
+                let details = try plist(["info", "-plist", first.id])
+                guard details["FilesystemType"] as? String == "exfat" else {
+                    throw DiskManagementError.changedDevice
+                }
+            } else {
+                _ = try resizeLimits(for: first.id, apfs: false)
+            }
+            guard try inventory().first(where: { $0.id == current.id })?.identity == current.identity else {
+                throw DiskManagementError.changedDevice
+            }
+        }
         let output = try execute(arguments)
         return String(decoding: output, as: UTF8.self)
     }
@@ -364,7 +384,7 @@ nonisolated enum DiskManagement {
         }
         let output = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        if confirmsForcedMerge, String(decoding: output, as: UTF8.self).contains("Merge canceled") {
+        if arguments.first == "mergePartitions", String(decoding: output, as: UTF8.self).contains("Merge canceled") {
             throw DiskManagementError.command("macOS canceled the partition merge; the disk was not changed.")
         }
         guard process.terminationStatus == 0 else {

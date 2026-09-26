@@ -53,6 +53,7 @@ final class DiskManagementTests: XCTestCase {
         let unsupportedResize = DiskRequest(disk: card, partition: card.partitions[0], action: .resizePartition,
                                             name: "", format: "", scheme: "", size: "R")
         XCTAssertThrowsError(try unsupportedResize.arguments())
+        XCTAssertThrowsError(try DiskManagement.resizeLimits(for: "disk10;erase", apfs: false))
     }
 
     func testAPFSOperationsUseContainerAndVolumeIdentifiers() throws {
