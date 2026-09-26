@@ -211,10 +211,16 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["mac-tweaks"]))
         .restorationBehavior(.disabled)
 
-        MenuBarExtra("MacPowerToys", image: "MenuBarIcon", isInserted: trayBinding) {
+        MenuBarExtra(isInserted: trayBinding) {
             TrayPopoverView()
                 .utilityMotionPolicy()
                 .modelContainer(modelContainer)
+        } label: {
+            Image("MenuBarIcon")
+                .resizable()
+                .renderingMode(.template)
+                .frame(width: 14, height: 14)
+                .accessibilityLabel("MacPowerToys")
         }
         .menuBarExtraStyle(.window)
     }

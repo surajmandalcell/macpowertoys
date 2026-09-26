@@ -289,7 +289,7 @@ struct SystemMonitorWindowView: View {
     ) -> some View {
         let surface = surfaceTint ?? tint
         return ZStack(alignment: .bottom) {
-            StatsSparkline(values: values, color: surface)
+            SystemMonitorDitherSparkline(values: values, color: surface)
                 .frame(height: featured ? 78 : 44)
                 .opacity(0.58)
             VStack(alignment: .leading, spacing: 8) {
@@ -338,7 +338,7 @@ struct SystemMonitorWindowView: View {
             }
             .padding(.horizontal, 14)
             .padding(.top, 14)
-            StatsSparkline(values: values)
+            SystemMonitorDitherSparkline(values: values)
                 .frame(height: 80)
         }
         .frame(maxWidth: .infinity)
@@ -869,18 +869,29 @@ struct SystemMonitorMenuSettingsView: View {
     }
 }
 
-private struct StatsSparkline: View {
+struct SystemMonitorDitherSparkline: View {
     let values: [Double]
     var color: Color = .accentColor
+    var showsGuide = false
 
     var body: some View {
         Canvas { context, size in
-            guard values.count > 1, let maximum = values.max(), let minimum = values.min() else { return }
+            guard size.width > 0, size.height > 0 else { return }
+            if showsGuide {
+                var guide = Path()
+                guide.move(to: CGPoint(x: 0, y: size.height * 0.75))
+                guide.addLine(to: CGPoint(x: size.width, y: size.height * 0.75))
+                context.stroke(guide, with: .color(color.opacity(0.12)),
+                               style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+            }
+            let samples = values.filter(\.isFinite)
+            guard !samples.isEmpty, let maximum = samples.max(), let minimum = samples.min() else { return }
             let range = max(maximum - minimum, 1)
-            let points = values.enumerated().map { index, value in
+            let points = samples.enumerated().map { index, value in
                 CGPoint(
-                    x: CGFloat(index) / CGFloat(values.count - 1) * size.width,
-                    y: size.height - CGFloat((value - minimum) / range) * size.height
+                    x: samples.count == 1 ? size.width / 2 : CGFloat(index) / CGFloat(samples.count - 1) * size.width,
+                    y: samples.count == 1 || maximum == minimum ? size.height / 2
+                        : size.height - CGFloat((value - minimum) / range) * size.height
                 )
             }
             var fill = Path()
@@ -888,16 +899,31 @@ private struct StatsSparkline: View {
             points.forEach { fill.addLine(to: $0) }
             fill.addLine(to: CGPoint(x: size.width, y: size.height))
             fill.closeSubpath()
-            context.drawLayer { glow in
-                glow.addFilter(.blur(radius: 10))
-                glow.fill(fill, with: .color(color.opacity(0.22)))
+            let order = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+            let pitch: CGFloat = 5
+            var dots = Path()
+            for row in 0..<Int(ceil(size.height / pitch)) {
+                let y = CGFloat(row) * pitch + pitch / 2
+                let density = (1 - y / size.height) * 0.6
+                for column in 0..<Int(ceil(size.width / pitch))
+                where CGFloat(order[(row % 4) * 4 + column % 4]) / 16 < density {
+                    dots.addEllipse(in: CGRect(x: CGFloat(column) * pitch + 1.8,
+                                               y: CGFloat(row) * pitch + 1.8,
+                                               width: 1.4, height: 1.4))
+                }
+            }
+            context.drawLayer { layer in
+                layer.clip(to: fill)
+                layer.fill(dots, with: .color(color.opacity(0.6)))
             }
             var path = Path()
-            for (index, point) in points.enumerated() {
-                if index == 0 { path.move(to: point) }
-                else { path.addLine(to: point) }
+            if samples.count == 1 {
+                path.move(to: CGPoint(x: 0, y: size.height / 2))
+                path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
+            } else {
+                path.addLines(points)
             }
-            context.stroke(path, with: .color(color.opacity(0.72)), lineWidth: 1.5)
+            context.stroke(path, with: .color(color.opacity(0.78)), lineWidth: 1.4)
         }
         .accessibilityLabel("Recent \(values.last?.formatted() ?? "unavailable")")
     }
