@@ -82,7 +82,7 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(consequence.waitForExistence(timeout: 5))
         XCTAssertTrue(consequence.label.contains("ExFAT merge erases both"), consequence.label)
         XCTAssertTrue(app.textFields["diskman.confirmDevice"].exists)
-        XCTAssertFalse(app.buttons["Merge with next"].isEnabled)
+        XCTAssertFalse(app.buttons["diskman.executeAction"].isEnabled)
         attach(app.screenshot(), named: "Diskman Merge Review Preview")
         app.buttons["Cancel"].click()
         window.buttons["diskman.map.disk91s3"].click()

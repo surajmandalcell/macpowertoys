@@ -670,6 +670,7 @@ struct DiskModifyView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(request.action.destroysData ? .red : .accentColor)
                 .disabled(previewDisks != nil || request.action.destroysData && typedDiskID != request.disk.id)
+                .accessibilityIdentifier("diskman.executeAction")
             }
         }
         .padding(20)
