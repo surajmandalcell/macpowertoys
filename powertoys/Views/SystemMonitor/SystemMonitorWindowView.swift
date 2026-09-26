@@ -11,9 +11,24 @@ enum SystemMonitorPalette {
     static let green = Color(red: 122.0 / 255, green: 229.0 / 255, blue: 130.0 / 255)
     static let blue = Color(red: 69.0 / 255, green: 123.0 / 255, blue: 157.0 / 255)
 
-    static func gradient(_ tint: Color) -> LinearGradient {
-        LinearGradient(colors: [tint.opacity(0.37), tint.opacity(0.16), tint.opacity(0.25)],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    static func surface(_ tint: Color, radius: CGFloat = 12) -> some View {
+        RoundedRectangle(cornerRadius: radius)
+            .fill(tint.opacity(0.17))
+            .overlay(alignment: .topLeading) {
+                Circle()
+                    .fill(tint.opacity(0.55))
+                    .frame(width: 160, height: 160)
+                    .blur(radius: 45)
+                    .offset(x: -45, y: -85)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Circle()
+                    .fill(tint.opacity(0.33))
+                    .frame(width: 130, height: 130)
+                    .blur(radius: 43)
+                    .offset(x: 40, y: 80)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: radius))
     }
 }
 
@@ -301,7 +316,7 @@ struct SystemMonitorWindowView: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .frame(height: featured ? 158 : 112)
-        .background(SystemMonitorPalette.gradient(surface))
+        .background(SystemMonitorPalette.surface(surface))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(surface.opacity(0.25)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: surface.opacity(0.1), radius: 7, y: 3)
@@ -872,11 +887,10 @@ private struct StatsSparkline: View {
             points.forEach { fill.addLine(to: $0) }
             fill.addLine(to: CGPoint(x: size.width, y: size.height))
             fill.closeSubpath()
-            context.fill(fill, with: .linearGradient(
-                Gradient(colors: [color.opacity(0.14), color.opacity(0.01)]),
-                startPoint: .zero,
-                endPoint: CGPoint(x: 0, y: size.height)
-            ))
+            context.drawLayer { glow in
+                glow.addFilter(.blur(radius: 10))
+                glow.fill(fill, with: .color(color.opacity(0.22)))
+            }
             var path = Path()
             for (index, point) in points.enumerated() {
                 if index == 0 { path.move(to: point) }
