@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class MacTweaksUITests: XCTestCase {
@@ -85,7 +86,20 @@ final class MacTweaksUITests: XCTestCase {
         search.click()
         search.typeText("search ")
         XCTAssertTrue(window.staticTexts["No matches for “search”"].waitForExistence(timeout: 5))
-        attach(window.screenshot(), named: "Mac Tweaks Dark Empty Search")
+        let screenshot = window.screenshot()
+        assertDarkBackground(screenshot)
+        attach(screenshot, named: "Mac Tweaks Dark Empty Search")
+    }
+
+    private func assertDarkBackground(_ screenshot: XCUIScreenshot) {
+        guard let data = screenshot.image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: data),
+              let color = bitmap.colorAt(x: bitmap.pixelsWide * 9 / 10,
+                                         y: bitmap.pixelsHigh * 4 / 5)?.usingColorSpace(.deviceRGB) else {
+            XCTFail("Could not inspect the Mac Tweaks screenshot appearance")
+            return
+        }
+        XCTAssertLessThan(color.brightnessComponent, 0.5, "The dark test rendered a light window")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {
