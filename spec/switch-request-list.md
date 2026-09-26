@@ -16,9 +16,9 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Hosted verified; live check pending | Keep MacPowerToys lightweight: account management, sign-in, import, default switching, verification, usage, and account recovery. Conversation browsing and cleanup stay in standalone Switch. | No conversation or cleanup route, scan, or destructive action in the MacPowerToys applet. Recovery and linked-settings repair remain reachable. |
 | Hosted layout and navigation verified; installed account flow pending | Follow the standalone Switch window's flow: narrow functional rail, page title and refresh strip, persistent account list, and adjacent Identity, Usage, activity, and account-detail panels. Keep the original icon. Include Accounts, Backup, and relevant Settings; omit Chat History and Cleanup as agreed. | Compare the port with `switch/docs/screenshots/accounts-dark.png` at 1120×740, then inspect light and dark, empty and populated, Backup, Settings, and minimum-width states. Every visible rail action must work. |
 | Static checks complete; live check pending | Preserve performance and credential safety. | No idle polling or conversation scans; synthetic paths for automated tests; no login Keychain access. |
-| In progress | Match the original Switch account controls and provider artwork. | Center the custom close control in the 48-point rail cell; remove the redundant rail plus; use the original Add Account provider flow, provider icons, double-check state, and “Use as default” copy. Compact About modals must not show an oversized self-Open action. |
-| In progress | Make Backup and usage layouts clear at the minimum window width. | Backup explains when recovery actions become available and provides a useful destination action; disabled controls remain legible. Activity period and duration values stay inside their panels without wrapping into extra rows. |
-| Core and standalone verified; applet hosted check pending | Support Claude Code accounts through shared Switch Core. | Both standalone Switch and MacPowerToys list, sign in to, and switch managed Claude Code profiles through the same Core package without requiring the standalone app. |
+| Hosted verified; installed interaction pending | Match the original Switch account controls and provider artwork. | Center the custom close control in the 48-point rail cell; remove the redundant rail plus; use the original Add Account provider flow, provider icons, double-check state, and “Use as default” copy. Compact About modals must not show an oversized self-Open action. |
+| Hosted verified; installed interaction pending | Make Backup and usage layouts clear at the minimum window width. | Backup explains when recovery actions become available and provides a useful destination action; disabled controls remain legible. Activity period and duration values stay inside their panels without wrapping into extra rows. |
+| Core, standalone, and hosted applet verified; installed interaction pending | Support Claude Code accounts through shared Switch Core. | Both standalone Switch and MacPowerToys list, sign in to, and switch managed Claude Code profiles through the same Core package without requiring the standalone app. |
 
 The owner's active desktop is not an acceptable test environment for app-hosted
 or UI test runners. Executable checks and synthetic renders run on hosted macOS;
@@ -98,5 +98,18 @@ MacPowerToys resolves the renamed `switch.git` package at v3.3.0. Hosted run
 36211479231 exposed five missing custom-control focus modifiers in Switch; run
 36211622600 exposed a brittle static-text query in the Add Account UI test.
 Both are corrected in source. Offscreen renders from the first run also showed
-the close symbol shifted out of its 48pt cell; the rail width is corrected for
-the next hosted visual pass.
+the close symbol shifted out of its 48pt cell; the rail width correction is
+visible in the subsequent hosted captures.
+
+Hosted run 36213704605 passed all macOS jobs, including unit tests, and its
+populated light and dark captures at 1120pt and 880pt show aligned Identity,
+Usage, rate-limit bars, and the activity period control. Focused run
+36213722329 passed launcher and CLI-route navigation through Accounts,
+Backup, Settings, and About. The original Codex, Grok, Claude Code, Gemini,
+and Antigravity provider artwork was compared byte for byte with standalone
+Switch; focused run 36214350586 captured it in the Add Account picker. The
+first compact About capture compressed one sentence, so its sheet gained the
+needed height. Focused run 36215187515 passed, and its capture shows the full
+sentence without an Open button. Standalone Switch 3.3.0 is installed with a
+verified signature and responsive bundled CLI. Managed Claude profiles were
+exercised only with synthetic homes; no saved account or login Keychain was read.
