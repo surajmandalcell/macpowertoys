@@ -63,7 +63,7 @@ final class SwitchUITests: XCTestCase {
         let add = app.descendants(matching: .any).matching(identifier: "switch.add").firstMatch
         XCTAssertTrue(add.exists)
         add.click()
-        XCTAssertTrue(app.staticTexts["Claude Code"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["switch.provider.claude-code"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Continue"].exists)
         app.buttons["Cancel"].click()
         XCTAssertTrue(app.buttons["switch.about"].exists)

@@ -154,6 +154,7 @@ struct SwitchWindowView: View {
                     .background(palette.rail)
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .offset(x: 48)
             .opacity(railTopHovered ? 1 : 0)
             .allowsHitTesting(railTopHovered)
@@ -168,11 +169,12 @@ struct SwitchWindowView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
             .onHover { closeHovered = $0 }
             .accessibilityLabel("Close window")
             .accessibilityIdentifier("switch.close")
         }
-        .frame(width: 96, height: 48, alignment: .leading)
+        .frame(width: 48, height: 48, alignment: .leading)
         .onHover { railTopHovered = $0 }
         .zIndex(2)
     }
@@ -347,7 +349,7 @@ struct SwitchWindowView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Add your first account")
                         .font(.system(size: 18, weight: .semibold))
-                    Text("Sign in to Codex or Grok Build, or import an existing account folder.")
+                    Text("Sign in to Codex, Grok Build, or Claude Code, or import an existing Codex folder.")
                         .foregroundStyle(palette.muted)
                         .frame(maxWidth: 520, alignment: .leading)
                     HStack(spacing: 6) {
@@ -371,6 +373,7 @@ struct SwitchWindowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .accessibilityIdentifier("switch.add")
     }
 
@@ -469,7 +472,7 @@ struct SwitchWindowView: View {
                            palette: palette, iconOnly: true, disabled: model.isWorking) {
             Task { await model.verify(account.id) }
         }
-        SwitchActionButton(title: copiedAuthPath ? "Copied auth path" : "Copy auth path",
+        SwitchActionButton(title: copiedAuthPath ? "Copied path" : account.identity.providerID == .claudeCode ? "Copy config path" : "Copy auth path",
                            symbol: copiedAuthPath ? "checkmark" : "doc.on.doc",
                            palette: palette, iconOnly: true) { copyAuthPath(account) }
         SwitchActionButton(title: "Remove account", symbol: "trash", palette: palette,
@@ -682,7 +685,8 @@ struct SwitchWindowView: View {
 
     private func accountMetadata(_ account: AccountRecord) -> some View {
         VStack(spacing: 0) {
-            metadataRow("Saved auth", value: account.credentialFile.path)
+            metadataRow(account.identity.providerID == .claudeCode ? "Profile config" : "Saved auth",
+                        value: account.credentialFile.path)
             metadataRow("Source", value: account.source.path, striped: true)
             metadataRow("Home", value: account.home.path)
             if let workspace = account.identity.workspaceID {
@@ -1036,6 +1040,7 @@ struct SwitchWindowView: View {
                         Spacer()
                         Button("Cancel") { showingAddAccount = false }
                             .buttonStyle(.plain)
+                            .focusEffectDisabled()
                     }
                     .padding(20)
                     Divider()
@@ -1068,7 +1073,9 @@ struct SwitchWindowView: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .focusEffectDisabled()
                             .disabled(!available || model.isWorking)
+                            .accessibilityIdentifier("switch.provider.\(provider.id.rawValue)")
                             .accessibilityValue(selectedProviderID == provider.id ? "Selected" : "")
                         }
                     }
