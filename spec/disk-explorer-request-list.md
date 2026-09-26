@@ -51,6 +51,19 @@ the first partition only when its file system is resizable. Its other source
 partitions lose data; forcing a merge erases the first one too. The UI must
 state these limits, not claim MiniTool's data-preserving NTFS merge behavior.
 
+### Modify navigation and write lock correction, 2026-09-26
+
+Place physical disks under Modify in Diskman's main sidebar and keep Analyze's
+sources separate. Show APFS parent-child connector lines and label EFI as a
+protected system partition. Give each direct action a one-line title and up to
+two lines of explanation in a uniform three-column grid. Make whole-disk
+selection explicit. Add a persistent disk lock in the sidebar context menu and
+beside Refresh. Diskman's command layer must reject every modifying operation
+against a locked disk, including a request built outside the UI. The 1 TB
+external disk starts locked. Only the authorized 16 GB SD card may be used for
+destructive physical tests. Use the restrained depth and spacing of OnePlus
+OxygenOS with Dither Kit's ordered texture.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Stop live boxes snapping and keep the hover detail below the chart. | Treemap tile identity, its bounded item set, and split topology stay stable as weights cross during a scan; individual frames interpolate and zero-size skeleton entries appear in the first snapshot. Rings use the same live membership rule and animated arcs. On completion, both views select the largest measured entries once and animate the change, so a large late-named item is not trapped in Other. Both charts reserve a 40-point detail row below the plot. Hosted run `36168349745` passed the cutoff regression, UI navigation, and light and dark renders. | Confirm motion in the final signed app. |

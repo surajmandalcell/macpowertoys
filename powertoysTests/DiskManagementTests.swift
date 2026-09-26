@@ -11,6 +11,31 @@ final class DiskManagementTests: XCTestCase {
         ]
     )
 
+    func testWriteLockDefaultsClosedPersistsAndBlocksCommandBeforeDiskutil() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "DiskmanWriteLockTests"))
+        defaults.removePersistentDomain(forName: "DiskmanWriteLockTests")
+        defer { defaults.removePersistentDomain(forName: "DiskmanWriteLockTests") }
+        XCTAssertTrue(DiskWriteLock.isLocked(card, defaults: defaults))
+        DiskWriteLock.setLocked(false, for: card, defaults: defaults)
+        XCTAssertFalse(DiskWriteLock.isLocked(card, defaults: defaults))
+        XCTAssertFalse(DiskWriteLock.isLocked(card, defaults: try XCTUnwrap(UserDefaults(suiteName: "DiskmanWriteLockTests"))))
+        let otherMedia = ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
+                                     scheme: card.scheme, devicePath: card.devicePath, writable: true,
+                                     manageable: true, mediaRegistryID: 2, partitions: card.partitions)
+        XCTAssertTrue(DiskWriteLock.isLocked(otherMedia, defaults: defaults))
+
+        let neverConnected = ManagedDisk(id: "disk98", name: "Locked", size: 1_000_000_000_000,
+                                         bus: "USB", scheme: "GUID_partition_scheme", devicePath: "test-lock",
+                                         writable: true, manageable: true, mediaRegistryID: 98, partitions: [])
+        let request = DiskRequest(disk: neverConnected, partition: nil, action: .eraseDisk,
+                                  name: "Locked", format: "ExFAT", scheme: "GPT", size: "")
+        XCTAssertThrowsError(try DiskManagement.run(request)) { error in
+            guard case DiskManagementError.lockedDevice = error else {
+                return XCTFail("Expected the write lock to reject the request before diskutil")
+            }
+        }
+    }
+
     func testDestructiveCommandsTargetOnlyTheReviewedDevice() throws {
         let erase = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
                                 name: "Diskman", format: "ExFAT", scheme: "GPT", size: "4G")
