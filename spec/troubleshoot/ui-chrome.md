@@ -36,8 +36,8 @@
   tab, and clicks blank edges of Forward and Settings. Its first normal-mode
   test must find the Servers tab before checking listener rows, so a missing
   panel is reported separately from a missing listener. Run `36138020899`
-  passed the earlier route; repeat the cold-launch case after the longer wait
-  without owner-desktop UI interaction.
+  passed the earlier route. Run `36208481934` passed the first normal-mode
+  cold-launch case after the longer wait without owner-desktop UI interaction.
 
 ## Portman Server Overview Height
 
@@ -154,6 +154,8 @@
   travelling from an edge. With Reduce Motion, selection changes immediately.
   Search for Scan in Settings and confirm unrelated controls disappear. Inspect
   the final signed installed stamp before a background launch on the owner's Mac.
+  Hosted run `36208481934` passed tab navigation; its captures prove the
+  endpoints, not the intermediate fade frames or Reduce Motion behavior.
 
 ## Portman Cleanup Number Editing
 
