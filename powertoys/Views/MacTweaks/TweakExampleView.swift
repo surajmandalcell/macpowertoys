@@ -28,9 +28,9 @@ struct TweakExample {
         case "dialogs.expanded-save": .init(before: "Compact Save", after: "Expanded Save", beforeSymbol: "square", afterSymbol: "sidebar.left")
         case "windows.scroll-animation": .init(before: "Page jumps", after: "Page glides", beforeSymbol: "doc.text", afterSymbol: "scroll")
         case "menubar.spacing": .init(before: "Wide item gaps", after: "Compact item gaps", beforeSymbol: "menubar.rectangle", afterSymbol: "menubar.rectangle")
-        case "screenshots.format": .init(before: "PNG capture", after: "Chosen format", beforeSymbol: "photo", afterSymbol: "doc")
+        case "screenshots.format": .init(before: "Capture.png", after: "Capture.jpg", beforeSymbol: "photo", afterSymbol: "doc")
         case "screenshots.shadow": .init(before: "Window shadow", after: "Clean window edge", beforeSymbol: "macwindow", afterSymbol: "square")
-        case "screenshots.date": .init(before: "Plain filename", after: "Dated filename", beforeSymbol: "doc", afterSymbol: "calendar")
+        case "screenshots.date": .init(before: "Capture.png", after: "Capture 09-26.png", beforeSymbol: "doc", afterSymbol: "calendar")
         case "terminal.pointer-focus": .init(before: "Click to focus", after: "Point to focus", beforeSymbol: "terminal", afterSymbol: "cursorarrow")
         case "music.half-stars": .init(before: "Whole stars", after: "Half stars", beforeSymbol: "star", afterSymbol: "star.leadinghalf.filled")
         case "apps.automatic-termination": .init(before: "Idle app may exit", after: "Native auto-exit off", beforeSymbol: "app", afterSymbol: "lock.open")
@@ -51,7 +51,7 @@ struct TweakExampleView: View {
         if let example = TweakExample.forID(item.id) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Example")
+                    Text("What changes")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -78,10 +78,10 @@ struct TweakExampleView: View {
             .task(id: replay) {
                 phase = reduceMotion ? 2 : 0
                 guard !reduceMotion else { return }
-                try? await Task.sleep(for: .milliseconds(650))
+                try? await Task.sleep(for: .milliseconds(900))
                 guard !Task.isCancelled else { return }
                 withAnimation(.easeInOut(duration: 0.16)) { phase = 1 }
-                try? await Task.sleep(for: .milliseconds(700))
+                try? await Task.sleep(for: .milliseconds(900))
                 guard !Task.isCancelled else { return }
                 withAnimation(.easeInOut(duration: 0.16)) { phase = 2 }
             }
