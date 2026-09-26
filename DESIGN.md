@@ -745,6 +745,10 @@ reuse its full mouse and trackpad controls because those controls are its
 immediate purpose. Omit body subtitles, the divider below the strip, and bright
 tool-color fills. Keep one 12pt horizontal gutter. Separate icon buttons open
 MacPowerToys, open Settings, and quit.
+Every menu-bar panel with tabs reopens on its last selected tab. Short tab pages
+size to their content instead of leaving an empty lower region; longer pages
+scroll within the screen-height cap. Transient selections still follow each
+tool's explicit exit rule.
 Measurement guides and capture overlays are transient task surfaces and must
 not borrow launcher, workspace, or applet navigation chrome.
 

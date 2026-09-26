@@ -22,10 +22,12 @@ final class PortmanUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        guard app.buttons["portman.page.Servers"].waitForExistence(timeout: 20) else {
+        let servers = app.buttons["portman.page.Servers"]
+        guard servers.waitForExistence(timeout: 20) else {
             XCTFail("Portman did not present after the cold launch")
             return
         }
+        servers.click()
         let row = app.buttons["portman.local.7414"]
         guard row.waitForExistence(timeout: 10) else {
             XCTFail("Portman opened but did not discover the test listener")
@@ -58,6 +60,9 @@ final class PortmanUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
+        let servers = app.buttons["portman.page.Servers"]
+        XCTAssertTrue(servers.waitForExistence(timeout: 20))
+        servers.click()
         let row = app.buttons["portman.local.7265"]
         XCTAssertTrue(row.waitForExistence(timeout: 20), "Portman did not discover the test listener")
         attach(app.screenshot(), named: "Portman server at rest")
@@ -94,6 +99,7 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route")
         let servers = app.buttons["portman.page.Servers"]
         let settings = app.buttons["portman.page.Settings"]
+        servers.click()
         XCTAssertEqual(servers.frame.width, forward.frame.width, accuracy: 1)
         XCTAssertEqual(settings.frame.width, forward.frame.width, accuracy: 1)
         XCTAssertTrue(app.buttons["portman.refresh"].exists)
@@ -190,6 +196,26 @@ final class PortmanUITests: XCTestCase {
 
         servers.click()
         XCTAssertTrue(forward.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSelectedPageSurvivesReopeningPortman() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
+        app.launch()
+        defer { app.terminate() }
+
+        let forward = app.buttons["portman.page.Forward"]
+        XCTAssertTrue(forward.waitForExistence(timeout: 20))
+        forward.click()
+        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5))
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 20),
+                      "Portman returned to Servers after recreating its panel")
+        app.buttons["portman.page.Servers"].click()
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {
