@@ -81,7 +81,8 @@ struct PortmanPanelView: View {
 
     private var panelHeight: CGFloat {
         let available = (NSScreen.main?.visibleFrame.height ?? 900) * 0.72
-        return min(available, min(650, max(page == .settings ? 260 : 300, contentHeight + 66)))
+        let minimum: CGFloat = page == .local ? 300 : page == .settings ? 260 : 230
+        return min(available, min(650, max(minimum, contentHeight + 66)))
     }
 
     var body: some View {
@@ -1035,6 +1036,7 @@ struct PortmanPanelView: View {
                     .frame(maxWidth: .infinity)
                     .accessibilityLabel("Remote port to add")
                     .onSubmit { addManualPort() }
+                    .disabled(host.isEmpty)
                 Button("Add port") { addManualPort() }
                 .disabled(host.isEmpty)
                 .controlSize(.small)
@@ -1043,31 +1045,16 @@ struct PortmanPanelView: View {
                 remoteRow($0)
             }
 
-            if !service.isLoadingRemote || !selectedRemotePorts.isEmpty {
+            if !selectedRemotePorts.isEmpty {
                 Button("Forward \(selectedRemotePorts.count) selected") { forwardSelected() }
                     .buttonStyle(.borderedProminent)
-                    .tint(selectedRemotePorts.isEmpty || host.isEmpty ? .gray : .accentColor)
                     .controlSize(.small)
-                    .disabled(selectedRemotePorts.isEmpty || host.isEmpty)
+                    .disabled(host.isEmpty)
             }
 
             if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
             if service.tunnels.isEmpty && !service.isLoadingRemote {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "network").foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("No active forwards").font(.system(size: 12, weight: .medium))
-                        Text("Local port mappings will appear here.")
-                            .font(.system(size: 11)).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
-            }
-            if !service.isLoadingRemote {
-                Text("Local forwards bind to 127.0.0.1.")
+                Text("Forwarded ports appear here. Local links use 127.0.0.1.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
         }
@@ -1313,6 +1300,7 @@ struct PortmanPanelView: View {
 
     private func errorText(_ message: String) -> some View {
         Text(message).font(.system(size: 11)).foregroundStyle(.red).textSelection(.enabled)
+            .accessibilityIdentifier("portman.forwarding.error")
     }
 
     private func tunnelSymbol(_ state: PortmanTunnel.State) -> String {
