@@ -451,7 +451,8 @@ struct DiskExplorerWindowView: View {
                     Text(hoveredDetail)
                         .font(.system(size: 11, weight: .medium))
                         .lineLimit(1).truncationMode(.middle)
-                        .frame(maxWidth: 260, alignment: .trailing)
+                        .frame(width: 260, alignment: .trailing)
+                        .help(hoveredDetail)
                         .accessibilityIdentifier("diskExplorer.hoverDetail")
                 }
                 if !snapshot.isComplete {
