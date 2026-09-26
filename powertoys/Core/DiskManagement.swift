@@ -202,6 +202,10 @@ nonisolated struct DiskRequest: Sendable {
         if [.eraseVolume, .deletePartition, .resizePartition].contains(action) && partition?.isAPFSVolume == true {
             throw DiskManagementError.invalidInput("Select the physical partition for this action.")
         }
+        if [.rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action) &&
+            partition?.content == "EFI" {
+            throw DiskManagementError.invalidInput("The EFI system partition cannot be changed here. Use a whole-disk action to replace the layout.")
+        }
         if [.addAPFSVolume, .resizeAPFSContainer].contains(action) &&
             (partition?.apfsContainer == nil || partition?.isAPFSVolume == true) {
             throw DiskManagementError.invalidInput("Select an APFS container partition.")
@@ -258,7 +262,11 @@ nonisolated enum DiskManagement {
         guard validID(partitionID) else { throw DiskManagementError.invalidDevice }
         let arguments = apfs ? ["apfs", "resizeContainer", partitionID, "limits"] :
             ["resizeVolume", partitionID, "limits"]
-        return String(decoding: try execute(arguments), as: UTF8.self)
+        let output = String(decoding: try execute(arguments), as: UTF8.self)
+        guard !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw DiskManagementError.command("macOS did not return resize limits for this partition.")
+        }
+        return output
     }
 
     static func inventory() throws -> [ManagedDisk] {
