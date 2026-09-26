@@ -1145,6 +1145,7 @@ final class SystemMonitorMenuController: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = autosaveName
         item.button?.identifier = NSUserInterfaceItemIdentifier("SystemMonitorMenuBarItem")
+        item.button?.setAccessibilityIdentifier("SystemMonitorMenuBarItem")
         item.button?.target = self
         item.button?.action = #selector(openSystemMonitor)
         item.button?.sendAction(on: [.leftMouseUp])
