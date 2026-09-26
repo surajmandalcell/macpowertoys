@@ -363,6 +363,7 @@ struct DiskModifyView: View {
                 Text(partition.map { "SELECTED  /dev/\($0.id)  ·  \($0.name)" } ?? "SELECTED  WHOLE DISK")
                     .utilitySectionHeader()
                     .lineLimit(1)
+                    .accessibilityIdentifier("diskman.selectedTarget")
                 Spacer(minLength: 4)
                 if partition != nil {
                     Button("Whole disk") { withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) { partitionID = nil } }
@@ -413,9 +414,17 @@ struct DiskModifyView: View {
                     .foregroundStyle(reason == nil ? Color.accentColor : Color.secondary)
                     .frame(width: 20)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(action.rawValue)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(reason == nil ? Color.primary : Color.secondary)
+                    HStack(spacing: 4) {
+                        Text(action.rawValue)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(reason == nil ? Color.primary : Color.secondary)
+                        Spacer(minLength: 0)
+                        if action.needsWholeDisk {
+                            Text("DISK")
+                                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                     Text(reason ?? actionHint(action))
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
@@ -621,6 +630,7 @@ struct DiskModifyView: View {
                      : "Journaled HFS+ merge keeps /dev/\(first.id) and erases /dev/\(next.id).")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.orange)
+                    .accessibilityIdentifier("diskman.mergeConsequence")
             }
             if request.action == .wipeDisk {
                 Text("Zero-fill removes the partition map. Format the disk afterward before using it again.")
