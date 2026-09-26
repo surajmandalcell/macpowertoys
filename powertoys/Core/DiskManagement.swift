@@ -49,6 +49,13 @@ nonisolated struct ManagedDisk: Identifiable, Sendable {
         max(0, size - partitions.filter { !$0.isAPFSVolume }.reduce(0) { $0 + $1.size })
     }
 
+    func nextPhysicalPartition(after id: String) -> ManagedPartition? {
+        let physical = partitions.filter { !$0.isAPFSVolume }
+        guard let index = physical.firstIndex(where: { $0.id == id }),
+              physical.indices.contains(index + 1) else { return nil }
+        return physical[index + 1]
+    }
+
     var identity: String {
         let layout = partitions.map {
             "\($0.id):\($0.content):\($0.isAPFSVolume ? 0 : $0.size):\($0.uuid ?? ""):\($0.name):\($0.apfsContainer ?? ""):\($0.isAPFSVolume)"
@@ -88,6 +95,7 @@ nonisolated enum DiskAction: String, CaseIterable, Identifiable, Sendable {
     case addPartition = "Add partition"
     case deletePartition = "Delete partition"
     case resizePartition = "Resize partition"
+    case mergePartitions = "Merge with next"
     case addAPFSVolume = "Add APFS volume"
     case deleteAPFSVolume = "Delete APFS volume"
     case resizeAPFSContainer = "Resize APFS container"
@@ -97,14 +105,14 @@ nonisolated enum DiskAction: String, CaseIterable, Identifiable, Sendable {
     var destroysData: Bool {
         switch self {
         case .eraseVolume, .eraseDisk, .partitionDisk, .addPartition, .deletePartition,
-             .resizePartition, .deleteAPFSVolume, .resizeAPFSContainer, .wipeDisk: true
+             .resizePartition, .mergePartitions, .deleteAPFSVolume, .resizeAPFSContainer, .wipeDisk: true
         default: false
         }
     }
     var needsPartition: Bool {
         switch self {
         case .repair, .mount, .unmount, .rename, .eraseVolume, .deletePartition,
-             .resizePartition, .addAPFSVolume, .deleteAPFSVolume, .resizeAPFSContainer: true
+             .resizePartition, .mergePartitions, .addAPFSVolume, .deleteAPFSVolume, .resizeAPFSContainer: true
         default: false
         }
     }
@@ -140,9 +148,11 @@ nonisolated struct DiskRequest: Sendable {
         let validSchemes = ["GPT", "MBR", "APM"]
         let safeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let needsName: Bool = [.rename, .eraseVolume, .eraseDisk, .partitionDisk, .addPartition,
-                               .addAPFSVolume].contains(action)
-        let fat = ["ExFAT", "MS-DOS", "MS-DOS FAT12", "MS-DOS FAT16", "FAT32"].contains(format) ||
-            action == .rename && partition?.content == "Microsoft Basic Data"
+                               .mergePartitions, .addAPFSVolume].contains(action)
+        let fat = [.eraseVolume, .eraseDisk, .partitionDisk, .addPartition].contains(action) &&
+            ["ExFAT", "MS-DOS", "MS-DOS FAT12", "MS-DOS FAT16", "FAT32"].contains(format) ||
+            action == .rename && partition?.content == "Microsoft Basic Data" ||
+            action == .mergePartitions && partition?.fileSystem == "ExFAT"
         let maxNameLength = fat ? (action == .partitionDisk ? 9 : 11) : 27
         if needsName && (safeName.isEmpty || safeName.count > maxNameLength ||
                          safeName.contains("/") || safeName.contains(":")) {
@@ -202,6 +212,20 @@ nonisolated struct DiskRequest: Sendable {
         if action == .resizePartition && partition?.content != "Apple_HFS" {
             throw DiskManagementError.invalidInput("macOS can resize only a Journaled HFS+ partition here.")
         }
+        if action == .mergePartitions {
+            guard let first = partition, let next = disk.nextPhysicalPartition(after: first.id),
+                  first.content != "EFI", next.content != "EFI",
+                  first.apfsContainer == nil, next.apfsContainer == nil else {
+                throw DiskManagementError.invalidInput("Select a data partition followed by another data partition on this disk.")
+            }
+            if first.content == "Apple_HFS" {
+                return ["mergePartitions", "JHFS+", safeName, first.id, next.id]
+            }
+            guard first.fileSystem == "ExFAT" else {
+                throw DiskManagementError.invalidInput("Only Journaled HFS+ can preserve its data during a merge. ExFAT requires erasing both partitions.")
+            }
+            return ["mergePartitions", "force", "ExFAT", safeName, first.id, next.id]
+        }
         switch action {
         case .verify: return [partition == nil ? "verifyDisk" : "verifyVolume", target]
         case .repair: return ["repairVolume", target]
@@ -216,6 +240,7 @@ nonisolated struct DiskRequest: Sendable {
         case .addPartition: return ["addPartition", target, format, safeName, size]
         case .deletePartition: return ["eraseVolume", "free", "free", target]
         case .resizePartition: return ["resizeVolume", target, size]
+        case .mergePartitions: throw DiskManagementError.invalidInput("Choose two adjacent partitions.")
         case .addAPFSVolume:
             guard let container = partition?.apfsContainer else { throw DiskManagementError.changedDevice }
             return ["apfs", "addVolume", container, format, safeName]
@@ -328,9 +353,20 @@ nonisolated enum DiskManagement {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = plistOutput ? FileHandle.nullDevice : pipe
+        let confirmsForcedMerge = arguments.starts(with: ["mergePartitions", "force"])
+        let confirmation = confirmsForcedMerge ? Pipe() : nil
+        process.standardInput = FileHandle.nullDevice
+        if let confirmation { process.standardInput = confirmation }
         try process.run()
+        if let confirmation {
+            confirmation.fileHandleForWriting.write(Data("y\n".utf8))
+            try? confirmation.fileHandleForWriting.close()
+        }
         let output = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
+        if confirmsForcedMerge, String(decoding: output, as: UTF8.self).contains("Merge canceled") {
+            throw DiskManagementError.command("macOS canceled the partition merge; the disk was not changed.")
+        }
         guard process.terminationStatus == 0 else {
             let detail = String(decoding: output, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             throw DiskManagementError.command(detail.isEmpty ? "Disk Utility could not complete the operation." : detail)
