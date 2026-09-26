@@ -7,7 +7,7 @@
 - [x] Align the empty-search action with its message and put expanded form controls on one trailing edge.
 - [ ] Inspect collapsed, expanded, search, scrolling, light, and dark states in the final signed build.
 
-Release app and test bundles compile. The hosted or installed interaction check is still pending.
+Release app and test bundles compile. The signed app and helper at `8d1b533` are installed from a clean tree, and the `/Applications` process is running. Native Computer access to MacPowerToys was denied, so the hosted interaction and screenshot check is still pending.
 
 ## Tool icon, 2026-09-26
 
