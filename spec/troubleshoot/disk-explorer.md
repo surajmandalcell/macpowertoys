@@ -1,5 +1,22 @@
 # Diskman Troubleshooting
 
+## Modify Review Has Two Buttons With The Same Title
+
+- **Symptom:** Hosted UI checks found the merge warning and selection, then
+  failed when querying `Merge with next` because both the action card and the
+  review button matched. Earlier text queries also missed visible SwiftUI
+  warnings whose accessibility labels were not exposed as expected.
+- **Cause:** A visible title is not a unique control identifier, and SwiftUI
+  can expose styled text under a different accessibility element type.
+- **Invariant:** Give the review execution button, selected target, merge
+  consequence, and partition controls stable identifiers. Expose the target
+  and consequence as spoken labels. Query the exact review control when
+  checking that destructive execution is disabled.
+- **Check:** Hosted run `36216183313` passed the Modify action, merge review,
+  map selection, and whole-disk return test. Its review capture shows the
+  ExFAT data-loss warning and a disabled execution button on the read-only
+  preview device.
+
 ## Same Reader Can Hold A Different Card
 
 - **Symptom:** A disk number, bus, size, and partition layout can remain the
