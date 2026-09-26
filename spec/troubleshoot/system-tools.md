@@ -6,6 +6,10 @@
   even though MacPowerToys already bundles a signed background service.
 - **Cause:** Fan writes used an external CLI while the built-in SMC reader was
   read-only.
+- **Reference check:** The installed Mole app declares
+  `com.tw93.MoleApp.systemhelper` in `SMPrivilegedExecutables` and installs that
+  helper in `/Library/PrivilegedHelperTools`. Its simpler setup does not remove
+  the privileged-write requirement.
 - **Invariant:** The combined menu's global Home and Monitor Sensors own Fan UI
   and polling; other Monitor pages do not. The signed
   MacPowerToys daemon accepts only Auto, Cool, or Max from the signed app,
