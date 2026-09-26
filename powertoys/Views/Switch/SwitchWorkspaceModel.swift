@@ -335,7 +335,7 @@ final class SwitchWorkspaceModel {
             at: directory, withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
         let url = directory.appending(path: "Open MacPowerToys Switch.command")
-        var exports = ["CODEX_HOME", "GROK_HOME"].compactMap { key in
+        var exports = ["CODEX_HOME", "GROK_HOME", "CLAUDE_CONFIG_DIR"].compactMap { key in
             spec.environment[key].map { "export \(key)=\(shellQuote($0))" }
         }
         if paths.isolationRoot != nil, let home = spec.environment["HOME"] {
@@ -344,7 +344,7 @@ final class SwitchWorkspaceModel {
         let command = ([spec.executable.path] + spec.arguments).map(shellQuote).joined(separator: " ")
         let workingDirectory = spec.workingDirectory.map { "cd \(shellQuote($0.path))\n" } ?? ""
         let contents = (
-            ["#!/bin/zsh", "set -e", "unset OPENAI_API_KEY CODEX_ACCESS_TOKEN XAI_API_KEY"]
+            ["#!/bin/zsh", "set -e", "unset OPENAI_API_KEY CODEX_ACCESS_TOKEN XAI_API_KEY ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_AWS_API_KEY ANTHROPIC_BASE_URL CLAUDE_CODE_OAUTH_TOKEN CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY CLAUDE_CODE_USE_ANTHROPIC_AWS"]
                 + exports + [workingDirectory + "exec \(command)"]
         ).joined(separator: "\n") + "\n"
         try contents.write(to: url, atomically: true, encoding: .utf8)
