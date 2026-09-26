@@ -1,5 +1,28 @@
 # Diskman Troubleshooting
 
+## Shallow Estimates, Full-Height Charts, And Sidebar Eject
+
+- **Symptom:** The first chart showed zero-size folder skeletons, then a fixed
+  520-point plot left usable vertical space idle. A 40-point hover prompt and
+  unreadable-item banner took more height. Modify had a redundant Manage Disks
+  row and no direct disk eject control.
+- **Cause:** The walker descended into the first top-level folders before
+  measuring every sibling's immediate files. The page used a scroll container
+  with a fixed chart height. Eject lived only among Modify action cards.
+- **Invariant:** Publish the skeleton, then measure immediate children of every
+  top-level folder once before deep walking them. Label partial sizes as
+  measured so far; they are estimates until completion. Let the plot fill the
+  remaining workspace height. Show hover details in the existing breadcrumb
+  line and accessibility labels, without an idle row. Put the unreadable
+  warning next to View. A physical disk row opens Modify and offers Eject.
+  On a blocked eject, list open processes and offer normal close, deliberate
+  force quit, and Cancel. Recheck the disk, lock, and process identity before
+  signaling; never force-eject.
+- **Check:** Compile the app and test bundles locally without launching them.
+  Hosted UI checks exercise the sidebar, plot, and blocker sheet; hosted renders
+  cover the warning icon. A fixture checks shallow partial sizes against a
+  final `du` result.
+
 ## Modify Device Scope And Write Locks
 
 - **Symptom:** Modify had a second disk rail inside its body, APFS child rows had
@@ -68,35 +91,6 @@
   that the Analyze scan text is absent. Its Modify capture shows only the disk
   inventory's own progress state.
 
-## Detail Footer Hidden From Accessibility
-
-- **Symptom:** Hosted run `36162099059` rendered the detail row below each
-  chart, but the UI test could not find `diskExplorer.treemapDetails`.
-- **Cause:** The treemap put its accessibility label and identifier on the
-  enclosing view, so macOS exposed the plot and footer as one element.
-- **Invariant:** Expose the plot and its reserved footer as separate elements.
-  The hovered item's name must appear in the footer, and the footer's frame
-  must begin below the plot in both chart modes.
-- **Check:** The hosted Diskman UI test locates both rows, compares their
-  frames with the plots, then checks that hover replaces the prompt with a
-  named item and numeric size in the footer label.
-
-## Visible Hover Detail Has An Empty Accessibility Value
-
-- **Symptom:** Hosted run `36163079254` captured updated footer text below both
-  plots, but XCTest read an empty chart value. A test that compared the footer
-  with that value failed; the earlier chart-value hover assertion could pass
-  against the empty string without proving hover worked. Run `36164626741`
-  confirmed that explicit footer labels change on hover, but `.value` remains
-  empty even when it is set on the SwiftUI element.
-- **Cause:** macOS does not expose this custom footer's accessibility value to
-  XCTest; the combined child element also did not provide a reliable pair.
-- **Invariant:** Each footer is its own accessible element. Its label includes
-  the hovered item's name and numeric size, so the spoken detail and the
-  tested detail share one reliable property. The plot stays separate.
-- **Check:** The hosted UI test asserts the default prompt before hover, then
-  a changed label containing a numeric detail in both chart modes.
-
 ## Partial Scan Rearranges The Map Or Hides A Final Large Item
 
 - **Symptom:** Treemap boxes appear, disappear, and snap into new places as
@@ -112,8 +106,9 @@
   stable path-based bounded set while scanning. After completion, select the
   largest measured entries once, retain path order within that set, and animate
   the change. Split by count and interpolate each tile or ring segment as
-  measured weights arrive. Keep hover details and scan status in reserved rows
-  outside the plotted region. Reduce Motion stays immediate.
+  measured weights arrive. Keep scan status outside the plotted region;
+  hovered names and sizes remain accessible without a reserved detail row.
+  Reduce Motion stays immediate.
 - **Check:** `testTreemapKeepsTileGroupsWhenMeasuredSizesCross` fails with the
   prior weight-based grouping. `testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross`
   covers the 80-tile and 24-segment live cutoffs plus final selection of a

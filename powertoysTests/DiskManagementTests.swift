@@ -1,4 +1,5 @@
 import XCTest
+import Darwin
 @testable import powertoys
 
 final class DiskManagementTests: XCTestCase {
@@ -34,6 +35,17 @@ final class DiskManagementTests: XCTestCase {
                 return XCTFail("Expected the write lock to reject the request before diskutil")
             }
         }
+    }
+
+    func testBlockedEjectParsesProcessesAndRejectsProtectedQuit() {
+        let parsed = DiskManagement.parseLsofProcesses("p123\ncEditor\nf1\np456\ncFinder\nf2\n")
+        XCTAssertEqual(parsed.map(\.0), [123, 456])
+        XCTAssertEqual(parsed.map(\.1), ["Editor", "Finder"])
+        let protected = DiskEjectBlocker(pid: 456, name: "Finder", started: 1, userID: geteuid())
+        XCTAssertFalse(protected.canQuit)
+        let request = DiskRequest(disk: card, partition: nil, action: .eject,
+                                  name: "", format: "", scheme: "", size: "")
+        XCTAssertThrowsError(try DiskManagement.quitBlockersAndEject([protected], request: request))
     }
 
     @MainActor func testInventorySelectsFirstDiskAndClearsRemovedTargets() {

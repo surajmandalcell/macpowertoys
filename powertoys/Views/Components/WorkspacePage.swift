@@ -3,17 +3,20 @@ import SwiftUI
 struct WorkspacePage<Content: View, Actions: View>: View {
     let title: String
     let subtitle: String?
+    private let fillsAvailableHeight: Bool
     private let actions: Actions
     private let content: Content
 
     init(
         _ title: String,
         subtitle: String? = nil,
+        fillsAvailableHeight: Bool = false,
         @ViewBuilder actions: () -> Actions,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.subtitle = subtitle
+        self.fillsAvailableHeight = fillsAvailableHeight
         self.actions = actions()
         self.content = content()
     }
@@ -49,16 +52,24 @@ struct WorkspacePage<Content: View, Actions: View>: View {
 
             QuietDivider()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
-                    content
+            if fillsAvailableHeight {
+                content
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+                        content
+                    }
+                    .padding(.horizontal, UtilityLayout.horizontalInset)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, UtilityLayout.horizontalInset)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .thinScrollIndicators()
             }
-            .thinScrollIndicators()
         }
     }
 }

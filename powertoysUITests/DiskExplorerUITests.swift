@@ -12,7 +12,11 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(window.descendants(matching: .any)["diskExplorer.scan"].waitForExistence(timeout: 10))
         attach(window.screenshot(), named: "Diskman Normal Launch")
 
-        window.buttons["Manage Disks"].click()
+        let firstDisk = window.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "diskman.disk."
+        )).firstMatch
+        XCTAssertTrue(firstDisk.waitForExistence(timeout: 10))
+        firstDisk.click()
         XCTAssertTrue(window.staticTexts["Modify"].waitForExistence(timeout: 10))
         XCTAssertFalse(window.staticTexts.matching(NSPredicate(
             format: "label CONTAINS[c] 'chart updates live'"
@@ -67,7 +71,16 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         let diskRow = window.buttons["diskman.disk.disk91"]
         XCTAssertTrue(diskRow.waitForExistence(timeout: 10))
-        window.buttons["Manage Disks"].click()
+        diskRow.click()
+        let eject = window.buttons["diskman.eject.disk91"]
+        XCTAssertTrue(eject.isEnabled)
+        eject.click()
+        XCTAssertTrue(app.staticTexts["Disk is in use"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Example Editor"].exists)
+        XCTAssertFalse(app.buttons["diskman.quitAndEject"].isEnabled)
+        XCTAssertFalse(app.buttons["diskman.forceQuitAndEject"].isEnabled)
+        attach(app.screenshot(), named: "Diskman Blocked Eject Preview")
+        app.buttons["Cancel"].click()
         let diskMapTitle = window.staticTexts["DISK MAP"]
         XCTAssertTrue(diskMapTitle.waitForExistence(timeout: 20))
         XCTAssertLessThan(diskRow.frame.maxX, diskMapTitle.frame.minX)
@@ -150,18 +163,13 @@ final class DiskExplorerUITests: XCTestCase {
         let treemap = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.treemap").firstMatch
         XCTAssertTrue(treemap.waitForExistence(timeout: 10))
-        let treemapDetails = window.descendants(matching: .any)["diskExplorer.treemapDetails"]
-        XCTAssertTrue(treemapDetails.exists)
-        XCTAssertGreaterThanOrEqual(treemapDetails.frame.minY, treemap.frame.maxY - 2)
-        XCTAssertEqual(treemapDetails.label, "Point to a block to inspect it")
+        XCTAssertFalse(window.staticTexts["Point to a block to inspect it"].exists)
         let currentFolder = treemap.label
         let tile = treemap.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
         tile.hover()
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label != %@", "Point to a block to inspect it"),
-            object: treemapDetails
-        )], timeout: 5), .completed)
-        XCTAssertNotNil(treemapDetails.label.range(of: #", [0-9]"#, options: .regularExpression))
+        let hoverDetail = window.descendants(matching: .any)["diskExplorer.hoverDetail"]
+        XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
+        XCTAssertNotNil(hoverDetail.label.range(of: #"[0-9]"#, options: .regularExpression))
         attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
         let drilledFolder = XCTNSPredicateExpectation(
@@ -172,16 +180,10 @@ final class DiskExplorerUITests: XCTestCase {
         let rings = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.rings").firstMatch
         XCTAssertTrue(rings.waitForExistence(timeout: 5))
-        let ringDetails = window.descendants(matching: .any)["diskExplorer.ringDetails"]
-        XCTAssertTrue(ringDetails.exists)
-        XCTAssertGreaterThanOrEqual(ringDetails.frame.minY, rings.frame.maxY - 2)
-        XCTAssertEqual(ringDetails.label, "Point to a ring to inspect it")
+        XCTAssertFalse(window.staticTexts["Point to a ring to inspect it"].exists)
         rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label != %@", "Point to a ring to inspect it"),
-            object: ringDetails
-        )], timeout: 5), .completed)
-        XCTAssertNotNil(ringDetails.label.range(of: #", [0-9]"#, options: .regularExpression))
+        XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
+        XCTAssertNotNil(hoverDetail.label.range(of: #"[0-9]"#, options: .regularExpression))
         attach(window.screenshot(), named: "Diskman Ring Hover")
     }
 

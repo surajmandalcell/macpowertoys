@@ -1,5 +1,12 @@
 import SwiftUI
 
+struct BlockedDiskEject: Identifiable {
+    let disk: ManagedDisk
+    let blockers: [DiskEjectBlocker]
+    let reason: String
+    var id: String { disk.id }
+}
+
 @Observable
 @MainActor
 final class DiskManagementModel {
@@ -7,6 +14,7 @@ final class DiskManagementModel {
     private(set) var isBusy = false
     private(set) var message: String?
     private(set) var error: String?
+    var blockedEject: BlockedDiskEject?
     var selectedDiskID: String?
     var selectedPartitionID: String?
     var lockRevision = 0
@@ -80,6 +88,34 @@ final class DiskManagementModel {
                 try DiskManagement.inventory()
             }).value {
                 updateDisks(current)
+            }
+        }
+        isBusy = false
+    }
+
+    func eject(_ disk: ManagedDisk, closing blockers: [DiskEjectBlocker] = [], force: Bool = false) async {
+        guard !isBusy, !isPreview else { return }
+        let request = DiskRequest(disk: disk, partition: nil, action: .eject,
+                                  name: "", format: "", scheme: "", size: "")
+        isBusy = true
+        error = nil
+        message = nil
+        blockedEject = nil
+        do {
+            message = try await Task.detached(priority: .userInitiated) {
+                blockers.isEmpty ? try DiskManagement.run(request) :
+                    try DiskManagement.quitBlockersAndEject(blockers, request: request, force: force)
+            }.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            updateDisks(try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value)
+        } catch {
+            let reason = error.localizedDescription
+            let active = await Task.detached(priority: .utility) {
+                DiskManagement.ejectBlockers(on: disk)
+            }.value
+            if !active.isEmpty && !isLocked(disk) {
+                blockedEject = BlockedDiskEject(disk: disk, blockers: active, reason: reason)
+            } else {
+                self.error = reason
             }
         }
         isBusy = false
@@ -737,7 +773,11 @@ struct DiskModifyView: View {
                     pending = nil
                     proposedAction = nil
                     Task {
-                        await model.run(request)
+                        if request.action == .eject {
+                            await model.eject(request.disk)
+                        } else {
+                            await model.run(request)
+                        }
                         if !model.disks.flatMap(\.partitions).contains(where: { $0.id == partitionID }) {
                             partitionID = nil
                         }
