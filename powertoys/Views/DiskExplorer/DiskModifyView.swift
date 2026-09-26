@@ -451,6 +451,8 @@ struct DiskModifyView: View {
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
         .disabled(reason != nil)
         .help(reason ?? actionHint(action))
+        .accessibilityLabel(action.rawValue)
+        .accessibilityHint(reason ?? actionHint(action))
         .accessibilityIdentifier("diskman.action.\(action.id)")
     }
 
