@@ -7,7 +7,14 @@
 - [x] Align the empty-search action with its message and put expanded form controls on one trailing edge.
 - [ ] Inspect collapsed, expanded, search, scrolling, light, and dark states in the final signed build.
 
-Release app and test bundles compile. The signed app and helper at `8d1b533` are installed from a clean tree, and the `/Applications` process is running. Native Computer access to MacPowerToys was denied, so the hosted interaction and screenshot check is still pending.
+Release app and test bundles compile. Hosted run `36258649753` captured
+collapsed, Mic Lock, Finder, pinned Dock, Power, and search states; those light
+appearance screenshots were reviewed. The new empty-search step stopped because
+XCTest could not address the search field's native clear button. The test now
+replaces the query with Command-A and also captures dark appearance. Empty-search
+and dark screenshots still need a hosted rerun. The installed app is stamped
+`8d1b533`; reinstall from the final clean commit remains due. Native Computer
+access to MacPowerToys was denied.
 
 ## Tool icon, 2026-09-26
 
