@@ -22,8 +22,15 @@ final class PortmanUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
+        guard app.buttons["portman.page.Servers"].waitForExistence(timeout: 20) else {
+            XCTFail("Portman did not present after the cold launch")
+            return
+        }
         let row = app.buttons["portman.local.7414"]
-        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        guard row.waitForExistence(timeout: 10) else {
+            XCTFail("Portman opened but did not discover the test listener")
+            return
+        }
         let bar = app.descendants(matching: .any)["portman.memoryBreakdown"]
         XCTAssertTrue(bar.exists)
         XCTAssertEqual(row.frame.minX, bar.frame.minX, accuracy: 1)
