@@ -121,6 +121,22 @@
   and back. Verify scan cancellation and the monitoring interval, and inspect
   the full-width form and Clear scan control in the 400pt render.
 
+## Portman Forward Scan Progress
+
+- **Symptom:** During an SSH scan, the spinner floated above its message while
+  Forward already claimed it was listening on the host and exposed empty
+  result controls.
+- **Cause:** The panel set `discoveredHost` before the SSH request completed,
+  and the labeled native progress view used a vertical layout. Starting a new
+  scan also left the previous result in the shared service until it finished.
+- **Invariant:** Show one inline progress row with a Cancel action. Clear the
+  previous result at scan start; set the discovered host only after a successful
+  response for the current host and page. A failed or canceled scan must not
+  show a completed result. Hide the unrelated empty-forwards card while loading.
+- **Check:** Capture Forward loading in light and dark appearances on a hosted
+  Mac. Exercise success, empty, invalid-host failure, and Cancel. Confirm that
+  changing host or leaving Forward clears pending discovery.
+
 ## Portman Dense Menu-Bar Rows And SSH Host Context
 
 - **Symptom:** After the first refinement, server hover still sat too far inside
