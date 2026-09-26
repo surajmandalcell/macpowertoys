@@ -4,14 +4,18 @@ import SwiftUI
 
 struct PortmanPanelView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let selectedPageKey = "portman.selectedPage"
 
     enum Page: String, CaseIterable {
         case local = "Servers", forward = "Forward", settings = "Settings"
     }
 
-    init(initialPage: Page = .local, initialPortID: String? = nil,
+    init(initialPage: Page? = nil, initialPortID: String? = nil,
          initialCleanupProcessID: String? = nil) {
-        _page = State(initialValue: initialPage)
+        let savedPage = UserDefaults.standard.string(forKey: Self.selectedPageKey)
+            .flatMap(Page.init(rawValue:)) ?? .local
+        _page = State(initialValue: initialPage
+                      ?? (initialPortID != nil || initialCleanupProcessID != nil ? .local : savedPage))
         _selectedPortID = State(initialValue: initialPortID)
         _cleanupMode = State(initialValue: initialCleanupProcessID != nil)
         _selectedCleanupProcesses = State(initialValue: Set(initialCleanupProcessID.map { [$0] } ?? []))
@@ -19,7 +23,7 @@ struct PortmanPanelView: View {
 
     @State private var service = PortmanService.shared
     @State private var page = Page.local
-    @State private var settingsContentHeight: CGFloat = 0
+    @State private var contentHeight: CGFloat = 0
     @State private var selectedPortID: String?
     @State private var host = ""
     @State private var aliases: [String] = []
@@ -75,21 +79,8 @@ struct PortmanPanelView: View {
     }
 
     private var panelHeight: CGFloat {
-        let target: CGFloat = switch page {
-        case .local:
-            selectedPort == nil ? (service.localPorts.isEmpty ? 300 : 276 + CGFloat(service.localPorts.count) * 56)
-                : 455 + (showingMore ? 110 : 0)
-                    + (showingProcesses ? CGFloat((selectedPort?.processes.count ?? 0) + 1) * 28 : 0)
-        case .forward:
-            350 + CGFloat(max(0, service.tunnels.count - 1)) * 48
-                + (!host.isEmpty && discoveredHost == host
-                   ? 62 + CGFloat(service.remotePorts.count) * 42
-                        + (expandedRemotePort == nil ? 0 : 48) : 0)
-        case .settings:
-            settingsContentHeight > 0 ? settingsContentHeight + 90 : 620
-        }
         let available = (NSScreen.main?.visibleFrame.height ?? 900) * 0.72
-        return min(available, min(650, max(page == .settings ? 260 : 300, target)))
+        return min(available, min(650, max(page == .settings ? 260 : 300, contentHeight + 66)))
     }
 
     var body: some View {
@@ -150,17 +141,16 @@ struct PortmanPanelView: View {
                         if let selectedPort { localDetail(selectedPort) }
                         else { localOverview }
                     case .forward: forwardingPage
-                    case .settings:
-                        PortmanSettingsView()
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                                settingsContentHeight = $0
-                            }
+                    case .settings: PortmanSettingsView()
                     }
                 }
                 .id(page)
                 .padding(.horizontal, page == .local && selectedPort == nil ? 10 : 18)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                    contentHeight = $0
+                }
             }
             .thinScrollIndicators()
         }
@@ -191,6 +181,7 @@ struct PortmanPanelView: View {
         }
         .onChange(of: panelHeight) { PortmanMenuController.shared.setHeight(panelHeight) }
         .onChange(of: page) {
+            UserDefaults.standard.set(page.rawValue, forKey: Self.selectedPageKey)
             if page == .local && !panelOwnsMonitoring {
                 service.beginMonitoring()
                 panelOwnsMonitoring = true
@@ -1154,6 +1145,7 @@ struct PortmanPanelView: View {
                 Button { openLocal(tunnel.localPort) } label: {
                     Image(systemName: "link")
                 }
+                .controlSize(.small)
                 .help("Open localhost:\(String(tunnel.localPort))")
                 .accessibilityLabel("Open tunnel on port \(String(tunnel.localPort))")
             }

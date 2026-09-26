@@ -670,7 +670,8 @@ final class PortmanTests: XCTestCase {
         let panelHasListener = service.localPorts.contains { $0.pid == listener.pid && $0.port == port }
         XCTAssertTrue(panelHasListener)
         XCTAssertGreaterThanOrEqual(service.history[listener.id]?.count ?? 0, 2)
-        let host = NSHostingView(rootView: PortmanPanelView().environment(\.colorScheme, .dark))
+        let host = NSHostingView(rootView: PortmanPanelView(initialPage: .local)
+            .environment(\.colorScheme, .dark))
         host.appearance = NSAppearance(named: .darkAqua)
         host.frame = NSRect(x: 0, y: 0, width: 400, height: 500)
         host.layoutSubtreeIfNeeded()
