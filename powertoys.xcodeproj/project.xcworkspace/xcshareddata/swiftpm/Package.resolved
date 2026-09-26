@@ -1,15 +1,6 @@
 {
-  "originHash" : "5461c2ece8e382ffd4f41d8501efc9645bdaa56809e6b51efc4a75cd8443fcb8",
+  "originHash" : "e2b785a39d60da4d029d234b49b8ec469267c8b5deff57189d1e65b061e3279e",
   "pins" : [
-    {
-      "identity" : "ai-manager",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/surajmandalcell/ai-manager.git",
-      "state" : {
-        "revision" : "08de699a5247b190da363e3d0c71e22d956c50bd",
-        "version" : "3.2.1"
-      }
-    },
     {
       "identity" : "swift-asn1",
       "kind" : "remoteSourceControl",
@@ -26,6 +17,15 @@
       "state" : {
         "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
         "version" : "3.15.1"
+      }
+    },
+    {
+      "identity" : "switch",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/surajmandalcell/switch.git",
+      "state" : {
+        "revision" : "a8c398d8a41ec70a33ef60a8b5d5707015ada056",
+        "version" : "3.3.0"
       }
     }
   ],

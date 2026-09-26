@@ -790,10 +790,10 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/surajmandalcell/ai-manager.git";
+			repositoryURL = "https://github.com/surajmandalcell/switch.git";
 			requirement = {
 				kind = exactVersion;
-				version = 3.2.1;
+				version = 3.3.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
