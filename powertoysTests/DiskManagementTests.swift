@@ -96,4 +96,46 @@ final class DiskManagementTests: XCTestCase {
         )
         XCTAssertNotEqual(card.identity, replacement.identity)
     }
+
+    func testMergeOnlyTargetsTheNextDataPartitionAndStatesWhetherItErases() throws {
+        let first = ManagedPartition(id: "disk10s2", name: "Keep", content: "Apple_HFS",
+                                     size: 4_000_000_000, mountPoint: "/Volumes/Keep", uuid: "keep",
+                                     fileSystem: "Mac OS Extended (Journaled)")
+        let next = ManagedPartition(id: "disk10s3", name: "Remove", content: "Microsoft Basic Data",
+                                    size: 4_000_000_000, mountPoint: "/Volumes/Remove", uuid: "remove",
+                                    fileSystem: "ExFAT")
+        let disk = ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
+                               scheme: card.scheme, devicePath: card.devicePath, writable: true,
+                               manageable: true, mediaRegistryID: card.mediaRegistryID,
+                               partitions: [card.partitions[0], first, next])
+        let preserve = DiskRequest(disk: disk, partition: first, action: .mergePartitions,
+                                   name: "Keep", format: "JHFS+", scheme: "", size: "")
+        XCTAssertEqual(try preserve.arguments(),
+                       ["mergePartitions", "JHFS+", "Keep", "disk10s2", "disk10s3"])
+
+        let exfatDisk = ManagedDisk(id: disk.id, name: disk.name, size: disk.size, bus: disk.bus,
+                                    scheme: disk.scheme, devicePath: disk.devicePath, writable: true,
+                                    manageable: true, mediaRegistryID: disk.mediaRegistryID,
+                                    partitions: [card.partitions[0], next,
+                                                 ManagedPartition(id: "disk10s4", name: "Third",
+                                                                  content: "Microsoft Basic Data", size: 2_000_000_000,
+                                                                  mountPoint: "/Volumes/Third", uuid: "third",
+                                                                  fileSystem: "ExFAT")])
+        let destructive = DiskRequest(disk: exfatDisk, partition: next, action: .mergePartitions,
+                                      name: "Combined", format: "ExFAT", scheme: "", size: "")
+        XCTAssertEqual(try destructive.arguments(),
+                       ["mergePartitions", "force", "ExFAT", "Combined", "disk10s3", "disk10s4"])
+        let efi = ManagedPartition(id: "disk10s1", name: "EFI", content: "EFI",
+                                   size: 209_715_200, mountPoint: nil, uuid: nil)
+        let efiDisk = ManagedDisk(id: disk.id, name: disk.name, size: disk.size, bus: disk.bus,
+                                  scheme: disk.scheme, devicePath: disk.devicePath, writable: true,
+                                  manageable: true, mediaRegistryID: disk.mediaRegistryID,
+                                  partitions: [efi, first, next])
+        XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
+                                              action: .mergePartitions, name: "EFI", format: "ExFAT",
+                                              scheme: "", size: "").arguments())
+        XCTAssertThrowsError(try DiskRequest(disk: exfatDisk, partition: exfatDisk.partitions[2],
+                                              action: .mergePartitions, name: "Last", format: "ExFAT",
+                                              scheme: "", size: "").arguments())
+    }
 }
