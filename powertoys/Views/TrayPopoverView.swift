@@ -1230,11 +1230,12 @@ struct SystemMonitorMenuPopoverView: View {
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Button("Open Window") { ToolActionRouter.shared.open(toolID: "system-monitor") }
-                    .controlSize(.small)
+                    .controlSize(.regular)
+                    .frame(minHeight: 28)
                     .accessibilityIdentifier("system-monitor.menu.open-window")
             }
             .padding(.horizontal, 16)
-            .frame(height: 42)
+            .frame(height: 46)
 
             ScrollView {
                 SystemMonitorTrayView(showsHeader: false)
@@ -1536,7 +1537,7 @@ struct SystemMonitorTrayView: View {
                     Spacer(minLength: 0)
                 }
                 Text(value)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: showsHeader ? 18 : 23, weight: .semibold))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -1546,13 +1547,13 @@ struct SystemMonitorTrayView: View {
                     .lineLimit(1)
             }
             .padding(.horizontal, 10)
-            .padding(.top, 6)
+            .padding(.top, showsHeader ? 6 : 10)
             Spacer(minLength: 0)
             SystemMonitorDitherSparkline(values: values, color: color, showsGuide: true)
-                .frame(height: 10)
+                .frame(height: showsHeader ? 10 : 20)
                 .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: showsHeader ? 66 : 96, alignment: .topLeading)
         .background(SystemMonitorPalette.surface(surface, radius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.12))

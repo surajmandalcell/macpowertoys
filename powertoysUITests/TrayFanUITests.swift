@@ -63,7 +63,7 @@ final class TrayFanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
-        app.launchEnvironment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] = "1"
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] = "separate"
         app.launch()
         defer { app.terminate() }
 

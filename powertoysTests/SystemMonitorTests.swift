@@ -611,7 +611,11 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu])
         XCTAssertEqual(settings.separateItems.map(\.metric), [.cpu])
         settings.setPlacement(.off, for: .cpu)
-        XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu])
+        XCTAssertFalse(settings.enabled)
+        XCTAssertTrue(settings.enabledItems.isEmpty)
+        settings.enabled = true
+        settings.normalize()
+        XCTAssertEqual(settings.enabledItems.map(\.metric), [.memory])
     }
 
     func testNoOpSettingsMutationProducesNoUpdate() throws {
