@@ -565,6 +565,19 @@
   blank content and another button; the old outline disappears. Click and edit
   a search field without losing its insertion point.
 
+## Shared Focus Effects
+
+- **Symptom:** Mismatched rectangular focus outlines remain in other workspaces
+  and menu-bar popups even after clearing the clicked window's first responder.
+- **Cause:** SwiftUI focus effects are controlled by the view environment and
+  may remain on descendants regardless of the AppKit click-time responder reset.
+- **Invariant:** The shared root view policy suppresses default SwiftUI focus
+  effects in every app window and menu-bar popup, including Portman. The native
+  search field suppresses its AppKit focus ring; controls remain keyboard
+  operable and text editing keeps its insertion point.
+- **Check:** Tab and click away in a workspace, compact applet, combined tray,
+  and Portman popup. No rectangular ring remains. Search still accepts text.
+
 ## Custom Selectable Interaction States
 
 - **Symptom:** A custom row, card, or tab looks inert when the pointer moves

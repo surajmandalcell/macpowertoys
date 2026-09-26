@@ -303,7 +303,7 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(grid.components(separatedBy: "metricCard(").count - 1, 8)
         XCTAssertTrue(grid.contains("title: \"GPU\""))
         XCTAssertTrue(grid.contains("title: \"Load · 1 min\""))
-        XCTAssertTrue(source.contains("SystemMonitorPalette.gradient(surface)"))
+        XCTAssertTrue(source.contains("SystemMonitorPalette.surface(surface)"))
         XCTAssertFalse(source.contains("WorkspacePage(\"Overview\", subtitle:"))
     }
 

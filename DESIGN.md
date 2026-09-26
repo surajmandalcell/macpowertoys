@@ -7,9 +7,7 @@ colors:
   hover-strong: "Color.primary.opacity(0.1)"    # filled buttons only
   pressed: "Color.primary.opacity(0.1)"
   pressed-strong: "Color.primary.opacity(0.18)" # filled buttons only
-  focus-ring: "Color.accentColor.opacity(0.85)"
   on-accent: "opaque black or white, chosen for >=4.5:1 contrast"
-  focus-ring-on-accent: "colors.on-accent"
   disabled-opacity: 0.38
   selection-light: "Color.accentColor.opacity(0.1)"
   sidebar-selection: "native selected-content background; emphasized while key, unemphasized while inactive"
@@ -109,8 +107,8 @@ motion:
 MacPowerToys is a dense, quiet, native-feeling macOS utility. It should read like a
 first-party Apple tool that a careful engineer polished: flat surfaces, one accent
 color doing all the talking, small type, generous alignment discipline, zero
-decoration for its own sake. Nothing bounces or glows. System Monitor has the
-scoped tinted-gradient treatment below; elsewhere, avoid UI gradients. When in
+decoration for its own sake. Nothing bounces. System Monitor has the
+scoped blurred-color treatment below; elsewhere, avoid decorative glows. When in
 doubt, remove chrome rather than add it.
 
 Every custom interactive control gives short feedback on hover, press, and
@@ -197,17 +195,17 @@ hex lives only in icon assets. This keeps light and dark mode free.
   press. Filled controls keep their accent base and add the primary interaction
   layer instead of changing hue.
 - Text and symbols on an accent fill use opaque black or white, whichever
-  reaches at least 4.5:1 contrast against the resolved accent. The inset focus
-  ring uses that same contrast-aware color and reaches at least 3:1 against the
-  fill. Never assume white is readable on a person-selected accent.
+  reaches at least 4.5:1 contrast against the resolved accent. Never assume
+  white is readable on a person-selected accent.
 - Selection-light is accent at 0.1 for selected content rows and inline choices.
   Sidebar navigation uses the native selected background and foreground.
   Branded sidebar artwork keeps its original colors in every selection state.
   Selection-strong is not used in the tray. Tray tabs and tab pills keep a
   quiet persistent selected surface of primary 0.10 or less with ordinary
   primary text, never an accent layer, accent text, or underline.
-- Keyboard focus uses the system focus effect except for the repaired compact
-  titlebar treatment defined below.
+- The shared SwiftUI root suppresses default rectangular focus effects in every
+  window and menu-bar popup. Custom interactive rows retain a quiet focused
+  fill, keyboard operation, and accessible names without an outline.
 - Cards: 0.03 for grids and subtle depth; 0.05 where softer contrast is wanted
   (detail sheets, logs).
 - Launcher and workspace content panes sit on
@@ -555,7 +553,7 @@ Existing workspaces fix the reference choices that general ranges leave open:
 System Monitor follows the owner's dark, bulkier utility-panel reference. Its
 dark sidebar and content pane use opaque near-black surfaces with a warm cast;
 the selected sidebar row uses a neutral gray fill. Overview and tray metric
-cards use colored gradients, clear edges, matching icon and graph hues, and
+cards use softly blurred color blooms, clear edges, matching icon and graph hues, and
 larger readings. The compact Fan control appears on the combined menu's global
 Home and Monitor Sensors, as a plain row with three visible presets and breathing
 room below it. It does not appear on other Monitor pages. Search is
@@ -676,16 +674,9 @@ fixed 420 / 480 / 560 wide; 250–600 high
   in the titlebar.
 - Each action is visually discrete and flat. Only the primary action may use an
   accent fill. Buttons and menus in this titlebar alone use the 6pt titlebar
-  radius. Every titlebar control suppresses the default focus effect, and
-  initial focus is routed away from controls so no launch-time or stale outline
-  appears. Drive the replacement ring from focus state, focus origin, and
-  key-window state rather than a one-shot key event. Whenever a titlebar
-  control holds non-pointer focus in the key window, draw a 1pt inset stroke at
-  the same 6pt radius: use `focus-ring` on a clear control and
-  `focus-ring-on-accent` on an accent-filled primary control. Hide it while the
-  window is not key, restore it if that still-focused control becomes key
-  again, and remove it when focus moves. Pointer focus alone does not draw it.
-  This custom ring replaces, rather than removes, visible keyboard focus.
+  radius. The shared root suppresses rectangular focus effects, and initial
+  focus stays off titlebar controls so no stale outline appears. Tab navigation
+  and activation remain available; clicking unrelated content clears focus.
 - Titlebar action labels use their scaled role while they fit the 24pt control
   and preserve the 12pt title/action spacer. As soon as either constraint fails,
   relocate the labeled action, menu, or switch into the first body group in
@@ -772,8 +763,7 @@ Reuse these instead of restyling per view (Views/Components/ + local patterns):
   icon.
 - **Compact titlebar control** — 24pt high, 6pt radius, hover 0.06, and no
   default focus effect. Buttons and menus share this label treatment; only the
-  primary action receives accent fill, and actual keyboard focus uses the 1pt
-  inset replacement ring from the compact-family rule.
+  primary action receives accent fill.
 - **Tab pill** - text 12pt medium, 10/5 padding, 6pt radius, and selected
   background 0.06 with ordinary primary text. There is no selected underline,
   accent text, or enclosing segmented-control tray. An unselected hover uses
@@ -1066,8 +1056,8 @@ same metaphor because macOS controls their tint.
   native sidebar selection, solid accent tray-tab selection, or the explicit
   Tab Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
 - **Never** use capsule buttons or baked icon effects. Capsules remain valid
-  only for progress tracks and documented state or count badges. UI gradients
-  are reserved for System Monitor's metric cards as specified above.
+  only for progress tracks and documented state or count badges. System Monitor
+  alone uses the blurred card blooms specified above.
 - **Never** add a second alignment gutter inside one container.
 - **Never** use `.formStyle(.grouped)` where its opaque insets break the shared
   edge. Prefer explicit section cards and labeled rows.
@@ -1082,11 +1072,10 @@ same metaphor because macOS controls their tint.
   At standard text size, adjacent search fields and selects inside compact body
   content are exactly 28pt high; accessibility sizing grows both to the same
   height. The family-defined sidebar search starts at its 32pt minimum.
-- Preserve visible keyboard focus for launcher, workspace, body, sheet, and
-  floating controls. Compact titlebar controls are the only default-focus-effect
-  exception and use their defined keyboard-only replacement ring. Clicking
-  outside the focused control releases stale focus, while clicks in text fields
-  preserve editing.
+- Keep launcher, workspace, body, sheet, and floating controls keyboard
+  operable. Suppress mismatched rectangular focus effects at the shared root;
+  custom rows use a quiet focused fill. Clicking outside the focused control
+  releases stale focus, while clicks in text fields preserve editing.
 - Interaction states use one recipe everywhere: rest uses the component base;
   hover adds 0.06 primary to an unfilled control or 0.1 to a filled control;
   press adds 0.1 primary to an unfilled control or 0.18 to a filled control;
