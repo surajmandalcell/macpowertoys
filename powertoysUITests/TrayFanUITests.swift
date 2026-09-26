@@ -71,7 +71,13 @@ final class TrayFanUITests: XCTestCase {
         )).firstMatch
         XCTAssertTrue(tray.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         tray.click()
-        app.buttons["tray.tab.system-monitor"].click()
+        let monitorTab = app.buttons["tray.tab.system-monitor"]
+        monitorTab.hover()
+        let hoverCapture = XCTAttachment(screenshot: app.screenshot())
+        hoverCapture.name = "Combined menu tab hover without outline"
+        hoverCapture.lifetime = .keepAlways
+        add(hoverCapture)
+        monitorTab.click()
 
         let home = app.buttons["system-monitor.tray.home"]
         XCTAssertTrue(home.waitForExistence(timeout: 10))
