@@ -111,6 +111,22 @@
   `testModifyLayoutInBothAppearances` captures a populated SD layout without
   launching it on the owner desktop. Actual writes stay on the identified SD.
 
+## Hosted Mac Has No Writable Physical Test Disk
+
+- **Symptom:** The hosted UI runner can open Modify, but its physical disk
+  inventory does not provide a removable device on which to inspect partition
+  selection and review controls.
+- **Cause:** Hosted Macs have no authorized 16 GB SD card, and attaching a
+  writable device to CI would make a UI navigation test destructive.
+- **Invariant:** Only Debug builds launched with `MACPOWERTOYS_UI_TEST=1` may
+  show a synthetic SD layout. Mark it as preview data and disable execution in
+  the review sheet. Normal launches use `diskutil` inventory; Release builds
+  exclude the fixture.
+- **Check:** Run `36216183313` passed normal launch and preview selection.
+  Its merge review capture shows both ExFAT partitions, the typed-device
+  field, and a disabled execution button. The authorized physical SD card was
+  exercised separately with `diskutil` and restored to ExFAT.
+
 ## Disk Repair Requests An Interactive Whole-Disk Prompt
 
 - **Symptom:** `diskutil repairDisk disk10` prints a question about erasing an
