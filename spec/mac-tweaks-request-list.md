@@ -2,10 +2,12 @@
 
 ## Inline controls and catalogue correction, 2026-09-26
 
-- [ ] Show only working Mac Tweaks controls and saved-value recovery in the app. Keep the rest of the 130-entry research catalogue in the compatibility document, not as placeholder cards or sidebar categories.
-- [ ] Use one consistent compact disclosure row for every visible setting. Open the working control inside its card, keep one card open at a time, and retain category and ranked search context.
+- [x] Show only working Mac Tweaks controls and saved-value recovery in the app. Keep the rest of the 130-entry research catalogue in the compatibility document, not as placeholder cards or sidebar categories.
+- [x] Use one consistent compact disclosure row for every visible setting. Open the working control inside its card, keep one card open at a time, and retain category and ranked search context.
 - [ ] Stop microphone control polling and input-level monitoring when Mic Lock is collapsed. Verify category switching and search do not stall.
 - [ ] Inspect collapsed, expanded, and search screenshots from the final build and correct any visible density or alignment defects.
+
+The app and UI test bundle compiled locally. Hosted run `36210967511` stopped before UI launch on an unrelated System Monitor tray compile error; the current shared HEAD includes its fix. Hosted interaction and screenshot checks remain open.
 
 ## Navigation and visual correction, 2026-09-26
 
