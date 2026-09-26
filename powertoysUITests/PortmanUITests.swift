@@ -211,10 +211,14 @@ final class PortmanUITests: XCTestCase {
         forward.click()
         XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5))
 
-        app.terminate()
-        app.launch()
+        let statusItem = app.menuBars.statusItems["portman.statusItem"]
+        XCTAssertTrue(statusItem.waitForExistence(timeout: 5))
+        statusItem.click()
+        XCTAssertFalse(app.staticTexts["SSH port forwarding"].exists)
+        statusItem.click()
         XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 20),
-                      "Portman returned to Servers after recreating its panel")
+                      "Portman returned to Servers after reopening its panel")
+        attach(app.screenshot(), named: "Portman Forward after reopening")
         app.buttons["portman.page.Servers"].click()
     }
 
