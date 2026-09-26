@@ -25,6 +25,7 @@ enum DiskResultTab: String, CaseIterable, Identifiable {
 
 struct DiskExplorerWindowView: View {
     @State private var model: DiskExplorerModel
+    @State private var diskManagement: DiskManagementModel
     private let scansOnAppear: Bool
     @State private var page = DiskExplorerPage.explore
     @State private var search = ""
@@ -52,6 +53,16 @@ struct DiskExplorerWindowView: View {
     @MainActor init(model: DiskExplorerModel, scansOnAppear: Bool = true,
                     initialTab: DiskResultTab = .visualization) {
         _model = State(initialValue: model)
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1" {
+            _diskManagement = State(initialValue: DiskManagementModel(
+                disks: [Self.modifyPreviewDisk], selectedPartitionID: "disk91s2", isPreview: true))
+        } else {
+            _diskManagement = State(initialValue: DiskManagementModel())
+        }
+        #else
+        _diskManagement = State(initialValue: DiskManagementModel())
+        #endif
         _resultTab = State(initialValue: initialTab)
         self.scansOnAppear = scansOnAppear
     }
@@ -119,8 +130,16 @@ struct DiskExplorerWindowView: View {
                 }
                 Text("MODIFY").utilitySectionHeader().padding(.leading, 8).padding(.top, 15)
                 SidebarRow(icon: "externaldrive.badge.plus", title: "Manage Disks",
-                           isSelected: page == .modify) {
+                           isSelected: page == .modify && diskManagement.selectedDiskID == nil) {
                     page = .modify
+                }
+                ForEach(diskManagement.disks) { disk in
+                    modifyDiskRow(disk)
+                }
+                if page == .modify && diskManagement.disks.isEmpty {
+                    Text(diskManagement.isBusy ? "Reading disks…" : "No physical disks")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .padding(.leading, 36).padding(.vertical, 6)
                 }
                 Spacer()
                 QuietDivider().padding(.vertical, 5)
@@ -137,19 +156,54 @@ struct DiskExplorerWindowView: View {
         }
     }
 
+    private func modifyDiskRow(_ disk: ManagedDisk) -> some View {
+        let locked = diskManagement.isLocked(disk)
+        return Button {
+            withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                diskManagement.select(disk)
+                page = .modify
+            }
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: disk.bus == "Secure Digital" ? "sdcard" : "externaldrive")
+                    .font(.system(size: 15)).frame(width: 20)
+                    .foregroundStyle(diskManagement.selectedDiskID == disk.id && page == .modify ?
+                                     Color.accentColor : Color.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(disk.name).lineLimit(1)
+                    Text("\(disk.id) · \(ByteCountFormatter.string(fromByteCount: disk.size, countStyle: .file))")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                if locked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+            }
+            .font(.system(size: 11, weight: .medium))
+            .padding(.horizontal, 8).frame(minHeight: 42)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
+        .background(diskManagement.selectedDiskID == disk.id && page == .modify ?
+                    Color.accentColor.opacity(0.12) : .clear,
+                    in: RoundedRectangle(cornerRadius: 8))
+        .contextMenu {
+            Button(locked ? "Unlock Disk" : "Lock Disk", systemImage: locked ? "lock.open" : "lock.fill") {
+                diskManagement.setLocked(!locked, for: disk)
+            }
+            .disabled(diskManagement.isBusy || diskManagement.isPreview)
+        }
+        .accessibilityLabel("\(disk.name), /dev/\(disk.id), \(locked ? "locked" : "unlocked")")
+        .accessibilityAddTraits(diskManagement.selectedDiskID == disk.id && page == .modify ? .isSelected : [])
+        .accessibilityIdentifier("diskman.disk.\(disk.id)")
+    }
+
     @ViewBuilder private var content: some View {
         switch page {
         case .explore: explorerPage
         case .modify:
-            #if DEBUG
-            if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1" {
-                DiskModifyView(previewDisks: [Self.modifyPreviewDisk], previewPartitionID: "disk91s2")
-            } else {
-                DiskModifyView()
-            }
-            #else
-            DiskModifyView()
-            #endif
+            DiskModifyView(model: diskManagement)
         case .settings:
             WorkspacePage("Settings") {
                 DiskExplorerSettingsView(unreadableCount: model.result?.unreadableCount)

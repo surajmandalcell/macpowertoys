@@ -66,14 +66,25 @@ final class DiskExplorerUITests: XCTestCase {
         let window = app.windows["Diskman"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         window.buttons["Manage Disks"].click()
-        XCTAssertTrue(window.buttons["diskman.disk.disk91"].waitForExistence(timeout: 10))
-        XCTAssertTrue(window.staticTexts["DISK MAP"].waitForExistence(timeout: 20))
+        let diskRow = window.buttons["diskman.disk.disk91"]
+        XCTAssertTrue(diskRow.waitForExistence(timeout: 10))
+        let diskMapTitle = window.staticTexts["DISK MAP"]
+        XCTAssertTrue(diskMapTitle.waitForExistence(timeout: 20))
+        XCTAssertLessThan(diskRow.frame.maxX, diskMapTitle.frame.minX)
+        XCTAssertTrue(window.buttons["diskman.lockDisk"].exists)
         XCTAssertTrue(window.staticTexts["PARTITION & CAPACITY"].exists)
         XCTAssertTrue(window.staticTexts["VOLUMES & FORMATS"].exists)
         XCTAssertFalse(window.buttons["diskman.action.Resize partition"].isEnabled)
         XCTAssertTrue(window.buttons["diskman.action.Delete partition"].isEnabled)
+        XCTAssertFalse(window.buttons["diskman.action.Erase disk"].isEnabled)
         let merge = window.buttons["diskman.action.Merge with next"]
         XCTAssertTrue(merge.isEnabled)
+        let firstRow = ["Add partition", "Resize partition", "Merge with next"].map {
+            window.buttons["diskman.action.\($0)"].frame
+        }
+        XCTAssertEqual(firstRow[0].minY, firstRow[1].minY, accuracy: 1)
+        XCTAssertEqual(firstRow[1].minY, firstRow[2].minY, accuracy: 1)
+        XCTAssertEqual(firstRow[0].width, firstRow[2].width, accuracy: 1)
         attach(window.screenshot(), named: "Diskman Modify Actions")
         merge.click()
         app.buttons["diskman.reviewAction"].click()
@@ -94,8 +105,12 @@ final class DiskExplorerUITests: XCTestCase {
         let wholeDisk = window.descendants(matching: .any)["diskman.wholeDisk"]
         XCTAssertTrue(wholeDisk.exists)
         wholeDisk.click()
-        XCTAssertFalse(wholeDisk.exists)
+        XCTAssertTrue(wholeDisk.exists)
         XCTAssertEqual(selectedTarget.label, "Selected whole disk")
+        XCTAssertTrue(window.buttons["diskman.action.Erase disk"].isEnabled)
+        window.buttons["diskman.partition.disk91s1"].click()
+        XCTAssertTrue(window.descendants(matching: .any)["diskman.protectedEFI"].exists)
+        XCTAssertFalse(window.buttons["diskman.action.Delete partition"].isEnabled)
     }
 
     @MainActor func testScanControlsAndResultTabs() throws {
