@@ -16,6 +16,7 @@ struct NativeSearchField: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSSearchField {
         let field = NSSearchField()
+        field.focusRingType = .none
         field.placeholderString = placeholder
         field.controlSize = .small
         field.delegate = context.coordinator
