@@ -371,11 +371,17 @@ struct DiskModifyView: View {
                         .font(.system(size: 11))
                 }
             }
-            if let partition, partition.fileSystem == "ExFAT" {
-                Label("ExFAT cannot be resized in place by macOS. A merge erases both selected partitions.",
+            if let partition, let next = disk.nextPhysicalPartition(after: partition.id),
+               unavailableReason(for: .mergePartitions, on: disk) == nil {
+                Label(partition.fileSystem == "ExFAT"
+                      ? "Merge with \(next.name) erases both volumes. macOS cannot resize ExFAT in place."
+                      : "Merge with \(next.name) keeps this Journaled HFS+ volume and erases \(next.name).",
                       systemImage: "info.circle")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            } else if partition?.fileSystem == "ExFAT" {
+                Label("macOS cannot resize ExFAT in place.", systemImage: "info.circle")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             actionGroup("PARTITION & CAPACITY", actions: [.addPartition, .resizePartition, .mergePartitions,
                                                            .deletePartition, .partitionDisk, .resizeAPFSContainer], disk: disk)
