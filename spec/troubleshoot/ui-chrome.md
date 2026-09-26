@@ -124,24 +124,29 @@
 
 - **Symptom:** The server hover surface stops inside the memory bar's edges,
   the footer leaves extra height, the underline arrives from an unexpected
-  direction, and Alerts takes a tab that the owner does not use.
+  direction, and Alerts takes a tab that the owner does not use. Replacing the
+  travelling underline with an instant opacity change removed all tab motion.
 - **Cause:** Each row added six points of horizontal padding inside the
   overview gutter, rows and footer used the overview's loose section spacing,
-  and the underline animated a conditional positioned rectangle. The alert
-  tab also retained notification work and a chart threshold.
+  and the underline animated a conditional positioned rectangle. The fixed
+  replacement omitted an animation modifier. The alert tab also retained
+  notification work and a chart threshold.
 - **Invariant:** The memory bar and server hover surfaces share the same outer
   edges, with padding inside each row for its text. The compact footer contains
   server count, CPU, Sort by Port/Memory/Name/CPU, and Clean up. Port sorts
   ascending by default; resource sorts descend. Servers, Forward, and Settings
-  are equal-width tabs whose underline fades in place and respects Reduce
-  Motion. Settings uses the shared native small search field to filter
+  are equal-width tabs whose fixed underlines and label emphasis fade in place
+  over the standard 0.16-second content duration and respect Reduce Motion.
+  Settings uses the shared native small search field to filter
   individual controls. No Portman alert page, notifications, tray tint, or
   chart threshold remain; automatic cleanup still excludes high-usage servers.
 - **Check:** Compile locally without launching XCTest. On a hosted Mac, inspect
   a four-server panel, compare row and bar frames, open Sort by, select Memory,
-  switch tabs at their blank edges, search for Scan in Settings, and confirm
-  unrelated controls disappear. Inspect the final signed installed stamp before
-  a background launch on the owner's Mac.
+  switch Servers → Forward → Settings → Servers at their blank edges, and verify
+  the active underline and label fade at each fixed tab position without
+  travelling from an edge. With Reduce Motion, selection changes immediately.
+  Search for Scan in Settings and confirm unrelated controls disappear. Inspect
+  the final signed installed stamp before a background launch on the owner's Mac.
 
 ## Portman Cleanup Number Editing
 
