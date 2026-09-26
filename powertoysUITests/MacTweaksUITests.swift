@@ -60,11 +60,32 @@ final class MacTweaksUITests: XCTestCase {
         XCTAssertTrue(window.buttons["mac-tweaks.apply.screenshots.format"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Mac Tweaks Search Expanded")
 
-        window.buttons["Clear search"].firstMatch.click()
         search.click()
+        app.typeKey("a", modifierFlags: .command)
         search.typeText("search ")
         XCTAssertTrue(window.staticTexts["No matches for “search”"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Mac Tweaks Empty Search")
+    }
+
+    @MainActor func testDarkExamplesAndEmptySearch() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-AppleInterfaceStyle", "Dark",
+                               "--open", "mac-tweaks"]
+        app.launch()
+        defer { app.terminate() }
+
+        let window = app.windows["Mac Tweaks"]
+        XCTAssertTrue(window.waitForExistence(timeout: 30))
+        window.buttons["mac-tweaks.card.mic-lock"].click()
+        XCTAssertTrue(window.descendants(matching: .any)
+            .matching(identifier: "mac-tweaks.example.mic-lock").firstMatch.waitForExistence(timeout: 5))
+        attach(window.screenshot(), named: "Mac Tweaks Dark Example")
+
+        let search = window.textFields.firstMatch
+        search.click()
+        search.typeText("search ")
+        XCTAssertTrue(window.staticTexts["No matches for “search”"].waitForExistence(timeout: 5))
+        attach(window.screenshot(), named: "Mac Tweaks Dark Empty Search")
     }
 
     private func attach(_ screenshot: XCUIScreenshot, named name: String) {
