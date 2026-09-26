@@ -1457,7 +1457,7 @@ struct SystemMonitorTrayView: View {
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SystemMonitorPalette.gradient(tint), in: RoundedRectangle(cornerRadius: 10))
+        .background(SystemMonitorPalette.surface(tint, radius: 10))
         .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(tint.opacity(0.25)) }
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
@@ -1529,7 +1529,7 @@ struct SystemMonitorTrayView: View {
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
-        .background(SystemMonitorPalette.gradient(surface), in: RoundedRectangle(cornerRadius: 10))
+        .background(SystemMonitorPalette.surface(surface, radius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10).strokeBorder(surface.opacity(0.25))
         }
@@ -1646,11 +1646,10 @@ private struct TrayMetricSparkline: View {
             points.forEach { fill.addLine(to: $0) }
             fill.addLine(to: CGPoint(x: size.width, y: size.height))
             fill.closeSubpath()
-            context.fill(fill, with: .linearGradient(
-                Gradient(colors: [color.opacity(0.16), color.opacity(0.015)]),
-                startPoint: .zero,
-                endPoint: CGPoint(x: 0, y: size.height)
-            ))
+            context.drawLayer { glow in
+                glow.addFilter(.blur(radius: 4))
+                glow.fill(fill, with: .color(color.opacity(0.32)))
+            }
             var line = Path()
             line.addLines(points)
             context.stroke(line, with: .color(color.opacity(0.46)), lineWidth: 1)
