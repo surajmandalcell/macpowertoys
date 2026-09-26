@@ -1143,7 +1143,7 @@ struct PortmanPanelView: View {
             Spacer(minLength: 4)
             if case .running = tunnel.state {
                 Button { openLocal(tunnel.localPort) } label: {
-                    Image(systemName: "link").frame(width: 20)
+                    Image(systemName: "link").frame(width: 28)
                 }
                 .controlSize(.small)
                 .help("Open localhost:\(String(tunnel.localPort))")
@@ -1165,7 +1165,9 @@ struct PortmanPanelView: View {
                 }
                 .controlSize(.small)
             }
-            Button("Stop") { service.stopTunnel(tunnel.id) }
+            Button { service.stopTunnel(tunnel.id) } label: {
+                Text("Stop").frame(width: 28)
+            }
                 .controlSize(.small)
         }
         .frame(minHeight: 36)
