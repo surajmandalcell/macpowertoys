@@ -647,16 +647,12 @@ struct SwitchTrayView: View {
                             Task { await model.makeDefault(account.id) }
                         } label: {
                             HStack(spacing: 10) {
-                                Image(systemName: account.identity.providerID == .codex
-                                      ? "chevron.left.forwardslash.chevron.right" : "bolt.fill")
-                                    .font(.system(size: 13))
-                                    .frame(width: 22)
-                                    .foregroundStyle(.secondary)
+                                SwitchProviderIcon(providerID: account.identity.providerID, size: 22)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
                                         .font(.system(size: 12, weight: .medium))
                                         .lineLimit(1)
-                                    Text(account.identity.providerID == .codex ? "Codex CLI" : "Grok Build")
+                                    Text(account.identity.providerID.displayName)
                                         .font(.system(size: 10))
                                         .foregroundStyle(.secondary)
                                 }
