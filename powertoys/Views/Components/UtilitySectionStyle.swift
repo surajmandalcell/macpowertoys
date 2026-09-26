@@ -129,6 +129,7 @@ struct UtilityInteractionButtonStyle: ButtonStyle {
 
     private struct Body<Label: View>: View {
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var isHovering = false
 
@@ -155,7 +156,7 @@ struct UtilityInteractionButtonStyle: ButtonStyle {
         private var highlightOpacity: Double {
             UtilityInteractionButtonStyle.highlightOpacity(
                 isEnabled: isEnabled,
-                isHovering: isHovering,
+                isHovering: isHovering || isFocused,
                 isPressed: isPressed
             )
         }
@@ -257,7 +258,7 @@ private struct UtilityMotionPolicyModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.transaction { transaction in
+        content.focusEffectDisabled().transaction { transaction in
             guard reduceMotion else { return }
             transaction.animation = nil
             transaction.disablesAnimations = true
