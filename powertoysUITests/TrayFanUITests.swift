@@ -14,8 +14,10 @@ final class TrayFanUITests: XCTestCase {
         defer { app.terminate() }
 
         app.activate()
-        let tray = app.menuBars.statusItems["MenuBarIcon"]
-        XCTAssertTrue(tray.waitForExistence(timeout: 10))
+        let tray = app.menuBars.statusItems.matching(NSPredicate(
+            format: "identifier == %@ OR label == %@", "MenuBarIcon", "MacPowerToys"
+        )).firstMatch
+        XCTAssertTrue(tray.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         tray.click()
         app.buttons["tray.tab.home"].click()
         XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
@@ -64,8 +66,10 @@ final class TrayFanUITests: XCTestCase {
         defer { app.terminate() }
 
         app.activate()
-        let tray = app.menuBars.statusItems["MenuBarIcon"]
-        XCTAssertTrue(tray.waitForExistence(timeout: 10))
+        let tray = app.menuBars.statusItems.matching(NSPredicate(
+            format: "identifier == %@ OR label == %@", "MenuBarIcon", "MacPowerToys"
+        )).firstMatch
+        XCTAssertTrue(tray.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         tray.click()
         app.buttons["tray.tab.system-monitor"].click()
 

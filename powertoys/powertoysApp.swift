@@ -221,6 +221,7 @@ struct MacPowerToysApp: App {
                 .renderingMode(.template)
                 .frame(width: 14, height: 14)
                 .accessibilityLabel("MacPowerToys")
+                .accessibilityIdentifier("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
     }
