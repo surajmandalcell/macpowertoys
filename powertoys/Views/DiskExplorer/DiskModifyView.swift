@@ -2,13 +2,40 @@ import SwiftUI
 
 @Observable
 @MainActor
-private final class DiskManagementModel {
+final class DiskManagementModel {
     private(set) var disks: [ManagedDisk] = []
     private(set) var isBusy = false
     private(set) var message: String?
     private(set) var error: String?
+    var selectedDiskID: String?
+    var selectedPartitionID: String?
+    var lockRevision = 0
+    let isPreview: Bool
 
-    init(disks: [ManagedDisk] = []) { self.disks = disks }
+    init(disks: [ManagedDisk] = [], selectedPartitionID: String? = nil, isPreview: Bool = false) {
+        self.disks = disks
+        self.selectedDiskID = disks.first?.id
+        self.selectedPartitionID = selectedPartitionID
+        self.isPreview = isPreview
+    }
+
+    var selectedDisk: ManagedDisk? { disks.first { $0.id == selectedDiskID } }
+
+    func select(_ disk: ManagedDisk) {
+        selectedDiskID = disk.id
+        selectedPartitionID = nil
+    }
+
+    func isLocked(_ disk: ManagedDisk) -> Bool {
+        _ = lockRevision
+        return !isPreview && DiskWriteLock.isLocked(disk)
+    }
+
+    func setLocked(_ locked: Bool, for disk: ManagedDisk) {
+        guard !isBusy, !isPreview, disks.contains(where: { $0.identity == disk.identity }) else { return }
+        DiskWriteLock.setLocked(locked, for: disk)
+        lockRevision += 1
+    }
 
     func fail(_ error: Error) { self.error = error.localizedDescription }
     func clearError() { error = nil }
@@ -53,10 +80,7 @@ private struct PendingDiskRequest: Identifiable {
 }
 
 struct DiskModifyView: View {
-    private let previewDisks: [ManagedDisk]?
     @State private var model: DiskManagementModel
-    @State private var diskID: String?
-    @State private var partitionID: String?
     @State private var hoveredPartitionID: String?
     @State private var name = "Untitled"
     @State private var format = "ExFAT"
@@ -69,23 +93,36 @@ struct DiskModifyView: View {
     @State private var resizeLimitsError: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @MainActor init(previewDisks: [ManagedDisk]? = nil, previewPartitionID: String? = nil) {
-        self.previewDisks = previewDisks
-        _model = State(initialValue: DiskManagementModel(disks: previewDisks ?? []))
-        _diskID = State(initialValue: previewDisks?.first?.id)
-        _partitionID = State(initialValue: previewPartitionID)
+    @MainActor init(model: DiskManagementModel) {
+        _model = State(initialValue: model)
     }
 
+    @MainActor init(previewDisks: [ManagedDisk]? = nil, previewPartitionID: String? = nil) {
+        _model = State(initialValue: DiskManagementModel(disks: previewDisks ?? [],
+                                                          selectedPartitionID: previewPartitionID,
+                                                          isPreview: previewDisks != nil))
+    }
+
+    private var diskID: String? {
+        get { model.selectedDiskID }
+        nonmutating set { model.selectedDiskID = newValue }
+    }
+    private var partitionID: String? {
+        get { model.selectedPartitionID }
+        nonmutating set { model.selectedPartitionID = newValue }
+    }
     private var disk: ManagedDisk? {
-        model.disks.first { $0.id == diskID }
+        model.selectedDisk
     }
     private var partition: ManagedPartition? {
         disk?.partitions.first { $0.id == partitionID }
     }
     private func unavailableReason(for action: DiskAction, on disk: ManagedDisk) -> String? {
         if model.isBusy { return "Wait for the current operation to finish." }
+        if action != .verify && model.isLocked(disk) { return "Disk locked. Unlock it beside Refresh to make changes." }
         if !disk.manageable && action != .verify { return "Only writable removable or external disks can be modified." }
         if action.needsPartition && partition == nil { return "Select a partition or volume above." }
+        if action.needsWholeDisk && partition != nil { return "Select Whole disk above." }
         if action == .addPartition {
             if disk.unallocatedBytes <= 100_000_000 { return "No usable unallocated space. Resize or delete a partition first." }
             if !["GUID_partition_scheme", "FDisk_partition_scheme", "Apple_partition_scheme"].contains(disk.scheme) {
@@ -126,55 +163,62 @@ struct DiskModifyView: View {
 
     var body: some View {
         WorkspacePage("Modify", subtitle: "Physical disks and partitions", actions: {
-            Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.refresh() } }
-                .disabled(model.isBusy)
-        }) {
-            HStack(alignment: .top, spacing: 18) {
-                diskList.frame(width: 178)
-                VStack(alignment: .leading, spacing: 18) {
-                    if let disk {
-                        diskSummary(disk)
-                        partitionMap(disk)
-                        actionWorkspace(disk)
-                    } else if model.isBusy && model.disks.isEmpty {
-                        ProgressView("Reading physical disks…")
-                            .frame(maxWidth: .infinity, minHeight: 260)
-                    } else if model.error != nil {
-                        ContentUnavailableView("Couldn’t Read Disks", systemImage: "externaldrive.badge.xmark",
-                                               description: Text("Refresh to try again."))
-                    } else {
-                        ContentUnavailableView(model.disks.isEmpty ? "No Physical Disks" : "Select a Disk",
-                                               systemImage: "externaldrive",
-                                               description: Text(model.disks.isEmpty ?
-                                                   "Connect a disk, then refresh." :
-                                                   "Choose a physical disk to inspect its partitions and actions."))
-                    }
-                    if model.isBusy {
-                        HStack(spacing: 8) {
-                            ProgressView().controlSize(.small)
-                            Text("Working with disk…")
-                        }
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                    }
-                    if let error = model.error {
-                        Label(error, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
-                            .textSelection(.enabled)
-                            .accessibilityIdentifier("diskman.inventoryError")
-                    }
-                    if let message = model.message, !message.isEmpty {
-                        Text(message)
-                            .font(.system(size: 11, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(12)
-                            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
-                    }
+            if let disk {
+                let locked = model.isLocked(disk)
+                Button(locked ? "Unlock disk" : "Lock disk", systemImage: locked ? "lock.fill" : "lock.open") {
+                    model.setLocked(!locked, for: disk)
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .disabled(model.isBusy || model.isPreview)
+                .accessibilityIdentifier("diskman.lockDisk")
+                .help(locked ? "Unlock /dev/\(disk.id) for Diskman write actions" :
+                      "Block all Diskman write actions on /dev/\(disk.id)")
             }
+            Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.refresh() } }
+                .disabled(model.isBusy || model.isPreview)
+        }) {
+            VStack(alignment: .leading, spacing: 18) {
+                if let disk {
+                    diskSummary(disk)
+                    partitionMap(disk)
+                    actionWorkspace(disk)
+                } else if model.isBusy && model.disks.isEmpty {
+                    ProgressView("Reading physical disks…")
+                        .frame(maxWidth: .infinity, minHeight: 260)
+                } else if model.error != nil {
+                    ContentUnavailableView("Couldn’t Read Disks", systemImage: "externaldrive.badge.xmark",
+                                           description: Text("Refresh to try again."))
+                } else {
+                    ContentUnavailableView(model.disks.isEmpty ? "No Physical Disks" : "Select a Disk",
+                                           systemImage: "externaldrive",
+                                           description: Text(model.disks.isEmpty ?
+                                               "Connect a disk, then refresh." :
+                                               "Choose a physical disk to inspect its partitions and actions."))
+                }
+                if model.isBusy {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Working with disk…")
+                    }
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+                if let error = model.error {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("diskman.inventoryError")
+                }
+                if let message = model.message, !message.isEmpty {
+                    Text(message)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .task { if previewDisks == nil { await model.refresh() } }
+        .task { if !model.isPreview { await model.refresh() } }
         .onChange(of: model.disks.map(\.id)) { _, ids in
             if !ids.contains(diskID ?? "") {
                 diskID = model.disks.first(where: \.manageable)?.id ?? model.disks.first?.id
@@ -190,61 +234,31 @@ struct DiskModifyView: View {
         }
     }
 
-    private var diskList: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("DISKS").utilitySectionHeader().padding(.horizontal, 8)
-            ForEach(model.disks) { item in
-                Button {
-                    withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) { diskID = item.id }
-                } label: {
-                    HStack(spacing: 9) {
-                        Image(systemName: item.bus == "Secure Digital" ? "sdcard" : "externaldrive")
-                            .font(.system(size: 16))
-                            .frame(width: 22)
-                            .foregroundStyle(item.manageable ? Color.accentColor : Color.secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name).lineLimit(1)
-                            Text("\(item.id) · \(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))")
-                                .font(.system(size: 10)).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 9)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
-                .background(item.id == disk?.id ? Color.accentColor.opacity(0.12) : .clear,
-                            in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityAddTraits(item.id == disk?.id ? .isSelected : [])
-                .accessibilityIdentifier("diskman.disk.\(item.id)")
-            }
-            if model.disks.isEmpty {
-                Text(model.isBusy ? "Reading disks…" : "No disks found")
-                    .font(.system(size: 11)).foregroundStyle(.secondary).padding(8)
-            }
-        }
-        .padding(.top, 4)
-    }
-
     private func diskSummary(_ disk: ManagedDisk) -> some View {
         HStack(spacing: 13) {
-            Image(systemName: disk.bus == "Secure Digital" ? "sdcard.fill" : "externaldrive.fill")
-                .font(.system(size: 24))
-                .foregroundStyle(disk.manageable ? Color.accentColor : Color.secondary)
-                .frame(width: 38, height: 38)
+            ZStack {
+                DiskMapTexture(color: DiskChartPalette.color(0))
+                Image(systemName: disk.bus == "Secure Digital" ? "sdcard.fill" : "externaldrive.fill")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 44, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 3) {
                 Text(disk.name).font(.system(size: 17, weight: .semibold))
                 Text("/dev/\(disk.id) · \(disk.bus) · \(ByteCountFormatter.string(fromByteCount: disk.size, countStyle: .file))")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             Spacer()
-            Text(disk.manageable ? "WRITABLE" : "INSPECT ONLY")
+            Label(model.isLocked(disk) ? "LOCKED" : disk.manageable ? "READY" : "INSPECT ONLY",
+                  systemImage: model.isLocked(disk) ? "lock.fill" : disk.manageable ? "checkmark.circle" : "eye")
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 7)
+        .padding(13)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12)
+            .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1))
     }
 
     private func partitionMap(_ disk: ManagedDisk) -> some View {
@@ -259,6 +273,25 @@ struct DiskModifyView: View {
                      "\(physical.count) partition\(physical.count == 1 ? "" : "s")")
                     .font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
             }
+            Button {
+                withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) { partitionID = nil }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "externaldrive.fill").frame(width: 16)
+                    Text("Whole disk").fontWeight(.semibold)
+                    Text("/dev/\(disk.id)").foregroundStyle(.secondary)
+                    Spacer()
+                    if partitionID == nil { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                }
+                .font(.system(size: 11))
+                .padding(.horizontal, 10).frame(minHeight: 32)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
+            .background(partitionID == nil ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.03),
+                        in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityAddTraits(partitionID == nil ? .isSelected : [])
+            .accessibilityIdentifier("diskman.wholeDisk")
             GeometryReader { geometry in
                 HStack(spacing: 3) {
                     ForEach(physical.indices, id: \.self) { index in
@@ -309,34 +342,57 @@ struct DiskModifyView: View {
                 }
             }
             .frame(height: 72)
-            Text("Select a segment or row to work on a partition. Disk-wide actions remain available below.")
+            Text("Select a segment or row for its actions. Select Whole disk for the device itself.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
-            ForEach(disk.partitions.indices, id: \.self) { index in
-                let item = disk.partitions[index]
-                Button {
-                    withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
-                        partitionID = partitionID == item.id ? nil : item.id
+            VStack(spacing: 0) {
+                ForEach(disk.partitions.indices, id: \.self) { index in
+                    let item = disk.partitions[index]
+                    Button {
+                        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
+                            partitionID = partitionID == item.id ? nil : item.id
+                        }
+                    } label: {
+                        HStack(spacing: 9) {
+                            if item.isAPFSVolume {
+                                DiskPartitionBranch(continues: disk.partitions.indices.contains(index + 1) &&
+                                                    disk.partitions[index + 1].isAPFSVolume)
+                                    .stroke(Color.secondary.opacity(0.55),
+                                            style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
+                                    .frame(width: 18, height: 34)
+                            }
+                            ZStack {
+                                if !item.isAPFSVolume && disk.partitions.indices.contains(index + 1) &&
+                                    disk.partitions[index + 1].isAPFSVolume {
+                                    DiskPartitionBranch(continues: true, isParent: true)
+                                        .stroke(Color.secondary.opacity(0.55), lineWidth: 1.2)
+                                }
+                                Circle().fill(DiskChartPalette.color(index)).frame(width: 8, height: 8)
+                            }
+                            .frame(width: 18, height: 34)
+                            Text(item.name).lineLimit(1)
+                            Text(item.content == "EFI" ? "EFI system" : item.displayType)
+                                .foregroundStyle(.secondary).lineLimit(1)
+                            if item.content == "EFI" {
+                                Label("ESP · PROTECTED", systemImage: "lock.fill")
+                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(.orange)
+                                    .accessibilityIdentifier("diskman.protectedEFI")
+                            }
+                            Spacer()
+                            Text(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))
+                                .monospacedDigit().foregroundStyle(.secondary)
+                            Text(item.id).foregroundStyle(.tertiary).font(.system(size: 10, design: .monospaced))
+                        }
+                        .font(.system(size: 11))
+                        .padding(.horizontal, 8).frame(height: 34)
+                        .contentShape(Rectangle())
                     }
-                } label: {
-                    HStack(spacing: 9) {
-                        Circle().fill(DiskChartPalette.color(index)).frame(width: 8, height: 8)
-                            .padding(.leading, item.isAPFSVolume ? 16 : 0)
-                        Text(item.name).lineLimit(1)
-                        Text(item.displayType).foregroundStyle(.secondary).lineLimit(1)
-                        Spacer()
-                        Text(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))
-                            .monospacedDigit().foregroundStyle(.secondary)
-                        Text(item.id).foregroundStyle(.tertiary).font(.system(size: 10, design: .monospaced))
-                    }
-                    .font(.system(size: 11))
-                    .padding(.horizontal, 8).frame(height: 34)
-                    .contentShape(Rectangle())
+                    .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
+                    .background(partitionID == item.id ? Color.accentColor.opacity(0.13) : .clear,
+                                in: RoundedRectangle(cornerRadius: 7))
+                    .accessibilityAddTraits(partitionID == item.id ? .isSelected : [])
+                    .accessibilityIdentifier("diskman.partition.\(item.id)")
                 }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
-                .background(partitionID == item.id ? Color.accentColor.opacity(0.13) : .clear,
-                            in: RoundedRectangle(cornerRadius: 7))
-                .accessibilityAddTraits(partitionID == item.id ? .isSelected : [])
-                .accessibilityIdentifier("diskman.partition.\(item.id)")
             }
             if disk.partitions.isEmpty {
                 Text("No partitions are visible in macOS.")
@@ -368,12 +424,11 @@ struct DiskModifyView: View {
                     .accessibilityLabel(partition.map { "Selected /dev/\($0.id), \($0.name)" } ?? "Selected whole disk")
                     .accessibilityIdentifier("diskman.selectedTarget")
                 Spacer(minLength: 4)
-                if partition != nil {
-                    Button("Whole disk") { withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) { partitionID = nil } }
-                        .buttonStyle(.link)
-                        .font(.system(size: 11))
-                        .accessibilityIdentifier("diskman.wholeDisk")
-                }
+            }
+            if partition?.content == "EFI" {
+                Label("EFI is a protected system partition. To replace it, review a whole-disk erase or repartition.",
+                      systemImage: "lock.shield")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             if let partition, let next = disk.nextPhysicalPartition(after: partition.id),
                unavailableReason(for: .mergePartitions, on: disk) == nil {
@@ -399,7 +454,7 @@ struct DiskModifyView: View {
     private func actionGroup(_ title: String, actions: [DiskAction], disk: ManagedDisk) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(title).utilitySectionHeader()
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 250), spacing: 8)], spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 170), spacing: 9), count: 3), spacing: 9) {
                 ForEach(actions) { action in actionTile(action, disk: disk) }
             }
         }
@@ -418,33 +473,27 @@ struct DiskModifyView: View {
             pending = nil
             proposedAction = action
         } label: {
-            HStack(alignment: .top, spacing: 9) {
+            HStack(alignment: .center, spacing: 10) {
                 Image(systemName: actionSymbol(action))
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(reason == nil ? Color.accentColor : Color.secondary)
-                    .frame(width: 20)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Text(action.rawValue)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(reason == nil ? Color.primary : Color.secondary)
-                        Spacer(minLength: 0)
-                        if action.needsWholeDisk {
-                            Text("DISK")
-                                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
+                    .frame(width: 36, height: 36)
+                    .background(Color.accentColor.opacity(reason == nil ? 0.09 : 0.025),
+                                in: RoundedRectangle(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(action.rawValue)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(reason == nil ? Color.primary : Color.secondary)
+                        .lineLimit(1)
                     Text(reason ?? actionHint(action))
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: 51, alignment: .topLeading)
-            .padding(9)
+            .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+            .padding(.horizontal, 10).padding(.vertical, 6)
             .background(Color.primary.opacity(reason == nil ? 0.045 : 0.018),
                         in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
@@ -457,6 +506,25 @@ struct DiskModifyView: View {
         .accessibilityLabel(action.rawValue)
         .accessibilityHint(reason ?? actionHint(action))
         .accessibilityIdentifier("diskman.action.\(action.id)")
+    }
+
+    private struct DiskPartitionBranch: Shape {
+        let continues: Bool
+        var isParent = false
+
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            if isParent {
+                path.move(to: CGPoint(x: 9, y: rect.midY))
+                path.addLine(to: CGPoint(x: 9, y: rect.maxY))
+                return path
+            }
+            path.move(to: CGPoint(x: 9, y: 0))
+            path.addLine(to: CGPoint(x: 9, y: continues ? rect.maxY : rect.midY))
+            path.move(to: CGPoint(x: 9, y: rect.midY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+            return path
+        }
     }
 
     private func actionSymbol(_ action: DiskAction) -> String {
@@ -671,7 +739,8 @@ struct DiskModifyView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(request.action.destroysData ? .red : .accentColor)
-                .disabled(previewDisks != nil || request.action.destroysData && typedDiskID != request.disk.id)
+                .disabled(model.isPreview || request.action.destroysData && typedDiskID != request.disk.id ||
+                          request.action != .verify && model.isLocked(request.disk))
                 .accessibilityIdentifier("diskman.executeAction")
             }
         }
