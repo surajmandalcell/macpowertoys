@@ -76,7 +76,7 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(window.staticTexts["VOLUMES & FORMATS"].exists)
         XCTAssertFalse(window.buttons["diskman.action.Resize partition"].isEnabled)
         XCTAssertTrue(window.buttons["diskman.action.Delete partition"].isEnabled)
-        XCTAssertFalse(window.buttons["diskman.action.Erase disk"].isEnabled)
+        XCTAssertFalse(window.buttons["diskman.action.Partition disk"].isEnabled)
         let merge = window.buttons["diskman.action.Merge with next"]
         XCTAssertTrue(merge.isEnabled)
         let firstRow = ["Add partition", "Resize partition", "Merge with next"].map {
@@ -107,9 +107,9 @@ final class DiskExplorerUITests: XCTestCase {
         wholeDisk.click()
         XCTAssertTrue(wholeDisk.exists)
         XCTAssertEqual(selectedTarget.label, "Selected whole disk")
-        XCTAssertTrue(window.buttons["diskman.action.Erase disk"].isEnabled)
+        XCTAssertTrue(window.buttons["diskman.action.Partition disk"].isEnabled)
         window.buttons["diskman.partition.disk91s1"].click()
-        XCTAssertTrue(window.descendants(matching: .any)["diskman.protectedEFI"].exists)
+        XCTAssertTrue(window.buttons["diskman.partition.disk91s1"].label.contains("protected"))
         XCTAssertFalse(window.buttons["diskman.action.Delete partition"].isEnabled)
     }
 
