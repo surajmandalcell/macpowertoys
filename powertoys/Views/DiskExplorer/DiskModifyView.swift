@@ -292,6 +292,7 @@ struct DiskModifyView: View {
                         .buttonStyle(.plain)
                         .onHover { hoveredPartitionID = $0 ? item.id : nil }
                         .help("\(item.name) · \(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))")
+                        .accessibilityLabel("\(item.name), /dev/\(item.id), \(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))")
                         .accessibilityIdentifier("diskman.map.\(item.id)")
                         .accessibilityAddTraits(partitionID == item.id ? .isSelected : [])
                     }
