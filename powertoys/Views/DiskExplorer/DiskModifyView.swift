@@ -21,7 +21,6 @@ private final class DiskManagementModel {
             disks = try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value
             error = nil
         } catch {
-            disks = []
             self.error = error.localizedDescription
         }
     }
