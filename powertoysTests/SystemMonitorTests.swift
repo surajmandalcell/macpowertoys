@@ -308,6 +308,31 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     @MainActor
+    func testDitherSparklineDrawsSamples() throws {
+        func render(_ values: [Double]) throws -> (NSBitmapImageRep, NSImage) {
+            let host = NSHostingView(rootView: SystemMonitorDitherSparkline(
+                values: values, color: SystemMonitorPalette.cyan, showsGuide: true
+            ).frame(width: 320, height: 80))
+            host.frame = NSRect(x: 0, y: 0, width: 320, height: 80)
+            host.layoutSubtreeIfNeeded()
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            return (representation, image)
+        }
+
+        let empty = try render([])
+        let populated = try render([12, 18, 9, 24, 17, 28])
+        XCTAssertNotEqual(empty.0.representation(using: .png, properties: [:]),
+                          populated.0.representation(using: .png, properties: [:]))
+        let attachment = XCTAttachment(image: populated.1)
+        attachment.name = "System Monitor — Dithered Chart"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
     func testOverviewRendersAtProductionSize() throws {
         defer { SystemMonitorService.shared.stopDetailed() }
         for scheme in [ColorScheme.light, .dark] {

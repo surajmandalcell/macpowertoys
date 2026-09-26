@@ -124,7 +124,6 @@ enum TrayPopoverLayout {
 struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.openWindow) private var openWindow
     @State private var configurationRevision = 0
 
@@ -188,10 +187,6 @@ struct TrayPopoverView: View {
             )
             .padding(3)
             .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.18 : 0.08))
-            }
 
             Spacer(minLength: 8)
 
@@ -347,6 +342,7 @@ private struct TrayTabButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+        .focusEffectDisabled()
         .background(Color.primary.opacity(selected ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 6))
         .accessibilityLabel(tab.title)
         .accessibilityIdentifier("tray.tab.\(tab.rawValue)")
@@ -406,6 +402,7 @@ private struct TrayChromeButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+        .focusEffectDisabled()
         .accessibilityLabel(title)
         .help(title)
         .onHover { hovering = $0 }
@@ -1448,7 +1445,7 @@ struct SystemMonitorTrayView: View {
                 .textCase(.uppercase)
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 5)
-            TrayMetricSparkline(values: values, color: tint)
+            SystemMonitorDitherSparkline(values: values, color: tint, showsGuide: true)
                 .frame(height: 56)
                 .accessibilityHidden(true)
         }
@@ -1520,7 +1517,7 @@ struct SystemMonitorTrayView: View {
             .padding(.horizontal, 10)
             .padding(.top, 6)
             Spacer(minLength: 0)
-            TrayMetricSparkline(values: values, color: color)
+            SystemMonitorDitherSparkline(values: values, color: color, showsGuide: true)
                 .frame(height: 10)
                 .accessibilityHidden(true)
         }
@@ -1609,47 +1606,6 @@ struct SystemMonitorTrayView: View {
 
     nonisolated private static func bytes(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: value, countStyle: .memory)
-    }
-}
-
-private struct TrayMetricSparkline: View {
-    let values: [Double]
-    let color: Color
-
-    var body: some View {
-        Canvas { context, size in
-            var guide = Path()
-            guide.move(to: CGPoint(x: 0, y: size.height * 0.75))
-            guide.addLine(to: CGPoint(x: size.width, y: size.height * 0.75))
-            context.stroke(guide, with: .color(color.opacity(0.12)), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            guard !values.isEmpty, let minimum = values.min(), let maximum = values.max() else { return }
-            if values.count == 1 {
-                var line = Path()
-                line.move(to: CGPoint(x: 0, y: size.height * 0.5))
-                line.addLine(to: CGPoint(x: size.width, y: size.height * 0.5))
-                context.stroke(line, with: .color(color.opacity(0.46)), lineWidth: 1)
-                return
-            }
-            let range = max(maximum - minimum, 1)
-            let points = values.enumerated().map { index, value in
-                CGPoint(
-                    x: size.width * CGFloat(index) / CGFloat(values.count - 1),
-                    y: size.height - size.height * CGFloat((value - minimum) / range)
-                )
-            }
-            var fill = Path()
-            fill.move(to: CGPoint(x: 0, y: size.height))
-            points.forEach { fill.addLine(to: $0) }
-            fill.addLine(to: CGPoint(x: size.width, y: size.height))
-            fill.closeSubpath()
-            context.drawLayer { glow in
-                glow.addFilter(.blur(radius: 4))
-                glow.fill(fill, with: .color(color.opacity(0.32)))
-            }
-            var line = Path()
-            line.addLines(points)
-            context.stroke(line, with: .color(color.opacity(0.46)), lineWidth: 1)
-        }
     }
 }
 
