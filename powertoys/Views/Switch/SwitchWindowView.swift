@@ -110,7 +110,7 @@ struct SwitchWindowView: View {
         )) { importSheet }
         .sheet(isPresented: $showingAbout) {
             ToolAboutView(toolId: "switch", showsModalCloseButton: true)
-                .frame(width: 540, height: 520)
+                .frame(width: 540, height: 340)
         }
         .alert("Switch needs attention", isPresented: Binding(
             get: { model.errorMessage != nil },
@@ -503,7 +503,7 @@ struct SwitchWindowView: View {
     }
 
     private func accountUsage(_ account: AccountRecord) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(model.usage[account.id]?.account?.plan?.capitalized ?? "Usage")
                     .font(.system(size: 14, weight: .semibold))
@@ -558,7 +558,7 @@ struct SwitchWindowView: View {
                 }
                 ForEach(buckets.indices, id: \.self) { index in
                     let bucket = buckets[index]
-                    VStack(alignment: .leading, spacing: 9) {
+                    VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
                             Text(bucket.name ?? bucket.model ?? bucket.id ?? "Rate limits")
                                 .font(.system(size: 12, weight: .semibold))
@@ -591,7 +591,7 @@ struct SwitchWindowView: View {
                             Spacer()
                         }
                     }
-                    .padding(12)
+                    .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(index.isMultiple(of: 2) ? palette.panel2 : palette.listHover.opacity(0.55))
                 }
@@ -621,7 +621,7 @@ struct SwitchWindowView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -629,7 +629,7 @@ struct SwitchWindowView: View {
         let percentage = window.usedPercent.map {
             SwitchTrayUsagePreferences.percentageLabel(used: $0, showUsed: showUsageAsUsed)
         } ?? "—"
-        return VStack(alignment: .leading, spacing: 9) {
+        return VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.85)
