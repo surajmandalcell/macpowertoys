@@ -6,7 +6,7 @@
 - [x] The owner selected 01 Faders. Use that exact artwork for the launcher and the Mac Tweaks Dock icon.
 - [ ] Verify the selected icon in the signed installed app at launcher and Dock sizes.
 
-The promoted SVG matches 01 Faders byte for byte, and the Release asset catalog contains `MacTweaksLogo`. Local installation remains pending because the development signature fails strict trust verification with `CSSMERR_TP_NOT_TRUSTED`.
+The promoted SVG matches 01 Faders byte for byte, and the Release asset catalog contains `MacTweaksLogo`. Sandboxed signature verification returned `CSSMERR_TP_NOT_TRUSTED`; the same build passed strict verification outside the sandbox. Installed-app inspection remains pending.
 
 ## Inline controls and catalogue correction, 2026-09-26
 
