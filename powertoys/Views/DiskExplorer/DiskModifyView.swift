@@ -37,6 +37,18 @@ final class DiskManagementModel {
         lockRevision += 1
     }
 
+    func updateDisks(_ current: [ManagedDisk]) {
+        disks = current
+        if let selected = current.first(where: { $0.id == selectedDiskID }) {
+            if !selected.partitions.contains(where: { $0.id == selectedPartitionID }) {
+                selectedPartitionID = nil
+            }
+        } else {
+            selectedDiskID = current.first(where: \.manageable)?.id ?? current.first?.id
+            selectedPartitionID = nil
+        }
+    }
+
     func fail(_ error: Error) { self.error = error.localizedDescription }
     func clearError() { error = nil }
 
@@ -45,7 +57,7 @@ final class DiskManagementModel {
         isBusy = true
         defer { isBusy = false }
         do {
-            disks = try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value
+            updateDisks(try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value)
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -61,13 +73,13 @@ final class DiskManagementModel {
             message = try await Task.detached(priority: .userInitiated) {
                 try DiskManagement.run(request)
             }.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            disks = try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value
+            updateDisks(try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value)
         } catch {
             self.error = error.localizedDescription
             if let current = try? await Task.detached(priority: .utility, operation: {
                 try DiskManagement.inventory()
             }).value {
-                disks = current
+                updateDisks(current)
             }
         }
         isBusy = false
@@ -103,10 +115,6 @@ struct DiskModifyView: View {
                                                           isPreview: previewDisks != nil))
     }
 
-    private var diskID: String? {
-        get { model.selectedDiskID }
-        nonmutating set { model.selectedDiskID = newValue }
-    }
     private var partitionID: String? {
         get { model.selectedPartitionID }
         nonmutating set { model.selectedPartitionID = newValue }
@@ -218,13 +226,6 @@ struct DiskModifyView: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .task { if !model.isPreview { await model.refresh() } }
-        .onChange(of: model.disks.map(\.id)) { _, ids in
-            if !ids.contains(diskID ?? "") {
-                diskID = model.disks.first(where: \.manageable)?.id ?? model.disks.first?.id
-            }
-        }
-        .onChange(of: diskID) { _, _ in partitionID = nil }
         .sheet(item: $proposedAction, onDismiss: { pending = nil }) { selectedAction in
             if let pending {
                 review(pending.request)

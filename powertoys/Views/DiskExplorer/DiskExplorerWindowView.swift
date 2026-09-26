@@ -82,6 +82,9 @@ struct DiskExplorerWindowView: View {
         .background(WindowAccessor(identifier: "disk-explorer"))
         .onAppear {
             model.refreshVolumes()
+            if scansOnAppear && !diskManagement.isPreview {
+                Task { await diskManagement.refresh() }
+            }
             if scansOnAppear {
                 model.start(model.sourceURL ?? FileManager.default.homeDirectoryForCurrentUser,
                             includeHidden: includeHidden)
@@ -90,6 +93,9 @@ struct DiskExplorerWindowView: View {
         .onDisappear { model.leave() }
         .onChange(of: page) { _, next in
             if next != .explore { model.cancel() }
+            if next == .modify && !diskManagement.isPreview {
+                Task { await diskManagement.refresh() }
+            }
         }
         .onChange(of: includeHidden) { _, newValue in
             if page == .explore, let source = model.sourceURL {

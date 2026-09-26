@@ -65,9 +65,9 @@ final class DiskExplorerUITests: XCTestCase {
 
         let window = app.windows["Diskman"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
-        window.buttons["Manage Disks"].click()
         let diskRow = window.buttons["diskman.disk.disk91"]
         XCTAssertTrue(diskRow.waitForExistence(timeout: 10))
+        window.buttons["Manage Disks"].click()
         let diskMapTitle = window.staticTexts["DISK MAP"]
         XCTAssertTrue(diskMapTitle.waitForExistence(timeout: 20))
         XCTAssertLessThan(diskRow.frame.maxX, diskMapTitle.frame.minX)
