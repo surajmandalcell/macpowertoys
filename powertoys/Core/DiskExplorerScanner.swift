@@ -131,6 +131,7 @@ nonisolated enum DiskExplorerScanner {
         private(set) var skippedVolumeCount = 0
         private var topOrder: [String] = []
         private var topNodes: [String: PreviewNode] = [:]
+        private var topEstimates: [String: (allocated: Int64, apparent: Int64)] = [:]
         private var secondNodes: [String: [String: PreviewNode]] = [:]
         private var completedTop: [String: DiskEntry] = [:]
         private var largest: [DiskEntry] = []
@@ -175,6 +176,15 @@ nonisolated enum DiskExplorerScanner {
             }
         }
 
+        func estimateTop(_ url: URL, info: stat, children: [(URL, stat)]) {
+            let sizes = children.reduce((allocated: max(0, Int64(info.st_blocks) * 512),
+                                         apparent: max(0, Int64(info.st_size)))) { total, child in
+                (total.allocated + max(0, Int64(child.1.st_blocks) * 512),
+                 total.apparent + max(0, Int64(child.1.st_size)))
+            }
+            lock.withLock { topEstimates[url.path] = sizes }
+        }
+
         func record(_ entry: DiskEntry, ownAllocated: Int64, ownApparent: Int64,
                     top: String, second: String?) {
             lock.withLock {
@@ -208,7 +218,14 @@ nonisolated enum DiskExplorerScanner {
                     guard let node = topNodes[key] else { return nil }
                     let second = (secondNodes[key] ?? [:]).values.map { $0.snapshot() }
                         .sorted { $0.allocatedBytes > $1.allocatedBytes }
-                    return node.snapshot(children: second)
+                    let estimate = topEstimates[key]
+                    let partial = node.snapshot(children: second)
+                    return DiskEntry(url: partial.url, kind: partial.kind,
+                                     allocatedBytes: max(partial.allocatedBytes, estimate?.allocated ?? 0),
+                                     apparentBytes: max(partial.apparentBytes, estimate?.apparent ?? 0),
+                                     fileCount: partial.fileCount, directoryCount: partial.directoryCount,
+                                     modifiedAt: partial.modifiedAt, device: partial.device,
+                                     inode: partial.inode, children: partial.children)
                 }.sorted { $0.allocatedBytes > $1.allocatedBytes }
                 let root = DiskEntry(
                     url: rootURL, kind: .directory,
@@ -261,6 +278,14 @@ nonisolated enum DiskExplorerScanner {
         let children = readChildren(at: rootURL, state: state)
         state.registerTop(children)
         state.publish(force: true)
+        let firstLevel: [[(URL, stat)]?] = children.map { element in
+            let (child, childInfo) = element
+            let immediate = childInfo.st_mode & S_IFMT == S_IFDIR ? readChildren(at: child, state: state) : []
+            state.estimateTop(child, info: childInfo, children: immediate)
+            if childInfo.st_mode & S_IFMT == S_IFDIR { state.registerSecond(immediate, under: child.path) }
+            return childInfo.st_mode & S_IFMT == S_IFDIR ? immediate : nil
+        }
+        state.publish(force: true)
         var scanned: [DiskEntry] = []
         let resultLock = NSLock()
         DispatchQueue.concurrentPerform(iterations: min(4, children.count)) { lane in
@@ -268,7 +293,8 @@ nonisolated enum DiskExplorerScanner {
                 if state.session.isCancelled { return }
                 let (child, childInfo) = children[index]
                 if let node = walk(child, info: childInfo, state: state,
-                                   top: child.path, second: nil) {
+                                   top: child.path, second: nil,
+                                   prefetchedChildren: firstLevel[index]) {
                     resultLock.withLock { scanned.append(node) }
                     state.completed(node)
                 }
@@ -282,10 +308,11 @@ nonisolated enum DiskExplorerScanner {
     }
 
     private static func walk(_ url: URL, info: stat, state: State,
-                             top: String, second: String?) -> DiskEntry? {
+                             top: String, second: String?,
+                             prefetchedChildren: [(URL, stat)]? = nil) -> DiskEntry? {
         guard !state.session.isCancelled else { return nil }
         let isDirectory = info.st_mode & S_IFMT == S_IFDIR
-        let childInfo = isDirectory ? readChildren(at: url, state: state) : []
+        let childInfo = isDirectory ? (prefetchedChildren ?? readChildren(at: url, state: state)) : []
         if second == nil && isDirectory { state.registerSecond(childInfo, under: top) }
         let children = childInfo.compactMap { child, info in
             walk(child, info: info, state: state, top: top, second: second ?? child.path)
