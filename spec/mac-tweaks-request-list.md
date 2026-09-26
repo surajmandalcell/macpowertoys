@@ -5,16 +5,16 @@
 - [x] Keep the first visible setting row at the top of the content pane while the remaining results scroll. Its expanded controls remain in the scrollable body.
 - [x] Add short, replayable examples inside each working setting card. Explain the setting's effect with specific before and after states, match the neutral MacPowerToys style, and stop motion when the card closes. Respect Reduce Motion.
 - [x] Align the empty-search action with its message and put expanded form controls on one trailing edge.
-- [ ] Inspect collapsed, expanded, search, scrolling, light, and dark states in the final signed build.
+- [x] Inspect collapsed, expanded, search, scrolling, light, and dark states in the signed hosted build. Run `36260257730` passed both Mac Tweaks UI tests and confirmed the dark capture's background brightness.
 
-Release app and test bundles compile. Hosted run `36258649753` captured
-collapsed, Mic Lock, Finder, pinned Dock, Power, and search states; those light
-appearance screenshots were reviewed. The new empty-search step stopped because
-XCTest could not address the search field's native clear button. The test now
-replaces the query with Command-A and also captures dark appearance. Empty-search
-and dark screenshots still need a hosted rerun. The installed app is stamped
-`8d1b533`; reinstall from the final clean commit remains due. Native Computer
-access to MacPowerToys was denied.
+Release app and test bundles compile. Hosted run `36260257730` passed the
+collapsed, expanded, category, pinned-row, typo search, empty-search, and dark
+appearance interactions. Its light and dark screenshots were reviewed at
+900 × 620. Dark appearance uses the app's `appTheme` setting and a pixel check,
+since the system-only launch argument had produced a light capture. The
+`/Applications` app must be restamped from the final clean documentation commit.
+Native Computer access to MacPowerToys was denied, so local app-scoped visual
+interaction remains unavailable.
 
 ## Tool icon, 2026-09-26
 
