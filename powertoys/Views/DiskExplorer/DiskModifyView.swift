@@ -30,6 +30,7 @@ private final class DiskManagementModel {
         guard !isBusy else { return }
         isBusy = true
         error = nil
+        message = nil
         do {
             message = try await Task.detached(priority: .userInitiated) {
                 try DiskManagement.run(request)
@@ -65,6 +66,8 @@ struct DiskModifyView: View {
     @State private var proposedAction: DiskAction?
     @State private var pending: PendingDiskRequest?
     @State private var typedDiskID = ""
+    @State private var resizeLimitsText: String?
+    @State private var resizeLimitsError: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @MainActor init(previewDisks: [ManagedDisk]? = nil, previewPartitionID: String? = nil) {
@@ -172,6 +175,11 @@ struct DiskModifyView: View {
             }
         }
         .task { if previewDisks == nil { await model.refresh() } }
+        .onChange(of: model.disks.map(\.id)) { _, ids in
+            if !ids.contains(diskID ?? "") {
+                diskID = model.disks.first(where: \.manageable)?.id ?? model.disks.first?.id
+            }
+        }
         .onChange(of: diskID) { _, _ in partitionID = nil }
         .sheet(item: $proposedAction, onDismiss: { pending = nil }) { selectedAction in
             if let pending {
@@ -389,6 +397,8 @@ struct DiskModifyView: View {
         let reason = unavailableReason(for: action, on: disk)
         return Button {
             model.clearError()
+            resizeLimitsText = nil
+            resizeLimitsError = nil
             name = action.needsWholeDisk ? "Untitled" : partition?.name ?? "Untitled"
             if action != .rename && action != .mergePartitions && name.count > 11 { name = "Untitled" }
             if action == .addAPFSVolume { format = "APFS" }
@@ -498,6 +508,23 @@ struct DiskModifyView: View {
                           "Size, for example 4G or R for all available space", text: $size)
                     .textFieldStyle(.roundedBorder)
             }
+            if [.resizePartition, .resizeAPFSContainer].contains(action) ||
+                action == .mergePartitions && partition?.content == "Apple_HFS" {
+                if let resizeLimitsText {
+                    Text(action == .mergePartitions ? "macOS confirms the first partition can grow without erasing it.\n" +
+                         resizeLimitsText : resizeLimitsText)
+                        .font(.system(size: 10, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8))
+                } else if let resizeLimitsError {
+                    Label(resizeLimitsError, systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 11)).foregroundStyle(.orange)
+                } else {
+                    ProgressView("Checking macOS resize limits…").controlSize(.small)
+                }
+            }
             if action == .mergePartitions, let partition,
                let next = disk.nextPhysicalPartition(after: partition.id) {
                 Label("/dev/\(partition.id) + /dev/\(next.id). " +
@@ -529,10 +556,29 @@ struct DiskModifyView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("diskman.reviewAction")
+                .disabled(([.resizePartition, .resizeAPFSContainer].contains(action) ||
+                           action == .mergePartitions && partition?.content == "Apple_HFS") &&
+                          resizeLimitsText == nil)
             }
         }
         .padding(20)
         .frame(width: 440)
+        .task(id: action) {
+            guard let partition,
+                  [.resizePartition, .resizeAPFSContainer, .mergePartitions].contains(action),
+                  action != .mergePartitions || partition.content == "Apple_HFS" else { return }
+            do {
+                let output = try await Task.detached(priority: .utility) {
+                    try DiskManagement.resizeLimits(for: partition.id, apfs: action == .resizeAPFSContainer)
+                }.value
+                let lines = output.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { $0.hasPrefix("Current") || $0.hasPrefix("Minimum") || $0.hasPrefix("Maximum") }
+                resizeLimitsText = lines.isEmpty ? output.trimmingCharacters(in: .whitespacesAndNewlines) :
+                    lines.joined(separator: "\n")
+            } catch {
+                resizeLimitsError = error.localizedDescription
+            }
+        }
     }
 
     private func review(_ request: DiskRequest) -> some View {
@@ -599,7 +645,7 @@ struct DiskModifyView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(request.action.destroysData ? .red : .accentColor)
-                .disabled(request.action.destroysData && typedDiskID != request.disk.id)
+                .disabled(previewDisks != nil || request.action.destroysData && typedDiskID != request.disk.id)
             }
         }
         .padding(20)
