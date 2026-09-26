@@ -65,6 +65,7 @@ final class SwitchUITests: XCTestCase {
         add.click()
         XCTAssertTrue(app.buttons["switch.provider.claude-code"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Continue"].exists)
+        attach(window.screenshot(), named: "Switch Add Account")
         app.buttons["Cancel"].click()
         XCTAssertTrue(app.buttons["switch.about"].exists)
         XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
