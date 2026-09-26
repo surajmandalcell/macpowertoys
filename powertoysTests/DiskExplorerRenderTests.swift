@@ -11,15 +11,18 @@ final class DiskExplorerRenderTests: XCTestCase {
             writable: true, manageable: true, mediaRegistryID: 1, partitions: [
                 ManagedPartition(id: "disk10s1", name: "EFI", content: "EFI",
                                  size: 209_715_200, mountPoint: nil, uuid: nil),
-                ManagedPartition(id: "disk10s2", name: "DISKMAN", content: "Microsoft Basic Data",
-                                 size: 15_424_552_960, mountPoint: "/Volumes/DISKMAN", uuid: "volume",
+                ManagedPartition(id: "disk10s2", name: "WORK", content: "Apple_HFS",
+                                 size: 6_000_000_000, mountPoint: "/Volumes/WORK", uuid: "work",
+                                 fileSystem: "Mac OS Extended (Journaled)"),
+                ManagedPartition(id: "disk10s3", name: "SHARE", content: "Microsoft Basic Data",
+                                 size: 9_422_455_808, mountPoint: "/Volumes/SHARE", uuid: "share",
                                  fileSystem: "ExFAT")
             ]
         )
         let size = NSSize(width: 880, height: 700)
         for scheme in [ColorScheme.dark, .light] {
             let host = NSHostingView(rootView:
-                DiskModifyView(previewDisks: [card])
+                DiskModifyView(previewDisks: [card], previewPartitionID: "disk10s2")
                     .frame(width: size.width, height: size.height)
                     .background(Color(nsColor: .windowBackgroundColor))
                     .environment(\.colorScheme, scheme)

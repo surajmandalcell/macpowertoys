@@ -71,8 +71,20 @@ final class DiskExplorerUITests: XCTestCase {
         )).firstMatch
         if firstDisk.waitForExistence(timeout: 10) {
             firstDisk.click()
-            XCTAssertTrue(window.staticTexts["PARTITIONS & VOLUMES"].waitForExistence(timeout: 20))
-            XCTAssertTrue(window.staticTexts["OPERATION"].exists)
+            XCTAssertTrue(window.staticTexts["DISK MAP"].waitForExistence(timeout: 20))
+            XCTAssertTrue(window.staticTexts["PARTITION & CAPACITY"].exists)
+            XCTAssertTrue(window.staticTexts["VOLUMES & FORMATS"].exists)
+            XCTAssertTrue(window.buttons["diskman.action.Resize partition"].exists)
+            XCTAssertTrue(window.buttons["diskman.action.Merge with next"].exists)
+            XCTAssertTrue(window.buttons["diskman.action.Delete partition"].exists)
+            let firstPartition = window.buttons.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'diskman.partition.'"
+            )).firstMatch
+            if firstPartition.exists {
+                firstPartition.click()
+                XCTAssertTrue(window.buttons["Whole disk"].waitForExistence(timeout: 5))
+                window.buttons["Whole disk"].click()
+            }
             attach(window.screenshot(), named: "Diskman Modify")
         } else {
             XCTAssertTrue(window.staticTexts["No Physical Disks"].exists)
