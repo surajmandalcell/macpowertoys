@@ -164,6 +164,19 @@
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.
 
+## Combined Menu Icon And Tab Outline
+
+- **Symptom:** The MacPowerToys status glyph looks slightly too large, and an
+  outline appears around the popover's tab bar after opening or hovering it.
+- **Cause:** The menu extra displays its 16pt asset at intrinsic size, while
+  the tab strip adds a rounded stroke around every tab.
+- **Invariant:** Size the native menu-extra label at 14pt. Keep the tab strip
+  borderless, with quiet fill on hover, press, selection, and keyboard focus.
+  Do not remove keyboard activation or accessibility names.
+- **Check:** Compare the signed installed status item and open popover in light
+  and dark. Hover and Tab through tabs and the trailing actions; no rectangular
+  outline appears, while state and focus remain clear.
+
 ## Monitor Summary On Short Displays
 
 - **Symptom:** The Monitor Home grid loses its last card row below the visible

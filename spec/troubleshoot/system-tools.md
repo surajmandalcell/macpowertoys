@@ -522,9 +522,11 @@
   and workspace copy repeated context already expressed by the destination.
 - **Invariant:** Overview renders CPU, GPU, memory, disk, network, thermal,
   battery, and load in the adaptive grid. Each card uses the bounded 120-sample
-  history as a muted semantic-tint sparkline backdrop. Do not repeat CPU,
-  memory, or network in another Overview history-card section. Dedicated detail
-  pages may retain larger charts. Omit body subtitles from System Monitor
+  history as a muted semantic-tint sparkline backdrop. Window and tray charts
+  share a native ordered-dot fill inspired by Dither Kit; no web renderer or
+  chart animation timer is needed. Do not repeat CPU, memory, or network in
+  another Overview history-card section. Dedicated detail pages may retain
+  larger charts. Omit body subtitles from System Monitor
   destinations and keep the shared content top inset compact.
 - **Check:** Render the overview at 1,180 by 780 points and the tray at its
   production width. Confirm all eight values fit, history lines remain quiet,
