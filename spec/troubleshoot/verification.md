@@ -95,6 +95,18 @@
 - **Check:** Record the exact final build result and inspect default, hover,
   selected, disabled, settings, and dismissal states that the change touches.
 
+## Mac Tweaks Dark Appearance Capture
+
+- **Symptom:** A hosted UI test named "Dark Example" saved a light window.
+- **Cause:** The app applies its `appTheme` preference during initialization.
+  Passing `-AppleInterfaceStyle Dark` alone did not change the effective light
+  appearance of the captured window.
+- **Invariant:** Set `-appTheme Dark` for an app-specific dark UI run, then
+  assert the captured content background is dark before accepting its image.
+- **Check:** Compare the dark empty-search capture with the light one. The
+  dark test samples an empty content pixel and fails if its brightness is at
+  least 0.5.
+
 ## Test Mode Misrepresents the Product
 
 - **Symptom:** A newly built app opens with missing tools or stale-looking
