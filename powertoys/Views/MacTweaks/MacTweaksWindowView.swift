@@ -211,55 +211,55 @@ struct MacTweaksWindowView: View {
     }
 
     private var micLockControls: some View {
-        VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Keep a preferred microphone selected")
-                            .font(.system(size: 15, weight: .medium))
-                        Text("Mac Tweaks restores the first available saved input when macOS switches to a headset microphone.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Toggle("Mic Lock", isOn: Binding(
-                        get: { micLock.isEnabled },
-                        set: { micLock.setEnabled($0) }
-                    ))
-                    .labelsHidden()
-                    .accessibilityLabel("Enable Mic Lock")
-                    .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
-                }
-
-                currentInputSection
-                savedInputSection
-                Button("Refresh Devices", systemImage: "arrow.clockwise") { micLock.refresh() }
-                    .accessibilityIdentifier("mac-tweaks.refresh")
-
-                Toggle("Open MacPowerToys at login", isOn: Binding(
-                    get: { opensAtLogin },
-                    set: { setOpenAtLogin($0) }
-                ))
-                .font(.system(size: 12))
-                .help("Mic Lock can work after login only while MacPowerToys is running.")
-                if let loginMessage {
-                    HStack {
-                        Text(loginMessage).font(.system(size: 11)).foregroundStyle(.secondary)
-                        Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
-                    }
-                }
-
-                HStack {
-                    Button("Revive Audio…") { showReviveConfirmation = true }
-                    Text("Use if USB or dock audio stays missing after Refresh Devices.")
-                        .font(.system(size: 11))
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Keep a preferred microphone selected")
+                        .font(.system(size: 15, weight: .medium))
+                    Text("Mac Tweaks restores the first available saved input when macOS switches to a headset microphone.")
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
-                if let message = micLock.message {
-                    Text(message).font(.system(size: 12)).foregroundStyle(.secondary)
+                Spacer()
+                Toggle("Mic Lock", isOn: Binding(
+                    get: { micLock.isEnabled },
+                    set: { micLock.setEnabled($0) }
+                ))
+                .labelsHidden()
+                .accessibilityLabel("Enable Mic Lock")
+                .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
+            }
+
+            currentInputSection
+            savedInputSection
+            Button("Refresh Devices", systemImage: "arrow.clockwise") { micLock.refresh() }
+                .accessibilityIdentifier("mac-tweaks.refresh")
+
+            Toggle("Open MacPowerToys at login", isOn: Binding(
+                get: { opensAtLogin },
+                set: { setOpenAtLogin($0) }
+            ))
+            .font(.system(size: 12))
+            .help("Mic Lock can work after login only while MacPowerToys is running.")
+            if let loginMessage {
+                HStack {
+                    Text(loginMessage).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
                 }
-                if let reviveMessage {
-                    Text(reviveMessage).font(.system(size: 12)).foregroundStyle(.secondary)
-                }
+            }
+
+            HStack {
+                Button("Revive Audio…") { showReviveConfirmation = true }
+                Text("Use if USB or dock audio stays missing after Refresh Devices.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            if let message = micLock.message {
+                Text(message).font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+            if let reviveMessage {
+                Text(reviveMessage).font(.system(size: 12)).foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: 720, alignment: .leading)
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
@@ -268,7 +268,7 @@ struct MacTweaksWindowView: View {
     }
 
     private var currentInputSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Current input").font(.system(size: 13, weight: .medium))
             Text(micLock.devices.first(where: { $0.id == micLock.currentUID })?.name ?? "No input available")
                 .font(.system(size: 13))
@@ -308,7 +308,7 @@ struct MacTweaksWindowView: View {
     }
 
     private var savedInputSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Input selection").font(.system(size: 13, weight: .medium))
             Text("Mic Lock tries these in order, then a built-in or other non-wireless microphone.")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
