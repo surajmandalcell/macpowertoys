@@ -30,7 +30,7 @@ final class TrayFanUITests: XCTestCase {
         add(homeCapture)
 
         let monitor = app.menuBars.statusItems.matching(identifier: "SystemMonitorMenuBarItem").firstMatch
-        XCTAssertTrue(monitor.waitForExistence(timeout: 10))
+        XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
         app.buttons["system-monitor.tray.home"].click()
         XCTAssertFalse(app.buttons["fan-control.setup"].exists)
@@ -75,7 +75,7 @@ final class TrayFanUITests: XCTestCase {
         tray.click()
         XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
         let monitor = app.menuBars.statusItems.matching(identifier: "SystemMonitorMenuBarItem").firstMatch
-        XCTAssertTrue(monitor.waitForExistence(timeout: 10))
+        XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
 
         let home = app.buttons["system-monitor.tray.home"]

@@ -187,6 +187,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         didFinishLaunching = true
+        if AppRuntime.isUITesting,
+           let monitorMode = ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] {
+            SystemMonitorService.shared.updateMenuSettings {
+                $0 = SystemMonitorMenuSettings(enabled: true)
+                if monitorMode == "separate" { $0.setPlacement(.separate, for: .memory) }
+            }
+            NSLog("Monitor UI test status items: \(SystemMonitorService.shared.statusItemOwnerCount)")
+        }
         startApplicationIfReady()
         if let openIndex = CommandLine.arguments.firstIndex(of: "--open"),
            CommandLine.arguments.indices.contains(openIndex + 1),

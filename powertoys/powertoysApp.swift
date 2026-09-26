@@ -49,14 +49,6 @@ struct MacPowerToysApp: App {
         appDelegate.configureApplication {
             DeepLinkHandler.shared.setOpenWindowAction(openWindow)
             if AppRuntime.isUITesting {
-                if let monitorMode = ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] {
-                    SystemMonitorService.shared.updateMenuSettings {
-                        $0 = SystemMonitorMenuSettings(enabled: true)
-                        if monitorMode == "separate" {
-                            $0.setPlacement(.separate, for: .memory)
-                        }
-                    }
-                }
                 DeepLinkHandler.shared.handleCLIArguments()
                 return
             }
