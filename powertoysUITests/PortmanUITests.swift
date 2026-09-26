@@ -119,6 +119,13 @@ final class PortmanUITests: XCTestCase {
 
         let host = app.textFields["SSH alias or username at IP address"]
         host.click()
+        host.typeText("-bad\n")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Enter a valid SSH host"))
+            .firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["0 ports on -bad"].exists,
+                       "A failed scan was presented as a completed result")
+        host.click()
+        app.typeKey("a", modifierFlags: .command)
         host.typeText("alice@127.0.0.1")
         XCTAssertFalse(app.buttons["Enter SSH password"].exists,
                        "Forward offered a password before SSH requested one")
