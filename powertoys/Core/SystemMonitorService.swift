@@ -3,6 +3,7 @@ import Darwin
 import Foundation
 import IOKit
 import IOKit.ps
+import SwiftUI
 
 nonisolated enum SystemMonitorMenuMode: String, Codable, CaseIterable, Identifiable {
     case grouped, direct
@@ -308,6 +309,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
 
     mutating func setPlacement(_ placement: SystemMonitorMenuPlacement, for metric: SystemMonitorMenuMetric) {
         guard let index = items.firstIndex(where: { $0.metric == metric }) else { return }
+        if enabled && placement == .off && items[index].enabled && enabledItems.count == 1 { return }
         if !enabled && placement != .off {
             for itemIndex in items.indices { items[itemIndex].enabled = false }
         }
@@ -334,6 +336,11 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
         for index in items.indices {
             items[index].interval = items[index].metric.normalizedInterval(items[index].interval, global: interval)
         }
+        if enabled && enabledItems.isEmpty,
+           let memoryIndex = items.firstIndex(where: { $0.metric == .memory }) {
+            items[memoryIndex].enabled = true
+            items[memoryIndex].placement = .combined
+        }
     }
 
     func applying(_ change: (inout SystemMonitorMenuSettings) -> Void) -> SystemMonitorMenuSettings? {
@@ -344,7 +351,7 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
     }
 
     static let defaultItems = SystemMonitorMenuMetric.allCases.map {
-        SystemMonitorMenuItemConfiguration(metric: $0, enabled: $0 == .cpu || $0 == .memory)
+        SystemMonitorMenuItemConfiguration(metric: $0, enabled: $0 == .memory)
     }
 
     private static func migratedItems(from metrics: Set<SystemMonitorMenuMetric>) -> [SystemMonitorMenuItemConfiguration] {
@@ -999,6 +1006,7 @@ final class SystemMonitorMenuController: NSObject {
     private var latestValues: [SystemMonitorMenuMetric: String] = [:]
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
+    private let popover = NSPopover()
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
     private let defaults: UserDefaults
     private(set) var renderedWriteCount = 0
@@ -1040,6 +1048,7 @@ final class SystemMonitorMenuController: NSObject {
             : []
         let obsoleteKeys = statusItems.keys.filter { !desired.contains($0) ||
             (!positionKeys.isEmpty && $0 != "group") }
+        if !obsoleteKeys.isEmpty { popover.performClose(nil) }
         for key in obsoleteKeys {
             if let item = statusItems.removeValue(forKey: key) {
                 NSStatusBar.system.removeStatusItem(item)
@@ -1133,14 +1142,24 @@ final class SystemMonitorMenuController: NSObject {
     private func makeStatusItem(autosaveName: String) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = autosaveName
+        item.button?.identifier = NSUserInterfaceItemIdentifier("SystemMonitorMenuBarItem")
         item.button?.target = self
         item.button?.action = #selector(openSystemMonitor)
         item.button?.sendAction(on: [.leftMouseUp])
-        item.button?.toolTip = "Open System Monitor"
+        item.button?.toolTip = "System Monitor"
         return item
     }
     private func layoutSignature(for settings: SystemMonitorMenuSettings) -> String {
         "\(settings.enabled)|\(settings.enabledItems.map { "\($0.metric.rawValue):\($0.placement.rawValue)" }.joined(separator: ","))"
     }
-    @objc private func openSystemMonitor() { ToolActionRouter.shared.open(toolID: "system-monitor") }
+    @objc private func openSystemMonitor(_ sender: NSStatusBarButton) {
+        if popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+        popover.behavior = .transient
+        popover.contentViewController = NSHostingController(rootView: SystemMonitorMenuPopoverView())
+        popover.contentSize = NSSize(width: 440, height: 560)
+        popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+    }
 }

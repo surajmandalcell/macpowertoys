@@ -210,7 +210,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
             (.cloudSync, .dark, "Cloud Sync — Dark"),
             (.inputDevices, .dark, "Input Devices — Dark"),
             (.systemCare, .dark, "System Care — Dark"),
-            (.systemMonitor, .dark, "System Monitor — Dark"),
             (.netToys, .dark, "NetToys — Dark"),
         ] {
             let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))

@@ -158,7 +158,7 @@ struct SystemMonitorRemoteView: View {
         .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
         .padding(14)
         .background(SystemMonitorPalette.surface(tint))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.25)) }
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.12)) }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 

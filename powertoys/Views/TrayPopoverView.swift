@@ -57,7 +57,7 @@ enum TrayPopoverLayout {
     static let transitionDuration = UtilityMotion.standardDuration
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
-        .cloudSync, .inputDevices, .systemCare, .systemMonitor, .netToys,
+        .cloudSync, .inputDevices, .systemCare, .netToys,
         .switchAccounts,
     ]
 
@@ -230,7 +230,7 @@ struct TrayPopoverView: View {
         case .systemCare:
             SystemCareTrayView()
         case .systemMonitor:
-            SystemMonitorTrayView()
+            EmptyView()
         case .netToys:
             NetToysTrayView()
         case .switchAccounts:
@@ -413,7 +413,7 @@ private struct TrayHomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if toolIDs.isEmpty && !SettingsManager.shared.isToolEnabled("system-monitor") {
+            if toolIDs.isEmpty {
                 EmptyStateView(icon: "switch.2", message: "No Home tools are in the combined menu")
                     .frame(height: 120)
             } else {
@@ -441,11 +441,6 @@ private struct TrayHomeView: View {
                 }
                 if toolIDs.contains("awake") {
                     AwakeTrayRow()
-                }
-                if SettingsManager.shared.isToolEnabled("system-monitor") {
-                    FanControlView(owner: "tray-home", compact: true)
-                        .padding(.top, 4)
-                        .padding(.bottom, 14)
                 }
             }
         }
@@ -1223,7 +1218,39 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     }
 }
 
+struct SystemMonitorMenuPopoverView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "waveform.path.ecg")
+                    .foregroundStyle(SystemMonitorPalette.accent)
+                Text("System Monitor")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Button("Open Window") { ToolActionRouter.shared.open(toolID: "system-monitor") }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("system-monitor.menu.open-window")
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 42)
+
+            ScrollView {
+                SystemMonitorTrayView(showsHeader: false)
+            }
+            .thinScrollIndicators()
+        }
+        .frame(width: 440, height: 560)
+        .background(colorScheme == .dark
+            ? Color(red: 0.075, green: 0.075, blue: 0.082)
+            : Color(nsColor: .windowBackgroundColor))
+        .utilityMotionPolicy()
+    }
+}
+
 struct SystemMonitorTrayView: View {
+    var showsHeader = true
     @State private var service = SystemMonitorService.shared
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
     @Environment(\.colorScheme) private var colorScheme
@@ -1233,14 +1260,19 @@ struct SystemMonitorTrayView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TrayToolHeader(tab: .systemMonitor)
+            if showsHeader { TrayToolHeader(tab: .systemMonitor) }
             HStack(spacing: 4) {
                 ForEach(SystemMonitorTrayPage.allCases) { item in
                     Button {
                         pageID = item.rawValue
                     } label: {
-                        monitorIcon(item.symbol)
-                            .frame(maxWidth: .infinity, minHeight: 30)
+                        VStack(spacing: 3) {
+                            monitorIcon(item.symbol)
+                            Text(item.title)
+                                .font(.system(size: 9, weight: .medium))
+                                .lineLimit(1)
+                        }
+                            .frame(maxWidth: .infinity, minHeight: 42)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
@@ -1254,7 +1286,7 @@ struct SystemMonitorTrayView: View {
                 }
             }
             .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-            .padding(.bottom, 8)
+            .padding(.bottom, 10)
 
             if page == .home { homePage } else { detailPage }
             if page == .sensors {
@@ -1450,7 +1482,7 @@ struct SystemMonitorTrayView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(SystemMonitorPalette.surface(tint, radius: 10))
-        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(tint.opacity(0.25)) }
+        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.12)) }
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
@@ -1492,7 +1524,7 @@ struct SystemMonitorTrayView: View {
         tint: Color? = nil,
         surfaceTint: Color? = nil
     ) -> some View {
-        let color = surfaceTint ?? tint ?? level.map(Self.usageTint) ?? .gray
+        let color = surfaceTint ?? tint ?? SystemMonitorPalette.accent
         let surface = surfaceTint ?? color
         return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
@@ -1523,10 +1555,10 @@ struct SystemMonitorTrayView: View {
         .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
         .background(SystemMonitorPalette.surface(surface, radius: 10))
         .overlay {
-            RoundedRectangle(cornerRadius: 10).strokeBorder(surface.opacity(0.25))
+            RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.12))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .shadow(color: surface.opacity(0.1), radius: 5, y: 2)
+        .shadow(color: .black.opacity(0.16), radius: 5, y: 2)
     }
 
     @ViewBuilder
@@ -1577,13 +1609,6 @@ struct SystemMonitorTrayView: View {
     }
 
     private var thermalLevel: Double? { Self.thermalLevel(sample?.thermalState) }
-
-    nonisolated private static func usageTint(_ value: Double) -> Color {
-        if value >= 90 { return .red }
-        if value >= 70 { return .orange }
-        if value >= 35 { return .blue }
-        return .green
-    }
 
     nonisolated private static func thermalLevel(_ state: String?) -> Double? {
         switch state {

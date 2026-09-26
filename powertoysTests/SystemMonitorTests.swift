@@ -24,14 +24,14 @@ final class SystemMonitorTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
 
-        let host = NSHostingView(rootView: SystemMonitorTrayView()
+        let host = NSHostingView(rootView: SystemMonitorTrayView(showsHeader: false)
             .defaultAppStorage(defaults)
-            .frame(width: TrayPopoverLayout.width))
+            .frame(width: 440))
         host.layoutSubtreeIfNeeded()
         XCTAssertLessThanOrEqual(
             host.fittingSize.height,
-            TrayPopoverLayout.maximumBodyHeight(screenHeight: 680),
-            "Home must show all summary cards on a short menu-bar display"
+            518,
+            "Home must show all summary cards inside the dedicated popup"
         )
     }
 
@@ -360,19 +360,18 @@ final class SystemMonitorTests: XCTestCase {
     func testSystemMonitorTrayRendersAtProductionWidth() throws {
         let suiteName = "SystemMonitorTrayRender.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defaults.set(TrayTab.systemMonitor.rawValue, forKey: "tray.selectedTab.v2")
         defer { defaults.removePersistentDomain(forName: suiteName) }
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
         for page in ["home", "cpu", "gpu", "memory", "network", "disk", "battery", "sensors"] {
             defaults.set(page, forKey: "systemMonitor.trayPage")
             for scheme in [ColorScheme.light, .dark] {
-                let host = NSHostingView(rootView: TrayPopoverView()
+                let host = NSHostingView(rootView: SystemMonitorMenuPopoverView()
                     .defaultAppStorage(defaults)
-                    .frame(width: 360, height: 650, alignment: .top)
+                    .frame(width: 440, height: 560, alignment: .top)
                     .background(Color(nsColor: .windowBackgroundColor))
                     .environment(\.colorScheme, scheme))
                 host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-                host.frame = NSRect(x: 0, y: 0, width: 360, height: 650)
+                host.frame = NSRect(x: 0, y: 0, width: 440, height: 560)
                 host.layoutSubtreeIfNeeded()
                 RunLoop.current.run(until: Date().addingTimeInterval(0.4))
 
@@ -588,7 +587,7 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(encoded["schemaVersion"] as? Int, SystemMonitorMenuSettings.currentSchemaVersion)
     }
 
-    func testNormalizationAllowsEveryItemToBeDisabledAndValidatesSymbols() {
+    func testEnabledMenuRestoresRAMAndValidatesSymbols() {
         var settings = SystemMonitorMenuSettings(
             items: [SystemMonitorMenuItemConfiguration(metric: .cpu, symbol: "not-a-symbol")]
         )
@@ -599,7 +598,10 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertTrue(settings.enabledItems.isEmpty)
         XCTAssertEqual(settings.items[0].symbol, SystemMonitorMenuMetric.cpu.symbol)
         settings.enabled = true
-        XCTAssertNil(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false))
+        settings.normalize()
+        XCTAssertEqual(settings.enabledItems.map(\.metric), [.memory])
+        XCTAssertEqual(settings.combinedItems.map(\.metric), [.memory])
+        XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: settings, detailed: false), 10)
     }
 
     func testFirstMenuPlacementDoesNotEnableOtherLegacyDefaults() {
@@ -609,7 +611,7 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu])
         XCTAssertEqual(settings.separateItems.map(\.metric), [.cpu])
         settings.setPlacement(.off, for: .cpu)
-        XCTAssertTrue(settings.enabledItems.isEmpty)
+        XCTAssertEqual(settings.enabledItems.map(\.metric), [.cpu])
     }
 
     func testNoOpSettingsMutationProducesNoUpdate() throws {
@@ -693,8 +695,8 @@ final class SystemMonitorTests: XCTestCase {
         service.updateMenuSettings {
             for index in $0.items.indices { $0.items[index].enabled = false }
         }
-        XCTAssertTrue(service.statusItemIdentities.isEmpty)
-        XCTAssertTrue(service.statusItemAutosaveNames.isEmpty)
+        XCTAssertEqual(service.statusItemAutosaveNames, ["system-monitor.grouped"])
+        XCTAssertEqual(service.menuSettings.enabledItems.map(\.metric), [.memory])
     }
 
     func testLifecycleReconfiguresOnlyForStateChanges() {

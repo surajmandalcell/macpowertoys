@@ -49,6 +49,11 @@ struct MacPowerToysApp: App {
         appDelegate.configureApplication {
             DeepLinkHandler.shared.setOpenWindowAction(openWindow)
             if AppRuntime.isUITesting {
+                if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] == "1" {
+                    SystemMonitorService.shared.updateMenuSettings {
+                        $0 = SystemMonitorMenuSettings(enabled: true)
+                    }
+                }
                 DeepLinkHandler.shared.handleCLIArguments()
                 return
             }
