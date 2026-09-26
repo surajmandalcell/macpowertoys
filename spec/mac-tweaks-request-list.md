@@ -1,5 +1,12 @@
 # Mac Tweaks request list
 
+## Inline controls and catalogue correction, 2026-09-26
+
+- [ ] Show only working Mac Tweaks controls and saved-value recovery in the app. Keep the rest of the 130-entry research catalogue in the compatibility document, not as placeholder cards or sidebar categories.
+- [ ] Use one consistent compact disclosure row for every visible setting. Open the working control inside its card, keep one card open at a time, and retain category and ranked search context.
+- [ ] Stop microphone control polling and input-level monitoring when Mic Lock is collapsed. Verify category switching and search do not stall.
+- [ ] Inspect collapsed, expanded, and search screenshots from the final build and correct any visible density or alignment defects.
+
 ## Navigation and visual correction, 2026-09-26
 
 - [x] Replace the flat item sidebar with one level of grouped category navigation. Show the selected category's settings as scrollable cards in the content pane. Hosted UI run `36182911001` navigated Input, Finder, Power, detail, and ranked search.
@@ -12,7 +19,7 @@
 - [x] Account for every record in the supplied 130-entry research catalogue with a per-feature implementation status and reason. Treat its availability marks as research evidence, not runtime certification. See `spec/mac-tweaks-compatibility.md`.
 - [x] Group Mac Tweaks into searchable categories. Sidebar search ranks titles, hidden keywords, phrase patterns, synonyms, and reasonable misspellings instantly.
 - [ ] Implement supported preference controls with exact-key backup, durable undo, managed-setting checks, and visible failure states. Batch activation where a target process must refresh.
-- [x] Keep native settings shortcuts distinct from hidden controls. Show candidate, helper-dependent, and historical entries as documentation without a misleading toggle until their mechanisms and target OS behavior are verified.
+- [x] Keep the 130-entry compatibility research in documentation. Superseded: research-only entries no longer belong in the app's card list.
 - [x] Preserve Mic Lock as the first active enhancement. Mac Tweaks remains an on-demand window with no separate menu-bar item.
 - [ ] Verify code paths, build, installed app freshness, and available OS behavior. Report which parts still need macOS 15.8 and 26.7 runtime checks.
 

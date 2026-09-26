@@ -1,10 +1,8 @@
-import AppKit
 import SwiftUI
 
 struct TweakDetailView: View {
     let item: TweakItem
-    let backTitle: String
-    let onBack: () -> Void
+    let onRestore: () -> Void
 
     @State private var selections: [String: Int] = [:]
     @State private var message: String?
@@ -20,62 +18,21 @@ struct TweakDetailView: View {
     }
 
     var body: some View {
-        WorkspacePage(item.title, subtitle: item.category, actions: {
-            Button(backTitle, systemImage: "chevron.left", action: onBack)
-                .accessibilityIdentifier("mac-tweaks.back")
-        }) {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(item.summary)
-                    .font(.system(size: 14))
-
-                HStack(spacing: 8) {
-                    Text(item.kind.rawValue)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    if fields.isEmpty && item.id != "helper.keep-awake" {
-                        Text(item.kind == .historical ? "Unavailable" : "Reference")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(item.kind == .historical ? .red : .secondary)
-                    }
-                }
-
-                Text(item.researchCoverage)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-
-                if item.id == "helper.keep-awake" {
-                    if SettingsManager.shared.isToolEnabled("awake") {
-                        AwakeSettingsView()
-                        Text("The sleep assertion works while MacPowerToys is running. Timed sessions and the selected mode are saved by Awake.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("Awake is disabled in MacPowerToys.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                        Button("Enable Awake") { SettingsManager.shared.setToolEnabled(true, for: "awake") }
-                    }
-                } else if !fields.isEmpty {
-                    preferenceForm
+        VStack(alignment: .leading, spacing: 14) {
+            Text(item.summary)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            if item.id == "helper.keep-awake" {
+                if SettingsManager.shared.isToolEnabled("awake") {
+                    AwakeSettingsView()
                 } else {
-                    Text(explanation)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let nativeDestination {
-                        Button(nativeDestination.label) {
-                            NSWorkspace.shared.open(nativeDestination.url)
-                        }
-                    }
+                    Button("Enable Awake") { SettingsManager.shared.setToolEnabled(true, for: "awake") }
                 }
-
-                if let referenceURL {
-                    Link("Read reference", destination: referenceURL)
-                        .font(.system(size: 12))
-                }
+            } else {
+                preferenceForm
             }
-            .frame(maxWidth: 680, alignment: .leading)
         }
+        .frame(maxWidth: 680, alignment: .leading)
         .onAppear(perform: refresh)
         .confirmationDialog("Restart \(restartTarget ?? "app") to apply changes?", isPresented: $showRestartConfirmation) {
             Button("Restart \(restartTarget ?? "app")") { restartTargetApp() }
@@ -131,12 +88,6 @@ struct TweakDetailView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
-            if let nativeDestination {
-                Button(nativeDestination.label) { NSWorkspace.shared.open(nativeDestination.url) }
-            }
-            Text("The preference mapping is documented. Its visible effect still needs checking on each supported macOS release.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
             if let message {
                 Text(message)
                     .font(.system(size: 12))
@@ -154,76 +105,6 @@ struct TweakDetailView: View {
         if item.id == "menubar.spacing" { return "Sign out and back in, or reopen affected status apps, to check spacing and click targets." }
         if restartTarget != nil { return "Restart the target app when ready to check the visible effect." }
         return "Some apps read preferences only when they start. Reopen affected apps to check the effect."
-    }
-
-    private var explanation: String {
-        switch item.kind {
-        case .native:
-            if item.id.hasPrefix("native.finder-") { return "Finder already provides this choice. Open Finder, then use Finder > Settings or the View menu and search for the title above." }
-            if item.id.hasPrefix("native.screenshot-") { return "Screenshot already provides this choice in Options. Open Screenshot and choose the setting there." }
-            if item.id == "native.app-options" { return "Each named Apple app owns its own Settings. Open that app and choose its Settings menu." }
-            return "Apple already provides this setting. Open System Settings and search for the title above. Mac Tweaks does not duplicate its control."
-        case .helper:
-            return "This behavior needs code running in the background, with feature-specific permissions and recovery. The supplied catalogue does not establish a working implementation for this app."
-        case .advanced:
-            return item.id == "hardware.auto-start"
-                ? "Apple documents BootPreference for Apple silicon laptops. Administrator authorization and exact NVRAM rollback need a dedicated control."
-                : "Apple documents pmset schedules. A safe editor must preserve unrelated events and account for FileVault, unsaved work, and administrator authorization."
-        case .candidate:
-            return "A key or another product suggests this may be possible, but its behavior has not been checked on all target macOS versions."
-        case .historical:
-            return "This old recipe is excluded from supported controls because it is obsolete, unreliable, or has known side effects."
-        case .versioned:
-            if item.id == "finder.column-sizing" {
-                return "The hidden preference applies on Sequoia and Tahoe 26.0. Finder exposes this choice in its native View Options from Tahoe 26.1 onward."
-            }
-            if item.id.hasPrefix("launchpad.") { return "This is a legacy Launchpad feature for macOS 15. Its old mechanism does not apply to the newer launcher." }
-            if ["appearance.corners", "appearance.sidebars"].contains(item.id) { return "Documented from Tahoe 26.4 and on Golden Gate, but the exact key still needs independent verification." }
-            return "Availability changes by macOS minor release or app version. The exact mechanism and visible effect need verification before a control is enabled."
-        case .preference:
-            return "The feature is documented, but its exact preference key or safe value range has not been established here."
-        }
-    }
-
-    private var nativeDestination: (label: String, url: URL)? {
-        if item.id == "finder.column-sizing",
-           ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 {
-            return ("Open Finder", URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"))
-        }
-        guard item.kind == .native else { return nil }
-        if item.id.hasPrefix("native.finder-") {
-            return ("Open Finder", URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"))
-        }
-        if item.id.hasPrefix("native.screenshot-") {
-            return ("Open Screenshot", URL(fileURLWithPath: "/System/Applications/Utilities/Screenshot.app"))
-        }
-        if item.id == "native.app-options" { return nil }
-        return ("Open System Settings", URL(fileURLWithPath: "/System/Applications/System Settings.app"))
-    }
-
-    private var referenceURL: URL? {
-        let url: String?
-        switch item.id {
-        case "finder.network-metadata": url = "https://support.apple.com/en-us/102064"
-        case "hardware.auto-start": url = "https://support.apple.com/en-us/120622"
-        case "power.schedule": url = "https://support.apple.com/guide/mac-help/schedule-your-mac-to-turn-on-or-off-mchl40376151/mac"
-        case "input.hid-remap": url = "https://developer.apple.com/library/archive/technotes/tn2450/_index.html"
-        case "security.sudo-touchid": url = "https://raw.githubusercontent.com/nix-darwin/nix-darwin/master/modules/security/pam.nix"
-        case "helper.keep-awake": url = nil
-        case "native.screenshot-location", "native.screenshot-thumbnail", "native.screenshot-memory":
-            url = "https://support.apple.com/guide/mac-help/take-a-screenshot-mh26782/mac"
-        case "native.tiling": url = "https://support.apple.com/guide/mac-help/tile-app-windows-mchlef287e5d/mac"
-        case _ where item.id.hasPrefix("native.finder-"): url = nil
-        case _ where item.kind == .native: url = "https://support.apple.com/guide/mac-help/change-system-settings-mh15217/mac"
-        case _ where item.id.hasPrefix("dock."): url = "https://www.bresink.com/osx/0TinkerTool/details.html"
-        case "helper.mouse-scroll", "helper.pointer-profiles", "helper.mouse-buttons": url = "https://linearmouse.app/en/"
-        case _ where item.id.hasPrefix("helper."): url = "https://sindresorhus.com/supercharge"
-        case _ where item.kind == .historical: url = "https://www.bresink.com/osx/0TinkerTool/issues.html"
-        case _ where item.kind == .preference || item.kind == .versioned:
-            url = "https://www.bresink.com/osx/0TinkerTool/details.html"
-        default: url = nil
-        }
-        return url.flatMap(URL.init(string:))
     }
 
     private func refresh() {
@@ -247,6 +128,7 @@ struct TweakDetailView: View {
             try TweakPreferenceStore.shared.restore(fields)
             message = "Previous values restored. Follow the same restart guidance to check the result."
             refresh()
+            onRestore()
         } catch {
             message = error.localizedDescription
         }

@@ -1,12 +1,12 @@
 # Mac Tweaks implementation matrix
 
-Checked 2026-09-25. The target families are macOS 15.8, 26.7, and 27.0. The supplied 130 records are all in `TweakCatalog.swift`; Mic Lock is an additional, already implemented item. This matrix separates **coded controls** from **observed behavior**. The current Mac compiled on 27.0, but none of the new preference effects has been certified by changing the owner's settings, and 15.8/26.7 have not been runtime tested. The app disables preference writes on unlisted minor releases. Do not interpret a successful preference read-back as proof of visible behavior.
+Checked 2026-09-25. The target families are macOS 15.8, 26.7, and 27.0. The supplied 130 records remain in `TweakCatalog.swift` as a research backlog; only coded controls appear in Mac Tweaks. Mic Lock is an additional, already implemented item. This matrix separates **coded controls** from **observed behavior**. The current Mac compiled on 27.0, but none of the new preference effects has been certified by changing the owner's settings, and 15.8/26.7 have not been runtime tested. The app disables preference writes on unlisted minor releases. Do not interpret a successful preference read-back as proof of visible behavior.
 
 Verdicts:
 
 - **Control coded**: a scoped preference editor, exact original-value and absent-key backup, conflict check, rollback action, and activation guidance exist. New writes are gated to researched OS minors; restore stays available after an OS update. Behavioral certification is still required on each target OS.
 - **Existing control reused**: Mac Tweaks exposes an already implemented MacPowerToys service and its persisted controls in the same window.
-- **Apple shortcut**: searchable documentation and, where there is one owning app, a button to open Finder, Screenshot, or System Settings exist. The native control already belongs to Apple; exact pane navigation is not yet implemented.
+- **Apple setting in research**: the native control belongs to Apple. Generic shortcuts were removed from the Mac Tweaks window because they did not open the exact setting or edit it.
 - **Issue**: the feature is feasible or plausible, but the key, scope, permission path, side effects, lifecycle, or version behavior is unresolved. It has no live toggle.
 - **Cannot ship universally**: the stated old recipe is obsolete, broken, or unsafe as one control across all three OS families. Alternatives may exist and would need their own feature record.
 
@@ -50,9 +50,9 @@ The current TinkerTool matrices document the visible feature families; nix-darwi
 | --- | --- |
 | `helper.keep-awake` | Reuses `AwakeService` and `AwakeSettingsView`: timed, until-date, and indefinite power assertions persist in MacPowerToys. The app must keep running. Check actual sleep behavior on each target OS and supported hardware. |
 
-## Apple settings shown as searchable documentation (25)
+## Apple settings retained in the research backlog (25)
 
-These are implementable as convenience links or, after version-specific UI checks, as mirrored controls. The app opens Finder, Screenshot, or System Settings where one owner is clear, then tells the user where to find the selected choice. The grouped built-in-app entry provides instructions without a launch button. It does not claim direct pane navigation or silently write Apple's native controls. [Apple System Settings guide](https://support.apple.com/guide/mac-help/change-system-settings-mh15217/mac), [Screenshot options](https://support.apple.com/guide/mac-help/take-a-screenshot-mh26782/mac), [window tiling](https://support.apple.com/guide/mac-help/tile-app-windows-mchlef287e5d/mac).
+These may become controls after version-specific implementation and UI checks. They are absent from the Mac Tweaks sidebar and search until then. [Apple System Settings guide](https://support.apple.com/guide/mac-help/change-system-settings-mh15217/mac), [Screenshot options](https://support.apple.com/guide/mac-help/take-a-screenshot-mh26782/mac), [window tiling](https://support.apple.com/guide/mac-help/tile-app-windows-mchlef287e5d/mac).
 
 | ID | Native owner / issue before direct editing |
 | --- | --- |
@@ -203,4 +203,4 @@ These are technically plausible as dedicated helpers, extensions, or event monit
 
 ## Certification gate
 
-For each coded control, use a clean account on 15.8, 26.7, and 27.0; record original key presence/type/value; apply one setting; check the visible effect; restart the target app and sign in again where applicable; change the value from Apple's UI or another utility; verify conflict handling; then restore both originally present and absent keys. Check Dock layouts, Finder file operations, screenshot PDF plus thumbnails, Terminal with active shells, multiple displays and notches, managed preferences, VoiceOver, and permissions. Until those observations exist, the app and this report must say **coded, not runtime certified**.
+For each coded control, use a clean account on 15.8, 26.7, and 27.0; record original key presence/type/value; apply one setting; check the visible effect; restart the target app and sign in again where applicable; change the value from Apple's UI or another utility; verify conflict handling; then restore both originally present and absent keys. Check Dock layouts, Finder file operations, screenshot PDF plus thumbnails, Terminal with active shells, multiple displays and notches, managed preferences, VoiceOver, and permissions. Until those observations exist, this report records the controls as **coded, not runtime certified**.
