@@ -55,8 +55,8 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Enable Fan Control"].exists)
         XCTAssertTrue(app.buttons["Check Again"].exists)
 
-        app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
-        XCTAssertFalse(app.staticTexts["Enable fan control"].exists)
+        app.buttons["system-monitor.tray.home"].click()
+        XCTAssertTrue(app.staticTexts["Enable fan control"].waitForNonExistence(timeout: 5))
     }
 
     @MainActor
