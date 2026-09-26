@@ -391,6 +391,11 @@ struct DiskModifyView: View {
                     .background(partitionID == item.id ? Color.accentColor.opacity(0.13) : .clear,
                                 in: RoundedRectangle(cornerRadius: 7))
                     .accessibilityAddTraits(partitionID == item.id ? .isSelected : [])
+                    .accessibilityLabel(item.content == "EFI" ?
+                                        "\(item.name), EFI system partition, protected" :
+                                        "\(item.name), \(item.displayType)")
+                    .accessibilityHint(item.content == "EFI" ?
+                                       "Diskman cannot delete or resize this partition." : "Select this item")
                     .accessibilityIdentifier("diskman.partition.\(item.id)")
                 }
             }
