@@ -22,15 +22,22 @@
 ## Portman Cold Menu-Bar Launch
 
 - **Symptom:** A fresh hosted `--open portman` launch displayed no panel even
-  though the app started and the menu-bar item existed.
+  though the app started and the menu-bar item existed. In run `36207736000`,
+  the first normal-mode UI test saw no Portman controls; later test-mode tab
+  navigation passed.
 - **Cause:** Scene-driven routing could run before the item had a usable window
-  anchor, so showing the popover did not present it.
+  anchor. The explicit open path stopped checking after about 1.2 seconds,
+  shorter than a cold normal-mode startup may need.
 - **Invariant:** Route the startup argument from the app delegate and present
-  Portman only after its menu-bar button has a window and nonzero width.
+  Portman only after its menu-bar button has a window and nonzero width. Keep
+  checking for up to ten seconds after an explicit open request; never show an
+  unanchored popover or start polling while the panel is idle.
 - **Check:** A fresh hosted Mac UI run opens `--open portman`, finds the Forward
-  tab, and clicks blank edges of Forward and Settings. Run `36138020899`
-  passed after the route and anchor fixes; the later compact panel runs
-  continued to pass without owner-desktop UI interaction.
+  tab, and clicks blank edges of Forward and Settings. Its first normal-mode
+  test must find the Servers tab before checking listener rows, so a missing
+  panel is reported separately from a missing listener. Run `36138020899`
+  passed the earlier route; repeat the cold-launch case after the longer wait
+  without owner-desktop UI interaction.
 
 ## Portman Server Overview Height
 
