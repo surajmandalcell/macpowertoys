@@ -14,9 +14,12 @@ final class DiskExplorerRenderTests: XCTestCase {
                 ManagedPartition(id: "disk10s2", name: "WORK", content: "Apple_HFS",
                                  size: 6_000_000_000, mountPoint: "/Volumes/WORK", uuid: "work",
                                  fileSystem: "Mac OS Extended (Journaled)"),
-                ManagedPartition(id: "disk10s3", name: "SHARE", content: "Microsoft Basic Data",
-                                 size: 9_422_455_808, mountPoint: "/Volumes/SHARE", uuid: "share",
-                                 fileSystem: "ExFAT")
+                ManagedPartition(id: "disk10s3", name: "APFS", content: "Apple_APFS",
+                                 size: 9_422_455_808, mountPoint: nil, uuid: nil,
+                                 apfsContainer: "disk13"),
+                ManagedPartition(id: "disk13s1", name: "ARCHIVE", content: "APFS Volume",
+                                 size: 4_000_000_000, mountPoint: "/Volumes/ARCHIVE", uuid: "archive",
+                                 apfsContainer: "disk13", isAPFSVolume: true)
             ]
         )
         let size = NSSize(width: 880, height: 700)
