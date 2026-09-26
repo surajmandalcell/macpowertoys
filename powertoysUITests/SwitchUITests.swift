@@ -59,11 +59,13 @@ final class SwitchUITests: XCTestCase {
         XCTAssertTrue(backup.exists)
         XCTAssertTrue(settings.exists)
         XCTAssertTrue(app.buttons["switch.appearance"].exists)
+        XCTAssertTrue(app.buttons["switch.close"].exists)
         let add = app.descendants(matching: .any).matching(identifier: "switch.add").firstMatch
         XCTAssertTrue(add.exists)
         add.click()
-        XCTAssertTrue(app.menuItems["Codex CLI"].waitForExistence(timeout: 5))
-        app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["Claude Code"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continue"].exists)
+        app.buttons["Cancel"].click()
         XCTAssertTrue(app.buttons["switch.about"].exists)
         XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch Accounts")
@@ -80,7 +82,8 @@ final class SwitchUITests: XCTestCase {
         XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
 
         app.buttons["switch.about"].click()
-        XCTAssertTrue(app.buttons["tool.switch.launch"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["tool.switch.launch"].exists)
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch About")
     }
 

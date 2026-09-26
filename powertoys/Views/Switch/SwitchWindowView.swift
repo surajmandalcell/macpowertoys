@@ -32,8 +32,13 @@ struct SwitchWindowView: View {
     @AppStorage(SwitchTrayUsagePreferences.defaultKey) private var defaultShowTrayUsage = true
     @AppStorage(SwitchTrayUsagePreferences.periodKey) private var trayTokenPeriod = SwitchTrayTokenPeriod.sinceReset.rawValue
     @Environment(\.colorScheme) private var systemScheme
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var showingDelete = false
     @State private var showingAbout = false
+    @State private var showingAddAccount = false
+    @State private var selectedProviderID = ProviderID.codex
+    @State private var railTopHovered = false
+    @State private var closeHovered = false
     @State private var copiedAuthPath = false
     @State private var hoveredAccountID: UUID?
     @State private var trayUsageOverrides: [UUID: Bool] = [:]
@@ -96,10 +101,9 @@ struct SwitchWindowView: View {
                 (model.importPlan?.conflicts ?? []).map { ($0.relativePath, .keepShared) }
             )
         }
-        .sheet(isPresented: Binding(
-            get: { model.login != nil },
-            set: { if !$0 { Task { await model.cancelLogin() } } }
-        )) { loginSheet }
+        .sheet(isPresented: $showingAddAccount, onDismiss: {
+            if model.login != nil { Task { await model.cancelLogin() } }
+        }) { addAccountSheet }
         .sheet(isPresented: Binding(
             get: { model.importPlan != nil },
             set: { if !$0 { model.dismissImport() } }
@@ -120,7 +124,7 @@ struct SwitchWindowView: View {
 
     private var rail: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: 48).accessibilityHidden(true)
+            railTop.frame(height: 48)
             ForEach(SwitchPage.allCases) { destination in
                 railButton(destination.symbol, label: destination.rawValue,
                            selected: page == destination) { page = destination }
@@ -130,30 +134,47 @@ struct SwitchWindowView: View {
                 appearanceMode = palette.dark ? "light" : "dark"
             }
             .accessibilityIdentifier("switch.appearance")
-            Menu {
-                ForEach(AccountManager.providerCatalog.filter { $0.availability == .enabled }) { provider in
-                    Button(provider.displayName) { Task { await model.beginLogin(providerID: provider.id) } }
-                }
-                Divider()
-                Button("Import from Folder…") { chooseImportFolder() }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .regular))
-                    .frame(width: 48, height: 48)
-                    .contentShape(Rectangle())
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .help("Add account")
-            .accessibilityLabel("Add account")
-            .accessibilityIdentifier("switch.add")
-            .disabled(model.isWorking)
             railButton("info.circle", label: "About Switch") { showingAbout = true }
                 .accessibilityIdentifier("switch.about")
         }
         .frame(width: 48)
         .background(palette.rail)
         .overlay(alignment: .trailing) { palette.railLine.frame(width: 1) }
+    }
+
+    private var railTop: some View {
+        ZStack(alignment: .leading) {
+            Button {
+                NSApp.windows.first { $0.identifier?.rawValue == "switch" }?.miniaturize(nil)
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 15))
+                    .frame(width: 48, height: 48)
+                    .foregroundStyle(palette.muted)
+                    .background(palette.rail)
+            }
+            .buttonStyle(.plain)
+            .offset(x: 48)
+            .opacity(railTopHovered ? 1 : 0)
+            .allowsHitTesting(railTopHovered)
+            .accessibilityHidden(!railTopHovered)
+            .help("Minimize window")
+            Button { dismissWindow(id: "switch") } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15))
+                    .frame(width: 48, height: 48)
+                    .foregroundStyle(closeHovered ? Color.white : palette.red)
+                    .background(closeHovered ? palette.red : palette.rail)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { closeHovered = $0 }
+            .accessibilityLabel("Close window")
+            .accessibilityIdentifier("switch.close")
+        }
+        .frame(width: 96, height: 48, alignment: .leading)
+        .onHover { railTopHovered = $0 }
+        .zIndex(2)
     }
 
     private func railButton(_ symbol: String, label: String, selected: Bool = false,
@@ -238,7 +259,7 @@ struct SwitchWindowView: View {
                     }
                 }
                 .thinScrollIndicators()
-                addAccountMenu
+                addAccountButton
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(palette.panel2)
                     .disabled(model.isWorking)
@@ -251,22 +272,25 @@ struct SwitchWindowView: View {
         return Button {
             model.selectedAccountID = account.id
         } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
-                        .font(.system(size: 12, weight: .medium))
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    if model.snapshot?.status.isDefault(account) == true {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .semibold))
-                            .help("Default account")
+            HStack(spacing: 8) {
+                SwitchProviderIcon(providerID: account.identity.providerID, size: 20)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 5) {
+                        Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        if model.snapshot?.status.isDefault(account) == true {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .semibold))
+                                .help("Default account")
+                        }
                     }
+                    Text(account.identity.providerID.displayName)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(selected ? palette.activeInk.opacity(0.75) : palette.muted)
+                        .lineLimit(1)
                 }
-                Text(account.identity.providerID.displayName)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(selected ? palette.activeInk.opacity(0.75) : palette.muted)
-                    .lineLimit(1)
             }
             .padding(.horizontal, 12)
             .frame(height: 44)
@@ -327,7 +351,7 @@ struct SwitchWindowView: View {
                         .foregroundStyle(palette.muted)
                         .frame(maxWidth: 520, alignment: .leading)
                     HStack(spacing: 6) {
-                        addAccountMenu.disabled(model.isWorking)
+                        addAccountButton.disabled(model.isWorking)
                         SwitchActionButton(title: "Advanced Import…", symbol: "folder",
                                            palette: palette) { chooseImportFolder() }
                     }
@@ -338,27 +362,20 @@ struct SwitchWindowView: View {
         }
     }
 
-    private var addAccountMenu: some View {
-        Menu {
-            ForEach(AccountManager.providerCatalog.filter { $0.availability == .enabled }) { provider in
-                Button(provider.displayName) {
-                    Task { await model.beginLogin(providerID: provider.id) }
-                }
-            }
-            Divider()
-            Button("Import from Folder…") { chooseImportFolder() }
-        } label: {
+    private var addAccountButton: some View {
+        Button { showingAddAccount = true } label: {
             Label("Add account", systemImage: "plus")
                 .font(.system(size: 12, weight: .medium))
                 .padding(.horizontal, 12)
                 .frame(height: 40)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("switch.add")
     }
 
     private func providerName(_ account: AccountRecord) -> String {
-        account.identity.providerID == .codex ? "Codex" : "Grok Build"
+        account.identity.providerID.displayName
     }
 
     private func copyAuthPath(_ account: AccountRecord) {
@@ -421,14 +438,15 @@ struct SwitchWindowView: View {
     @ViewBuilder
     private func accountActions(_ account: AccountRecord) -> some View {
         let isDefault = model.snapshot?.status.isDefault(account) == true
-        SwitchActionButton(title: isDefault ? "Using as default" : "Use",
-                           symbol: isDefault ? "checkmark.seal" : "checkmark",
+        SwitchActionButton(title: isDefault ? "Using as default" : "Use as default",
+                           symbol: "checkmark",
                            palette: palette, prominent: true, disabled: model.isWorking) {
             Task { await model.makeDefault(account.id) }
         }
         if account.identity.providerID == .codex {
             SwitchActionButton(title: "Show in Menubar",
-                               symbol: showsTrayUsage(account.id) ? "checkmark.seal" : "checkmark",
+                               symbol: "checkmark",
+                               doubleCheck: showsTrayUsage(account.id),
                                palette: palette, disabled: model.isWorking) {
                 let value = !showsTrayUsage(account.id)
                 trayUsageOverrides[account.id] = value
@@ -524,7 +542,8 @@ struct SwitchWindowView: View {
                             usageFact("Longest streak", value: "\(value) days")
                         }
                         if let value = summary.longestRunningTurnSeconds {
-                            usageFact("Longest turn", value: "\(value) seconds")
+                            usageFact("Longest turn", value: Duration.seconds(value).formatted(
+                                .units(allowed: [.hours, .minutes, .seconds], width: .abbreviated)))
                         }
                     }
                 }
@@ -610,6 +629,7 @@ struct SwitchWindowView: View {
         return VStack(alignment: .leading, spacing: 9) {
             HStack {
                 Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.85)
                 Spacer()
                 Text(percentage)
                     .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -793,14 +813,23 @@ struct SwitchWindowView: View {
                     }
                 }
                 HStack {
-                    Text("Backups never delete source data.")
+                    Text(model.pendingRecovery.isEmpty
+                         ? "Recovery backups are created automatically when account data changes."
+                         : "Backups never delete source data.")
                         .font(.system(size: 11))
                         .foregroundStyle(palette.muted)
                     Spacer()
-                    SwitchActionButton(title: "Finish pending work", symbol: "archivebox",
-                                       palette: palette, prominent: true,
-                                       disabled: model.pendingRecovery.allSatisfy { $0.phase == .conflicted } || model.isWorking) {
-                        Task { await model.recover() }
+                    let backupFolder = model.paths.applicationSupport.appending(path: "backups", directoryHint: .isDirectory)
+                    if FileManager.default.fileExists(atPath: backupFolder.path) {
+                        SwitchActionButton(title: "Show backups", symbol: "folder", palette: palette) {
+                            NSWorkspace.shared.activateFileViewerSelecting([backupFolder])
+                        }
+                    }
+                    if model.pendingRecovery.contains(where: { $0.phase != .conflicted }) {
+                        SwitchActionButton(title: "Finish pending work", symbol: "archivebox",
+                                           palette: palette, prominent: true, disabled: model.isWorking) {
+                            Task { await model.recover() }
+                        }
                     }
                 }
                 .padding(12)
@@ -971,13 +1000,16 @@ struct SwitchWindowView: View {
             }
             Spacer(minLength: 0)
             HStack {
-                Button("Cancel Sign-in") { Task { await model.cancelLogin() } }
+                Button("Cancel Sign-in") {
+                    showingAddAccount = false
+                    Task { await model.cancelLogin() }
+                }
                 Spacer()
                 if model.loginState == .credentialChoiceRequired {
-                    Button("Keep Saved Access") { Task { await model.checkLogin(choice: .keepShared) } }
-                    Button("Use New Access") { Task { await model.checkLogin(choice: .useImported) } }
+                    Button("Keep Saved Access") { Task { await checkAccountLogin(choice: .keepShared) } }
+                    Button("Use New Access") { Task { await checkAccountLogin(choice: .useImported) } }
                 } else {
-                    Button("Check Sign-in") { Task { await model.checkLogin() } }
+                    Button("Check Sign-in") { Task { await checkAccountLogin() } }
                         .buttonStyle(.borderedProminent)
                 }
             }
@@ -986,6 +1018,80 @@ struct SwitchWindowView: View {
         }
         .padding(20)
         .frame(width: 480, height: 240)
+    }
+
+    private func checkAccountLogin(choice: ConflictChoice? = nil) async {
+        await model.checkLogin(choice: choice)
+        if model.login == nil { showingAddAccount = false }
+    }
+
+    private var addAccountSheet: some View {
+        Group {
+            if model.login != nil {
+                loginSheet
+            } else {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Add Account").font(.system(size: 17, weight: .semibold))
+                        Spacer()
+                        Button("Cancel") { showingAddAccount = false }
+                            .buttonStyle(.plain)
+                    }
+                    .padding(20)
+                    Divider()
+                    VStack(spacing: 0) {
+                        ForEach(AccountManager.providerCatalog) { provider in
+                            let available = provider.availability == .enabled
+                            Button { selectedProviderID = provider.id } label: {
+                                HStack(spacing: 12) {
+                                    SwitchProviderIcon(providerID: provider.id)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(provider.displayName)
+                                            .font(.system(size: 12, weight: .semibold))
+                                        Text(available ? "Account switching is supported." :
+                                             (provider.unavailableReason ?? "Not available yet."))
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(palette.muted)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer()
+                                    if available && selectedProviderID == provider.id {
+                                        Image(systemName: "checkmark")
+                                    } else if !available {
+                                        Text("WIP").font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(palette.muted)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(height: 62)
+                                .background(selectedProviderID == provider.id ? palette.active.opacity(0.22) : palette.panel)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!available || model.isWorking)
+                            .accessibilityValue(selectedProviderID == provider.id ? "Selected" : "")
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    HStack {
+                        Button("Advanced Import…") {
+                            showingAddAccount = false
+                            chooseImportFolder()
+                        }
+                        Spacer()
+                        Button("Continue") { Task { await model.beginLogin(providerID: selectedProviderID) } }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(model.isWorking || AccountManager.providerCatalog.first {
+                                $0.id == selectedProviderID
+                            }?.availability != .enabled)
+                    }
+                    .controlSize(.small)
+                    .padding(16)
+                }
+                .frame(width: 480, height: 460)
+                .background(palette.panel)
+            }
+        }
     }
 
     @ViewBuilder
@@ -1155,9 +1261,58 @@ private struct SwitchPanel<Content: View>: View {
     }
 }
 
+struct SwitchProviderIcon: View {
+    let providerID: ProviderID
+    var size: CGFloat = 24
+
+    private var assetName: String? {
+        switch providerID {
+        case .codex: "SwitchCodexProvider"
+        case .grokBuild: "SwitchGrokProvider"
+        case .claudeCode: "SwitchClaudeProvider"
+        case .geminiCLI: "SwitchGeminiProvider"
+        case .antigravityCLI: "SwitchAntigravityProvider"
+        default: nil
+        }
+    }
+
+    var body: some View {
+        Group {
+            if let assetName {
+                Image(assetName).resizable().scaledToFit()
+            } else {
+                Image(systemName: "terminal").resizable().scaledToFit()
+            }
+        }
+        .padding(3)
+        .frame(width: size, height: size)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 3))
+        .accessibilityHidden(true)
+    }
+}
+
+// The complete double-check path from Switch's Ionicons-derived control.
+private struct SwitchDoubleCheckShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 48, y: 288))
+        path.addLine(to: CGPoint(x: 144, y: 384))
+        path.addLine(to: CGPoint(x: 368, y: 128))
+        path.move(to: CGPoint(x: 144, y: 288))
+        path.addLine(to: CGPoint(x: 240, y: 384))
+        path.addLine(to: CGPoint(x: 464, y: 128))
+        let scale = min(rect.width / 448, rect.height / 288)
+        let x = rect.minX + (rect.width - 448 * scale) / 2 - 32 * scale
+        let y = rect.minY + (rect.height - 288 * scale) / 2 - 112 * scale
+        return path.applying(CGAffineTransform(a: scale, b: 0, c: 0, d: scale, tx: x, ty: y))
+    }
+}
+
 private struct SwitchActionButton: View {
     let title: String
     var symbol: String? = nil
+    var doubleCheck = false
     let palette: SwitchPalette
     var prominent = false
     var iconOnly = false
@@ -1168,21 +1323,26 @@ private struct SwitchActionButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if let symbol { Image(systemName: symbol).font(.system(size: 11)) }
+                if doubleCheck {
+                    SwitchDoubleCheckShape()
+                        .stroke(style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+                        .frame(width: 15, height: 11)
+                } else if let symbol { Image(systemName: symbol).font(.system(size: 11)) }
                 if !iconOnly { Text(title).lineLimit(1) }
             }
             .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(prominent ? palette.canvas : (danger ? palette.red : palette.ink))
+            .foregroundStyle(disabled ? palette.muted :
+                             (prominent ? palette.canvas : (danger ? palette.red : palette.ink)))
             .padding(.horizontal, iconOnly ? 8 : 10)
             .frame(height: 28)
-            .background(iconOnly ? Color.clear : (prominent ? palette.ink : palette.control))
+            .background(disabled ? palette.panel2 :
+                        (iconOnly ? Color.clear : (prominent ? palette.ink : palette.control)))
             .clipShape(RoundedRectangle(cornerRadius: 3))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
         .disabled(disabled)
-        .opacity(disabled ? 0.42 : 1)
         .help(title)
         .accessibilityLabel(title)
     }
@@ -1236,17 +1396,30 @@ private struct SwitchActivityGrid: View {
         let weeks = weeks
         let maximum = max(1, weeks.flatMap { $0 }.compactMap { $0?.tokens }.max() ?? 1)
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Daily activity").font(.system(size: 12, weight: .semibold))
-                Spacer()
-                Picker("Activity period", selection: $period) {
-                    Text("7 days").tag(CodexTokenPeriod.weekly)
-                    Text("1 month").tag(CodexTokenPeriod.monthly)
-                    Text("1 year").tag(CodexTokenPeriod.yearly)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text("Daily activity").font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Picker("Activity period", selection: $period) {
+                        Text("7 days").tag(CodexTokenPeriod.weekly)
+                        Text("1 month").tag(CodexTokenPeriod.monthly)
+                        Text("1 year").tag(CodexTokenPeriod.yearly)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 170)
                 }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .frame(width: 170)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Daily activity").font(.system(size: 12, weight: .semibold))
+                    Picker("Activity period", selection: $period) {
+                        Text("7 days").tag(CodexTokenPeriod.weekly)
+                        Text("1 month").tag(CodexTokenPeriod.monthly)
+                        Text("1 year").tag(CodexTokenPeriod.yearly)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 170)
+                }
             }
             .padding(.top, 8)
             ScrollView(.horizontal) {
