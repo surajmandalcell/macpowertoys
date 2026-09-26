@@ -32,10 +32,13 @@
   Forward's pending scan selection transient. Give Link and Stop equal native
   button dimensions. Measure the active page's content, retain the compact
   empty-Servers minimum, and cap long pages to the visible screen.
-- **Check:** Hosted run `36210609326` passed tab navigation and the new
-  reopen test; its 400pt Forward and filtered Settings captures have no large
-  blank tail. Its active-forward capture exposed a remaining width mismatch,
-  so inspect a new dark and light render after the Link label-width correction.
+- **Check:** Hosted run `36211479231` clicked the real Portman status item to
+  close and reopen the popup, then passed its saved-Forward assertion. Its
+  400pt Forward capture has no large blank tail. The combined tray and Monitor
+  already persist their tab selection; an earlier tray UI run passed reopen.
+  A later width edit gives Link and Stop matching 28pt labels and the same
+  native control size; inspect a new active-forward render before closing this
+  request.
 
 ## Portman Cold Menu-Bar Launch
 
