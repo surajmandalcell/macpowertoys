@@ -38,12 +38,13 @@ private struct SystemMonitorDitherSurface: View {
                     let y = CGFloat(row) * pitch
                     let horizontal = x / max(size.width, 1)
                     let vertical = y / max(size.height, 1)
-                    let density = 0.10 + 0.33 * horizontal + 0.31 * vertical
+                    let rise = max((vertical - 0.4) / 0.6, 0)
+                    let density = 0.72 * rise * (0.55 + 0.45 * horizontal)
                     guard CGFloat(order[(row % 4) * 4 + column % 4]) / 16 < density else { continue }
-                    dots.addEllipse(in: CGRect(x: x + 1.15, y: y + 1.15, width: 1.7, height: 1.7))
+                    dots.addEllipse(in: CGRect(x: x + 1.3, y: y + 1.3, width: 1.4, height: 1.4))
                 }
             }
-            context.fill(dots, with: .color(tint.opacity(dark ? 0.42 : 0.32)))
+            context.fill(dots, with: .color(tint.opacity(dark ? 0.38 : 0.28)))
         }
         .allowsHitTesting(false)
     }
