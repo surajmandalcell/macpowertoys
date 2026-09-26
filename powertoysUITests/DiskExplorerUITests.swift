@@ -91,10 +91,11 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(selectedTarget.label.contains("/dev/disk91s3"), selectedTarget.label)
         XCTAssertFalse(merge.isEnabled)
         attach(window.screenshot(), named: "Diskman Map Selection")
-        let wholeDisk = window.descendants(matching: .any)["Whole disk"]
+        let wholeDisk = window.descendants(matching: .any)["diskman.wholeDisk"]
         XCTAssertTrue(wholeDisk.exists)
         wholeDisk.click()
         XCTAssertFalse(wholeDisk.exists)
+        XCTAssertEqual(selectedTarget.label, "Selected whole disk")
     }
 
     @MainActor func testScanControlsAndResultTabs() throws {
