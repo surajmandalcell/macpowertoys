@@ -162,10 +162,13 @@ private class WindowAccessorView: NSView {
         window.styleMask.remove(.resizable)
         window.contentMinSize = TaskManagerTheme.windowContentSize
         window.contentMaxSize = TaskManagerTheme.windowContentSize
-        let currentSize = window.contentView?.bounds.size ?? .zero
-        if abs(currentSize.width - TaskManagerTheme.windowContentSize.width) > 0.5
-            || abs(currentSize.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
-            window.setContentSize(TaskManagerTheme.windowContentSize)
+        let currentFrame = window.frame
+        if abs(currentFrame.width - TaskManagerTheme.windowContentSize.width) > 0.5
+            || abs(currentFrame.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
+            var targetFrame = currentFrame
+            targetFrame.origin.y = currentFrame.maxY - TaskManagerTheme.windowContentSize.height
+            targetFrame.size = TaskManagerTheme.windowContentSize
+            window.setFrame(targetFrame, display: false)
         }
         window.collectionBehavior.insert(.fullScreenNone)
         window.standardWindowButton(.zoomButton)?.isHidden = true
