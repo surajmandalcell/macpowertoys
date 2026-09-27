@@ -89,6 +89,17 @@ private class WindowAccessorView: NSView {
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
         }
+        if windowIdentifier == "system-monitor" {
+            window.styleMask.remove(.resizable)
+            window.contentMinSize = TaskManagerTheme.windowContentSize
+            window.contentMaxSize = TaskManagerTheme.windowContentSize
+            if abs(window.contentLayoutRect.width - TaskManagerTheme.windowContentSize.width) > 0.5
+                || abs(window.contentLayoutRect.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
+                window.setContentSize(TaskManagerTheme.windowContentSize)
+            }
+            window.collectionBehavior.insert(.fullScreenNone)
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+        }
         if isCompactApplet || windowIdentifier == "mac-tweaks" {
             window.styleMask.remove(.resizable)
             if windowIdentifier == "mac-tweaks" {

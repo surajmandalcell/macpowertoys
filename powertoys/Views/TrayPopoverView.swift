@@ -1224,10 +1224,60 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     }
 }
 
+enum TaskManagerMenuLayout {
+    static let width: CGFloat = 356
+    static let maximumHeight: CGFloat = 536
+    static let minimumHeight: CGFloat = 220
+    static let toolbarHeight: CGFloat = 35
+
+    static func height(forContent contentHeight: CGFloat) -> CGFloat {
+        min(max(ceil(toolbarHeight + contentHeight), minimumHeight), maximumHeight)
+    }
+
+    static func initialHomeHeight(profileCount: Int) -> CGFloat {
+        min(profileCount == 0 ? 315 : 369 + CGFloat(profileCount - 1) * 98, maximumHeight)
+    }
+}
+
+private struct TaskManagerMenuContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private extension View {
+    func reportsTaskManagerMenuHeight() -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(key: TaskManagerMenuContentHeightKey.self, value: proxy.size.height)
+            }
+        }
+    }
+}
+
 struct SystemMonitorMenuPopoverView: View {
+    private let remoteProfiles: [SystemMonitorRemoteProfile]
+    private let onPreferredHeight: (CGFloat) -> Void
+    @State private var preferredHeight: CGFloat
+
+    init(
+        remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
+        onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
+    ) {
+        let profiles = remoteProfiles ?? SystemMonitorRemoteProfiles.load()
+        self.remoteProfiles = profiles
+        self.onPreferredHeight = onPreferredHeight
+        _preferredHeight = State(initialValue: TaskManagerMenuLayout.initialHomeHeight(profileCount: profiles.count))
+    }
+
     var body: some View {
-        SystemMonitorTrayView()
-        .frame(width: 356, height: 536)
+        SystemMonitorTrayView(remoteProfiles: remoteProfiles) { height in
+            guard abs(preferredHeight - height) > 0.5 else { return }
+            preferredHeight = height
+            onPreferredHeight(height)
+        }
+        .frame(width: TaskManagerMenuLayout.width, height: preferredHeight)
         .foregroundStyle(TaskManagerTheme.ink)
         .background(TaskManagerTheme.window)
         .environment(\.colorScheme, .dark)
@@ -1239,6 +1289,16 @@ struct SystemMonitorTrayView: View {
     @State private var service = SystemMonitorService.shared
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
     @AppStorage("systemMonitor.rememberTrayPage") private var rememberPage = true
+    private let remoteProfiles: [SystemMonitorRemoteProfile]
+    private let onPreferredHeight: (CGFloat) -> Void
+
+    init(
+        remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
+        onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
+    ) {
+        self.remoteProfiles = remoteProfiles ?? SystemMonitorRemoteProfiles.load()
+        self.onPreferredHeight = onPreferredHeight
+    }
 
     private var sample: SystemMonitorSample? { service.snapshot }
     private var page: SystemMonitorTrayPage { SystemMonitorTrayPage(rawValue: pageID) ?? .home }
@@ -1251,16 +1311,21 @@ struct SystemMonitorTrayView: View {
             Group {
                 switch page {
                 case .home:
-                    ScrollView { homePage }
+                    ScrollView { homePage.reportsTaskManagerMenuHeight() }
                         .thinScrollIndicators()
                 case .processes:
                     TaskManagerMenuProcessesView()
+                        .frame(height: 372, alignment: .top)
+                        .reportsTaskManagerMenuHeight()
                 default:
-                    ScrollView { detailPage }
+                    ScrollView { detailPage.reportsTaskManagerMenuHeight() }
                         .thinScrollIndicators()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onPreferenceChange(TaskManagerMenuContentHeightKey.self) {
+                onPreferredHeight(TaskManagerMenuLayout.height(forContent: $0))
+            }
         }
         .onAppear {
             if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
@@ -1303,13 +1368,7 @@ struct SystemMonitorTrayView: View {
             Button("Open App") {
                 ToolActionRouter.shared.open(toolID: "system-monitor")
             }
-            .font(.system(size: 9, weight: .medium))
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .padding(.horizontal, 5)
-            .frame(minWidth: 62, minHeight: 26)
-            .background(Color.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 5))
-            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+            .taskManagerControl(.quiet, minWidth: 62, minHeight: 26, horizontalPadding: 5)
             .accessibilityIdentifier("system-monitor.menu.open-app")
         }
         .padding(.horizontal, 8)
@@ -1377,7 +1436,7 @@ struct SystemMonitorTrayView: View {
                 .foregroundStyle(TaskManagerTheme.muted)
             }
 
-            TaskManagerRemoteMenuCard()
+            TaskManagerRemoteMenuCard(profiles: remoteProfiles)
         }
     }
 
@@ -1758,49 +1817,156 @@ struct SystemMonitorTrayView: View {
 }
 
 private struct TaskManagerRemoteMenuCard: View {
-    private var profiles: [SystemMonitorRemoteProfile] { SystemMonitorRemoteProfiles.load() }
+    let profiles: [SystemMonitorRemoteProfile]
 
+    @ViewBuilder
     var body: some View {
-        Button {
-            UserDefaults.standard.set("Remote Stats", forKey: "systemMonitor.windowPage")
-            ToolActionRouter.shared.open(toolID: "system-monitor")
-        } label: {
-            TaskManagerPanel {
-                VStack(spacing: 0) {
-                    if profiles.isEmpty {
-                        remoteRow(name: "No remote hosts", detail: "Add a Mac, Windows, or Linux computer")
-                    } else {
-                        ForEach(Array(profiles.prefix(2)).indices, id: \.self) { index in
-                            let profile = profiles[index]
-                            remoteRow(name: profile.name, detail: "\(profile.platform.rawValue) · Connect on demand")
-                            if index < min(profiles.count, 2) - 1 {
-                                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                            }
+        if profiles.isEmpty {
+            Button(action: openRemoteStats) {
+                TaskManagerPanel {
+                    HStack(spacing: 9) {
+                        Image(systemName: "server.rack")
+                            .font(.system(size: 10))
+                            .foregroundStyle(TaskManagerTheme.secondary)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("No remote hosts").font(.system(size: 10, weight: .medium))
+                            Text("Add a Mac, Windows, or Linux computer")
+                                .font(.system(size: 8))
+                                .foregroundStyle(TaskManagerTheme.muted)
                         }
+                        Spacer()
+                        Text("Add  →")
+                            .font(.system(size: 8))
+                            .foregroundStyle(TaskManagerTheme.muted)
                     }
+                    .padding(.horizontal, 10)
+                }
+                .frame(height: 43)
+            }
+            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
+            .focusEffectDisabled()
+        } else {
+            LazyVStack(spacing: 6) {
+                ForEach(profiles) { profile in
+                    remoteCard(profile)
                 }
             }
-            .frame(height: CGFloat(max(min(profiles.count, 2), 1)) * 43)
         }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
     }
 
-    private func remoteRow(name: String, detail: String) -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: "server.rack")
-                .font(.system(size: 10))
-                .foregroundStyle(TaskManagerTheme.secondary)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name).font(.system(size: 10, weight: .medium)).lineLimit(1)
-                Text(detail).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted).lineLimit(1)
+    private func remoteCard(_ profile: SystemMonitorRemoteProfile) -> some View {
+        TaskManagerPanel {
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "server.rack")
+                        .font(.system(size: 9))
+                        .foregroundStyle(TaskManagerTheme.secondary)
+                    Text(profile.name)
+                        .font(.system(size: 9, weight: .medium))
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    Circle()
+                        .strokeBorder(TaskManagerTheme.muted, lineWidth: 1)
+                        .frame(width: 4, height: 4)
+                    Text("Offline")
+                        .font(.system(size: 8))
+                        .foregroundStyle(TaskManagerTheme.muted)
+                }
+                .padding(.horizontal, 7)
+                .frame(height: 20)
+                .background(Color.white.opacity(0.025))
+
+                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+
+                HStack(spacing: 0) {
+                    remoteStat("CPU", symbol: "cpu")
+                    divider
+                    remoteStat("RAM", symbol: "memorychip")
+                    divider
+                    remoteStat("Network", symbol: "network")
+                }
+                .frame(height: 36)
+
+                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(profile.platform.rawValue)
+                            Spacer()
+                            Text("—")
+                                .monospacedDigit()
+                        }
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(TaskManagerTheme.secondary)
+                        Capsule().fill(TaskManagerTheme.line).frame(height: 3)
+                        Text("Connect on demand")
+                            .font(.system(size: 8))
+                            .foregroundStyle(TaskManagerTheme.muted)
+                    }
+                    .padding(.horizontal, 7)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
+
+                    VStack(spacing: 0) {
+                        remoteAction("Open SSH", symbol: "arrow.up.right") {
+                            SystemMonitorRemoteTerminal.open(profile)
+                        }
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                        remoteAction("Open App", symbol: "arrow.right") {
+                            openRemoteStats()
+                        }
+                    }
+                    .frame(width: 72)
+                }
+                .frame(height: 36)
             }
-            Spacer()
-            Text(profiles.isEmpty ? "Add  →" : "Open  →")
-                .font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
         }
-        .padding(.horizontal, 10)
-        .frame(height: 43)
+        .frame(height: 94)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), offline")
+    }
+
+    private func remoteStat(_ title: String, symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(title, systemImage: symbol)
+                .font(.system(size: 8))
+                .foregroundStyle(TaskManagerTheme.muted)
+                .lineLimit(1)
+            Text("—")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(TaskManagerTheme.muted)
+        }
+        .padding(.horizontal, 7)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private var divider: some View {
+        Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
+    }
+
+    private func remoteAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Text(title)
+                Spacer(minLength: 2)
+                Image(systemName: symbol).font(.system(size: 7.5))
+            }
+            .font(.system(size: 8.5))
+            .foregroundStyle(TaskManagerTheme.secondary)
+            .padding(.horizontal, 7)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
+        .focusEffectDisabled()
+        .accessibilityLabel("\(title) for remote host")
+    }
+
+    private func openRemoteStats() {
+        UserDefaults.standard.set("Remote Stats", forKey: "systemMonitor.windowPage")
+        ToolActionRouter.shared.open(toolID: "system-monitor")
     }
 }
 

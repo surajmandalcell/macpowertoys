@@ -189,6 +189,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         didFinishLaunching = true
         if AppRuntime.isUITesting,
            let monitorMode = ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] {
+            if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_REMOTE_PROFILES"] == "1" {
+                SystemMonitorRemoteProfiles.save([
+                    SystemMonitorRemoteProfile(
+                        id: "ui-build-mac", name: "Build Mac", host: "builder@build-mac", platform: .macOS
+                    ),
+                    SystemMonitorRemoteProfile(
+                        id: "ui-windows-ci", name: "Windows CI", host: "builder@windows-ci", platform: .windows
+                    ),
+                ])
+            }
             SystemMonitorService.shared.updateMenuSettings {
                 $0 = SystemMonitorMenuSettings(enabled: true)
                 if monitorMode == "separate" { $0.setPlacement(.separate, for: .memory) }
