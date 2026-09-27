@@ -46,10 +46,12 @@ final class SystemMonitorTests: XCTestCase {
         )
     }
 
-    func testTaskManagerMenuHeightIsContentSizedAndBounded() {
-        XCTAssertEqual(TaskManagerMenuLayout.height(forContent: 100), 220)
-        XCTAssertEqual(TaskManagerMenuLayout.height(forContent: 400.2), 436)
-        XCTAssertEqual(TaskManagerMenuLayout.height(forContent: 800), 536)
+    func testTaskManagerMenuHeightMatchesEachPageAndHostCount() {
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 0), 315)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 2), 467)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 4), 536)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .cpu, profileCount: 0), 392)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .processes, profileCount: 0), 407)
     }
 
     func testMonitorSubprocessOutputIsBounded() async throws {
