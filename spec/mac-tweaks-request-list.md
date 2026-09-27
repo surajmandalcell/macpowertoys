@@ -8,6 +8,14 @@
 - [ ] Port the reference films to continuous hover-only motion with a shared 600 × 304 scene, uniform scaling, clipping, ordered dither, wireframe texture, soft depth, and no overlapping or staged jumps. Return to the same poster frame on leave and respect Reduce Motion.
 - [ ] Inspect Dock, Finder, Input, ranked search, empty search, and animated preview states from the exact hosted build, then install and verify the clean signed commit.
 
+Hosted run `36329261546` exported the redesigned Dock, Finder, Input, ranked
+search, segmented-control, and empty-search captures. The dither and reference
+geometry render correctly, but the run exposed a 32pt outer-frame surplus and
+a paused hover timeline that did not resume. The scene default now uses the
+hidden-titlebar content size while the SwiftUI canvas remains 1120 × 826, and
+hover creates an active timeline only while playback is needed. The app and UI
+test bundles compile; the corrected hosted rerun remains pending.
+
 ## Fixed reference redesign, 2026-09-27
 
 - [x] Rebuild the Mac Tweaks window from `mac-tweaks-design.html` as the visual source of truth: a fixed dark shell, 200pt sidebar, aligned native traffic lights and title, compact panels, immediate controls, quiet textures, and the selected Faders icon.
