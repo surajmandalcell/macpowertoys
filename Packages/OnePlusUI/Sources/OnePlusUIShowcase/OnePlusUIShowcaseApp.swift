@@ -12,7 +12,6 @@ struct OnePlusUIShowcaseApp: App {
                 .preferredColorScheme(.dark)
         }
         .defaultSize(width: 920, height: 680)
-        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
     }
 }
