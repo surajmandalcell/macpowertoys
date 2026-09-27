@@ -205,6 +205,7 @@ private struct MacTweaksSegmentedControl: View {
                     }
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
+                    .accessibilityIdentifier("mac-tweaks.choice.\(field.key).\(value)")
                     .accessibilityAddTraits(value == selection ? .isSelected : [])
             }
         }
