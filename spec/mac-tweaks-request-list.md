@@ -13,8 +13,12 @@ search, segmented-control, and empty-search captures. The dither and reference
 geometry render correctly, but the run exposed a 32pt outer-frame surplus and
 a paused hover timeline that did not resume. The scene default now uses the
 hidden-titlebar content size while the SwiftUI canvas remains 1120 × 826, and
-hover creates an active timeline only while playback is needed. The app and UI
-test bundles compile; the corrected hosted rerun remains pending.
+hover creates an active timeline only while playback is needed. The first
+corrected rerun, `36331644220`, showed that SwiftUI still restored an 858pt
+outer frame and did not start playback from the synthesized hover. The native
+window boundary now enforces 1120 × 826 after attachment, and the preview uses
+continuous macOS hover tracking. The app and UI test bundles compile; the next
+hosted rerun remains pending.
 
 ## Fixed reference redesign, 2026-09-27
 
