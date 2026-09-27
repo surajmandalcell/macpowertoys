@@ -212,16 +212,23 @@ final class TrayFanUITests: XCTestCase {
         }
         let scaleX = CGFloat(bitmap.pixelsWide) / screenshot.image.size.width
         let scaleY = CGFloat(bitmap.pixelsHigh) / screenshot.image.size.height
-        let sidebarX = Int(218 * scaleX)
-        let edgeY = Int(16 * scaleY)
+        let innerX = Int(40 * scaleX)
+        let edgeX = Int(218 * scaleX)
+        let bodyX = Int(224 * scaleX)
+        let lowerY = Int(40 * scaleY)
         let middleY = bitmap.pixelsHigh / 2
-        guard let edge = bitmap.colorAt(x: sidebarX, y: edgeY)?.usingColorSpace(.sRGB),
-              let middle = bitmap.colorAt(x: sidebarX, y: middleY)?.usingColorSpace(.sRGB) else {
+        guard let inner = bitmap.colorAt(x: innerX, y: middleY)?.usingColorSpace(.sRGB),
+              let edgeMiddle = bitmap.colorAt(x: edgeX, y: middleY)?.usingColorSpace(.sRGB),
+              let edgeLower = bitmap.colorAt(x: edgeX, y: lowerY)?.usingColorSpace(.sRGB),
+              let body = bitmap.colorAt(x: bodyX, y: middleY)?.usingColorSpace(.sRGB) else {
             XCTFail("Could not sample the Task Manager sidebar")
             return
         }
-        XCTAssertEqual(middle.redComponent, edge.redComponent, accuracy: 0.01)
-        XCTAssertEqual(middle.greenComponent, edge.greenComponent, accuracy: 0.01)
-        XCTAssertEqual(middle.blueComponent, edge.blueComponent, accuracy: 0.01)
+        for edge in [edgeMiddle, edgeLower] {
+            XCTAssertEqual(edge.redComponent, inner.redComponent, accuracy: 0.01)
+            XCTAssertEqual(edge.greenComponent, inner.greenComponent, accuracy: 0.01)
+            XCTAssertEqual(edge.blueComponent, inner.blueComponent, accuracy: 0.01)
+        }
+        XCTAssertGreaterThan(abs(body.redComponent - inner.redComponent), 0.01)
     }
 }

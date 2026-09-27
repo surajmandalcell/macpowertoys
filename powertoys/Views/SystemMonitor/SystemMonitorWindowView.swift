@@ -167,6 +167,7 @@ struct SystemMonitorWindowView: View {
                         .offset(x: 30, y: 20)
                 }
             }
+            .clipped()
         }
         .foregroundStyle(TaskManagerTheme.ink)
         .frame(
