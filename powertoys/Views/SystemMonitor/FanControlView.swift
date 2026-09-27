@@ -50,13 +50,14 @@ struct FanControlView: View {
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
             if compact { compactContent } else { expandedContent }
         }
-        .padding(.leading, compact ? TrayPopoverLayout.horizontalInset + 4 : 14)
-        .padding(.trailing, compact ? TrayPopoverLayout.horizontalInset : 14)
-        .padding(.vertical, compact ? 8 : 14)
-        .background(compact ? Color.clear : Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, compact ? 9 : 14)
+        .padding(.vertical, compact ? 5 : 14)
+        .background(compact ? Color.clear : TaskManagerTheme.card,
+                    in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(compact ? Color.clear : Color.primary.opacity(contrast == .increased ? 0.18 : 0.07))
+            RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
+                .strokeBorder(compact ? Color.clear : TaskManagerTheme.line,
+                              lineWidth: contrast == .increased ? 1.5 : 1)
         }
         .onAppear { service.start(owner: owner) }
         .onDisappear { service.stop(owner: owner) }
@@ -72,10 +73,10 @@ struct FanControlView: View {
             Spacer(minLength: 4)
             if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
                 Button { showsSetup = true } label: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(colorScheme == .light ? Color(red: 0.64, green: 0.32, blue: 0) : Color.orange)
-                        .frame(width: 20, height: 28)
+                    Image(systemName: "exclamationmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(colorScheme == .light ? Color(red: 0.64, green: 0.32, blue: 0) : TaskManagerTheme.accent)
+                        .frame(width: 14, height: 22)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -126,7 +127,7 @@ struct FanControlView: View {
             VStack(alignment: .leading, spacing: 9) {
                 Label("Fan", systemImage: "fanblades")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(TaskManagerTheme.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(rpm)
                         .font(.system(size: 24, weight: .semibold))
@@ -142,7 +143,7 @@ struct FanControlView: View {
                 }
                 Text(detail)
                     .font(.system(size: 11))
-                    .foregroundStyle(service.errorMessage == nil ? Color.secondary : Color.red)
+                    .foregroundStyle(service.errorMessage == nil ? TaskManagerTheme.secondary : TaskManagerTheme.accent)
             }
             Spacer(minLength: 8)
             if let load = service.snapshot?.utilization { speedMeter(load) }
@@ -163,7 +164,7 @@ struct FanControlView: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.primary.opacity(0.08))
-                Capsule().fill(Color.orange.opacity(0.72))
+                Capsule().fill(TaskManagerTheme.ink.opacity(0.72))
                     .frame(width: proxy.size.width * CGFloat(load) / 100)
                     .utilityAnimation(value: load)
             }
@@ -177,7 +178,7 @@ struct FanControlView: View {
         HStack(spacing: 7) {
             Image(systemName: "fanblades")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.primary.opacity(0.84))
+                .foregroundStyle(TaskManagerTheme.secondary)
                 .frame(width: 16)
             Text("Fan")
                 .font(.system(size: 12, weight: .medium))
@@ -202,13 +203,14 @@ struct FanControlView: View {
                 Button(preset.rawValue) { service.select(preset) }
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(service.selectedPreset == preset ? Color.primary : Color.secondary)
-                    .padding(.horizontal, 8)
-                    .frame(maxWidth: compact ? .infinity : nil, minHeight: 26)
+                    .padding(.horizontal, compact ? 5 : 8)
+                    .frame(maxWidth: compact ? .infinity : nil, minHeight: compact ? 25 : 26)
                     .background(
-                        service.selectedPreset == preset ? Color.orange.opacity(0.2) : .clear,
+                        service.selectedPreset == preset ? Color.white.opacity(0.11) : .clear,
                         in: RoundedRectangle(cornerRadius: 6)
                     )
-                    .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
                     .disabled(service.isChanging || !(service.canControl ||
                               (preset == .auto && service.canRestoreAutomatic)))
                     .accessibilityLabel("Fan \(preset.rawValue)")
@@ -217,9 +219,10 @@ struct FanControlView: View {
                           preset == .max ? "Run fans at their hardware maximum" : "Return fan control to macOS")
             }
         }
-        .frame(width: compact ? 158 : nil)
+        .frame(width: compact ? 118 : nil)
         .padding(2)
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 6))
+        .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(compact ? TaskManagerTheme.lineSoft : Color.clear) }
         .utilityAnimation(value: service.selectedPreset)
     }
 }

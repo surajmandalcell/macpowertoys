@@ -2,200 +2,588 @@ import AppKit
 import SwiftUI
 
 struct SystemMonitorRemoteView: View {
-    @AppStorage("systemMonitor.remoteHost") private var host = ""
-    @AppStorage("systemMonitor.remotePlatform") private var platformName = SystemMonitorRemotePlatform.linux.rawValue
-    @AppStorage("systemMonitor.remoteInterval") private var interval = 30
+    @State private var profiles = SystemMonitorRemoteProfiles.load()
     @State private var poller = SystemMonitorRemotePoller()
-    @State private var connected = false
+    @State private var connectedID: String?
     @State private var reading: SystemMonitorRemoteReading?
+    @State private var history: [SystemMonitorRemoteReading] = []
     @State private var lastUpdated: Date?
     @State private var errorMessage: String?
     @State private var refreshGeneration = 0
-    @Environment(\.colorScheme) private var colorScheme
-    private var platform: SystemMonitorRemotePlatform {
-        SystemMonitorRemotePlatform(rawValue: platformName) ?? .linux
+    @State private var editor: SystemMonitorRemoteProfile?
+
+    private var activeProfile: SystemMonitorRemoteProfile? {
+        profiles.first { $0.id == connectedID }
     }
 
     var body: some View {
-        WorkspacePage("Remote Stats") {} content: {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("CONNECTION").utilitySectionHeader()
-                HStack(spacing: 10) {
-                    TextField("SSH host", text: $host, prompt: Text("Host or alias from SSH config"))
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(connected)
-                        .onSubmit { if !connected { connect() } }
-                        .accessibilityIdentifier("system-monitor.remote.host")
-                    Picker("Refresh", selection: $interval) {
-                        Text("Manual only").tag(0)
-                        Text("5 seconds").tag(5)
-                        Text("10 seconds").tag(10)
-                        Text("30 seconds").tag(30)
-                        Text("60 seconds").tag(60)
-                        Text("2 minutes").tag(120)
-                        Text("5 minutes").tag(300)
-                    }
-                    .frame(width: 170)
-                }
-                Picker("System", selection: $platformName) {
-                    ForEach(SystemMonitorRemotePlatform.allCases) { system in
-                        Text(system.rawValue).tag(system.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 290)
-                .disabled(connected)
-                Text(connected
-                     ? "Refresh changes apply now. Disconnect to change the host or system."
-                     : "Use an SSH host you can already reach. Readings stop on disconnect or when you leave this page.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 10) {
-                    Button {
-                        connected ? disconnect() : connect()
-                    } label: {
-                        Text(connected ? "Disconnect" : "Connect")
-                            .frame(width: 86)
-                            .utilityActionLabel()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(connected ? .gray : .accentColor)
-                    .accessibilityIdentifier("system-monitor.remote.connection")
-                    Button { refreshGeneration += 1 } label: {
-                        Label("Refresh Now", systemImage: "arrow.clockwise")
-                            .utilityActionLabel()
-                    }
-                    .disabled(!connected)
-                    Button { openTerminal() } label: {
-                        Label("Open Terminal", systemImage: "terminal")
-                            .utilityActionLabel()
-                    }
-                    .disabled(!SystemMonitorRemoteProtocol.validHost(host))
-                }
-                .controlSize(.large)
-            }
-            .utilitySectionCard()
-
-            if let errorMessage {
-                Label(errorMessage, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.orange)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .utilitySectionCard()
-            }
-
-            if connected {
-                HStack(spacing: 8) {
-                    Image(systemName: reading == nil ? "circle.dotted" : "checkmark.circle")
-                    Text(reading == nil ? "Connecting to \(host)…" : "Connected to \(host)")
-                    Spacer()
-                    if let lastUpdated {
-                        Text(lastUpdated, style: .time)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .font(.system(size: 12))
-
-                if let reading {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
-                        metric("CPU", value: reading.cpuPercent.map { percent($0) } ?? "Measuring…", detail: "All cores", tint: SystemMonitorPalette.teal)
-                        metric("Memory", value: bytes(reading.memoryUsed), detail: "of \(bytes(reading.memoryTotal))", tint: SystemMonitorPalette.coral)
-                        if !reading.load.isEmpty {
-                            metric("Load · 1 min", value: reading.load[0].formatted(.number.precision(.fractionLength(2))), detail: "Average CPU demand", tint: SystemMonitorPalette.blue)
-                                .help("Load is the average number of processes running or ready for a CPU. It is not a percent.")
-                        }
-                        metric("Download", value: reading.download.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: SystemMonitorPalette.cyan)
-                        metric("Upload", value: reading.upload.map { bytes(UInt64($0)) + "/s" } ?? "Measuring…", detail: "Non-loopback interfaces", tint: SystemMonitorPalette.cyan)
-                        if let diskUsed = reading.diskUsed, let diskTotal = reading.diskTotal {
-                            metric("Disk", value: bytes(diskUsed), detail: "of \(bytes(diskTotal)) on /", tint: SystemMonitorPalette.orange)
-                        }
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                remoteHeader
+                if profiles.isEmpty {
+                    emptyState
                 } else {
-                    ProgressView("Reading remote system data…")
-                        .frame(maxWidth: .infinity)
-                        .padding(30)
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
+                        spacing: 12
+                    ) {
+                        ForEach(profiles) { profile in remoteCard(profile) }
+                    }
+                    connectionSettings
                 }
-            } else if errorMessage == nil {
-                ContentUnavailableView(
-                    "No remote host connected",
-                    systemImage: "server.rack",
-                    description: Text("Enter an SSH host or alias, choose its system, and press Return. Remote sampling stops when you disconnect or leave this page.")
-                )
-                .frame(maxWidth: .infinity, minHeight: 240)
+                if let errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(TaskManagerTheme.accent)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(TaskManagerTheme.card,
+                                    in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
+                }
             }
         }
-        .task(id: "\(connected):\(interval):\(refreshGeneration)") {
-            guard connected else { return }
-            while !Task.isCancelled {
-                do {
-                    let sample = try await poller.sample(host: host, platform: platform)
-                    guard !Task.isCancelled else { return }
-                    reading = sample
-                    lastUpdated = Date()
-                    errorMessage = nil
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    errorMessage = error.localizedDescription
-                    connected = false
-                    await poller.close()
-                    return
-                }
-                guard interval > 0 else { return }
-                try? await Task.sleep(for: .seconds(max(interval, 5)))
-            }
-        }
+        .thinScrollIndicators()
+        .foregroundStyle(TaskManagerTheme.ink)
+        .environment(\.colorScheme, .dark)
+        .task(id: taskID) { await poll() }
         .onDisappear { disconnect() }
+        .sheet(item: $editor) { profile in
+            TaskManagerRemoteEditor(
+                profile: profile,
+                canDelete: profiles.contains { $0.id == profile.id },
+                onSave: { updated, connect in save(updated, connect: connect) },
+                onDelete: { remove(profile.id) },
+                onCancel: { editor = nil }
+            )
+        }
     }
 
-    private func metric(_ title: String, value: String, detail: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(title).font(.system(size: 12, weight: .medium))
-                .foregroundStyle(colorScheme == .dark ? tint : .primary)
-            Text(value).font(.system(size: 19, weight: .semibold)).monospacedDigit()
-                .contentTransition(.numericText())
-            Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
+    private var remoteHeader: some View {
+        HStack {
+            Text("\(connectedID == nil ? 0 : 1) connected · \(profiles.count) \(profiles.count == 1 ? "host" : "hosts")")
+                .font(.system(size: 9))
+                .foregroundStyle(TaskManagerTheme.secondary)
+            Spacer()
+            Button {
+                editor = SystemMonitorRemoteProfile(name: "", host: "")
+            } label: {
+                Label("Add host", systemImage: "plus")
+                    .font(.system(size: 10, weight: .medium))
+                    .padding(.horizontal, 11)
+                    .frame(minHeight: 29)
+                    .background(Color.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 5))
+                    .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+            }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .accessibilityIdentifier("system-monitor.remote.add-host")
         }
-        .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-        .padding(14)
-        .background(SystemMonitorPalette.surface(tint))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.12)) }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var emptyState: some View {
+        TaskManagerPanel(textured: true) {
+            VStack(spacing: 12) {
+                Image(systemName: "server.rack")
+                    .font(.system(size: 25))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                Text("No remote hosts")
+                    .font(.system(size: 13, weight: .medium))
+                Text("Add a Linux, macOS, or Windows SSH host. Task Manager connects only when you ask it to.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 360)
+                Button("Add host") {
+                    editor = SystemMonitorRemoteProfile(name: "", host: "")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+            }
+            .frame(maxWidth: .infinity, minHeight: 230)
+        }
+    }
+
+    private func remoteCard(_ profile: SystemMonitorRemoteProfile) -> some View {
+        let active = profile.id == connectedID
+        return TaskManagerRemoteCard(
+            profile: profile,
+            reading: active ? reading : nil,
+            state: active ? (reading == nil ? "Connecting" : "Connected") : "Offline",
+            history: active ? history : [],
+            onTerminal: { openTerminal(profile) },
+            primaryTitle: active ? "Disconnect" : "Connect",
+            primarySymbol: active ? "stop.circle" : "play.circle",
+            onPrimary: { active ? disconnect() : connect(profile.id) }
+        )
+    }
+
+    private var connectionSettings: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Connection settings")
+                .font(.system(size: 11, weight: .medium))
+            TaskManagerPanel {
+                VStack(spacing: 0) {
+                    ForEach(profiles) { profile in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(profile.name)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                Text("\(profile.host) · \(profile.platform.rawValue) · \(intervalTitle(profile.interval))")
+                                    .font(.system(size: 8.5, design: .monospaced))
+                                    .foregroundStyle(TaskManagerTheme.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 12)
+                            Button("Configure") { editor = profile }
+                                .taskManagerRemoteButton()
+                            Button(profile.id == connectedID ? "Disconnect" : "Connect") {
+                                profile.id == connectedID ? disconnect() : connect(profile.id)
+                            }
+                            .frame(width: 92)
+                            .taskManagerRemoteButton(primary: profile.id != connectedID)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 53)
+                        if profile.id != profiles.last?.id {
+                            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                        }
+                    }
+
+                    if connectedID != nil {
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                        HStack(spacing: 8) {
+                            Button {
+                                refreshGeneration += 1
+                            } label: {
+                                Label("Refresh now", systemImage: "arrow.clockwise")
+                            }
+                            .taskManagerRemoteButton()
+                            if let activeProfile {
+                                Button {
+                                    openTerminal(activeProfile)
+                                } label: {
+                                    Label("Open Terminal", systemImage: "terminal")
+                                }
+                                .taskManagerRemoteButton()
+                            }
+                            Spacer()
+                            if let lastUpdated {
+                                Text("Updated \(lastUpdated, style: .time)")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(TaskManagerTheme.muted)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 48)
+                    }
+                }
+            }
+        }
+    }
+
+    private var taskID: String {
+        guard let activeProfile else { return "disconnected" }
+        return "\(activeProfile.id):\(activeProfile.host):\(activeProfile.platform.rawValue):\(activeProfile.interval):\(refreshGeneration)"
+    }
+
+    private func poll() async {
+        guard let activeProfile else { return }
+        while !Task.isCancelled {
+            do {
+                let sample = try await poller.sample(host: activeProfile.host, platform: activeProfile.platform)
+                guard !Task.isCancelled, connectedID == activeProfile.id else { return }
+                reading = sample
+                history.append(sample)
+                if history.count > 120 { history.removeFirst(history.count - 120) }
+                lastUpdated = Date()
+                errorMessage = nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                errorMessage = error.localizedDescription
+                disconnect()
+                return
+            }
+            guard activeProfile.interval > 0 else { return }
+            try? await Task.sleep(for: .seconds(max(activeProfile.interval, 5)))
+        }
+    }
+
+    private func connect(_ id: String) {
+        guard let profile = profiles.first(where: { $0.id == id }),
+              SystemMonitorRemoteProtocol.validHost(profile.host) else {
+            errorMessage = SystemMonitorRemoteError.unsafeHost.localizedDescription
+            return
+        }
+        if connectedID != nil { disconnect() }
+        poller = SystemMonitorRemotePoller()
+        connectedID = id
+        reading = nil
+        history = []
+        lastUpdated = nil
+        errorMessage = nil
     }
 
     private func disconnect() {
         let stoppedPoller = poller
         Task { await stoppedPoller.close() }
-        connected = false
+        connectedID = nil
         reading = nil
+        history = []
         lastUpdated = nil
     }
 
-    private func connect() {
-        guard SystemMonitorRemoteProtocol.validHost(host) else {
+    private func save(_ profile: SystemMonitorRemoteProfile, connect shouldConnect: Bool) {
+        guard SystemMonitorRemoteProtocol.validHost(profile.host) else {
             errorMessage = SystemMonitorRemoteError.unsafeHost.localizedDescription
             return
         }
-        poller = SystemMonitorRemotePoller()
-        reading = nil
-        lastUpdated = nil
+        var profile = profile
+        let wasConnected = connectedID == profile.id
+        profile.name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if profile.name.isEmpty { profile.name = profile.host }
+        if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
+            profiles[index] = profile
+        } else {
+            profiles.append(profile)
+        }
+        SystemMonitorRemoteProfiles.save(profiles)
+        editor = nil
         errorMessage = nil
-        connected = true
+        if wasConnected || shouldConnect { connect(profile.id) }
     }
 
-    private func openTerminal() {
-        guard SystemMonitorRemoteProtocol.validHost(host),
-              let address = URL(string: "ssh://\(host)") else { return }
+    private func remove(_ id: String) {
+        if connectedID == id { disconnect() }
+        profiles.removeAll { $0.id == id }
+        SystemMonitorRemoteProfiles.save(profiles)
+        editor = nil
+    }
+
+    private func openTerminal(_ profile: SystemMonitorRemoteProfile) {
+        guard SystemMonitorRemoteProtocol.validHost(profile.host),
+              let address = URL(string: "ssh://\(profile.host)") else { return }
         let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        NSWorkspace.shared.open([address], withApplicationAt: terminal,
-                                configuration: NSWorkspace.OpenConfiguration()) { _, error in
+        NSWorkspace.shared.open(
+            [address],
+            withApplicationAt: terminal,
+            configuration: NSWorkspace.OpenConfiguration()
+        ) { _, error in
             if let error {
-                Task { @MainActor in errorMessage = "Could not open Terminal: \(error.localizedDescription)" }
+                Task { @MainActor in
+                    errorMessage = "Could not open Terminal: \(error.localizedDescription)"
+                }
             }
         }
     }
 
-    private func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
-    private func bytes(_ value: UInt64) -> String {
+    private func intervalTitle(_ seconds: Int) -> String {
+        switch seconds {
+        case 0: "Manual"
+        case 60: "1 minute"
+        case 120: "2 minutes"
+        case 300: "5 minutes"
+        default: "\(seconds) seconds"
+        }
+    }
+
+}
+
+struct TaskManagerRemoteCard: View {
+    let profile: SystemMonitorRemoteProfile
+    let reading: SystemMonitorRemoteReading?
+    let state: String
+    var history: [SystemMonitorRemoteReading] = []
+    var onTerminal: (() -> Void)?
+    let primaryTitle: String
+    let primarySymbol: String
+    let onPrimary: () -> Void
+
+    var body: some View {
+        TaskManagerPanel(textured: true) {
+            VStack(spacing: 0) {
+                header
+                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                HStack(spacing: 0) {
+                    stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
+                    divider
+                    stat("RAM", symbol: "memorychip", value: memoryReading)
+                    divider
+                    stat("Network", symbol: "network", value: networkReading)
+                }
+                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                HStack(spacing: 0) {
+                    diskSummary
+                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
+                    actions.frame(width: 92)
+                }
+                if !history.isEmpty {
+                    TaskManagerHistoryChart(values: history.compactMap(\.cpuPercent), range: 0...100, compact: true)
+                        .frame(height: 38)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 8)
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "server.rack").font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
+            Text(profile.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
+            Spacer()
+            Circle().fill(reading == nil ? TaskManagerTheme.muted : TaskManagerTheme.ink).frame(width: 4, height: 4)
+            Text(state).font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 34)
+        .background(Color.white.opacity(0.025))
+    }
+
+    private func stat(_ title: String, symbol: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(title, systemImage: symbol).font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
+            Text(value).font(.system(size: 15, weight: .medium)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
+        }
+        .padding(.horizontal, 11)
+        .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
+    }
+
+    private var divider: some View { Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1, height: 66) }
+
+    private var diskSummary: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("System").font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
+                Spacer()
+                Text(diskPercent).font(.system(size: 8.5, design: .monospaced))
+            }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(TaskManagerTheme.lineSoft)
+                    Rectangle().fill(TaskManagerTheme.ink.opacity(0.7))
+                        .frame(width: proxy.size.width * diskFraction)
+                }
+            }
+            .frame(height: 4)
+            Text(diskFree).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 67)
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        VStack(spacing: 0) {
+            if let onTerminal {
+                action("Open SSH", symbol: "terminal", height: 33, perform: onTerminal)
+                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+            }
+            action(primaryTitle, symbol: primarySymbol, height: onTerminal == nil ? 67 : 33, perform: onPrimary)
+        }
+    }
+
+    private func action(_ title: String, symbol: String, height: CGFloat, perform: @escaping () -> Void) -> some View {
+        Button(action: perform) {
+            HStack {
+                Text(title)
+                Spacer()
+                Image(systemName: symbol)
+            }
+            .font(.system(size: 8.5))
+            .foregroundStyle(TaskManagerTheme.secondary)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: height)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+    }
+
+    private var memoryReading: String {
+        guard let reading else { return "—" }
+        return "\(Self.shortBytes(reading.memoryUsed))/\(Self.shortBytes(reading.memoryTotal))"
+    }
+
+    private var networkReading: String {
+        guard let reading else { return "—" }
+        return "↓\(reading.download.map(Self.shortRate) ?? "...") ↑\(reading.upload.map(Self.shortRate) ?? "...")"
+    }
+
+    private var diskFraction: CGFloat {
+        guard let used = reading?.diskUsed, let total = reading?.diskTotal, total > 0 else { return 0 }
+        return CGFloat(min(max(Double(used) / Double(total), 0), 1))
+    }
+
+    private var diskPercent: String { reading == nil ? "—" : "\(Int((diskFraction * 100).rounded()))%" }
+    private var diskFree: String {
+        guard let used = reading?.diskUsed, let total = reading?.diskTotal else { return "No current reading" }
+        return Self.bytes(total - min(used, total)) + " free"
+    }
+
+    nonisolated private static func shortRate(_ value: Double) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(max(value, 0)), countStyle: .file)
+            .replacingOccurrences(of: " ", with: "")
+    }
+
+    nonisolated private static func shortBytes(_ value: UInt64) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
+            .replacingOccurrences(of: " ", with: "")
+    }
+
+    nonisolated private static func bytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .file)
+    }
+}
+
+private struct TaskManagerRemoteEditor: View {
+    @State private var profile: SystemMonitorRemoteProfile
+    let canDelete: Bool
+    let onSave: (SystemMonitorRemoteProfile, Bool) -> Void
+    let onDelete: () -> Void
+    let onCancel: () -> Void
+
+    init(
+        profile: SystemMonitorRemoteProfile,
+        canDelete: Bool,
+        onSave: @escaping (SystemMonitorRemoteProfile, Bool) -> Void,
+        onDelete: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        _profile = State(initialValue: profile)
+        self.canDelete = canDelete
+        self.onSave = onSave
+        self.onDelete = onDelete
+        self.onCancel = onCancel
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(canDelete ? "Configure remote host" : "Add remote host")
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Button(action: onCancel) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .frame(width: 23, height: 23)
+                        .background(Color.white.opacity(0.055), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .accessibilityLabel("Close")
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .background(TaskManagerTheme.sidebar)
+
+            VStack(spacing: 0) {
+                editorRow("Name", detail: "A label shown in Task Manager.") {
+                    TextField("Build server", text: $profile.name)
+                        .taskManagerRemoteField()
+                }
+                divider
+                editorRow("SSH host", detail: "Host or alias from ~/.ssh/config.") {
+                    TextField("user@host", text: $profile.host)
+                        .taskManagerRemoteField()
+                        .onSubmit { submit(connect: true) }
+                        .accessibilityIdentifier("system-monitor.remote.host")
+                }
+                divider
+                editorRow("System", detail: "The operating system on this host.") {
+                    TaskManagerSegments(
+                        choices: SystemMonitorRemotePlatform.allCases.map { ($0, $0.rawValue) },
+                        selection: $profile.platform
+                    )
+                }
+                divider
+                editorRow("Refresh", detail: "No sampling occurs while disconnected.") {
+                    Picker("Refresh", selection: $profile.interval) {
+                        Text("Manual only").tag(0)
+                        Text("5 seconds").tag(5)
+                        Text("10 seconds").tag(10)
+                        Text("30 seconds").tag(30)
+                        Text("1 minute").tag(60)
+                        Text("2 minutes").tag(120)
+                        Text("5 minutes").tag(300)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 128)
+                }
+            }
+
+            HStack(spacing: 8) {
+                if canDelete {
+                    Button("Remove", role: .destructive, action: onDelete)
+                        .buttonStyle(.bordered)
+                }
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+                Button("Save") { submit(connect: false) }
+                    .buttonStyle(.bordered)
+                Button("Save & Connect") { submit(connect: true) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.white.opacity(0.18))
+                    .disabled(!SystemMonitorRemoteProtocol.validHost(profile.host))
+            }
+            .controlSize(.regular)
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .background(TaskManagerTheme.sidebar)
+        }
+        .frame(width: 530)
+        .background(TaskManagerTheme.window)
+        .foregroundStyle(TaskManagerTheme.ink)
+        .environment(\.colorScheme, .dark)
+    }
+
+    private func editorRow<Content: View>(
+        _ title: String,
+        detail: String,
+        @ViewBuilder control: () -> Content
+    ) -> some View {
+        HStack(spacing: 20) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 11))
+                Text(detail)
+                    .font(.system(size: 9))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+            }
+            Spacer(minLength: 16)
+            control()
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 60)
+    }
+
+    private var divider: some View {
+        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+    }
+
+    private func submit(connect: Bool) {
+        onSave(profile, connect)
+    }
+}
+
+private extension View {
+    func taskManagerRemoteButton(primary: Bool = false) -> some View {
+        font(.system(size: 9.5, weight: .medium))
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .padding(.horizontal, 10)
+            .frame(minHeight: 28)
+            .background(primary ? Color.white.opacity(0.11) : Color.white.opacity(0.055),
+                        in: RoundedRectangle(cornerRadius: 5))
+            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+    }
+
+    func taskManagerRemoteField() -> some View {
+        textFieldStyle(.plain)
+            .font(.system(size: 10, design: .monospaced))
+            .padding(.horizontal, 10)
+            .frame(width: 220, height: 31)
+            .background(Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 5))
+            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
     }
 }
