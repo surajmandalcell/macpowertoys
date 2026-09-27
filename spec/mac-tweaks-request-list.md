@@ -6,7 +6,7 @@
 - [x] Put the native traffic lights and Mac Tweaks title on the same 64pt centerline and verify the result from an exact-build screenshot.
 - [x] Make the full search surface focus the field, including its icon, key hint, and inner padding. Keep typing, clearing, Command-K, Escape, and typo-ranked results working.
 - [x] Port the reference films to continuous hover-only motion with a shared 600 × 304 scene, uniform scaling, clipping, ordered dither, wireframe texture, soft depth, and no overlapping or staged jumps. Return to the same poster frame on leave and respect Reduce Motion.
-- [~] Inspect Dock, Finder, Input, ranked search, empty search, and animated preview states from the exact hosted build, then install and verify the clean signed commit.
+- [x] Inspect Dock, Finder, Input, ranked search, empty search, and animated preview states from the exact hosted build, then install and verify the clean signed commit.
 
 Hosted run `36329261546` exported the redesigned Dock, Finder, Input, ranked
 search, segmented-control, and empty-search captures. The dither and reference
@@ -32,7 +32,16 @@ state, and dark-appearance checks. All eight exported captures were reviewed.
 The hosted 1024 × 768 desktop clips the lower and trailing portions of the
 larger reference window, so its screenshots are evidence for the rendered
 states while the accessibility frame assertion verifies the complete outer
-geometry. The clean signed installed-app handoff remains pending.
+geometry. Runs `36334450203` and `36334715320` then passed the same Mac Tweaks
+UI gate after the shared window-policy and component-package changes. The
+immutable committed snapshot at `1b044456db52a43b529e822da01528de550497d9`
+built successfully and was installed without disturbing concurrent uncommitted
+work. The app and embedded helper carry that exact source stamp and team
+`GF57JXJF5A`; PID `44952` runs the `/Applications/MacPowerToys.app` executable
+with the Mac Tweaks route. Native Computer Use access to MacPowerToys was
+denied, so the installed window could not be captured locally. The development
+certificate still reports the documented `CSSMERR_TP_NOT_TRUSTED` trust-chain
+warning during manual verification; no Keychain trust was changed.
 
 ## Fixed reference redesign, 2026-09-27
 
