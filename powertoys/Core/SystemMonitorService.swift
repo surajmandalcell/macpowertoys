@@ -611,6 +611,14 @@ nonisolated struct SystemMonitorRenderedItem: Equatable {
     let value: String
 }
 
+nonisolated enum SystemMonitorDisplayFormat {
+    static func byteRate(_ value: Double) -> String {
+        let bytes = Int64(max(value, 0))
+        guard bytes > 0 else { return "0 KB/s" }
+        return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file) + "/s"
+    }
+}
+
 nonisolated enum SystemMonitorLifecycle {
     static func changesState(from current: Bool, to requested: Bool) -> Bool {
         current != requested
@@ -645,7 +653,7 @@ nonisolated enum SystemMonitorMenuRenderer {
                 return bytes(max(total - used, 0))
             }
         case .network:
-            let formatter = item.networkUnit == .bytes ? rate : bitRate
+            let formatter = item.networkUnit == .bytes ? SystemMonitorDisplayFormat.byteRate : bitRate
             let down = sample?.networkDownload.map(formatter) ?? "..."
             let up = sample?.networkUpload.map(formatter) ?? "..."
             switch item.networkDirection {
@@ -677,9 +685,6 @@ nonisolated enum SystemMonitorMenuRenderer {
     private static func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
     private static func bytes(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: max(value, 0), countStyle: .memory)
-    }
-    private static func rate(_ value: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(max(value, 0)), countStyle: .file) + "/s"
     }
     private static func bitRate(_ byteRate: Double) -> String {
         let bits = max(byteRate, 0) * 8
