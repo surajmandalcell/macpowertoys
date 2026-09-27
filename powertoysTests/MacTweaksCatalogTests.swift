@@ -22,11 +22,20 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertEqual(Set(grouped), Set(TweakCatalog.items.map(\.category)).union([TweakSearch.micLock.category]))
     }
 
-    func testEveryWorkingCardHasAnExample() {
-        let workingIDs = TweakCatalog.items
-            .filter { !TweakPreferences.fields(for: $0.id).isEmpty }
-            .map(\.id) + ["mic-lock", "helper.keep-awake"]
-        XCTAssertTrue(workingIDs.filter { TweakExample.forID($0) == nil }.isEmpty)
+    func testEveryWritablePreferenceHasCompletePresentationMetadata() {
+        let fields = TweakCatalog.items.flatMap { TweakPreferences.fields(for: $0.id) }
+        XCTAssertFalse(fields.isEmpty)
+        XCTAssertEqual(fields.map(\.identity).count, Set(fields.map(\.identity)).count)
+        XCTAssertTrue(fields.allSatisfy { !$0.label.isEmpty && !$0.choices.isEmpty })
+        XCTAssertTrue(fields.flatMap(\.choices).allSatisfy { !$0.label.isEmpty })
+
+        let repeatField = TweakPreferences.fields(for: "input.press-hold")[0]
+        XCTAssertEqual(repeatField.choices[0].value as? Bool, false, "On must disable the accent popup")
+        XCTAssertEqual(repeatField.choices[1].value as? Bool, true)
+
+        let shadowField = TweakPreferences.fields(for: "screenshots.shadow")[0]
+        XCTAssertEqual(shadowField.choices[0].value as? Bool, false, "On must include window shadows")
+        XCTAssertEqual(shadowField.choices[1].value as? Bool, true)
     }
 
     func testExactPreferenceUndoRestoresAbsentAndExistingValues() throws {
@@ -42,10 +51,15 @@ final class MacTweaksCatalogTests: XCTestCase {
         }
 
         XCTAssertNil(store.value(for: field))
+        try store.apply([field], selections: [field.identity: -1])
+        XCTAssertFalse(store.hasBackup(for: [field]), "A no-op must not create recovery state")
+
         try store.apply([field], selections: [field.identity: 0])
         XCTAssertEqual(store.value(for: field) as? Bool, true)
-        try store.restore([field])
+        XCTAssertTrue(store.hasBackup(for: [field]))
+        try store.apply([field], selections: [field.identity: -1])
         XCTAssertNil(store.value(for: field))
+        XCTAssertFalse(store.hasBackup(for: [field]), "Returning to the original value must clear recovery state")
 
         try store.apply([field], selections: [field.identity: 0])
         CFPreferencesSetValue(field.key as CFString, nil, domain as CFString,
@@ -58,7 +72,13 @@ final class MacTweaksCatalogTests: XCTestCase {
                               kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
         XCTAssertTrue(CFPreferencesSynchronize(domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost))
         try store.apply([field], selections: [field.identity: 0])
+        XCTAssertEqual(store.originalChoice(for: field), 1)
         try store.restore([field])
         XCTAssertEqual(store.value(for: field) as? Bool, false)
+
+        try store.apply([field], selections: [field.identity: 0])
+        try store.apply([field], selections: [field.identity: 1])
+        XCTAssertEqual(store.value(for: field) as? Bool, false)
+        XCTAssertFalse(store.hasBackup(for: [field]))
     }
 }
