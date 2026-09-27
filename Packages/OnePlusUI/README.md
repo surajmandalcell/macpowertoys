@@ -31,6 +31,12 @@ Run the showcase from this directory with:
 swift run OnePlusUIShowcase
 ```
 
+Reviewed production captures:
+
+- [OnePlusUI component showcase](../../docs/screenshots/oneplus-ui-showcase.png)
+- [Task Manager window chrome](../../docs/screenshots/task-manager-window-chrome.png)
+- [Task Manager Remote Stats actions](../../docs/screenshots/task-manager-remote-actions.png)
+
 The package stays inside MacPowerToys while it has one production consumer.
 This keeps clean clones and hosted builds self-contained. When a second app
 adopts it, move this directory to a dedicated `OnePlusUI` Git repository, tag a

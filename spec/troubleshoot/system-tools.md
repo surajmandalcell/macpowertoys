@@ -488,6 +488,11 @@
   reopening, compare title and traffic-light centerlines, then measure the
   Remote Stats button heights, painted gap, and trailing inset in the exact
   source-stamped build.
+- **Verified:** Hosted run `36338530044` passed the package, 900-test app suite,
+  Task Manager interaction, and installable archive. Its reviewed captures show
+  all three traffic lights, the normal title alignment, the dither surface,
+  scoped process hover, and themed process sheet. The UI assertions measure
+  equal 36pt Remote Stats actions, an 8pt gap, and a 32pt trailing inset.
 
 - **Symptom:** The main menu still contains Monitor and Fan while a Monitor
   status item opens the full window; its cards look like smooth, differently
