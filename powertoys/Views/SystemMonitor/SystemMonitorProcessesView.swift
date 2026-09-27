@@ -444,15 +444,23 @@ struct ProcessDetailSheet: View {
                 Button("Quit") { onQuit() }
                     .taskManagerControl(.destructive)
                     .disabled(process.started == 0)
-                Menu {
+                Menu("More") {
                     Button("Force Quit", role: .destructive, action: onForceQuit)
                         .disabled(process.started == 0)
-                } label: {
-                    TaskManagerMenuLabel(title: "More", width: 68)
                 }
                 .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
+                .menuIndicator(.visible)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(TaskManagerTheme.ink.opacity(0.88))
+                .frame(width: 68, height: 27)
+                .background(
+                    TaskManagerControlTone.quiet.background(hovering: false, pressed: false),
+                    in: RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
+                        .strokeBorder(TaskManagerTheme.line)
+                }
                 .focusEffectDisabled()
                 .environment(\.colorScheme, .dark)
                 Spacer()

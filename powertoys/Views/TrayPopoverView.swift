@@ -1920,7 +1920,7 @@ private struct TaskManagerRemoteMenuCard: View {
                             openRemoteStats()
                         }
                     }
-                    .frame(width: 72)
+                    .frame(width: 84)
                 }
                 .frame(height: 36)
             }
@@ -1950,14 +1950,14 @@ private struct TaskManagerRemoteMenuCard: View {
 
     private func remoteAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 Text(title)
                 Spacer(minLength: 2)
                 Image(systemName: symbol).font(.system(size: 7.5))
             }
             .font(.system(size: 8.5))
             .foregroundStyle(TaskManagerTheme.secondary)
-            .padding(.horizontal, 7)
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
