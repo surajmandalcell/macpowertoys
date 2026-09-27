@@ -1,67 +1,31 @@
 import AppKit
 import Darwin
+import OnePlusUI
 import SwiftUI
 
 enum TaskManagerTheme {
-    static let desktop = Color(red: 0.043, green: 0.043, blue: 0.043)
-    static let window = Color(red: 0.086, green: 0.086, blue: 0.086)
-    static let sidebar = Color(red: 0.114, green: 0.114, blue: 0.114)
-    static let card = Color(red: 0.125, green: 0.125, blue: 0.125)
-    static let cardHover = Color(red: 0.145, green: 0.145, blue: 0.145)
-    static let line = Color(red: 0.188, green: 0.188, blue: 0.188)
-    static let lineSoft = Color(red: 0.157, green: 0.157, blue: 0.157)
-    static let ink = Color(red: 0.929, green: 0.929, blue: 0.929)
-    static let secondary = Color(red: 0.627, green: 0.627, blue: 0.627)
-    static let muted = Color(red: 0.463, green: 0.463, blue: 0.463)
-    static let accent = Color(red: 0.933, green: 0.357, blue: 0.314)
+    static let desktop = OnePlusTheme.desktop
+    static let window = OnePlusTheme.window
+    static let sidebar = OnePlusTheme.sidebar
+    static let card = OnePlusTheme.card
+    static let cardHover = OnePlusTheme.cardHover
+    static let line = OnePlusTheme.line
+    static let lineSoft = OnePlusTheme.lineSoft
+    static let ink = OnePlusTheme.ink
+    static let secondary = OnePlusTheme.secondary
+    static let muted = OnePlusTheme.muted
+    static let accent = OnePlusTheme.accent
 
     static let windowContentSize = NSSize(width: 1_080, height: 660)
     static let sidebarWidth: CGFloat = 192
     static let headerHeight: CGFloat = 62
     static let contentInset: CGFloat = 20
-    static let panelRadius: CGFloat = 9
-    static let controlRadius: CGFloat = 5
+    static let panelRadius = OnePlusMetrics.panelRadius
+    static let controlRadius = OnePlusMetrics.controlRadius
 }
 
-struct TaskManagerPanel<Content: View>: View {
-    var textured = false
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                ZStack(alignment: .topTrailing) {
-                    RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
-                        .fill(TaskManagerTheme.card)
-                    if textured {
-                        TaskManagerDitherTexture()
-                            .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
-                    }
-                }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
-                    .strokeBorder(TaskManagerTheme.line, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
-    }
-}
-
-struct TaskManagerDitherTexture: View {
-    var strength = 0.22
-
-    var body: some View {
-        Image("TaskManagerGrain")
-            .resizable()
-            .interpolation(.none)
-            .frame(width: 240, height: 150)
-            .opacity(strength)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}
+typealias TaskManagerPanel<Content: View> = OnePlusPanel<Content>
+typealias TaskManagerDitherTexture = OnePlusDitherTexture
 
 struct TaskManagerHeaderArtwork: View {
     var body: some View {
@@ -198,174 +162,10 @@ struct TaskManagerHeader<Trailing: View>: View {
     }
 }
 
-enum TaskManagerControlTone: Equatable {
-    case standard
-    case primary
-    case destructive
-    case quiet
-
-    var foreground: Color {
-        switch self {
-        case .primary: TaskManagerTheme.window
-        case .destructive: Color(red: 0.937, green: 0.635, blue: 0.608)
-        case .standard, .quiet: TaskManagerTheme.ink.opacity(0.88)
-        }
-    }
-
-    func background(hovering: Bool, pressed: Bool) -> Color {
-        switch self {
-        case .primary:
-            return Color.white.opacity(pressed ? 0.76 : hovering ? 0.94 : 0.86)
-        case .destructive:
-            return TaskManagerTheme.accent.opacity(pressed ? 0.12 : hovering ? 0.25 : 0.16)
-        case .standard:
-            return Color.white.opacity(pressed ? 0.045 : hovering ? 0.12 : 0.075)
-        case .quiet:
-            return Color.white.opacity(pressed ? 0.025 : hovering ? 0.085 : 0.035)
-        }
-    }
-
-    var border: Color {
-        switch self {
-        case .primary: Color.white.opacity(0.72)
-        case .destructive: TaskManagerTheme.accent.opacity(0.42)
-        case .standard, .quiet: TaskManagerTheme.line
-        }
-    }
-}
-
-struct TaskManagerControlButtonStyle: ButtonStyle {
-    var tone: TaskManagerControlTone = .standard
-    var minWidth: CGFloat?
-    var minHeight: CGFloat = 27
-    var horizontalPadding: CGFloat = 10
-
-    func makeBody(configuration: Configuration) -> some View {
-        Body(
-            label: configuration.label,
-            pressed: configuration.isPressed,
-            tone: tone,
-            minWidth: minWidth,
-            minHeight: minHeight,
-            horizontalPadding: horizontalPadding
-        )
-    }
-
-    private struct Body<Label: View>: View {
-        @Environment(\.isEnabled) private var isEnabled
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
-        @State private var hovering = false
-
-        let label: Label
-        let pressed: Bool
-        let tone: TaskManagerControlTone
-        let minWidth: CGFloat?
-        let minHeight: CGFloat
-        let horizontalPadding: CGFloat
-
-        var body: some View {
-            label
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(tone.foreground)
-                .padding(.horizontal, horizontalPadding)
-                .frame(minWidth: minWidth, minHeight: minHeight)
-                .background(
-                    RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                        .fill(tone.background(hovering: hovering, pressed: pressed))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                        .strokeBorder(tone.border, lineWidth: 1)
-                }
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(Color.white.opacity(tone == .primary ? 0.08 : 0.035))
-                        .frame(height: 1)
-                        .padding(.horizontal, TaskManagerTheme.controlRadius)
-                }
-                .contentShape(RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius))
-                .opacity(isEnabled ? 1 : 0.38)
-                .onHover { hovering = isEnabled && $0 }
-                .animation(
-                    UtilityMotion.animation(
-                        reduceMotion: reduceMotion,
-                        duration: UtilityMotion.interactionDuration
-                    ),
-                    value: hovering || pressed
-                )
-        }
-    }
-}
-
-struct TaskManagerSelect<Value: Hashable>: View {
-    let choices: [(Value, String)]
-    @Binding var selection: Value
-    var width: CGFloat = 120
-    var accessibilityLabel: String
-
-    private var selectedTitle: String {
-        choices.first { $0.0 == selection }?.1 ?? choices.first?.1 ?? ""
-    }
-
-    var body: some View {
-        Menu {
-            ForEach(choices.indices, id: \.self) { index in
-                let choice = choices[index]
-                Button {
-                    selection = choice.0
-                } label: {
-                    if choice.0 == selection {
-                        Label(choice.1, systemImage: "checkmark")
-                    } else {
-                        Text(choice.1)
-                    }
-                }
-            }
-        } label: {
-            TaskManagerMenuLabel(title: selectedTitle, width: width)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .focusEffectDisabled()
-        .environment(\.colorScheme, .dark)
-        .accessibilityLabel(accessibilityLabel)
-    }
-}
-
-struct TaskManagerMenuLabel: View {
-    let title: String
-    let width: CGFloat
-    @State private var hovering = false
-
-    var body: some View {
-        Text(title)
-            .lineLimit(1)
-            .frame(width: width - 18, alignment: .leading)
-            .font(.system(size: 10.5))
-            .foregroundStyle(TaskManagerTheme.ink.opacity(0.88))
-            .padding(.horizontal, 9)
-            .frame(height: 27)
-            .background(
-                RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                    .fill(TaskManagerControlTone.quiet.background(hovering: hovering, pressed: false))
-            )
-            .overlay(alignment: .trailing) {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                    .padding(.trailing, 9)
-                    .accessibilityHidden(true)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                    .strokeBorder(TaskManagerTheme.line)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius))
-            .onHover { hovering = $0 }
-            .accessibilityLabel(title)
-    }
-}
+typealias TaskManagerControlTone = OnePlusControlTone
+typealias TaskManagerSelect<Value: Hashable> = OnePlusSelect<Value>
+typealias TaskManagerSearchField = OnePlusSearchField
+typealias TaskManagerSegments<Value: Hashable> = OnePlusSegments<Value>
 
 extension View {
     func taskManagerControl(
@@ -374,13 +174,12 @@ extension View {
         minHeight: CGFloat = 27,
         horizontalPadding: CGFloat = 10
     ) -> some View {
-        buttonStyle(TaskManagerControlButtonStyle(
-            tone: tone,
+        onePlusControl(
+            tone,
             minWidth: minWidth,
             minHeight: minHeight,
             horizontalPadding: horizontalPadding
-        ))
-        .focusEffectDisabled()
+        )
     }
 }
 
@@ -389,74 +188,6 @@ extension TaskManagerHeader where Trailing == EmptyView {
         self.title = title
         self.subtitle = subtitle
         trailing = { EmptyView() }
-    }
-}
-
-struct TaskManagerSearchField: View {
-    let prompt: String
-    @Binding var text: String
-    var width: CGFloat = 300
-    var focusTrigger = 0
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11))
-                .foregroundStyle(TaskManagerTheme.secondary)
-            TextField(prompt, text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 10))
-                .focused($focused)
-            if !text.isEmpty {
-                Button { text = "" } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .semibold))
-                        .frame(width: 16, height: 16)
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, 10)
-        .frame(width: width, height: 34)
-        .background(Color(red: 0.133, green: 0.133, blue: 0.133))
-        .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(focused ? Color(red: 0.42, green: 0.36, blue: 0.35) : TaskManagerTheme.line)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .onAppear { if focusTrigger > 0 { focused = true } }
-        .onChange(of: focusTrigger) { _, _ in focused = true }
-    }
-}
-
-struct TaskManagerSegments<Value: Hashable>: View {
-    let choices: [(Value, String)]
-    @Binding var selection: Value
-
-    var body: some View {
-        HStack(spacing: 1) {
-            ForEach(choices.indices, id: \.self) { index in
-                let (value, label) = choices[index]
-                Button(label) { selection = value }
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(selection == value ? TaskManagerTheme.ink : TaskManagerTheme.secondary)
-                    .padding(.horizontal, 9)
-                    .frame(minHeight: 24)
-                    .background(selection == value ? Color.white.opacity(0.09) : .clear,
-                                in: RoundedRectangle(cornerRadius: 4))
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                    .accessibilityAddTraits(selection == value ? .isSelected : [])
-            }
-        }
-        .padding(2)
-        .background(Color(red: 0.105, green: 0.105, blue: 0.105),
-                    in: RoundedRectangle(cornerRadius: 6))
-        .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(TaskManagerTheme.line) }
-        .fixedSize()
     }
 }
 

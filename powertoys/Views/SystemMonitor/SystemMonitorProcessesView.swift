@@ -1,4 +1,5 @@
 import AppKit
+import OnePlusUI
 import SwiftUI
 
 nonisolated enum ProcessSortColumn: String, CaseIterable {
@@ -450,7 +451,7 @@ struct ProcessDetailSheet: View {
                 )
                 .frame(width: 68, height: 27)
                 .background(
-                    TaskManagerControlTone.quiet.background(hovering: false, pressed: false),
+                    Color.white.opacity(0.035),
                     in: RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
                 )
                 .overlay {
