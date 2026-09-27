@@ -43,6 +43,15 @@ final class MacTweaksUITests: XCTestCase {
 
         search.click()
         app.typeKey("a", modifierFlags: .command)
+        search.typeText("repeat accents")
+        let defaultChoice = element(in: window, identifier: "mac-tweaks.choice.ApplePressAndHoldEnabled.-1")
+        let onChoice = element(in: window, identifier: "mac-tweaks.choice.ApplePressAndHoldEnabled.0")
+        XCTAssertTrue(defaultChoice.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(defaultChoice.frame.width, onChoice.frame.width * 2)
+        attach(window.screenshot(), named: "Mac Tweaks Segmented Control")
+
+        search.click()
+        app.typeKey("a", modifierFlags: .command)
         search.typeText("search ")
         XCTAssertTrue(window.staticTexts["No matching settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(window.buttons["Clear search"].exists)
