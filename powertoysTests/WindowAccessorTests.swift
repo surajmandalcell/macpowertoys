@@ -183,6 +183,37 @@ final class WindowAccessorTests: XCTestCase {
         }
     }
 
+    func testTaskManagerReappliesItsFixedWindowPolicyWhenKey() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 580),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        Self.retainedWindows.append(window)
+        window.contentView = NSHostingView(rootView: WindowAccessor(identifier: "system-monitor"))
+        window.contentView?.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
+
+        XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertEqual(window.contentMinSize, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.contentMaxSize, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.contentLayoutRect.size, TaskManagerTheme.windowContentSize)
+
+        window.styleMask.insert(.resizable)
+        window.contentMinSize = .zero
+        window.contentMaxSize = NSSize(width: 2_000, height: 2_000)
+        window.setContentSize(NSSize(width: 920, height: 600))
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
+
+        XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertEqual(window.contentMinSize, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.contentMaxSize, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.contentLayoutRect.size, TaskManagerTheme.windowContentSize)
+        XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
+    }
+
     func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {
         let expectedSizes: [String: NSSize] = [
             "main": UtilityLayout.launcherWindowSize,
@@ -229,6 +260,7 @@ final class WindowAccessorTests: XCTestCase {
 
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
         XCTAssertTrue(WindowStateManager.restoresPositionOnly("main"))
+        XCTAssertTrue(WindowStateManager.restoresPositionOnly("system-monitor"))
         XCTAssertFalse(WindowStateManager.restoresPositionOnly("rclone"))
 
         let saved = NSRect(x: 40, y: 60, width: 780, height: 732)
@@ -307,6 +339,15 @@ final class WindowAccessorTests: XCTestCase {
 
     func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
         XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
+    }
+
+    func testMacTweaksContentSizeProducesTheReferenceOuterFrame() {
+        XCTAssertEqual(MacTweaksLayout.contentSize.width, MacTweaksLayout.windowSize.width)
+        XCTAssertEqual(
+            MacTweaksLayout.contentSize.height + UtilityLayout.hiddenTitlebarBottomSurplus,
+            MacTweaksLayout.windowSize.height,
+            accuracy: 0.5
+        )
     }
 
     func testUtilityMotionStopsWhenReduceMotionIsEnabled() {
