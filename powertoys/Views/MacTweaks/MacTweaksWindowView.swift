@@ -5,6 +5,10 @@ import SwiftUI
 
 enum MacTweaksLayout {
     static let windowSize = NSSize(width: 1_120, height: 826)
+    static let contentSize = NSSize(
+        width: windowSize.width,
+        height: windowSize.height - UtilityLayout.hiddenTitlebarBottomSurplus
+    )
     static let sidebarWidth: CGFloat = 200
     static let titlebarHeight: CGFloat = 64
     static let contentInset: CGFloat = 28
@@ -114,7 +118,7 @@ struct MacTweaksWindowView: View {
                 .opacity(0)
                 .accessibilityHidden(true)
         }
-        .frame(width: MacTweaksLayout.windowSize.width, height: MacTweaksLayout.windowSize.height)
+        .frame(width: MacTweaksLayout.contentSize.width, height: MacTweaksLayout.contentSize.height)
         .background(MacTweaksPalette.window)
         .clipShape(RoundedRectangle(cornerRadius: 13))
         .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.white.opacity(0.13), lineWidth: 1))
@@ -181,6 +185,7 @@ struct MacTweaksWindowView: View {
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
                 .accessibilityLabel("About Mac Tweaks")
+                .accessibilityIdentifier("mac-tweaks.about")
                 Spacer()
             }
             .padding(.leading, 84)
@@ -190,7 +195,7 @@ struct MacTweaksWindowView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 20)
 
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     sidebarGroup("Everyday")
                     sidebarGroup("System").padding(.top, 24)
@@ -198,6 +203,7 @@ struct MacTweaksWindowView: View {
                 .padding(.horizontal, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .thinScrollIndicators()
 
             VStack(spacing: 2) {
                 MacTweaksBottomSidebarButton(
@@ -214,7 +220,9 @@ struct MacTweaksWindowView: View {
             .padding(.top, 18)
             .padding(.bottom, 16)
             .overlay(alignment: .top) {
-                Rectangle().fill(MacTweaksPalette.line).frame(height: 1).padding(.horizontal, 10)
+                Rectangle().fill(MacTweaksPalette.line).frame(height: 1)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 10)
             }
         }
         .frame(width: MacTweaksLayout.sidebarWidth)
@@ -260,7 +268,7 @@ struct MacTweaksWindowView: View {
                 .padding(.horizontal, MacTweaksLayout.contentInset)
                 .frame(height: MacTweaksLayout.titlebarHeight)
 
-                ScrollView(showsIndicators: false) {
+                ScrollView {
                     Group {
                         if isSearching { searchPage }
                         else if selectedPage == "modified" { modifiedPage }
@@ -271,6 +279,7 @@ struct MacTweaksWindowView: View {
                     .padding(.horizontal, MacTweaksLayout.contentInset)
                     .padding(.bottom, MacTweaksLayout.contentInset)
                 }
+                .thinScrollIndicators()
             }
         }
     }
@@ -680,7 +689,7 @@ struct MacTweaksWindowView: View {
     private func noticeView(_ notice: MacTweaksNotice) -> some View {
         HStack(spacing: 10) {
             Image(systemName: notice.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .foregroundStyle(notice.isError ? MacTweaksPalette.accent : MacTweaksPalette.purple)
+                .foregroundStyle(notice.isError ? MacTweaksPalette.accent : Color(white: 0.72))
             Text(notice.message).font(.system(size: 11)).lineLimit(2)
             if let title = notice.actionTitle,
                let bundleID = notice.targetBundleIdentifier,
@@ -1014,7 +1023,7 @@ private struct MacTweaksLevelMeter: View {
         HStack(spacing: 2) {
             ForEach(0..<20, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 1)
-                    .fill(Float(index) / 20 < level ? MacTweaksPalette.purple : Color.white.opacity(0.10))
+                    .fill(Float(index) / 20 < level ? Color(white: 0.72) : Color.white.opacity(0.10))
             }
         }
         .accessibilityElement(children: .ignore)

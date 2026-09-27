@@ -10,7 +10,6 @@ enum MacTweaksPalette {
     static let secondary = Color(red: 0.64, green: 0.64, blue: 0.64)
     static let muted = Color(red: 0.47, green: 0.47, blue: 0.47)
     static let accent = Color(red: 0.93, green: 0.36, blue: 0.31)
-    static let purple = Color(red: 0.67, green: 0.53, blue: 0.91)
 }
 
 enum MacTweaksGlyphName: Hashable {
@@ -144,10 +143,19 @@ struct MacTweaksPreviewView: View {
         GeometryReader { proxy in
             ZStack(alignment: .bottomLeading) {
                 preview(size: proxy.size)
-                Rectangle()
-                    .fill(MacTweaksPalette.purple.opacity(isHovering ? 0.72 : 0.18))
-                    .frame(width: proxy.size.width * progress, height: 2)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: phase)
+                HStack(spacing: 2) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        Rectangle().fill(Color.white.opacity(0.10))
+                    }
+                }
+                .frame(height: 2)
+                LinearGradient(
+                    colors: [Color(white: 0.60), Color(white: 0.87)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: proxy.size.width * progress, height: 2)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: phase)
             }
         }
         .clipped()
@@ -164,6 +172,9 @@ struct MacTweaksPreviewView: View {
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: isHovering)
+        .transaction { transaction in
+            if reduceMotion { transaction.disablesAnimations = true }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Preview of \(kind.accessibilityName)")
         .accessibilityValue(isHovering && !reduceMotion ? "Playing" : "At rest")
@@ -265,7 +276,7 @@ private struct DesktopPreviewScene: View {
         HStack(spacing: 9) {
             ForEach(0..<5, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(index == 2 ? MacTweaksPalette.purple : Color.white.opacity(0.22))
+                    .fill(index == 2 ? Color.white.opacity(0.42) : Color.white.opacity(0.22))
                     .frame(width: 24, height: 24)
             }
         }
@@ -368,7 +379,7 @@ private struct PowerPreviewScene: View {
             LinearGradient(colors: [Color(red: 0.07, green: 0.08, blue: 0.12), Color(red: 0.14, green: 0.13, blue: 0.19)], startPoint: .top, endPoint: .bottom)
             Circle().fill(Color.white.opacity(0.82)).frame(width: 50, height: 50)
                 .overlay(Circle().fill(Color(red: 0.09, green: 0.09, blue: 0.14)).offset(x: active && phase > 0 ? 18 : 9, y: -7))
-                .shadow(color: MacTweaksPalette.purple.opacity(active ? 0.38 : 0.14), radius: active ? 24 : 10)
+                .shadow(color: Color.white.opacity(active ? 0.17 : 0.06), radius: active ? 24 : 10)
                 .offset(y: -14)
             HStack(spacing: 7) {
                 Circle().fill(active ? Color.green.opacity(0.8) : MacTweaksPalette.muted).frame(width: 6, height: 6)

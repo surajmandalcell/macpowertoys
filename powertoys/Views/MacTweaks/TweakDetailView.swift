@@ -93,19 +93,19 @@ struct MacTweaksPreferenceRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(canWrite ? MacTweaksPalette.text.opacity(0.9) : MacTweaksPalette.muted)
                     .lineLimit(1)
-                Button {
-                    restore()
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 10, weight: .medium))
-                        .frame(width: 22, height: 22)
+                if isModified {
+                    Button {
+                        restore()
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 10, weight: .medium))
+                            .frame(width: 22, height: 22)
+                    }
+                    .buttonStyle(MacTweaksHoverButtonStyle(cornerRadius: 5))
+                    .foregroundStyle(MacTweaksPalette.secondary)
+                    .help("Restore the value from before Mac Tweaks changed it")
+                    .accessibilityLabel("Reset \(field.label)")
                 }
-                .buttonStyle(MacTweaksHoverButtonStyle(cornerRadius: 5))
-                .foregroundStyle(MacTweaksPalette.secondary)
-                .opacity(isModified ? 1 : 0)
-                .disabled(!isModified)
-                .help("Restore the value from before Mac Tweaks changed it")
-                .accessibilityLabel("Reset \(field.label)")
                 Button {
                     showsHelp.toggle()
                 } label: {
@@ -340,13 +340,22 @@ struct MacTweaksToggleStyle: ToggleStyle {
         Button {
             configuration.isOn.toggle()
         } label: {
-            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                Capsule().fill(configuration.isOn ? MacTweaksPalette.purple.opacity(0.82) : Color.white.opacity(0.16))
-                Circle().fill(configuration.isOn ? Color.white.opacity(0.94) : Color.white.opacity(0.62))
-                    .padding(3).shadow(color: .black.opacity(0.24), radius: 1, y: 1)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(configuration.isOn ? Color(white: 0.847) : Color(white: 0.216))
+                    .overlay {
+                        Capsule().stroke(
+                            configuration.isOn ? Color(white: 0.847) : Color(white: 0.282),
+                            lineWidth: 1
+                        )
+                    }
+                Circle()
+                    .fill(configuration.isOn ? Color(white: 0.161) : Color(white: 0.667))
+                    .frame(width: 12, height: 12)
+                    .offset(x: configuration.isOn ? 14 : 2)
             }
             .frame(width: 30, height: 18)
-            .animation(.easeOut(duration: 0.14), value: configuration.isOn)
+            .animation(.easeOut(duration: 0.15), value: configuration.isOn)
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
