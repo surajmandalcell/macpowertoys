@@ -470,6 +470,19 @@
 
 ## System Monitor
 
+- **Symptom:** Task Manager declares a 220pt sidebar, but its visible surface
+  ends at 175pt and becomes 220pt only in the native strip below the SwiftUI
+  body, which looks like a transparent or overextended bottom section.
+- **Cause:** The sidebar applied its background and trailing divider before an
+  outer fixed-width frame. SwiftUI reserved 220pt for layout but painted only
+  the sidebar content's 175pt intrinsic width. The native backdrop correctly
+  painted the complete 220pt width and exposed the mismatch at the lower edge.
+- **Invariant:** Apply the fixed sidebar width before its background and
+  trailing divider so layout, paint, and the native backdrop share one bound.
+- **Check:** In an exact-build window screenshot, sample the sidebar color at
+  x=218pt in the body and in the native lower strip. Require equal RGB values
+  and confirm the divider stays at x=220pt through the full window height.
+
 - **Symptom:** The installed Task Manager can restore as a resizable window,
   its title feels detached from the traffic lights, or Remote Stats leaves a
   large gap between Configure and Connect or after Connect.
@@ -538,7 +551,7 @@
   packed three columns into two short rows. Monitor inherited the 240pt data
   sidebar despite short navigation.
 - **Invariant:** Use the shared dithered neutral card and red accent above.
-  Use two Overview columns and taller cards; keep the 192pt Task Manager
+  Use two Overview columns and taller cards; keep the 220pt Task Manager
   sidebar and give the returned space to content. Other workspaces keep their
   widths.
 - **Check:** Compare dark and light Overview, dedicated popup, and Remote Stats

@@ -487,8 +487,8 @@
   edge, or one app invents different title, control, and content offsets.
 - **Cause:** A workspace chose local width or padding literals instead of its
   shared sidebar family and layout metrics.
-- **Invariant:** Launcher, Logs, and Input Devices use the 220pt compact family;
-  Task Manager uses its 192pt reference sidebar; Cloud Sync and System Care use
+- **Invariant:** Launcher, Logs, Input Devices, and Task Manager use the 220pt
+  compact family; Cloud Sync and System Care use
   the 240pt data family.
   Navigation groups have 12pt horizontal
   pane padding. All workspace titles and first controls use the shared 84pt and

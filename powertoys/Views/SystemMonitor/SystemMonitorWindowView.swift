@@ -154,7 +154,6 @@ struct SystemMonitorWindowView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-                .frame(width: TaskManagerTheme.sidebarWidth)
             VStack(spacing: 0) {
                 header
                 pageContent
@@ -222,6 +221,7 @@ struct SystemMonitorWindowView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 11)
         }
+        .frame(width: TaskManagerTheme.sidebarWidth)
         .background(TaskManagerTheme.sidebar)
         .overlay(alignment: .trailing) { Rectangle().fill(TaskManagerTheme.line).frame(width: 1) }
     }
