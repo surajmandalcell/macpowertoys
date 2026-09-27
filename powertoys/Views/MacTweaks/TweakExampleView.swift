@@ -171,41 +171,13 @@ struct MacTweaksPreviewView: View {
     @State private var startedAt: Date?
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 60, paused: !isHovering || reduceMotion)) { timeline in
-            let progress = progress(at: timeline.date)
-            GeometryReader { proxy in
-                let sceneHeight = max(1, proxy.size.height - 2)
-                let crop = kind == .finder
-                    ? CGRect(x: 98, y: 16, width: 404, height: 242)
-                    : CGRect(x: 0, y: 0, width: 600, height: 304)
-                let scale = min(proxy.size.width / crop.width, sceneHeight / crop.height)
-                ZStack(alignment: .bottomLeading) {
-                    MacTweaksFilmBackground()
-                        .scaleEffect(1.08)
-                        .blur(radius: 10)
-                        .opacity(0.56)
-                    preview(progress: progress)
-                        .frame(width: 600, height: 304)
-                        .scaleEffect(scale)
-                        .position(
-                            x: proxy.size.width / 2 + (300 - crop.midX) * scale,
-                            y: sceneHeight / 2 + (152 - crop.midY) * scale
-                        )
-                        .drawingGroup(opaque: false, colorMode: .linear)
-                    HStack(spacing: 2) {
-                        ForEach(0..<4, id: \.self) { _ in
-                            Rectangle().fill(Color.white.opacity(0.10))
-                        }
-                    }
-                    .frame(height: 2)
-                    LinearGradient(
-                        colors: [Color(white: 0.60), Color(white: 0.87)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: proxy.size.width * CGFloat(progress), height: 2)
-                    .opacity(isHovering && !reduceMotion ? 1 : 0)
+        Group {
+            if isHovering && !reduceMotion {
+                TimelineView(.animation(minimumInterval: 1 / 60)) { timeline in
+                    previewFrame(progress: progress(at: timeline.date))
                 }
+            } else {
+                previewFrame(progress: 0)
             }
         }
         .clipped()
@@ -224,6 +196,43 @@ struct MacTweaksPreviewView: View {
         .accessibilityLabel("Preview of \(kind.accessibilityName)")
         .accessibilityValue(isHovering && !reduceMotion ? "Playing" : "At rest")
         .accessibilityIdentifier("mac-tweaks.preview.\(kind.rawValue)")
+    }
+
+    private func previewFrame(progress: Double) -> some View {
+        GeometryReader { proxy in
+            let sceneHeight = max(1, proxy.size.height - 2)
+            let crop = kind == .finder
+                ? CGRect(x: 98, y: 16, width: 404, height: 242)
+                : CGRect(x: 0, y: 0, width: 600, height: 304)
+            let scale = min(proxy.size.width / crop.width, sceneHeight / crop.height)
+            ZStack(alignment: .bottomLeading) {
+                MacTweaksFilmBackground()
+                    .scaleEffect(1.08)
+                    .blur(radius: 10)
+                    .opacity(0.56)
+                preview(progress: progress)
+                    .frame(width: 600, height: 304)
+                    .scaleEffect(scale)
+                    .position(
+                        x: proxy.size.width / 2 + (300 - crop.midX) * scale,
+                        y: sceneHeight / 2 + (152 - crop.midY) * scale
+                    )
+                    .drawingGroup(opaque: false, colorMode: .linear)
+                HStack(spacing: 2) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        Rectangle().fill(Color.white.opacity(0.10))
+                    }
+                }
+                .frame(height: 2)
+                LinearGradient(
+                    colors: [Color(white: 0.60), Color(white: 0.87)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: proxy.size.width * CGFloat(progress), height: 2)
+                .opacity(isHovering && !reduceMotion ? 1 : 0)
+            }
+        }
     }
 
     private func progress(at date: Date) -> Double {
