@@ -127,7 +127,6 @@ struct MacTweaksPreferenceRow: View {
             }
             Spacer(minLength: 8)
             MacTweaksChoiceControl(field: field, selection: selection, isEnabled: canWrite, onSelection: apply)
-                .id("\(revision)-\(field.identity)-\(selection)")
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
@@ -182,6 +181,7 @@ private struct MacTweaksSegmentedControl: View {
     let field: TweakPreferenceField
     let selection: Int
     let onSelection: (Int) -> Void
+    @Namespace private var selectionSurface
 
     private var choices: [(Int, String)] {
         [(-1, "Default\(field.defaultLabel.map { " (\($0))" } ?? "")")] +
@@ -196,7 +196,13 @@ private struct MacTweaksSegmentedControl: View {
                     .foregroundStyle(value == selection ? MacTweaksPalette.text : MacTweaksPalette.secondary)
                     .lineLimit(1)
                     .frame(width: value == -1 ? 92 : 30, height: 24)
-                    .background(value == selection ? Color.white.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 4))
+                    .background {
+                        if value == selection {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.white.opacity(0.13))
+                                .matchedGeometryEffect(id: "selection", in: selectionSurface)
+                        }
+                    }
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
                     .accessibilityAddTraits(value == selection ? .isSelected : [])

@@ -126,6 +126,7 @@ struct MacTweaksWindowView: View {
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "mac-tweaks"))
         .environment(\.colorScheme, .dark)
+        .transaction { if reduceMotion { $0.disablesAnimations = true } }
         .onAppear {
             micLock.setWindowOpen(true)
             opensAtLogin = SMAppService.mainApp.status == .enabled
