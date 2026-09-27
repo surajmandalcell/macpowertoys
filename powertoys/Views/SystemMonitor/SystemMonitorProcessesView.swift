@@ -260,7 +260,18 @@ struct SystemMonitorProcessesView: View {
                         Text(process.name).lineLimit(1)
                     }
                     .padding(.leading, CGFloat(row.depth) * 16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: 33, alignment: .leading)
+                    .background(
+                        hoveredProcessID == process.id ? Color.white.opacity(0.055) : .clear,
+                        in: RoundedRectangle(cornerRadius: 4)
+                    )
+                    .onHover { inside in
+                        if inside {
+                            hoveredProcessID = process.id
+                        } else if hoveredProcessID == process.id {
+                            hoveredProcessID = nil
+                        }
+                    }
                     Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "...")
                         .frame(width: 72, alignment: .trailing)
                     Text(process.residentBytes == 0 && process.started == 0 ? "..." : bytes(process.residentBytes))
@@ -302,15 +313,6 @@ struct SystemMonitorProcessesView: View {
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
-        .contentShape(Rectangle())
-        .background(hoveredProcessID == process.id ? Color.white.opacity(0.06) : .clear)
-        .onHover { inside in
-            if inside {
-                hoveredProcessID = process.id
-            } else if hoveredProcessID == process.id {
-                hoveredProcessID = nil
-            }
-        }
     }
 
     private func header(_ column: ProcessSortColumn) -> some View {

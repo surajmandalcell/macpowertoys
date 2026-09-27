@@ -390,18 +390,9 @@ public struct OnePlusSegments<Value: Hashable>: View {
         HStack(spacing: 1) {
             ForEach(choices.indices, id: \.self) { index in
                 let (value, label) = choices[index]
-                Button(label) { selection = value }
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(selection == value ? OnePlusTheme.ink : OnePlusTheme.secondary)
-                    .padding(.horizontal, 9)
-                    .frame(minHeight: 24)
-                    .background(
-                        selection == value ? Color.white.opacity(0.09) : .clear,
-                        in: RoundedRectangle(cornerRadius: 4)
-                    )
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                    .accessibilityAddTraits(selection == value ? .isSelected : [])
+                OnePlusSegmentButton(label: label, selected: selection == value) {
+                    selection = value
+                }
             }
         }
         .padding(2)
@@ -409,5 +400,28 @@ public struct OnePlusSegments<Value: Hashable>: View {
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusTheme.line) }
         .fixedSize()
         .animation(OnePlusMotion.animation(reduceMotion: reduceMotion), value: selection)
+    }
+}
+
+private struct OnePlusSegmentButton: View {
+    let label: String
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(label, action: action)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(selected ? OnePlusTheme.ink : OnePlusTheme.secondary)
+            .padding(.horizontal, 9)
+            .frame(minHeight: 24)
+            .background(
+                Color.white.opacity(selected ? 0.09 : hovering ? 0.05 : 0),
+                in: RoundedRectangle(cornerRadius: 4)
+            )
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .onHover { hovering = $0 }
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
