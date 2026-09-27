@@ -194,7 +194,8 @@ private struct MacTweaksSegmentedControl: View {
                 Button(label) { onSelection(value) }
                     .font(.system(size: 10.5, weight: value == selection ? .medium : .regular))
                     .foregroundStyle(value == selection ? MacTweaksPalette.text : MacTweaksPalette.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 24)
+                    .lineLimit(1)
+                    .frame(width: value == -1 ? 92 : 30, height: 24)
                     .background(value == selection ? Color.white.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 4))
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
