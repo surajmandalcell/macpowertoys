@@ -114,8 +114,7 @@ final class TrayFanUITests: XCTestCase {
         add(windowCapture)
 
         XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
-        let nativeTitlebarHeight: CGFloat = 32
-        XCTAssertEqual(taskManager.frame.height, 660 + nativeTitlebarHeight, accuracy: 2)
+        XCTAssertEqual(taskManager.frame.height, 660, accuracy: 2)
 
         let sidebarTitle = app.staticTexts["task-manager.sidebar.title"]
         XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5))
