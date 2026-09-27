@@ -66,9 +66,11 @@ enum UtilityLayout {
             return launcherWindowSize
         case "nettoys":
             return netToysMinimumContentSize
+        case "system-monitor":
+            return NSSize(width: 830, height: 590)
         case "rclone", "system-care", "disk-explorer", "switch":
             sidebarWidth = dataSidebarWidth
-        case "logs", "input-devices", "system-monitor", "mac-tweaks":
+        case "logs", "input-devices", "mac-tweaks":
             sidebarWidth = compactSidebarWidth
         default:
             return nil

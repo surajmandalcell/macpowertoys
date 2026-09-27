@@ -172,11 +172,11 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["disk-explorer"]))
         .restorationBehavior(.disabled)
 
-        Window("System Monitor", id: "system-monitor") {
+        Window("Task Manager", id: "system-monitor") {
             SystemMonitorWindowView()
                 .utilityMotionPolicy()
         }
-        .defaultSize(width: 1080, height: 720)
+        .defaultSize(width: 1070, height: 654)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["system-monitor"]))
         .restorationBehavior(.disabled)

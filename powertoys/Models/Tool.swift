@@ -315,12 +315,12 @@ struct DiskExplorerTool: Tool {
     static let shared = DiskExplorerTool()
 }
 
-// MARK: - System Monitor Tool
+// MARK: - Task Manager Tool
 
 struct SystemMonitorTool: Tool {
     let id = "system-monitor"
-    let name = "System Monitor"
-    let description = "Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary."
+    let name = "Task Manager"
+    let description = "Inspect processes and live system activity locally or over SSH, with an optional lightweight menu-bar summary."
     let icon = "chart.xyaxis.line"
     let logoAsset = "SystemMonitorLogo"
     let category = ToolCategory.system
@@ -328,13 +328,17 @@ struct SystemMonitorTool: Tool {
 
     let manual = [
         ToolManualSection(title: "Detailed Monitoring", points: [
-            "Open System Monitor to view CPU, memory, disk, network, battery, and thermal state.",
-            "Charts show the last two minutes of activity.",
+            "Open Task Manager to inspect processes, CPU, GPU, memory, disk, network, battery, sensors, and system information.",
+            "Choose a one, two, or five minute chart history without keeping a heavy sampler alive after the window closes.",
             "Closing the window stops detailed updates."
         ]),
         ToolManualSection(title: "Menu Bar", points: [
-            "Enable a grouped System Monitor item or separate metric items; either opens the Monitor popup.",
+            "Enable a grouped Task Manager item or separate metric items; either opens the compact Task Manager panel.",
             "RAM is selected by default. Choose a refresh interval in settings, or turn the menu off to stop its timer."
+        ]),
+        ToolManualSection(title: "Remote Stats", points: [
+            "Save an SSH host or alias for Linux, macOS, or Windows, then connect only while you need live readings.",
+            "Choose manual refresh or an interval of five seconds or longer, and open that host in Terminal from Remote Stats."
         ])
     ]
 
