@@ -23,6 +23,7 @@ final class MacTweaksUITests: XCTestCase {
         let dockPreview = element(in: window, identifier: "mac-tweaks.preview.dockReveal")
         XCTAssertTrue(dockPreview.waitForExistence(timeout: 5))
         dockPreview.hover()
+        XCTAssertEqual(dockPreview.value as? String, "Playing", "Hover must start preview playback")
         let firstMotionFrame = dockPreview.screenshot().pngRepresentation
         Thread.sleep(forTimeInterval: 1.0)
         let secondMotionFrame = dockPreview.screenshot().pngRepresentation
