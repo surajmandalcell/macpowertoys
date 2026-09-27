@@ -92,8 +92,9 @@ private class WindowAccessorView: NSView {
         if isCompactApplet || windowIdentifier == "mac-tweaks" {
             window.styleMask.remove(.resizable)
             if windowIdentifier == "mac-tweaks" {
-                window.contentMinSize = MacTweaksLayout.windowSize
-                window.contentMaxSize = MacTweaksLayout.windowSize
+                window.contentMinSize = MacTweaksLayout.contentSize
+                window.contentMaxSize = MacTweaksLayout.contentSize
+                window.collectionBehavior.insert(.fullScreenNone)
                 window.standardWindowButton(.zoomButton)?.isEnabled = false
                 window.appearance = NSAppearance(named: .darkAqua)
                 window.hasShadow = true
