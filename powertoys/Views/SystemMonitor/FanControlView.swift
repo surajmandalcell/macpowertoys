@@ -50,8 +50,8 @@ struct FanControlView: View {
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
             if compact { compactContent } else { expandedContent }
         }
-        .padding(.horizontal, compact ? 9 : 14)
-        .padding(.vertical, compact ? 5 : 14)
+        .padding(.horizontal, compact ? 1 : 14)
+        .padding(.vertical, compact ? 0 : 14)
         .background(compact ? Color.clear : TaskManagerTheme.card,
                     in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
         .overlay {
@@ -177,11 +177,11 @@ struct FanControlView: View {
     private var fanIdentity: some View {
         HStack(spacing: 7) {
             Image(systemName: "fanblades")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: compact ? 11 : 12, weight: .medium))
                 .foregroundStyle(TaskManagerTheme.secondary)
-                .frame(width: 16)
+                .frame(width: compact ? 13 : 16)
             Text("Fan")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: compact ? 10 : 12, weight: .medium))
             Text("\(rpm) · \(utilization)")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
@@ -204,10 +204,10 @@ struct FanControlView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(service.selectedPreset == preset ? Color.primary : Color.secondary)
                     .padding(.horizontal, compact ? 5 : 8)
-                    .frame(maxWidth: compact ? .infinity : nil, minHeight: compact ? 25 : 26)
+                    .frame(maxWidth: compact ? .infinity : nil, minHeight: compact ? 20 : 26)
                     .background(
                         service.selectedPreset == preset ? Color.white.opacity(0.11) : .clear,
-                        in: RoundedRectangle(cornerRadius: 6)
+                        in: RoundedRectangle(cornerRadius: compact ? 3 : 6)
                     )
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
@@ -221,8 +221,9 @@ struct FanControlView: View {
         }
         .frame(width: compact ? 118 : nil)
         .padding(2)
-        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 6))
-        .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(compact ? TaskManagerTheme.lineSoft : Color.clear) }
+        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: compact ? 5 : 6))
+        .overlay { RoundedRectangle(cornerRadius: compact ? 5 : 6)
+            .strokeBorder(compact ? TaskManagerTheme.lineSoft : Color.clear) }
         .utilityAnimation(value: service.selectedPreset)
     }
 }
