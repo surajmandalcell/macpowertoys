@@ -182,10 +182,13 @@ struct MacTweaksPreviewView: View {
         }
         .clipped()
         .contentShape(Rectangle())
-        .onHover { hovering in
-            guard hovering != isHovering else { return }
-            isHovering = hovering
-            startedAt = hovering ? Date() : nil
+        .onContinuousHover { phase in
+            switch phase {
+            case .active:
+                setHovering(true)
+            case .ended:
+                setHovering(false)
+            }
         }
         .overlay(Color.white.opacity(isHovering ? 0.012 : 0).allowsHitTesting(false))
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isHovering)
@@ -196,6 +199,12 @@ struct MacTweaksPreviewView: View {
         .accessibilityLabel("Preview of \(kind.accessibilityName)")
         .accessibilityValue(isHovering && !reduceMotion ? "Playing" : "At rest")
         .accessibilityIdentifier("mac-tweaks.preview.\(kind.rawValue)")
+    }
+
+    private func setHovering(_ hovering: Bool) {
+        guard hovering != isHovering else { return }
+        isHovering = hovering
+        startedAt = hovering ? Date() : nil
     }
 
     private func previewFrame(progress: Double) -> some View {
