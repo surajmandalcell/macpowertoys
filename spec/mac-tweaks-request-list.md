@@ -6,13 +6,19 @@
 - [x] Preserve every currently implemented Mac Tweaks feature while removing the old disclosure-card and staged Apply flow. Show only actionable controls, keep exact per-key rollback, and make reset available beside each changed setting plus a Modified review page.
 - [x] Add short hover-driven previews that rest when idle, reset when the pointer leaves, and respect Reduce Motion. Keep motion local to controls and preview content so navigation remains immediate.
 - [x] Finish production behavior for search, empty results, errors, protected actions, restart-later guidance, close/reopen, quit, reset-one, and reset-all. Changes persist immediately; closing or quitting the window must not discard them.
-- [~] Verify fixed sizing, keyboard and accessibility labels, every category, search ranking, changed-state recovery, dark rendering, and source-stamped installation. Compare native screenshots against the supplied reference and correct visible layout differences before handoff.
+- [x] Verify fixed sizing, keyboard and accessibility labels, every category, search ranking, changed-state recovery, dark rendering, and source-stamped installation. Compare native screenshots against the supplied reference and correct visible layout differences before handoff.
 
-The Release app and desktop test bundles compile after the redesign. Hosted
-run `36294789113` passed the fixed-frame, navigation, Mic Lock refresh, ranked
-search, empty-state, and dark-appearance UI flow. Its six captures were compared
-with the HTML reference; the final hosted unit job and source-stamped installed
-app handoff remain open.
+The Release app and desktop test bundles compile after the redesign. The exact
+Mac Tweaks source in hosted run `36295278541` passed fixed-frame, navigation,
+Mic Lock refresh, ranked search, empty-state, segmented-control sizing, and dark
+appearance checks. All seven captures were compared with the HTML reference.
+The clean signed app and helper were installed from the current clean commit,
+all four source stamps match, and the fresh process runs the exact
+`/Applications` executable. Native
+Computer Use approval was denied, so the installed window could not be captured
+locally. The signed build also hits the documented local development-certificate
+trust rejection (`CSSMERR_TP_NOT_TRUSTED`) when manually reverified after the
+successful guarded install; no Keychain trust was changed.
 
 ## Pinned result and visual examples, 2026-09-26
 
@@ -34,9 +40,12 @@ interaction remains unavailable.
 
 - [x] Present three distinct Mac Tweaks icon options at launcher and small sizes.
 - [x] The owner selected 01 Faders. Use that exact artwork for the launcher and the Mac Tweaks Dock icon.
-- [ ] Verify the selected icon in the signed installed app at launcher and Dock sizes.
+- [~] Verify the selected icon in the signed installed app at launcher and Dock sizes.
 
-The promoted SVG matches 01 Faders byte for byte, and the Release asset catalog contains `MacTweaksLogo`. Sandboxed signature verification returned `CSSMERR_TP_NOT_TRUSTED`; the same build passed strict verification outside the sandbox. Installed-app inspection remains pending.
+The promoted SVG matches 01 Faders byte for byte, the Release asset catalog
+contains `MacTweaksLogo`, and the hosted Mac Tweaks captures show the Faders
+Dock icon at small size. Local installed-app inspection remains unavailable
+because Computer Use approval was denied.
 
 ## Inline controls and catalogue correction, 2026-09-26
 
@@ -52,7 +61,11 @@ The app and UI test bundle compiled locally. Hosted run `36210967511` stopped be
 - [x] Replace the flat item sidebar with one level of grouped category navigation. Show the selected category's settings as scrollable cards in the content pane. Hosted UI run `36182911001` navigated Input, Finder, Power, detail, and ranked search.
 - [x] Keep long setting names out of the narrow sidebar. Use distinct category symbols, clear category groups, and the PowerToys menu-bar panel's neutral surfaces and compact spacing. The hosted 900 × 620 captures show single-line sidebar rows and scrollable neutral cards.
 - [x] Align the Mac Tweaks traffic lights and sidebar title on the shared 40pt workspace title strip. The hosted window capture shows the centered native controls and title.
-- [ ] Capture the final installed window, inspect its alignment and density, and correct visible defects before handoff.
+- [~] Capture the final installed window, inspect its alignment and density, and correct visible defects before handoff.
+
+The exact-current hosted captures provide the final native-window comparison.
+Local capture of the signed installed window remains unavailable because
+Computer Use approval was denied.
 
 ## Expanded catalogue request, 2026-09-25
 
@@ -61,7 +74,12 @@ The app and UI test bundle compiled locally. Hosted run `36210967511` stopped be
 - [x] Implement supported preference controls with exact-key backup, write-ahead recovery, durable undo, managed-setting checks, conflict-safe rollback, and visible failure states. Batch activation where a target process must refresh.
 - [x] Keep the 130-entry compatibility research in documentation. Superseded: research-only entries no longer belong in the app's card list.
 - [x] Preserve Mic Lock as the first active enhancement. Mac Tweaks remains an on-demand window with no separate menu-bar item.
-- [ ] Verify code paths, build, installed app freshness, and available OS behavior. Report which parts still need macOS 15.8 and 26.7 runtime checks.
+- [x] Verify code paths, build, installed app freshness, and available OS behavior. Report which parts still need macOS 15.8 and 26.7 runtime checks.
+
+The final source compiles and its macOS 27 hosted UI checks pass. The app's
+current deployment target is macOS 26.2, so macOS 15.8 cannot run this build.
+Physical macOS 26.7 preference behavior and device-specific Mic Lock flows
+still require hardware runtime checks; unsupported features stay out of the UI.
 
 ## Current request
 
@@ -72,8 +90,11 @@ The app and UI test bundle compiled locally. Hosted run `36210967511` stopped be
 - [x] Show the current input, live mute and input volume when the device supports them, and an input-level meter only while the window is open.
 - [x] Provide Refresh Devices and Revive Audio recovery actions with clear results. Revive Audio requests administrator approval before restarting CoreAudio.
 - [x] Offer MacPowerToys launch at login so an enabled Mic Lock can resume after sign-in.
-- [ ] Verify device changes, permission states, and the current installed app. Local test-bundle compilation passed; hosted unit tests passed in run 36142313540. Mac Tweaks has no tray tab or separate menu-bar item.
+- [~] Verify device changes, permission states, and the current installed app. Local test-bundle compilation passed; hosted unit tests passed in run 36142313540. Mac Tweaks has no tray tab or separate menu-bar item.
 
-Release and test bundles compile. The local desktop policy does not allow launching XCTest here.
+The current app and helper are installed with matching source stamps, and the
+app relaunched from `/Applications`. Physical device changes and fresh
+permission states remain hardware checks. The local desktop policy does not
+allow launching XCTest here.
 
 Reference: [MicLock](https://github.com/WantbeFree/MicLock), whose public README describes the input order and recovery actions.
