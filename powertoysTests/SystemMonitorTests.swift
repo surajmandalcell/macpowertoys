@@ -346,7 +346,7 @@ final class SystemMonitorTests: XCTestCase {
             host.appearance = NSAppearance(named: .darkAqua)
             host.frame = NSRect(x: 0, y: 0, width: 1_070, height: 654)
             host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            RunLoop.current.run(until: Date().addingTimeInterval(page == "System Report" ? 5 : 1.2))
 
             let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: representation)
@@ -373,7 +373,7 @@ final class SystemMonitorTests: XCTestCase {
             host.appearance = NSAppearance(named: .darkAqua)
             host.frame = NSRect(x: 0, y: 0, width: 356, height: 536)
             host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
 
             let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: representation)
@@ -1112,6 +1112,19 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertTrue(groupedIdentities.isSubset(of: controller.statusItemIdentities))
         settings.enabled = false
         controller.configure(settings: settings)
+    }
+
+    func testSnapshotRetainsReadingsDuringAFreshSamplerBaseline() {
+        let measured = sample()
+        let baseline = sample(cpuUsage: nil, networkDownload: nil, networkUpload: nil)
+            .preservingAvailableValues(from: measured)
+        XCTAssertEqual(baseline.cpuUsage, measured.cpuUsage)
+        XCTAssertEqual(baseline.networkDownload, measured.networkDownload)
+        XCTAssertEqual(baseline.networkUpload, measured.networkUpload)
+
+        let unavailable = sample(cpuUsage: nil, unavailableMetrics: [.cpu])
+            .preservingAvailableValues(from: measured)
+        XCTAssertNil(unavailable.cpuUsage)
     }
 
     private func sample(
