@@ -257,6 +257,7 @@ struct SystemMonitorWindowView: View {
                 .accessibilityIdentifier("task-manager.sidebar.\(item.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))")
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var sidebarBreak: some View {
