@@ -646,7 +646,6 @@ private struct TaskManagerProcessActionMenu: NSViewRepresentable {
 
     func updateNSView(_ button: NSPopUpButton, context: Context) {
         context.coordinator.action = onForceQuit
-        button.isEnabled = isEnabled
         button.item(withTitle: "Force Quit")?.isEnabled = isEnabled
     }
 
