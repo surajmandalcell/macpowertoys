@@ -96,36 +96,37 @@ struct MacTweaksDither: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let width = min(proxy.size.width, 240)
-            ZStack(alignment: .topTrailing) {
-                RadialGradient(
-                    colors: [.white.opacity(strength * 0.09), .clear],
-                    center: .topTrailing,
-                    startRadius: 0,
-                    endRadius: width * 0.72
-                )
-                .frame(width: width, height: min(proxy.size.height, 118))
-                Canvas { context, size in
-                    let startX = max(0, size.width - width)
-                    let matrix = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
-                    for y in stride(from: 2.0, through: min(size.height, 112), by: 3.0) {
-                        for x in stride(from: startX, through: size.width, by: 3.0) {
-                            let row = Int(y / 3).quotientAndRemainder(dividingBy: 4).remainder
-                            let column = Int(x / 3).quotientAndRemainder(dividingBy: 4).remainder
-                            let threshold = Double(matrix[row * 4 + column]) / 15
-                            let horizontal = max(0, (x - startX) / max(1, width))
-                            let vertical = max(0, 1 - y / 116)
-                            let fade = Double(horizontal * vertical)
-                            guard threshold < fade * 0.72 else { continue }
-                            context.fill(
-                                Path(CGRect(x: x, y: y, width: 0.85, height: 0.85)),
-                                with: .color(.white.opacity(strength * fade * 0.74))
-                            )
-                        }
-                    }
-                }
-            }
+            Image("MacTweaksGrain")
+                .resizable()
+                .interpolation(.none)
+                .frame(width: min(200, proxy.size.width), height: min(125, proxy.size.height))
+                .opacity(strength)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct MacTweaksHeaderDither: View {
+    var body: some View {
+        Image("MacTweaksRibbon")
+            .resizable()
+            .interpolation(.none)
+            .aspectRatio(contentMode: .fill)
+            .opacity(0.25)
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.25),
+                        .init(color: .black, location: 0.70),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -150,14 +151,14 @@ enum MacTweaksPreviewKind: String {
 
     var cycleDuration: TimeInterval {
         switch self {
-        case .dockReveal: 5.2
-        case .minimize: 6.2
-        case .layout: 7.0
+        case .dockReveal: 3.61
+        case .minimize: 4.14
+        case .layout: 6.24
         case .finder, .apps: 4.6
-        case .windows: 4.8
-        case .screenshots: 5.4
+        case .windows: 2.60
+        case .screenshots: 3.80
         case .power: 4.2
-        case .menubar: 4.6
+        case .menubar: 2.50
         }
     }
 }
@@ -170,17 +171,26 @@ struct MacTweaksPreviewView: View {
     @State private var startedAt: Date?
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: !isHovering || reduceMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 60, paused: !isHovering || reduceMotion)) { timeline in
             let progress = progress(at: timeline.date)
             GeometryReader { proxy in
                 let sceneHeight = max(1, proxy.size.height - 2)
-                let scale = min(proxy.size.width / 600, sceneHeight / 304)
+                let crop = kind == .finder
+                    ? CGRect(x: 98, y: 16, width: 404, height: 242)
+                    : CGRect(x: 0, y: 0, width: 600, height: 304)
+                let scale = min(proxy.size.width / crop.width, sceneHeight / crop.height)
                 ZStack(alignment: .bottomLeading) {
-                    MacTweaksPalette.window
+                    MacTweaksFilmBackground()
+                        .scaleEffect(1.08)
+                        .blur(radius: 10)
+                        .opacity(0.56)
                     preview(progress: progress)
                         .frame(width: 600, height: 304)
                         .scaleEffect(scale)
-                        .position(x: proxy.size.width / 2, y: sceneHeight / 2)
+                        .position(
+                            x: proxy.size.width / 2 + (300 - crop.midX) * scale,
+                            y: sceneHeight / 2 + (152 - crop.midY) * scale
+                        )
                         .drawingGroup(opaque: false, colorMode: .linear)
                     HStack(spacing: 2) {
                         ForEach(0..<4, id: \.self) { _ in
@@ -238,18 +248,19 @@ private struct DesktopPreviewScene: View {
     let active: Bool
 
     private var p: Double { active ? progress : 0 }
-    private var minimizeAmount: CGFloat { clamp01(segment(p, 0.15, 0.34) - segment(p, 0.61, 0.82)) }
-    private var dockHiddenAmount: CGFloat { kind == .dockReveal ? clamp01(segment(p, 0.12, 0.24) - segment(p, 0.56, 0.69)) : 0 }
-    private var menuHiddenAmount: CGFloat { kind == .menubar ? clamp01(segment(p, 0.15, 0.28) - segment(p, 0.55, 0.69)) : 0 }
-    private var stackAmount: CGFloat { kind == .layout ? clamp01(segment(p, 0.08, 0.18) - segment(p, 0.34, 0.45)) : 0 }
-    private var switcherAmount: CGFloat { kind == .layout ? clamp01(segment(p, 0.50, 0.60) - segment(p, 0.82, 0.92)) : 0 }
-    private var captureAmount: CGFloat { kind == .screenshots ? clamp01(segment(p, 0.16, 0.27) - segment(p, 0.48, 0.58)) : 0 }
-    private var thumbnailAmount: CGFloat { kind == .screenshots ? clamp01(segment(p, 0.48, 0.60) - segment(p, 0.80, 0.92)) : 0 }
+    private var minimizeAmount: CGFloat { clamp01(segment(p, 0.229, 0.340) - segment(p, 0.671, 0.783)) }
+    private var dockHiddenAmount: CGFloat { kind == .dockReveal ? clamp01(segment(p, 0.144, 0.241) - segment(p, 0.529, 0.626)) : 0 }
+    private var menuHiddenAmount: CGFloat { kind == .menubar ? clamp01(segment(p, 0.208, 0.296) - segment(p, 0.552, 0.640)) : 0 }
+    private var stackAmount: CGFloat { kind == .layout ? clamp01(segment(p, 0.104, 0.139) - segment(p, 0.276, 0.316)) : 0 }
+    private var switcherAmount: CGFloat { kind == .layout ? clamp01(segment(p, 0.316, 0.326) - segment(p, 0.657, 0.667)) : 0 }
+    private var switcherSelection: Int { p >= 0.553 && p < 0.657 ? 2 : 1 }
+    private var captureAmount: CGFloat { kind == .screenshots ? clamp01(segment(p, 0.211, 0.231) - segment(p, 0.382, 0.402)) : 0 }
+    private var thumbnailAmount: CGFloat { kind == .screenshots ? clamp01(segment(p, 0.421, 0.441) - segment(p, 0.750, 0.842)) : 0 }
     private var hiddenFileAmount: CGFloat { kind == .finder ? clamp01(segment(p, 0.18, 0.32) - segment(p, 0.68, 0.82)) : 0 }
     private var appSelectionAmount: CGFloat { kind == .apps ? clamp01(segment(p, 0.18, 0.34) - segment(p, 0.68, 0.84)) : 0 }
     private var windowVisibility: CGFloat {
         guard kind == .windows else { return 1 }
-        return clamp01(1 - segment(p, 0.18, 0.30) + segment(p, 0.56, 0.70))
+        return clamp01(1 - segment(p, 0.262, 0.315) + segment(p, 0.585, 0.654))
     }
 
     var body: some View {
@@ -327,23 +338,8 @@ private struct DesktopPreviewScene: View {
     }
 
     private var captureThumbnail: some View {
-        VStack(spacing: 5) {
-            HStack(spacing: 3) {
-                ForEach([Color.red, .yellow, .green], id: \.self) { color in
-                    Circle().fill(color.opacity(0.78)).frame(width: 4, height: 4)
-                }
-                Spacer()
-            }
-            ForEach(0..<3, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.white.opacity(index == 1 ? 0.24 : 0.10))
-                    .frame(height: 5)
-            }
-        }
-        .padding(7)
+        FinderPreviewWindow(hiddenFileOpacity: 0, selectionAmount: 0, title: "Documents")
         .frame(width: 92, height: 58)
-        .background(Color(white: 0.13), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.22), lineWidth: 0.7))
         .shadow(color: .black.opacity(0.55), radius: 12, y: 7)
         .scaleEffect(mix(0.92, 1, thumbnailAmount))
         .position(x: 526, y: 253 + 10 * (1 - thumbnailAmount))
@@ -357,7 +353,7 @@ private struct DesktopPreviewScene: View {
                 Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
                 ForEach(["Notes.md", "Reference.pdf", "Screenshots"], id: \.self) { item in
                     HStack(spacing: 7) {
-                        RoundedRectangle(cornerRadius: 1).fill(Color.white.opacity(0.45)).frame(width: 10, height: 9)
+                        PreviewFileIcon(name: item, selected: item == "Reference.pdf")
                         Text(item).font(.system(size: 8))
                     }
                     .padding(.horizontal, 4).frame(height: 17)
@@ -375,16 +371,14 @@ private struct DesktopPreviewScene: View {
             .opacity(Double(stackAmount))
 
             HStack(spacing: 13) {
-                ForEach(0..<5, id: \.self) { index in
+                ForEach(Array([PreviewApp.finder, .safari, .mail, .notes, .terminal].enumerated()), id: \.offset) { index, app in
                     VStack(spacing: 5) {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(index == 1 ? Color.blue.opacity(0.72) : Color.white.opacity(0.22))
-                            .frame(width: 43, height: 43)
+                        PreviewAppIcon(app: app, size: 43)
                         Text(["Finder", "Safari", "Mail", "Notes", "Terminal"][index])
                             .font(.system(size: 7.5))
                     }
                     .padding(5)
-                    .background(index == 1 ? Color.black.opacity(0.22) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                    .background(index == switcherSelection ? Color.black.opacity(0.22) : .clear, in: RoundedRectangle(cornerRadius: 6))
                 }
             }
             .foregroundStyle(Color(white: 0.86))
@@ -412,34 +406,44 @@ private struct DesktopPreviewScene: View {
     private var cursorPosition: CGPoint {
         switch kind {
         case .dockReveal:
-            if p < 0.18 { return point(from: .init(x: 184, y: 269), to: .init(x: 104, y: 149), amount: segment(p, 0, 0.18)) }
-            if p < 0.45 { return point(from: .init(x: 104, y: 149), to: .init(x: 278, y: 296), amount: segment(p, 0.18, 0.45)) }
-            if p < 0.72 { return .init(x: 278, y: 296) }
-            return point(from: .init(x: 278, y: 274), to: .init(x: 184, y: 269), amount: segment(p, 0.72, 1))
+            if p < 0.144 { return point(from: .init(x: 184, y: 269), to: .init(x: 104, y: 149), amount: segment(p, 0, 0.144)) }
+            if p < 0.241 { return .init(x: 104, y: 149) }
+            if p < 0.418 { return point(from: .init(x: 104, y: 149), to: .init(x: 278, y: 303), amount: segment(p, 0.241, 0.418)) }
+            if p < 0.529 { return .init(x: 278, y: 303) }
+            if p < 0.626 { return point(from: .init(x: 278, y: 303), to: .init(x: 278, y: 274), amount: segment(p, 0.529, 0.626)) }
+            if p < 0.820 { return point(from: .init(x: 278, y: 274), to: .init(x: 184, y: 269), amount: segment(p, 0.626, 0.820)) }
+            return .init(x: 184, y: 269)
         case .minimize:
-            if p < 0.15 { return point(from: .init(x: 202, y: 139), to: .init(x: 148, y: 50), amount: segment(p, 0, 0.15)) }
-            if p < 0.48 { return .init(x: 148, y: 50) }
-            if p < 0.61 { return point(from: .init(x: 148, y: 50), to: .init(x: 408, y: 272), amount: segment(p, 0.48, 0.61)) }
-            if p < 0.84 { return .init(x: 408, y: 272) }
-            return point(from: .init(x: 408, y: 272), to: .init(x: 202, y: 139), amount: segment(p, 0.84, 1))
+            if p < 0.193 { return point(from: .init(x: 202, y: 139), to: .init(x: 148, y: 50), amount: segment(p, 0, 0.193)) }
+            if p < 0.485 { return .init(x: 148, y: 50) }
+            if p < 0.635 { return point(from: .init(x: 148, y: 50), to: .init(x: 408, y: 272), amount: segment(p, 0.485, 0.635)) }
+            if p < 0.783 { return .init(x: 408, y: 272) }
+            return point(from: .init(x: 408, y: 272), to: .init(x: 202, y: 139), amount: segment(p, 0.783, 1))
         case .layout:
-            if p < 0.16 { return point(from: .init(x: 212, y: 180), to: .init(x: 408, y: 272), amount: segment(p, 0, 0.16)) }
-            if p < 0.42 { return point(from: .init(x: 408, y: 272), to: .init(x: 402, y: 184), amount: segment(p, 0.16, 0.42)) }
-            if p < 0.84 { return .init(x: 250, y: 81) }
-            return point(from: .init(x: 250, y: 81), to: .init(x: 212, y: 180), amount: segment(p, 0.84, 1))
+            if p < 0.104 { return point(from: .init(x: 212, y: 180), to: .init(x: 408, y: 272), amount: segment(p, 0, 0.104)) }
+            if p < 0.139 { return .init(x: 408, y: 272) }
+            if p < 0.276 { return point(from: .init(x: 408, y: 272), to: .init(x: 401, y: 223), amount: segment(p, 0.139, 0.276)) }
+            if p < 0.316 { return point(from: .init(x: 401, y: 223), to: .init(x: 250, y: 81), amount: segment(p, 0.276, 0.316)) }
+            if p < 0.864 { return .init(x: 250, y: 81) }
+            return point(from: .init(x: 250, y: 81), to: .init(x: 212, y: 180), amount: segment(p, 0.864, 1))
         case .windows:
-            if p < 0.24 { return point(from: .init(x: 107, y: 148), to: .init(x: 136, y: 50), amount: segment(p, 0, 0.24)) }
-            if p < 0.54 { return point(from: .init(x: 136, y: 50), to: .init(x: 155, y: 271), amount: segment(p, 0.30, 0.54)) }
-            if p < 0.72 { return .init(x: 155, y: 271) }
-            return point(from: .init(x: 155, y: 271), to: .init(x: 107, y: 148), amount: segment(p, 0.72, 1))
+            if p < 0.223 { return point(from: .init(x: 107, y: 148), to: .init(x: 136, y: 50), amount: segment(p, 0, 0.223)) }
+            if p < 0.315 { return .init(x: 136, y: 50) }
+            if p < 0.538 { return point(from: .init(x: 136, y: 50), to: .init(x: 155, y: 271), amount: segment(p, 0.315, 0.538)) }
+            if p < 0.654 { return .init(x: 155, y: 271) }
+            return point(from: .init(x: 155, y: 271), to: .init(x: 107, y: 148), amount: segment(p, 0.654, 1))
         case .screenshots:
-            if p < 0.24 { return point(from: .init(x: 230, y: 111), to: .init(x: 106, y: 26), amount: segment(p, 0, 0.24)) }
-            if p < 0.50 { return point(from: .init(x: 106, y: 26), to: .init(x: 488, y: 246), amount: segment(p, 0.24, 0.50)) }
-            return point(from: .init(x: 488, y: 246), to: .init(x: 230, y: 111), amount: segment(p, 0.50, 1))
+            if p < 0.211 { return point(from: .init(x: 230, y: 111), to: .init(x: 106, y: 26), amount: segment(p, 0, 0.211)) }
+            if p < 0.382 { return point(from: .init(x: 106, y: 26), to: .init(x: 488, y: 246), amount: segment(p, 0.211, 0.382)) }
+            if p < 0.421 { return .init(x: 488, y: 246) }
+            if p < 0.750 { return point(from: .init(x: 488, y: 246), to: .init(x: 230, y: 111), amount: segment(p, 0.421, 0.750)) }
+            return .init(x: 230, y: 111)
         case .menubar:
-            if p < 0.35 { return point(from: .init(x: 138, y: 10), to: .init(x: 164, y: 121), amount: segment(p, 0, 0.35)) }
-            if p < 0.62 { return point(from: .init(x: 164, y: 121), to: .init(x: 138, y: 2), amount: segment(p, 0.35, 0.62)) }
-            return point(from: .init(x: 138, y: 2), to: .init(x: 138, y: 10), amount: segment(p, 0.62, 1))
+            if p < 0.208 { return point(from: .init(x: 138, y: 10), to: .init(x: 164, y: 121), amount: segment(p, 0, 0.208)) }
+            if p < 0.296 { return .init(x: 164, y: 121) }
+            if p < 0.552 { return point(from: .init(x: 164, y: 121), to: .init(x: 138, y: 0), amount: segment(p, 0.296, 0.552)) }
+            if p < 0.640 { return point(from: .init(x: 138, y: 0), to: .init(x: 138, y: 10), amount: segment(p, 0.552, 0.640)) }
+            return .init(x: 138, y: 10)
         default:
             return .init(x: 89, y: 158)
         }
@@ -482,8 +486,168 @@ private struct MacTweaksFilmBackground: View {
                 context.stroke(ribbon, with: .color(.white.opacity(0.028)), style: .init(lineWidth: 88, lineCap: .round))
                 context.stroke(ribbon, with: .color(.white.opacity(0.065)), style: .init(lineWidth: 0.8, lineCap: .round))
             }
-            MacTweaksDither(strength: 0.28)
+            MacTweaksDither(strength: 0.32)
+            RadialGradient(
+                colors: [.clear, .black.opacity(0.24)],
+                center: .center,
+                startRadius: 110,
+                endRadius: 370
+            )
         }
+    }
+}
+
+private enum PreviewApp: CaseIterable {
+    case finder, safari, mail, notes, photos, terminal, settings, folder, trash
+}
+
+private struct PreviewAppIcon: View {
+    let app: PreviewApp
+    let size: CGFloat
+
+    var body: some View {
+        ZStack {
+            background
+            artwork
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.21, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: size * 0.21, style: .continuous)
+                .stroke(Color.white.opacity(app == .folder || app == .trash ? 0 : 0.24), lineWidth: 0.55)
+        }
+        .shadow(color: .black.opacity(0.34), radius: max(1, size * 0.07), y: max(1, size * 0.045))
+    }
+
+    @ViewBuilder private var background: some View {
+        switch app {
+        case .finder:
+            LinearGradient(colors: [Color(red: 0.45, green: 0.72, blue: 0.90), Color(red: 0.23, green: 0.53, blue: 0.73)], startPoint: .top, endPoint: .bottom)
+        case .safari:
+            LinearGradient(colors: [Color(red: 0.25, green: 0.72, blue: 0.93), Color(red: 0.12, green: 0.43, blue: 0.77)], startPoint: .top, endPoint: .bottom)
+        case .mail:
+            LinearGradient(colors: [Color(red: 0.39, green: 0.69, blue: 0.88), Color(red: 0.22, green: 0.48, blue: 0.70)], startPoint: .top, endPoint: .bottom)
+        case .notes:
+            Color(red: 0.88, green: 0.87, blue: 0.82)
+        case .photos:
+            Color(white: 0.88)
+        case .terminal:
+            LinearGradient(colors: [Color(white: 0.20), Color(white: 0.08)], startPoint: .top, endPoint: .bottom)
+        case .settings:
+            LinearGradient(colors: [Color(white: 0.72), Color(white: 0.42)], startPoint: .top, endPoint: .bottom)
+        case .folder, .trash:
+            Color.clear
+        }
+    }
+
+    @ViewBuilder private var artwork: some View {
+        switch app {
+        case .finder:
+            ZStack {
+                Rectangle().fill(Color(white: 0.90).opacity(0.92))
+                    .frame(width: size * 0.49).frame(maxWidth: .infinity, alignment: .trailing)
+                Canvas { context, canvas in
+                    var divider = Path()
+                    divider.move(to: .init(x: canvas.width * 0.55, y: canvas.height * 0.08))
+                    divider.addCurve(
+                        to: .init(x: canvas.width * 0.48, y: canvas.height * 0.88),
+                        control1: .init(x: canvas.width * 0.58, y: canvas.height * 0.38),
+                        control2: .init(x: canvas.width * 0.40, y: canvas.height * 0.62)
+                    )
+                    context.stroke(divider, with: .color(Color(red: 0.14, green: 0.31, blue: 0.43)), lineWidth: max(0.8, size * 0.038))
+                    var face = Path()
+                    face.move(to: .init(x: canvas.width * 0.24, y: canvas.height * 0.39))
+                    face.addLine(to: .init(x: canvas.width * 0.24, y: canvas.height * 0.50))
+                    face.move(to: .init(x: canvas.width * 0.76, y: canvas.height * 0.39))
+                    face.addLine(to: .init(x: canvas.width * 0.76, y: canvas.height * 0.50))
+                    face.move(to: .init(x: canvas.width * 0.22, y: canvas.height * 0.67))
+                    face.addCurve(
+                        to: .init(x: canvas.width * 0.78, y: canvas.height * 0.67),
+                        control1: .init(x: canvas.width * 0.38, y: canvas.height * 0.84),
+                        control2: .init(x: canvas.width * 0.64, y: canvas.height * 0.84)
+                    )
+                    context.stroke(face, with: .color(Color(red: 0.14, green: 0.31, blue: 0.43)), style: .init(lineWidth: max(0.75, size * 0.036), lineCap: .round))
+                }
+            }
+        case .safari:
+            ZStack {
+                Circle().fill(Color.white.opacity(0.90)).padding(size * 0.09)
+                Image(systemName: "safari.fill")
+                    .font(.system(size: size * 0.69, weight: .regular))
+                    .foregroundStyle(Color(red: 0.19, green: 0.55, blue: 0.82))
+                Capsule().fill(Color(red: 0.82, green: 0.31, blue: 0.28))
+                    .frame(width: size * 0.10, height: size * 0.42)
+                    .offset(y: -size * 0.10).rotationEffect(.degrees(42))
+            }
+        case .mail:
+            Image(systemName: "envelope.fill")
+                .font(.system(size: size * 0.61, weight: .regular))
+                .foregroundStyle(Color(white: 0.93))
+        case .notes:
+            VStack(spacing: 0) {
+                Color(red: 0.82, green: 0.70, blue: 0.34).frame(height: size * 0.27)
+                VStack(spacing: size * 0.09) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Capsule().fill(Color.black.opacity(0.25)).frame(height: max(0.7, size * 0.025))
+                    }
+                }
+                .padding(.horizontal, size * 0.18).frame(maxHeight: .infinity)
+            }
+        case .photos:
+            ZStack {
+                ForEach(0..<8, id: \.self) { index in
+                    Capsule()
+                        .fill([Color.red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink][index].opacity(0.72))
+                        .frame(width: size * 0.18, height: size * 0.39)
+                        .offset(y: -size * 0.15)
+                        .rotationEffect(.degrees(Double(index) * 45))
+                }
+                Circle().fill(Color(red: 0.91, green: 0.82, blue: 0.46).opacity(0.88))
+                    .frame(width: size * 0.19, height: size * 0.19)
+            }
+        case .terminal:
+            Image(systemName: "terminal.fill")
+                .font(.system(size: size * 0.64, weight: .regular))
+                .foregroundStyle(Color(white: 0.82))
+        case .settings:
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: size * 0.70, weight: .regular))
+                .foregroundStyle(Color(white: 0.25))
+        case .folder:
+            Image(systemName: "folder.fill")
+                .font(.system(size: size * 0.88, weight: .regular))
+                .foregroundStyle(Color(red: 0.38, green: 0.66, blue: 0.82))
+        case .trash:
+            Image(systemName: "trash.fill")
+                .font(.system(size: size * 0.77, weight: .regular))
+                .foregroundStyle(Color(white: 0.72))
+        }
+    }
+}
+
+private struct PreviewFileIcon: View {
+    let name: String
+    let selected: Bool
+
+    private var symbol: String {
+        if name == "Screenshots" || name == "Archive" { return "folder.fill" }
+        if name.hasSuffix(".pdf") { return "doc.richtext.fill" }
+        return "doc.fill"
+    }
+
+    private var color: Color {
+        if selected { return Color.white.opacity(0.94) }
+        if name == "Screenshots" || name == "Archive" { return Color(red: 0.43, green: 0.67, blue: 0.81) }
+        if name.hasSuffix(".pdf") { return Color(red: 0.78, green: 0.38, blue: 0.36) }
+        if name.hasSuffix(".fig") { return Color(red: 0.62, green: 0.48, blue: 0.72) }
+        return Color.white.opacity(0.72)
+    }
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 8, weight: .regular))
+            .foregroundStyle(color)
+            .frame(width: 9, height: 10)
     }
 }
 
@@ -493,6 +657,12 @@ private struct FinderPreviewWindow: View {
     let title: String
 
     private let files = ["Project notes.md", "Interface.fig", ".env", "Screenshots", "Reference.pdf", "Archive"]
+    private let sidebarItems = [
+        ("Recents", "clock"),
+        ("Desktop", "display"),
+        ("Documents", "doc.text"),
+        ("Downloads", "arrow.down.circle")
+    ]
 
     var body: some View {
         GeometryReader { proxy in
@@ -513,11 +683,23 @@ private struct FinderPreviewWindow: View {
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("FAVORITES").font(.system(size: 6.5, weight: .medium)).foregroundStyle(MacTweaksPalette.muted)
-                        ForEach(["◉  Recents", "▣  Desktop", "▣  Documents", "◉  Downloads"], id: \.self) { item in
-                            Text(item).font(.system(size: 7.5)).foregroundStyle(item.contains("Documents") ? MacTweaksPalette.text : MacTweaksPalette.secondary)
+                        ForEach(Array(sidebarItems.enumerated()), id: \.offset) { _, item in
+                            HStack(spacing: 5) {
+                                Image(systemName: item.1)
+                                    .font(.system(size: 6.5, weight: .medium))
+                                    .foregroundStyle(Color(red: 0.47, green: 0.68, blue: 0.82))
+                                    .frame(width: 9)
+                                Text(item.0)
+                            }
+                            .font(.system(size: 7.5))
+                            .foregroundStyle(item.0 == "Documents" ? MacTweaksPalette.text : MacTweaksPalette.secondary)
                         }
                         Spacer()
-                        Text("▱  Macintosh HD").font(.system(size: 7.5)).foregroundStyle(MacTweaksPalette.secondary)
+                        HStack(spacing: 5) {
+                            Image(systemName: "internaldrive").font(.system(size: 6.5)).frame(width: 9)
+                            Text("Macintosh HD")
+                        }
+                        .font(.system(size: 7.5)).foregroundStyle(MacTweaksPalette.secondary)
                     }
                     .padding(11)
                     .frame(width: proxy.size.width * 0.28, alignment: .leading)
@@ -529,9 +711,7 @@ private struct FinderPreviewWindow: View {
                         ForEach(Array(files.enumerated()), id: \.offset) { index, name in
                             let selected = index == 1 ? 1 - selectionAmount : index == 3 ? selectionAmount : 0
                             HStack(spacing: 7) {
-                                RoundedRectangle(cornerRadius: 1.5)
-                                    .fill(Color.white.opacity(0.58 + 0.34 * selected))
-                                    .frame(width: 9, height: 10)
+                                PreviewFileIcon(name: name, selected: selected > 0.5)
                                 Text(name).lineLimit(1)
                                 Spacer()
                                 Text(index < 2 ? "Today" : "Yesterday")
@@ -557,7 +737,7 @@ private struct FinderPreviewWindow: View {
                 }
             }
             .background(Color(red: 0.105, green: 0.105, blue: 0.115))
-            .overlay(alignment: .topTrailing) { MacTweaksDither(strength: 0.13).frame(width: 150, height: 68) }
+            .overlay(alignment: .topTrailing) { MacTweaksDither(strength: 0.16).frame(width: 150, height: 68) }
             .clipShape(RoundedRectangle(cornerRadius: 7))
             .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.20), lineWidth: 0.8))
         }
@@ -568,27 +748,40 @@ private struct DockPreviewBar: View {
     let highlighted: CGFloat
     let minimized: CGFloat
 
-    private let colors: [Color] = [
-        .blue.opacity(0.88), .cyan.opacity(0.78), .blue.opacity(0.70), .yellow.opacity(0.75),
-        .pink.opacity(0.72), .black.opacity(0.84), .gray.opacity(0.72), .blue.opacity(0.70), .gray.opacity(0.66)
-    ]
+    private let apps = PreviewApp.allCases
 
     var body: some View {
-        HStack(spacing: 7) {
-            ForEach(0..<9, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(colors[index])
+        HStack(spacing: 5) {
+            ForEach(Array(apps.enumerated()), id: \.offset) { index, app in
+                if index == 7 {
+                    Rectangle().fill(Color.white.opacity(0.24)).frame(width: 1, height: 29)
+                        .padding(.horizontal, 2)
+                }
+                PreviewAppIcon(app: app, size: app == .trash ? 29 : 31)
                     .overlay {
-                        if index == 7 && minimized > 0.02 {
-                            RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color.white.opacity(0.64), lineWidth: 1)
-                                .padding(4)
-                                .opacity(Double(minimized))
+                        if index == 7 {
+                            VStack(spacing: 2) {
+                                HStack(spacing: 2) {
+                                    Circle().fill(Color.red.opacity(0.75)).frame(width: 2.5, height: 2.5)
+                                    Circle().fill(Color.yellow.opacity(0.75)).frame(width: 2.5, height: 2.5)
+                                    Spacer()
+                                }
+                                ForEach(0..<3, id: \.self) { _ in
+                                    Capsule().fill(Color.white.opacity(0.34)).frame(height: 1.5)
+                                }
+                            }
+                            .padding(4)
+                            .background(Color(white: 0.16).opacity(0.96), in: RoundedRectangle(cornerRadius: 4))
+                            .padding(2)
+                            .opacity(Double(minimized))
                         }
                     }
-                    .frame(width: index == 8 ? 28 : 31, height: index == 8 ? 33 : 31)
-                    .scaleEffect(index == 5 ? mix(1, 1.16, highlighted) : 1)
-                    .shadow(color: .black.opacity(0.32), radius: 3, y: 2)
+                    .overlay(alignment: .bottom) {
+                        if index < 4 {
+                            Circle().fill(Color.white.opacity(0.70)).frame(width: 2, height: 2).offset(y: 4)
+                        }
+                    }
+                    .scaleEffect(index == 7 ? mix(1, 1.15, highlighted) : 1)
             }
         }
         .padding(.horizontal, 12)

@@ -1,8 +1,8 @@
 # Mac Tweaks request list
 
-## Compact window, hit targets, and film quality, 2026-09-27
+## Exact reference geometry and film quality, 2026-09-27
 
-- [ ] Replace the oversized 1120 × 826 canvas with one static 900 × 620 window that fits the available Mac work area without clipping, transparent surplus, or offscreen controls.
+- [ ] Match the supplied reference at a static 1120 × 826 points. Fill the complete rounded native window so no transparent titlebar-height strip remains below the UI.
 - [ ] Put the native traffic lights and Mac Tweaks title on the same 64pt centerline and verify the result from an exact-build screenshot.
 - [ ] Make the full search surface focus the field, including its icon, key hint, and inner padding. Keep typing, clearing, Command-K, Escape, and typo-ranked results working.
 - [ ] Port the reference films to continuous hover-only motion with a shared 600 × 304 scene, uniform scaling, clipping, ordered dither, wireframe texture, soft depth, and no overlapping or staged jumps. Return to the same poster frame on leave and respect Reduce Motion.
@@ -10,7 +10,7 @@
 
 ## Fixed reference redesign, 2026-09-27
 
-- [x] Rebuild the Mac Tweaks window from `mac-tweaks-design.html` as the visual source of truth: a fixed dark shell, 200pt sidebar, aligned native traffic lights and title, compact panels, immediate controls, quiet textures, and the selected Faders icon. The later compact-window pass supersedes the reference canvas size.
+- [x] Rebuild the Mac Tweaks window from `mac-tweaks-design.html` as the visual source of truth: a fixed dark shell, 200pt sidebar, aligned native traffic lights and title, compact panels, immediate controls, quiet textures, and the selected Faders icon.
 - [x] Preserve every currently implemented Mac Tweaks feature while removing the old disclosure-card and staged Apply flow. Show only actionable controls, keep exact per-key rollback, and make reset available beside each changed setting plus a Modified review page.
 - [x] Add short hover-driven previews that rest when idle, reset when the pointer leaves, and respect Reduce Motion. Keep motion local to controls and preview content so navigation remains immediate.
 - [x] Finish production behavior for search, empty results, errors, protected actions, restart-later guidance, close/reopen, quit, reset-one, and reset-all. Changes persist immediately; closing or quitting the window must not discard them.
