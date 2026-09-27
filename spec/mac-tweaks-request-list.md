@@ -36,12 +36,14 @@ geometry. Runs `36334450203` and `36334715320` then passed the same Mac Tweaks
 UI gate after the shared window-policy and component-package changes. The
 immutable committed snapshot at `1b044456db52a43b529e822da01528de550497d9`
 built successfully and was installed without disturbing concurrent uncommitted
-work. The app and embedded helper carry that exact source stamp and team
-`GF57JXJF5A`; PID `44952` runs the `/Applications/MacPowerToys.app` executable
-with the Mac Tweaks route. Native Computer Use access to MacPowerToys was
-denied, so the installed window could not be captured locally. The development
-certificate still reports the documented `CSSMERR_TP_NOT_TRUSTED` trust-chain
-warning during manual verification; no Keychain trust was changed.
+work. The app and embedded helper were then rebuilt from the documentation-only
+successor so both source stamps matched repository HEAD; both use team
+`GF57JXJF5A`. A fresh process runs the `/Applications/MacPowerToys.app`
+executable with the Mac Tweaks route. Native Computer Use access to
+MacPowerToys was denied, so the installed window could not be captured locally.
+The development certificate still reports the documented
+`CSSMERR_TP_NOT_TRUSTED` trust-chain warning during manual verification; no
+Keychain trust was changed.
 
 ## Fixed reference redesign, 2026-09-27
 
