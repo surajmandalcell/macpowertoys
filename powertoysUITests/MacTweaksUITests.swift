@@ -4,6 +4,7 @@ import XCTest
 final class MacTweaksUITests: XCTestCase {
     @MainActor func testReferenceLayoutNavigationAndRankedSearch() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MPT_UI_TEST_PREVIEW_MOTION"] = "1"
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "mac-tweaks"]
         app.launch()
         defer { app.terminate() }
@@ -23,6 +24,9 @@ final class MacTweaksUITests: XCTestCase {
         let dockPreview = element(in: window, identifier: "mac-tweaks.preview.dockReveal")
         XCTAssertTrue(dockPreview.waitForExistence(timeout: 5))
         dockPreview.hover()
+        let playing = NSPredicate(format: "label CONTAINS[c] 'playing'")
+        expectation(for: playing, evaluatedWith: dockPreview)
+        waitForExpectations(timeout: 2)
         let firstMotionFrame = dockPreview.screenshot().pngRepresentation
         Thread.sleep(forTimeInterval: 1.0)
         let secondMotionFrame = dockPreview.screenshot().pngRepresentation

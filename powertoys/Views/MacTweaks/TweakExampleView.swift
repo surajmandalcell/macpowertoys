@@ -170,9 +170,13 @@ struct MacTweaksPreviewView: View {
     @State private var isHovering = false
     @State private var startedAt: Date?
 
+    private var shouldReduceMotion: Bool {
+        reduceMotion && ProcessInfo.processInfo.environment["MPT_UI_TEST_PREVIEW_MOTION"] != "1"
+    }
+
     var body: some View {
         Group {
-            if isHovering && !reduceMotion {
+            if isHovering && !shouldReduceMotion {
                 TimelineView(.animation(minimumInterval: 1 / 60)) { timeline in
                     previewFrame(progress: progress(at: timeline.date))
                 }
@@ -191,13 +195,12 @@ struct MacTweaksPreviewView: View {
             }
         }
         .overlay(Color.white.opacity(isHovering ? 0.012 : 0).allowsHitTesting(false))
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isHovering)
+        .animation(shouldReduceMotion ? nil : .easeOut(duration: 0.12), value: isHovering)
         .transaction { transaction in
-            if reduceMotion { transaction.disablesAnimations = true }
+            if shouldReduceMotion { transaction.disablesAnimations = true }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Preview of \(kind.accessibilityName)")
-        .accessibilityValue(isHovering && !reduceMotion ? "Playing" : "At rest")
+        .accessibilityLabel("Preview of \(kind.accessibilityName), \(isHovering && !shouldReduceMotion ? "playing" : "at rest")")
         .accessibilityIdentifier("mac-tweaks.preview.\(kind.rawValue)")
     }
 
@@ -239,13 +242,13 @@ struct MacTweaksPreviewView: View {
                     endPoint: .trailing
                 )
                 .frame(width: proxy.size.width * CGFloat(progress), height: 2)
-                .opacity(isHovering && !reduceMotion ? 1 : 0)
+                .opacity(isHovering && !shouldReduceMotion ? 1 : 0)
             }
         }
     }
 
     private func progress(at date: Date) -> Double {
-        guard isHovering, !reduceMotion, let startedAt else { return 0 }
+        guard isHovering, !shouldReduceMotion, let startedAt else { return 0 }
         let elapsed = max(0, date.timeIntervalSince(startedAt))
         return elapsed.truncatingRemainder(dividingBy: kind.cycleDuration) / kind.cycleDuration
     }
@@ -253,9 +256,9 @@ struct MacTweaksPreviewView: View {
     @ViewBuilder
     private func preview(progress: Double) -> some View {
         if kind == .power {
-            PowerPreviewScene(progress: progress, active: isHovering && !reduceMotion)
+            PowerPreviewScene(progress: progress, active: isHovering && !shouldReduceMotion)
         } else {
-            DesktopPreviewScene(kind: kind, progress: progress, active: isHovering && !reduceMotion)
+            DesktopPreviewScene(kind: kind, progress: progress, active: isHovering && !shouldReduceMotion)
         }
     }
 }
