@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 public enum OnePlusTheme {
@@ -17,6 +18,7 @@ public enum OnePlusTheme {
 public enum OnePlusMetrics {
     public static let titlebarHeight: CGFloat = 40
     public static let titleLeadingInset: CGFloat = 84
+    public static let trafficLightVerticalOffset: CGFloat = 4
     public static let panelRadius: CGFloat = 9
     public static let controlRadius: CGFloat = 5
     public static let controlHeight: CGFloat = 27
@@ -65,21 +67,29 @@ public struct OnePlusPanel<Content: View>: View {
 }
 
 public struct OnePlusDitherTexture: View {
+    static let resourceImage: NSImage? = {
+        guard let url = Bundle.module.url(forResource: "grain", withExtension: "png") else { return nil }
+        return NSImage(contentsOf: url)
+    }()
+
     private let strength: Double
 
-    public init(strength: Double = 0.22) {
+    public init(strength: Double = 0.34) {
         self.strength = strength
     }
 
+    @ViewBuilder
     public var body: some View {
-        Image("grain", bundle: .module)
-            .resizable()
-            .interpolation(.none)
-            .frame(width: 240, height: 150)
-            .opacity(strength)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        if let resourceImage = Self.resourceImage {
+            Image(nsImage: resourceImage)
+                .resizable()
+                .interpolation(.none)
+                .frame(width: 240, height: 150)
+                .opacity(strength)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 }
 
