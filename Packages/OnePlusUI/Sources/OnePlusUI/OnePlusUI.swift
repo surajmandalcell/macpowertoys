@@ -199,6 +199,7 @@ private final class OnePlusFixedWindowChromeView: NSView {
     }
 
     private func apply(to window: NSWindow) {
+        window.styleMask.insert(.fullSizeContentView)
         window.styleMask.remove(.resizable)
         window.contentMinSize = contentSize
         window.contentMaxSize = contentSize

@@ -166,7 +166,10 @@ final class WindowAccessorTests: XCTestCase {
             let topGap = contentView.isFlipped ? center.y : contentView.bounds.maxY - center.y
             XCTAssertEqual(topGap, UtilityLayout.workspaceTitlebarHeight / 2, accuracy: 0.5, identifier)
 
-            for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            let visibleButtonTypes: [NSWindow.ButtonType] = identifier == "system-monitor"
+                ? [.closeButton, .miniaturizeButton]
+                : [.closeButton, .miniaturizeButton, .zoomButton]
+            for type in visibleButtonTypes {
                 XCTAssertEqual(
                     try XCTUnwrap(window.standardWindowButton(type)?.frame.origin.y),
                     initialY - UtilityLayout.workspaceTrafficLightVerticalOffset,
@@ -175,12 +178,16 @@ final class WindowAccessorTests: XCTestCase {
                 )
             }
             let zoomButton = try XCTUnwrap(window.standardWindowButton(.zoomButton))
-            XCTAssertFalse(zoomButton.isHidden, identifier)
-            XCTAssertGreaterThanOrEqual(
-                UtilityLayout.workspaceTitleLeadingInset - zoomButton.frame.maxX,
-                12,
-                identifier
-            )
+            if identifier == "system-monitor" {
+                XCTAssertTrue(zoomButton.isHidden, identifier)
+            } else {
+                XCTAssertFalse(zoomButton.isHidden, identifier)
+                XCTAssertGreaterThanOrEqual(
+                    UtilityLayout.workspaceTitleLeadingInset - zoomButton.frame.maxX,
+                    12,
+                    identifier
+                )
+            }
         }
     }
 
@@ -197,20 +204,25 @@ final class WindowAccessorTests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
         XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
 
         window.styleMask.insert(.resizable)
         window.contentMinSize = .zero
         window.contentMaxSize = NSSize(width: 2_000, height: 2_000)
-        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.styleMask.remove(.fullSizeContentView)
+        window.standardWindowButton(.zoomButton)?.isHidden = false
         window.standardWindowButton(.zoomButton)?.isEnabled = true
         window.setContentSize(NSSize(width: 920, height: 600))
         NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
         XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
-        XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
+        XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
+        XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
     }
 

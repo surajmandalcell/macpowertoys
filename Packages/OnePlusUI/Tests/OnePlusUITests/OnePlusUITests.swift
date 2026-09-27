@@ -67,7 +67,9 @@ final class OnePlusUITests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
         XCTAssertEqual(window.contentView?.bounds.size, expectedSize)
+        XCTAssertEqual(window.frame.size, expectedSize)
         XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
     }

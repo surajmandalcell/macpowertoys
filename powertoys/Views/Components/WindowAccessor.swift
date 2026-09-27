@@ -158,6 +158,7 @@ private class WindowAccessorView: NSView {
 
     private func applyFixedWindowPolicy(to window: NSWindow) {
         guard windowIdentifier == "system-monitor" else { return }
+        window.styleMask.insert(.fullSizeContentView)
         window.styleMask.remove(.resizable)
         window.contentMinSize = TaskManagerTheme.windowContentSize
         window.contentMaxSize = TaskManagerTheme.windowContentSize
@@ -167,7 +168,7 @@ private class WindowAccessorView: NSView {
             window.setContentSize(TaskManagerTheme.windowContentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isEnabled = false
     }
 
@@ -180,7 +181,7 @@ private class WindowAccessorView: NSView {
         guard let baselineY = trafficLightBaselineY else { return }
         let targetY = baselineY - verticalOffset
         var buttonTypes = [NSWindow.ButtonType.closeButton, .miniaturizeButton]
-        if Self.workspaceWindowIdentifiers.contains(windowIdentifier) {
+        if Self.workspaceWindowIdentifiers.contains(windowIdentifier), windowIdentifier != "system-monitor" {
             buttonTypes.append(.zoomButton)
         }
         for buttonType in buttonTypes {
