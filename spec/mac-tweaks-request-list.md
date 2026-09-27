@@ -2,11 +2,11 @@
 
 ## Exact reference geometry and film quality, 2026-09-27
 
-- [ ] Match the supplied reference at a static 1120 × 826 points. Fill the complete rounded native window so no transparent titlebar-height strip remains below the UI.
-- [ ] Put the native traffic lights and Mac Tweaks title on the same 64pt centerline and verify the result from an exact-build screenshot.
-- [ ] Make the full search surface focus the field, including its icon, key hint, and inner padding. Keep typing, clearing, Command-K, Escape, and typo-ranked results working.
-- [ ] Port the reference films to continuous hover-only motion with a shared 600 × 304 scene, uniform scaling, clipping, ordered dither, wireframe texture, soft depth, and no overlapping or staged jumps. Return to the same poster frame on leave and respect Reduce Motion.
-- [ ] Inspect Dock, Finder, Input, ranked search, empty search, and animated preview states from the exact hosted build, then install and verify the clean signed commit.
+- [x] Match the supplied reference at a static 1120 × 826 points. Fill the complete rounded native window so no transparent titlebar-height strip remains below the UI.
+- [x] Put the native traffic lights and Mac Tweaks title on the same 64pt centerline and verify the result from an exact-build screenshot.
+- [x] Make the full search surface focus the field, including its icon, key hint, and inner padding. Keep typing, clearing, Command-K, Escape, and typo-ranked results working.
+- [x] Port the reference films to continuous hover-only motion with a shared 600 × 304 scene, uniform scaling, clipping, ordered dither, wireframe texture, soft depth, and no overlapping or staged jumps. Return to the same poster frame on leave and respect Reduce Motion.
+- [~] Inspect Dock, Finder, Input, ranked search, empty search, and animated preview states from the exact hosted build, then install and verify the clean signed commit.
 
 Hosted run `36329261546` exported the redesigned Dock, Finder, Input, ranked
 search, segmented-control, and empty-search captures. The dither and reference
@@ -26,7 +26,13 @@ root at the intended 1120 × 794 content size, which produces the 1120 × 826
 outer frame without the old titlebar-height surplus. Preview motion still
 follows Reduce Motion in production; only the UI test process forces playback
 for deterministic verification. The app and UI test bundles compile; the final
-hosted frame rerun remains pending.
+hosted run, `36333394471`, passed the 1120 × 826 frame, continuous hover film,
+navigation, icon-side search hit area, typo ranking, segmented controls, empty
+state, and dark-appearance checks. All eight exported captures were reviewed.
+The hosted 1024 × 768 desktop clips the lower and trailing portions of the
+larger reference window, so its screenshots are evidence for the rendered
+states while the accessibility frame assertion verifies the complete outer
+geometry. The clean signed installed-app handoff remains pending.
 
 ## Fixed reference redesign, 2026-09-27
 
