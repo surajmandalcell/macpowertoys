@@ -12,7 +12,7 @@ final class MacTweaksUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 30))
         XCTAssertEqual(window.frame.width, 1_120, accuracy: 3)
         XCTAssertEqual(window.frame.height, 826, accuracy: 3)
-        XCTAssertTrue(window.staticTexts["Mac Tweaks"].exists)
+        XCTAssertTrue(window.buttons["mac-tweaks.about"].exists)
         XCTAssertTrue(window.staticTexts["Dock"].exists)
 
         let revealDelay = element(in: window, identifier: "mac-tweaks.setting.autohide-delay")
