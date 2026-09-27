@@ -13,7 +13,8 @@ import OnePlusUI
 ```
 
 A fixed macOS tool window declares one content size in its scene and applies the
-shared lifecycle-safe AppKit policy at the root:
+shared lifecycle-safe AppKit policy at the root. The policy keeps all three
+native traffic lights visible and disables zoom while preserving movement:
 
 ```swift
 Window("Task Manager", id: "task-manager") {
