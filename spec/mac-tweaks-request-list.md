@@ -16,9 +16,14 @@ hidden-titlebar content size while the SwiftUI canvas remains 1120 × 826, and
 hover creates an active timeline only while playback is needed. The first
 corrected rerun, `36331644220`, showed that SwiftUI still restored an 858pt
 outer frame and did not start playback from the synthesized hover. The native
-window boundary now enforces 1120 × 826 after attachment, and the preview uses
-continuous macOS hover tracking. The app and UI test bundles compile; the next
-hosted rerun remains pending.
+window override in `36332115260` reproduced both failures: the fixed 826pt
+SwiftUI root became 858pt after the hidden titlebar, and the hosted runner's
+Reduce Motion state kept the hover preview at rest. Mac Tweaks now requests a
+1120 × 794 content area, lets the root fill that area beneath the hidden
+titlebar, and preserves 1120 × 826 as the outer reference frame. Preview motion
+still follows Reduce Motion in production; the UI test process explicitly
+enables motion so hover playback can be verified deterministically. The app and
+UI test bundles compile; the corrected hosted rerun remains pending.
 
 ## Fixed reference redesign, 2026-09-27
 
