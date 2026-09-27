@@ -79,7 +79,7 @@ windows:
   launcher: { default-content-width: 1200, default-content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
   workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, system-monitor-sidebar: 220, resizable: true }
   nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
-  mac-tweaks: { content-width: 1120, content-height: 826, sidebar-width: 200, titlebar-height: 64, content-inset: 28, panel-gap: 16, resizable: false }
+  mac-tweaks: { content-width: 900, content-height: 620, sidebar-width: 200, titlebar-height: 64, content-inset: 28, panel-gap: 16, resizable: false }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
 components:
   icon-button: { size: 24, radius: 6, hover: colors.hover }
@@ -565,16 +565,18 @@ insets. Keep these exceptions inside Task Manager; other workspaces retain their
 shared flat materials.
 
 Mac Tweaks follows the owner's fixed dark reference rather than the general
-workspace recipe. Its 1120×826 window is not resizable. It uses a 200pt opaque
+workspace recipe. Its 900×620 window is not resizable. It uses a 200pt opaque
 sidebar, a 64pt title strip shared by both panes, a 28pt content inset, and a
 16pt panel gap. Traffic lights and the sidebar title share one horizontal
 centerline. Sidebar destinations stay on one 34pt row and use distinct 16pt
 line icons; Modified and About stay anchored at the bottom. The content pane
 uses compact 40pt panel headers and 44pt setting rows. Controls apply
 immediately, changed rows expose an adjacent reset action, and the Modified
-page is the recovery overview. Preview motion starts only on hover, resets when
-the pointer leaves, and becomes static with Reduce Motion. The subdued dither,
-purple accent, custom compact switches, and preview illustrations are scoped
+page is the recovery overview. Preview motion runs continuously only on hover,
+returns to the same poster frame when the pointer leaves, and becomes static
+with Reduce Motion. Canonical 600×304 scenes scale uniformly inside clipped
+hosts so artwork never overlaps a card. The ordered dither, quiet wireframe
+texture, soft scene glow, purple accent, custom compact switches, and preview illustrations are scoped
 to Mac Tweaks. Do not bring its dark palette or drawn controls into other
 workspaces.
 
