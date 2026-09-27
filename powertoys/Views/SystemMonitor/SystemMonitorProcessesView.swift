@@ -472,7 +472,6 @@ struct ProcessDetailSheet: View {
         .background(TaskManagerTheme.window)
         .foregroundStyle(TaskManagerTheme.ink)
         .environment(\.colorScheme, .dark)
-        .accessibilityIdentifier("task-manager.process-sheet")
     }
 
     private var identity: some View {
