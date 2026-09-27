@@ -122,6 +122,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
 
 struct SystemMonitorWindowView: View {
     private let reportSnapshot: [TaskManagerReportCategory]
+    private let remoteProfilesOverride: [SystemMonitorRemoteProfile]?
     @State private var service = SystemMonitorService.shared
     @State private var overviewSampler = SystemMonitorProcessSampler()
     @State private var overviewProcesses: [SystemMonitorProcess] = []
@@ -133,12 +134,18 @@ struct SystemMonitorWindowView: View {
     @State private var reportAction: TaskManagerSystemReportAction?
     @State private var processSearchFocusTrigger = 0
 
-    init(reportSnapshot: [TaskManagerReportCategory] = []) {
+    init(
+        reportSnapshot: [TaskManagerReportCategory] = [],
+        remoteProfiles: [SystemMonitorRemoteProfile]? = nil
+    ) {
         self.reportSnapshot = reportSnapshot
+        remoteProfilesOverride = remoteProfiles
     }
 
     private var page: SystemMonitorPage { SystemMonitorPage(rawValue: pageID) ?? .overview }
-    private var remoteProfiles: [SystemMonitorRemoteProfile] { SystemMonitorRemoteProfiles.load() }
+    private var remoteProfiles: [SystemMonitorRemoteProfile] {
+        remoteProfilesOverride ?? SystemMonitorRemoteProfiles.load()
+    }
     private var recentHistory: [SystemMonitorSample] {
         Array(service.history.suffix(max(60, historyMinutes * 60)))
     }
@@ -153,7 +160,13 @@ struct SystemMonitorWindowView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .utilityContentTransition(value: pageID)
             }
-            .background(TaskManagerTheme.window)
+            .background {
+                ZStack(alignment: .bottomTrailing) {
+                    TaskManagerTheme.window
+                    TaskManagerWorkspaceArtwork()
+                        .offset(x: 30, y: 20)
+                }
+            }
         }
         .foregroundStyle(TaskManagerTheme.ink)
         .background(TaskManagerTheme.window)
@@ -182,10 +195,14 @@ struct SystemMonitorWindowView: View {
     private var sidebar: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                Color.clear.frame(width: 64)
-                TaskManagerDotTitle(text: "Task Manager", height: 9.5)
+                Text("Task Manager")
+                    .font(.system(size: 11.5, weight: .medium))
+                    .tracking(-0.25)
+                    .foregroundStyle(TaskManagerTheme.ink.opacity(0.94))
+                    .accessibilityIdentifier("task-manager.sidebar.title")
                 Spacer(minLength: 8)
             }
+            .padding(.leading, TaskManagerTheme.sidebarTitleLeading - 10)
             .frame(height: 48)
 
             sidebarGroup(SystemMonitorPage.primary)
@@ -251,11 +268,6 @@ struct SystemMonitorWindowView: View {
         case .processes:
             TaskManagerHeader(title: page.rawValue, subtitle: page.subtitle) {
                 HStack(spacing: 14) {
-                    TaskManagerSearchField(
-                        prompt: "Search name, path, or PID",
-                        text: $processSearch,
-                        focusTrigger: processSearchFocusTrigger
-                    )
                     HStack(spacing: 7) {
                         Text("Hierarchy")
                             .font(.system(size: 9))
@@ -265,12 +277,16 @@ struct SystemMonitorWindowView: View {
                             .toggleStyle(.switch)
                             .controlSize(.mini)
                     }
+                    TaskManagerSearchField(
+                        prompt: "Search name, path, or PID",
+                        text: $processSearch,
+                        focusTrigger: processSearchFocusTrigger
+                    )
                 }
             }
         case .report:
             TaskManagerHeader(title: page.rawValue, subtitle: page.subtitle) {
                 HStack(spacing: 8) {
-                    TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
                     reportButton("doc.on.doc", label: "Copy current report") { reportAction = .copy }
                     Menu {
                         Button("Save Text Report…") { reportAction = .exportText }
@@ -288,6 +304,7 @@ struct SystemMonitorWindowView: View {
                     .focusEffectDisabled()
                     .help("Export system report")
                     .accessibilityLabel("Export system report")
+                    TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
                 }
             }
         case .cpu:
@@ -501,18 +518,25 @@ struct SystemMonitorWindowView: View {
                 }
                 .buttonStyle(.plain).focusEffectDisabled()
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-                    ForEach(remoteProfiles.prefix(2)) { profile in
-                        TaskManagerRemoteCard(
-                            profile: profile,
-                            reading: nil,
-                            state: "Offline",
-                            primaryTitle: "Open",
-                            primarySymbol: "arrow.right",
-                            onPrimary: { pageID = SystemMonitorPage.remote.rawValue }
-                        )
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(remoteProfiles) { profile in
+                            TaskManagerRemoteCard(
+                                profile: profile,
+                                reading: nil,
+                                state: "Offline",
+                                onTerminal: { SystemMonitorRemoteTerminal.open(profile) },
+                                primaryTitle: "Open App",
+                                primarySymbol: "arrow.right",
+                                onPrimary: { pageID = SystemMonitorPage.remote.rawValue }
+                            )
+                            .frame(width: 402)
+                        }
                     }
+                    .scrollTargetLayout()
                 }
+                .scrollIndicators(.visible)
+                .thinScrollIndicators()
             }
         }
     }
@@ -949,21 +973,21 @@ struct SystemMonitorWindowView: View {
             }
             rowDivider
             settingRow("Refresh interval", detail: "Used by enabled menu-bar readings.") {
-                Picker("Refresh interval", selection: menuIntervalBinding) {
-                    ForEach([10.0, 30.0, 60.0], id: \.self) { value in
-                        Text("\(Int(value)) seconds").tag(value)
-                    }
-                }
-                .labelsHidden().pickerStyle(.menu).frame(width: 120)
+                TaskManagerSelect(
+                    choices: [10.0, 30.0, 60.0].map { ($0, "\(Int($0)) seconds") },
+                    selection: menuIntervalBinding,
+                    width: 120,
+                    accessibilityLabel: "Refresh interval"
+                )
             }
             rowDivider
             settingRow("History window", detail: "The visible range for live charts.") {
-                Picker("History window", selection: $historyMinutes) {
-                    Text("1 minute").tag(1)
-                    Text("2 minutes").tag(2)
-                    Text("5 minutes").tag(5)
-                }
-                .labelsHidden().pickerStyle(.menu).frame(width: 120)
+                TaskManagerSelect(
+                    choices: [(1, "1 minute"), (2, "2 minutes"), (5, "5 minutes")],
+                    selection: $historyMinutes,
+                    width: 120,
+                    accessibilityLabel: "History window"
+                )
             }
         }
     }
@@ -1302,16 +1326,15 @@ struct SystemMonitorMenuSettingsView: View {
 
     private var globalIntervalControl: some View {
         settingControl("GLOBAL INTERVAL", width: 112) {
-            Picker("Global interval", selection: menuSetting(
-                get: { $0.interval },
-                set: { $0.interval = $1 }
-            )) {
-                ForEach(SystemMonitorMenuInterval.allowedSeconds, id: \.self) { seconds in
-                    Text(Self.intervalTitle(seconds)).tag(seconds)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
+            TaskManagerSelect(
+                choices: SystemMonitorMenuInterval.allowedSeconds.map { ($0, Self.intervalTitle($0)) },
+                selection: menuSetting(
+                    get: { $0.interval },
+                    set: { $0.interval = $1 }
+                ),
+                width: 112,
+                accessibilityLabel: "Global interval"
+            )
             .accessibilityIdentifier("system-monitor.menu.global-interval")
         }
     }
@@ -1373,24 +1396,22 @@ struct SystemMonitorMenuSettingsView: View {
         HStack(spacing: 8) {
             reorderMenu(item.metric)
 
-            Picker(item.metric.title, selection: Binding<SystemMonitorMenuPlacement>(
-                get: {
-                    guard let current = service.menuSettings.items.first(where: { $0.metric == item.metric }),
-                          current.enabled else { return .off }
-                    return current.placement
-                },
-                set: { placement in
-                    service.updateMenuSettings { $0.setPlacement(placement, for: item.metric) }
-                }
-            )) {
-                ForEach(SystemMonitorMenuPlacement.allCases) { placement in
-                    Text(placement.title).tag(placement)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(width: 120, height: UtilityLayout.workspaceActionHeight)
-            .accessibilityLabel("\(item.metric.title) menu bar placement")
+            TaskManagerSelect(
+                choices: SystemMonitorMenuPlacement.allCases.map { ($0, $0.title) },
+                selection: Binding<SystemMonitorMenuPlacement>(
+                    get: {
+                        guard let current = service.menuSettings.items.first(where: { $0.metric == item.metric }),
+                              current.enabled else { return .off }
+                        return current.placement
+                    },
+                    set: { placement in
+                        service.updateMenuSettings { $0.setPlacement(placement, for: item.metric) }
+                    }
+                ),
+                width: 120,
+                accessibilityLabel: "\(item.metric.title) menu bar placement"
+            )
+            .frame(height: UtilityLayout.workspaceActionHeight)
             .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).placement")
 
             Label(item.metric.title, systemImage: item.symbol)
@@ -1417,52 +1438,45 @@ struct SystemMonitorMenuSettingsView: View {
     private func primaryItemControls(_ item: SystemMonitorMenuItemConfiguration) -> some View {
         HStack(alignment: .bottom, spacing: 10) {
             settingControl("STYLE", width: 92) {
-                Picker("Style", selection: itemSetting(
-                    item,
-                    get: { $0.style },
-                    set: { $0.style = $1 }
-                )) {
-                    ForEach(SystemMonitorMenuItemStyle.allCases) { style in
-                        Text(style.title).tag(style)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("\(item.metric.title) style")
+                TaskManagerSelect(
+                    choices: SystemMonitorMenuItemStyle.allCases.map { ($0, $0.title) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.style },
+                        set: { $0.style = $1 }
+                    ),
+                    width: 92,
+                    accessibilityLabel: "\(item.metric.title) style"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).style")
             }
 
             settingControl("ICON", width: 82) {
-                Picker("Icon", selection: itemSetting(
-                    item,
-                    get: { $0.symbol },
-                    set: { $0.symbol = $1 }
-                )) {
-                    ForEach(item.metric.symbols, id: \.self) { symbol in
-                        Label(Self.iconTitle(symbol, for: item.metric), systemImage: symbol).tag(symbol)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("\(item.metric.title) icon")
+                TaskManagerSelect(
+                    choices: item.metric.symbols.map { ($0, Self.iconTitle($0, for: item.metric)) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.symbol },
+                        set: { $0.symbol = $1 }
+                    ),
+                    width: 82,
+                    accessibilityLabel: "\(item.metric.title) icon"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).icon")
             }
 
             settingControl("INTERVAL", width: 94) {
-                Picker("Interval", selection: itemSetting(
-                    item,
-                    get: { $0.interval },
-                    set: { $0.interval = $1 }
-                )) {
-                    ForEach(
-                        item.metric.supportedIntervals(global: service.menuSettings.interval)
-                    ) { interval in
-                        Text(interval.title).tag(interval)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("\(item.metric.title) interval")
+                TaskManagerSelect(
+                    choices: item.metric.supportedIntervals(global: service.menuSettings.interval)
+                        .map { ($0, $0.title) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.interval },
+                        set: { $0.interval = $1 }
+                    ),
+                    width: 94,
+                    accessibilityLabel: "\(item.metric.title) interval"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).interval")
             }
         }
@@ -1473,100 +1487,88 @@ struct SystemMonitorMenuSettingsView: View {
         switch item.metric {
         case .memory:
             settingControl("UNIT", width: 88) {
-                Picker("Unit", selection: itemSetting(
-                    item,
-                    get: { $0.memoryUnit },
-                    set: { $0.memoryUnit = $1 }
-                )) {
-                    ForEach(SystemMonitorMemoryUnit.allCases) { unit in
-                        Text(unit.title).tag(unit)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("Memory unit")
+                TaskManagerSelect(
+                    choices: SystemMonitorMemoryUnit.allCases.map { ($0, $0.title) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.memoryUnit },
+                        set: { $0.memoryUnit = $1 }
+                    ),
+                    width: 88,
+                    accessibilityLabel: "Memory unit"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.memory.unit")
             }
         case .disk:
             settingControl("UNIT", width: 88) {
-                Picker("Unit", selection: itemSetting(
-                    item,
-                    get: { $0.diskUnit },
-                    set: { $0.diskUnit = $1 }
-                )) {
-                    ForEach(SystemMonitorDiskUnit.allCases) { unit in
-                        Text(unit.title).tag(unit)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("Disk unit")
+                TaskManagerSelect(
+                    choices: SystemMonitorDiskUnit.allCases.map { ($0, $0.title) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.diskUnit },
+                        set: { $0.diskUnit = $1 }
+                    ),
+                    width: 88,
+                    accessibilityLabel: "Disk unit"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.disk.unit")
             }
         case .network:
             HStack(alignment: .bottom, spacing: 10) {
                 settingControl("DIRECTION", width: 100) {
-                    Picker("Direction", selection: itemSetting(
-                        item,
-                        get: { $0.networkDirection },
-                        set: { $0.networkDirection = $1 }
-                    )) {
-                        ForEach(SystemMonitorNetworkDirection.allCases) { direction in
-                            Text(direction.title).tag(direction)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("Network direction")
+                    TaskManagerSelect(
+                        choices: SystemMonitorNetworkDirection.allCases.map { ($0, $0.title) },
+                        selection: itemSetting(
+                            item,
+                            get: { $0.networkDirection },
+                            set: { $0.networkDirection = $1 }
+                        ),
+                        width: 100,
+                        accessibilityLabel: "Network direction"
+                    )
                     .accessibilityIdentifier("system-monitor.menu.item.network.direction")
                 }
 
                 settingControl("UNIT", width: 130) {
-                    Picker("Unit", selection: itemSetting(
-                        item,
-                        get: { $0.networkUnit },
-                        set: { $0.networkUnit = $1 }
-                    )) {
-                        ForEach(SystemMonitorNetworkUnit.allCases) { unit in
-                            Text(unit.title).tag(unit)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("Network unit")
+                    TaskManagerSelect(
+                        choices: SystemMonitorNetworkUnit.allCases.map { ($0, $0.title) },
+                        selection: itemSetting(
+                            item,
+                            get: { $0.networkUnit },
+                            set: { $0.networkUnit = $1 }
+                        ),
+                        width: 130,
+                        accessibilityLabel: "Network unit"
+                    )
                     .accessibilityIdentifier("system-monitor.menu.item.network.unit")
                 }
             }
         case .battery:
             settingControl("DISPLAY", width: 150) {
-                Picker("Display", selection: itemSetting(
-                    item,
-                    get: { $0.batteryDisplay },
-                    set: { $0.batteryDisplay = $1 }
-                )) {
-                    ForEach(SystemMonitorBatteryDisplay.allCases) { display in
-                        Text(display.title).tag(display)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("Battery display")
+                TaskManagerSelect(
+                    choices: SystemMonitorBatteryDisplay.allCases.map { ($0, $0.title) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.batteryDisplay },
+                        set: { $0.batteryDisplay = $1 }
+                    ),
+                    width: 150,
+                    accessibilityLabel: "Battery display"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.battery.display")
             }
         case .thermal:
             settingControl("DISPLAY", width: 100) {
-                Picker("Display", selection: itemSetting(
-                    item,
-                    get: { $0.thermalDisplay },
-                    set: { $0.thermalDisplay = $1 }
-                )) {
-                    ForEach(SystemMonitorThermalDisplay.allCases) { display in
-                        Text(display.title).tag(display)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .accessibilityLabel("Thermal display")
+                TaskManagerSelect(
+                    choices: SystemMonitorThermalDisplay.allCases.map { ($0, $0.title) },
+                    selection: itemSetting(
+                        item,
+                        get: { $0.thermalDisplay },
+                        set: { $0.thermalDisplay = $1 }
+                    ),
+                    width: 100,
+                    accessibilityLabel: "Thermal display"
+                )
                 .accessibilityIdentifier("system-monitor.menu.item.thermal.display")
             }
         default:

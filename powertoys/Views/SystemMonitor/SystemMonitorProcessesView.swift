@@ -98,6 +98,7 @@ struct SystemMonitorProcessesView: View {
     @State private var lastUpdated: Date?
     @State private var networkEndpoints: [String] = []
     @State private var endpointsLoaded = false
+    @State private var hoveredProcessID: String?
 
     private let externalSearch: Binding<String>?
     private let externalHierarchy: Binding<Bool>?
@@ -184,16 +185,16 @@ struct SystemMonitorProcessesView: View {
 
     private var toolbar: some View {
         HStack(spacing: 14) {
-            TaskManagerSearchField(prompt: "Search name, path, or PID", text: searchBinding)
             HStack(spacing: 7) {
                 Text("Hierarchy").font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                 Toggle("Hierarchy", isOn: hierarchyBinding)
                     .labelsHidden().toggleStyle(.switch).controlSize(.mini)
             }
-            Spacer()
             Text("\(processes.count) processes")
                 .font(.system(size: 8.5, design: .monospaced))
                 .foregroundStyle(TaskManagerTheme.muted)
+            Spacer()
+            TaskManagerSearchField(prompt: "Search name, path, or PID", text: searchBinding)
         }
     }
 
@@ -219,7 +220,7 @@ struct SystemMonitorProcessesView: View {
                                     .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
                                 if !search.isEmpty {
                                     Button("Clear search") { searchBinding.wrappedValue = "" }
-                                        .buttonStyle(.bordered).controlSize(.small)
+                                        .taskManagerControl()
                                 }
                             }
                             .frame(maxWidth: .infinity, minHeight: 180)
@@ -270,9 +271,10 @@ struct SystemMonitorProcessesView: View {
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
+            .buttonStyle(.plain)
             .focusEffectDisabled()
             .accessibilityLabel("Inspect \(process.name), PID \(process.pid)")
+            .accessibilityIdentifier("task-manager.process.row.\(process.pid)")
 
             Menu {
                 Button("Inspect") { selectedID = process.id }
@@ -294,9 +296,20 @@ struct SystemMonitorProcessesView: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .focusEffectDisabled()
+            .environment(\.colorScheme, .dark)
+            .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
         }
         .padding(.horizontal, 12)
-        .frame(height: 33)
+        .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
+        .contentShape(Rectangle())
+        .background(hoveredProcessID == process.id ? Color.white.opacity(0.06) : .clear)
+        .onHover { inside in
+            if inside {
+                hoveredProcessID = process.id
+            } else if hoveredProcessID == process.id {
+                hoveredProcessID = nil
+            }
+        }
     }
 
     private func header(_ column: ProcessSortColumn) -> some View {
@@ -405,13 +418,14 @@ struct ProcessDetailSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 9, weight: .semibold))
                         .frame(width: 23, height: 23)
-                        .background(Color.white.opacity(0.055), in: Circle())
                 }
-                .buttonStyle(.plain).focusEffectDisabled().accessibilityLabel("Close")
+                .taskManagerControl(.quiet, minWidth: 23, minHeight: 23, horizontalPadding: 0)
+                .accessibilityLabel("Close")
             }
             .padding(.horizontal, 14)
             .frame(height: 42)
-            .background(TaskManagerTheme.sidebar)
+            .background(TaskManagerTheme.window)
+            .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -428,27 +442,35 @@ struct ProcessDetailSheet: View {
 
             HStack(spacing: 8) {
                 Button("Quit") { onQuit() }
-                    .buttonStyle(.bordered)
-                    .tint(TaskManagerTheme.accent.opacity(0.55))
+                    .taskManagerControl(.destructive)
                     .disabled(process.started == 0)
-                Menu("More") {
+                Menu {
                     Button("Force Quit", role: .destructive, action: onForceQuit)
                         .disabled(process.started == 0)
+                } label: {
+                    TaskManagerMenuLabel(title: "More", width: 68)
                 }
-                .menuStyle(.borderlessButton).fixedSize()
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .focusEffectDisabled()
+                .environment(\.colorScheme, .dark)
                 Spacer()
-                Button("Copy details") { copyDetails() }.buttonStyle(.bordered)
-                Button("Done", action: onDone).buttonStyle(.borderedProminent).tint(Color.white.opacity(0.18))
+                Button("Copy details") { copyDetails() }
+                    .taskManagerControl()
+                Button("Done", action: onDone)
+                    .taskManagerControl(.primary, minWidth: 58)
             }
-            .controlSize(.regular)
             .padding(.horizontal, 20)
             .frame(height: 52)
-            .background(TaskManagerTheme.sidebar)
+            .background(TaskManagerTheme.window)
+            .overlay(alignment: .top) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
         }
         .frame(width: 450, height: 520)
         .background(TaskManagerTheme.window)
         .foregroundStyle(TaskManagerTheme.ink)
         .environment(\.colorScheme, .dark)
+        .accessibilityIdentifier("task-manager.process-sheet")
     }
 
     private var identity: some View {
@@ -533,7 +555,8 @@ struct ProcessDetailSheet: View {
                     Button { copy(process.executablePath) } label: {
                         Image(systemName: "doc.on.doc").font(.system(size: 11)).frame(width: 23, height: 22)
                     }
-                    .buttonStyle(.plain).focusEffectDisabled().help("Copy executable path")
+                    .taskManagerControl(.quiet, minWidth: 23, minHeight: 22, horizontalPadding: 0)
+                    .help("Copy executable path")
                 }
             }
             Text(process.executablePath)

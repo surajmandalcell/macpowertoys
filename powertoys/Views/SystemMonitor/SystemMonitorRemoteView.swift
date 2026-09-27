@@ -68,14 +68,8 @@ struct SystemMonitorRemoteView: View {
                 editor = SystemMonitorRemoteProfile(name: "", host: "")
             } label: {
                 Label("Add host", systemImage: "plus")
-                    .font(.system(size: 10, weight: .medium))
-                    .padding(.horizontal, 11)
-                    .frame(minHeight: 29)
-                    .background(Color.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 5))
-                    .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
+            .taskManagerControl()
             .accessibilityIdentifier("system-monitor.remote.add-host")
         }
     }
@@ -96,8 +90,7 @@ struct SystemMonitorRemoteView: View {
                 Button("Add host") {
                     editor = SystemMonitorRemoteProfile(name: "", host: "")
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
+                .taskManagerControl()
             }
             .frame(maxWidth: .infinity, minHeight: 230)
         }
@@ -260,18 +253,10 @@ struct SystemMonitorRemoteView: View {
     }
 
     private func openTerminal(_ profile: SystemMonitorRemoteProfile) {
-        guard SystemMonitorRemoteProtocol.validHost(profile.host),
-              let address = URL(string: "ssh://\(profile.host)") else { return }
-        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        NSWorkspace.shared.open(
-            [address],
-            withApplicationAt: terminal,
-            configuration: NSWorkspace.OpenConfiguration()
-        ) { _, error in
-            if let error {
-                Task { @MainActor in
-                    errorMessage = "Could not open Terminal: \(error.localizedDescription)"
-                }
+        SystemMonitorRemoteTerminal.open(profile) { error in
+            guard let error else { return }
+            Task { @MainActor in
+                errorMessage = "Could not open Terminal: \(error.localizedDescription)"
             }
         }
     }
@@ -286,6 +271,22 @@ struct SystemMonitorRemoteView: View {
         }
     }
 
+}
+
+enum SystemMonitorRemoteTerminal {
+    static func open(
+        _ profile: SystemMonitorRemoteProfile,
+        completion: ((Error?) -> Void)? = nil
+    ) {
+        guard SystemMonitorRemoteProtocol.validHost(profile.host),
+              let address = URL(string: "ssh://\(profile.host)") else { return }
+        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+        NSWorkspace.shared.open(
+            [address],
+            withApplicationAt: terminal,
+            configuration: NSWorkspace.OpenConfiguration()
+        ) { _, error in completion?(error) }
+    }
 }
 
 struct TaskManagerRemoteCard: View {
@@ -395,7 +396,7 @@ struct TaskManagerRemoteCard: View {
             .frame(maxWidth: .infinity, minHeight: height)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
         .focusEffectDisabled()
     }
 
@@ -467,15 +468,14 @@ private struct TaskManagerRemoteEditor: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 9, weight: .semibold))
                         .frame(width: 23, height: 23)
-                        .background(Color.white.opacity(0.055), in: Circle())
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
+                .taskManagerControl(.quiet, minWidth: 23, minHeight: 23, horizontalPadding: 0)
                 .accessibilityLabel("Close")
             }
             .padding(.horizontal, 16)
             .frame(height: 44)
-            .background(TaskManagerTheme.sidebar)
+            .background(TaskManagerTheme.window)
+            .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
 
             VStack(spacing: 0) {
                 editorRow("Name", detail: "A label shown in Task Manager.") {
@@ -498,40 +498,37 @@ private struct TaskManagerRemoteEditor: View {
                 }
                 divider
                 editorRow("Refresh", detail: "No sampling occurs while disconnected.") {
-                    Picker("Refresh", selection: $profile.interval) {
-                        Text("Manual only").tag(0)
-                        Text("5 seconds").tag(5)
-                        Text("10 seconds").tag(10)
-                        Text("30 seconds").tag(30)
-                        Text("1 minute").tag(60)
-                        Text("2 minutes").tag(120)
-                        Text("5 minutes").tag(300)
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 128)
+                    TaskManagerSelect(
+                        choices: [
+                            (0, "Manual only"), (5, "5 seconds"), (10, "10 seconds"),
+                            (30, "30 seconds"), (60, "1 minute"),
+                            (120, "2 minutes"), (300, "5 minutes"),
+                        ],
+                        selection: $profile.interval,
+                        width: 128,
+                        accessibilityLabel: "Refresh interval"
+                    )
                 }
             }
 
             HStack(spacing: 8) {
                 if canDelete {
                     Button("Remove", role: .destructive, action: onDelete)
-                        .buttonStyle(.bordered)
+                        .taskManagerControl(.destructive)
                 }
                 Spacer()
                 Button("Cancel", action: onCancel)
-                    .buttonStyle(.bordered)
+                    .taskManagerControl(.quiet)
                 Button("Save") { submit(connect: false) }
-                    .buttonStyle(.bordered)
+                    .taskManagerControl()
                 Button("Save & Connect") { submit(connect: true) }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color.white.opacity(0.18))
+                    .taskManagerControl(.primary)
                     .disabled(!SystemMonitorRemoteProtocol.validHost(profile.host))
             }
-            .controlSize(.regular)
             .padding(.horizontal, 16)
             .frame(height: 56)
-            .background(TaskManagerTheme.sidebar)
+            .background(TaskManagerTheme.window)
+            .overlay(alignment: .top) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
         }
         .frame(width: 530)
         .background(TaskManagerTheme.window)
@@ -569,14 +566,7 @@ private struct TaskManagerRemoteEditor: View {
 
 private extension View {
     func taskManagerRemoteButton(primary: Bool = false) -> some View {
-        font(.system(size: 9.5, weight: .medium))
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .padding(.horizontal, 10)
-            .frame(minHeight: 28)
-            .background(primary ? Color.white.opacity(0.11) : Color.white.opacity(0.055),
-                        in: RoundedRectangle(cornerRadius: 5))
-            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+        taskManagerControl(primary ? .primary : .standard, minHeight: 28)
     }
 
     func taskManagerRemoteField() -> some View {
