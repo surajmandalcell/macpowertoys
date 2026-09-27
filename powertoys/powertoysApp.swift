@@ -180,7 +180,6 @@ struct MacPowerToysApp: App {
             width: TaskManagerTheme.windowContentSize.width,
             height: TaskManagerTheme.windowContentSize.height
         )
-        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["system-monitor"]))
         .restorationBehavior(.disabled)
