@@ -1574,11 +1574,13 @@ struct SystemMonitorTrayView: View {
         _ destination: SystemMonitorTrayPage,
         _ content: Content
     ) -> some View {
-        Button { pageID = destination.rawValue } label: { content }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .accessibilityHint("Show \(destination.title) details")
-            .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
+        Button { pageID = destination.rawValue } label: {
+            content.contentShape(Rectangle())
+        }
+        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
+        .focusEffectDisabled()
+        .accessibilityHint("Show \(destination.title) details")
+        .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
     }
 
     private func card(
