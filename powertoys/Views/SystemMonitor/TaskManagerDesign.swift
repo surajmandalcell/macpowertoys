@@ -17,9 +17,10 @@ enum TaskManagerTheme {
     static let accent = OnePlusTheme.accent
 
     static let windowContentSize = NSSize(width: 1_080, height: 660)
-    static let sidebarWidth: CGFloat = 192
+    static let sidebarWidth: CGFloat = 220
     static let headerHeight: CGFloat = 62
     static let contentInset: CGFloat = 20
+    static let pageTopInset: CGFloat = 16
     static let panelRadius = OnePlusMetrics.panelRadius
     static let controlRadius = OnePlusMetrics.controlRadius
 }

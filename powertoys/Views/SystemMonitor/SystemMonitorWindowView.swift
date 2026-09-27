@@ -199,7 +199,10 @@ struct SystemMonitorWindowView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            SidebarTitle(text: "Task Manager")
+            SidebarTitle(
+                text: "Task Manager",
+                leadingInset: OnePlusMetrics.fixedTitleLeadingInset
+            )
                 .foregroundStyle(TaskManagerTheme.ink.opacity(0.94))
                 .accessibilityIdentifier("task-manager.sidebar.title")
 
@@ -282,7 +285,8 @@ struct SystemMonitorWindowView: View {
                     TaskManagerSearchField(
                         prompt: "Search name, path, or PID",
                         text: $processSearch,
-                        focusTrigger: processSearchFocusTrigger
+                        focusTrigger: processSearchFocusTrigger,
+                        accessibilityIdentifier: "task-manager.process.search"
                     )
                 }
             }
@@ -356,6 +360,7 @@ struct SystemMonitorWindowView: View {
                 showsToolbar: false
             )
             .padding(.horizontal, TaskManagerTheme.contentInset)
+            .padding(.top, TaskManagerTheme.pageTopInset)
             .padding(.bottom, 18)
         case .cpu: scrollPage { cpuPage }
         case .gpu: scrollPage { gpuPage }
@@ -367,6 +372,7 @@ struct SystemMonitorWindowView: View {
         case .remote:
             SystemMonitorRemoteView()
                 .padding(.horizontal, TaskManagerTheme.contentInset)
+                .padding(.top, TaskManagerTheme.pageTopInset)
                 .padding(.bottom, 18)
         case .report:
             TaskManagerSystemReportView(
@@ -375,6 +381,7 @@ struct SystemMonitorWindowView: View {
                 initialCategories: reportSnapshot
             )
                 .padding(.horizontal, TaskManagerTheme.contentInset)
+                .padding(.top, TaskManagerTheme.pageTopInset)
                 .padding(.bottom, 18)
         case .about: scrollPage { aboutPage }
         case .settings: scrollPage { settingsPage }
@@ -387,6 +394,7 @@ struct SystemMonitorWindowView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .contentMargins(.horizontal, TaskManagerTheme.contentInset, for: .scrollContent)
+        .contentMargins(.top, TaskManagerTheme.pageTopInset, for: .scrollContent)
         .contentMargins(.bottom, 18, for: .scrollContent)
         .thinScrollIndicators()
     }
@@ -711,51 +719,96 @@ struct SystemMonitorWindowView: View {
 
     private var coreActivity: some View {
         let cores = service.snapshot?.cpuDetails?.cores ?? []
-        return TaskManagerPanel {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Core activity").font(.system(size: 10.5, weight: .medium))
-                    Spacer()
-                    Text(coreLayoutDescription)
-                        .font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
+        return TaskManagerPanel(textured: true) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Core activity")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(coreLayoutDescription)
+                            .font(.system(size: 8.5))
+                            .foregroundStyle(TaskManagerTheme.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    if TaskManagerHardwareSummary.coreLayout != nil {
+                        HStack(spacing: 10) {
+                            coreLegend("Performance", color: TaskManagerTheme.accent)
+                            coreLegend("Efficiency", color: TaskManagerTheme.secondary)
+                        }
+                    }
                 }
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                 if cores.isEmpty {
                     Text("...")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(TaskManagerTheme.muted)
                         .frame(maxWidth: .infinity, minHeight: 92)
                 } else {
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: 6),
-                                       count: min(7, max(cores.count, 1))),
-                        spacing: 6
-                    ) {
+                    HStack(alignment: .bottom, spacing: 5) {
                         ForEach(cores.indices, id: \.self) { index in
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(coreLabel(index))
-                                    .font(.system(size: 7, design: .monospaced))
-                                    .foregroundStyle(TaskManagerTheme.muted)
+                            if isFirstEfficiencyCore(index) {
+                                Rectangle()
+                                    .fill(TaskManagerTheme.line)
+                                    .frame(width: 1, height: 76)
+                                    .padding(.horizontal, 2)
+                            }
+                            VStack(spacing: 6) {
                                 Text("\(Int(cores[index].rounded()))%")
-                                    .font(.system(size: 9.5, design: .monospaced))
+                                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(TaskManagerTheme.ink)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                                 GeometryReader { proxy in
-                                    ZStack(alignment: .leading) {
-                                        Rectangle().fill(TaskManagerTheme.lineSoft)
-                                        Rectangle().fill(TaskManagerTheme.ink.opacity(0.72))
-                                            .frame(width: proxy.size.width * CGFloat(min(max(cores[index] / 100, 0), 1)))
+                                    let fraction = CGFloat(min(max(cores[index] / 100, 0), 1))
+                                    ZStack(alignment: .bottom) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(TaskManagerTheme.lineSoft.opacity(0.7))
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(coreColor(index))
+                                            .frame(height: max(2, proxy.size.height * fraction))
                                     }
                                 }
-                                .frame(height: 3)
+                                .frame(height: 54)
+                                Text(coreLabel(index))
+                                    .font(.system(size: 7.5, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(TaskManagerTheme.muted)
                             }
-                            .padding(7)
-                            .background(Color.white.opacity(0.025), in: RoundedRectangle(cornerRadius: 4))
-                            .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(TaskManagerTheme.lineSoft) }
+                            .frame(maxWidth: .infinity)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(coreLabel(index)), \(Int(cores[index].rounded())) percent")
                         }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .background(TaskManagerTheme.window.opacity(0.82), in: RoundedRectangle(cornerRadius: 6))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(TaskManagerTheme.lineSoft)
                     }
                 }
             }
             .padding(14)
         }
+    }
+
+    private func coreLegend(_ title: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(title)
+                .font(.system(size: 8))
+                .foregroundStyle(TaskManagerTheme.secondary)
+        }
+    }
+
+    private func coreColor(_ index: Int) -> Color {
+        guard let layout = TaskManagerHardwareSummary.coreLayout,
+              index >= layout.performance else { return TaskManagerTheme.accent }
+        return TaskManagerTheme.secondary
+    }
+
+    private func isFirstEfficiencyCore(_ index: Int) -> Bool {
+        TaskManagerHardwareSummary.coreLayout?.performance == index
     }
 
     private var gpuPage: some View {

@@ -28,7 +28,10 @@ private struct OnePlusUIShowcase: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                OnePlusSidebarTitle("OnePlusUI")
+                OnePlusSidebarTitle(
+                    "OnePlusUI",
+                    leadingInset: OnePlusMetrics.fixedTitleLeadingInset
+                )
                 VStack(spacing: 2) {
                     ForEach(pages, id: \.self) { item in
                         Button {
@@ -59,7 +62,7 @@ private struct OnePlusUIShowcase: View {
                     .foregroundStyle(OnePlusTheme.muted)
                     .padding(16)
             }
-            .frame(width: 190)
+            .frame(width: 220)
             .background(OnePlusTheme.sidebar)
             .overlay(alignment: .trailing) { Rectangle().fill(OnePlusTheme.line).frame(width: 1) }
 
@@ -105,7 +108,12 @@ private struct OnePlusUIShowcase: View {
                     Button("Disabled") {}.onePlusControl().disabled(true)
                 }
                 HStack(spacing: 12) {
-                    OnePlusSearchField(prompt: "Search components", text: $query, width: 280)
+                    OnePlusSearchField(
+                        prompt: "Search components",
+                        text: $query,
+                        width: 280,
+                        accessibilityIdentifier: "oneplus.search"
+                    )
                     OnePlusSelect(
                         choices: [("Compact", "Compact"), ("Balanced", "Balanced"), ("Roomy", "Roomy")],
                         selection: $selection,

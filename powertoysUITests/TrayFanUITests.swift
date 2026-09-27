@@ -120,6 +120,14 @@ final class TrayFanUITests: XCTestCase {
         let sidebarTitle = app.staticTexts["task-manager.sidebar.title"]
         XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5))
         XCTAssertEqual(sidebarTitle.frame.midY, taskManager.frame.minY + 20, accuracy: 2)
+        XCTAssertLessThanOrEqual(sidebarTitle.frame.maxX, taskManager.frame.minX + 220)
+
+        app.buttons["task-manager.sidebar.cpu"].click()
+        XCTAssertTrue(app.staticTexts["Core activity"].waitForExistence(timeout: 5))
+        let cpuCapture = XCTAttachment(screenshot: taskManager.screenshot())
+        cpuCapture.name = "Task Manager grouped CPU core activity"
+        cpuCapture.lifetime = .keepAlways
+        add(cpuCapture)
 
         app.buttons["task-manager.sidebar.remote-stats"].click()
         let configure = app.buttons["system-monitor.remote.configure.ui-build-mac"]
@@ -138,6 +146,19 @@ final class TrayFanUITests: XCTestCase {
         add(remoteCapture)
 
         app.buttons["task-manager.sidebar.processes"].click()
+        let search = app.textFields["task-manager.process.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        let searchFrame = search.frame
+        let searchIdleCapture = XCTAttachment(screenshot: taskManager.screenshot())
+        searchIdleCapture.name = "Task Manager search idle baseline"
+        searchIdleCapture.lifetime = .keepAlways
+        add(searchIdleCapture)
+        search.click()
+        XCTAssertEqual(search.frame, searchFrame)
+        let searchFocusedCapture = XCTAttachment(screenshot: taskManager.screenshot())
+        searchFocusedCapture.name = "Task Manager search focused baseline"
+        searchFocusedCapture.lifetime = .keepAlways
+        add(searchFocusedCapture)
         let processRows = app.buttons.matching(NSPredicate(
             format: "identifier BEGINSWITH %@", "task-manager.process.row."
         ))
