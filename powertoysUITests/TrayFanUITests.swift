@@ -130,7 +130,7 @@ final class TrayFanUITests: XCTestCase {
         sheetCapture.lifetime = .keepAlways
         add(sheetCapture)
 
-        let moreMenu = app.popUpButtons["task-manager.process.more"]
+        let moreMenu = app.descendants(matching: .any)["task-manager.process.more"]
         XCTAssertTrue(moreMenu.waitForExistence(timeout: 5))
         XCTAssertEqual(moreMenu.label, "More")
         moreMenu.click()
