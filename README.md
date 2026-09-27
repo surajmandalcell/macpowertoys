@@ -47,7 +47,7 @@
 | <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="30" alt=""> | **Logs** | Search and filter MacPowerToys diagnostics. |
 | <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.svg" width="30" alt=""> | **Input Devices** | Control mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 | <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.svg" width="30" alt=""> | **System Care** | Analyze storage, preview safe cleanup, remove apps, and use advanced Mole maintenance. |
-| <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.svg" width="30" alt=""> | **System Monitor** | View system health and fan speed on demand or in the menu bar. An optional privileged helper enables Auto, Cool, and Max fan control on supported Macs. |
+| <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.svg" width="30" alt=""> | **Task Manager** | Inspect processes, live system activity, sensors, and opt-in remote hosts. An optional privileged helper enables Auto, Cool, and Max fan control on supported Macs. |
 | | **Diskman** | Analyze disks and folders with live treemaps or rings; manage removable disks and partitions. |
 | <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
 | <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.svg" width="30" alt=""> | **Portman** | Inspect local development ports and forward selected ports from a private SSH server to localhost. |
@@ -73,8 +73,8 @@
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <a href="docs/screenshots/system-monitor.png"><img src="docs/screenshots/system-monitor.png" width="100%" alt="System Monitor overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"></a><br>
-      <sub><b>System Monitor</b> · live health and performance graphs without a persistent heavy dashboard</sub>
+      <a href="docs/screenshots/system-monitor.png"><img src="docs/screenshots/system-monitor.png" width="100%" alt="Task Manager overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"></a><br>
+      <sub><b>Task Manager</b> · processes and live system activity without a persistent heavy dashboard</sub>
     </td>
     <td width="50%" valign="top">
       <a href="docs/screenshots/cloud-sync.png"><img src="docs/screenshots/cloud-sync.png" width="100%" alt="Cloud Sync showing a completed local sync transfer between Product Assets and Release Mirror"></a><br>

@@ -5,15 +5,16 @@ import XCTest
 
 final class SystemMonitorTests: XCTestCase {
     func testTrayPagesSampleOnlyTheirMetricFamilies() {
-        XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 8)
+        XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 9)
         XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))
         XCTAssertEqual(SystemMonitorTrayPage.cpu.metrics, [.cpu, .thermal])
-        XCTAssertEqual(SystemMonitorTrayPage.gpu.metrics, [.gpu])
+        XCTAssertEqual(SystemMonitorTrayPage.gpu.metrics, [.gpu, .thermal])
         XCTAssertEqual(SystemMonitorTrayPage.memory.metrics, [.memory])
         XCTAssertEqual(SystemMonitorTrayPage.network.metrics, [.network])
         XCTAssertEqual(SystemMonitorTrayPage.disk.metrics, [.disk])
         XCTAssertEqual(SystemMonitorTrayPage.battery.metrics, [.battery])
         XCTAssertEqual(SystemMonitorTrayPage.sensors.metrics, [.thermal])
+        XCTAssertEqual(SystemMonitorTrayPage.processes.metrics, [])
     }
 
     @MainActor
@@ -24,13 +25,13 @@ final class SystemMonitorTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
 
-        let host = NSHostingView(rootView: SystemMonitorTrayView(showsHeader: false)
+        let host = NSHostingView(rootView: SystemMonitorTrayView()
             .defaultAppStorage(defaults)
-            .frame(width: 440))
+            .frame(width: 356))
         host.layoutSubtreeIfNeeded()
         XCTAssertLessThanOrEqual(
             host.fittingSize.height,
-            518,
+            496,
             "Home must show all summary cards inside the dedicated popup"
         )
     }
@@ -109,6 +110,26 @@ final class SystemMonitorTests: XCTestCase {
             .contains("-EncodedCommand") == true)
     }
 
+    func testRemoteProfilesMigrateLegacyHostAndRoundTrip() throws {
+        let suiteName = "SystemMonitorRemoteProfiles.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("builder@ci1", forKey: "systemMonitor.remoteHost")
+        defaults.set(SystemMonitorRemotePlatform.macOS.rawValue, forKey: "systemMonitor.remotePlatform")
+        defaults.set(5, forKey: "systemMonitor.remoteInterval")
+        defaults.set(Data("[]".utf8), forKey: SystemMonitorRemoteProfiles.key)
+
+        let migrated = try XCTUnwrap(SystemMonitorRemoteProfiles.load(defaults: defaults).first)
+        XCTAssertEqual(migrated.host, "builder@ci1")
+        XCTAssertEqual(migrated.name, "ci1")
+        XCTAssertEqual(migrated.platform, .macOS)
+        XCTAssertEqual(migrated.interval, 5)
+
+        let second = SystemMonitorRemoteProfile(name: "Windows lab", host: "win1", platform: .windows, interval: 10)
+        SystemMonitorRemoteProfiles.save([migrated, second], defaults: defaults)
+        XCTAssertEqual(SystemMonitorRemoteProfiles.load(defaults: defaults), [migrated, second])
+    }
+
     func testProcessCPUUsesElapsedTimeAndRejectsCounterReset() {
         let percent = SystemMonitorProcessUsage.percent(
             previous: 1_000, current: 5_000, elapsed: 2,
@@ -136,6 +157,33 @@ final class SystemMonitorTests: XCTestCase {
         let nextRows = await sampler.sample()
         let next = try XCTUnwrap(nextRows.first { $0.id == first.id })
         XCTAssertGreaterThan(next.cpuPercent ?? 0, 0)
+    }
+
+    func testSystemReportFlattensInventoryAndOmitsIdentifiers() throws {
+        let json = """
+        {
+          "SPHardwareDataType": [{
+            "_name": "Hardware",
+            "machine_name": "Mac",
+            "serial_number": "SECRET",
+            "details": { "core_count": 14 },
+            "families": ["Performance", "Efficiency"]
+          }]
+        }
+        """
+        let source = TaskManagerSystemReportParser.Source(
+            id: "hardware", title: "Hardware overview", symbol: "desktopcomputer",
+            group: "Hardware", dataType: "SPHardwareDataType"
+        )
+        let category = try XCTUnwrap(TaskManagerSystemReportParser.parse(
+            data: Data(json.utf8), sources: [source]
+        ).first)
+        let rows = category.sections.flatMap(\.rows)
+
+        XCTAssertTrue(rows.contains { $0.field == "Machine name" && $0.value == "Mac" })
+        XCTAssertTrue(rows.contains { $0.field == "Details · Core count" && $0.value == "14" })
+        XCTAssertTrue(rows.contains { $0.field == "Families" && $0.value == "Performance, Efficiency" })
+        XCTAssertFalse(rows.contains { $0.field.localizedCaseInsensitiveContains("serial") || $0.value == "SECRET" })
     }
 
     func testProtectedProcessFallbackParsesPublicCountersAndPath() {
@@ -195,46 +243,30 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     @MainActor
-    func testProcessesPageRendersAtProductionSize() throws {
-        let host = NSHostingView(rootView: SystemMonitorProcessesView()
-            .frame(width: 940, height: 780)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .environment(\.colorScheme, .dark))
+    func testProcessDetailRendersAtReferenceSize() throws {
+        let process = SystemMonitorProcess(
+            pid: 4_281, started: UInt64(Date().addingTimeInterval(-3_600).timeIntervalSince1970 * 1_000_000),
+            name: "Xcode", cpuPercent: 18.4, residentBytes: 1_842_000_000,
+            virtualBytes: 428_000_000_000, threads: 34, parentPID: 1,
+            userID: 501, executablePath: "/Applications/Xcode.app/Contents/MacOS/Xcode"
+        )
+        let host = NSHostingView(rootView: ProcessDetailSheet(
+            process: process, parentName: "launchd", childCount: 3,
+            endpoints: ["TCP 127.0.0.1:62541 → 127.0.0.1:62542"], endpointsLoaded: true,
+            lastUpdated: Date(), onQuit: {}, onForceQuit: {}, onDone: {}
+        ))
         host.appearance = NSAppearance(named: .darkAqua)
-        host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
+        host.frame = NSRect(x: 0, y: 0, width: 450, height: 520)
         host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
         let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: representation)
         let image = NSImage(size: host.bounds.size)
         image.addRepresentation(representation)
         let attachment = XCTAttachment(image: image)
-        attachment.name = "System Monitor Processes — Dark"
+        attachment.name = "Task Manager — Process Detail"
         attachment.lifetime = .keepAlways
         add(attachment)
-    }
-
-    @MainActor
-    func testRemotePageRendersDisconnectedState() throws {
-        for scheme in [ColorScheme.light, .dark] {
-            let host = NSHostingView(rootView: SystemMonitorRemoteView()
-                .frame(width: 940, height: 780)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .environment(\.colorScheme, scheme))
-            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-            host.frame = NSRect(x: 0, y: 0, width: 940, height: 780)
-            host.layoutSubtreeIfNeeded()
-
-            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-            host.cacheDisplay(in: host.bounds, to: representation)
-            let image = NSImage(size: host.bounds.size)
-            image.addRepresentation(representation)
-            let attachment = XCTAttachment(image: image)
-            attachment.name = "System Monitor Remote — \(scheme == .dark ? "Dark" : "Light")"
-            attachment.lifetime = .keepAlways
-            add(attachment)
-        }
     }
 
     @MainActor
@@ -269,44 +301,6 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(service.timerOwnerCount, 0)
     }
 
-    func testOverviewOmitsRedundantHistoryCards() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("powertoys/Views/SystemMonitor/SystemMonitorWindowView.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        let overviewStart = try XCTUnwrap(source.range(of: "private var overviewPage"))
-        let overviewEnd = try XCTUnwrap(source.range(
-            of: "private var metricColumns",
-            range: overviewStart.upperBound..<source.endIndex
-        ))
-        let overview = source[overviewStart.lowerBound..<overviewEnd.lowerBound]
-
-        XCTAssertFalse(overview.contains("LAST TWO MINUTES"))
-        XCTAssertFalse(overview.contains("chartCard("))
-        XCTAssertTrue(source.contains("GridItem(.adaptive(minimum: 320), spacing: 12)"))
-    }
-
-    func testOverviewShowsAllEightMetricsWithMutedGraphBackdrops() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("powertoys/Views/SystemMonitor/SystemMonitorWindowView.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        let gridStart = try XCTUnwrap(source.range(of: "private var metricGrid"))
-        let gridEnd = try XCTUnwrap(source.range(
-            of: "private func metricCard",
-            range: gridStart.upperBound..<source.endIndex
-        ))
-        let grid = source[gridStart.lowerBound..<gridEnd.lowerBound]
-
-        XCTAssertEqual(grid.components(separatedBy: "metricCard(").count - 1, 8)
-        XCTAssertTrue(grid.contains("title: \"GPU\""))
-        XCTAssertTrue(grid.contains("title: \"Load · 1 min\""))
-        XCTAssertTrue(source.contains("SystemMonitorPalette.surface(surface)"))
-        XCTAssertFalse(source.contains("WorkspacePage(\"Overview\", subtitle:"))
-    }
-
     @MainActor
     func testDitherSparklineDrawsSamples() throws {
         func render(_ values: [Double]) throws -> (NSBitmapImageRep, NSImage) {
@@ -327,21 +321,30 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertNotEqual(empty.0.representation(using: .png, properties: [:]),
                           populated.0.representation(using: .png, properties: [:]))
         let attachment = XCTAttachment(image: populated.1)
-        attachment.name = "System Monitor — Dithered Chart"
+        attachment.name = "Task Manager — Dithered Chart"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
 
     @MainActor
-    func testOverviewRendersAtProductionSize() throws {
-        defer { SystemMonitorService.shared.stopDetailed() }
-        for scheme in [ColorScheme.light, .dark] {
-            let host = NSHostingView(
-                rootView: SystemMonitorWindowView()
-                    .environment(\.colorScheme, scheme)
-            )
-            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-            host.frame = NSRect(x: 0, y: 0, width: 1_180, height: 780)
+    func testTaskManagerPagesRenderAtProductionSize() throws {
+        let suiteName = "TaskManagerWindowRender.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        SystemMonitorService.shared.startDetailed(owner: "render")
+        defer { SystemMonitorService.shared.stopDetailed(owner: "render") }
+        RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+
+        let pages = [
+            "Overview", "Processes", "CPU", "GPU", "Memory", "Network", "Disk",
+            "Battery", "Sensors", "Remote Stats", "System Report", "About", "Settings",
+        ]
+        for page in pages {
+            defaults.set(page, forKey: "systemMonitor.windowPage")
+            let host = NSHostingView(rootView: SystemMonitorWindowView()
+                .defaultAppStorage(defaults))
+            host.appearance = NSAppearance(named: .darkAqua)
+            host.frame = NSRect(x: 0, y: 0, width: 1_070, height: 654)
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
@@ -350,7 +353,7 @@ final class SystemMonitorTests: XCTestCase {
             let image = NSImage(size: host.bounds.size)
             image.addRepresentation(representation)
             let attachment = XCTAttachment(image: image)
-            attachment.name = "System Monitor — Overview — \(scheme == .dark ? "Dark" : "Light")"
+            attachment.name = "Task Manager — \(page)"
             attachment.lifetime = .keepAlways
             add(attachment)
         }
@@ -362,28 +365,24 @@ final class SystemMonitorTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
-        for page in ["home", "cpu", "gpu", "memory", "network", "disk", "battery", "sensors"] {
+        for page in ["home", "cpu", "gpu", "memory", "network", "disk", "battery", "sensors", "processes"] {
             defaults.set(page, forKey: "systemMonitor.trayPage")
-            for scheme in [ColorScheme.light, .dark] {
-                let host = NSHostingView(rootView: SystemMonitorMenuPopoverView()
-                    .defaultAppStorage(defaults)
-                    .frame(width: 440, height: 560, alignment: .top)
-                    .background(Color(nsColor: .windowBackgroundColor))
-                    .environment(\.colorScheme, scheme))
-                host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-                host.frame = NSRect(x: 0, y: 0, width: 440, height: 560)
-                host.layoutSubtreeIfNeeded()
-                RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            let host = NSHostingView(rootView: SystemMonitorMenuPopoverView()
+                .defaultAppStorage(defaults)
+                .frame(width: 356, height: 536, alignment: .top))
+            host.appearance = NSAppearance(named: .darkAqua)
+            host.frame = NSRect(x: 0, y: 0, width: 356, height: 536)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
 
-                let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-                host.cacheDisplay(in: host.bounds, to: representation)
-                let image = NSImage(size: host.bounds.size)
-                image.addRepresentation(representation)
-                let attachment = XCTAttachment(image: image)
-                attachment.name = "System Monitor \(page.capitalized) — \(scheme == .dark ? "Dark" : "Light")"
-                attachment.lifetime = .keepAlways
-                add(attachment)
-            }
+            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: representation)
+            let image = NSImage(size: host.bounds.size)
+            image.addRepresentation(representation)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Task Manager Menu — \(page.capitalized)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
         }
     }
 
@@ -456,7 +455,7 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     func testDetailedHistoryHasABoundedCeiling() {
-        XCTAssertEqual(SystemMonitorService.maximumHistoryCount, 120)
+        XCTAssertEqual(SystemMonitorService.maximumHistoryCount, 300)
     }
 
     @MainActor

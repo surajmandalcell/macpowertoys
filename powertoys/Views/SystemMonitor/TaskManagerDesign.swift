@@ -209,7 +209,7 @@ struct TaskManagerSearchField: View {
             }
         }
         .padding(.horizontal, 10)
-        .frame(width: width, height: 30)
+        .frame(width: width, height: 34)
         .background(Color(red: 0.133, green: 0.133, blue: 0.133))
         .overlay {
             RoundedRectangle(cornerRadius: 6)
