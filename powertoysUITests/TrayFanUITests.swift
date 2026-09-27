@@ -34,10 +34,6 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
         app.buttons["system-monitor.tray.home"].click()
-        XCTAssertFalse(app.buttons["fan-control.setup"].exists)
-        XCTAssertFalse(app.buttons["Fan Auto"].exists)
-        app.buttons["system-monitor.tray.sensors"].click()
-
         XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Fan Cool"].exists)
         XCTAssertTrue(app.buttons["Fan Max"].exists)
@@ -55,8 +51,11 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Enable Fan Control"].exists)
         XCTAssertTrue(app.buttons["Check Again"].exists)
 
-        app.buttons["system-monitor.tray.home"].click()
+        app.buttons["system-monitor.tray.sensors"].click()
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Fan Cool"].exists)
+        XCTAssertTrue(app.buttons["Fan Max"].exists)
     }
 
     @MainActor
@@ -83,23 +82,23 @@ final class TrayFanUITests: XCTestCase {
         let home = app.buttons["system-monitor.tray.home"]
         XCTAssertTrue(home.waitForExistence(timeout: 10))
         let tabsCapture = XCTAttachment(screenshot: app.screenshot())
-        tabsCapture.name = "Dedicated Monitor popup with labeled tabs"
+        tabsCapture.name = "Dedicated Task Manager popup"
         tabsCapture.lifetime = .keepAlways
         add(tabsCapture)
         home.click()
         app.buttons["system-monitor.tray.cpu"].click()
-        XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
 
         home.click()
         app.buttons["system-monitor.tray.summary.cpu"].click()
-        XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
 
         monitor.click()
         monitor.click()
-        XCTAssertTrue(app.staticTexts["Usage across all cores"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
 
         let capture = XCTAttachment(screenshot: app.screenshot())
-        capture.name = "Monitor CPU after reopening tray"
+        capture.name = "Task Manager CPU after reopening tray"
         capture.lifetime = .keepAlways
         add(capture)
     }
