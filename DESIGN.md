@@ -549,20 +549,24 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
-| Task Manager | 1070×654 / 192pt | Overview, Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote Stats, System Report | Full process list, live metric grids, system inventory, and per-metric menu placement |
+| Task Manager | 1080×660 / 220pt | Overview, Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote Stats, System Report | Full process list, live metric grids, system inventory, and per-metric menu placement |
 
 Task Manager follows the supplied `task-manager.html` reference. It is a fixed
 dark utility workspace using `#161616` content, `#1D1D1D` sidebar, `#202020`
 cards, `#303030` dividers, `#EDEDED` text, and `#EE5B50` accent. Cards use a
-subtle ordered-dot texture rather than colored gradients. The sidebar is 192pt,
-the default window is 1070×654, and the compact menu is 356×536. The menu has
+subtle ordered-dot texture rather than colored gradients. The sidebar is 220pt,
+the fixed content area is 1080×660, and the compact menu is 356×536. Fixed
+windows omit the unavailable zoom control and move the title beside the two
+remaining traffic lights. The menu has
 icon tabs for Home, CPU, GPU, Memory, Network, Disk, Battery, Sensors, and
 Processes and opens from every Task Manager menu-bar item. Fan appears on menu
 Home and Sensors and only on Sensors in the main window, with Auto, Cool, and
 Max always visible. The main MacPowerToys popup contains no Task Manager tab,
 metrics, or Fan row. Search controls are at least 34pt high with 12pt horizontal
-insets. Keep these exceptions inside Task Manager; other workspaces retain their
-shared flat materials.
+insets, and their text baseline stays fixed when focus changes. Every Task
+Manager page begins below the header with a 16pt top inset. Keep these
+exceptions inside Task Manager; other workspaces retain their shared flat
+materials.
 
 The reviewed production-size references are
 `docs/screenshots/task-manager.png`, `docs/screenshots/task-manager-menu.png`,

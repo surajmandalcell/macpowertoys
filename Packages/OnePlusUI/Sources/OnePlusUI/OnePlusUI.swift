@@ -18,6 +18,7 @@ public enum OnePlusTheme {
 public enum OnePlusMetrics {
     public static let titlebarHeight: CGFloat = 40
     public static let titleLeadingInset: CGFloat = 84
+    public static let fixedTitleLeadingInset: CGFloat = 62
     public static let trafficLightVerticalOffset: CGFloat = 4
     public static let panelRadius: CGFloat = 9
     public static let controlRadius: CGFloat = 5
@@ -207,7 +208,7 @@ private final class OnePlusFixedWindowChromeView: NSView {
             window.setContentSize(contentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.appearance = NSAppearance(named: .darkAqua)
         alignTrafficLights(in: window)
@@ -230,7 +231,7 @@ private final class OnePlusFixedWindowChromeView: NSView {
         guard let closeButton = window.standardWindowButton(.closeButton) else { return }
         if trafficLightBaselineY == nil { trafficLightBaselineY = closeButton.frame.origin.y }
         guard let baselineY = trafficLightBaselineY else { return }
-        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
             guard let button = window.standardWindowButton(type) else { continue }
             button.setFrameOrigin(NSPoint(
                 x: button.frame.origin.x,
@@ -459,18 +460,21 @@ public struct OnePlusSearchField: View {
     @Binding private var text: String
     private let width: CGFloat
     private let focusTrigger: Int
-    @FocusState private var focused: Bool
+    private let accessibilityIdentifier: String?
+    @State private var focused = false
 
     public init(
         prompt: String,
         text: Binding<String>,
         width: CGFloat = 300,
-        focusTrigger: Int = 0
+        focusTrigger: Int = 0,
+        accessibilityIdentifier: String? = nil
     ) {
         self.prompt = prompt
         _text = text
         self.width = width
         self.focusTrigger = focusTrigger
+        self.accessibilityIdentifier = accessibilityIdentifier
     }
 
     public var body: some View {
@@ -478,10 +482,13 @@ public struct OnePlusSearchField: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 11))
                 .foregroundStyle(OnePlusTheme.secondary)
-            TextField(prompt, text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 10.5))
-                .focused($focused)
+            OnePlusSearchInput(
+                prompt: prompt,
+                text: $text,
+                focused: $focused,
+                accessibilityIdentifier: accessibilityIdentifier
+            )
+            .frame(maxWidth: .infinity, minHeight: 18, maxHeight: 18)
             if !text.isEmpty {
                 Button { text = "" } label: {
                     Image(systemName: "xmark")
@@ -505,6 +512,131 @@ public struct OnePlusSearchField: View {
         .onTapGesture { focused = true }
         .onAppear { if focusTrigger > 0 { focused = true } }
         .onChange(of: focusTrigger) { _, _ in focused = true }
+    }
+}
+
+final class OnePlusCenteredTextFieldCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        let drawingRect = super.drawingRect(forBounds: rect)
+        let textHeight = min(cellSize(forBounds: rect).height, drawingRect.height)
+        return NSRect(
+            x: drawingRect.minX,
+            y: floor(rect.midY - textHeight / 2),
+            width: drawingRect.width,
+            height: textHeight
+        )
+    }
+
+    override func edit(
+        withFrame rect: NSRect,
+        in controlView: NSView,
+        editor textObj: NSText,
+        delegate: Any?,
+        event: NSEvent?
+    ) {
+        super.edit(
+            withFrame: drawingRect(forBounds: rect),
+            in: controlView,
+            editor: textObj,
+            delegate: delegate,
+            event: event
+        )
+    }
+
+    override func select(
+        withFrame rect: NSRect,
+        in controlView: NSView,
+        editor textObj: NSText,
+        delegate: Any?,
+        start selStart: Int,
+        length selLength: Int
+    ) {
+        super.select(
+            withFrame: drawingRect(forBounds: rect),
+            in: controlView,
+            editor: textObj,
+            delegate: delegate,
+            start: selStart,
+            length: selLength
+        )
+    }
+}
+
+private struct OnePlusSearchInput: NSViewRepresentable {
+    let prompt: String
+    @Binding var text: String
+    @Binding var focused: Bool
+    let accessibilityIdentifier: String?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, focused: $focused)
+    }
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField()
+        field.cell = OnePlusCenteredTextFieldCell()
+        field.isBezeled = false
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.font = .systemFont(ofSize: 10.5)
+        field.textColor = NSColor(white: 0.929, alpha: 1)
+        field.placeholderAttributedString = placeholder
+        field.usesSingleLineMode = true
+        field.lineBreakMode = .byTruncatingTail
+        field.delegate = context.coordinator
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setAccessibilityLabel(prompt)
+        field.setAccessibilityIdentifier(accessibilityIdentifier)
+        return field
+    }
+
+    func updateNSView(_ field: NSTextField, context: Context) {
+        context.coordinator.text = $text
+        context.coordinator.focused = $focused
+        field.placeholderAttributedString = placeholder
+        field.setAccessibilityLabel(prompt)
+        field.setAccessibilityIdentifier(accessibilityIdentifier)
+        if field.stringValue != text { field.stringValue = text }
+        guard focused, field.currentEditor() == nil else { return }
+        DispatchQueue.main.async { [weak field] in
+            guard let field, focused else { return }
+            field.window?.makeFirstResponder(field)
+        }
+    }
+
+    private var placeholder: NSAttributedString {
+        NSAttributedString(
+            string: prompt,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 10.5),
+                .foregroundColor: NSColor(white: 0.627, alpha: 1),
+            ]
+        )
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var text: Binding<String>
+        var focused: Binding<Bool>
+
+        init(text: Binding<String>, focused: Binding<Bool>) {
+            self.text = text
+            self.focused = focused
+        }
+
+        func controlTextDidBeginEditing(_ notification: Notification) {
+            focused.wrappedValue = true
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            focused.wrappedValue = false
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            text.wrappedValue = field.stringValue
+        }
     }
 }
 

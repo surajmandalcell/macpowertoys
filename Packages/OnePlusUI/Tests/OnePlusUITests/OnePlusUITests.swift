@@ -31,8 +31,21 @@ final class OnePlusUITests: XCTestCase {
     func testSharedTitlebarGeometryKeepsTheRequiredTrafficLightGap() {
         XCTAssertEqual(OnePlusMetrics.titlebarHeight, 40)
         XCTAssertEqual(OnePlusMetrics.titleLeadingInset, 84)
+        XCTAssertEqual(OnePlusMetrics.fixedTitleLeadingInset, 62)
         XCTAssertEqual(OnePlusMetrics.trafficLightVerticalOffset, 4)
         XCTAssertGreaterThanOrEqual(OnePlusMetrics.titleLeadingInset - 70, 12)
+        XCTAssertGreaterThanOrEqual(OnePlusMetrics.fixedTitleLeadingInset - 48, 12)
+    }
+
+    func testSearchTextCellCentersItsSingleDisplayAndEditingRect() {
+        let cell = OnePlusCenteredTextFieldCell(textCell: "Search name, path, or PID")
+        cell.font = .systemFont(ofSize: 10.5)
+        let bounds = NSRect(x: 0, y: 0, width: 240, height: 18)
+        let textRect = cell.drawingRect(forBounds: bounds)
+
+        XCTAssertEqual(textRect.midY, bounds.midY, accuracy: 0.5)
+        XCTAssertGreaterThan(textRect.minY, bounds.minY)
+        XCTAssertLessThan(textRect.maxY, bounds.maxY)
     }
 
     func testDitherTextureLoadsItsPackagedImage() {
@@ -55,7 +68,7 @@ final class OnePlusUITests: XCTestCase {
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
         XCTAssertEqual(window.contentView?.bounds.size, expectedSize)
-        XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
+        XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
     }
 }

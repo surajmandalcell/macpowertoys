@@ -8,12 +8,13 @@ import SwiftUI
 
 struct SidebarTitle: View {
     let text: String
+    var leadingInset = UtilityLayout.workspaceTitleLeadingInset
 
     var body: some View {
         OnePlusSidebarTitle(
             text,
             height: UtilityLayout.workspaceTitlebarHeight,
-            leadingInset: UtilityLayout.workspaceTitleLeadingInset
+            leadingInset: leadingInset
         )
     }
 }
