@@ -30,6 +30,7 @@ final class MacTweaksUITests: XCTestCase {
         window.buttons["mac-tweaks.category.Input"].click()
         XCTAssertTrue(element(in: window, identifier: "mac-tweaks.mic-lock.enabled").waitForExistence(timeout: 5))
         XCTAssertTrue(window.staticTexts["Input priority"].exists)
+        XCTAssertTrue(window.buttons["mac-tweaks.mic-lock.refresh"].exists)
         attach(window.screenshot(), named: "Mac Tweaks Reference Input")
 
         let search = window.textFields.firstMatch
