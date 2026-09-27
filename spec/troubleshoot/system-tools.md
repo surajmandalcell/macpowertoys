@@ -473,15 +473,18 @@
 - **Symptom:** Task Manager declares a 220pt sidebar, but its visible surface
   ends at 175pt and becomes 220pt only in the native strip below the SwiftUI
   body, which looks like a transparent or overextended bottom section.
-- **Cause:** The sidebar applied its background and trailing divider before an
-  outer fixed-width frame. SwiftUI reserved 220pt for layout but painted only
-  the sidebar content's 175pt intrinsic width. The native backdrop correctly
-  painted the complete 220pt width and exposed the mismatch at the lower edge.
-- **Invariant:** Apply the fixed sidebar width before its background and
-  trailing divider so layout, paint, and the native backdrop share one bound.
-- **Check:** In an exact-build window screenshot, sample the sidebar color at
-  x=218pt in the body and in the native lower strip. Require equal RGB values
-  and confirm the divider stays at x=220pt through the full window height.
+- **Cause:** The workspace sibling's background drew outside its 860pt layout
+  bound and covered the trailing 45pt of the correctly sized sidebar. The
+  native backdrop remained visible below the SwiftUI body, exposing the paint
+  overlap at the lower edge. A first regression compared two pixels that were
+  both the workspace color and therefore produced a false green.
+- **Invariant:** Clip each independently painted pane to its assigned layout
+  bound. The sidebar, its navigation groups, and its native backdrop all use
+  220pt; the workspace starts at x=220pt and never draws into that region.
+- **Check:** In an exact-build window screenshot, require the pixels at x=40pt
+  and x=218pt to match at both middle and lower sample rows, and require the
+  workspace pixel at x=224pt to differ. Also assert selected navigation rows
+  occupy x=10...210pt and the divider stays at x=220pt.
 
 - **Symptom:** The installed Task Manager can restore as a resizable window,
   its title feels detached from the traffic lights, or Remote Stats leaves a
