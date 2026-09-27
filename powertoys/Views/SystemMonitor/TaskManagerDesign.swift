@@ -29,20 +29,23 @@ struct TaskManagerPanel<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
-                .fill(TaskManagerTheme.card)
-            if textured {
-                TaskManagerDitherTexture()
-                    .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
+        content()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                ZStack(alignment: .topTrailing) {
+                    RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
+                        .fill(TaskManagerTheme.card)
+                    if textured {
+                        TaskManagerDitherTexture()
+                            .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
+                    }
+                }
             }
-            content()
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
-                .strokeBorder(TaskManagerTheme.line, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
+                    .strokeBorder(TaskManagerTheme.line, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
     }
 }
 
