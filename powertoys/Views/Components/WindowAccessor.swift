@@ -21,6 +21,7 @@ struct WindowAccessor: NSViewRepresentable {
 }
 
 private class WindowAccessorView: NSView {
+    private static let taskManagerSidebarBackdropLayerName = "task-manager.sidebar-backdrop"
     private static let compactAppletWindowIdentifiers = Set([
         "awake", "color-picker", "text-extractor"
     ])
@@ -162,17 +163,43 @@ private class WindowAccessorView: NSView {
         window.styleMask.remove(.resizable)
         window.contentMinSize = TaskManagerTheme.windowContentSize
         window.contentMaxSize = TaskManagerTheme.windowContentSize
-        let currentFrame = window.frame
-        if abs(currentFrame.width - TaskManagerTheme.windowContentSize.width) > 0.5
-            || abs(currentFrame.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
-            var targetFrame = currentFrame
-            targetFrame.origin.y = currentFrame.maxY - TaskManagerTheme.windowContentSize.height
-            targetFrame.size = TaskManagerTheme.windowContentSize
-            window.setFrame(targetFrame, display: false)
+        let currentSize = window.contentView?.bounds.size ?? .zero
+        if abs(currentSize.width - TaskManagerTheme.windowContentSize.width) > 0.5
+            || abs(currentSize.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
+            window.setContentSize(TaskManagerTheme.windowContentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isEnabled = false
+        applyTaskManagerBackdrop(to: window)
+    }
+
+    private func applyTaskManagerBackdrop(to window: NSWindow) {
+        window.isOpaque = true
+        window.backgroundColor = TaskManagerTheme.windowNSColor
+        guard let contentView = window.contentView else { return }
+        contentView.wantsLayer = true
+        guard let rootLayer = contentView.layer else { return }
+        rootLayer.backgroundColor = TaskManagerTheme.windowNSColor.cgColor
+
+        let sidebarLayer: CALayer
+        if let existingLayer = rootLayer.sublayers?.first(where: {
+            $0.name == Self.taskManagerSidebarBackdropLayerName
+        }) {
+            sidebarLayer = existingLayer
+        } else {
+            sidebarLayer = CALayer()
+            sidebarLayer.name = Self.taskManagerSidebarBackdropLayerName
+            rootLayer.insertSublayer(sidebarLayer, at: 0)
+        }
+        sidebarLayer.backgroundColor = TaskManagerTheme.sidebarNSColor.cgColor
+        sidebarLayer.frame = CGRect(
+            x: 0,
+            y: 0,
+            width: TaskManagerTheme.sidebarWidth,
+            height: contentView.bounds.height
+        )
+        sidebarLayer.autoresizingMask = [.layerHeightSizable]
     }
 
     private func alignTrafficLights(in window: NSWindow) {

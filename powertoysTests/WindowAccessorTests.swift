@@ -207,6 +207,13 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
         XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
         XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
+        XCTAssertTrue(window.isOpaque)
+        XCTAssertEqual(window.backgroundColor, TaskManagerTheme.windowNSColor)
+        let sidebarBackdrop = try XCTUnwrap(window.contentView?.layer?.sublayers?.first(where: {
+            $0.name == "task-manager.sidebar-backdrop"
+        }))
+        XCTAssertEqual(sidebarBackdrop.frame.width, TaskManagerTheme.sidebarWidth)
+        XCTAssertEqual(sidebarBackdrop.frame.height, TaskManagerTheme.windowContentSize.height)
 
         window.styleMask.insert(.resizable)
         window.contentMinSize = .zero
@@ -222,6 +229,8 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
         XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
         XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
+        XCTAssertTrue(window.isOpaque)
+        XCTAssertEqual(window.backgroundColor, TaskManagerTheme.windowNSColor)
         XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
     }

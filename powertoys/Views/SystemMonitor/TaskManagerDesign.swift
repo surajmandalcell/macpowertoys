@@ -15,6 +15,8 @@ enum TaskManagerTheme {
     static let secondary = OnePlusTheme.secondary
     static let muted = OnePlusTheme.muted
     static let accent = OnePlusTheme.accent
+    static let windowNSColor = NSColor(OnePlusTheme.window)
+    static let sidebarNSColor = NSColor(OnePlusTheme.sidebar)
 
     static let windowContentSize = NSSize(width: 1_080, height: 660)
     static let sidebarWidth: CGFloat = 220

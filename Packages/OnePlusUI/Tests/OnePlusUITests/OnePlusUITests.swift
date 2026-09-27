@@ -70,6 +70,8 @@ final class OnePlusUITests: XCTestCase {
         XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
         XCTAssertEqual(window.contentView?.bounds.size, expectedSize)
         XCTAssertEqual(window.frame.size, expectedSize)
+        XCTAssertTrue(window.isOpaque)
+        XCTAssertEqual(window.backgroundColor, NSColor(OnePlusTheme.window))
         XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
     }

@@ -557,9 +557,10 @@ cards, `#303030` dividers, `#EDEDED` text, and `#EE5B50` accent. Cards use a
 subtle ordered-dot texture rather than colored gradients. The sidebar is 220pt,
 the fixed content area is 1080×660, and the compact menu is 356×536. Fixed
 windows omit the unavailable zoom control and move the title beside the two
-remaining traffic lights. Task Manager uses a full-size content view so its
-1080×660 frame is painted through the title bar and bottom edge, with no
-transparent title-bar-sized extension. The menu has
+remaining traffic lights. Its 1080×660 content area sits inside the native
+title-bar frame, and the complete physical window surface uses matching body
+and sidebar backdrops so no transparent title-bar-sized strip appears at the
+bottom. The menu has
 icon tabs for Home, CPU, GPU, Memory, Network, Disk, Battery, Sensors, and
 Processes and opens from every Task Manager menu-bar item. Fan appears on menu
 Home and Sensors and only on Sensors in the main window, with Auto, Cool, and
