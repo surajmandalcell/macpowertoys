@@ -23,8 +23,11 @@ final class MacTweaksUITests: XCTestCase {
         let dockPreview = element(in: window, identifier: "mac-tweaks.preview.dockReveal")
         XCTAssertTrue(dockPreview.waitForExistence(timeout: 5))
         dockPreview.hover()
-        XCTAssertEqual(dockPreview.value as? String, "Playing")
-        Thread.sleep(forTimeInterval: 1.2)
+        Thread.sleep(forTimeInterval: 0.2)
+        let earlyMotion = dockPreview.screenshot().image.tiffRepresentation
+        Thread.sleep(forTimeInterval: 1)
+        let laterMotion = dockPreview.screenshot().image.tiffRepresentation
+        XCTAssertNotEqual(earlyMotion, laterMotion, "The Dock preview must keep moving while hovered")
         attach(window.screenshot(), named: "Mac Tweaks Dock Motion")
 
         let finder = window.buttons["mac-tweaks.category.Finder"]
@@ -88,8 +91,8 @@ final class MacTweaksUITests: XCTestCase {
     private func assertDarkBackground(_ screenshot: XCUIScreenshot) {
         guard let data = screenshot.image.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: data),
-              let color = bitmap.colorAt(x: bitmap.pixelsWide * 9 / 10,
-                                         y: bitmap.pixelsHigh * 4 / 5)?.usingColorSpace(.deviceRGB) else {
+              let color = bitmap.colorAt(x: bitmap.pixelsWide / 4,
+                                         y: bitmap.pixelsHigh / 20)?.usingColorSpace(.deviceRGB) else {
             XCTFail("Could not inspect the Mac Tweaks screenshot appearance")
             return
         }
