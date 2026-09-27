@@ -64,6 +64,7 @@ final class TrayFanUITests: XCTestCase {
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["MACPOWERTOYS_UI_TEST"] = "1"
         app.launchEnvironment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] = "separate"
+        app.launchEnvironment["MACPOWERTOYS_UI_TEST_REMOTE_PROFILES"] = "1"
         app.launch()
         defer { app.terminate() }
 
@@ -81,11 +82,12 @@ final class TrayFanUITests: XCTestCase {
 
         let home = app.buttons["system-monitor.tray.home"]
         XCTAssertTrue(home.waitForExistence(timeout: 10))
+        home.click()
+        XCTAssertTrue(app.staticTexts["Build Mac"].waitForExistence(timeout: 5))
         let tabsCapture = XCTAttachment(screenshot: app.screenshot())
         tabsCapture.name = "Dedicated Task Manager popup"
         tabsCapture.lifetime = .keepAlways
         add(tabsCapture)
-        home.click()
         app.buttons["system-monitor.tray.cpu"].click()
         XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
 
@@ -101,5 +103,39 @@ final class TrayFanUITests: XCTestCase {
         capture.name = "Task Manager CPU after reopening tray"
         capture.lifetime = .keepAlways
         add(capture)
+
+        app.buttons["system-monitor.menu.open-app"].click()
+        let taskManager = app.windows["Task Manager"]
+        XCTAssertTrue(taskManager.waitForExistence(timeout: 10), app.windows.debugDescription)
+        XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
+
+        app.buttons["task-manager.sidebar.processes"].click()
+        let processRows = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "task-manager.process.row."
+        ))
+        let firstProcess = processRows.firstMatch
+        XCTAssertTrue(firstProcess.waitForExistence(timeout: 15), app.debugDescription)
+        firstProcess.hover()
+
+        let hoverCapture = XCTAttachment(screenshot: app.screenshot())
+        hoverCapture.name = "Task Manager full process row hover"
+        hoverCapture.lifetime = .keepAlways
+        add(hoverCapture)
+
+        firstProcess.click()
+        XCTAssertTrue(app.staticTexts["Process Information"].waitForExistence(timeout: 5))
+
+        let sheetCapture = XCTAttachment(screenshot: app.screenshot())
+        sheetCapture.name = "Task Manager themed process information"
+        sheetCapture.lifetime = .keepAlways
+        add(sheetCapture)
+
+        app.buttons["More"].click()
+        XCTAssertTrue(app.menuItems["Force Quit"].waitForExistence(timeout: 5))
+        let menuCapture = XCTAttachment(screenshot: app.screenshot())
+        menuCapture.name = "Task Manager dark process action menu"
+        menuCapture.lifetime = .keepAlways
+        add(menuCapture)
+        app.typeKey(.escape, modifierFlags: [])
     }
 }

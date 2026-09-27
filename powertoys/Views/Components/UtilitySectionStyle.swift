@@ -67,7 +67,7 @@ enum UtilityLayout {
         case "nettoys":
             return netToysMinimumContentSize
         case "system-monitor":
-            return NSSize(width: 830, height: 590)
+            return TaskManagerTheme.windowContentSize
         case "rclone", "system-care", "disk-explorer", "switch":
             sidebarWidth = dataSidebarWidth
         case "logs", "input-devices", "mac-tweaks":

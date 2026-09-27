@@ -1496,8 +1496,17 @@ final class SystemMonitorMenuController: NSObject {
             return
         }
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: SystemMonitorMenuPopoverView())
-        popover.contentSize = NSSize(width: 356, height: 536)
+        popover.contentViewController = NSHostingController(rootView: SystemMonitorMenuPopoverView { [weak self] height in
+            guard let self, self.popover.isShown,
+                  abs(self.popover.contentSize.height - height) > 0.5 else { return }
+            self.popover.contentSize = NSSize(width: TaskManagerMenuLayout.width, height: height)
+        })
+        popover.contentSize = NSSize(
+            width: TaskManagerMenuLayout.width,
+            height: TaskManagerMenuLayout.initialHomeHeight(
+                profileCount: SystemMonitorRemoteProfiles.load(defaults: defaults).count
+            )
+        )
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
     }
 }

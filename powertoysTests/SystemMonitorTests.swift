@@ -4,6 +4,11 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorTests: XCTestCase {
+    private static let renderRemoteProfiles = [
+        SystemMonitorRemoteProfile(id: "build-mac", name: "Build Mac", host: "builder@build-mac", platform: .macOS),
+        SystemMonitorRemoteProfile(id: "windows-ci", name: "Windows CI", host: "builder@windows-ci", platform: .windows),
+    ]
+
     func testTrayPagesSampleOnlyTheirMetricFamilies() {
         XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 9)
         XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))
@@ -25,15 +30,26 @@ final class SystemMonitorTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
 
-        let host = NSHostingView(rootView: SystemMonitorTrayView()
+        var preferredHeight: CGFloat = 0
+        let host = NSHostingView(rootView: SystemMonitorTrayView(remoteProfiles: Self.renderRemoteProfiles) {
+            preferredHeight = $0
+        }
             .defaultAppStorage(defaults)
-            .frame(width: 356))
+            .frame(width: TaskManagerMenuLayout.width, height: TaskManagerMenuLayout.maximumHeight))
         host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertGreaterThan(preferredHeight, 300)
         XCTAssertLessThanOrEqual(
-            host.fittingSize.height,
-            496,
+            preferredHeight,
+            TaskManagerMenuLayout.maximumHeight,
             "Home must show all summary cards inside the dedicated popup"
         )
+    }
+
+    func testTaskManagerMenuHeightIsContentSizedAndBounded() {
+        XCTAssertEqual(TaskManagerMenuLayout.height(forContent: 100), 220)
+        XCTAssertEqual(TaskManagerMenuLayout.height(forContent: 400.2), 436)
+        XCTAssertEqual(TaskManagerMenuLayout.height(forContent: 800), 536)
     }
 
     func testMonitorSubprocessOutputIsBounded() async throws {
@@ -360,10 +376,13 @@ final class SystemMonitorTests: XCTestCase {
         ]
         for page in pages {
             defaults.set(page, forKey: "systemMonitor.windowPage")
-            let host = NSHostingView(rootView: SystemMonitorWindowView(reportSnapshot: reportSnapshot)
+            let host = NSHostingView(rootView: SystemMonitorWindowView(
+                reportSnapshot: reportSnapshot,
+                remoteProfiles: Self.renderRemoteProfiles
+            )
                 .defaultAppStorage(defaults))
             host.appearance = NSAppearance(named: .darkAqua)
-            host.frame = NSRect(x: 0, y: 0, width: 1_070, height: 654)
+            host.frame = NSRect(origin: .zero, size: TaskManagerTheme.windowContentSize)
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(1.2))
 
@@ -386,13 +405,19 @@ final class SystemMonitorTests: XCTestCase {
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
         for page in ["home", "cpu", "gpu", "memory", "network", "disk", "battery", "sensors", "processes"] {
             defaults.set(page, forKey: "systemMonitor.trayPage")
-            let host = NSHostingView(rootView: SystemMonitorMenuPopoverView()
-                .defaultAppStorage(defaults)
-                .frame(width: 356, height: 536, alignment: .top))
+            let host = NSHostingView(rootView: SystemMonitorMenuPopoverView(
+                remoteProfiles: Self.renderRemoteProfiles
+            ).defaultAppStorage(defaults))
             host.appearance = NSAppearance(named: .darkAqua)
-            host.frame = NSRect(x: 0, y: 0, width: 356, height: 536)
+            host.frame = NSRect(
+                x: 0, y: 0,
+                width: TaskManagerMenuLayout.width,
+                height: TaskManagerMenuLayout.maximumHeight
+            )
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+            host.frame.size = host.fittingSize
+            host.layoutSubtreeIfNeeded()
 
             let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: representation)
