@@ -590,6 +590,7 @@ private struct OnePlusSearchInput: NSViewRepresentable {
         field.delegate = context.coordinator
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setAccessibilityRole(.textField)
         field.setAccessibilityLabel(prompt)
         field.setAccessibilityIdentifier(accessibilityIdentifier)
         return field
