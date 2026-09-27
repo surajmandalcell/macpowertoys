@@ -94,6 +94,10 @@ private class WindowAccessorView: NSView {
             if windowIdentifier == "mac-tweaks" {
                 window.contentMinSize = MacTweaksLayout.contentSize
                 window.contentMaxSize = MacTweaksLayout.contentSize
+                if abs(window.contentLayoutRect.width - MacTweaksLayout.contentSize.width) > 0.5
+                    || abs(window.contentLayoutRect.height - MacTweaksLayout.contentSize.height) > 0.5 {
+                    window.setContentSize(MacTweaksLayout.contentSize)
+                }
                 window.collectionBehavior.insert(.fullScreenNone)
                 window.standardWindowButton(.zoomButton)?.isEnabled = false
                 window.appearance = NSAppearance(named: .darkAqua)

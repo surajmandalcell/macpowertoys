@@ -4,7 +4,7 @@ import ServiceManagement
 import SwiftUI
 
 enum MacTweaksLayout {
-    static let windowSize = NSSize(width: 1_120, height: 826)
+    static let windowSize = NSSize(width: 900, height: 620)
     static let contentSize = NSSize(
         width: windowSize.width,
         height: windowSize.height - UtilityLayout.hiddenTitlebarBottomSurplus
@@ -13,7 +13,7 @@ enum MacTweaksLayout {
     static let titlebarHeight: CGFloat = 64
     static let contentInset: CGFloat = 28
     static let panelGap: CGFloat = 16
-    static let trafficLightVerticalOffset: CGFloat = 12
+    static let trafficLightVerticalOffset: CGFloat = 16
 }
 
 private struct MacTweaksCategory: Identifiable {
@@ -306,7 +306,7 @@ struct MacTweaksWindowView: View {
                                        itemIDs: ["dock.minimize-effect", "dock.slow-motion"],
                                        preview: .minimize)
             }
-            .frame(height: 344)
+            .frame(height: 292)
             HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
                 preferencePanel("Layout & appearance", glyph: .layers,
                                 itemIDs: ["dock.lock-size", "dock.lock-contents", "dock.hidden-app-dimming", "dock.stack-selection", "dock.switcher-displays"])
@@ -421,18 +421,16 @@ struct MacTweaksWindowView: View {
                         .lineLimit(1)
                 }
             }
-            .frame(width: 442)
             MacTweaksPanel("Power preview", glyph: .power) {
                 MacTweaksPreviewView(kind: .power)
             }
-            .frame(height: 300)
+            .frame(height: 260)
         }
     }
 
     private func genericPage(_ category: MacTweaksCategory) -> some View {
         HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
             preferencePanel(groupTitle(for: category), glyph: category.glyph, itemIDs: category.itemIDs)
-                .frame(width: 442)
             MacTweaksPanel(previewTitle(for: category), glyph: category.glyph) {
                 MacTweaksPreviewView(kind: category.preview)
             }
@@ -979,23 +977,51 @@ private struct MacTweaksSearchField: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            Image(systemName: "magnifyingglass").font(.system(size: 10)).foregroundStyle(MacTweaksPalette.muted)
+            Button { isFocused.wrappedValue = true } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 10))
+                    .foregroundStyle(MacTweaksPalette.muted)
+                    .frame(width: 12, height: 24)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHidden(true)
             TextField("Search", text: $text)
                 .textFieldStyle(.plain).font(.system(size: 12)).foregroundStyle(MacTweaksPalette.text)
                 .focused(isFocused)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityLabel("Search all tweaks")
             if text.isEmpty {
-                Text("⌘ K").font(.system(size: 9, weight: .medium)).foregroundStyle(MacTweaksPalette.muted)
+                Button { isFocused.wrappedValue = true } label: {
+                    Text("⌘ K")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(MacTweaksPalette.muted)
+                        .frame(height: 24)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
             } else {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundStyle(MacTweaksPalette.muted)
                 }.buttonStyle(.plain).accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 10).frame(height: 34)
-        .background(Color(white: isFocused.wrappedValue ? 0.169 : 0.145), in: RoundedRectangle(cornerRadius: 6))
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity)
+        .frame(height: 34)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color(white: isFocused.wrappedValue ? 0.169 : 0.145))
+                Button { isFocused.wrappedValue = true } label: {
+                    Color.clear.contentShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+            }
+        }
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(white: 0.22), lineWidth: 1))
         .animation(.easeOut(duration: 0.09), value: isFocused.wrappedValue)
+        .accessibilityIdentifier("mac-tweaks.search")
     }
 }
 
