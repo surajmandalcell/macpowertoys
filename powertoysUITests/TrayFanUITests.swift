@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class TrayFanUITests: XCTestCase {
@@ -108,10 +109,13 @@ final class TrayFanUITests: XCTestCase {
         let taskManager = app.windows["Task Manager"]
         XCTAssertTrue(taskManager.waitForExistence(timeout: 10), app.windows.debugDescription)
 
-        let windowCapture = XCTAttachment(screenshot: taskManager.screenshot())
+        let overviewScreenshot = taskManager.screenshot()
+        let windowCapture = XCTAttachment(screenshot: overviewScreenshot)
         windowCapture.name = "Task Manager fixed Overview window"
         windowCapture.lifetime = .keepAlways
         add(windowCapture)
+
+        assertTaskManagerSidebarPaintsThroughBottom(overviewScreenshot)
 
         XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
         let nativeTitlebarHeight: CGFloat = 32
@@ -193,5 +197,26 @@ final class TrayFanUITests: XCTestCase {
         menuCapture.lifetime = .keepAlways
         add(menuCapture)
         app.typeKey(.escape, modifierFlags: [])
+    }
+
+    private func assertTaskManagerSidebarPaintsThroughBottom(_ screenshot: XCUIScreenshot) {
+        guard let data = screenshot.image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: data) else {
+            XCTFail("Could not inspect the Task Manager screenshot")
+            return
+        }
+        let scaleX = CGFloat(bitmap.pixelsWide) / screenshot.image.size.width
+        let scaleY = CGFloat(bitmap.pixelsHigh) / screenshot.image.size.height
+        let sidebarX = Int(218 * scaleX)
+        let edgeY = Int(16 * scaleY)
+        let middleY = bitmap.pixelsHigh / 2
+        guard let edge = bitmap.colorAt(x: sidebarX, y: edgeY)?.usingColorSpace(.sRGB),
+              let middle = bitmap.colorAt(x: sidebarX, y: middleY)?.usingColorSpace(.sRGB) else {
+            XCTFail("Could not sample the Task Manager sidebar")
+            return
+        }
+        XCTAssertEqual(middle.redComponent, edge.redComponent, accuracy: 0.01)
+        XCTAssertEqual(middle.greenComponent, edge.greenComponent, accuracy: 0.01)
+        XCTAssertEqual(middle.blueComponent, edge.blueComponent, accuracy: 0.01)
     }
 }
