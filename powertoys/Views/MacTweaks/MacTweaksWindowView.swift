@@ -119,7 +119,7 @@ struct MacTweaksWindowView: View {
                 .opacity(0)
                 .accessibilityHidden(true)
         }
-        .frame(width: MacTweaksLayout.windowSize.width, height: MacTweaksLayout.windowSize.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(MacTweaksPalette.window)
         .clipShape(RoundedRectangle(cornerRadius: 13))
         .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color(white: 0.235), lineWidth: 1))
