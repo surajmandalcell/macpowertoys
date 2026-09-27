@@ -4,7 +4,7 @@ import ServiceManagement
 import SwiftUI
 
 enum MacTweaksLayout {
-    static let windowSize = NSSize(width: 900, height: 620)
+    static let windowSize = NSSize(width: 1_120, height: 826)
     static let contentSize = NSSize(
         width: windowSize.width,
         height: windowSize.height - UtilityLayout.hiddenTitlebarBottomSurplus
@@ -119,10 +119,10 @@ struct MacTweaksWindowView: View {
                 .opacity(0)
                 .accessibilityHidden(true)
         }
-        .frame(width: MacTweaksLayout.contentSize.width, height: MacTweaksLayout.contentSize.height)
+        .frame(width: MacTweaksLayout.windowSize.width, height: MacTweaksLayout.windowSize.height)
         .background(MacTweaksPalette.window)
         .clipShape(RoundedRectangle(cornerRadius: 13))
-        .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.white.opacity(0.13), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color(white: 0.235), lineWidth: 1))
         .ignoresSafeArea()
         .background(WindowAccessor(identifier: "mac-tweaks"))
         .environment(\.colorScheme, .dark)
@@ -252,8 +252,9 @@ struct MacTweaksWindowView: View {
     private var workspace: some View {
         ZStack(alignment: .topTrailing) {
             MacTweaksPalette.window
-            MacTweaksDither(strength: 0.09)
-                .frame(width: 470, height: 120)
+            MacTweaksHeaderDither()
+                .frame(width: 330, height: 104)
+                .offset(x: -92)
             VStack(spacing: 0) {
                 HStack {
                     Text(pageTitle)
@@ -306,7 +307,7 @@ struct MacTweaksWindowView: View {
                                        itemIDs: ["dock.minimize-effect", "dock.slow-motion"],
                                        preview: .minimize)
             }
-            .frame(height: 292)
+            .frame(height: 344)
             HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
                 preferencePanel("Layout & appearance", glyph: .layers,
                                 itemIDs: ["dock.lock-size", "dock.lock-contents", "dock.hidden-app-dimming", "dock.stack-selection", "dock.switcher-displays"])
@@ -421,16 +422,18 @@ struct MacTweaksWindowView: View {
                         .lineLimit(1)
                 }
             }
+            .frame(width: 442)
             MacTweaksPanel("Power preview", glyph: .power) {
                 MacTweaksPreviewView(kind: .power)
             }
-            .frame(height: 260)
+            .frame(height: 300)
         }
     }
 
     private func genericPage(_ category: MacTweaksCategory) -> some View {
         HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
             preferencePanel(groupTitle(for: category), glyph: category.glyph, itemIDs: category.itemIDs)
+                .frame(width: 442)
             MacTweaksPanel(previewTitle(for: category), glyph: category.glyph) {
                 MacTweaksPreviewView(kind: category.preview)
             }
@@ -440,6 +443,10 @@ struct MacTweaksWindowView: View {
 
     private var searchPage: some View {
         let results = TweakSearch.results(for: trimmedSearch, in: allWorkingItems)
+        let hasInputResult = results.contains { category(for: $0).id == "input" }
+        let columns = hasInputResult
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible(), spacing: 16), GridItem(.flexible())]
         return Group {
             if results.isEmpty {
                 VStack(spacing: 10) {
@@ -451,7 +458,7 @@ struct MacTweaksWindowView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 410)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible())], alignment: .leading, spacing: 16) {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                     ForEach(results) { item in searchResultPanel(item) }
                 }
             }
@@ -480,7 +487,8 @@ struct MacTweaksWindowView: View {
                 preferenceRows(item)
             }
             MacTweaksRowDivider()
-            MacTweaksPreviewView(kind: category.preview).frame(height: 150)
+            MacTweaksPreviewView(kind: category.preview)
+                .aspectRatio(600 / 304, contentMode: .fit)
         }
     }
 
@@ -1030,9 +1038,10 @@ private struct MacTweaksStandalonePanel<Content: View>: View {
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         content
-            .background { ZStack { MacTweaksPalette.panel; MacTweaksDither(strength: 0.10) } }
+            .background { ZStack { MacTweaksPalette.panel; MacTweaksDither(strength: 0.14) } }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(MacTweaksPalette.line, lineWidth: 1))
+            .shadow(color: .black.opacity(0.13), radius: 3, y: 1)
             .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }

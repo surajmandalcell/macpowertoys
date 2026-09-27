@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let macTweaksChoiceControlWidth: CGFloat = 160
+
 struct MacTweaksNotice: Equatable {
     let message: String
     var actionTitle: String?
@@ -37,11 +39,12 @@ struct MacTweaksPanel<Content: View>: View {
         .background {
             ZStack {
                 MacTweaksPalette.panel
-                MacTweaksDither(strength: 0.13)
+                MacTweaksDither(strength: 0.18)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(MacTweaksPalette.line, lineWidth: 1))
+        .shadow(color: .black.opacity(0.13), radius: 3, y: 1)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
@@ -93,6 +96,7 @@ struct MacTweaksPreferenceRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(canWrite ? MacTweaksPalette.text.opacity(0.9) : MacTweaksPalette.muted)
                     .lineLimit(1)
+                    .layoutPriority(1)
                 if isModified {
                     Button {
                         restore()
@@ -127,6 +131,7 @@ struct MacTweaksPreferenceRow: View {
             }
             Spacer(minLength: 8)
             MacTweaksChoiceControl(field: field, selection: selection, isEnabled: canWrite, onSelection: apply)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
@@ -210,7 +215,7 @@ private struct MacTweaksSegmentedControl: View {
             }
         }
         .padding(2)
-        .frame(width: 160, height: 28)
+        .frame(width: macTweaksChoiceControlWidth, height: 28)
         .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(MacTweaksPalette.line, lineWidth: 1))
         .animation(.easeOut(duration: 0.13), value: selection)
@@ -246,7 +251,7 @@ private struct MacTweaksMenuControl: View {
             .font(.system(size: 11))
             .foregroundStyle(MacTweaksPalette.secondary)
             .padding(.horizontal, 10)
-            .frame(width: 160, height: 28)
+            .frame(width: macTweaksChoiceControlWidth, height: 28)
             .background(MacTweaksPalette.panelRaised, in: RoundedRectangle(cornerRadius: 5))
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(MacTweaksPalette.line, lineWidth: 1))
         }
@@ -294,7 +299,7 @@ private struct MacTweaksTimingField: View {
             .frame(width: 20)
             .overlay(alignment: .leading) { Rectangle().fill(MacTweaksPalette.line).frame(width: 1) }
         }
-        .frame(width: 160, height: 28)
+        .frame(width: macTweaksChoiceControlWidth, height: 28)
         .background(MacTweaksPalette.panelRaised, in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(MacTweaksPalette.line, lineWidth: 1))
         .onAppear(perform: sync)
