@@ -146,7 +146,7 @@ final class TrayFanUITests: XCTestCase {
         add(remoteCapture)
 
         app.buttons["task-manager.sidebar.processes"].click()
-        let search = app.descendants(matching: .any).matching(NSPredicate(
+        let search = app.textFields.matching(NSPredicate(
             format: "identifier == %@ OR label == %@",
             "task-manager.process.search",
             "Search name, path, or PID"
