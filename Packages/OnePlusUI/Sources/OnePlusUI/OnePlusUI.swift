@@ -118,6 +118,126 @@ public struct OnePlusSidebarTitle: View {
     }
 }
 
+public struct OnePlusFixedWindowChrome: NSViewRepresentable {
+    private let contentSize: NSSize
+    private let trafficLightVerticalOffset: CGFloat
+
+    public init(
+        contentSize: NSSize,
+        trafficLightVerticalOffset: CGFloat = OnePlusMetrics.trafficLightVerticalOffset
+    ) {
+        self.contentSize = contentSize
+        self.trafficLightVerticalOffset = trafficLightVerticalOffset
+    }
+
+    public func makeNSView(context: Context) -> NSView {
+        OnePlusFixedWindowChromeView(
+            contentSize: contentSize,
+            trafficLightVerticalOffset: trafficLightVerticalOffset
+        )
+    }
+
+    public func updateNSView(_ nsView: NSView, context: Context) {
+        guard let chrome = nsView as? OnePlusFixedWindowChromeView else { return }
+        chrome.update(contentSize: contentSize, trafficLightVerticalOffset: trafficLightVerticalOffset)
+    }
+}
+
+private final class OnePlusFixedWindowChromeView: NSView {
+    private var contentSize: NSSize
+    private var trafficLightVerticalOffset: CGFloat
+    private var trafficLightBaselineY: CGFloat?
+    private weak var configuredWindow: NSWindow?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    init(contentSize: NSSize, trafficLightVerticalOffset: CGFloat) {
+        self.contentSize = contentSize
+        self.trafficLightVerticalOffset = trafficLightVerticalOffset
+        super.init(frame: .zero)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidBecomeKey(_:)),
+            name: NSWindow.didBecomeKeyNotification,
+            object: nil
+        )
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window else { return }
+        if configuredWindow !== window {
+            configuredWindow = window
+            trafficLightBaselineY = nil
+        }
+        apply(to: window)
+        schedule(in: window, resetFocus: true)
+    }
+
+    func update(contentSize: NSSize, trafficLightVerticalOffset: CGFloat) {
+        self.contentSize = contentSize
+        self.trafficLightVerticalOffset = trafficLightVerticalOffset
+        guard let window else { return }
+        apply(to: window)
+    }
+
+    @objc private func windowDidBecomeKey(_ notification: Notification) {
+        guard let notifiedWindow = notification.object as? NSWindow,
+              notifiedWindow === window else { return }
+        apply(to: notifiedWindow)
+        schedule(in: notifiedWindow, resetFocus: false)
+    }
+
+    private func apply(to window: NSWindow) {
+        window.styleMask.remove(.resizable)
+        window.contentMinSize = contentSize
+        window.contentMaxSize = contentSize
+        if abs(window.contentLayoutRect.width - contentSize.width) > 0.5
+            || abs(window.contentLayoutRect.height - contentSize.height) > 0.5 {
+            window.setContentSize(contentSize)
+        }
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.appearance = NSAppearance(named: .darkAqua)
+        alignTrafficLights(in: window)
+    }
+
+    private func schedule(in window: NSWindow, resetFocus: Bool) {
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            apply(to: window)
+            if resetFocus { window.makeFirstResponder(self) }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
+            guard let self, let window else { return }
+            apply(to: window)
+            if resetFocus { window.makeFirstResponder(self) }
+        }
+    }
+
+    private func alignTrafficLights(in window: NSWindow) {
+        guard let closeButton = window.standardWindowButton(.closeButton) else { return }
+        if trafficLightBaselineY == nil { trafficLightBaselineY = closeButton.frame.origin.y }
+        guard let baselineY = trafficLightBaselineY else { return }
+        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            guard let button = window.standardWindowButton(type) else { continue }
+            button.setFrameOrigin(NSPoint(
+                x: button.frame.origin.x,
+                y: baselineY - trafficLightVerticalOffset
+            ))
+        }
+    }
+}
+
 public enum OnePlusControlTone: Equatable {
     case standard
     case primary

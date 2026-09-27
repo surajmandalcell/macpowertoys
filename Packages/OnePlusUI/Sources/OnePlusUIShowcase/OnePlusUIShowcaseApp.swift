@@ -7,6 +7,8 @@ struct OnePlusUIShowcaseApp: App {
         Window("OnePlusUI", id: "oneplus-ui-showcase") {
             OnePlusUIShowcase()
                 .frame(width: 920, height: 680)
+                .background(OnePlusFixedWindowChrome(contentSize: CGSize(width: 920, height: 680)))
+                .ignoresSafeArea()
                 .preferredColorScheme(.dark)
         }
         .defaultSize(width: 920, height: 680)

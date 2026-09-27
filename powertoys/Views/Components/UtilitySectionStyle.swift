@@ -1,4 +1,5 @@
 import AppKit
+import OnePlusUI
 import SwiftUI
 
 enum UtilityLayout {
@@ -37,7 +38,7 @@ enum UtilityLayout {
     static let workspaceContentTopInset: CGFloat = 44
     static let workspaceActionHeight: CGFloat = 24
     static let workspaceTitleLeadingInset: CGFloat = 84
-    static let workspaceTrafficLightVerticalOffset: CGFloat = 4
+    static let workspaceTrafficLightVerticalOffset = OnePlusMetrics.trafficLightVerticalOffset
     static let compactTitlebarHeight: CGFloat = 40
     static let compactTitlebarTopInset: CGFloat = 4
     static let compactTitlebarControlHeight: CGFloat = 24
