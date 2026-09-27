@@ -12,6 +12,18 @@ MacPowerToys uses the package through the checked-in local package reference:
 import OnePlusUI
 ```
 
+A fixed macOS tool window declares one content size in its scene and applies the
+shared lifecycle-safe AppKit policy at the root:
+
+```swift
+Window("Task Manager", id: "task-manager") {
+    TaskManagerView()
+        .frame(width: 1080, height: 660)
+        .background(OnePlusFixedWindowChrome(contentSize: CGSize(width: 1080, height: 660)))
+}
+.windowResizability(.contentSize)
+```
+
 Run the showcase from this directory with:
 
 ```sh
