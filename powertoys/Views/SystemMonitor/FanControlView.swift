@@ -105,21 +105,23 @@ struct FanControlView: View {
             HStack(spacing: 8) {
                 if service.needsApproval {
                     Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
-                        .buttonStyle(.borderedProminent)
+                        .taskManagerControl(.primary)
                 } else if !service.canControl {
                     Button(service.needsHelperUpdate ? "Update Fan Helper" : "Enable Fan Control") {
                         Task { await service.enableControl() }
                     }
-                        .buttonStyle(.borderedProminent)
+                    .taskManagerControl(.primary)
                 }
                 Button("Check Again") { Task { await service.refresh() } }
-                    .buttonStyle(.bordered)
+                    .taskManagerControl()
             }
-            .controlSize(.regular)
             .frame(minHeight: 34)
         }
         .frame(width: 292, alignment: .leading)
         .padding(15)
+        .foregroundStyle(TaskManagerTheme.ink)
+        .background(TaskManagerTheme.card)
+        .environment(\.colorScheme, .dark)
     }
 
     private var expandedContent: some View {
@@ -153,8 +155,7 @@ struct FanControlView: View {
                 if !service.canControl && (service.isAvailable || service.snapshot == nil)
                     && !(service.snapshot?.fans.contains { $0.mode?.hasPrefix("unknown") == true } ?? false) {
                     Button("Enable fan control") { showsSetup = true }
-                        .buttonStyle(.bordered)
-                        .controlSize(.regular)
+                        .taskManagerControl()
                 }
             }
         }
