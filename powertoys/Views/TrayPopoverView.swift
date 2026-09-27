@@ -1286,7 +1286,7 @@ struct SystemMonitorTrayView: View {
                                 .font(.system(size: 10, weight: .medium))
                         }
                     }
-                    .frame(width: 26, height: 29)
+                    .frame(width: 26, height: 26)
                     .foregroundStyle(page == item ? TaskManagerTheme.ink : TaskManagerTheme.muted)
                     .contentShape(Rectangle())
                     .background(page == item ? Color.white.opacity(0.105) : .clear,
@@ -1306,20 +1306,20 @@ struct SystemMonitorTrayView: View {
             .font(.system(size: 9, weight: .medium))
             .buttonStyle(.plain)
             .focusEffectDisabled()
-            .padding(.horizontal, 10)
-            .frame(height: 27)
+            .padding(.horizontal, 5)
+            .frame(minWidth: 62, minHeight: 26)
             .background(Color.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 5))
             .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
             .accessibilityIdentifier("system-monitor.menu.open-app")
         }
-        .padding(.horizontal, 10)
-        .frame(height: 40)
+        .padding(.horizontal, 8)
+        .frame(height: 35)
         .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
     }
 
     private var homePage: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
+            Grid(horizontalSpacing: 5, verticalSpacing: 5) {
                 GridRow {
                     metricButton(.cpu, card(
                         .cpu, value: percent(sample?.cpuUsage),
@@ -1339,43 +1339,25 @@ struct SystemMonitorTrayView: View {
                     ))
                 }
                 GridRow {
-                    metricButton(.network, card(
-                        .network, value: "↓ \(sample?.networkDownload.map(Self.rate) ?? "...")",
-                        detail: "↑ \(sample?.networkUpload.map(Self.rate) ?? "...")",
-                        values: history.compactMap(\.networkDownload), height: 60
-                    ))
+                    metricButton(.network, networkCard)
                     .gridCellColumns(2)
-                    metricButton(.disk, card(
-                        .disk, value: percent(sample?.diskUsage),
-                        detail: diskAvailable,
-                        values: history.compactMap(\.diskUsage), height: 60
-                    ))
+                    metricButton(.disk, diskCard)
                 }
                 GridRow {
-                    metricButton(.sensors, card(
-                        .thermal, title: "Thermal", value: sample?.thermalState ?? "...",
-                        detail: "System pressure",
-                        values: history.compactMap { Self.thermalLevel($0.thermalState) }, height: 60
-                    ))
+                    metricButton(.sensors, thermalCard)
                     .gridCellColumns(2)
-                    metricButton(.battery, card(
-                        .battery,
-                        value: sample?.batteryPercent.map { "\($0)%" } ?? "...",
-                        detail: batteryDetail,
-                        values: history.compactMap { $0.batteryPercent.map(Double.init) }, height: 60
-                    ))
+                    metricButton(.battery, batteryCard)
                 }
             }
 
-            TaskManagerPanel {
-                FanControlView(owner: "system-monitor-tray-home", compact: true)
-            }
-            .frame(height: 43)
+            FanControlView(owner: "system-monitor-tray-home", compact: true)
+                .frame(height: 30)
 
             remoteSummary
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.top, 3)
+        .padding(.bottom, 8)
     }
 
     private var remoteSummary: some View {
@@ -1405,10 +1387,8 @@ struct SystemMonitorTrayView: View {
             detailHero
             detailRows
             if page == .sensors {
-                TaskManagerPanel {
-                    FanControlView(owner: "system-monitor-tray-sensors", compact: true)
-                }
-                .frame(height: 43)
+                FanControlView(owner: "system-monitor-tray-sensors", compact: true)
+                    .frame(height: 30)
             }
         }
         .padding(10)
@@ -1548,41 +1528,138 @@ struct SystemMonitorTrayView: View {
         value: String,
         detail: String,
         values: [Double],
-        accent: Bool = false,
-        height: CGFloat = 70
+        accent: Bool = false
     ) -> some View {
         TaskManagerPanel(textured: true) {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     metricIcon(metric)
                     Text(title ?? metric.title)
-                        .font(.system(size: 8.5, weight: .medium))
+                        .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(TaskManagerTheme.secondary)
                     Spacer(minLength: 0)
                 }
-                Text(value)
-                    .font(.system(size: height < 70 ? 17 : 19, weight: .medium))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                HStack(spacing: 4) {
+                    Text(value)
+                        .font(.system(size: 20, weight: .medium))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Spacer(minLength: 2)
+                    TaskManagerHistoryChart(
+                        values: values,
+                        range: chartRange(values, metric: metric),
+                        unit: metric == .network ? "/s" : "%",
+                        compact: true,
+                        primaryColor: accent ? TaskManagerTheme.accent : TaskManagerTheme.ink.opacity(0.76)
+                    )
+                    .frame(width: 36, height: 19)
+                }
+                .frame(height: 23)
                 Text(detail)
-                    .font(.system(size: 7.5))
+                    .font(.system(size: 8))
                     .foregroundStyle(TaskManagerTheme.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                TaskManagerHistoryChart(
-                    values: values,
-                    range: chartRange(values, metric: metric),
-                    unit: metric == .network ? "/s" : "%",
-                    compact: true,
-                    primaryColor: accent ? TaskManagerTheme.accent : TaskManagerTheme.ink.opacity(0.76)
-                )
-                .frame(height: height < 70 ? 12 : 17)
             }
             .padding(.horizontal, 8)
-            .padding(.top, height < 70 ? 5 : 7)
+            .padding(.vertical, 7)
         }
-        .frame(height: height)
+        .frame(height: 70)
+    }
+
+    private var networkCard: some View {
+        TaskManagerPanel(textured: true) {
+            VStack(alignment: .leading, spacing: 3) {
+                metricLabel(.network)
+                HStack(spacing: 10) {
+                    compactRate("↓", sample?.networkDownload)
+                    compactRate("↑", sample?.networkUpload, accent: true)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+        }
+        .frame(height: 51)
+    }
+
+    private var diskCard: some View {
+        TaskManagerPanel(textured: true) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    metricIcon(SystemMonitorMenuMetric.disk)
+                    Text("Disk")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(TaskManagerTheme.secondary)
+                    Spacer(minLength: 3)
+                    Text(percent(sample?.diskUsage))
+                        .font(.system(size: 15, weight: .medium))
+                        .monospacedDigit()
+                }
+                Text(diskAvailable)
+                    .font(.system(size: 8))
+                    .foregroundStyle(TaskManagerTheme.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+        }
+        .frame(height: 51)
+    }
+
+    private var thermalCard: some View {
+        TaskManagerPanel(textured: true) {
+            HStack(spacing: 8) {
+                metricLabel(.thermal, title: "Thermal")
+                Spacer(minLength: 4)
+                Text(sample?.thermalState ?? "...")
+                    .font(.system(size: 12, weight: .medium))
+                    .monospacedDigit()
+            }
+            .padding(.horizontal, 8)
+        }
+        .frame(height: 34)
+    }
+
+    private var batteryCard: some View {
+        TaskManagerPanel(textured: true) {
+            HStack(spacing: 5) {
+                metricIcon(SystemMonitorMenuMetric.battery)
+                Spacer(minLength: 2)
+                Text(sample?.batteryPercent.map { "\($0)%" } ?? "...")
+                    .font(.system(size: 14, weight: .medium))
+                    .monospacedDigit()
+                if sample?.batteryCharging == true {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(TaskManagerTheme.muted)
+                }
+            }
+            .padding(.horizontal, 8)
+        }
+        .frame(height: 34)
+    }
+
+    private func metricLabel(_ metric: SystemMonitorMenuMetric, title: String? = nil) -> some View {
+        HStack(spacing: 5) {
+            metricIcon(metric)
+            Text(title ?? metric.title)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(TaskManagerTheme.secondary)
+        }
+    }
+
+    private func compactRate(_ arrow: String, _ value: Double?, accent: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(arrow)
+                .foregroundStyle(accent ? TaskManagerTheme.accent.opacity(0.78) : TaskManagerTheme.secondary)
+            Text(value.map(Self.rate) ?? "...")
+                .font(.system(size: 15, weight: .medium))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
     }
 
     @ViewBuilder
