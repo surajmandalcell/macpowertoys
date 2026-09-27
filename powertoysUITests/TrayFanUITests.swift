@@ -130,7 +130,7 @@ final class TrayFanUITests: XCTestCase {
         sheetCapture.lifetime = .keepAlways
         add(sheetCapture)
 
-        app.buttons["More"].click()
+        app.buttons["task-manager.process.more"].click()
         XCTAssertTrue(app.menuItems["Force Quit"].waitForExistence(timeout: 5))
         let menuCapture = XCTAttachment(screenshot: app.screenshot())
         menuCapture.name = "Task Manager dark process action menu"
