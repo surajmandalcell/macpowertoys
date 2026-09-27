@@ -167,7 +167,8 @@ private class WindowAccessorView: NSView {
             window.setContentSize(TaskManagerTheme.windowContentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
     }
 
     private func alignTrafficLights(in window: NSWindow) {
