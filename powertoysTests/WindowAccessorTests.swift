@@ -209,7 +209,10 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
         XCTAssertTrue(window.isOpaque)
         XCTAssertEqual(window.backgroundColor, TaskManagerTheme.windowNSColor)
-        let sidebarBackdrop = try XCTUnwrap(window.contentView?.layer?.sublayers?.first(where: {
+        let backdropView = try XCTUnwrap(window.contentView?.superview?.subviews.first(where: {
+            $0.identifier?.rawValue == "task-manager.window-backdrop"
+        }))
+        let sidebarBackdrop = try XCTUnwrap(backdropView.layer?.sublayers?.first(where: {
             $0.name == "task-manager.sidebar-backdrop"
         }))
         XCTAssertEqual(sidebarBackdrop.frame.width, TaskManagerTheme.sidebarWidth)
