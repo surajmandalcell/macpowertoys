@@ -1228,30 +1228,25 @@ enum TaskManagerMenuLayout {
     static let width: CGFloat = 356
     static let maximumHeight: CGFloat = 536
     static let minimumHeight: CGFloat = 220
-    static let toolbarHeight: CGFloat = 35
-
-    static func height(forContent contentHeight: CGFloat) -> CGFloat {
-        min(max(ceil(toolbarHeight + contentHeight), minimumHeight), maximumHeight)
-    }
 
     static func initialHomeHeight(profileCount: Int) -> CGFloat {
         min(profileCount == 0 ? 315 : 369 + CGFloat(profileCount - 1) * 98, maximumHeight)
     }
-}
 
-private struct TaskManagerMenuContentHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-private extension View {
-    func reportsTaskManagerMenuHeight() -> some View {
-        background {
-            GeometryReader { proxy in
-                Color.clear.preference(key: TaskManagerMenuContentHeightKey.self, value: proxy.size.height)
-            }
+    static func preferredHeight(for page: SystemMonitorTrayPage, profileCount: Int) -> CGFloat {
+        switch page {
+        case .home:
+            initialHomeHeight(profileCount: profileCount)
+        case .cpu, .memory, .disk:
+            392
+        case .network, .battery:
+            363
+        case .gpu:
+            334
+        case .sensors:
+            311
+        case .processes:
+            407
         }
     }
 }
@@ -1311,30 +1306,35 @@ struct SystemMonitorTrayView: View {
             Group {
                 switch page {
                 case .home:
-                    ScrollView { homePage.reportsTaskManagerMenuHeight() }
+                    ScrollView { homePage.frame(width: TaskManagerMenuLayout.width) }
                         .thinScrollIndicators()
                 case .processes:
                     TaskManagerMenuProcessesView()
-                        .frame(height: 372, alignment: .top)
-                        .reportsTaskManagerMenuHeight()
+                        .frame(width: TaskManagerMenuLayout.width, height: 372, alignment: .top)
                 default:
-                    ScrollView { detailPage.reportsTaskManagerMenuHeight() }
+                    ScrollView { detailPage.frame(width: TaskManagerMenuLayout.width) }
                         .thinScrollIndicators()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onPreferenceChange(TaskManagerMenuContentHeightKey.self) {
-                onPreferredHeight(TaskManagerMenuLayout.height(forContent: $0))
-            }
         }
         .onAppear {
             if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
             service.startDetailed(owner: "tray", metrics: page.metrics)
+            reportPreferredHeight(for: rememberPage ? page : .home)
         }
         .onChange(of: pageID) { _, _ in
             service.updateDetailed(owner: "tray", metrics: page.metrics)
+            reportPreferredHeight(for: page)
         }
         .onDisappear { service.stopDetailed(owner: "tray") }
+    }
+
+    private func reportPreferredHeight(for page: SystemMonitorTrayPage) {
+        onPreferredHeight(TaskManagerMenuLayout.preferredHeight(
+            for: page,
+            profileCount: remoteProfiles.count
+        ))
     }
 
     private var tabStrip: some View {
