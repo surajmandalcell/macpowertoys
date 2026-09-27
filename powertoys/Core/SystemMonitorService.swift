@@ -495,6 +495,34 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
         guard let diskUsed, let diskTotal, diskTotal > 0 else { return nil }
         return Double(diskUsed) / Double(diskTotal) * 100
     }
+
+    func preservingAvailableValues(from previous: Self?) -> Self {
+        guard let previous else { return self }
+        func retained<Value>(_ metric: SystemMonitorMenuMetric, _ value: Value?, _ oldValue: Value?) -> Value? {
+            unavailableMetrics.contains(metric) ? nil : value ?? oldValue
+        }
+        return Self(
+            timestamp: timestamp,
+            cpuUsage: retained(.cpu, cpuUsage, previous.cpuUsage),
+            memoryUsed: retained(.memory, memoryUsed, previous.memoryUsed),
+            memoryTotal: retained(.memory, memoryTotal, previous.memoryTotal),
+            gpuUsage: retained(.gpu, gpuUsage, previous.gpuUsage),
+            networkDownload: retained(.network, networkDownload, previous.networkDownload),
+            networkUpload: retained(.network, networkUpload, previous.networkUpload),
+            diskUsed: retained(.disk, diskUsed, previous.diskUsed),
+            diskTotal: retained(.disk, diskTotal, previous.diskTotal),
+            batteryPercent: retained(.battery, batteryPercent, previous.batteryPercent),
+            batteryCharging: retained(.battery, batteryCharging, previous.batteryCharging),
+            thermalState: retained(.thermal, thermalState, previous.thermalState),
+            loadAverage: retained(.cpu, loadAverage, previous.loadAverage),
+            unavailableMetrics: unavailableMetrics,
+            cpuDetails: retained(.cpu, cpuDetails, previous.cpuDetails),
+            memoryDetails: retained(.memory, memoryDetails, previous.memoryDetails),
+            networkDetails: retained(.network, networkDetails, previous.networkDetails),
+            diskDetails: retained(.disk, diskDetails, previous.diskDetails),
+            batteryDetails: retained(.battery, batteryDetails, previous.batteryDetails)
+        )
+    }
 }
 
 nonisolated enum SystemMonitorDelta {
@@ -1272,6 +1300,7 @@ final class SystemMonitorService {
     private func receive(_ sample: SystemMonitorSample, detailed: Bool,
                          dueMetrics: Set<SystemMonitorMenuMetric>, generation: Int) {
         guard generation == self.generation else { return }
+        let sample = sample.preservingAvailableValues(from: snapshot)
         snapshot = sample
         if detailed {
             history.append(sample)
