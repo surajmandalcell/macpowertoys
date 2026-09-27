@@ -146,8 +146,12 @@ final class TrayFanUITests: XCTestCase {
         add(remoteCapture)
 
         app.buttons["task-manager.sidebar.processes"].click()
-        let search = app.textFields["task-manager.process.search"]
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        let search = app.textFields.matching(NSPredicate(
+            format: "identifier == %@ OR label == %@",
+            "task-manager.process.search",
+            "Search name, path, or PID"
+        )).firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
         let searchFrame = search.frame
         let searchIdleCapture = XCTAttachment(screenshot: taskManager.screenshot())
         searchIdleCapture.name = "Task Manager search idle baseline"
