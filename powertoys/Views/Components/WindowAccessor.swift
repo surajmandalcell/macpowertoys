@@ -161,8 +161,9 @@ private class WindowAccessorView: NSView {
         window.styleMask.remove(.resizable)
         window.contentMinSize = TaskManagerTheme.windowContentSize
         window.contentMaxSize = TaskManagerTheme.windowContentSize
-        if abs(window.contentLayoutRect.width - TaskManagerTheme.windowContentSize.width) > 0.5
-            || abs(window.contentLayoutRect.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
+        let currentSize = window.contentView?.bounds.size ?? .zero
+        if abs(currentSize.width - TaskManagerTheme.windowContentSize.width) > 0.5
+            || abs(currentSize.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
             window.setContentSize(TaskManagerTheme.windowContentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)

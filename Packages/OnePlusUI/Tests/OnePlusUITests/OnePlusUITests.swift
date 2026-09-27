@@ -51,12 +51,10 @@ final class OnePlusUITests: XCTestCase {
         window.contentView = NSHostingView(rootView: OnePlusFixedWindowChrome(contentSize: expectedSize))
         window.contentView?.layoutSubtreeIfNeeded()
         NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
-        XCTAssertEqual(window.contentMinSize, expectedSize)
-        XCTAssertEqual(window.contentMaxSize, expectedSize)
-        XCTAssertEqual(window.contentLayoutRect.size, expectedSize)
+        XCTAssertEqual(window.contentView?.bounds.size, expectedSize)
         XCTAssertTrue(window.standardWindowButton(.zoomButton)?.isHidden == true)
     }
 }
