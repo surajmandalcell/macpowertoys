@@ -444,14 +444,10 @@ struct ProcessDetailSheet: View {
                 Button("Quit") { onQuit() }
                     .taskManagerControl(.destructive)
                     .disabled(process.started == 0)
-                Menu("More") {
-                    Button("Force Quit", role: .destructive, action: onForceQuit)
-                        .disabled(process.started == 0)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.visible)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(TaskManagerTheme.ink.opacity(0.88))
+                TaskManagerProcessActionMenu(
+                    isEnabled: process.started != 0,
+                    onForceQuit: onForceQuit
+                )
                 .frame(width: 68, height: 27)
                 .background(
                     TaskManagerControlTone.quiet.background(hovering: false, pressed: false),
@@ -461,8 +457,6 @@ struct ProcessDetailSheet: View {
                     RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
                         .strokeBorder(TaskManagerTheme.line)
                 }
-                .focusEffectDisabled()
-                .environment(\.colorScheme, .dark)
                 Spacer()
                 Button("Copy details") { copyDetails() }
                     .taskManagerControl()
@@ -618,5 +612,53 @@ struct ProcessDetailSheet: View {
 
     private func bytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
+    }
+}
+
+private struct TaskManagerProcessActionMenu: NSViewRepresentable {
+    let isEnabled: Bool
+    let onForceQuit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(action: onForceQuit)
+    }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: true)
+        button.isBordered = false
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: 10.5, weight: .medium)
+        button.contentTintColor = NSColor(calibratedWhite: 0.929, alpha: 0.88)
+        button.alignment = .left
+        button.addItem(withTitle: "More")
+
+        let forceQuit = NSMenuItem(
+            title: "Force Quit",
+            action: #selector(Coordinator.forceQuit),
+            keyEquivalent: ""
+        )
+        forceQuit.target = context.coordinator
+        button.menu?.addItem(forceQuit)
+        button.setAccessibilityLabel("More")
+        button.setAccessibilityIdentifier("task-manager.process.more")
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        context.coordinator.action = onForceQuit
+        button.isEnabled = isEnabled
+        button.item(withTitle: "Force Quit")?.isEnabled = isEnabled
+    }
+
+    final class Coordinator: NSObject {
+        var action: () -> Void
+
+        init(action: @escaping () -> Void) {
+            self.action = action
+        }
+
+        @objc func forceQuit() {
+            action()
+        }
     }
 }
