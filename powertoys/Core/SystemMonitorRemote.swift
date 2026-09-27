@@ -1,10 +1,66 @@
 import Foundation
 
-nonisolated enum SystemMonitorRemotePlatform: String, CaseIterable, Identifiable {
+nonisolated enum SystemMonitorRemotePlatform: String, Codable, CaseIterable, Identifiable, Sendable {
     case linux = "Linux"
     case macOS = "macOS"
     case windows = "Windows"
     var id: String { rawValue }
+}
+
+nonisolated struct SystemMonitorRemoteProfile: Codable, Equatable, Identifiable, Sendable {
+    var id: String
+    var name: String
+    var host: String
+    var platform: SystemMonitorRemotePlatform
+    var interval: Int
+
+    init(
+        id: String = UUID().uuidString,
+        name: String,
+        host: String,
+        platform: SystemMonitorRemotePlatform = .linux,
+        interval: Int = 30
+    ) {
+        self.id = id
+        self.name = name
+        self.host = host
+        self.platform = platform
+        self.interval = Self.allowedIntervals.contains(interval) ? interval : 30
+    }
+
+    static let allowedIntervals = [0, 5, 10, 30, 60, 120, 300]
+}
+
+nonisolated enum SystemMonitorRemoteProfiles {
+    static let key = "systemMonitor.remoteHosts"
+
+    static func load(defaults: UserDefaults = .standard) -> [SystemMonitorRemoteProfile] {
+        if let data = defaults.data(forKey: key),
+           let profiles = try? JSONDecoder().decode([SystemMonitorRemoteProfile].self, from: data),
+           !profiles.isEmpty {
+            return profiles
+        }
+        guard let host = defaults.string(forKey: "systemMonitor.remoteHost"),
+              SystemMonitorRemoteProtocol.validHost(host) else { return [] }
+        let platform = defaults.string(forKey: "systemMonitor.remotePlatform")
+            .flatMap(SystemMonitorRemotePlatform.init(rawValue:)) ?? .linux
+        let interval = defaults.object(forKey: "systemMonitor.remoteInterval") as? Int ?? 30
+        let shortName = host.split(separator: "@").last.map(String.init) ?? host
+        return [SystemMonitorRemoteProfile(name: shortName, host: host, platform: platform, interval: interval)]
+    }
+
+    static func save(_ profiles: [SystemMonitorRemoteProfile], defaults: UserDefaults = .standard) {
+        if let data = try? JSONEncoder().encode(profiles) { defaults.set(data, forKey: key) }
+        guard let first = profiles.first else {
+            defaults.removeObject(forKey: "systemMonitor.remoteHost")
+            defaults.removeObject(forKey: "systemMonitor.remotePlatform")
+            defaults.removeObject(forKey: "systemMonitor.remoteInterval")
+            return
+        }
+        defaults.set(first.host, forKey: "systemMonitor.remoteHost")
+        defaults.set(first.platform.rawValue, forKey: "systemMonitor.remotePlatform")
+        defaults.set(first.interval, forKey: "systemMonitor.remoteInterval")
+    }
 }
 
 nonisolated struct SystemMonitorRemoteCounters: Sendable {

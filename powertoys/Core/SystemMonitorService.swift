@@ -384,6 +384,45 @@ nonisolated struct SystemMonitorMenuSettings: Codable, Equatable {
     }
 }
 
+nonisolated struct SystemMonitorCPUDetails: Sendable {
+    let user: Double
+    let system: Double
+    let idle: Double
+    let cores: [Double]
+}
+
+nonisolated struct SystemMonitorMemoryDetails: Sendable {
+    let wired: Int64
+    let compressed: Int64
+    let cached: Int64
+    let swapUsed: Int64?
+    let pageIns: UInt64
+    let pageOuts: UInt64
+}
+
+nonisolated struct SystemMonitorNetworkDetails: Sendable {
+    let interfaceName: String?
+    let localAddress: String?
+    let receivedTotal: UInt64
+    let sentTotal: UInt64
+}
+
+nonisolated struct SystemMonitorDiskDetails: Sendable {
+    let readPerSecond: Double?
+    let writePerSecond: Double?
+    let readTotal: UInt64
+    let writeTotal: UInt64
+}
+
+nonisolated struct SystemMonitorBatteryDetails: Sendable {
+    let cycleCount: Int?
+    let health: String?
+    let currentCapacity: Int?
+    let maximumCapacity: Int?
+    let voltageMillivolts: Int?
+    let amperageMilliamps: Int?
+}
+
 nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let id = UUID()
     let timestamp: Date
@@ -400,6 +439,53 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let thermalState: String?
     let loadAverage: (Double, Double, Double)?
     let unavailableMetrics: Set<SystemMonitorMenuMetric>
+    let cpuDetails: SystemMonitorCPUDetails?
+    let memoryDetails: SystemMonitorMemoryDetails?
+    let networkDetails: SystemMonitorNetworkDetails?
+    let diskDetails: SystemMonitorDiskDetails?
+    let batteryDetails: SystemMonitorBatteryDetails?
+
+    init(
+        timestamp: Date,
+        cpuUsage: Double?,
+        memoryUsed: Int64?,
+        memoryTotal: Int64?,
+        gpuUsage: Double?,
+        networkDownload: Double?,
+        networkUpload: Double?,
+        diskUsed: Int64?,
+        diskTotal: Int64?,
+        batteryPercent: Int?,
+        batteryCharging: Bool?,
+        thermalState: String?,
+        loadAverage: (Double, Double, Double)?,
+        unavailableMetrics: Set<SystemMonitorMenuMetric>,
+        cpuDetails: SystemMonitorCPUDetails? = nil,
+        memoryDetails: SystemMonitorMemoryDetails? = nil,
+        networkDetails: SystemMonitorNetworkDetails? = nil,
+        diskDetails: SystemMonitorDiskDetails? = nil,
+        batteryDetails: SystemMonitorBatteryDetails? = nil
+    ) {
+        self.timestamp = timestamp
+        self.cpuUsage = cpuUsage
+        self.memoryUsed = memoryUsed
+        self.memoryTotal = memoryTotal
+        self.gpuUsage = gpuUsage
+        self.networkDownload = networkDownload
+        self.networkUpload = networkUpload
+        self.diskUsed = diskUsed
+        self.diskTotal = diskTotal
+        self.batteryPercent = batteryPercent
+        self.batteryCharging = batteryCharging
+        self.thermalState = thermalState
+        self.loadAverage = loadAverage
+        self.unavailableMetrics = unavailableMetrics
+        self.cpuDetails = cpuDetails
+        self.memoryDetails = memoryDetails
+        self.networkDetails = networkDetails
+        self.diskDetails = diskDetails
+        self.batteryDetails = batteryDetails
+    }
 
     var memoryUsage: Double? {
         guard let memoryUsed, let memoryTotal, memoryTotal > 0 else { return nil }
@@ -643,13 +729,41 @@ nonisolated private final class SystemMonitorGPUReader: @unchecked Sendable {
 }
 
 nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
-    private var previousCPU: (timestamp: Date, total: UInt64, idle: UInt64)?
+    private struct CPUCounters {
+        let user: UInt64
+        let system: UInt64
+        let idle: UInt64
+        let nice: UInt64
+        var total: UInt64 { user + system + idle + nice }
+    }
+
+    private struct MemorySnapshot {
+        let used: Int64
+        let total: Int64
+        let details: SystemMonitorMemoryDetails
+    }
+
+    private struct NetworkSnapshot {
+        let received: UInt64
+        let sent: UInt64
+        let details: SystemMonitorNetworkDetails
+    }
+
+    private struct BatterySnapshot {
+        let percent: Int
+        let charging: Bool
+        let details: SystemMonitorBatteryDetails
+    }
+
+    private var previousCPU: (timestamp: Date, aggregate: CPUCounters, cores: [CPUCounters])?
     private var previousNetwork: (timestamp: Date, received: UInt64, sent: UInt64)?
+    private var previousDisk: (timestamp: Date, read: UInt64, write: UInt64)?
     private let gpuReader = SystemMonitorGPUReader()
 
     func reset() {
         previousCPU = nil
         previousNetwork = nil
+        previousDisk = nil
     }
 
     func sample(detailedMetrics: Set<SystemMonitorMenuMetric>, metrics: Set<SystemMonitorMenuMetric>) -> SystemMonitorSample {
@@ -664,12 +778,17 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         var unavailableMetrics = Set<SystemMonitorMenuMetric>()
 
         var cpuUsage: Double?
+        var cpuDetails: SystemMonitorCPUDetails?
         if needsCPU {
             if let current = Self.cpuCounters() {
                 if let previousCPU {
-                    cpuUsage = SystemMonitorDelta.cpuUsage(previous: (previousCPU.total, previousCPU.idle), current: current)
+                    cpuUsage = SystemMonitorDelta.cpuUsage(
+                        previous: (previousCPU.aggregate.total, previousCPU.aggregate.idle),
+                        current: (current.aggregate.total, current.aggregate.idle)
+                    )
+                    cpuDetails = Self.cpuDetails(previous: previousCPU, current: current)
                 }
-                previousCPU = (now, current.total, current.idle)
+                previousCPU = (now, current.aggregate, current.cores)
             } else {
                 unavailableMetrics.insert(.cpu)
             }
@@ -677,8 +796,10 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
 
         var download: Double?
         var upload: Double?
+        var networkDetails: SystemMonitorNetworkDetails?
         if needsNetwork {
             if let current = Self.networkCounters() {
+                networkDetails = current.details
                 if let previousNetwork {
                     let elapsed = now.timeIntervalSince(previousNetwork.timestamp)
                     download = SystemMonitorDelta.rate(
@@ -699,6 +820,21 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         let gpu = needsGPU ? gpuReader.usage() : nil
         if needsGPU && gpu == nil { unavailableMetrics.insert(.gpu) }
         let disk = needsDisk ? Self.diskUsage() : nil
+        var diskDetails: SystemMonitorDiskDetails?
+        if needsDisk, let counters = Self.diskCounters() {
+            let elapsed = previousDisk.map { now.timeIntervalSince($0.timestamp) }
+            diskDetails = SystemMonitorDiskDetails(
+                readPerSecond: previousDisk.flatMap {
+                    SystemMonitorDelta.rate(previous: $0.read, current: counters.read, seconds: elapsed ?? 0)
+                },
+                writePerSecond: previousDisk.flatMap {
+                    SystemMonitorDelta.rate(previous: $0.write, current: counters.write, seconds: elapsed ?? 0)
+                },
+                readTotal: counters.read,
+                writeTotal: counters.write
+            )
+            previousDisk = (now, counters.read, counters.write)
+        }
         if needsDisk && disk == nil { unavailableMetrics.insert(.disk) }
         let battery = needsBattery ? Self.battery() : nil
         if needsBattery && battery == nil { unavailableMetrics.insert(.battery) }
@@ -719,11 +855,16 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
             batteryCharging: battery?.charging,
             thermalState: requested.contains(.thermal) ? Self.thermalState() : nil,
             loadAverage: loadCount == 3 ? (loads[0], loads[1], loads[2]) : nil,
-            unavailableMetrics: unavailableMetrics
+            unavailableMetrics: unavailableMetrics,
+            cpuDetails: cpuDetails,
+            memoryDetails: memory?.details,
+            networkDetails: networkDetails,
+            diskDetails: diskDetails,
+            batteryDetails: battery?.details
         )
     }
 
-    private static func cpuCounters() -> (total: UInt64, idle: UInt64)? {
+    private static func cpuCounters() -> (aggregate: CPUCounters, cores: [CPUCounters])? {
         var info = host_cpu_load_info_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &info) { pointer in
@@ -733,11 +874,72 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         }
         guard result == KERN_SUCCESS else { return nil }
         let ticks = withUnsafeBytes(of: info.cpu_ticks) { Array($0.bindMemory(to: UInt32.self)) }
-        guard ticks.count > Int(CPU_STATE_IDLE) else { return nil }
-        return (ticks.reduce(UInt64(0)) { $0 + UInt64($1) }, UInt64(ticks[Int(CPU_STATE_IDLE)]))
+        guard ticks.count >= Int(CPU_STATE_MAX) else { return nil }
+        let aggregate = CPUCounters(
+            user: UInt64(ticks[Int(CPU_STATE_USER)]),
+            system: UInt64(ticks[Int(CPU_STATE_SYSTEM)]),
+            idle: UInt64(ticks[Int(CPU_STATE_IDLE)]),
+            nice: UInt64(ticks[Int(CPU_STATE_NICE)])
+        )
+        return (aggregate, perCoreCounters())
     }
 
-    private static func memoryUsage() -> (used: Int64, total: Int64)? {
+    private static func perCoreCounters() -> [CPUCounters] {
+        var cpuCount: natural_t = 0
+        var cpuInfo: processor_info_array_t?
+        var infoCount: mach_msg_type_number_t = 0
+        guard host_processor_info(
+            mach_host_self(), PROCESSOR_CPU_LOAD_INFO,
+            &cpuCount, &cpuInfo, &infoCount
+        ) == KERN_SUCCESS, let cpuInfo else { return [] }
+        defer {
+            vm_deallocate(
+                mach_task_self_,
+                vm_address_t(UInt(bitPattern: cpuInfo)),
+                vm_size_t(infoCount) * vm_size_t(MemoryLayout<integer_t>.stride)
+            )
+        }
+        let stride = Int(CPU_STATE_MAX)
+        return (0..<Int(cpuCount)).map { index in
+            let offset = index * stride
+            return CPUCounters(
+                user: UInt64(cpuInfo[offset + Int(CPU_STATE_USER)]),
+                system: UInt64(cpuInfo[offset + Int(CPU_STATE_SYSTEM)]),
+                idle: UInt64(cpuInfo[offset + Int(CPU_STATE_IDLE)]),
+                nice: UInt64(cpuInfo[offset + Int(CPU_STATE_NICE)])
+            )
+        }
+    }
+
+    private static func cpuDetails(
+        previous: (timestamp: Date, aggregate: CPUCounters, cores: [CPUCounters]),
+        current: (aggregate: CPUCounters, cores: [CPUCounters])
+    ) -> SystemMonitorCPUDetails? {
+        let previousTotal = previous.aggregate.total
+        let currentTotal = current.aggregate.total
+        guard currentTotal > previousTotal,
+              current.aggregate.user >= previous.aggregate.user,
+              current.aggregate.system >= previous.aggregate.system,
+              current.aggregate.nice >= previous.aggregate.nice else { return nil }
+        let delta = Double(currentTotal - previousTotal)
+        let user = Double(current.aggregate.user - previous.aggregate.user
+            + current.aggregate.nice - previous.aggregate.nice) / delta * 100
+        let system = Double(current.aggregate.system - previous.aggregate.system) / delta * 100
+        let cores = zip(previous.cores, current.cores).compactMap { old, new in
+            SystemMonitorDelta.cpuUsage(
+                previous: (old.total, old.idle),
+                current: (new.total, new.idle)
+            )
+        }
+        return SystemMonitorCPUDetails(
+            user: min(max(user, 0), 100),
+            system: min(max(system, 0), 100),
+            idle: min(max(100 - user - system, 0), 100),
+            cores: cores
+        )
+    }
+
+    private static func memoryUsage() -> MemorySnapshot? {
         var info = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &info) { pointer in
@@ -751,27 +953,86 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         let pages = UInt64(info.active_count) + UInt64(info.inactive_count)
             + UInt64(info.wire_count) + UInt64(info.compressor_page_count)
         let total = min(ProcessInfo.processInfo.physicalMemory, UInt64(Int64.max))
-        return (Int64(min(pages * UInt64(pageSize), total)), Int64(total))
+        let pageBytes = UInt64(pageSize)
+        let bytes: (UInt64) -> Int64 = { count in
+            let result = count.multipliedReportingOverflow(by: pageBytes)
+            return Int64(min(result.overflow ? total : result.partialValue, total))
+        }
+        var swap = xsw_usage()
+        var swapSize = MemoryLayout<xsw_usage>.size
+        let swapUsed = sysctlbyname("vm.swapusage", &swap, &swapSize, nil, 0) == 0
+            ? Int64(min(swap.xsu_used, UInt64(Int64.max))) : nil
+        return MemorySnapshot(
+            used: Int64(min(pages * pageBytes, total)),
+            total: Int64(total),
+            details: SystemMonitorMemoryDetails(
+                wired: bytes(UInt64(info.wire_count)),
+                compressed: bytes(UInt64(info.compressor_page_count)),
+                cached: bytes(UInt64(info.inactive_count) + UInt64(info.speculative_count)),
+                swapUsed: swapUsed,
+                pageIns: UInt64(info.pageins),
+                pageOuts: UInt64(info.pageouts)
+            )
+        )
     }
 
-    private static func networkCounters() -> (received: UInt64, sent: UInt64)? {
+    private static func networkCounters() -> NetworkSnapshot? {
         var addresses: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&addresses) == 0, let first = addresses else { return nil }
         defer { freeifaddrs(addresses) }
         var received: UInt64 = 0
         var sent: UInt64 = 0
+        var busiestName: String?
+        var busiestBytes: UInt64 = 0
         var address: UnsafeMutablePointer<ifaddrs>? = first
         while let current = address {
             let interface = current.pointee
             if interface.ifa_addr?.pointee.sa_family == UInt8(AF_LINK),
                interface.ifa_flags & UInt32(IFF_LOOPBACK) == 0,
                let data = interface.ifa_data?.assumingMemoryBound(to: if_data.self) {
-                received += UInt64(data.pointee.ifi_ibytes)
-                sent += UInt64(data.pointee.ifi_obytes)
+                let incoming = UInt64(data.pointee.ifi_ibytes)
+                let outgoing = UInt64(data.pointee.ifi_obytes)
+                received += incoming
+                sent += outgoing
+                if interface.ifa_flags & UInt32(IFF_UP) != 0, incoming + outgoing > busiestBytes {
+                    busiestBytes = incoming + outgoing
+                    busiestName = String(cString: interface.ifa_name)
+                }
             }
             address = interface.ifa_next
         }
-        return (received, sent)
+        address = first
+        var localAddress: String?
+        while let current = address, localAddress == nil {
+            let interface = current.pointee
+            if interface.ifa_addr?.pointee.sa_family == UInt8(AF_INET),
+               busiestName == String(cString: interface.ifa_name),
+               let socketAddress = interface.ifa_addr {
+                var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                if getnameinfo(
+                    socketAddress,
+                    socklen_t(socketAddress.pointee.sa_len),
+                    &host,
+                    socklen_t(host.count),
+                    nil,
+                    0,
+                    NI_NUMERICHOST
+                ) == 0 {
+                    localAddress = String(cString: host)
+                }
+            }
+            address = interface.ifa_next
+        }
+        return NetworkSnapshot(
+            received: received,
+            sent: sent,
+            details: SystemMonitorNetworkDetails(
+                interfaceName: busiestName,
+                localAddress: localAddress,
+                receivedTotal: received,
+                sentTotal: sent
+            )
+        )
     }
 
     private static func diskUsage() -> (used: Int64, total: Int64)? {
@@ -780,15 +1041,55 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         return (max(Int64(total) - Int64(available), 0), Int64(total))
     }
 
-    private static func battery() -> (percent: Int, charging: Bool)? {
+    private static func diskCounters() -> (read: UInt64, write: UInt64)? {
+        var iterator: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(
+            kIOMainPortDefault,
+            IOServiceMatching("IOBlockStorageDriver"),
+            &iterator
+        ) == KERN_SUCCESS else { return nil }
+        defer { IOObjectRelease(iterator) }
+
+        var read: UInt64 = 0
+        var write: UInt64 = 0
+        var found = false
+        while true {
+            let service = IOIteratorNext(iterator)
+            guard service != 0 else { break }
+            defer { IOObjectRelease(service) }
+            guard let property = IORegistryEntryCreateCFProperty(
+                service, "Statistics" as CFString, kCFAllocatorDefault, 0
+            )?.takeRetainedValue() as? [String: Any],
+            let readValue = property["Bytes (Read)"] as? NSNumber,
+            let writeValue = property["Bytes (Write)"] as? NSNumber else { continue }
+            let nextRead = read.addingReportingOverflow(readValue.uint64Value)
+            let nextWrite = write.addingReportingOverflow(writeValue.uint64Value)
+            read = nextRead.overflow ? .max : nextRead.partialValue
+            write = nextWrite.overflow ? .max : nextWrite.partialValue
+            found = true
+        }
+        return found ? (read, write) : nil
+    }
+
+    private static func battery() -> BatterySnapshot? {
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else { return nil }
         for source in sources {
             guard let values = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],
                   let current = values[kIOPSCurrentCapacityKey] as? Int,
                   let maximum = values[kIOPSMaxCapacityKey] as? Int, maximum > 0 else { continue }
-            return (Int((Double(current) / Double(maximum) * 100).rounded()),
-                    values[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue)
+            return BatterySnapshot(
+                percent: Int((Double(current) / Double(maximum) * 100).rounded()),
+                charging: values[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue,
+                details: SystemMonitorBatteryDetails(
+                    cycleCount: values["Cycle Count"] as? Int,
+                    health: values["BatteryHealth"] as? String,
+                    currentCapacity: current,
+                    maximumCapacity: maximum,
+                    voltageMillivolts: values["Voltage"] as? Int,
+                    amperageMilliamps: values["Amperage"] as? Int
+                )
+            )
         }
         return nil
     }
@@ -811,7 +1112,7 @@ final class SystemMonitorService {
     static weak var current: SystemMonitorService?
     static let settingsKey = "systemMonitor.menuSettings"
     static let legacySettingsKey = "powerStats.menuSettings"
-    nonisolated static let maximumHistoryCount = 120
+    nonisolated static let maximumHistoryCount = 300
 
     private(set) var snapshot: SystemMonitorSample?
     private(set) var history: [SystemMonitorSample] = []
@@ -1149,7 +1450,7 @@ final class SystemMonitorMenuController: NSObject {
         item.button?.target = self
         item.button?.action = #selector(openSystemMonitor)
         item.button?.sendAction(on: [.leftMouseUp])
-        item.button?.toolTip = "System Monitor"
+        item.button?.toolTip = "Task Manager"
         return item
     }
     private func layoutSignature(for settings: SystemMonitorMenuSettings) -> String {
@@ -1162,7 +1463,7 @@ final class SystemMonitorMenuController: NSObject {
         }
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: SystemMonitorMenuPopoverView())
-        popover.contentSize = NSSize(width: 440, height: 560)
+        popover.contentSize = NSSize(width: 356, height: 536)
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
     }
 }
