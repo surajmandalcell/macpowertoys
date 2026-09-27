@@ -21,6 +21,9 @@ struct WindowAccessor: NSViewRepresentable {
 }
 
 private class WindowAccessorView: NSView {
+    private static let taskManagerBackdropViewIdentifier = NSUserInterfaceItemIdentifier(
+        "task-manager.window-backdrop"
+    )
     private static let taskManagerSidebarBackdropLayerName = "task-manager.sidebar-backdrop"
     private static let compactAppletWindowIdentifiers = Set([
         "awake", "color-picker", "text-extractor"
@@ -177,9 +180,23 @@ private class WindowAccessorView: NSView {
     private func applyTaskManagerBackdrop(to window: NSWindow) {
         window.isOpaque = true
         window.backgroundColor = TaskManagerTheme.windowNSColor
-        guard let contentView = window.contentView else { return }
-        contentView.wantsLayer = true
-        guard let rootLayer = contentView.layer else { return }
+        guard let contentView = window.contentView,
+              let frameView = contentView.superview else { return }
+
+        let backdropView: NSView
+        if let existingView = frameView.subviews.first(where: {
+            $0.identifier == Self.taskManagerBackdropViewIdentifier
+        }) {
+            backdropView = existingView
+        } else {
+            backdropView = NSView(frame: frameView.bounds)
+            backdropView.identifier = Self.taskManagerBackdropViewIdentifier
+            backdropView.autoresizingMask = [.width, .height]
+            frameView.addSubview(backdropView, positioned: .below, relativeTo: contentView)
+        }
+        backdropView.frame = frameView.bounds
+        backdropView.wantsLayer = true
+        guard let rootLayer = backdropView.layer else { return }
         rootLayer.backgroundColor = TaskManagerTheme.windowNSColor.cgColor
 
         let sidebarLayer: CALayer
@@ -190,7 +207,7 @@ private class WindowAccessorView: NSView {
         } else {
             sidebarLayer = CALayer()
             sidebarLayer.name = Self.taskManagerSidebarBackdropLayerName
-            rootLayer.insertSublayer(sidebarLayer, at: 0)
+            rootLayer.addSublayer(sidebarLayer)
         }
         sidebarLayer.backgroundColor = TaskManagerTheme.sidebarNSColor.cgColor
         sidebarLayer.frame = CGRect(
