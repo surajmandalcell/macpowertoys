@@ -169,6 +169,10 @@ struct SystemMonitorWindowView: View {
             }
         }
         .foregroundStyle(TaskManagerTheme.ink)
+        .frame(
+            width: TaskManagerTheme.windowContentSize.width,
+            height: TaskManagerTheme.windowContentSize.height
+        )
         .background(TaskManagerTheme.window)
         .environment(\.colorScheme, .dark)
         .ignoresSafeArea()
@@ -194,29 +198,26 @@ struct SystemMonitorWindowView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                Text("Task Manager")
-                    .font(.system(size: 11.5, weight: .medium))
-                    .tracking(-0.25)
-                    .foregroundStyle(TaskManagerTheme.ink.opacity(0.94))
-                    .accessibilityIdentifier("task-manager.sidebar.title")
-                Spacer(minLength: 8)
-            }
-            .padding(.leading, TaskManagerTheme.sidebarTitleLeading - 10)
-            .frame(height: 48)
+            SidebarTitle(text: "Task Manager")
+                .foregroundStyle(TaskManagerTheme.ink.opacity(0.94))
+                .accessibilityIdentifier("task-manager.sidebar.title")
 
             sidebarGroup(SystemMonitorPage.primary)
+                .padding(.horizontal, 10)
+                .padding(.top, UtilityLayout.workspaceContentTopInset - UtilityLayout.workspaceTitlebarHeight)
             sidebarBreak
             sidebarGroup(SystemMonitorPage.metrics)
+                .padding(.horizontal, 10)
             sidebarBreak
             sidebarGroup(SystemMonitorPage.secondary)
+                .padding(.horizontal, 10)
             Spacer(minLength: 20)
             sidebarBreak
                 .padding(.bottom, 9)
             sidebarGroup(SystemMonitorPage.bottom)
+                .padding(.horizontal, 10)
                 .padding(.bottom, 11)
         }
-        .padding(.horizontal, 10)
         .background(TaskManagerTheme.sidebar)
         .overlay(alignment: .trailing) { Rectangle().fill(TaskManagerTheme.line).frame(width: 1) }
     }

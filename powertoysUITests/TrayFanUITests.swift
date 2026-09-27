@@ -108,6 +108,32 @@ final class TrayFanUITests: XCTestCase {
         let taskManager = app.windows["Task Manager"]
         XCTAssertTrue(taskManager.waitForExistence(timeout: 10), app.windows.debugDescription)
         XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
+        XCTAssertEqual(taskManager.frame.height, 660, accuracy: 2)
+
+        let sidebarTitle = app.staticTexts["task-manager.sidebar.title"]
+        XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5))
+        XCTAssertEqual(sidebarTitle.frame.midY, taskManager.frame.minY + 20, accuracy: 2)
+        let closeButton = taskManager.buttons.matching(NSPredicate(
+            format: "label CONTAINS[c] %@", "close"
+        )).firstMatch
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5), taskManager.debugDescription)
+        XCTAssertEqual(closeButton.frame.midY, sidebarTitle.frame.midY, accuracy: 2)
+
+        app.buttons["task-manager.sidebar.remote-stats"].click()
+        let configure = app.buttons["system-monitor.remote.configure.ui-build-mac"]
+        let connect = app.buttons["system-monitor.remote.connect.ui-build-mac"]
+        XCTAssertTrue(configure.waitForExistence(timeout: 5))
+        XCTAssertTrue(connect.waitForExistence(timeout: 5))
+        XCTAssertEqual(configure.frame.height, connect.frame.height, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(connect.frame.height, 34)
+        XCTAssertEqual(connect.frame.minX - configure.frame.maxX, 8, accuracy: 2)
+        XCTAssertGreaterThanOrEqual(taskManager.frame.maxX - connect.frame.maxX, 28)
+        XCTAssertLessThanOrEqual(taskManager.frame.maxX - connect.frame.maxX, 40)
+
+        let remoteCapture = XCTAttachment(screenshot: app.screenshot())
+        remoteCapture.name = "Task Manager balanced Remote Stats actions"
+        remoteCapture.lifetime = .keepAlways
+        add(remoteCapture)
 
         app.buttons["task-manager.sidebar.processes"].click()
         let processRows = app.buttons.matching(NSPredicate(

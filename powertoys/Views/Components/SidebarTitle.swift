@@ -13,6 +13,7 @@ struct SidebarTitle: View {
             .font(.system(size: 13, weight: .medium))
             .frame(height: UtilityLayout.workspaceTitlebarHeight)
             .padding(.leading, UtilityLayout.workspaceTitleLeadingInset)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

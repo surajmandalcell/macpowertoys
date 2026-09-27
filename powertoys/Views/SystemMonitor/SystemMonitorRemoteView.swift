@@ -127,13 +127,17 @@ struct SystemMonitorRemoteView: View {
                                     .lineLimit(1)
                             }
                             Spacer(minLength: 12)
-                            Button("Configure") { editor = profile }
-                                .taskManagerRemoteButton()
-                            Button(profile.id == connectedID ? "Disconnect" : "Connect") {
-                                profile.id == connectedID ? disconnect() : connect(profile.id)
+                            HStack(spacing: 8) {
+                                Button("Configure") { editor = profile }
+                                    .taskManagerRemoteButton()
+                                    .accessibilityIdentifier("system-monitor.remote.configure.\(profile.id)")
+                                Button(profile.id == connectedID ? "Disconnect" : "Connect") {
+                                    profile.id == connectedID ? disconnect() : connect(profile.id)
+                                }
+                                .taskManagerRemoteButton(primary: profile.id != connectedID)
+                                .accessibilityIdentifier("system-monitor.remote.connect.\(profile.id)")
                             }
-                            .frame(width: 92)
-                            .taskManagerRemoteButton(primary: profile.id != connectedID)
+                            .fixedSize()
                         }
                         .padding(.horizontal, 14)
                         .frame(minHeight: 53)
@@ -566,7 +570,12 @@ private struct TaskManagerRemoteEditor: View {
 
 private extension View {
     func taskManagerRemoteButton(primary: Bool = false) -> some View {
-        taskManagerControl(primary ? .primary : .standard, minHeight: 28)
+        taskManagerControl(
+            primary ? .primary : .standard,
+            minWidth: 88,
+            minHeight: 36,
+            horizontalPadding: 14
+        )
     }
 
     func taskManagerRemoteField() -> some View {

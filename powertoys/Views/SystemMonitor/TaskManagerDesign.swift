@@ -17,7 +17,6 @@ enum TaskManagerTheme {
 
     static let windowContentSize = NSSize(width: 1_080, height: 660)
     static let sidebarWidth: CGFloat = 192
-    static let sidebarTitleLeading: CGFloat = 84
     static let headerHeight: CGFloat = 62
     static let contentInset: CGFloat = 20
     static let panelRadius: CGFloat = 9
@@ -237,6 +236,7 @@ enum TaskManagerControlTone: Equatable {
 
 struct TaskManagerControlButtonStyle: ButtonStyle {
     var tone: TaskManagerControlTone = .standard
+    var minWidth: CGFloat?
     var minHeight: CGFloat = 27
     var horizontalPadding: CGFloat = 10
 
@@ -245,6 +245,7 @@ struct TaskManagerControlButtonStyle: ButtonStyle {
             label: configuration.label,
             pressed: configuration.isPressed,
             tone: tone,
+            minWidth: minWidth,
             minHeight: minHeight,
             horizontalPadding: horizontalPadding
         )
@@ -258,6 +259,7 @@ struct TaskManagerControlButtonStyle: ButtonStyle {
         let label: Label
         let pressed: Bool
         let tone: TaskManagerControlTone
+        let minWidth: CGFloat?
         let minHeight: CGFloat
         let horizontalPadding: CGFloat
 
@@ -266,7 +268,7 @@ struct TaskManagerControlButtonStyle: ButtonStyle {
                 .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(tone.foreground)
                 .padding(.horizontal, horizontalPadding)
-                .frame(minHeight: minHeight)
+                .frame(minWidth: minWidth, minHeight: minHeight)
                 .background(
                     RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
                         .fill(tone.background(hovering: hovering, pressed: pressed))
@@ -374,10 +376,10 @@ extension View {
     ) -> some View {
         buttonStyle(TaskManagerControlButtonStyle(
             tone: tone,
+            minWidth: minWidth,
             minHeight: minHeight,
             horizontalPadding: horizontalPadding
         ))
-        .frame(minWidth: minWidth)
         .focusEffectDisabled()
     }
 }
