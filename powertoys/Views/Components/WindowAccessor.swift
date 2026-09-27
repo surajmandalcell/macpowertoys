@@ -89,17 +89,8 @@ private class WindowAccessorView: NSView {
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
         }
-        if windowIdentifier == "system-monitor" {
-            window.styleMask.remove(.resizable)
-            window.contentMinSize = TaskManagerTheme.windowContentSize
-            window.contentMaxSize = TaskManagerTheme.windowContentSize
-            if abs(window.contentLayoutRect.width - TaskManagerTheme.windowContentSize.width) > 0.5
-                || abs(window.contentLayoutRect.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
-                window.setContentSize(TaskManagerTheme.windowContentSize)
-            }
-            window.collectionBehavior.insert(.fullScreenNone)
-            window.standardWindowButton(.zoomButton)?.isHidden = true
-        }
+        applyFixedWindowPolicy(to: window)
+        scheduleFixedWindowPolicy(in: window)
         if isCompactApplet || windowIdentifier == "mac-tweaks" {
             window.styleMask.remove(.resizable)
             if windowIdentifier == "mac-tweaks" {
@@ -145,11 +136,37 @@ private class WindowAccessorView: NSView {
 
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let notifiedWindow = notification.object as? NSWindow,
-              notifiedWindow === window,
-              trafficLightVerticalOffset != nil
-        else { return }
+              notifiedWindow === window else { return }
+        applyFixedWindowPolicy(to: notifiedWindow)
+        scheduleFixedWindowPolicy(in: notifiedWindow)
+        guard trafficLightVerticalOffset != nil else { return }
         alignTrafficLights(in: notifiedWindow)
         scheduleTrafficLightAlignment(in: notifiedWindow)
+    }
+
+    private func scheduleFixedWindowPolicy(in window: NSWindow) {
+        guard windowIdentifier == "system-monitor" else { return }
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            applyFixedWindowPolicy(to: window)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak window] in
+            guard let self, let window else { return }
+            applyFixedWindowPolicy(to: window)
+        }
+    }
+
+    private func applyFixedWindowPolicy(to window: NSWindow) {
+        guard windowIdentifier == "system-monitor" else { return }
+        window.styleMask.remove(.resizable)
+        window.contentMinSize = TaskManagerTheme.windowContentSize
+        window.contentMaxSize = TaskManagerTheme.windowContentSize
+        if abs(window.contentLayoutRect.width - TaskManagerTheme.windowContentSize.width) > 0.5
+            || abs(window.contentLayoutRect.height - TaskManagerTheme.windowContentSize.height) > 0.5 {
+            window.setContentSize(TaskManagerTheme.windowContentSize)
+        }
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isHidden = true
     }
 
     private func alignTrafficLights(in window: NSWindow) {

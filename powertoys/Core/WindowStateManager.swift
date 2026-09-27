@@ -78,6 +78,7 @@ final class WindowStateManager {
         "awake",
         "color-picker",
         "text-extractor",
+        "system-monitor",
         "portman",
         "mac-tweaks"
     ]
