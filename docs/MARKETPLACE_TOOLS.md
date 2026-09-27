@@ -2,7 +2,7 @@
 
 MacPowerToys plugins are independent macOS apps listed in Marketplace. A tool
 can be written in Swift, Rust, or any language that produces a macOS `.app`
-bundle. System Monitor does not load tool code or metric plugins.
+bundle. Task Manager does not load tool code or metric plugins.
 
 1. Build a working app bundle with a unique bundle identifier. Include the
    architectures you intend to list. A Rust app can use a Rust macOS GUI

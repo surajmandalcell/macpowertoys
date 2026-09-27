@@ -77,7 +77,7 @@ spacing:
   tray-footer-bottom: 10
 windows:
   launcher: { default-content-width: 1200, default-content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
-  workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, system-monitor-sidebar: 220, resizable: true }
+  workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, system-monitor-sidebar: 192, resizable: true }
   nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
   mac-tweaks: { content-width: 900, content-height: 620, sidebar-width: 200, titlebar-height: 64, content-inset: 28, panel-gap: 16, resizable: false }
   compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
