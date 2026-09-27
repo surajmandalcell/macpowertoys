@@ -564,6 +564,11 @@ metrics, or Fan row. Search controls are at least 34pt high with 12pt horizontal
 insets. Keep these exceptions inside Task Manager; other workspaces retain their
 shared flat materials.
 
+The reviewed production-size references are
+`docs/screenshots/task-manager.png`, `docs/screenshots/task-manager-menu.png`,
+`docs/screenshots/task-manager-processes.png`, and
+`docs/screenshots/task-manager-system-report.png`.
+
 Mac Tweaks follows the owner's fixed dark reference rather than the general
 workspace recipe. Its 900×620 window is not resizable. It uses a 200pt opaque
 sidebar, a 64pt title strip shared by both panes, a 28pt content inset, and a
