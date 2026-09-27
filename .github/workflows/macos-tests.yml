@@ -11,6 +11,7 @@ on:
       - powertoysTests/**
       - powertoysUITests/**
       - powertoys.xcodeproj/**
+      - Packages/OnePlusUI/**
 
 jobs:
   unit-tests:
@@ -64,6 +65,30 @@ jobs:
           path: ${{ runner.temp }}/MacPowerToys.app.zip
           if-no-files-found: error
           retention-days: 3
+
+  oneplus-ui:
+    runs-on: xcode-27
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the component package and build its showcase
+        run: |
+          swift test --package-path Packages/OnePlusUI
+          swift build --package-path Packages/OnePlusUI --product OnePlusUIShowcase
+      - name: Capture the component showcase in the hosted Mac
+        run: |
+          showcase="$(swift build --package-path Packages/OnePlusUI --show-bin-path)/OnePlusUIShowcase"
+          "$showcase" &
+          showcase_pid=$!
+          trap 'kill "$showcase_pid" 2>/dev/null || true' EXIT
+          sleep 5
+          screencapture -x "$RUNNER_TEMP/oneplus-ui-showcase.png"
+      - name: Save the component showcase
+        uses: actions/upload-artifact@v4
+        with:
+          name: oneplus-ui-showcase
+          path: ${{ runner.temp }}/oneplus-ui-showcase.png
+          if-no-files-found: error
 
   portman-ui:
     runs-on: xcode-27
