@@ -175,6 +175,7 @@ final class WindowAccessorTests: XCTestCase {
                 )
             }
             let zoomButton = try XCTUnwrap(window.standardWindowButton(.zoomButton))
+            XCTAssertFalse(zoomButton.isHidden, identifier)
             XCTAssertGreaterThanOrEqual(
                 UtilityLayout.workspaceTitleLeadingInset - zoomButton.frame.maxX,
                 12,
@@ -201,13 +202,16 @@ final class WindowAccessorTests: XCTestCase {
         window.styleMask.insert(.resizable)
         window.contentMinSize = .zero
         window.contentMaxSize = NSSize(width: 2_000, height: 2_000)
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isEnabled = true
         window.setContentSize(NSSize(width: 920, height: 600))
         NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
         XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
-        XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
+        XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
+        XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
     }
 
     func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {

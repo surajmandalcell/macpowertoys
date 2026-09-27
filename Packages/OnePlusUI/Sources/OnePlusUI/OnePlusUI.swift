@@ -207,7 +207,8 @@ private final class OnePlusFixedWindowChromeView: NSView {
             window.setContentSize(contentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.appearance = NSAppearance(named: .darkAqua)
         alignTrafficLights(in: window)
     }
