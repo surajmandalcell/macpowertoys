@@ -359,6 +359,8 @@ struct TaskManagerMenuLabel: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius))
         .onHover { hovering = $0 }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
     }
 }
 
