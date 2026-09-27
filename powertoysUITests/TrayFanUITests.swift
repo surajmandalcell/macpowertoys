@@ -144,7 +144,7 @@ final class TrayFanUITests: XCTestCase {
         firstProcess.hover()
 
         let hoverCapture = XCTAttachment(screenshot: app.screenshot())
-        hoverCapture.name = "Task Manager full process row hover"
+        hoverCapture.name = "Task Manager process identity cell hover"
         hoverCapture.lifetime = .keepAlways
         add(hoverCapture)
 
