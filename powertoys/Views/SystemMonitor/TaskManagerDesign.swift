@@ -337,30 +337,31 @@ struct TaskManagerMenuLabel: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            Image(systemName: "chevron.down")
-                .font(.system(size: 7, weight: .semibold))
-                .foregroundStyle(TaskManagerTheme.secondary)
-        }
-        .font(.system(size: 10.5))
-        .foregroundStyle(TaskManagerTheme.ink.opacity(0.88))
-        .padding(.horizontal, 9)
-        .frame(width: width, height: 27)
-        .background(
-            RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                .fill(TaskManagerControlTone.quiet.background(hovering: hovering, pressed: false))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                .strokeBorder(TaskManagerTheme.line)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius))
-        .onHover { hovering = $0 }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
+        Text(title)
+            .lineLimit(1)
+            .frame(width: width - 18, alignment: .leading)
+            .font(.system(size: 10.5))
+            .foregroundStyle(TaskManagerTheme.ink.opacity(0.88))
+            .padding(.horizontal, 9)
+            .frame(height: 27)
+            .background(
+                RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
+                    .fill(TaskManagerControlTone.quiet.background(hovering: hovering, pressed: false))
+            )
+            .overlay(alignment: .trailing) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                    .padding(.trailing, 9)
+                    .accessibilityHidden(true)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
+                    .strokeBorder(TaskManagerTheme.line)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius))
+            .onHover { hovering = $0 }
+            .accessibilityLabel(title)
     }
 }
 
