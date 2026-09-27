@@ -455,6 +455,8 @@ struct ProcessDetailSheet: View {
                 .fixedSize()
                 .focusEffectDisabled()
                 .environment(\.colorScheme, .dark)
+                .accessibilityLabel("More")
+                .accessibilityIdentifier("task-manager.process.more")
                 Spacer()
                 Button("Copy details") { copyDetails() }
                     .taskManagerControl()
