@@ -81,6 +81,8 @@ struct FanControlView: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
+                .frame(width: 24, height: 30)
+                .contentShape(Rectangle())
                 .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
                 .accessibilityHint(detail)
                 .accessibilityIdentifier("fan-control.setup")
