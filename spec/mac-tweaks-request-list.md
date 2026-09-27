@@ -18,12 +18,15 @@ corrected rerun, `36331644220`, showed that SwiftUI still restored an 858pt
 outer frame and did not start playback from the synthesized hover. The native
 window override in `36332115260` reproduced both failures: the fixed 826pt
 SwiftUI root became 858pt after the hidden titlebar, and the hosted runner's
-Reduce Motion state kept the hover preview at rest. Mac Tweaks now requests a
-1120 × 794 content area, lets the root fill that area beneath the hidden
-titlebar, and preserves 1120 × 826 as the outer reference frame. Preview motion
-still follows Reduce Motion in production; the UI test process explicitly
-enables motion so hover playback can be verified deterministically. The app and
-UI test bundles compile; the corrected hosted rerun remains pending.
+Reduce Motion state kept the hover preview at rest. Run `36332602611` verified
+continuous hover playback, all navigation and search states, and the current
+visual treatment. Its only Mac Tweaks failure was the flexible root shrinking
+to the hosted display's 677pt visible height. Mac Tweaks now fixes the SwiftUI
+root at the intended 1120 × 794 content size, which produces the 1120 × 826
+outer frame without the old titlebar-height surplus. Preview motion still
+follows Reduce Motion in production; only the UI test process forces playback
+for deterministic verification. The app and UI test bundles compile; the final
+hosted frame rerun remains pending.
 
 ## Fixed reference redesign, 2026-09-27
 
