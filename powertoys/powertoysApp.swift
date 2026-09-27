@@ -176,7 +176,10 @@ struct MacPowerToysApp: App {
             SystemMonitorWindowView()
                 .utilityMotionPolicy()
         }
-        .defaultSize(width: 1070, height: 654)
+        .defaultSize(
+            width: TaskManagerTheme.windowContentSize.width,
+            height: TaskManagerTheme.windowContentSize.height
+        )
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["system-monitor"]))
         .restorationBehavior(.disabled)
