@@ -1741,7 +1741,7 @@ struct SystemMonitorTrayView: View {
     }
 
     nonisolated private static func rate(_ bytes: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(max(bytes, 0)), countStyle: .file) + "/s"
+        SystemMonitorDisplayFormat.byteRate(bytes)
     }
 
     nonisolated private static func decimal(_ value: Double) -> String {

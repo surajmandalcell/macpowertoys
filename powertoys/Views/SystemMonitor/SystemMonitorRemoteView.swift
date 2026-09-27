@@ -421,7 +421,8 @@ struct TaskManagerRemoteCard: View {
     }
 
     nonisolated private static func shortRate(_ value: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(max(value, 0)), countStyle: .file)
+        SystemMonitorDisplayFormat.byteRate(value)
+            .replacingOccurrences(of: "/s", with: "")
             .replacingOccurrences(of: " ", with: "")
     }
 
