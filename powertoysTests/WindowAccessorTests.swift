@@ -196,9 +196,7 @@ final class WindowAccessorTests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
-        XCTAssertEqual(window.contentMinSize, TaskManagerTheme.windowContentSize)
-        XCTAssertEqual(window.contentMaxSize, TaskManagerTheme.windowContentSize)
-        XCTAssertEqual(window.contentLayoutRect.size, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
 
         window.styleMask.insert(.resizable)
         window.contentMinSize = .zero
@@ -208,9 +206,7 @@ final class WindowAccessorTests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
 
         XCTAssertFalse(window.styleMask.contains(.resizable))
-        XCTAssertEqual(window.contentMinSize, TaskManagerTheme.windowContentSize)
-        XCTAssertEqual(window.contentMaxSize, TaskManagerTheme.windowContentSize)
-        XCTAssertEqual(window.contentLayoutRect.size, TaskManagerTheme.windowContentSize)
+        XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
         XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
     }
 

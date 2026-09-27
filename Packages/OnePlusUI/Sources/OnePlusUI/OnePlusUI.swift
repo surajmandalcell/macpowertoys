@@ -201,8 +201,9 @@ private final class OnePlusFixedWindowChromeView: NSView {
         window.styleMask.remove(.resizable)
         window.contentMinSize = contentSize
         window.contentMaxSize = contentSize
-        if abs(window.contentLayoutRect.width - contentSize.width) > 0.5
-            || abs(window.contentLayoutRect.height - contentSize.height) > 0.5 {
+        let currentSize = window.contentView?.bounds.size ?? .zero
+        if abs(currentSize.width - contentSize.width) > 0.5
+            || abs(currentSize.height - contentSize.height) > 0.5 {
             window.setContentSize(contentSize)
         }
         window.collectionBehavior.insert(.fullScreenNone)
