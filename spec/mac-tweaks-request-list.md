@@ -1,5 +1,13 @@
 # Mac Tweaks request list
 
+## Fixed reference redesign, 2026-09-27
+
+- [~] Rebuild the Mac Tweaks window from `mac-tweaks-design.html` as the visual source of truth: a fixed 1120 × 826 dark shell, 200pt sidebar, aligned native traffic lights and title, compact panels, immediate controls, quiet textures, and the selected Faders icon.
+- [~] Preserve every currently implemented Mac Tweaks feature while removing the old disclosure-card and staged Apply flow. Show only actionable controls, keep exact per-key rollback, and make reset available beside each changed setting plus a Modified review page.
+- [~] Add short hover-driven previews that rest when idle, reset when the pointer leaves, and respect Reduce Motion. Keep motion local to controls and preview content so navigation remains immediate.
+- [~] Finish production behavior for search, empty results, errors, protected actions, restart-later guidance, close/reopen, quit, reset-one, and reset-all. Changes persist immediately; closing or quitting the window must not discard them.
+- [~] Verify fixed sizing, keyboard and accessibility labels, every category, search ranking, changed-state recovery, dark rendering, and source-stamped installation. Compare native screenshots against the supplied reference and correct visible layout differences before handoff.
+
 ## Pinned result and visual examples, 2026-09-26
 
 - [x] Keep the first visible setting row at the top of the content pane while the remaining results scroll. Its expanded controls remain in the scrollable body.
