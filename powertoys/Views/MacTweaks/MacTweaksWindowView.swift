@@ -67,6 +67,7 @@ struct MacTweaksWindowView: View {
     @State private var meter = MicInputLevelMonitor()
     @State private var awake = AwakeService.shared
     @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var refreshRotation = 0.0
 
     private var trimmedSearch: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isSearching: Bool { !trimmedSearch.isEmpty }
@@ -335,20 +336,38 @@ struct MacTweaksWindowView: View {
                         if index < 3 { MacTweaksRowDivider() }
                     }
                 }
+                .overlay(alignment: .topTrailing) {
+                    Button { refreshMicrophones() } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 11, weight: .medium))
+                            .rotationEffect(.degrees(refreshRotation))
+                            .frame(width: 26, height: 26)
+                    }
+                    .buttonStyle(MacTweaksHoverButtonStyle(cornerRadius: 5))
+                    .foregroundStyle(MacTweaksPalette.secondary)
+                    .disabled(!micLock.isEnabled)
+                    .help("Refresh devices")
+                    .accessibilityLabel("Refresh devices")
+                    .accessibilityIdentifier("mac-tweaks.mic-lock.refresh")
+                    .padding(.top, 7)
+                    .padding(.trailing, 10)
+                }
                 MacTweaksPanel("Current input", glyph: .input) {
                     MacTweaksInlineRow("Microphone") {
                         Text(currentMicrophoneName).lineLimit(1)
                             .font(.system(size: 11)).foregroundStyle(MacTweaksPalette.secondary)
                     }
-                    MacTweaksRowDivider()
-                    MacTweaksInlineRow("Input volume") { inputVolumeControl }
-                    MacTweaksRowDivider()
-                    MacTweaksInlineRow("Mute microphone") {
-                        if micLock.muted != nil {
+                    if micLock.volume != nil {
+                        MacTweaksRowDivider()
+                        MacTweaksInlineRow("Input volume") { inputVolumeControl }
+                    }
+                    if micLock.muted != nil {
+                        MacTweaksRowDivider()
+                        MacTweaksInlineRow("Mute microphone") {
                             Toggle("Mute microphone", isOn: Binding(get: { micLock.muted ?? false }, set: micLock.setMuted))
                                 .labelsHidden().toggleStyle(MacTweaksToggleStyle())
                                 .accessibilityLabel("Mute microphone")
-                        } else { Text("Unavailable").font(.system(size: 10)).foregroundStyle(MacTweaksPalette.muted) }
+                        }
                     }
                     MacTweaksRowDivider()
                     MacTweaksInlineRow("Input level") { inputLevelControl }
@@ -675,6 +694,15 @@ struct MacTweaksWindowView: View {
 
     private func showError(_ message: String) {
         showNotice(.init(message: message, isError: true))
+    }
+
+    private func refreshMicrophones() {
+        if !reduceMotion {
+            withAnimation(.linear(duration: 0.45)) { refreshRotation += 360 }
+        }
+        micLock.refresh()
+        let count = micLock.devices.count
+        showNotice(.init(message: count == 1 ? "1 input device refreshed." : "\(count) input devices refreshed."))
     }
 
     private func showNotice(_ newNotice: MacTweaksNotice) {
