@@ -107,8 +107,15 @@ final class TrayFanUITests: XCTestCase {
         app.buttons["system-monitor.menu.open-app"].click()
         let taskManager = app.windows["Task Manager"]
         XCTAssertTrue(taskManager.waitForExistence(timeout: 10), app.windows.debugDescription)
+
+        let windowCapture = XCTAttachment(screenshot: app.screenshot())
+        windowCapture.name = "Task Manager fixed Overview window"
+        windowCapture.lifetime = .keepAlways
+        add(windowCapture)
+
         XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
-        XCTAssertEqual(taskManager.frame.height, 660, accuracy: 2)
+        let nativeTitlebarHeight: CGFloat = 32
+        XCTAssertEqual(taskManager.frame.height, 660 + nativeTitlebarHeight, accuracy: 2)
 
         let sidebarTitle = app.staticTexts["task-manager.sidebar.title"]
         XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5))
