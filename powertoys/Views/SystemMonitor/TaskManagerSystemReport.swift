@@ -187,6 +187,17 @@ struct TaskManagerSystemReportView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
+    init(
+        search: Binding<String>,
+        requestedAction: Binding<TaskManagerSystemReportAction?>,
+        initialCategories: [TaskManagerReportCategory] = []
+    ) {
+        _search = search
+        _requestedAction = requestedAction
+        _categories = State(initialValue: initialCategories)
+        _isLoading = State(initialValue: initialCategories.isEmpty)
+    }
+
     private let groups = ["Hardware", "Network", "Software"]
     private var selected: TaskManagerReportCategory? {
         categories.first { $0.id == selectedID } ?? categories.first

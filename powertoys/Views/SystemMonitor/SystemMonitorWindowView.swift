@@ -121,6 +121,7 @@ private enum SystemMonitorPage: String, CaseIterable, Identifiable {
 }
 
 struct SystemMonitorWindowView: View {
+    private let reportSnapshot: [TaskManagerReportCategory]
     @State private var service = SystemMonitorService.shared
     @State private var overviewSampler = SystemMonitorProcessSampler()
     @State private var overviewProcesses: [SystemMonitorProcess] = []
@@ -131,6 +132,10 @@ struct SystemMonitorWindowView: View {
     @State private var reportSearch = ""
     @State private var reportAction: TaskManagerSystemReportAction?
     @State private var processSearchFocusTrigger = 0
+
+    init(reportSnapshot: [TaskManagerReportCategory] = []) {
+        self.reportSnapshot = reportSnapshot
+    }
 
     private var page: SystemMonitorPage { SystemMonitorPage(rawValue: pageID) ?? .overview }
     private var remoteProfiles: [SystemMonitorRemoteProfile] { SystemMonitorRemoteProfiles.load() }
@@ -345,7 +350,11 @@ struct SystemMonitorWindowView: View {
                 .padding(.horizontal, TaskManagerTheme.contentInset)
                 .padding(.bottom, 18)
         case .report:
-            TaskManagerSystemReportView(search: $reportSearch, requestedAction: $reportAction)
+            TaskManagerSystemReportView(
+                search: $reportSearch,
+                requestedAction: $reportAction,
+                initialCategories: reportSnapshot
+            )
                 .padding(.horizontal, TaskManagerTheme.contentInset)
                 .padding(.bottom, 18)
         case .about: scrollPage { aboutPage }
@@ -1217,7 +1226,7 @@ struct SystemMonitorWindowView: View {
         value.formatted(.number.precision(.fractionLength(value < 10 ? 2 : 1)))
     }
     nonisolated private static func rate(_ value: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(max(value, 0)), countStyle: .file) + "/s"
+        SystemMonitorDisplayFormat.byteRate(value)
     }
     nonisolated private static func bytes(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: max(value, 0), countStyle: .memory)

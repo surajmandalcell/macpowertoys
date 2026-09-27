@@ -331,6 +331,25 @@ final class SystemMonitorTests: XCTestCase {
         let suiteName = "TaskManagerWindowRender.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
+        let reportSnapshot = TaskManagerSystemReportParser.sources.map { source in
+            TaskManagerReportCategory(
+                id: source.id,
+                title: source.title,
+                symbol: source.symbol,
+                group: source.group,
+                sections: [TaskManagerReportSection(
+                    title: source.id == "hardware" ? "Hosted Mac" : source.title,
+                    rows: source.id == "hardware" ? [
+                        TaskManagerReportRow(field: "Model name", value: "Mac"),
+                        TaskManagerReportRow(field: "Model identifier", value: "VirtualMac"),
+                        TaskManagerReportRow(field: "Chip", value: "Apple Silicon"),
+                        TaskManagerReportRow(field: "CPU cores", value: "3"),
+                        TaskManagerReportRow(field: "Memory", value: "7 GB"),
+                        TaskManagerReportRow(field: "Architecture", value: "arm64"),
+                    ] : [TaskManagerReportRow(field: "Status", value: "Available")]
+                )]
+            )
+        }
         SystemMonitorService.shared.startDetailed(owner: "render")
         defer { SystemMonitorService.shared.stopDetailed(owner: "render") }
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
@@ -341,12 +360,12 @@ final class SystemMonitorTests: XCTestCase {
         ]
         for page in pages {
             defaults.set(page, forKey: "systemMonitor.windowPage")
-            let host = NSHostingView(rootView: SystemMonitorWindowView()
+            let host = NSHostingView(rootView: SystemMonitorWindowView(reportSnapshot: reportSnapshot)
                 .defaultAppStorage(defaults))
             host.appearance = NSAppearance(named: .darkAqua)
             host.frame = NSRect(x: 0, y: 0, width: 1_070, height: 654)
             host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(until: Date().addingTimeInterval(page == "System Report" ? 5 : 1.2))
+            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
 
             let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: representation)
@@ -1035,6 +1054,15 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(batteryBoth.value, "80% · Charging")
         XCTAssertEqual(thermalCompact.value, "OK")
         XCTAssertEqual(thermalFull.value, "Nominal")
+    }
+
+    func testRendererFormatsIdleNetworkRateAsANumber() {
+        let network = SystemMonitorMenuRenderer.render(
+            item: SystemMonitorMenuItemConfiguration(metric: .network, networkDirection: .download),
+            sample: sample(networkDownload: 0, networkUpload: 0)
+        )
+
+        XCTAssertEqual(network.value, "↓0 KB/s")
     }
 
     func testRenderedStateCacheRejectsRedundantWrites() {
