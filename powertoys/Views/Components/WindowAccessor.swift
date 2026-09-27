@@ -89,13 +89,24 @@ private class WindowAccessorView: NSView {
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
         }
-        if isCompactApplet {
+        if isCompactApplet || windowIdentifier == "mac-tweaks" {
             window.styleMask.remove(.resizable)
-            window.standardWindowButton(.zoomButton)?.isHidden = true
+            if windowIdentifier == "mac-tweaks" {
+                window.contentMinSize = MacTweaksLayout.windowSize
+                window.contentMaxSize = MacTweaksLayout.windowSize
+                window.standardWindowButton(.zoomButton)?.isEnabled = false
+                window.appearance = NSAppearance(named: .darkAqua)
+                window.hasShadow = true
+            } else {
+                window.standardWindowButton(.zoomButton)?.isHidden = true
+            }
         }
     }
 
     private var trafficLightVerticalOffset: CGFloat? {
+        if windowIdentifier == "mac-tweaks" {
+            return MacTweaksLayout.trafficLightVerticalOffset
+        }
         if Self.compactAppletWindowIdentifiers.contains(windowIdentifier) {
             return UtilityLayout.compactTitlebarTrafficLightVerticalOffset
         }

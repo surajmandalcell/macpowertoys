@@ -78,7 +78,8 @@ final class WindowStateManager {
         "awake",
         "color-picker",
         "text-extractor",
-        "portman"
+        "portman",
+        "mac-tweaks"
     ]
 
     nonisolated static func storageIdentifier(for identifier: String) -> String? {
