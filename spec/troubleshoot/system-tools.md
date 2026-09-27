@@ -470,6 +470,25 @@
 
 ## System Monitor
 
+- **Symptom:** The installed Task Manager can restore as a resizable window,
+  its title feels detached from the traffic lights, or Remote Stats leaves a
+  large gap between Configure and Connect or after Connect.
+- **Cause:** Fixed sizing was applied only after the window attached, restored
+  state included an old size, AppKit's `contentLayoutRect` was mistaken for the
+  SwiftUI content view, the zoom light was hidden, and button frames included
+  transparent space outside their painted bounds.
+- **Invariant:** Declare the 1080 × 660pt content size in the scene and root,
+  restore position only, and reapply the nonresizable policy to the actual
+  content view after attachment and key-window changes. Keep all three traffic
+  lights on the shared 20pt centerline, with zoom visible but disabled and the
+  title at the 84pt leading edge. Render Configure and Connect as adjacent
+  88 × 36pt painted controls with an 8pt gap and 32pt trailing inset.
+- **Check:** Measure a 1080 × 692pt physical window, which includes the native
+  32pt titlebar, and a 1080 × 660pt content view. Attempt resize and zoom after
+  reopening, compare title and traffic-light centerlines, then measure the
+  Remote Stats button heights, painted gap, and trailing inset in the exact
+  source-stamped build.
+
 - **Symptom:** The main menu still contains Monitor and Fan while a Monitor
   status item opens the full window; its cards look like smooth, differently
   colored gradients despite the requested Dither Kit reference.
@@ -514,8 +533,9 @@
   packed three columns into two short rows. Monitor inherited the 240pt data
   sidebar despite short navigation.
 - **Invariant:** Use the shared dithered neutral card and red accent above.
-  Use two Overview columns and taller cards; keep the 220pt sidebar and give
-  the returned space to content. Other workspaces keep their widths.
+  Use two Overview columns and taller cards; keep the 192pt Task Manager
+  sidebar and give the returned space to content. Other workspaces keep their
+  widths.
 - **Check:** Compare dark and light Overview, dedicated popup, and Remote Stats
   renders, then inspect the signed app without taking focus.
 
