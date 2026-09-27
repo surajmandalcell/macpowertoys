@@ -126,6 +126,11 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertEqual(sidebarTitle.frame.midY, taskManager.frame.minY + 20, accuracy: 2)
         XCTAssertLessThanOrEqual(sidebarTitle.frame.maxX, taskManager.frame.minX + 220)
 
+        let overview = app.buttons["task-manager.sidebar.overview"]
+        XCTAssertTrue(overview.waitForExistence(timeout: 5))
+        XCTAssertEqual(overview.frame.minX, taskManager.frame.minX + 10, accuracy: 2)
+        XCTAssertEqual(overview.frame.maxX, taskManager.frame.minX + 210, accuracy: 2)
+
         app.buttons["task-manager.sidebar.cpu"].click()
         XCTAssertTrue(app.staticTexts["Core activity"].waitForExistence(timeout: 5))
         let cpuCapture = XCTAttachment(screenshot: taskManager.screenshot())
