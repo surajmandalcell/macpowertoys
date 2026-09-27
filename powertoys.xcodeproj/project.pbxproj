@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A20000000000000000000001 /* AIManagerCore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000003 /* AIManagerCore */; };
+		B30000000000000000000001 /* OnePlusUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000003 /* OnePlusUI */; };
 		A10000000000000000000001 /* NetToysCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* NetToysCore.swift */; };
 		A10000000000000000000002 /* NetToysRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* NetToysRuntime.swift */; };
 		A10000000000000000000003 /* NetToysScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* NetToysScanner.swift */; };
@@ -113,6 +114,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A20000000000000000000001 /* AIManagerCore in Frameworks */,
+				B30000000000000000000001 /* OnePlusUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -210,6 +212,7 @@
 			name = powertoys;
 			packageProductDependencies = (
 				A20000000000000000000003 /* AIManagerCore */,
+				B30000000000000000000003 /* OnePlusUI */,
 			);
 			productName = powertoys;
 			productReference = 1BDFA94E2F08A44C009A9009 /* powertoys.app */;
@@ -298,6 +301,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */,
+				B30000000000000000000002 /* XCLocalSwiftPackageReference "OnePlusUI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1BDFA94F2F08A44C009A9009 /* Products */;
@@ -798,11 +802,23 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		B30000000000000000000002 /* XCLocalSwiftPackageReference "OnePlusUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/OnePlusUI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		A20000000000000000000003 /* AIManagerCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */;
 			productName = AIManagerCore;
+		};
+		B30000000000000000000003 /* OnePlusUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000002 /* XCLocalSwiftPackageReference "OnePlusUI" */;
+			productName = OnePlusUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -4,6 +4,7 @@
 //
 
 import AIManagerCore
+import OnePlusUI
 import SwiftUI
 
 enum TrayTab: String, CaseIterable, Identifiable {

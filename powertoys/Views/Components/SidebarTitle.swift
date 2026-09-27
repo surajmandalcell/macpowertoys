@@ -3,17 +3,18 @@
 //  powertoys
 //
 
+import OnePlusUI
 import SwiftUI
 
 struct SidebarTitle: View {
     let text: String
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .medium))
-            .frame(height: UtilityLayout.workspaceTitlebarHeight)
-            .padding(.leading, UtilityLayout.workspaceTitleLeadingInset)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        OnePlusSidebarTitle(
+            text,
+            height: UtilityLayout.workspaceTitlebarHeight,
+            leadingInset: UtilityLayout.workspaceTitleLeadingInset
+        )
     }
 }
 
