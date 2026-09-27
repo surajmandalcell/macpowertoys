@@ -73,7 +73,7 @@
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <a href="docs/screenshots/system-monitor.png"><img src="docs/screenshots/system-monitor.png" width="100%" alt="Task Manager overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"></a><br>
+      <a href="docs/screenshots/task-manager.png"><img src="docs/screenshots/task-manager.png" width="100%" alt="Task Manager overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"></a><br>
       <sub><b>Task Manager</b> · processes and live system activity without a persistent heavy dashboard</sub>
     </td>
     <td width="50%" valign="top">
