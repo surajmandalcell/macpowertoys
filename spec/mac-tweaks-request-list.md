@@ -8,9 +8,11 @@
 - [x] Finish production behavior for search, empty results, errors, protected actions, restart-later guidance, close/reopen, quit, reset-one, and reset-all. Changes persist immediately; closing or quitting the window must not discard them.
 - [~] Verify fixed sizing, keyboard and accessibility labels, every category, search ranking, changed-state recovery, dark rendering, and source-stamped installation. Compare native screenshots against the supplied reference and correct visible layout differences before handoff.
 
-The Release app and desktop test bundles compile after the redesign. The final
-hosted interaction run, screenshot comparison, and source-stamped installed-app
-handoff remain open.
+The Release app and desktop test bundles compile after the redesign. Hosted
+run `36294789113` passed the fixed-frame, navigation, Mic Lock refresh, ranked
+search, empty-state, and dark-appearance UI flow. Its six captures were compared
+with the HTML reference; the final hosted unit job and source-stamped installed
+app handoff remain open.
 
 ## Pinned result and visual examples, 2026-09-26
 
@@ -56,7 +58,7 @@ The app and UI test bundle compiled locally. Hosted run `36210967511` stopped be
 
 - [x] Account for every record in the supplied 130-entry research catalogue with a per-feature implementation status and reason. Treat its availability marks as research evidence, not runtime certification. See `spec/mac-tweaks-compatibility.md`.
 - [x] Group Mac Tweaks into searchable categories. Sidebar search ranks titles, hidden keywords, phrase patterns, synonyms, and reasonable misspellings instantly.
-- [ ] Implement supported preference controls with exact-key backup, durable undo, managed-setting checks, and visible failure states. Batch activation where a target process must refresh.
+- [x] Implement supported preference controls with exact-key backup, write-ahead recovery, durable undo, managed-setting checks, conflict-safe rollback, and visible failure states. Batch activation where a target process must refresh.
 - [x] Keep the 130-entry compatibility research in documentation. Superseded: research-only entries no longer belong in the app's card list.
 - [x] Preserve Mic Lock as the first active enhancement. Mac Tweaks remains an on-demand window with no separate menu-bar item.
 - [ ] Verify code paths, build, installed app freshness, and available OS behavior. Report which parts still need macOS 15.8 and 26.7 runtime checks.
