@@ -79,8 +79,8 @@
     },
     {
       "name": "system-monitor",
-      "title": "System Monitor",
-      "description": "Open System Monitor",
+      "title": "Task Manager",
+      "description": "Open Task Manager",
       "icon": "system-monitor.png",
       "mode": "no-view"
     },

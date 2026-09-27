@@ -23,7 +23,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .cloudSync: "Cloud Sync"
         case .inputDevices: "Input Devices"
         case .systemCare: "System Care"
-        case .systemMonitor: "System Monitor"
+        case .systemMonitor: "Task Manager"
         case .netToys: "NetToys"
         case .switchAccounts: "Switch"
         }
@@ -1177,408 +1177,452 @@ private struct SystemCareTrayView: View {
 }
 
 enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
-    case home, cpu, gpu, memory, network, disk, battery, sensors
+    case home, cpu, gpu, memory, network, disk, battery, sensors, processes
 
     var id: String { rawValue }
+
     var title: String {
         switch self {
         case .home: "Home"
         case .cpu: "CPU"
         case .gpu: "GPU"
-        case .memory: "RAM"
+        case .memory: "Memory"
         case .network: "Network"
         case .disk: "Disk"
         case .battery: "Battery"
         case .sensors: "Sensors"
+        case .processes: "Processes"
         }
     }
+
     var symbol: String {
         switch self {
-        case .home: "square.grid.2x2"
-        case .cpu: "cpu"
-        case .gpu: "gpu-card"
+        case .home: "house"
+        case .cpu: "gearshape"
+        case .gpu: "display"
         case .memory: "memorychip"
         case .network: "network"
         case .disk: "internaldrive"
         case .battery: "battery.75percent"
         case .sensors: "thermometer.medium"
+        case .processes: "list.bullet.rectangle"
         }
     }
+
     var metrics: Set<SystemMonitorMenuMetric> {
         switch self {
         case .home: Set(SystemMonitorMenuMetric.allCases)
         case .cpu: [.cpu, .thermal]
-        case .gpu: [.gpu]
+        case .gpu: [.gpu, .thermal]
         case .memory: [.memory]
         case .network: [.network]
         case .disk: [.disk]
         case .battery: [.battery]
         case .sensors: [.thermal]
+        case .processes: []
         }
     }
 }
 
 struct SystemMonitorMenuPopoverView: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "waveform.path.ecg")
-                    .foregroundStyle(SystemMonitorPalette.accent)
-                Text("System Monitor")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
-                Button("Open Window") { ToolActionRouter.shared.open(toolID: "system-monitor") }
-                    .controlSize(.regular)
-                    .frame(minHeight: 28)
-                    .accessibilityIdentifier("system-monitor.menu.open-window")
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 46)
-
-            ScrollView {
-                SystemMonitorTrayView(showsHeader: false)
-            }
-            .thinScrollIndicators()
-        }
-        .frame(width: 440, height: 560)
-        .background(colorScheme == .dark
-            ? Color(red: 0.075, green: 0.075, blue: 0.082)
-            : Color(nsColor: .windowBackgroundColor))
+        SystemMonitorTrayView()
+        .frame(width: 356, height: 536)
+        .foregroundStyle(TaskManagerTheme.ink)
+        .background(TaskManagerTheme.window)
+        .environment(\.colorScheme, .dark)
         .utilityMotionPolicy()
     }
 }
 
 struct SystemMonitorTrayView: View {
-    var showsHeader = true
     @State private var service = SystemMonitorService.shared
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
-    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("systemMonitor.rememberTrayPage") private var rememberPage = true
 
     private var sample: SystemMonitorSample? { service.snapshot }
     private var page: SystemMonitorTrayPage { SystemMonitorTrayPage(rawValue: pageID) ?? .home }
+    private var history: [SystemMonitorSample] { Array(service.history.suffix(120)) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if showsHeader { TrayToolHeader(tab: .systemMonitor) }
-            HStack(spacing: 4) {
-                ForEach(SystemMonitorTrayPage.allCases) { item in
-                    Button {
-                        pageID = item.rawValue
-                    } label: {
-                        VStack(spacing: 3) {
-                            monitorIcon(item.symbol)
-                            Text(item.title)
-                                .font(.system(size: 9, weight: .medium))
-                                .lineLimit(1)
-                        }
-                            .frame(maxWidth: .infinity, minHeight: 42)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 7))
-                    .foregroundStyle(page == item ? Color.primary : Color.secondary)
-                    .background(page == item ? Color.primary.opacity(0.12) : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 7))
-                    .help(item.title)
-                    .accessibilityLabel("Monitor \(item.title)")
-                    .accessibilityAddTraits(page == item ? .isSelected : [])
-                    .accessibilityIdentifier("system-monitor.tray.\(item.rawValue)")
+        VStack(spacing: 0) {
+            tabStrip
+
+            Group {
+                switch page {
+                case .home:
+                    ScrollView { homePage }
+                        .thinScrollIndicators()
+                case .processes:
+                    TaskManagerMenuProcessesView()
+                default:
+                    ScrollView { detailPage }
+                        .thinScrollIndicators()
                 }
             }
-            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-            .padding(.bottom, 10)
-
-            if page == .home { homePage } else { detailPage }
-            if page == .sensors {
-                FanControlView(owner: "system-monitor-tray", compact: true)
-                    .padding(.top, 8)
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.bottom, 18)
-        .onAppear { service.startDetailed(owner: "tray", metrics: page.metrics) }
-        .onChange(of: pageID) { _, _ in service.updateDetailed(owner: "tray", metrics: page.metrics) }
+        .onAppear {
+            if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
+            service.startDetailed(owner: "tray", metrics: page.metrics)
+        }
+        .onChange(of: pageID) { _, _ in
+            service.updateDetailed(owner: "tray", metrics: page.metrics)
+        }
         .onDisappear { service.stopDetailed(owner: "tray") }
     }
 
-    private var homePage: some View {
-        VStack(spacing: 0) {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                summary(.cpu, metric(
-                    "CPU", symbol: "cpu", value: percent(sample?.cpuUsage, metric: .cpu),
-                    detail: "All cores", level: sample?.cpuUsage,
-                    values: service.history.compactMap(\.cpuUsage), surfaceTint: SystemMonitorPalette.teal
-                ))
-                summary(.gpu, metric(
-                    "GPU", symbol: "gpu-card", value: percent(sample?.gpuUsage, metric: .gpu),
-                    detail: "Graphics utilization", level: sample?.gpuUsage,
-                    values: service.history.compactMap(\.gpuUsage), surfaceTint: SystemMonitorPalette.blue
-                ))
-                summary(.memory, metric(
-                    "RAM", symbol: "memorychip", value: percent(sample?.memoryUsage, metric: .memory),
-                    detail: memoryDetail, level: sample?.memoryUsage,
-                    values: service.history.compactMap(\.memoryUsage), surfaceTint: SystemMonitorPalette.coral
-                ))
-                summary(.disk, metric(
-                    "Disk", symbol: "internaldrive", value: percent(sample?.diskUsage, metric: .disk),
-                    detail: diskDetail, level: sample?.diskUsage,
-                    values: service.history.compactMap(\.diskUsage), surfaceTint: SystemMonitorPalette.orange
-                ))
-                summary(.network, metric(
-                    "Network", symbol: "network", value: sample?.networkDownload.map(Self.rate) ?? "...",
-                    detail: "Up \(sample?.networkUpload.map(Self.rate) ?? "...")", level: nil,
-                    values: service.history.compactMap { point in
-                        guard let down = point.networkDownload, let up = point.networkUpload else { return nil }
-                        return max(down, up)
-                    }, tint: SystemMonitorPalette.cyan
-                ))
-                summary(.battery, metric(
-                    "Battery", symbol: "battery.75percent",
-                    value: sample?.batteryPercent.map { "\($0)%" } ?? "Unavailable",
-                    detail: batteryDetail,
-                    level: sample?.batteryPercent.map(Double.init),
-                    values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                    surfaceTint: SystemMonitorPalette.gold
-                ))
-                summary(.sensors, metric(
-                    "Thermal", symbol: "thermometer.medium", value: sample?.thermalState ?? "Unavailable",
-                    detail: "System pressure", level: thermalLevel,
-                    values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                    surfaceTint: SystemMonitorPalette.green
-                ))
-                summary(.cpu, identifier: "load", metric(
-                    "Load · 1 min", symbol: "chart.bar", value: loadValue,
-                    detail: "Average CPU demand", level: loadLevel,
-                    values: service.history.compactMap { $0.loadAverage.map { $0.0 } },
-                    surfaceTint: SystemMonitorPalette.blue
-                ))
-                .help("Load is the average number of processes running or ready for a CPU. Compare it with \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs. It is not a percent.")
+    private var tabStrip: some View {
+        HStack(spacing: 2) {
+            ForEach(SystemMonitorTrayPage.allCases) { item in
+                Button {
+                    pageID = item.rawValue
+                } label: {
+                    Group {
+                        if item == .gpu {
+                            GPUCardIcon()
+                        } else {
+                            Image(systemName: item.symbol)
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                    }
+                    .frame(width: 26, height: 29)
+                    .foregroundStyle(page == item ? TaskManagerTheme.ink : TaskManagerTheme.muted)
+                    .contentShape(Rectangle())
+                    .background(page == item ? Color.white.opacity(0.105) : .clear,
+                                in: RoundedRectangle(cornerRadius: 5))
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help(item.title)
+                .accessibilityLabel(item.title)
+                .accessibilityAddTraits(page == item ? .isSelected : [])
+                .accessibilityIdentifier("system-monitor.tray.\(item.rawValue)")
             }
-            .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+            Spacer(minLength: 5)
+            Button("Open App") {
+                ToolActionRouter.shared.open(toolID: "system-monitor")
+            }
+            .font(.system(size: 9, weight: .medium))
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .padding(.horizontal, 10)
+            .frame(height: 27)
+            .background(Color.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 5))
+            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+            .accessibilityIdentifier("system-monitor.menu.open-app")
         }
+        .padding(.horizontal, 10)
+        .frame(height: 40)
+        .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
     }
 
-    private func summary<Content: View>(
-        _ destination: SystemMonitorTrayPage, identifier: String? = nil, _ content: Content
-    ) -> some View {
-        Button { pageID = destination.rawValue } label: { content }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 10))
-            .accessibilityIdentifier("system-monitor.tray.summary.\(identifier ?? destination.rawValue)")
-            .accessibilityHint("Show \(destination.title) details")
+    private var homePage: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                GridRow {
+                    metricButton(.cpu, card(
+                        .cpu, value: percent(sample?.cpuUsage),
+                        detail: "Load \(loadValue)",
+                        values: history.compactMap(\.cpuUsage)
+                    ))
+                    metricButton(.gpu, card(
+                        .gpu, value: percent(sample?.gpuUsage),
+                        detail: "Graphics utilization",
+                        values: history.compactMap(\.gpuUsage)
+                    ))
+                    metricButton(.memory, card(
+                        .memory, value: percent(sample?.memoryUsage),
+                        detail: memoryDetail,
+                        values: history.compactMap(\.memoryUsage),
+                        accent: true
+                    ))
+                }
+                GridRow {
+                    metricButton(.network, card(
+                        .network, value: "↓ \(sample?.networkDownload.map(Self.rate) ?? "...")",
+                        detail: "↑ \(sample?.networkUpload.map(Self.rate) ?? "...")",
+                        values: history.compactMap(\.networkDownload)
+                    ))
+                    .gridCellColumns(2)
+                    metricButton(.disk, card(
+                        .disk, value: percent(sample?.diskUsage),
+                        detail: diskAvailable,
+                        values: history.compactMap(\.diskUsage)
+                    ))
+                }
+                GridRow {
+                    metricButton(.sensors, card(
+                        .thermal, title: "Thermal", value: sample?.thermalState ?? "...",
+                        detail: "System pressure",
+                        values: history.compactMap { Self.thermalLevel($0.thermalState) }
+                    ))
+                    .gridCellColumns(2)
+                    metricButton(.battery, card(
+                        .battery,
+                        value: sample?.batteryPercent.map { "\($0)%" } ?? "...",
+                        detail: batteryDetail,
+                        values: history.compactMap { $0.batteryPercent.map(Double.init) }
+                    ))
+                }
+            }
+
+            TaskManagerPanel {
+                FanControlView(owner: "system-monitor-tray-home", compact: true)
+            }
+            .frame(height: 43)
+
+            remoteSummary
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    private var remoteSummary: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text("Remote instances")
+                    .font(.system(size: 8.5, weight: .medium))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                Spacer()
+                Button("Manage  →") {
+                    UserDefaults.standard.set("Remote Stats", forKey: "systemMonitor.windowPage")
+                    ToolActionRouter.shared.open(toolID: "system-monitor")
+                }
+                .font(.system(size: 8))
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .foregroundStyle(TaskManagerTheme.muted)
+            }
+
+            TaskManagerRemoteMenuCard()
+        }
     }
 
     @ViewBuilder
     private var detailPage: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            switch page {
-            case .cpu:
-                detailHero("CPU", symbol: "cpu", value: percent(sample?.cpuUsage, metric: .cpu),
-                           detail: "Usage across all cores", level: sample?.cpuUsage,
-                           values: service.history.compactMap(\.cpuUsage), tint: SystemMonitorPalette.teal)
-                detailRows([
-                    ("Load · 1 min", loadValue),
-                    ("Load · 5 min", sample?.loadAverage.map { Self.decimal($0.1) } ?? "..."),
-                    ("Load · 15 min", sample?.loadAverage.map { Self.decimal($0.2) } ?? "..."),
-                    ("Logical CPUs", "\(ProcessInfo.processInfo.activeProcessorCount)"),
-                    ("Thermal pressure", sample?.thermalState ?? "Unavailable"),
-                ])
-                .help("Load is the average number of processes running or ready for a CPU. It is not a percentage.")
-            case .gpu:
-                detailHero("GPU", symbol: "gpu-card", value: percent(sample?.gpuUsage, metric: .gpu),
-                           detail: "Graphics utilization", level: sample?.gpuUsage,
-                           values: service.history.compactMap(\.gpuUsage), tint: SystemMonitorPalette.blue)
-            case .memory:
-                detailHero("RAM", symbol: "memorychip", value: percent(sample?.memoryUsage, metric: .memory),
-                           detail: "Physical memory in use", level: sample?.memoryUsage,
-                           values: service.history.compactMap(\.memoryUsage), tint: SystemMonitorPalette.coral)
-                detailRows([
-                    ("Used", sample?.memoryUsed.map(Self.bytes) ?? "..."),
-                    ("Available", memoryAvailable),
-                    ("Total", sample?.memoryTotal.map(Self.bytes) ?? "..."),
-                ])
-            case .network:
-                detailHero("Network", symbol: "network",
-                           value: sample?.networkDownload.map(Self.rate) ?? "...",
-                           detail: "Download · all active interfaces", level: nil,
-                           values: service.history.compactMap(\.networkDownload), tint: SystemMonitorPalette.cyan)
-                detailRows([
-                    ("Download", sample?.networkDownload.map(Self.rate) ?? "..."),
-                    ("Upload", sample?.networkUpload.map(Self.rate) ?? "..."),
-                ])
-            case .disk:
-                detailHero("Disk", symbol: "internaldrive", value: percent(sample?.diskUsage, metric: .disk),
-                           detail: "Startup volume used", level: sample?.diskUsage,
-                           values: service.history.compactMap(\.diskUsage), tint: SystemMonitorPalette.orange)
-                detailRows([
-                    ("Used", sample?.diskUsed.map(Self.bytes) ?? "..."),
-                    ("Free", diskAvailable),
-                    ("Capacity", sample?.diskTotal.map(Self.bytes) ?? "..."),
-                ])
-            case .battery:
-                detailHero("Battery", symbol: "battery.75percent",
-                           value: sample?.batteryPercent.map { "\($0)%" } ?? "Unavailable",
-                           detail: batteryDetail, level: sample?.batteryPercent.map(Double.init),
-                           values: service.history.compactMap { $0.batteryPercent.map(Double.init) },
-                           tint: SystemMonitorPalette.gold)
-                detailRows([("Status", batteryDetail)])
-            case .sensors:
-                detailHero("Sensors", symbol: "thermometer.medium",
-                           value: sample?.thermalState ?? "Unavailable", detail: "System thermal pressure",
-                           level: nil,
-                           values: service.history.compactMap { Self.thermalLevel($0.thermalState) },
-                           tint: SystemMonitorPalette.green)
-            case .home:
-                EmptyView()
+        VStack(alignment: .leading, spacing: 8) {
+            detailHero
+            detailRows
+            if page == .sensors {
+                TaskManagerPanel {
+                    FanControlView(owner: "system-monitor-tray-sensors", compact: true)
+                }
+                .frame(height: 43)
             }
         }
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
+        .padding(10)
     }
 
-    private func detailHero(
-        _ title: String, symbol: String, value: String, detail: String,
-        level: Double?, values: [Double], tint: Color
+    private var detailHero: some View {
+        let values: [Double] = switch page {
+        case .cpu: history.compactMap(\.cpuUsage)
+        case .gpu: history.compactMap(\.gpuUsage)
+        case .memory: history.compactMap(\.memoryUsage)
+        case .network: history.compactMap(\.networkDownload)
+        case .disk: history.compactMap(\.diskUsage)
+        case .battery: history.compactMap { $0.batteryPercent.map(Double.init) }
+        case .sensors: history.compactMap { Self.thermalLevel($0.thermalState) }
+        case .home, .processes: []
+        }
+        let value: String = switch page {
+        case .cpu: percent(sample?.cpuUsage)
+        case .gpu: percent(sample?.gpuUsage)
+        case .memory: percent(sample?.memoryUsage)
+        case .network: sample?.networkDownload.map(Self.rate) ?? "..."
+        case .disk: percent(sample?.diskUsage)
+        case .battery: sample?.batteryPercent.map { "\($0)%" } ?? "..."
+        case .sensors: sample?.thermalState ?? "..."
+        case .home, .processes: "..."
+        }
+        return TaskManagerPanel(textured: true) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 7) {
+                    metricIcon(page)
+                    Text(page.title)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(TaskManagerTheme.secondary)
+                    Spacer()
+                }
+                Text(value)
+                    .font(.system(size: 28, weight: .medium))
+                    .monospacedDigit()
+                TaskManagerHistoryChart(
+                    values: values,
+                    secondary: page == .network ? history.compactMap(\.networkUpload) : [],
+                    range: chartRange(values),
+                    unit: page == .network ? "/s" : "%",
+                    compact: true
+                )
+                .frame(height: 92)
+            }
+            .padding(12)
+        }
+    }
+
+    private var detailRows: some View {
+        let rows: [(String, String)] = switch page {
+        case .cpu:
+            [
+                ("Load · 1 minute", loadValue),
+                ("Load · 5 minutes", sample?.loadAverage.map { Self.decimal($0.1) } ?? "..."),
+                ("Load · 15 minutes", sample?.loadAverage.map { Self.decimal($0.2) } ?? "..."),
+                ("Logical CPUs", "\(ProcessInfo.processInfo.activeProcessorCount)"),
+                ("Thermal pressure", sample?.thermalState ?? "..."),
+            ]
+        case .gpu:
+            [
+                ("Graphics utilization", percent(sample?.gpuUsage)),
+                ("Memory", "Unified"),
+                ("Thermal pressure", sample?.thermalState ?? "..."),
+            ]
+        case .memory:
+            [
+                ("Used", sample?.memoryUsed.map(Self.bytes) ?? "..."),
+                ("Available", memoryAvailable),
+                ("Total", sample?.memoryTotal.map(Self.bytes) ?? "..."),
+                ("Compressed", sample?.memoryDetails.map { Self.bytes($0.compressed) } ?? "..."),
+                ("Swap used", sample?.memoryDetails?.swapUsed.map(Self.bytes) ?? "Unavailable"),
+            ]
+        case .network:
+            [
+                ("Download", sample?.networkDownload.map(Self.rate) ?? "..."),
+                ("Upload", sample?.networkUpload.map(Self.rate) ?? "..."),
+                ("Interface", sample?.networkDetails?.interfaceName ?? "..."),
+                ("Local address", sample?.networkDetails?.localAddress ?? "Unavailable"),
+            ]
+        case .disk:
+            [
+                ("Used", sample?.diskUsed.map(Self.bytes) ?? "..."),
+                ("Available", diskAvailable),
+                ("Capacity", sample?.diskTotal.map(Self.bytes) ?? "..."),
+                ("Read", sample?.diskDetails?.readPerSecond.map(Self.rate) ?? "..."),
+                ("Write", sample?.diskDetails?.writePerSecond.map(Self.rate) ?? "..."),
+            ]
+        case .battery:
+            [
+                ("Status", batteryDetail),
+                ("Health", sample?.batteryDetails?.health ?? "Unavailable"),
+                ("Cycle count", sample?.batteryDetails?.cycleCount.map(String.init) ?? "Unavailable"),
+                ("Power draw", batteryPower),
+            ]
+        case .sensors:
+            [("Thermal pressure", sample?.thermalState ?? "...")]
+        case .home, .processes:
+            []
+        }
+        return TaskManagerPanel {
+            VStack(spacing: 0) {
+                ForEach(rows.indices, id: \.self) { index in
+                    HStack {
+                        Text(rows[index].0).foregroundStyle(TaskManagerTheme.secondary)
+                        Spacer(minLength: 8)
+                        Text(rows[index].1).monospacedDigit()
+                    }
+                    .font(.system(size: 10))
+                    .frame(minHeight: 28)
+                    if index < rows.count - 1 {
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                    }
+                }
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 3)
+        }
+    }
+
+    private func metricButton<Content: View>(
+        _ destination: SystemMonitorTrayPage,
+        _ content: Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        monitorIcon(symbol)
-                            .foregroundStyle(tint)
-                            .brightness(colorScheme == .dark ? 0 : -0.23)
-                        Text(title).foregroundStyle(.secondary)
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    Text(value)
-                        .font(.system(size: 30, weight: .semibold))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Text(detail)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                if let level {
-                    ZStack {
-                        Circle().stroke(Color.primary.opacity(0.12), lineWidth: 5)
-                        Circle().trim(from: 0, to: min(max(level / 100, 0), 1))
-                            .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                    }
-                    .frame(width: 43, height: 43)
-                    .accessibilityHidden(true)
-                }
-            }
-            .padding(14)
-            Text("History")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 5)
-            SystemMonitorDitherSparkline(values: values, color: tint, showsGuide: true)
-                .frame(height: 56)
-                .accessibilityHidden(true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SystemMonitorPalette.surface(tint, radius: 10))
-        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.12)) }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        Button { pageID = destination.rawValue } label: { content }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .accessibilityHint("Show \(destination.title) details")
     }
 
-    private func detailRows(_ rows: [(String, String)]) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Details")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                Spacer()
-            }
-            .padding(.bottom, 5)
-            ForEach(rows.indices, id: \.self) { index in
-                HStack(spacing: 8) {
-                    Text(rows[index].0).foregroundStyle(.secondary)
-                    Spacer(minLength: 6)
-                    Text(rows[index].1)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                .font(.system(size: 11))
-                .frame(minHeight: 24)
-                if index < rows.count - 1 { QuietDivider() }
-            }
-        }
-        .padding(12)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func metric(
-        _ title: String,
-        symbol: String,
+    private func card(
+        _ metric: SystemMonitorMenuMetric,
+        title: String? = nil,
         value: String,
         detail: String,
-        level: Double?,
         values: [Double],
-        tint: Color? = nil,
-        surfaceTint: Color? = nil
+        accent: Bool = false
     ) -> some View {
-        let color = surfaceTint ?? tint ?? SystemMonitorPalette.accent
-        let surface = surfaceTint ?? color
-        return VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
+        TaskManagerPanel(textured: true) {
+            VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 5) {
-                    monitorIcon(symbol)
-                        .foregroundStyle(color)
-                        .brightness(colorScheme == .dark ? 0 : -0.23)
-                    Text(title).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    metricIcon(metric)
+                    Text(title ?? metric.title)
+                        .font(.system(size: 8.5, weight: .medium))
+                        .foregroundStyle(TaskManagerTheme.secondary)
                     Spacer(minLength: 0)
                 }
                 Text(value)
-                    .font(.system(size: showsHeader ? 18 : 23, weight: .semibold))
+                    .font(.system(size: 19, weight: .medium))
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.7)
                 Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 7.5))
+                    .foregroundStyle(TaskManagerTheme.muted)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                TaskManagerHistoryChart(
+                    values: values,
+                    range: chartRange(values, metric: metric),
+                    unit: metric == .network ? "/s" : "%",
+                    compact: true,
+                    primaryColor: accent ? TaskManagerTheme.accent : TaskManagerTheme.ink.opacity(0.76)
+                )
+                .frame(height: 17)
             }
-            .padding(.horizontal, 10)
-            .padding(.top, showsHeader ? 6 : 10)
-            Spacer(minLength: 0)
-            SystemMonitorDitherSparkline(values: values, color: color, showsGuide: true)
-                .frame(height: showsHeader ? 10 : 20)
-                .accessibilityHidden(true)
+            .padding(.horizontal, 8)
+            .padding(.top, 7)
         }
-        .frame(maxWidth: .infinity, minHeight: showsHeader ? 66 : 96, alignment: .topLeading)
-        .background(SystemMonitorPalette.surface(surface, radius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.12))
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .shadow(color: .black.opacity(0.16), radius: 5, y: 2)
+        .frame(minHeight: 70)
     }
 
     @ViewBuilder
-    private func monitorIcon(_ symbol: String) -> some View {
-        if symbol == "gpu-card" {
-            GPUCardIcon().frame(width: 13, height: 13)
+    private func metricIcon(_ page: SystemMonitorTrayPage) -> some View {
+        if page == .gpu {
+            GPUCardIcon().foregroundStyle(TaskManagerTheme.secondary)
         } else {
-            Image(systemName: symbol).font(.system(size: 12, weight: .medium))
+            Image(systemName: page.symbol)
+                .font(.system(size: 8.5, weight: .medium))
+                .foregroundStyle(TaskManagerTheme.secondary)
         }
     }
 
-    private func percent(_ value: Double?, metric: SystemMonitorMenuMetric) -> String {
-        if let value { return "\(Int(value.rounded()))%" }
-        return sample?.unavailableMetrics.contains(metric) == true ? "Unavailable" : "..."
+    @ViewBuilder
+    private func metricIcon(_ metric: SystemMonitorMenuMetric) -> some View {
+        if metric == .gpu {
+            GPUCardIcon().foregroundStyle(TaskManagerTheme.secondary)
+        } else {
+            Image(systemName: metric.symbol)
+                .font(.system(size: 8.5, weight: .medium))
+                .foregroundStyle(metric == .memory ? TaskManagerTheme.accent : TaskManagerTheme.secondary)
+        }
+    }
+
+    private func chartRange(
+        _ values: [Double],
+        metric: SystemMonitorMenuMetric? = nil
+    ) -> ClosedRange<Double> {
+        if metric == .network || (metric == nil && page == .network) {
+            0...max(values.max() ?? 1, 1)
+        } else {
+            0...100
+        }
+    }
+
+    private func percent(_ value: Double?) -> String {
+        value.map { "\(Int($0.rounded()))%" } ?? "..."
     }
 
     private var memoryDetail: String {
-        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "Physical memory" }
-        return "\(Self.bytes(used)) / \(Self.bytes(total))"
+        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "..." }
+        return "\(Self.shortBytes(used)) / \(Self.shortBytes(total))"
     }
 
     private var memoryAvailable: String {
@@ -1588,34 +1632,30 @@ struct SystemMonitorTrayView: View {
 
     private var diskAvailable: String {
         guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "..." }
-        return Self.bytes(max(total - used, 0))
+        return Self.bytes(max(total - used, 0)) + " free"
     }
 
     private var batteryDetail: String {
-        guard sample?.batteryPercent != nil else { return "No battery data" }
-        return sample?.batteryCharging == true ? "Charging" : "On battery"
+        guard let charging = sample?.batteryCharging else { return "Unavailable" }
+        return charging ? "Connected to power" : "On battery"
     }
 
-    private var diskDetail: String {
-        guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "Startup volume" }
-        return "\(Self.bytes(max(total - used, 0))) free"
+    private var batteryPower: String {
+        guard let voltage = sample?.batteryDetails?.voltageMillivolts,
+              let amperage = sample?.batteryDetails?.amperageMilliamps else { return "Unavailable" }
+        let watts = Double(voltage) * Double(abs(amperage)) / 1_000_000
+        return "\(Self.decimal(watts)) W"
     }
 
     private var loadValue: String {
-        sample?.loadAverage.map { $0.0.formatted(.number.precision(.fractionLength(2))) } ?? "..."
+        sample?.loadAverage.map { Self.decimal($0.0) } ?? "..."
     }
-
-    private var loadLevel: Double? {
-        sample?.loadAverage.map { min($0.0 / Double(max(ProcessInfo.processInfo.activeProcessorCount, 1)) * 100, 100) }
-    }
-
-    private var thermalLevel: Double? { Self.thermalLevel(sample?.thermalState) }
 
     nonisolated private static func thermalLevel(_ state: String?) -> Double? {
         switch state {
-        case "Nominal": 20
-        case "Fair": 50
-        case "Serious": 75
+        case "Nominal": 18
+        case "Fair": 48
+        case "Serious": 76
         case "Critical": 100
         default: nil
         }
@@ -1631,6 +1671,144 @@ struct SystemMonitorTrayView: View {
 
     nonisolated private static func bytes(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: value, countStyle: .memory)
+    }
+
+    nonisolated private static func shortBytes(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .memory)
+    }
+}
+
+private struct TaskManagerRemoteMenuCard: View {
+    private var profiles: [SystemMonitorRemoteProfile] { SystemMonitorRemoteProfiles.load() }
+
+    var body: some View {
+        Button {
+            UserDefaults.standard.set("Remote Stats", forKey: "systemMonitor.windowPage")
+            ToolActionRouter.shared.open(toolID: "system-monitor")
+        } label: {
+            TaskManagerPanel {
+                VStack(spacing: 0) {
+                    if profiles.isEmpty {
+                        remoteRow(name: "No remote hosts", detail: "Add a Mac, Windows, or Linux computer")
+                    } else {
+                        ForEach(Array(profiles.prefix(2)).indices, id: \.self) { index in
+                            let profile = profiles[index]
+                            remoteRow(name: profile.name, detail: "\(profile.platform.rawValue) · Connect on demand")
+                            if index < min(profiles.count, 2) - 1 {
+                                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(height: CGFloat(max(min(profiles.count, 2), 1)) * 43)
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+    }
+
+    private func remoteRow(name: String, detail: String) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: "server.rack")
+                .font(.system(size: 10))
+                .foregroundStyle(TaskManagerTheme.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name).font(.system(size: 10, weight: .medium)).lineLimit(1)
+                Text(detail).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted).lineLimit(1)
+            }
+            Spacer()
+            Text(profiles.isEmpty ? "Add  →" : "Open  →")
+                .font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 43)
+    }
+}
+
+private struct TaskManagerMenuProcessesView: View {
+    @State private var sampler = SystemMonitorProcessSampler()
+    @State private var processes: [SystemMonitorProcess] = []
+    @State private var search = ""
+
+    private var filtered: [SystemMonitorProcess] {
+        let matching = processes.filter {
+            search.isEmpty
+                || $0.name.localizedCaseInsensitiveContains(search)
+                || String($0.pid).contains(search)
+        }
+        return Array(SystemMonitorProcessSorting.sorted(matching, by: .cpu, descending: true).prefix(9))
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            TaskManagerSearchField(prompt: "Find a process…", text: $search, width: 336)
+
+            TaskManagerPanel {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Process")
+                        Spacer()
+                        Text("CPU").frame(width: 52, alignment: .trailing)
+                        Text("Memory").frame(width: 72, alignment: .trailing)
+                    }
+                    .font(.system(size: 7.5, weight: .medium))
+                    .foregroundStyle(TaskManagerTheme.muted)
+                    .textCase(.uppercase)
+                    .padding(.horizontal, 9)
+                    .frame(height: 25)
+                    .background(Color.black.opacity(0.12))
+
+                    ForEach(filtered) { process in
+                        Button { openProcesses() } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: "app")
+                                    .font(.system(size: 8))
+                                    .frame(width: 16, height: 16)
+                                    .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 3))
+                                    .overlay { RoundedRectangle(cornerRadius: 3).strokeBorder(TaskManagerTheme.line) }
+                                Text(process.name)
+                                    .font(.system(size: 9.5))
+                                    .lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
+                                    .frame(width: 52, alignment: .trailing)
+                                Text(ByteCountFormatter.string(fromByteCount: Int64(min(process.residentBytes, UInt64(Int64.max))),
+                                                                   countStyle: .memory))
+                                    .frame(width: 72, alignment: .trailing)
+                            }
+                            .font(.system(size: 8.5, design: .monospaced))
+                            .foregroundStyle(TaskManagerTheme.secondary)
+                            .padding(.horizontal, 9)
+                            .frame(height: 28)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .focusEffectDisabled()
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                    }
+
+                    Button("All \(processes.count) processes  →") { openProcesses() }
+                        .font(.system(size: 8))
+                        .foregroundStyle(TaskManagerTheme.muted)
+                        .buttonStyle(.plain)
+                        .focusEffectDisabled()
+                        .frame(maxWidth: .infinity, minHeight: 28, alignment: .trailing)
+                        .padding(.horizontal, 9)
+                }
+            }
+        }
+        .padding(10)
+        .task {
+            while !Task.isCancelled {
+                processes = await sampler.sample()
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    private func openProcesses() {
+        UserDefaults.standard.set("Processes", forKey: "systemMonitor.windowPage")
+        ToolActionRouter.shared.open(toolID: "system-monitor")
     }
 }
 

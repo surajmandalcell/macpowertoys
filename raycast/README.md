@@ -18,7 +18,7 @@ Each command opens the matching utility or menu-bar panel through the local
 | ----------------- | ------------------------------------------------------- |
 | App               | MacPowerToys                                            |
 | Screen            | Ruler, Color Picker, Text Extractor                     |
-| System            | Awake, Input Devices, System Care, System Monitor, Logs |
+| System            | Awake, Input Devices, System Care, Task Manager, Logs |
 | Files and network | Cloud Sync, Diskman, NetToys, Portman                   |
 
 ## Local installation

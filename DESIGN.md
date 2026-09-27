@@ -108,7 +108,7 @@ motion:
 MacPowerToys is a dense, quiet, native-feeling macOS utility. It should read like a
 first-party Apple tool that a careful engineer polished: flat surfaces, one accent
 color doing all the talking, small type, generous alignment discipline, zero
-decoration for its own sake. Nothing bounces. System Monitor has the
+decoration for its own sake. Nothing bounces. Task Manager has the
 scoped dithered dark treatment below; elsewhere, avoid decorative glows. When in
 doubt, remove chrome rather than add it.
 
@@ -456,7 +456,7 @@ tool's product brief.
 | Text Extractor | Text / applet | Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition. |
 | Input Devices | System / workspace | Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
 | System Care | System / workspace | Understand storage, preview safe cleanup, remove apps, and access advanced Mole maintenance without hidden privilege prompts. |
-| System Monitor | System / workspace | Watch CPU, memory, disk, network, battery, and thermal health on demand, with an optional lightweight menu-bar summary. |
+| Task Manager | System / workspace | Inspect processes and live local or remote system activity on demand, with an optional lightweight menu-bar summary. |
 
 ### Full Workspace
 
@@ -549,20 +549,20 @@ Existing workspaces fix the reference choices that general ranges leave open:
 | Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
 | Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
 | System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
-| System Monitor | 1080×720 / 220pt | Overview, Processes, CPU, Memory, Network, Disk, Sensors, Remote Stats | Full process list, live metric grids, and per-metric menu placement |
+| Task Manager | 1070×654 / 192pt | Overview, Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote Stats, System Report | Full process list, live metric grids, system inventory, and per-metric menu placement |
 
-System Monitor follows the owner's OnePlus-inspired near-black utility-panel
-reference. Its sidebar and content pane use opaque neutral surfaces; the
-selected sidebar row uses a neutral gray fill. Overview, Remote Stats, and its
-dedicated menu-bar popup use visible ordered-dot dithering on neutral cards,
-one consistent red accent for icons and charts, clear edges, and large readings.
-No smooth colored wash sits behind the values. The dedicated 440pt popup has
-labeled metric tabs and opens from every Monitor menu-bar item. The main
-MacPowerToys popup contains no Monitor tab, metrics, or Fan row. Compact Fan
-appears only on Monitor Sensors with three visible presets and space below it.
-Search is
-at least 34pt high with a 12pt horizontal inset. Keep these exceptions inside
-System Monitor; other workspaces retain their shared flat materials.
+Task Manager follows the supplied `task-manager.html` reference. It is a fixed
+dark utility workspace using `#161616` content, `#1D1D1D` sidebar, `#202020`
+cards, `#303030` dividers, `#EDEDED` text, and `#EE5B50` accent. Cards use a
+subtle ordered-dot texture rather than colored gradients. The sidebar is 192pt,
+the default window is 1070×654, and the compact menu is 356×536. The menu has
+icon tabs for Home, CPU, GPU, Memory, Network, Disk, Battery, Sensors, and
+Processes and opens from every Task Manager menu-bar item. Fan appears on menu
+Home and Sensors and only on Sensors in the main window, with Auto, Cool, and
+Max always visible. The main MacPowerToys popup contains no Task Manager tab,
+metrics, or Fan row. Search controls are at least 34pt high with 12pt horizontal
+insets. Keep these exceptions inside Task Manager; other workspaces retain their
+shared flat materials.
 
 Mac Tweaks follows the owner's fixed dark reference rather than the general
 workspace recipe. Its 1120×826 window is not resizable. It uses a 200pt opaque
@@ -868,7 +868,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
 | System Care | Chosen Color | Chosen Color | Cleanup tray with one removable block |
 | Disk Explorer | Chosen Color | Chosen Color | Owner-selected Sector platter |
-| System Monitor | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
+| Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
 | Switch | Original Switch mark | Original light and dark neutral tiles | Approved standalone Switch icon artwork |
@@ -969,7 +969,7 @@ has been changed.
 | Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
-| System Monitor | `#002B26` | `#E0FFF8` | OSM13 teal tidal waveform bands |
+| Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
 | Mac Tweaks | `#25262B` and `#32333A` panel | `#F7F5F0` faders | `#AC86E8` center handle |
 
 The six bitmap identities in the appearance matrix take their colors from
@@ -1076,7 +1076,7 @@ same metaphor because macOS controls their tint.
   native sidebar selection, solid accent tray-tab selection, or the explicit
   Tab Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
 - **Never** use capsule buttons or baked icon effects. Capsules remain valid
-  only for progress tracks and documented state or count badges. System Monitor
+  only for progress tracks and documented state or count badges. Task Manager
   alone uses the ordered-dot card surfaces specified above.
 - **Never** add a second alignment gutter inside one container.
 - **Never** use `.formStyle(.grouped)` where its opaque insets break the shared

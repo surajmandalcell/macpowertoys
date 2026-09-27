@@ -34,10 +34,11 @@ tool keeps its own window, workflow, state, and resource lifetime.
 - System Care supports quick cleanup, guided cleanup, and analysis-only use.
   Settings choose the default, while the other modes remain one or two actions
   away. Mole CLI is an attributed optional engine, not the product name.
-- System Monitor shows detailed monitoring only while its window is open. Its
-  optional menu-bar summary uses a lightweight configurable interval.
+- Task Manager shows detailed monitoring only while its window or dedicated
+  menu is open. Its optional menu-bar summary uses a lightweight configurable
+  interval.
 - MacPowerToys plugins are independently packaged tools installed through
-  Marketplace. System Monitor does not host metric plugins.
+  Marketplace. Task Manager does not host metric plugins.
 
 ## Capabilities and Constraints
 
@@ -50,8 +51,8 @@ tool keeps its own window, workflow, state, and resource lifetime.
   permit reliable behavior.
 - System Care uses a large MacPowerToys workspace with storage drill-down
   visuals and explicit safety before destructive work.
-- System Monitor may place individual metrics or one grouped summary in the menu
-  bar. Detailed sampling stops when its window closes.
+- Task Manager may place individual metrics or one grouped summary in the menu
+  bar. Detailed sampling stops when no Task Manager surface owns it.
 - Use public APIs, request only required permissions, and keep CPU, memory,
   timers, event monitors, and retained data bounded.
 - Research must confirm Mole distribution, licensing, permissions, and supported
@@ -60,7 +61,7 @@ tool keeps its own window, workflow, state, and resource lifetime.
 ## Brand Commitments
 
 - Product name: MacPowerToys.
-- Tool names: Text Extractor, Ruler, Input Devices, System Care, and System Monitor.
+- Tool names: Text Extractor, Ruler, Input Devices, System Care, and Task Manager.
 - Follow `DESIGN.md` and the current native SwiftUI and AppKit surfaces.
 - Use the `vorssaint-utils` workspace root as a read-only code and documentation
   reference.
