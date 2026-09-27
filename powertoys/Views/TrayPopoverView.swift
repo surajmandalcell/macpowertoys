@@ -1342,27 +1342,27 @@ struct SystemMonitorTrayView: View {
                     metricButton(.network, card(
                         .network, value: "↓ \(sample?.networkDownload.map(Self.rate) ?? "...")",
                         detail: "↑ \(sample?.networkUpload.map(Self.rate) ?? "...")",
-                        values: history.compactMap(\.networkDownload)
+                        values: history.compactMap(\.networkDownload), height: 60
                     ))
                     .gridCellColumns(2)
                     metricButton(.disk, card(
                         .disk, value: percent(sample?.diskUsage),
                         detail: diskAvailable,
-                        values: history.compactMap(\.diskUsage)
+                        values: history.compactMap(\.diskUsage), height: 60
                     ))
                 }
                 GridRow {
                     metricButton(.sensors, card(
                         .thermal, title: "Thermal", value: sample?.thermalState ?? "...",
                         detail: "System pressure",
-                        values: history.compactMap { Self.thermalLevel($0.thermalState) }
+                        values: history.compactMap { Self.thermalLevel($0.thermalState) }, height: 60
                     ))
                     .gridCellColumns(2)
                     metricButton(.battery, card(
                         .battery,
                         value: sample?.batteryPercent.map { "\($0)%" } ?? "...",
                         detail: batteryDetail,
-                        values: history.compactMap { $0.batteryPercent.map(Double.init) }
+                        values: history.compactMap { $0.batteryPercent.map(Double.init) }, height: 60
                     ))
                 }
             }
@@ -1539,6 +1539,7 @@ struct SystemMonitorTrayView: View {
             .buttonStyle(.plain)
             .focusEffectDisabled()
             .accessibilityHint("Show \(destination.title) details")
+            .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
     }
 
     private func card(
@@ -1547,7 +1548,8 @@ struct SystemMonitorTrayView: View {
         value: String,
         detail: String,
         values: [Double],
-        accent: Bool = false
+        accent: Bool = false,
+        height: CGFloat = 70
     ) -> some View {
         TaskManagerPanel(textured: true) {
             VStack(alignment: .leading, spacing: 1) {
@@ -1559,7 +1561,7 @@ struct SystemMonitorTrayView: View {
                     Spacer(minLength: 0)
                 }
                 Text(value)
-                    .font(.system(size: 19, weight: .medium))
+                    .font(.system(size: height < 70 ? 17 : 19, weight: .medium))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -1575,12 +1577,12 @@ struct SystemMonitorTrayView: View {
                     compact: true,
                     primaryColor: accent ? TaskManagerTheme.accent : TaskManagerTheme.ink.opacity(0.76)
                 )
-                .frame(height: 17)
+                .frame(height: height < 70 ? 12 : 17)
             }
             .padding(.horizontal, 8)
-            .padding(.top, 7)
+            .padding(.top, height < 70 ? 5 : 7)
         }
-        .frame(minHeight: 70)
+        .frame(height: height)
     }
 
     @ViewBuilder
@@ -1756,7 +1758,7 @@ private struct TaskManagerMenuProcessesView: View {
                     .textCase(.uppercase)
                     .padding(.horizontal, 9)
                     .frame(height: 25)
-                    .background(Color.black.opacity(0.12))
+                    .background(TaskManagerTheme.desktop.opacity(0.12))
 
                     ForEach(filtered) { process in
                         Button { openProcesses() } label: {

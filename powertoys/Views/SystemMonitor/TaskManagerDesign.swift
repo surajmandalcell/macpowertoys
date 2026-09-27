@@ -26,7 +26,7 @@ struct TaskManagerPanel<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
                 .fill(TaskManagerTheme.card)
             if textured {
