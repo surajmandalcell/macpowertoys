@@ -39,4 +39,24 @@ final class OnePlusUITests: XCTestCase {
         XCTAssertNotNil(OnePlusDitherTexture.resourceImage)
         XCTAssertEqual(OnePlusDitherTexture.resourceImage?.size, NSSize(width: 240, height: 150))
     }
+
+    func testFixedWindowChromeReappliesSizeAndStyle() {
+        let expectedSize = NSSize(width: 920, height: 680)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: NSSize(width: 700, height: 500)),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(rootView: OnePlusFixedWindowChrome(contentSize: expectedSize))
+        window.contentView?.layoutSubtreeIfNeeded()
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+
+        XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertEqual(window.contentMinSize, expectedSize)
+        XCTAssertEqual(window.contentMaxSize, expectedSize)
+        XCTAssertEqual(window.contentLayoutRect.size, expectedSize)
+        XCTAssertTrue(window.standardWindowButton(.zoomButton)?.isHidden == true)
+    }
 }
