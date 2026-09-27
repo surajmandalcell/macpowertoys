@@ -103,11 +103,14 @@ private class WindowAccessorView: NSView {
         if isCompactApplet || windowIdentifier == "mac-tweaks" {
             window.styleMask.remove(.resizable)
             if windowIdentifier == "mac-tweaks" {
+                window.minSize = MacTweaksLayout.windowSize
+                window.maxSize = MacTweaksLayout.windowSize
                 window.contentMinSize = MacTweaksLayout.contentSize
                 window.contentMaxSize = MacTweaksLayout.contentSize
-                if abs(window.contentLayoutRect.width - MacTweaksLayout.contentSize.width) > 0.5
-                    || abs(window.contentLayoutRect.height - MacTweaksLayout.contentSize.height) > 0.5 {
-                    window.setContentSize(MacTweaksLayout.contentSize)
+                setMacTweaksFrame(window)
+                DispatchQueue.main.async { [weak self, weak window] in
+                    guard let self, let window else { return }
+                    setMacTweaksFrame(window)
                 }
                 window.collectionBehavior.insert(.fullScreenNone)
                 window.standardWindowButton(.zoomButton)?.isEnabled = false
@@ -117,6 +120,20 @@ private class WindowAccessorView: NSView {
                 window.standardWindowButton(.zoomButton)?.isHidden = true
             }
         }
+    }
+
+    private func setMacTweaksFrame(_ window: NSWindow) {
+        guard abs(window.frame.width - MacTweaksLayout.windowSize.width) > 0.5
+                || abs(window.frame.height - MacTweaksLayout.windowSize.height) > 0.5 else { return }
+        window.setFrame(
+            NSRect(
+                x: window.frame.minX,
+                y: window.frame.maxY - MacTweaksLayout.windowSize.height,
+                width: MacTweaksLayout.windowSize.width,
+                height: MacTweaksLayout.windowSize.height
+            ),
+            display: false
+        )
     }
 
     private var trafficLightVerticalOffset: CGFloat? {
