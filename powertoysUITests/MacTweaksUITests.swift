@@ -10,8 +10,8 @@ final class MacTweaksUITests: XCTestCase {
 
         let window = app.windows["Mac Tweaks"]
         XCTAssertTrue(window.waitForExistence(timeout: 30))
-        XCTAssertEqual(window.frame.width, 1_120, accuracy: 3)
-        XCTAssertEqual(window.frame.height, 826, accuracy: 3)
+        XCTAssertEqual(window.frame.width, 900, accuracy: 3)
+        XCTAssertEqual(window.frame.height, 620, accuracy: 3)
         XCTAssertTrue(window.buttons["mac-tweaks.about"].exists)
         XCTAssertTrue(window.staticTexts["Dock"].exists)
 
@@ -19,6 +19,13 @@ final class MacTweaksUITests: XCTestCase {
         XCTAssertTrue(revealDelay.waitForExistence(timeout: 10))
         XCTAssertTrue(revealDelay.isHittable, "The first setting must be visible immediately")
         attach(window.screenshot(), named: "Mac Tweaks Reference Dock")
+
+        let dockPreview = element(in: window, identifier: "mac-tweaks.preview.dockReveal")
+        XCTAssertTrue(dockPreview.waitForExistence(timeout: 5))
+        dockPreview.hover()
+        XCTAssertEqual(dockPreview.value as? String, "Playing")
+        Thread.sleep(forTimeInterval: 1.2)
+        attach(window.screenshot(), named: "Mac Tweaks Dock Motion")
 
         let finder = window.buttons["mac-tweaks.category.Finder"]
         XCTAssertTrue(finder.exists)
@@ -35,7 +42,9 @@ final class MacTweaksUITests: XCTestCase {
 
         let search = window.textFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))
-        search.click()
+        let searchSurface = window.descendants(matching: .any)["mac-tweaks.search"]
+        XCTAssertTrue(searchSurface.waitForExistence(timeout: 5))
+        searchSurface.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click()
         search.typeText("screnshot format")
         XCTAssertTrue(element(in: window, identifier: "mac-tweaks.setting.type").waitForExistence(timeout: 5))
         XCTAssertTrue(window.staticTexts["Screenshot format"].exists)
