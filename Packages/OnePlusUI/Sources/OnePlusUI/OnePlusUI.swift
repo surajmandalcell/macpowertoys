@@ -203,10 +203,13 @@ private final class OnePlusFixedWindowChromeView: NSView {
         window.styleMask.remove(.resizable)
         window.contentMinSize = contentSize
         window.contentMaxSize = contentSize
-        let currentSize = window.contentView?.bounds.size ?? .zero
-        if abs(currentSize.width - contentSize.width) > 0.5
-            || abs(currentSize.height - contentSize.height) > 0.5 {
-            window.setContentSize(contentSize)
+        let currentFrame = window.frame
+        if abs(currentFrame.width - contentSize.width) > 0.5
+            || abs(currentFrame.height - contentSize.height) > 0.5 {
+            var targetFrame = currentFrame
+            targetFrame.origin.y = currentFrame.maxY - contentSize.height
+            targetFrame.size = contentSize
+            window.setFrame(targetFrame, display: false)
         }
         window.collectionBehavior.insert(.fullScreenNone)
         window.standardWindowButton(.zoomButton)?.isHidden = true
