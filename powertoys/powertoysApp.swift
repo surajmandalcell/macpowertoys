@@ -206,7 +206,7 @@ struct MacPowerToysApp: App {
             MacTweaksWindowView()
                 .utilityMotionPolicy()
         }
-        .defaultSize(width: 900, height: 620)
+        .defaultSize(width: 1_120, height: 826)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["mac-tweaks"]))
         .restorationBehavior(.disabled)
