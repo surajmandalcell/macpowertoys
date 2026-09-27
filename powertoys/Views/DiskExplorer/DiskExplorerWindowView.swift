@@ -259,6 +259,7 @@ struct DiskExplorerWindowView: View {
                     }
                 }
             }
+            .thinScrollIndicators()
             .frame(maxHeight: 180)
             Text(blocked.reason).font(.system(size: 11)).foregroundStyle(.secondary)
                 .textSelection(.enabled)
