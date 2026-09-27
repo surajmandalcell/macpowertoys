@@ -85,7 +85,7 @@ the latest normal signed build.
 | Done | Use one legible outline flexed-arm identity in the menu bar, Dock, and Raycast. | `ee73e0c` replaced the filled Icon Composer and Raycast artwork with the padded Lucide-derived outline glyph. `sync-icons.sh --check` passes, the signed installed app uses that commit, and Raycast displays the new outline icon. | None. |
 | Done | Consolidate troubleshooting knowledge and always verify the latest normal build. | `spec/troubleshoot/troubleshoot.md` is the only index and routes current-build, UI, verification, and shared-worktree rules. |
 | Done | Preserve unexplained changes from other tasks instead of reverting whole files. | `spec/troubleshoot/shared-worktree.md` now requires inspecting history, identifying and asking the owner when possible, and preserving unknown work without explicit approval. |
-| Done | Refresh the public READMEs and screenshots after the current UI work. | `README.md` now leads with a live Cloud Sync transfer and uses an equal 2 × 2 gallery of 1,100 × 700 live captures for Input Devices, the actual NetToys IP Scanner, System Monitor, and Cloud Sync. Every published capture was inspected at original size; the NetToys image uses only localhost and excludes private addresses, hostnames, and Wi-Fi data. `raycast/README.md` documents the current launcher plus ten tool commands, local setup, and development checks. |
+| Done | Refresh the public READMEs and screenshots after the current UI work. | `README.md` leads with a live Cloud Sync transfer and uses an equal 2 × 2 gallery for Input Devices, the actual NetToys IP Scanner, Task Manager, and Cloud Sync. The Task Manager capture is the reviewed 1,070 × 654 production layout; its menu, Processes, and System Report proofs are also kept under `docs/screenshots/`. Every published capture was inspected at original size; the NetToys image uses only localhost and excludes private addresses, hostnames, and Wi-Fi data. `raycast/README.md` documents the current launcher plus ten tool commands, local setup, and development checks. |
 | Done | Update README screenshots and publish the 1.7.0 checkpoint. | `README.md` uses the refreshed launcher and Text Extractor screenshots; annotated tag `v1.7.0` is pushed. Later work belongs to the pending next release. |
 | Done | Prevent unsigned UI-runner Gatekeeper dialogs and correct the claim that the runner was killed. | Verification rules prohibit launching unsigned UI runners and require distinguishing a runner bootstrap failure from a killed process or product failure. |
 
@@ -96,7 +96,7 @@ the latest normal signed build.
 - Color Picker: `spec/color-picker-request-list.md`
 - Text Extractor: `spec/text-extractor-request-list.md`
 - Ruler: `spec/ruler-request-list.md`
-- Input Devices, System Care, System Monitor, and NetToys: `spec/system-tools-request-list.md`
+- Input Devices, System Care, Task Manager, and NetToys: `spec/system-tools-request-list.md`
 - Switch: `spec/switch-request-list.md`
 
 The dedicated lists do not override newer cross-app requirements recorded in
