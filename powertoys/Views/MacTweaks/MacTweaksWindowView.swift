@@ -228,7 +228,7 @@ struct MacTweaksWindowView: View {
                     Button("Reset all", systemImage: "arrow.counterclockwise") {
                         showsResetAllConfirmation = true
                     }
-                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
                     .disabled(modifiedEntries.isEmpty)
                 }
             }
@@ -301,7 +301,7 @@ struct MacTweaksWindowView: View {
                             .rotationEffect(.degrees(refreshRotation))
                             .frame(width: OnePlusMetrics.controlHeight, height: OnePlusMetrics.controlHeight)
                     }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .buttonStyle(OnePlusButtonStyle(.icon))
                     .foregroundStyle(MacTweaksPalette.secondary)
                     .disabled(!micLock.isEnabled)
                     .help("Refresh devices")
@@ -509,7 +509,7 @@ struct MacTweaksWindowView: View {
             } label: {
                 Image(systemName: "arrow.counterclockwise")
             }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .buttonStyle(OnePlusButtonStyle(.icon))
             .accessibilityLabel("Reset \(entry.field.label)")
         }
         .onePlusText(.control)
@@ -684,12 +684,12 @@ struct MacTweaksWindowView: View {
                let bundleID = notice.targetBundleIdentifier,
                let name = notice.targetName {
                 Button(title) { restartRequest = (name, bundleID) }
-                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                    .buttonStyle(OnePlusButtonStyle(.ghost))
             }
             Button { self.notice = nil } label: {
                 Image(systemName: "xmark")
             }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .buttonStyle(OnePlusButtonStyle(.icon))
             .accessibilityLabel("Dismiss")
         }
         .accessibilityElement(children: .contain)
@@ -754,9 +754,14 @@ struct MacTweaksWindowView: View {
                 get: { Double(micLock.volume ?? 0) },
                 set: { micLock.setVolume(Float($0)) }
             ), in: 0...1)
-            .controlSize(.mini).frame(width: 138).disabled(micLock.volume == nil || micLock.muted == true)
-            Text("\(Int((micLock.volume ?? 0) * 100))%")
-                .onePlusText(.mono)
+            .controlSize(.mini)
+            .disabled(micLock.volume == nil || micLock.muted == true)
+            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[0]) {
+                Text(Int((micLock.volume ?? 0) * 100).formatted())
+                Text("%")
+            }
+            .onePlusText(.mono)
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -857,7 +862,7 @@ private struct MacTweaksStandalonePanel<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        OnePlusCard(textured: true) { content }
+        OnePlusCard { content }
     }
 }
 
@@ -882,7 +887,7 @@ private struct MacTweaksBorderedButton: View {
             if let symbol { Label(title, systemImage: symbol) }
             else { Text(title) }
         }
-        .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+        .buttonStyle(OnePlusButtonStyle(.neutral))
     }
 }
 
