@@ -194,6 +194,16 @@ final class OnePlusUITests: XCTestCase {
         }
     }
 
+    func testDefaultButtonHeightFollowsDensityAndExplicitSizeWins() {
+        for density in OnePlusDensity.allCases {
+            for size: OnePlusButtonStyle.Size? in [nil, .regular, .small] {
+                let host = NSHostingView(rootView: Button("Action") {}
+                    .buttonStyle(OnePlusButtonStyle(size: size)).onePlusDensity(density))
+                XCTAssertEqual(host.fittingSize.height, size.map { $0 == .small ? 24 : 28 } ?? density.controlHeight)
+            }
+        }
+    }
+
     func testMenuGridMatchesMeasuredReference() {
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(), 109.333333333, accuracy: 0.000001)
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(span: 2), 223.666666667, accuracy: 0.000001)

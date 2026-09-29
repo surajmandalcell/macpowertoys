@@ -20,12 +20,12 @@ public struct OnePlusButtonStyle: ButtonStyle {
     public enum Variant: String, CaseIterable, Sendable { case neutral, primary, ghost, destructive, icon, link }
     public enum Size: Sendable { case regular, small }
     let variant: Variant
-    let size: Size
+    let size: Size?
     let minWidth: CGFloat?
     let height: CGFloat?
     let horizontalPadding: CGFloat
 
-    public init(_ variant: Variant = .neutral, size: Size = .regular, minWidth: CGFloat? = nil,
+    public init(_ variant: Variant = .neutral, size: Size? = nil, minWidth: CGFloat? = nil,
                 height: CGFloat? = nil, horizontalPadding: CGFloat = 10) {
         self.variant = variant
         self.size = size
@@ -43,7 +43,7 @@ public struct OnePlusButtonStyle: ButtonStyle {
 public struct OnePlusControlLabel<Content: View>: View {
     private let style: OnePlusButtonStyle
     private let content: Content
-    public init(variant: OnePlusButtonStyle.Variant = .neutral, size: OnePlusButtonStyle.Size = .regular,
+    public init(variant: OnePlusButtonStyle.Variant = .neutral, size: OnePlusButtonStyle.Size? = nil,
                 @ViewBuilder content: () -> Content) {
         style = OnePlusButtonStyle(variant, size: size); self.content = content()
     }
@@ -64,7 +64,10 @@ private struct OnePlusButtonBody<Label: View>: View {
     private var isPressed: Bool { enabled && (pressed || sample == .pressed) }
     private var isHovering: Bool { enabled && (hovering || sample == .hover) }
     private var isFocused: Bool { enabled && (focused || sample == .focus) }
-    private var height: CGFloat { style.height ?? (style.size == .small ? 24 : controlHeight ?? density.controlHeight) }
+    private var height: CGFloat {
+        style.height ?? style.size.map { $0 == .small ? OnePlusMetrics.compactControlHeight : OnePlusMetrics.controlHeight }
+            ?? controlHeight ?? density.controlHeight
+    }
     private var radius: CGFloat { style.variant == .icon || style.size == .small ? 5 : 6 }
 
     var body: some View {
