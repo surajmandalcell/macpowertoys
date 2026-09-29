@@ -532,36 +532,38 @@ struct NetToysSettingsView: View {
                 }
             }
             OnePlusCard {
-                OnePlusCardHeader("Wi-Fi network names") {
-                    OnePlusStatus(locationStatusTitle, state: locationActionTitle == nil ? .online : .offline)
-                }
-                OnePlusBanner(locationStatusMessage, tone: locationActionTitle == nil ? .information : .warning) {
-                    if let title = locationActionTitle {
-                        Button(title) { model.resolveSSIDAccess(forceSettings: helperNeedsAccess) }
+                OnePlusCardHeader("Permissions")
+                OnePlusSettingRow("Wi-Fi network names", caption: locationStatusMessage,
+                                  controlWidth: OnePlusMetrics.wideControlColumn) {
+                    VStack(alignment: .trailing, spacing: OnePlusMetrics.navRowGap) {
+                        OnePlusStatus(locationStatusTitle, state: locationActionTitle == nil ? .online : .offline)
+                        if let title = locationActionTitle {
+                            Button(title) { model.resolveSSIDAccess(forceSettings: helperNeedsAccess) }
+                        }
                     }
-                }.padding(OnePlusMetrics.cardPadding)
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Local network") {
-                    OnePlusStatus(localNetworkStatusTitle, state: localNetworkAccess.state == .allowed ? .online : .offline)
                 }
-                OnePlusBanner(localNetworkStatusMessage, tone: localNetworkAccess.state == .denied ? .warning : .information) {
-                    if localNetworkAccess.state == .denied {
-                        Button("Open Local Network Settings") { localNetworkAccess.openSettings() }
-                    } else if localNetworkAccess.state == .unavailable {
-                        Button("Try Again") { localNetworkAccess.request() }
+                OnePlusSettingRow("Local network", caption: localNetworkStatusMessage,
+                                  controlWidth: OnePlusMetrics.wideControlColumn) {
+                    VStack(alignment: .trailing, spacing: OnePlusMetrics.navRowGap) {
+                        OnePlusStatus(localNetworkStatusTitle, state: localNetworkAccess.state == .allowed ? .online : .offline)
+                        if localNetworkAccess.state == .denied {
+                            Button("Open Settings") { localNetworkAccess.openSettings() }
+                                .help("Open Local Network Settings")
+                                .accessibilityLabel("Open Local Network Settings")
+                        } else if localNetworkAccess.state == .unavailable {
+                            Button("Try Again") { localNetworkAccess.request() }
+                        }
                     }
-                }.padding(OnePlusMetrics.cardPadding)
-            }
-            OnePlusCard {
-                OnePlusCardHeader("MAC addresses") {
-                    OnePlusStatus(macAccessStatusTitle, state: neighborService.isEnabled ? .online : .offline)
                 }
-                OnePlusBanner(macAccessStatusMessage, tone: neighborService.isEnabled ? .information : .warning) {
-                    if !neighborService.isEnabled {
-                        Button(macAccessActionTitle) { neighborService.enable() }
+                OnePlusSettingRow("MAC addresses", caption: macAccessStatusMessage,
+                                  controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
+                    VStack(alignment: .trailing, spacing: OnePlusMetrics.navRowGap) {
+                        OnePlusStatus(macAccessStatusTitle, state: neighborService.isEnabled ? .online : .offline)
+                        if !neighborService.isEnabled {
+                            Button(macAccessActionTitle) { neighborService.enable() }
+                        }
                     }
-                }.padding(OnePlusMetrics.cardPadding)
+                }
             }
             OnePlusCard {
                 OnePlusCardHeader("Data")
