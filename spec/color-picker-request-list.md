@@ -8,6 +8,10 @@ direct user correction or verified result changes a status.
 Round 3a uses one cards-only ColorPickerSettingsView. The applet supplies
 OnePlusPage; the launcher supplies its existing page, gutters, and scrolling.
 
+Round 3 keeps the tab strip, search, format selector, and project controls
+fixed. Only history rows and project rows scroll. Row strings, timestamps,
+search results, and project counts are prepared off the main actor.
+
 Round 2 requires full-width Settings cards inside 16pt body gutters,
 neutral copy controls, and a protected floating settings area on every page.
 
@@ -16,6 +20,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep Color Picker controls fixed and scroll only the rows. | History scrolls below fixed tabs, search, and format controls. Projects scrolls only its rows below the fixed card header and new-project field. Row presentation is cached by the current history request. | Verify smooth scrolling and page switches within 100ms in the signed build. |
 | Verify | Embed one cards-only settings view without nested scrolling or gutters. | `ColorPickerSettingsView()` owns only its shortcut and saved-colors cards. The applet supplies OnePlusPage with 16pt gutters. Permission and clear-history paths remain in the shared cards. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |
 | Verify | Keep the floating settings button clear of History, Projects, and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify all three pages and their scroll limits in the next signed capture. |
 | Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
