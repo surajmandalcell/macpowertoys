@@ -128,7 +128,11 @@ final class DiskExplorerModel {
     var markedEntries: [DiskEntry] { DiskRemoval.topLevel(Array(marks.values)) }
     var markedBytes: Int64 { markedEntries.reduce(0) { $0 + $1.allocatedBytes } }
 
-    func refreshVolumes() { volumes = DiskVolume.mounted() }
+    func refreshVolumes(read: @escaping @Sendable () -> [DiskVolume] = DiskVolume.mounted) async {
+        let latest = await Task.detached(priority: .utility, operation: read).value
+        guard !Task.isCancelled else { return }
+        volumes = latest
+    }
 
     func start(_ url: URL, includeHidden: Bool) {
         cancel()

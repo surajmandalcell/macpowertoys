@@ -15,6 +15,8 @@ The inspector share bar and more menu use the shared neutral control style.
 Completed charts group targets smaller than a control into Other; folded
 file aggregates remain explicit, non-drillable items. Live charts keep their
 path-based membership and measured proportions until the scan completes.
+Opening a page must not wait for mounted-volume metadata. Read that sidebar
+state off the main actor and discard it if the window task is cancelled.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
