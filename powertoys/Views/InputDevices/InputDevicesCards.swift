@@ -67,22 +67,21 @@ struct InputDeviceCard: View {
     }
 
     var body: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             OnePlusCardHeader(device?.name ?? "No \(kind.rawValue.lowercased()) detected", systemImage: kind.icon) {
                 InputStateLabel(state: device == nil ? .disabled : state)
             }
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                OnePlusSettingRow(row.label) {
-                    Text(row.value ?? "Not reported")
-                        .onePlusText(row.monospaced ? .mono : .control)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(row.value ?? "Not reported")
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    OnePlusKeyValueRow(
+                        row.label,
+                        value: row.value ?? "Not reported",
+                        monospaced: row.monospaced
+                    )
                 }
+                OnePlusKeyValueRow("Scroll profile", value: profile.enabled ? "Enabled" : "Off")
             }
-            OnePlusSettingRow("Scroll profile") {
-                OnePlusStatus(profile.enabled ? "Enabled" : "Off", state: profile.enabled ? .success : .offline)
-            }
+            .padding(OnePlusMetrics.cardPadding)
         }
     }
 
@@ -135,22 +134,17 @@ struct InputKeyboardCard: View {
     private let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain) ?? [:]
 
     var body: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             OnePlusCardHeader("Keyboard", systemImage: "keyboard") {
                 OnePlusStatus("System managed", state: .online)
             }
-            OnePlusSettingRow("Connection") {
-                Text("Managed by macOS").onePlusText(.control)
+            VStack(spacing: 0) {
+                OnePlusKeyValueRow("Connection", value: "Managed by macOS")
+                OnePlusKeyValueRow("Battery", value: "Not reported")
+                OnePlusKeyValueRow("Key repeat", value: keyRepeatLabel)
+                OnePlusKeyValueRow("Function keys", value: functionKeyLabel)
             }
-            OnePlusSettingRow("Battery") {
-                Text("Not reported").onePlusText(.control)
-            }
-            OnePlusSettingRow("Key repeat") {
-                Text(keyRepeatLabel).onePlusText(.control)
-            }
-            OnePlusSettingRow("Function keys", separator: false) {
-                Text(functionKeyLabel).onePlusText(.control)
-            }
+            .padding(OnePlusMetrics.cardPadding)
         }
     }
 
@@ -181,7 +175,7 @@ struct InputScrollProfileCard: View {
     @Binding var profile: InputScrollProfile
 
     var body: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             OnePlusCardHeader(title, systemImage: icon) {
                 OnePlusStatus(deviceDetail, state: deviceCount > 0 ? .online : .offline)
             }

@@ -15,16 +15,18 @@ struct InputDevicesSettingsView: View {
             } else {
                 settingsContent
             }
-            InputScrollDeviceBar()
         }
         .onePlusDensity(density)
     }
 
     private var settingsContent: some View {
-        InputDevicesScrollSettings(showsHeaders: showsHeader)
-            .padding(.horizontal, density.gutter)
-            .padding(.top, contentTopInset)
-            .padding(.bottom, OnePlusMetrics.gutter)
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            InputDevicesScrollSettings(showsHeaders: showsHeader)
+            InputScrollDeviceBar()
+        }
+        .padding(.horizontal, density.gutter)
+        .padding(.top, contentTopInset)
+        .padding(.bottom, OnePlusMetrics.gutter)
     }
 }
 
@@ -32,8 +34,7 @@ struct InputScrollDeviceBar: View {
     @State private var manager = InputDevicesManager.shared
 
     var body: some View {
-        VStack(spacing: 0) {
-            OnePlusColor.line.frame(height: 1)
+        OnePlusCard {
             OnePlusSettingRow(
                 "Scroll device",
                 help: "Automatic separates continuous trackpad events from mouse wheel steps.",
@@ -49,7 +50,6 @@ struct InputScrollDeviceBar: View {
                 )
             }
         }
-        .background(OnePlusColor.window)
     }
 }
 
@@ -107,9 +107,9 @@ struct InputDevicesScrollSettings: View {
                 ) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         Button("Grant") { manager.requestPermission() }
-                            .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                            .buttonStyle(OnePlusButtonStyle(.neutral))
                         Button("Settings") { manager.openPrivacySettings() }
-                            .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                            .buttonStyle(OnePlusButtonStyle(.ghost))
                     }
                 }
             }
