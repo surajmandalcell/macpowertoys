@@ -30,7 +30,7 @@ struct RcloneWindowView: View {
         OnePlusWindowRoot(canvas: .rclone) {
             RcloneSidebarView(content: $content, showAddRemote: $showAddRemote)
         } content: {
-            contentArea.utilityContentTransition(value: content)
+            contentArea
         }
         .environment(manager)
         .buttonStyle(OnePlusButtonStyle())

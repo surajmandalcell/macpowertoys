@@ -77,7 +77,6 @@ struct TransferInfoSheet: View {
                     settingsContent
                 }
             }
-            .utilityContentTransition(value: visibleTab)
             .frame(minHeight: OnePlusMetrics.spacing[8] * 18)
         } footer: {
             Button("Done") { dismiss() }
