@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import OnePlusUI
 
 /// The dominant saturated color of a tool's icon, for tinted tool actions.
 enum ToolIconColor {
@@ -7,7 +8,7 @@ enum ToolIconColor {
 
     static func major(for toolID: String) -> Color {
         guard let tool = ToolRegistry.tool(for: toolID),
-              let color = major(asset: tool.logoAsset) else { return .accentColor }
+              let color = major(asset: tool.logoAsset) else { return OnePlusColor.accent }
         return Color(nsColor: color)
     }
 

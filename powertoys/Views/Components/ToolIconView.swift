@@ -1,4 +1,5 @@
 import SwiftUI
+import OnePlusUI
 
 struct ToolIconView: View {
     let tool: any Tool
@@ -30,8 +31,8 @@ struct ToolIconView: View {
             .resizable()
             .scaledToFit()
             .padding(size * 0.22)
-            .foregroundStyle(.primary)
-            .background(Color.primary.opacity(0.06))
+            .foregroundStyle(OnePlusColor.ink)
+            .background(OnePlusColor.raised)
     }
 }
 

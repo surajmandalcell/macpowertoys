@@ -74,6 +74,26 @@ final class OnePlusUITests: XCTestCase {
         XCTAssertEqual(window.backgroundColor, NSColor(OnePlusTheme.window))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
+        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            let button = try! XCTUnwrap(window.standardWindowButton(type))
+            XCTAssertEqual(window.frame.height - button.convert(button.bounds, to: nil).midY, 27, accuracy: 0.5)
+        }
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.appearance = NSAppearance(named: .aqua)
+        XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
+    }
+
+    func testOverlayScrollerKeepsNativeBehaviorAndThinGeometry() {
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 240, height: 100))
+        scroll.hasVerticalScroller = true
+        scroll.configureOnePlusScrollIndicators()
+        XCTAssertTrue(scroll.verticalScroller is OnePlusOverlayScroller)
+        XCTAssertEqual(scroll.scrollerStyle, .overlay)
+        XCTAssertEqual(OnePlusOverlayScroller.knobThickness(increasedContrast: false), 4)
+        XCTAssertEqual(OnePlusOverlayScroller.knobThickness(increasedContrast: true), 6)
+        let scroller = scroll.verticalScroller
+        scroll.configureOnePlusScrollIndicators()
+        XCTAssertTrue(scroller === scroll.verticalScroller)
     }
 
     func testAllDynamicTokensResolveToTheContractInBothAppearances() throws {

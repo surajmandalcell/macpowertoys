@@ -18,11 +18,11 @@ enum TaskManagerTheme {
     static let windowNSColor = NSColor(OnePlusTheme.window)
     static let sidebarNSColor = NSColor(OnePlusTheme.sidebar)
 
-    static let windowContentSize = NSSize(width: 1_080, height: 660)
+    static let windowContentSize = OnePlusWindowCanvas.systemMonitor.size
     static let sidebarWidth: CGFloat = 220
     static let headerHeight: CGFloat = 62
-    static let contentInset: CGFloat = 20
-    static let pageTopInset: CGFloat = 16
+    static let contentInset = OnePlusMetrics.taskManagerGutter
+    static let pageTopInset = OnePlusMetrics.contentTop
     static let panelRadius = OnePlusMetrics.panelRadius
     static let controlRadius = OnePlusMetrics.controlRadius
 }
@@ -70,71 +70,8 @@ struct TaskManagerDotTitle: View {
     let text: String
     var height: CGFloat = 17
 
-    private static let glyphs: [Character: [String]] = [
-        "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-        "B": ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
-        "C": ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
-        "D": ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
-        "E": ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-        "F": ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-        "G": ["01111", "10000", "10000", "10111", "10001", "10001", "01110"],
-        "H": ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-        "I": ["111", "010", "010", "010", "010", "010", "111"],
-        "J": ["00111", "00010", "00010", "00010", "10010", "10010", "01100"],
-        "K": ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
-        "L": ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-        "M": ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
-        "N": ["10001", "10001", "11001", "10101", "10011", "10001", "10001"],
-        "O": ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-        "P": ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
-        "Q": ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
-        "R": ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-        "S": ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-        "T": ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-        "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-        "V": ["10001", "10001", "10001", "10001", "01010", "01010", "00100"],
-        "W": ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
-        "X": ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
-        "Y": ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
-        "Z": ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
-        " ": ["000", "000", "000", "000", "000", "000", "000"],
-    ]
-
-    private var columns: Int {
-        text.uppercased().reduce(0) { width, character in
-            width + (Self.glyphs[character]?.first?.count ?? 5) + 1
-        } - 1
-    }
-
     var body: some View {
-        let scale = height / 7
-        Canvas { context, _ in
-            var x = 0
-            var path = Path()
-            for character in text.uppercased() {
-                let glyph = Self.glyphs[character] ?? Self.glyphs[" "]!
-                for (row, line) in glyph.enumerated() {
-                    for (column, bit) in line.enumerated() where bit == "1" {
-                        let point = CGPoint(
-                            x: (CGFloat(x + column) + 0.5) * scale,
-                            y: (CGFloat(row) + 0.5) * scale
-                        )
-                        let diameter = max(1.15, scale * 0.58)
-                        path.addEllipse(in: CGRect(
-                            x: point.x - diameter / 2,
-                            y: point.y - diameter / 2,
-                            width: diameter,
-                            height: diameter
-                        ))
-                    }
-                }
-                x += (glyph.first?.count ?? 5) + 1
-            }
-            context.fill(path, with: .color(TaskManagerTheme.ink))
-        }
-        .frame(width: CGFloat(max(columns, 1)) * scale, height: height)
-        .accessibilityElement()
-        .accessibilityLabel(text)
+        OnePlusDotTitle(text, height: height, dotRatio: 0.58)
     }
 }
 

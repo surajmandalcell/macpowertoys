@@ -115,10 +115,11 @@ public struct OnePlusTextEditor: NSViewRepresentable {
     @Binding private var text: String
     private let label: String
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusDensity) private var density
     public init(_ label: String, text: Binding<String>) { self.label = label; _text = text }
     public func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
     public func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSScrollView()
+        let scroll = OnePlusEditorScrollView()
         scroll.hasVerticalScroller = true
         scroll.scrollerStyle = .overlay
         scroll.autohidesScrollers = true
@@ -142,6 +143,7 @@ public struct OnePlusTextEditor: NSViewRepresentable {
         editor.textContainer?.widthTracksTextView = true
         editor.delegate = context.coordinator
         scroll.documentView = editor
+        scroll.configureOnePlusScrollIndicators()
         return scroll
     }
     public func updateNSView(_ scroll: NSScrollView, context: Context) {
@@ -149,14 +151,12 @@ public struct OnePlusTextEditor: NSViewRepresentable {
         guard let editor = scroll.documentView as? NSTextView else { return }
         if editor.string != text { editor.string = text }
         editor.isEditable = enabled
+        editor.font = .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: density), weight: .regular)
         editor.textColor = NSColor(OnePlusColor.controlInk)
-        editor.backgroundColor = NSColor(OnePlusColor.track)
         editor.insertionPointColor = NSColor(OnePlusColor.ink)
         editor.selectedTextAttributes = [.backgroundColor: NSColor(OnePlusColor.accent).withAlphaComponent(0.28), .foregroundColor: NSColor(OnePlusColor.ink)]
         editor.setAccessibilityLabel(label)
-        scroll.effectiveAppearance.performAsCurrentDrawingAppearance {
-            scroll.layer?.borderColor = NSColor(OnePlusColor.line).cgColor
-        }
+        (scroll as? OnePlusEditorScrollView)?.updateSurface()
         scroll.alphaValue = enabled ? 1 : OnePlusMetrics.disabledOpacity
     }
     @MainActor public final class Coordinator: NSObject, NSTextViewDelegate {
@@ -170,10 +170,23 @@ public struct OnePlusTextEditor: NSViewRepresentable {
         public func textDidEndEditing(_ notification: Notification) { updateFocus(notification, focused: false) }
         private func updateFocus(_ notification: Notification, focused: Bool) {
             guard let editor = notification.object as? NSTextView else { return }
-            editor.backgroundColor = NSColor(focused ? OnePlusColor.fieldFocus : OnePlusColor.track)
-            editor.effectiveAppearance.performAsCurrentDrawingAppearance {
-                editor.enclosingScrollView?.layer?.borderColor = NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).cgColor
-            }
+            guard let scroll = editor.enclosingScrollView as? OnePlusEditorScrollView else { return }
+            scroll.focused = focused
+            scroll.updateSurface()
         }
+    }
+}
+
+private final class OnePlusEditorScrollView: NSScrollView {
+    var focused = false
+    func updateSurface() {
+        guard let editor = documentView as? NSTextView else { return }
+        editor.backgroundColor = NSColor(focused ? OnePlusColor.fieldFocus : OnePlusColor.track)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.borderColor = NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).cgColor
+        }
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance(); updateSurface()
     }
 }

@@ -39,6 +39,17 @@ public struct OnePlusButtonStyle: ButtonStyle {
     }
 }
 
+/// A matching label for native Menu controls. The Menu owns activation and keyboard handling.
+public struct OnePlusControlLabel<Content: View>: View {
+    private let style: OnePlusButtonStyle
+    private let content: Content
+    public init(variant: OnePlusButtonStyle.Variant = .neutral, size: OnePlusButtonStyle.Size = .regular,
+                @ViewBuilder content: () -> Content) {
+        style = OnePlusButtonStyle(variant, size: size); self.content = content()
+    }
+    public var body: some View { OnePlusButtonBody(label: content, pressed: false, style: style) }
+}
+
 private struct OnePlusButtonBody<Label: View>: View {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.isFocused) private var focused
@@ -132,7 +143,7 @@ private struct OnePlusInteractionBody<Label: View>: View {
     let radius: CGFloat
     var body: some View {
         label
-            .background(enabled && pressed ? OnePlusColor.pressed : selected ? OnePlusColor.selection : enabled && hover ? OnePlusColor.raised : .clear,
+            .background(enabled && pressed ? OnePlusColor.pressed : selected || (enabled && focused) ? OnePlusColor.selection : enabled && hover ? OnePlusColor.raised : .clear,
                         in: RoundedRectangle(cornerRadius: radius))
             .overlay { RoundedRectangle(cornerRadius: radius).strokeBorder(enabled && focused ? OnePlusColor.focus : .clear, lineWidth: 1) }
             .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)

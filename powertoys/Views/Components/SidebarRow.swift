@@ -1,69 +1,33 @@
-//
-//  SidebarRow.swift
-//  powertoys
-//
-
+import OnePlusUI
 import SwiftUI
 
 struct SidebarRow: View {
     let icon: String
     let title: String
-    var isSelected: Bool = false
+    var isSelected = false
     var logoAsset: String? = nil
     var customSelectionColor: Color? = nil
     let action: () -> Void
-
-    @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.toolWindowID) private var windowID
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if let logoAsset, !logoAsset.isEmpty {
-                    Image(logoAsset)
-                        .renderingMode(.original)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .toolIconTile(size: 16)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(foregroundColor)
-                        .frame(width: 16, height: 16)
-                }
-
-                Text(title)
-                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(foregroundColor)
-
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .frame(minHeight: UtilityLayout.sidebarRowHeight)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(UtilityInteractionButtonStyle())
-        .focusEffectDisabled()
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(selectionColor)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        row
+            .onAppear(perform: deliverMainPage)
+            .onReceive(NotificationCenter.default.publisher(for: .openToolPage)) { _ in deliverMainPage() }
     }
 
-    private var selectionColor: Color {
-        guard isSelected else { return .clear }
-        if let customSelectionColor { return customSelectionColor }
-        return Color(nsColor: controlActiveState == .inactive
-            ? .unemphasizedSelectedContentBackgroundColor
-            : .selectedContentBackgroundColor)
+    private var row: some View {
+        OnePlusNavRow(title, systemImage: icon,
+                      image: logoAsset.flatMap { $0.isEmpty ? nil : Image($0) },
+                      selected: isSelected, action: action)
     }
 
-    private var foregroundColor: Color {
-        guard isSelected else { return .primary }
-        if customSelectionColor != nil { return .primary }
-        return Color(nsColor: controlActiveState == .inactive
-            ? .unemphasizedSelectedTextColor
-            : .alternateSelectedControlTextColor)
+    private func deliverMainPage() {
+        guard windowID == "main" else { return }
+        // ponytail: legacy rows identify tools by title; pass tool IDs when ToolSidebarView adopts page routing.
+        let page = title == "All Tools" ? "all-tools" : ToolRegistry.allTools.first { $0.name == title }?.id
+        guard let page, ToolPageRouter.shared.take(tool: "main", matching: page) != nil else { return }
+        action()
     }
 }
 
@@ -71,41 +35,5 @@ struct SidebarExternalRow: View {
     let icon: String
     let title: String
     let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .frame(width: 16, height: 16)
-
-                Text(title)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                Image(systemName: "arrow.up.right.square")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 8)
-            .frame(minHeight: UtilityLayout.sidebarRowHeight)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(UtilityInteractionButtonStyle())
-        .focusEffectDisabled()
-    }
-}
-
-#Preview {
-    VStack(spacing: 4) {
-        SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: true) {}
-        SidebarRow(icon: "gearshape", title: "Settings") {}
-        SidebarExternalRow(icon: "doc.text", title: "Open Logs") {}
-    }
-    .padding()
-    .frame(width: 220)
-    .background(Color.gray.opacity(0.1))
+    var body: some View { OnePlusNavRow(title, systemImage: icon, external: true, action: action) }
 }

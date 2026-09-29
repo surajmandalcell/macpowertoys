@@ -1,124 +1,30 @@
-//
-//  SearchField.swift
-//  powertoys
-//
-
-import AppKit
+import OnePlusUI
 import SwiftUI
 
-struct NativeSearchField: NSViewRepresentable {
+struct NativeSearchField: View {
     @Binding var text: String
-    var placeholder: String = "Search"
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    func makeNSView(context: Context) -> NSSearchField {
-        let field = NSSearchField()
-        field.focusRingType = .none
-        field.placeholderString = placeholder
-        field.controlSize = .small
-        field.delegate = context.coordinator
-        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        return field
-    }
-
-    func updateNSView(_ field: NSSearchField, context: Context) {
-        context.coordinator.text = $text
-        field.controlSize = .small
-        field.placeholderString = placeholder
-        if field.stringValue != text {
-            field.stringValue = text
-        }
-    }
-
-    final class Coordinator: NSObject, NSSearchFieldDelegate {
-        var text: Binding<String>
-
-        init(text: Binding<String>) {
-            self.text = text
-        }
-
-        func controlTextDidChange(_ notification: Notification) {
-            guard let field = notification.object as? NSSearchField else { return }
-            text.wrappedValue = field.stringValue
-        }
-    }
+    var placeholder = "Search"
+    var body: some View { OnePlusSearchField(prompt: placeholder, text: $text, width: nil) }
 }
 
 struct SidebarSearchField: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var text: String
-    var placeholder: String = "Search..."
-    var isLoading: Bool = false
+    var placeholder = "Search..."
+    var isLoading = false
     var deepSearchEnabled: Binding<Bool>? = nil
-
-    @State private var isHoveringDeepSearch = false
-
+    @Environment(\.toolWindowID) private var windowID
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .font(.system(size: 12))
-
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-
-            if isLoading {
-                ProgressView()
-                    .controlSize(.mini)
-                    .frame(width: 16, height: 16)
-            } else if !text.isEmpty {
-                Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                .focusEffectDisabled()
-                .accessibilityLabel("Clear search")
-                .help("Clear search")
-            }
-
-            if let deepSearch = deepSearchEnabled {
-                Button {
-                    deepSearch.wrappedValue.toggle()
-                } label: {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 12))
-                        .foregroundStyle(deepSearch.wrappedValue ? Color.accentColor : .secondary)
-                        .opacity(deepSearch.wrappedValue || isHoveringDeepSearch ? 1.0 : 0.5)
-                }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                .focusEffectDisabled()
-                .animation(
-                    UtilityMotion.animation(
-                        reduceMotion: reduceMotion,
-                        duration: UtilityMotion.interactionDuration
-                    ),
-                    value: isHoveringDeepSearch
-                )
-                .onHover { isHoveringDeepSearch = $0 }
-                .help(deepSearch.wrappedValue ? "Deep search enabled (searching content)" : "Enable deep search (search message content)")
-                .accessibilityLabel("Deep search")
+            OnePlusSidebarSearch(placeholder, text: $text)
+            if isLoading { ProgressView().controlSize(.mini).accessibilityLabel("Searching") }
+            if let deepSearchEnabled {
+                Toggle(isOn: deepSearchEnabled) { Image(systemName: "doc.text.magnifyingglass") }
+                    .toggleStyle(.button).buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .help("Search message content").accessibilityLabel("Deep search")
             }
         }
-        .padding(8)
-        .background(Color.primary.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .onReceive(NotificationCenter.default.publisher(for: .openToolPage)) { notification in
+            if windowID == "main", (notification.object as? ToolPageRequest)?.tool == "main" { text = "" }
+        }
     }
-}
-
-#Preview {
-    VStack(spacing: 20) {
-        SidebarSearchField(text: .constant(""), placeholder: "Search tools...")
-        SidebarSearchField(text: .constant("test"), placeholder: "Search...")
-        SidebarSearchField(text: .constant("loading"), isLoading: true)
-        SidebarSearchField(text: .constant("deep"), deepSearchEnabled: .constant(false))
-        SidebarSearchField(text: .constant("deep active"), deepSearchEnabled: .constant(true))
-    }
-    .padding()
-    .frame(width: 280)
 }

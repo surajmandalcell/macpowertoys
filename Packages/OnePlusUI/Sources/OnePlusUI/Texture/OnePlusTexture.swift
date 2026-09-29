@@ -60,13 +60,13 @@ public extension View {
 enum OnePlusChartPattern {
     static let pattern: CGPattern = {
         var callbacks = CGPatternCallbacks(version: 0, drawPattern: { _, context in
-            context.setFillColor(gray: 1, alpha: 0.65)
+            context.setAlpha(0.65)
             context.fill(CGRect(x: 0, y: 0, width: 0.65, height: 0.65))
-            context.setFillColor(gray: 1, alpha: 0.30)
+            context.setAlpha(0.30)
             context.fill(CGRect(x: 2, y: 2, width: 0.65, height: 0.65))
         }, releaseInfo: nil)
         return CGPattern(info: nil, bounds: CGRect(x: 0, y: 0, width: 4, height: 4),
                          matrix: .identity, xStep: 4, yStep: 4, tiling: .constantSpacing,
-                         isColored: true, callbacks: &callbacks)!
+                         isColored: false, callbacks: &callbacks)!
     }()
 }

@@ -8,7 +8,7 @@ import SwiftUI
 
 struct SidebarTitle: View {
     let text: String
-    var leadingInset = UtilityLayout.workspaceTitleLeadingInset
+    var leadingInset: CGFloat? = nil
 
     var body: some View {
         OnePlusSidebarTitle(
