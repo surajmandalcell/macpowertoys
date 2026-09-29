@@ -19,7 +19,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <rect key="contentRect" x="602" y="400" width="420" height="571"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1512" height="944"/>
-            <customView key="contentView" id="PREF-content" customClass="UtilityMaterialView" customModule="powertoys" customModuleProvider="target">
+            <customView key="contentView" id="PREF-content" customClass="OnePlusNativeWindowView" customModule="OnePlusUI">
                 <rect key="frame" x="0.0" y="0.0" width="420" height="571"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
