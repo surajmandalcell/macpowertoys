@@ -39,6 +39,29 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(SystemMonitorTrayPage.processes.metrics, [])
     }
 
+    func testTaskManagerWindowActivityRequiresVisibleUnminimizedWindow() {
+        XCTAssertTrue(TaskManagerWindowActivity.isActive(
+            isVisible: true,
+            isMiniaturized: false,
+            isOcclusionVisible: true
+        ))
+        XCTAssertFalse(TaskManagerWindowActivity.isActive(
+            isVisible: false,
+            isMiniaturized: false,
+            isOcclusionVisible: true
+        ))
+        XCTAssertFalse(TaskManagerWindowActivity.isActive(
+            isVisible: true,
+            isMiniaturized: true,
+            isOcclusionVisible: true
+        ))
+        XCTAssertFalse(TaskManagerWindowActivity.isActive(
+            isVisible: true,
+            isMiniaturized: false,
+            isOcclusionVisible: false
+        ))
+    }
+
     @MainActor
     func testMonitorHomeFitsShortMenuBody() throws {
         let suiteName = "SystemMonitorHomeHeight.\(UUID().uuidString)"

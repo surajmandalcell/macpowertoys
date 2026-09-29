@@ -2,6 +2,106 @@ import AppKit
 import OnePlusUI
 import SwiftUI
 
+nonisolated enum TaskManagerWindowActivity {
+    static func isActive(
+        isVisible: Bool,
+        isMiniaturized: Bool,
+        isOcclusionVisible: Bool
+    ) -> Bool {
+        isVisible && !isMiniaturized && isOcclusionVisible
+    }
+}
+
+private struct TaskManagerWindowVisibilityReader: NSViewRepresentable {
+    @Binding var isActive: Bool
+
+    func makeNSView(context: Context) -> NSView {
+        TaskManagerWindowVisibilityView { isActive = $0 }
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let view = nsView as? TaskManagerWindowVisibilityView else { return }
+        view.report = { isActive = $0 }
+        view.updateVisibility()
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+        (nsView as? TaskManagerWindowVisibilityView)?.stopObserving()
+    }
+}
+
+private final class TaskManagerWindowVisibilityView: NSView {
+    var report: (Bool) -> Void
+    private weak var observedWindow: NSWindow?
+    private var lastReported: Bool?
+
+    init(report: @escaping (Bool) -> Void) {
+        self.report = report
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        stopObserving()
+        guard let window else { return }
+        observedWindow = window
+        let center = NotificationCenter.default
+        for name in [
+            NSWindow.didBecomeKeyNotification,
+            NSWindow.didResignKeyNotification,
+            NSWindow.didMiniaturizeNotification,
+            NSWindow.didDeminiaturizeNotification,
+            NSWindow.didOrderOnScreenNotification,
+            NSWindow.didOrderOffScreenNotification,
+            NSWindow.didChangeOcclusionStateNotification,
+        ] {
+            center.addObserver(
+                self,
+                selector: #selector(windowVisibilityChanged),
+                name: name,
+                object: window
+            )
+        }
+        center.addObserver(
+            self,
+            selector: #selector(windowWillClose),
+            name: NSWindow.willCloseNotification,
+            object: window
+        )
+        DispatchQueue.main.async { [weak self] in self?.updateVisibility() }
+    }
+
+    @objc private func windowVisibilityChanged(_ notification: Notification) {
+        updateVisibility()
+    }
+
+    @objc private func windowWillClose(_ notification: Notification) {
+        report(false)
+        stopObserving()
+    }
+
+    func updateVisibility() {
+        guard let window = observedWindow else { return }
+        let active = TaskManagerWindowActivity.isActive(
+            isVisible: window.isVisible,
+            isMiniaturized: window.isMiniaturized,
+            isOcclusionVisible: window.occlusionState.contains(.visible)
+        )
+        guard active != lastReported else { return }
+        lastReported = active
+        report(active)
+    }
+
+    func stopObserving() {
+        NotificationCenter.default.removeObserver(self)
+        observedWindow = nil
+        lastReported = nil
+    }
+}
+
 enum SystemMonitorPalette {
     static let accent = TaskManagerTheme.accent
     static let teal = TaskManagerTheme.ink
@@ -120,7 +220,6 @@ enum SystemMonitorPage: String, CaseIterable, Identifiable {
 struct SystemMonitorWindowView: View {
     private let reportSnapshot: [TaskManagerReportCategory]
     private let loadsRemoteProfiles: Bool
-    @State private var service = SystemMonitorService.shared
     @State private var remoteProfiles: [SystemMonitorRemoteProfile]
     @AppStorage("systemMonitor.windowPage") private var pageID = SystemMonitorPage.overview.rawValue
     @AppStorage("systemMonitor.processHierarchy") private var processHierarchy = false
@@ -130,6 +229,7 @@ struct SystemMonitorWindowView: View {
     @State private var reportAction: TaskManagerSystemReportAction?
     @State private var processSearchFocusTrigger = 0
     @State private var remoteAddRequest = 0
+    @State private var isWindowActive = true
 
     init(
         reportSnapshot: [TaskManagerReportCategory] = [],
@@ -141,6 +241,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
+    private var service: SystemMonitorService { .shared }
     private var recentHistory: [SystemMonitorSample] {
         Array(service.history.suffix(historySampleCapacity))
     }
@@ -153,17 +254,32 @@ struct SystemMonitorWindowView: View {
             OnePlusPage(scrolls: false) {
                 header
             } content: {
-                pageContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Group {
+                    if isWindowActive {
+                        pageContent
+                    } else {
+                        Color.clear.accessibilityHidden(true)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .onePlusDensity(.compact)
-        .background(WindowAccessor(identifier: "system-monitor"))
+        .background {
+            WindowAccessor(identifier: "system-monitor")
+            TaskManagerWindowVisibilityReader(isActive: $isWindowActive)
+        }
         .onAppear {
             pageID = page.rawValue
-            service.startDetailed(metrics: page.detailedMetrics)
+            updateSamplingForWindowVisibility()
         }
-        .onChange(of: pageID) { _, _ in service.updateDetailed(metrics: page.detailedMetrics) }
+        .onChange(of: pageID) { _, _ in
+            guard isWindowActive else { return }
+            service.updateDetailed(metrics: page.detailedMetrics)
+        }
+        .onChange(of: isWindowActive) { _, _ in
+            updateSamplingForWindowVisibility()
+        }
         .onDisappear { service.stopDetailed() }
         .onOpenToolPage("system-monitor") { requestedPage in
             guard let destination = SystemMonitorPage.resolve(requestedPage) else { return }
@@ -186,6 +302,15 @@ struct SystemMonitorWindowView: View {
             .frame(width: 0, height: 0)
             .opacity(0)
             .accessibilityHidden(true)
+        }
+    }
+
+    private func updateSamplingForWindowVisibility() {
+        if isWindowActive {
+            service.startDetailed(metrics: page.detailedMetrics)
+            service.updateDetailed(metrics: page.detailedMetrics)
+        } else {
+            service.stopDetailed()
         }
     }
 

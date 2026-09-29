@@ -1240,6 +1240,9 @@ final class SystemMonitorService {
         self.toolEnabled = toolEnabled
         self.defaults = defaults
         menuController = SystemMonitorMenuController(defaults: defaults)
+        menuController.onDidClose = { [weak self] in
+            self?.stopDetailed(owner: "tray")
+        }
         if observesWake {
             wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
                 forName: NSWorkspace.didWakeNotification,
@@ -1401,7 +1404,7 @@ final class SystemMonitorService {
 }
 
 @MainActor
-final class SystemMonitorMenuController: NSObject {
+final class SystemMonitorMenuController: NSObject, NSPopoverDelegate {
     private var statusItems: [String: NSStatusItem] = [:]
     private var latestValues: [SystemMonitorMenuMetric: String] = [:]
     private var renderedStateCache = SystemMonitorRenderedStateCache()
@@ -1410,9 +1413,12 @@ final class SystemMonitorMenuController: NSObject {
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
     private let defaults: UserDefaults
     private(set) var renderedWriteCount = 0
+    var onDidClose: () -> Void = {}
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
+        super.init()
+        popover.delegate = self
     }
 
     var statusItemCount: Int { statusItems.count }
@@ -1572,5 +1578,10 @@ final class SystemMonitorMenuController: NSObject {
             )
         )
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        onDidClose()
+        popover.contentViewController = nil
     }
 }

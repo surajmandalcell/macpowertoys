@@ -1283,7 +1283,6 @@ struct SystemMonitorMenuPopoverView: View {
 }
 
 struct SystemMonitorTrayView: View {
-    @State private var service = SystemMonitorService.shared
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
     @AppStorage("systemMonitor.rememberTrayPage") private var rememberPage = true
     private let remoteProfiles: [SystemMonitorRemoteProfile]
@@ -1297,6 +1296,7 @@ struct SystemMonitorTrayView: View {
         self.onPreferredHeight = onPreferredHeight
     }
 
+    private var service: SystemMonitorService { .shared }
     private var sample: SystemMonitorSample? { service.snapshot }
     private var page: SystemMonitorTrayPage { SystemMonitorTrayPage(rawValue: pageID) ?? .home }
     private var history: [SystemMonitorSample] { Array(service.history.suffix(120)) }
