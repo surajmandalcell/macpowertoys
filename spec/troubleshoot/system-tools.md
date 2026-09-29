@@ -815,12 +815,15 @@
 - **Symptom:** A subprocess can block on a full pipe, retain unlimited output,
   outlive cancellation, or leave a readability handler installed.
 - **Cause:** Marketplace and Tailscale retained output to EOF, Portman drained
-  tunnel errors only after exit, and failed rclone launch skipped handler cleanup.
+  tunnel errors only after exit, failed rclone launch skipped handler cleanup,
+  and Dev Sync retained complete Git output.
 - **Invariant:** Drain pipes while the child runs, retain only the stated cap,
   stop oversized or timed-out commands, and clear every readability handler on
-  launch failure and termination.
-- **Check:** Run the Marketplace, Tailscale, and Portman focused regressions in
-  hosted tests. Force rclone launch failure and confirm its handler count returns.
+  launch failure and termination. Dev Sync retains at most 64 MiB from each Git
+  output pipe and stops the child when either pipe exceeds that cap.
+- **Check:** Run the Marketplace, Tailscale, Portman, and Dev Sync focused
+  regressions in hosted tests. Force rclone launch failure and confirm its
+  handler count returns.
 
 - **Symptom:** Repeated project branches or deleted SSH Anchors can grow service
   dictionaries for the life of the process.
