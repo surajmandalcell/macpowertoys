@@ -113,7 +113,7 @@ private struct OnePlusButtonBody<Label: View>: View {
         if isFocused { return OnePlusColor.focus }
         switch style.variant {
         case .neutral: return OnePlusColor.line
-        case .destructive: return OnePlusColor.dangerLine
+        case .destructive: return isHovering ? OnePlusColor.danger : OnePlusColor.dangerLine
         default: return .clear
         }
     }
