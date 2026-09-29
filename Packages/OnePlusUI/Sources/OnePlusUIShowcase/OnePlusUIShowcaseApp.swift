@@ -180,14 +180,14 @@ private struct OnePlusUIShowcase: View {
     private var typography: some View {
         OnePlusCard {
             OnePlusCardHeader("San Francisco and SF Mono")
-            HStack { Text("ROLE"); Spacer(); Text("REGULAR").frame(width: 300); Text("COMPACT").frame(width: 300) }
+            HStack(spacing: 16) { Text("ROLE").frame(maxWidth: .infinity, alignment: .leading); Text("REGULAR").frame(width: 300, alignment: .leading); Text("COMPACT").frame(width: 300, alignment: .leading) }
                 .onePlusTableHeader()
             ForEach(OnePlusTextRole.allCases, id: \.rawValue) { role in
                 HStack(spacing: 16) {
                     Text(role.rawValue).onePlusText(.mono).frame(maxWidth: .infinity, alignment: .leading)
                     Text(role == .metric ? "27.4" : "System activity").onePlusText(role).onePlusDensity(.regular).frame(width: 300, alignment: .leading)
                     Text(role == .metric ? "27.4" : "System activity").onePlusText(role).onePlusDensity(.compact).frame(width: 300, alignment: .leading)
-                }.padding(.horizontal, 16).frame(height: 34)
+                }.padding(.horizontal, 12).frame(height: 34)
             }
             HStack { Text("Dot matrix").onePlusText(.mono); Spacer(); OnePlusDotTitle("TASK MANAGER 0123456789") }
                 .padding(16)
@@ -291,8 +291,8 @@ private struct OnePlusUIShowcase: View {
             OnePlusMetricTile("CPU", systemImage: "cpu", value: "27.4", unit: "%", caption: "12 cores", action: { announce("CPU selected") }) {
                 OnePlusSparkline(values: samples).frame(height: 32)
             }
-            OnePlusMetricTile("Memory", systemImage: "memorychip", value: "14.6", unit: "GB", caption: "of 24 GB") { OnePlusUsageBar(value: 0.61) }
-            OnePlusMetricTile("Disk", systemImage: "internaldrive", value: "328", unit: "GB", caption: "of 1 TB") { OnePlusSegmentBar(values: [32, 22, 12, 34]) }
+            OnePlusMetricTile("Memory", systemImage: "memorychip", value: "14.6", unit: "GB", caption: "of 24 GB") { OnePlusUsageBar(value: 0.61).frame(height: 32) }
+            OnePlusMetricTile("Disk", systemImage: "internaldrive", value: "328", unit: "GB", caption: "of 1 TB") { OnePlusSegmentBar(values: [32, 22, 12, 34]).frame(height: 32) }
             OnePlusMetricTile("Network", systemImage: "network", value: "2.8", unit: "MB/s", caption: "Ethernet") { OnePlusSparkline(values: samples.reversed()).frame(height: 32) }
         }
     }
@@ -312,7 +312,7 @@ private struct OnePlusUIShowcase: View {
             OnePlusCard {
                 OnePlusCardHeader("Menu bar", systemImage: "menubar.rectangle")
                 OnePlusSettingRow("Show item") { Toggle("Show item", isOn: $checked).labelsHidden().toggleStyle(OnePlusSwitchStyle()) }
-                OnePlusSettingRow("Placement", separator: false) { OnePlusSegmented(choices: [("Off", "Off"), ("Auto", "Together"), ("On", "Separate")], selection: $mode) }
+                OnePlusSettingRow("Placement", controlWidth: 180, separator: false) { OnePlusSegmented(choices: [("Off", "Off"), ("Auto", "Group"), ("On", "Split")], selection: $mode) }
             }
             OnePlusBanner("These settings change the sample only.")
         }
@@ -334,7 +334,7 @@ private struct OnePlusUIShowcase: View {
                         OnePlusKeyValueRow("Cached files", value: "6.28 GB", monospaced: true)
                         OnePlusKeyValueRow("Swap used", value: "0 bytes", monospaced: true)
                         OnePlusUsageBar(value: 0.61)
-                    }.padding(16)
+                    }.padding(16).frame(height: 200)
                 }
             }
             OnePlusCard {
@@ -447,7 +447,7 @@ private struct OnePlusUIShowcase: View {
                     OnePlusCardHeader("Empty")
                     OnePlusEmptyState("No hosts added", systemImage: "desktopcomputer", caption: "Add a host to see its activity.") {
                         Button("Add host") { showSheet = true }
-                    }
+                    }.frame(height: 205)
                 }
                 OnePlusCard {
                     OnePlusCardHeader("Loading")

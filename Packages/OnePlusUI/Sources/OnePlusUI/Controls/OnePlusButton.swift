@@ -98,10 +98,10 @@ private struct OnePlusButtonBody<Label: View>: View {
     }
 
     private var background: Color {
-        if isPressed { return style.variant == .primary ? OnePlusColor.primaryFill.opacity(0.8) : OnePlusColor.pressed }
+        if isPressed { return style.variant == .primary ? OnePlusColor.primaryPressed : OnePlusColor.pressed }
         if isFocused { return style.variant == .primary ? OnePlusColor.primaryFill : OnePlusColor.fieldFocus }
         switch style.variant {
-        case .primary: return OnePlusColor.primaryFill.opacity(isHovering ? 0.9 : 1)
+        case .primary: return isHovering ? OnePlusColor.primaryHover : OnePlusColor.primaryFill
         case .destructive: return OnePlusColor.dangerFill
         case .neutral: return isHovering ? OnePlusColor.raisedHover : OnePlusColor.raised
         case .ghost, .icon: return isHovering ? OnePlusColor.raised : .clear
