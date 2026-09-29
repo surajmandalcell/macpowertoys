@@ -107,7 +107,7 @@ private struct OnePlusUIShowcase: View {
                     Toggle("Keep local history", isOn: $enabled).toggleStyle(OnePlusSwitchStyle())
                 }
             } footer: {
-                Button("Cancel") { showSheet = false }.buttonStyle(OnePlusButtonStyle())
+                Button("Cancel") { showSheet = false }.buttonStyle(OnePlusButtonStyle(.ghost))
                 Button("Save") { showSheet = false; announce("Workspace saved") }
                     .buttonStyle(OnePlusButtonStyle(.primary)).keyboardShortcut(.defaultAction)
             }
