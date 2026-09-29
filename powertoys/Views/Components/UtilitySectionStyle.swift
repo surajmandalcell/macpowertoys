@@ -58,8 +58,8 @@ extension View {
         modifier(UtilityAnimationModifier(value: value, duration: duration))
     }
 
-    func utilityContentTransition<Value: Hashable>(value: Value) -> some View {
-        modifier(UtilityContentTransitionModifier(value: value))
+    func utilityContentTransition<Value: Hashable>(value _: Value) -> some View {
+        self
     }
 
     func utilityMotionPolicy() -> some View {
@@ -90,18 +90,5 @@ private struct UtilityAnimationModifier<Value: Equatable>: ViewModifier {
             UtilityMotion.animation(reduceMotion: reduceMotion, duration: duration),
             value: value
         )
-    }
-}
-
-private struct UtilityContentTransitionModifier<Value: Hashable>: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    let value: Value
-
-    func body(content: Content) -> some View {
-        content
-            .id(value)
-            .transition(reduceMotion ? .identity : .opacity)
-            .animation(UtilityMotion.animation(reduceMotion: reduceMotion), value: value)
     }
 }
