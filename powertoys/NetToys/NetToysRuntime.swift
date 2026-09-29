@@ -111,7 +111,7 @@ nonisolated struct TailscaleFallbackConfiguration: Codable, Equatable, Sendable 
 }
 
 nonisolated enum TailscalePeerCatalog {
-    enum CatalogError: LocalizedError {
+    enum CatalogError: LocalizedError, Equatable {
         case unavailable
         case notRunning
         case invalidStatus
@@ -155,33 +155,87 @@ nonisolated enum TailscalePeerCatalog {
     }
 
     static func load() async throws -> [TailscalePeer] {
-        try await Task.detached(priority: .utility) {
-            let paths = [
-                "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
-                "/opt/homebrew/bin/tailscale",
-                "/usr/local/bin/tailscale",
-            ]
-            guard let path = paths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
-                throw CatalogError.unavailable
+        let paths = [
+            "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+            "/opt/homebrew/bin/tailscale",
+            "/usr/local/bin/tailscale",
+        ]
+        guard let path = paths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+            throw CatalogError.unavailable
+        }
+        var environment = ProcessInfo.processInfo.environment
+        environment["TERM"] = "dumb"
+        let data = try await runStatusCommand(
+            executableURL: URL(fileURLWithPath: path),
+            arguments: ["status", "--json"],
+            environment: environment
+        )
+        return try parse(data)
+    }
+
+    static func runStatusCommand(
+        executableURL: URL,
+        arguments: [String],
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        maximumOutputBytes: Int = 4 * 1_024 * 1_024,
+        timeout: TimeInterval = 10
+    ) async throws -> Data {
+        let operation = Task.detached(priority: .utility) {
+            let process = Process()
+            let output = Pipe()
+            process.executableURL = executableURL
+            process.arguments = arguments
+            process.environment = environment
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+
+            let reader = Task.detached(priority: .utility) {
+                var data = Data()
+                var exceeded = false
+                while true {
+                    let chunk = output.fileHandleForReading.readData(ofLength: 8_192)
+                    if chunk.isEmpty { break }
+                    let remaining = max(maximumOutputBytes - data.count, 0)
+                    data.append(contentsOf: chunk.prefix(remaining))
+                    exceeded = exceeded || chunk.count > remaining
+                    if exceeded, process.isRunning { process.terminate() }
+                }
+                return (data, exceeded)
             }
-            var environment = ProcessInfo.processInfo.environment
-            environment["TERM"] = "dumb"
+
             do {
-                let result = try await SSHProcessRunner.run(
-                    executableURL: URL(fileURLWithPath: path),
-                    arguments: ["status", "--json"],
-                    environment: environment,
-                    maximumOutputBytes: 4 * 1_024 * 1_024,
-                    timeout: 10
-                )
-                guard result.status == 0 else { throw CatalogError.unavailable }
-                return try parse(Data(result.standardOutput.utf8))
-            } catch let error as CatalogError {
-                throw error
+                try process.run()
             } catch {
+                try? output.fileHandleForWriting.close()
+                _ = await reader.value
                 throw CatalogError.unavailable
             }
-        }.value
+            let deadline = Date().addingTimeInterval(timeout)
+            while process.isRunning, !Task.isCancelled, Date() < deadline {
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+            let timedOut = process.isRunning && Date() >= deadline
+            if process.isRunning {
+                process.terminate()
+                let killDeadline = Date().addingTimeInterval(1)
+                while process.isRunning, Date() < killDeadline {
+                    try? await Task.sleep(for: .milliseconds(20))
+                }
+                if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
+            }
+            process.waitUntilExit()
+            let result = await reader.value
+            if Task.isCancelled { throw CancellationError() }
+            guard !timedOut, !result.exceeded, process.terminationStatus == 0 else {
+                throw CatalogError.unavailable
+            }
+            return result.data
+        }
+        return try await withTaskCancellationHandler {
+            try await operation.value
+        } onCancel: {
+            operation.cancel()
+        }
     }
 
     static func parse(_ data: Data) throws -> [TailscalePeer] {

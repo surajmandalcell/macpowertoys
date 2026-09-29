@@ -1209,6 +1209,20 @@ final class NetToysTests: XCTestCase {
         XCTAssertNil(TailscalePeerCatalog.exactMatch(labels: ["jetson.local"], peers: peers))
     }
 
+    func testTailscaleStatusOutputIsBounded() async throws {
+        do {
+            _ = try await TailscalePeerCatalog.runStatusCommand(
+                executableURL: URL(fileURLWithPath: "/usr/bin/yes"),
+                arguments: [],
+                maximumOutputBytes: 1_024,
+                timeout: 2
+            )
+            XCTFail("Expected oversized status output to stop the process")
+        } catch let error as TailscalePeerCatalog.CatalogError {
+            XCTAssertEqual(error, .unavailable)
+        }
+    }
+
     func testTailscalePeerChooserUsesCompactShortAndScrollingListGeometry() {
         XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerWidth, 360)
         XCTAssertEqual(NetToysAnchorSheetLayout.titleRowHeight, 44)
