@@ -104,8 +104,26 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
     case main, systemMonitor = "system-monitor", portman
 
     nonisolated static func parse(_ url: URL) -> Self? {
-        guard case .openPanel(let panel) = DiagnosticsRoute.parse(url) else { return nil }
+        guard case .openPanel(let panel, _) = DiagnosticsRoute.parse(url) else { return nil }
         return panel
+    }
+
+    @MainActor
+    func selectTab(_ id: String?, defaults: UserDefaults = .standard) {
+        guard let id else { return }
+        switch self {
+        case .main:
+            guard let tab = TrayTab(panelID: id), tab.panelID == id,
+                  tab == .home || TrayPopoverLayout.defaultComplexTabs.contains(tab) else { return }
+            defaults.set(tab.rawValue, forKey: "tray.selectedTab.v2")
+        case .systemMonitor:
+            guard let page = SystemMonitorTrayPage(rawValue: id) else { return }
+            defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
+        case .portman:
+            let pages: [String: PortmanPanelView.Page] = ["servers": .local, "forward": .forward, "settings": .settings]
+            guard let page = pages[id] else { return }
+            defaults.set(page.rawValue, forKey: "portman.selectedPage")
+        }
     }
 
     @MainActor

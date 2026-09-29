@@ -2,20 +2,27 @@ import AppKit
 import SwiftUI
 
 nonisolated enum DiagnosticsRoute: Equatable, Sendable {
-    case openPanel(DiagnosticsPanel)
+    case openPanel(DiagnosticsPanel, tab: String? = nil)
     case appearance(AppAppearance)
     case closePanels
 
     static func parse(_ url: URL) -> Self? {
         guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "diagnostics",
               url.user == nil, url.password == nil, url.port == nil,
-              url.query == nil, url.fragment == nil else { return nil }
+              url.fragment == nil else { return nil }
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let parts = url.path.split(separator: "/", omittingEmptySubsequences: false)
-        if parts == ["", "close-panels"] { return .closePanels }
+        if parts == ["", "close-panels"], url.query == nil { return .closePanels }
         guard parts.count == 3, parts[0].isEmpty else { return nil }
         switch parts[1] {
-        case "appearance": return AppAppearance(rawValue: String(parts[2])).map(Self.appearance)
-        case "open-panel": return DiagnosticsPanel(rawValue: String(parts[2])).map(Self.openPanel)
+        case "appearance":
+            guard url.query == nil else { return nil }
+            return AppAppearance(rawValue: String(parts[2])).map(Self.appearance)
+        case "open-panel":
+            guard let panel = DiagnosticsPanel(rawValue: String(parts[2])),
+                  url.query == nil || (query.count == 1 && query[0].name == "tab"
+                    && query[0].value.map { $0.utf8.count <= 80 } == true) else { return nil }
+            return .openPanel(panel, tab: query.first?.value)
         default: return nil
         }
     }
