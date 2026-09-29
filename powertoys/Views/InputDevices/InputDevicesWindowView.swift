@@ -93,11 +93,11 @@ struct InputDevicesWindowView: View {
         OnePlusPage {
             OnePlusPageHeader(title: "Devices", subtitle: deviceSubtitle) {
                 Button("Refresh", systemImage: "arrow.clockwise") { manager.refresh() }
-                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
             }
         } content: {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 250), spacing: OnePlusMetrics.cardGap)],
+                columns: [GridItem(.adaptive(minimum: 250), spacing: OnePlusMetrics.cardGap, alignment: .top)],
                 alignment: .leading,
                 spacing: OnePlusMetrics.cardGap
             ) {
@@ -123,7 +123,7 @@ struct InputDevicesWindowView: View {
             InputDevicesSettingsView(
                 showsHeader: false,
                 showsContainerScroll: true,
-                contentTopInset: 0,
+                contentTopInset: OnePlusMetrics.contentTop,
                 density: .regular
             )
         }
@@ -133,7 +133,7 @@ struct InputDevicesWindowView: View {
         OnePlusPage {
             OnePlusPageHeader(title: "About", subtitle: "Input Devices")
         } content: {
-            OnePlusCard(textured: true) {
+            OnePlusCard {
                 OnePlusCardHeader("Input Devices", systemImage: "computermouse")
                 OnePlusSettingRow("Profiles", caption: "Mouse and trackpad settings stay independent.") {
                     OnePlusStatus("Saved locally", state: .success)
