@@ -7,6 +7,9 @@ struct MainModifiedView: View {
     @State private var confirmResetAll = false
     @State private var resetRequest: String?
     @State private var visible = false
+    @State private var groupLayout: [[String]] = []
+    @State private var groupedDifferences: [String: [SettingsRegistry.Difference]] = [:]
+    @State private var groupTitles: [String: String] = [:]
 
     var body: some View {
         OnePlusPage {
@@ -20,7 +23,7 @@ struct MainModifiedView: View {
                 OnePlusEmptyState("No modified settings", systemImage: "checkmark.circle",
                                   caption: "Your settings match their defaults.")
             } else {
-                ForEach(Self.groupRows(groupIDs.map { id in (id, groupDifferences(id).count) }), id: \.first) { ids in
+                ForEach(groupLayout, id: \.first) { ids in
                     HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                         ForEach(ids, id: \.self) { id in
                             group(id, compact: ids.count == 2).frame(maxWidth: .infinity)
@@ -54,12 +57,6 @@ struct MainModifiedView: View {
         .accessibilityIdentifier("main.modified")
     }
 
-    private var groupIDs: [String] {
-        let order = ["app"] + ToolRegistry.allTools.map(\.id)
-        let present = Set(differences.map { $0.toolID ?? "app" })
-        return order.filter { present.contains($0) } + present.subtracting(order).sorted()
-    }
-
     static func groupRows(_ groups: [(id: String, count: Int)]) -> [[String]] {
         var rows: [[String]] = []
         var index = 0
@@ -75,13 +72,9 @@ struct MainModifiedView: View {
         return rows
     }
 
-    private func groupDifferences(_ toolID: String) -> [SettingsRegistry.Difference] {
-        differences.filter { ($0.toolID ?? "app") == toolID }
-    }
-
     private func group(_ toolID: String, compact: Bool) -> some View {
         OnePlusCard {
-            OnePlusCardHeader(toolID == "app" ? "App settings" : ToolRegistry.tool(for: toolID)?.name ?? toolID)
+            OnePlusCardHeader(groupTitles[toolID] ?? toolID)
             if !compact {
                 HStack(spacing: OnePlusMetrics.cardGap) {
                     Text("Setting").frame(maxWidth: .infinity, alignment: .leading)
@@ -91,7 +84,7 @@ struct MainModifiedView: View {
                 }.onePlusTableHeader()
             }
             LazyVStack(spacing: 0) {
-                ForEach(groupDifferences(toolID)) { difference in row(difference, compact: compact) }
+                ForEach(groupedDifferences[toolID] ?? []) { difference in row(difference, compact: compact) }
             }
         }
     }
@@ -130,7 +123,18 @@ struct MainModifiedView: View {
     }
 
     private func refresh() {
-        differences = SettingsRegistry.modified()
+        let updated = SettingsRegistry.modified()
+        let grouped = Dictionary(grouping: updated) { $0.toolID ?? "app" }
+        let tools = ToolRegistry.allTools
+        let order = ["app"] + tools.map(\.id)
+        let present = Set(grouped.keys)
+        let groupIDs = order.filter { present.contains($0) } + present.subtracting(order).sorted()
+
+        differences = updated
+        groupedDifferences = grouped
+        groupLayout = Self.groupRows(groupIDs.map { ($0, grouped[$0]?.count ?? 0) })
+        groupTitles = Dictionary(uniqueKeysWithValues: tools.map { ($0.id, $0.name) })
+        groupTitles["app"] = "App settings"
         changed()
     }
 }
