@@ -11,10 +11,10 @@ public struct OnePlusMenuButton<Label: View, Content: View>: View {
         self.variant = variant; self.label = label(); self.content = content()
     }
     public var body: some View {
-        Menu { content } label: {
-            OnePlusControlLabel(variant: variant == .ghost ? .ghost : .neutral) { label }
-        }
-        .menuStyle(.borderlessButton).buttonStyle(.plain).menuIndicator(.hidden)
+        Menu { content } label: { label }
+        .menuStyle(.button)
+        .buttonStyle(OnePlusButtonStyle(variant == .ghost ? .ghost : .neutral))
+        .menuIndicator(.hidden)
         .onePlusNeutralControls().fixedSize()
         .focusEffectDisabled()
     }
