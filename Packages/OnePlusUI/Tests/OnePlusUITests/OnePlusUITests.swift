@@ -169,6 +169,22 @@ final class OnePlusUITests: XCTestCase {
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(span: 0), OnePlusMenuMetrics.columnWidth())
     }
 
+    func testMenuPanelMeasuresShortContentWithoutCollapsingItsBody() {
+        let host = NSHostingView(rootView: OnePlusMenuPanel(maximumHeight: 300) {
+            Text("Tabs")
+        } actions: {
+            Text("Open App")
+        } content: {
+            Color.clear.frame(height: 100)
+        })
+        host.frame.size = NSSize(width: 356, height: 300)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
+        host.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.fittingSize.width, 356, accuracy: 0.5)
+        XCTAssertEqual(host.fittingSize.height, 148, accuracy: 0.5)
+    }
+
     func testAllFourTextureResourcesKeepTheirPixelDimensions() throws {
         for (asset, size) in [(OnePlusTextureAsset.grain, CGSize(width: 240, height: 150)),
                               (.ribbon, CGSize(width: 700, height: 220)),

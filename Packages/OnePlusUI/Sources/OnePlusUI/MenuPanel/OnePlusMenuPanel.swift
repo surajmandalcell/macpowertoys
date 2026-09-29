@@ -19,7 +19,7 @@ public enum OnePlusMenuMetrics {
 
 private struct OnePlusMenuHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
@@ -27,13 +27,14 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
     let actions: Actions
     let content: Body
     let maximumHeight: CGFloat?
-    @State private var contentHeight: CGFloat = 0
+    @State private var contentHeight: CGFloat?
     public init(maximumHeight: CGFloat? = nil, @ViewBuilder tabs: () -> Tabs,
                 @ViewBuilder actions: () -> Actions, @ViewBuilder content: () -> Body) {
         self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content()
     }
     public var body: some View {
-        let cap = max(35, maximumHeight ?? ((NSScreen.main?.visibleFrame.height ?? 800) - 32))
+        let cap = max(37, maximumHeight ?? ((NSScreen.main?.visibleFrame.height ?? 800) - 32))
+        let bodyCap = cap - 37
         VStack(spacing: 0) {
             HStack(spacing: 7) {
                 tabs
@@ -45,9 +46,12 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
                     .frame(width: 338).padding(.horizontal, 8).padding(.top, 3).padding(.bottom, 8)
                     .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
             }
-            .onePlusScrollIndicators().frame(height: min(contentHeight, cap - 35))
-            .onPreferenceChange(OnePlusMenuHeightKey.self) { contentHeight = $0 }
-        }.padding(1).frame(width: 356).background(OnePlusColor.sidebar).onePlusDensity(.compact)
+            .onePlusScrollIndicators().frame(height: min(contentHeight ?? bodyCap, bodyCap))
+            .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0 > 0 { contentHeight = $0 } }
+        }.padding(1).frame(width: 356).background(OnePlusColor.sidebar)
+            .clipShape(RoundedRectangle(cornerRadius: 11))
+            .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
+            .onePlusDensity(.compact)
     }
 }
 
