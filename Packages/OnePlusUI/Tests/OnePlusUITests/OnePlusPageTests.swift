@@ -66,7 +66,7 @@ final class OnePlusPageTests: XCTestCase {
     func testNamedHeadersUseTheSharedTitleTopWithoutASecondOffset() {
         for density in OnePlusDensity.allCases {
             let standard = NSHostingView(rootView: OnePlusPageHeader(title: "Storage", subtitle: "/Volumes/Data",
-                subtitleRole: .mono) { EmptyView() }.onePlusDensity(density).frame(width: 600))
+                subtitleRole: .mono).onePlusDensity(density).frame(width: 600))
             let diskman = NSHostingView(rootView: OnePlusDiskmanHeader("Storage", path: "/Volumes/Data") {
                 EmptyView()
             }.onePlusDensity(density).frame(width: 600))
