@@ -54,7 +54,10 @@ public struct OnePlusStatus: View {
     public enum State: Sendable { case online, offline, warning, error, success }
     let title: String
     let state: State
-    public init(_ title: String, state: State = .online) { self.title = title; self.state = state }
+    let textRole: OnePlusTextRole
+    public init(_ title: String, state: State = .online, textRole: OnePlusTextRole = .caption) {
+        self.title = title; self.state = state; self.textRole = textRole
+    }
     private var color: Color {
         switch state {
         case .online: OnePlusColor.secondary
@@ -69,7 +72,7 @@ public struct OnePlusStatus: View {
             Circle().fill(state == .offline ? .clear : color)
                 .overlay { Circle().strokeBorder(color, lineWidth: state == .offline ? 1 : 0) }
                 .frame(width: 4, height: 4).accessibilityHidden(true)
-            Text(title).onePlusText(.caption).foregroundStyle(color)
+            Text(title).onePlusText(textRole).foregroundStyle(color)
         }.accessibilityElement(children: .combine)
     }
 }
