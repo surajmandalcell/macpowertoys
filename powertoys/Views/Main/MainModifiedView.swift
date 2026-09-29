@@ -72,7 +72,7 @@ struct MainModifiedView: View {
 
     private func group(_ toolID: String) -> some View {
         let lastID = groupedDifferences[toolID]?.last?.id
-        OnePlusCard {
+        return OnePlusCard {
             OnePlusCardHeader(groupTitles[toolID] ?? toolID)
             LazyVStack(spacing: 0) {
                 ForEach(groupedDifferences[toolID] ?? []) { difference in
