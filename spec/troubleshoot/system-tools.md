@@ -420,20 +420,18 @@
 
 ## Input Devices Scroll Settings Ownership
 
-- **Symptom:** The launcher detail page and the Scrolling page show different
-  Input Devices controls.
-- **Cause:** The launcher needs `InputDevicesSettingsView`, and a second copy of
-  the controls was written for it instead of reusing the tool's own view.
-- **Invariant:** `InputDevicesScrollSettings` is the one implementation of the
-  Scroll Control card and both profile cards. The Scrolling page renders it
-  inside its workspace page and `InputDevicesSettingsView` wraps the same view
-  for the launcher. The Scroll device selector stays at the bottom of both hosts
-  in the shared `InputScrollDeviceBar`, never inside the Scroll Control card.
-- **Invariant:** Give the native Scroll device picker a fixed 160pt frame whose
-  content is trailing-aligned. The bar and profile cards use the same 20pt
-  gutter; do not center an intrinsic-width menu inside that frame.
+- **Symptom:** The launcher detail page and Scrolling page can gain a second
+  content inset, show different controls, or scroll the Scroll device footer.
+- **Cause:** A padded panel wrapper was embedded inside an already padded page,
+  and the whole card stack owned one outer scroll view.
+- **Invariant:** `InputDevicesSettingsContent()` is the one card implementation.
+  A main-window host embeds it directly with regular density. The compact panel
+  uses `InputDevicesSettingsView`. The Scrolling page uses one 24pt page gutter,
+  keeps `InputScrollDeviceBar` fixed below its row scroller, and adds no second
+  horizontal or top inset. Every selector uses `OnePlusSelect`.
 - **Check:** Open the Scrolling page and the launcher Input Devices detail and
-  confirm they show the same rows in the same order.
+  confirm both card stacks start on the page title's leading edge. Scroll the
+  profiles and confirm the Scroll device footer stays fixed.
 
 ## Input Devices Event Tap Recovery
 
@@ -458,9 +456,13 @@
   commands in a visible Terminal. Never bundle Mole or collect sudo input. Keep
   Scan as the primary visible action on Overview and Cleanup before results.
   Keep one work-status surface in the bottom content inset on every System Care
-  page. Keep top-strip menus and buttons at the shared 24pt action height.
+  page. Keep top-strip menus and buttons at the shared regular action height.
   Only directory rows are actionable in Storage. File rows are informational
   and do not use hover, pressed, or button treatment.
+- **Invariant:** Storage, Cleanup, Applications, Mole, and History use
+  `OnePlusPage(scrolls: false)`. Search, table headers, inspectors, actions, and
+  status stay fixed. Only a lazy row stack inside the list card scrolls. Format
+  application size and last-used metadata on a utility task before rows render.
 - **Invariant:** Before a scan, center the cleanup icon and message across the
   full body width. A leading stack must not collapse the empty state to its
   intrinsic width.
