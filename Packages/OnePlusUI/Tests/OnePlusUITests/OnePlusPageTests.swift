@@ -5,6 +5,22 @@ import XCTest
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testFirstContentStartsSixteenPointsAfterHeaderBlock() throws {
+        let header = OnePlusPageHeader(title: "Processes", subtitle: "Live system activity")
+        let headerHeight = NSHostingView(rootView: header.frame(width: 600)).fittingSize.height
+            - OnePlusMetrics.pageHeaderBottom
+        let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
+            header
+        } content: {
+            PageRegionProbe("content").frame(height: 40)
+        })
+        host.frame = CGRect(x: 0, y: 0, width: 600, height: 300)
+        host.layoutSubtreeIfNeeded()
+        let content = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "content" })
+        XCTAssertEqual(content.convert(content.bounds, to: host).minY - headerHeight,
+                       OnePlusMetrics.contentGap, accuracy: 0.5)
+    }
+
     func testAppletBodyAndFixedRegionsUseSixteenPointGaps() throws {
         for showsTabs in [false, true] {
             let host = NSHostingView(rootView: OnePlusPage(scrolls: false, layout: .applet) {
@@ -108,6 +124,10 @@ final class OnePlusPageTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(catalog.fittingSize.height, 58 + 40 + OnePlusMetrics.pageHeaderBottom)
         }
     }
+}
+
+@MainActor private func descendants(_ view: NSView) -> [NSView] {
+    [view] + view.subviews.flatMap(descendants)
 }
 
 private struct PageRegionProbe: NSViewRepresentable {
