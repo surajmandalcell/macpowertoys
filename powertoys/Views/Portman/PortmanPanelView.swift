@@ -107,7 +107,6 @@ struct PortmanPanelView: View {
             PortmanMenuController.shared.setHeight($0)
         }
         .environment(\.onePlusControlHeight, OnePlusMetrics.controlHeight)
-        .tint(OnePlusColor.primaryFill)
         .onAppear {
             if page == .local {
                 service.beginMonitoring()
@@ -264,6 +263,7 @@ struct PortmanPanelView: View {
             }
             VStack(spacing: OnePlusMetrics.spacing[1]) {
                 Text(memoryString(focusedSegment?.memoryBytes ?? overviewMemory))
+                    .monospaced()
                     .onePlusText(.metric).onePlusDensity(.regular)
                     .monospacedDigit()
                 Text(cleanupMode
@@ -326,9 +326,14 @@ struct PortmanPanelView: View {
                                     }
                                 }
                             } label: {
-                                OnePlusControlLabel(variant: .ghost, size: .small) { Text("Sort by") }
+                                OnePlusControlLabel(size: .small) {
+                                    HStack(spacing: OnePlusMetrics.spacing[2]) {
+                                        Text("Sort by")
+                                        Image(systemName: "chevron.down").accessibilityHidden(true)
+                                    }
+                                }
                             }
-                            .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
                             .accessibilityIdentifier("portman.sort")
                             .accessibilityLabel("Sort by")
                             .accessibilityValue((PortmanServerSort(rawValue: serverSort) ?? .port).label)
@@ -418,7 +423,7 @@ struct PortmanPanelView: View {
                             Image(systemName: "link").onePlusText(.caption)
                                 .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
                         }
-                        .foregroundStyle(hoveredLinkPortID == port.id ? OnePlusColor.accent : OnePlusColor.secondary)
+                        .foregroundStyle(hoveredLinkPortID == port.id ? OnePlusColor.ink : OnePlusColor.secondary)
                         .background(hoveredLinkPortID == port.id ? OnePlusColor.raised : .clear,
                                     in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
                         .onHover { hoveredLinkPortID = $0 ? port.id : nil }
@@ -643,6 +648,7 @@ struct PortmanPanelView: View {
 
             HStack(alignment: .firstTextBaseline) {
                 Text(":\(String(port.port))")
+                    .monospaced()
                     .onePlusText(.metric).onePlusDensity(.regular)
                     .foregroundStyle(portColor(port))
                 Spacer()
