@@ -51,7 +51,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         table.allowsMultipleSelection = true; table.allowsEmptySelection = true
         table.usesAlternatingRowBackgroundColors = false
         table.style = .plain; table.rowHeight = OnePlusTable.rowHeight(.regular)
-        table.intercellSpacing = NSSize(width: 0, height: 1)
+        table.intercellSpacing = .zero
         table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         table.headerView = NSTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
         for (index, item) in columns.enumerated() {
@@ -72,7 +72,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         table.makeMenu = { [weak coordinator = context.coordinator] ids in coordinator?.menu(ids) }
         table.keyAction = { [weak coordinator = context.coordinator] key in coordinator?.key(key) }
         scroll.documentView = table; scroll.hasVerticalScroller = true
-        scroll.scrollerStyle = .overlay; scroll.autohidesScrollers = true
+        scroll.configureOnePlusScrollIndicators()
         scroll.drawsBackground = false
         return scroll
     }
@@ -204,6 +204,19 @@ private final class StorageTable: NSTableView {
 }
 
 private final class StorageRow: NSTableRowView {
+    private var hovering = false
+    private var hoverArea: NSTrackingArea?
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self)
+        addTrackingArea(area); hoverArea = area
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
+    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true }
+    override func drawBackground(in dirtyRect: NSRect) {
+        NSColor(hovering ? OnePlusColor.raised : OnePlusColor.panel).setFill(); bounds.fill()
+    }
     override func drawSelection(in dirtyRect: NSRect) {
         NSColor(OnePlusColor.selection).setFill(); bounds.fill()
     }

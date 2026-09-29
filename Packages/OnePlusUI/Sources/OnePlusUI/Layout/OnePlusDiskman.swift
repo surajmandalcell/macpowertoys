@@ -5,6 +5,7 @@ import SwiftUI
 public enum OnePlusDiskmanMetrics {
     public static let inspectorWidth: CGFloat = 260
     public static let folderSheetWidth: CGFloat = 460
+    public static let folderListHeight: CGFloat = 336
     public static let statsHeight: CGFloat = 88
     public static let partitionHeight: CGFloat = 72
     public static let tileRadius: CGFloat = 4
