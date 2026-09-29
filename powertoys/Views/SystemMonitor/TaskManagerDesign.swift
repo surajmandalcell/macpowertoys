@@ -1,5 +1,5 @@
-import AppKit
 import Darwin
+import Foundation
 import OnePlusUI
 import SwiftUI
 
@@ -15,12 +15,7 @@ enum TaskManagerTheme {
     static let secondary = OnePlusTheme.secondary
     static let muted = OnePlusTheme.muted
     static let accent = OnePlusTheme.accent
-    static let windowNSColor = NSColor(OnePlusTheme.window)
-    static let sidebarNSColor = NSColor(OnePlusTheme.sidebar)
-
     static let windowContentSize = OnePlusWindowCanvas.systemMonitor.size
-    static let sidebarWidth: CGFloat = 220
-    static let headerHeight: CGFloat = 62
     static let contentInset = OnePlusMetrics.taskManagerGutter
     static let pageTopInset = OnePlusMetrics.contentTop
     static let panelRadius = OnePlusMetrics.panelRadius
@@ -29,42 +24,6 @@ enum TaskManagerTheme {
 
 typealias TaskManagerPanel<Content: View> = OnePlusPanel<Content>
 typealias TaskManagerDitherTexture = OnePlusDitherTexture
-
-struct TaskManagerHeaderArtwork: View {
-    var body: some View {
-        Image("TaskManagerRibbon")
-            .resizable()
-            .interpolation(.none)
-            .frame(width: 285, height: 90)
-            .opacity(0.27)
-            .mask {
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.26),
-                        .init(color: .black, location: 0.82),
-                        .init(color: .clear, location: 1),
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
-}
-
-struct TaskManagerWorkspaceArtwork: View {
-    var body: some View {
-        Image("TaskManagerRibbon")
-            .resizable()
-            .interpolation(.none)
-            .frame(width: 950, height: 300)
-            .opacity(0.09)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
-}
 
 struct TaskManagerDotTitle: View {
     let text: String
@@ -81,24 +40,9 @@ struct TaskManagerHeader<Trailing: View>: View {
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            TaskManagerHeaderArtwork()
-                .offset(x: -18, y: -10)
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    TaskManagerDotTitle(text: title)
-                    Text(subtitle)
-                        .font(.system(size: 10))
-                        .foregroundStyle(TaskManagerTheme.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 12)
-                trailing()
-            }
-            .padding(.horizontal, TaskManagerTheme.contentInset)
+        OnePlusPageHeader(title: title, subtitle: subtitle, titleStyle: .dotMatrix) {
+            trailing()
         }
-        .frame(height: TaskManagerTheme.headerHeight)
-        .clipped()
     }
 }
 

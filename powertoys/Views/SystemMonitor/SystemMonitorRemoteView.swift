@@ -412,7 +412,7 @@ struct TaskManagerRemoteCard: View {
 
     private var networkReading: String {
         guard let reading else { return "—" }
-        return "↓\(reading.download.map(Self.shortRate) ?? "...") ↑\(reading.upload.map(Self.shortRate) ?? "...")"
+        return "↓\(reading.download.map(Self.shortRate) ?? "—") ↑\(reading.upload.map(Self.shortRate) ?? "—")"
     }
 
     private var diskFraction: CGFloat {

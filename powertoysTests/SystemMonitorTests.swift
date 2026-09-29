@@ -9,6 +9,13 @@ final class SystemMonitorTests: XCTestCase {
         SystemMonitorRemoteProfile(id: "windows-ci", name: "Windows CI", host: "builder@windows-ci", platform: .windows),
     ]
 
+    func testWindowPageIDsMatchDeepLinks() {
+        XCTAssertEqual(SystemMonitorPage.allCases.map(\.rawValue), [
+            "overview", "processes", "cpu", "gpu", "memory", "network", "disk",
+            "battery", "sensors", "remote", "report", "about", "settings",
+        ])
+    }
+
     func testTrayPagesSampleOnlyTheirMetricFamilies() {
         XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 9)
         XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))
@@ -47,11 +54,24 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     func testTaskManagerMenuHeightMatchesEachPageAndHostCount() {
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 0), 315)
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 2), 467)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 0), 334)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 2), 503)
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 4), 536)
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .cpu, profileCount: 0), 392)
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .processes, profileCount: 0), 407)
+    }
+
+    func testTaskManagerMenuInitialHeightRestoresLastPage() throws {
+        let suiteName = "TaskManagerMenuInitialHeight.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(true, forKey: "systemMonitor.rememberTrayPage")
+        defaults.set(SystemMonitorTrayPage.processes.rawValue, forKey: "systemMonitor.trayPage")
+
+        XCTAssertEqual(
+            TaskManagerMenuLayout.initialHeight(profileCount: 2, defaults: defaults),
+            TaskManagerMenuLayout.preferredHeight(for: .processes, profileCount: 2)
+        )
     }
 
     func testMonitorSubprocessOutputIsBounded() async throws {
@@ -373,8 +393,8 @@ final class SystemMonitorTests: XCTestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
 
         let pages = [
-            "Overview", "Processes", "CPU", "GPU", "Memory", "Network", "Disk",
-            "Battery", "Sensors", "Remote Stats", "System Report", "About", "Settings",
+            "overview", "processes", "cpu", "gpu", "memory", "network", "disk",
+            "battery", "sensors", "remote", "report", "about", "settings",
         ]
         for page in pages {
             defaults.set(page, forKey: "systemMonitor.windowPage")
@@ -965,13 +985,13 @@ final class SystemMonitorTests: XCTestCase {
                 item: SystemMonitorMenuItemConfiguration(metric: .cpu),
                 sample: firstDelta
             ).value,
-            "..."
+            "—"
         )
         XCTAssertTrue(
             SystemMonitorMenuRenderer.render(
                 item: SystemMonitorMenuItemConfiguration(metric: .network),
                 sample: firstDelta
-            ).value.contains("...")
+            ).value.contains("—")
         )
         XCTAssertEqual(
             SystemMonitorMenuSchedule.dueMetrics(
@@ -1147,7 +1167,7 @@ final class SystemMonitorTests: XCTestCase {
         controller.configure(settings: settings)
         controller.update(sample: sample(), dueMetrics: [.cpu, .network])
         XCTAssertEqual(controller.displayedValue(for: .cpu), "42%")
-        XCTAssertFalse(try XCTUnwrap(controller.displayedValue(for: .network)).contains("..."))
+        XCTAssertFalse(try XCTUnwrap(controller.displayedValue(for: .network)).contains("—"))
         let groupedIdentities = controller.statusItemIdentities
         let writesBeforeReschedule = controller.renderedWriteCount
 
@@ -1159,7 +1179,7 @@ final class SystemMonitorTests: XCTestCase {
         controller.update(sample: sample(cpuUsage: nil, networkDownload: nil, networkUpload: nil),
                           dueMetrics: [.cpu, .network])
         XCTAssertEqual(controller.displayedValue(for: .cpu), "42%")
-        XCTAssertFalse(try XCTUnwrap(controller.displayedValue(for: .network)).contains("..."))
+        XCTAssertFalse(try XCTUnwrap(controller.displayedValue(for: .network)).contains("—"))
 
         settings.setPlacement(.separate, for: .cpu)
         controller.configure(settings: settings)

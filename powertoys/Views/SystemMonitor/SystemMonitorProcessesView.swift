@@ -272,9 +272,9 @@ struct SystemMonitorProcessesView: View {
                             hoveredProcessID = nil
                         }
                     }
-                    Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "...")
+                    Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
                         .frame(width: 72, alignment: .trailing)
-                    Text(process.residentBytes == 0 && process.started == 0 ? "..." : bytes(process.residentBytes))
+                    Text(process.residentBytes == 0 && process.started == 0 ? "—" : bytes(process.residentBytes))
                         .frame(width: 90, alignment: .trailing)
                     Text("\(process.pid)").frame(width: 64, alignment: .trailing)
                 }
@@ -499,11 +499,11 @@ struct ProcessDetailSheet: View {
     private var stats: some View {
         TaskManagerPanel {
             HStack(spacing: 0) {
-                stat("CPU", process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "...")
+                stat("CPU", process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
                 Rectangle().fill(TaskManagerTheme.line).frame(width: 1)
-                stat("Memory", process.residentBytes == 0 && process.started == 0 ? "..." : bytes(process.residentBytes))
+                stat("Memory", process.residentBytes == 0 && process.started == 0 ? "—" : bytes(process.residentBytes))
                 Rectangle().fill(TaskManagerTheme.line).frame(width: 1)
-                stat("Threads", process.threads == 0 ? "..." : "\(process.threads)")
+                stat("Threads", process.threads == 0 ? "—" : "\(process.threads)")
             }
         }
         .frame(height: 68)
@@ -578,7 +578,7 @@ struct ProcessDetailSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("NETWORK ENDPOINTS").font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
             if endpoints.isEmpty {
-                Text(endpointsLoaded ? "No visible endpoints" : "...")
+                Text(endpointsLoaded ? "No visible endpoints" : "—")
                     .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.muted)
             } else {
                 ForEach(endpoints, id: \.self) { endpoint in

@@ -43,17 +43,25 @@ enum TrayTab: String, CaseIterable, Identifiable {
     }
 
     var toolID: String? { self == .home ? nil : rawValue }
+
+    var panelID: String {
+        self == .cloudSync ? "cloud-sync" : rawValue
+    }
+
+    init?(panelID: String) {
+        self.init(rawValue: panelID == "cloud-sync" ? Self.cloudSync.rawValue : panelID)
+    }
 }
 
 enum TrayPopoverLayout {
-    static let width: CGFloat = 360
-    static let horizontalInset: CGFloat = 12
-    static let tabHeight: CGFloat = 24
-    static let tabSpacing: CGFloat = 3
+    static let width = OnePlusMenuMetrics.width
+    static let horizontalInset = OnePlusMenuMetrics.bodyInset
+    static let tabHeight = OnePlusMenuMetrics.tab
+    static let tabSpacing = OnePlusMenuMetrics.tabGap
     static let netToysDisclosureHorizontalPadding: CGFloat = 6
     static let netToysDisclosureVerticalPadding: CGFloat = 6
     static let minimumBodyHeight: CGFloat = 54
-    static let topChromeHeight: CGFloat = 38
+    static let topChromeHeight = OnePlusMenuMetrics.topBar
     static let heightFraction: CGFloat = 0.7
     static let transitionDuration = UtilityMotion.standardDuration
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
@@ -161,55 +169,47 @@ struct TrayPopoverView: View {
     private var selectedTab: TrayTab { TrayTab(rawValue: selectedTabID) ?? .home }
 
     var body: some View {
-        VStack(spacing: 0) {
-            topChrome
-            TrayMeasuredScroll {
-                tabContent
-                    .id(selectedTabID)
-                    .transition(.opacity)
+        OnePlusMenuPanel(maximumHeight: (NSScreen.main?.visibleFrame.height ?? 900) * TrayPopoverLayout.heightFraction) {
+            TrayTabStrip(
+                tabs: tabs,
+                selected: Binding(get: { selectedTab }, set: { select($0) }),
+                reorder: reorder
+            )
+        } actions: {
+            OnePlusMenuOpenApp {
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
             }
+            Button {
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .openToolSettings, object: "home")
+                }
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .accessibilityLabel("Open Settings")
+            .help("Open Settings")
+            Button { NSApp.terminate(nil) } label: {
+                Image(systemName: "power")
+            }
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .accessibilityLabel("Quit MacPowerToys")
+            .help("Quit MacPowerToys")
+        } content: {
+            tabContent
+                .id(selectedTabID)
+                .transition(.opacity)
         }
-        .frame(width: TrayPopoverLayout.width)
-        .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
+        .environment(\.colorScheme, .dark)
         .onAppear(perform: normalizeSelection)
         .onChange(of: storedTabOrder) { normalizeSelection() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             configurationRevision += 1
             normalizeSelection()
         }
-    }
-
-    private var topChrome: some View {
-        HStack(spacing: 0) {
-            TrayTabStrip(
-                tabs: tabs,
-                selected: Binding(get: { selectedTab }, set: { select($0) }),
-                reorder: reorder
-            )
-            .padding(3)
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 4) {
-                TrayChromeButton(title: "Open MacPowerToys", systemImage: "arrow.up.forward.square", visibleTitle: "Open App") {
-                    openWindow(id: "main")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                TrayChromeButton(title: "Open Settings", systemImage: "gearshape") {
-                    openWindow(id: "main")
-                    NSApp.activate(ignoringOtherApps: true)
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(name: .openToolSettings, object: "home")
-                    }
-                }
-                TrayChromeButton(title: "Quit MacPowerToys", systemImage: "power") {
-                    NSApp.terminate(nil)
-                }
-            }
-            .fixedSize()
-        }
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -263,22 +263,57 @@ struct TrayPopoverView: View {
     }
 }
 
-struct TrayMeasuredScroll<Content: View>: View {
-    @ViewBuilder let content: Content
-    @State private var contentHeight = TrayPopoverLayout.minimumBodyHeight
-
-    private var maximumHeight: CGFloat {
-        TrayPopoverLayout.maximumBodyHeight(screenHeight: NSScreen.main?.visibleFrame.height ?? 900)
-    }
+struct IndividualToolMenuPanel: View {
+    let tool: IndividualMenuBarTool
 
     var body: some View {
-        ScrollView {
+        OnePlusMenuPanel(maximumHeight: (NSScreen.main?.visibleFrame.height ?? 900) - 32) {
+            HStack(spacing: 7) {
+                Image(systemName: tool.symbol).font(.system(size: 13))
+                Text(tool.title).onePlusText(.cardTitle)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        } actions: {
+            OnePlusMenuOpenApp {
+                ToolActionRouter.shared.open(toolID: tool.id)
+            }
+        } content: {
             content
-                .frame(width: TrayPopoverLayout.width, alignment: .topLeading)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
-        .thinScrollIndicators()
-        .frame(height: min(max(contentHeight, TrayPopoverLayout.minimumBodyHeight), maximumHeight))
+        .environment(\.colorScheme, .dark)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch tool {
+        case .cloudSync:
+            CloudSyncTrayView(showsHeader: false)
+        case .awake:
+            AwakeTrayRow()
+        case .colorPicker:
+            quickAction("Pick Color", symbol: "eyedropper", action: .colorPickerPick)
+        case .textExtractor:
+            quickAction("Extract Text", symbol: "text.viewfinder", action: .textExtractorCapture)
+        case .inputDevices:
+            InputDevicesSettingsView(
+                showsHeader: true,
+                showsContainerScroll: false,
+                contentTopInset: 6
+            )
+        }
+    }
+
+    private func quickAction(_ title: String, symbol: String, action: ToolActionID) -> some View {
+        OnePlusMenuTile(span: 3, height: 70, action: {
+            ToolActionRouter.shared.execute(ToolActionRequest(action: action))
+        }) {
+            HStack(spacing: 9) {
+                Image(systemName: symbol).font(.system(size: 13))
+                Text(title).onePlusText(.row)
+            }
+        }
+        .accessibilityLabel(title)
     }
 }
 
@@ -332,23 +367,19 @@ private struct TrayTabButton: View {
     let tab: TrayTab
     let selected: Bool
     let action: () -> Void
-    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             TrayTabIcon(tab: tab, selected: selected, size: 12)
-                .foregroundStyle(Color.primary.opacity(selected || hovering ? 1 : 0.58))
+                .foregroundStyle(selected ? OnePlusColor.ink : OnePlusColor.secondary)
                 .frame(width: TrayPopoverLayout.tabHeight, height: TrayPopoverLayout.tabHeight)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .background(Color.primary.opacity(selected ? 0.10 : 0), in: RoundedRectangle(cornerRadius: 6))
+        .buttonStyle(OnePlusInteractionStyle(selected: selected))
         .accessibilityLabel(tab.title)
         .accessibilityIdentifier("tray.tab.\(tab.rawValue)")
         .accessibilityAddTraits(selected ? .isSelected : [])
         .help(tab.title)
-        .onHover { hovering = $0 }
     }
 }
 
@@ -377,72 +408,33 @@ private struct TrayTabIcon: View {
     }
 }
 
-private struct TrayChromeButton: View {
-    let title: String
-    let systemImage: String
-    var visibleTitle: String? = nil
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Group {
-                if let visibleTitle {
-                    Text(visibleTitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 8)
-                } else {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 12))
-                        .frame(width: 24)
-                }
-            }
-            .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.62))
-            .frame(height: 24)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .accessibilityLabel(title)
-        .help(title)
-        .onHover { hovering = $0 }
-    }
-}
-
 private struct TrayHomeView: View {
     let toolIDs: [String]
 
     var body: some View {
-        VStack(spacing: 0) {
-            if toolIDs.isEmpty {
-                EmptyStateView(icon: "switch.2", message: "No Home tools are in the combined menu")
-                    .frame(height: 120)
-            } else {
-                if toolIDs.contains("color-picker") || toolIDs.contains("text-extractor") || toolIDs.contains("ruler") {
-                    HStack(spacing: 6) {
-                        if toolIDs.contains("color-picker") {
-                            TrayHomeActionButton(title: "Pick Color", symbol: "eyedropper") {
-                                ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
-                            }
-                        }
-                        if toolIDs.contains("text-extractor") {
-                            TrayHomeActionButton(title: "Extract Text", symbol: "text.viewfinder") {
-                                ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
-                            }
-                        }
-                        if toolIDs.contains("ruler") {
-                            TrayHomeActionButton(title: "Ruler", symbol: "ruler", iconRotation: -45) {
-                                ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-                    .padding(.top, 8)
-                    .padding(.bottom, toolIDs.contains("awake") ? 4 : 8)
+        VStack(spacing: OnePlusMenuMetrics.tileGap) {
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                TrayHomeActionButton(
+                    title: "Pick Color", symbol: "eyedropper",
+                    enabled: toolIDs.contains("color-picker")
+                ) {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
                 }
-                if toolIDs.contains("awake") {
-                    AwakeTrayRow()
+                TrayHomeActionButton(
+                    title: "Extract Text", symbol: "text.viewfinder",
+                    enabled: toolIDs.contains("text-extractor")
+                ) {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
                 }
+                TrayHomeActionButton(
+                    title: "Ruler", symbol: "ruler", iconRotation: -45,
+                    enabled: toolIDs.contains("ruler")
+                ) {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
+                }
+            }
+            if toolIDs.contains("awake") {
+                AwakeTrayRow()
             }
         }
     }
@@ -452,24 +444,22 @@ private struct TrayHomeActionButton: View {
     let title: String
     let symbol: String
     var iconRotation = 0.0
+    var enabled = true
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
+        OnePlusMenuTile(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: symbol)
                     .rotationEffect(.degrees(iconRotation))
                     .symbolRenderingMode(.monochrome)
-                    .font(.system(size: 12, weight: .medium))
-                Text(title).lineLimit(1)
+                    .font(.system(size: 13, weight: .medium))
+                Text(title).onePlusText(.row).lineLimit(1)
             }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(Color.primary.opacity(0.88))
-            .frame(maxWidth: .infinity, minHeight: 30)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
+        .accessibilityLabel(title)
     }
 }
 
@@ -496,62 +486,44 @@ private struct AwakeTrayRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Label("Awake", systemImage: "moon.zzz")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.primary.opacity(0.84))
-                Spacer(minLength: 8)
-                Picker("Awake duration", selection: quickMode) {
-                    Text("Off").tag(AwakeQuickMode?.some(.off))
-                    Text("30m").tag(AwakeQuickMode?.some(.thirtyMinutes))
-                    Text("1h").tag(AwakeQuickMode?.some(.oneHour))
-                    Text("∞").accessibilityLabel("Indefinite").tag(AwakeQuickMode?.some(.indefinite))
-                }
-                .pickerStyle(.segmented)
-                .tint(Color.primary.opacity(0.18))
+        VStack(alignment: .leading, spacing: 2) {
+            OnePlusMenuControlRow("Awake", systemImage: "moon.zzz", status: status) {
+                TaskManagerSegments(
+                    choices: [
+                        (AwakeQuickMode?.some(.off), "Off"),
+                        (AwakeQuickMode?.some(.thirtyMinutes), "30m"),
+                        (AwakeQuickMode?.some(.oneHour), "1h"),
+                        (AwakeQuickMode?.some(.indefinite), "∞"),
+                    ],
+                    selection: quickMode
+                )
+                .frame(width: 152)
+                .accessibilityLabel("Awake duration")
+            }
+            OnePlusMenuControlRow("Keep display on", systemImage: "display") {
+                Toggle("Keep display on", isOn: Binding(
+                    get: { service.configuration.keepDisplayOn },
+                    set: service.setKeepDisplayOn
+                ))
                 .labelsHidden()
-                .frame(width: 204)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .accessibilityIdentifier("awake.keep-display-on")
             }
             if let assertionError = service.assertionError {
                 Text(assertionError)
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.red)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.danger)
                     .lineLimit(2)
-                    .padding(.leading, 32)
             }
         }
-        .padding(.leading, TrayPopoverLayout.horizontalInset + 4)
-        .padding(.vertical, 8)
     }
-}
 
-private struct TrayToolLink: View {
-    let tab: TrayTab
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var hovering = false
-
-    var body: some View {
-        Button {
-            ToolActionRouter.shared.open(toolID: tab.rawValue)
-        } label: {
-            HStack(spacing: 7) {
-                TrayTabIcon(tab: tab, selected: false, size: 12).frame(width: 18)
-                Text(tab.title).font(.system(size: 12, weight: .medium))
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .offset(x: hovering && !reduceMotion ? 1 : 0, y: hovering && !reduceMotion ? -1 : 0)
-            }
-            .foregroundStyle(Color.primary.opacity(hovering ? 1 : 0.84))
-            .padding(.horizontal, 6)
-            .frame(minHeight: 28)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .onHover { hovering = $0 }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovering)
-        .help("Open \(tab.title)")
+    private var status: String {
+        guard service.configuration.mode != .passive else { return "Off" }
+        guard let remaining = service.remaining else { return "On" }
+        let seconds = max(Int(remaining), 0)
+        return String(format: "%d:%02d:%02d left", seconds / 3_600, seconds / 60 % 60, seconds % 60)
     }
 }
 
@@ -564,16 +536,9 @@ private struct TrayQuietActionButton: View {
     var body: some View {
         Button(action: action) {
             Label(title, systemImage: symbol)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.primary.opacity(0.86))
-                .padding(.horizontal, 9)
-                .frame(minHeight: 26)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .background(Color.primary.opacity(0.075), in: RoundedRectangle(cornerRadius: 6))
+        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
         .disabled(disabled)
-        .opacity(disabled ? 0.45 : 1)
     }
 }
 
@@ -581,11 +546,16 @@ private struct TrayToolHeader: View {
     let tab: TrayTab
 
     var body: some View {
-        TrayToolLink(tab: tab)
-        .padding(.horizontal, TrayPopoverLayout.horizontalInset)
-        .padding(.top, 5)
-        .padding(.bottom, 3)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        OnePlusMenuControlRow(tab.title, systemImage: tab.symbol) {
+            Button {
+                ToolActionRouter.shared.open(toolID: tab.rawValue)
+            } label: {
+                Image(systemName: "arrow.up.right")
+            }
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .accessibilityLabel("Open \(tab.title)")
+            .help("Open \(tab.title)")
+        }
     }
 }
 
@@ -714,6 +684,7 @@ struct SwitchTrayView: View {
 
 private struct CloudSyncTrayView: View {
     @State private var manager = RcloneJobManager.shared
+    var showsHeader = true
 
     private var jobs: [TransferJob] {
         TrayPopoverLayout.visibleTransferJobs(manager.jobs)
@@ -724,7 +695,7 @@ private struct CloudSyncTrayView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TrayToolHeader(tab: .cloudSync)
+            if showsHeader { TrayToolHeader(tab: .cloudSync) }
             if !manager.daemonIsHealthy {
                 HStack {
                     Text("The engine is not responding.").font(.system(size: 11)).foregroundStyle(.secondary)
@@ -1226,12 +1197,12 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
 }
 
 enum TaskManagerMenuLayout {
-    static let width: CGFloat = 356
+    static let width = OnePlusMenuMetrics.width
     static let maximumHeight: CGFloat = 536
     static let minimumHeight: CGFloat = 220
 
     static func initialHomeHeight(profileCount: Int) -> CGFloat {
-        min(profileCount == 0 ? 315 : 369 + CGFloat(profileCount - 1) * 98, maximumHeight)
+        min(profileCount == 0 ? 334 : 388 + CGFloat(profileCount - 1) * 115, maximumHeight)
     }
 
     static func preferredHeight(for page: SystemMonitorTrayPage, profileCount: Int) -> CGFloat {
@@ -1250,6 +1221,17 @@ enum TaskManagerMenuLayout {
             407
         }
     }
+
+    static func initialHeight(
+        profileCount: Int,
+        defaults: UserDefaults = .standard
+    ) -> CGFloat {
+        let remembersPage = defaults.object(forKey: "systemMonitor.rememberTrayPage") == nil
+            || defaults.bool(forKey: "systemMonitor.rememberTrayPage")
+        let savedPage = defaults.string(forKey: "systemMonitor.trayPage")
+            .flatMap(SystemMonitorTrayPage.init(rawValue:)) ?? .home
+        return preferredHeight(for: remembersPage ? savedPage : .home, profileCount: profileCount)
+    }
 }
 
 struct SystemMonitorMenuPopoverView: View {
@@ -1264,7 +1246,9 @@ struct SystemMonitorMenuPopoverView: View {
         let profiles = remoteProfiles ?? SystemMonitorRemoteProfiles.load()
         self.remoteProfiles = profiles
         self.onPreferredHeight = onPreferredHeight
-        _preferredHeight = State(initialValue: TaskManagerMenuLayout.initialHomeHeight(profileCount: profiles.count))
+        _preferredHeight = State(initialValue: TaskManagerMenuLayout.initialHeight(
+            profileCount: profiles.count
+        ))
     }
 
     var body: some View {
@@ -1274,8 +1258,6 @@ struct SystemMonitorMenuPopoverView: View {
             onPreferredHeight(height)
         }
         .frame(width: TaskManagerMenuLayout.width, height: preferredHeight)
-        .foregroundStyle(TaskManagerTheme.ink)
-        .background(TaskManagerTheme.window)
         .environment(\.colorScheme, .dark)
         .utilityMotionPolicy()
     }
@@ -1301,23 +1283,24 @@ struct SystemMonitorTrayView: View {
     private var history: [SystemMonitorSample] { Array(service.history.suffix(120)) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            tabStrip
-
-            Group {
-                switch page {
-                case .home:
-                    ScrollView { homePage.frame(width: TaskManagerMenuLayout.width) }
-                        .thinScrollIndicators()
-                case .processes:
-                    TaskManagerMenuProcessesView()
-                        .frame(width: TaskManagerMenuLayout.width, height: 372, alignment: .top)
-                default:
-                    ScrollView { detailPage.frame(width: TaskManagerMenuLayout.width) }
-                        .thinScrollIndicators()
-                }
+        OnePlusMenuPanel(maximumHeight: TaskManagerMenuLayout.maximumHeight) {
+            OnePlusMenuTabStrip(
+                tabs: SystemMonitorTrayPage.allCases.map {
+                    OnePlusMenuTab($0, $0.title, systemImage: $0.symbol)
+                },
+                selection: Binding(get: { page }, set: { pageID = $0.rawValue })
+            )
+        } actions: {
+            OnePlusMenuOpenApp {
+                ToolActionRouter.shared.open(toolID: "system-monitor")
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityIdentifier("system-monitor.menu.open-app")
+        } content: {
+            switch page {
+            case .home: homePage
+            case .processes: TaskManagerMenuProcessesView()
+            default: detailPage
+            }
         }
         .onAppear {
             if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
@@ -1336,45 +1319,6 @@ struct SystemMonitorTrayView: View {
             for: page,
             profileCount: remoteProfiles.count
         ))
-    }
-
-    private var tabStrip: some View {
-        HStack(spacing: 2) {
-            ForEach(SystemMonitorTrayPage.allCases) { item in
-                Button {
-                    pageID = item.rawValue
-                } label: {
-                    Group {
-                        if item == .gpu {
-                            GPUCardIcon()
-                        } else {
-                            Image(systemName: item.symbol)
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                    }
-                    .frame(width: 26, height: 26)
-                    .foregroundStyle(page == item ? TaskManagerTheme.ink : TaskManagerTheme.muted)
-                    .contentShape(Rectangle())
-                    .background(page == item ? Color.white.opacity(0.105) : .clear,
-                                in: RoundedRectangle(cornerRadius: 5))
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .help(item.title)
-                .accessibilityLabel(item.title)
-                .accessibilityAddTraits(page == item ? .isSelected : [])
-                .accessibilityIdentifier("system-monitor.tray.\(item.rawValue)")
-            }
-            Spacer(minLength: 5)
-            Button("Open App") {
-                ToolActionRouter.shared.open(toolID: "system-monitor")
-            }
-            .taskManagerControl(.quiet, minWidth: 62, minHeight: 26, horizontalPadding: 5)
-            .accessibilityIdentifier("system-monitor.menu.open-app")
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 35)
-        .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
     }
 
     private var homePage: some View {
@@ -1415,26 +1359,13 @@ struct SystemMonitorTrayView: View {
 
             remoteSummary
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 3)
-        .padding(.bottom, 8)
     }
 
     private var remoteSummary: some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text("Remote instances")
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                Spacer()
-                Button("Manage  →") {
-                    UserDefaults.standard.set("Remote Stats", forKey: "systemMonitor.windowPage")
-                    ToolActionRouter.shared.open(toolID: "system-monitor")
-                }
-                .font(.system(size: 8))
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .foregroundStyle(TaskManagerTheme.muted)
+            OnePlusMenuSectionHeader("Remote instances", actionTitle: "Manage") {
+                UserDefaults.standard.set("remote", forKey: "systemMonitor.windowPage")
+                ToolActionRouter.shared.open(toolID: "system-monitor")
             }
 
             TaskManagerRemoteMenuCard(profiles: remoteProfiles)
@@ -1451,7 +1382,6 @@ struct SystemMonitorTrayView: View {
                     .frame(height: 30)
             }
         }
-        .padding(10)
     }
 
     private var detailHero: some View {
@@ -1469,11 +1399,11 @@ struct SystemMonitorTrayView: View {
         case .cpu: percent(sample?.cpuUsage)
         case .gpu: percent(sample?.gpuUsage)
         case .memory: percent(sample?.memoryUsage)
-        case .network: sample?.networkDownload.map(Self.rate) ?? "..."
+        case .network: sample?.networkDownload.map(Self.rate) ?? "—"
         case .disk: percent(sample?.diskUsage)
-        case .battery: sample?.batteryPercent.map { "\($0)%" } ?? "..."
-        case .sensors: sample?.thermalState ?? "..."
-        case .home, .processes: "..."
+        case .battery: sample?.batteryPercent.map { "\($0)%" } ?? "—"
+        case .sensors: sample?.thermalState ?? "—"
+        case .home, .processes: "—"
         }
         return TaskManagerPanel(textured: true) {
             VStack(alignment: .leading, spacing: 7) {
@@ -1505,39 +1435,39 @@ struct SystemMonitorTrayView: View {
         case .cpu:
             [
                 ("Load · 1 minute", loadValue),
-                ("Load · 5 minutes", sample?.loadAverage.map { Self.decimal($0.1) } ?? "..."),
-                ("Load · 15 minutes", sample?.loadAverage.map { Self.decimal($0.2) } ?? "..."),
+                ("Load · 5 minutes", sample?.loadAverage.map { Self.decimal($0.1) } ?? "—"),
+                ("Load · 15 minutes", sample?.loadAverage.map { Self.decimal($0.2) } ?? "—"),
                 ("Logical CPUs", "\(ProcessInfo.processInfo.activeProcessorCount)"),
-                ("Thermal pressure", sample?.thermalState ?? "..."),
+                ("Thermal pressure", sample?.thermalState ?? "—"),
             ]
         case .gpu:
             [
                 ("Graphics utilization", percent(sample?.gpuUsage)),
                 ("Memory", "Unified"),
-                ("Thermal pressure", sample?.thermalState ?? "..."),
+                ("Thermal pressure", sample?.thermalState ?? "—"),
             ]
         case .memory:
             [
-                ("Used", sample?.memoryUsed.map(Self.bytes) ?? "..."),
+                ("Used", sample?.memoryUsed.map(Self.bytes) ?? "—"),
                 ("Available", memoryAvailable),
-                ("Total", sample?.memoryTotal.map(Self.bytes) ?? "..."),
-                ("Compressed", sample?.memoryDetails.map { Self.bytes($0.compressed) } ?? "..."),
+                ("Total", sample?.memoryTotal.map(Self.bytes) ?? "—"),
+                ("Compressed", sample?.memoryDetails.map { Self.bytes($0.compressed) } ?? "—"),
                 ("Swap used", sample?.memoryDetails?.swapUsed.map(Self.bytes) ?? "Unavailable"),
             ]
         case .network:
             [
-                ("Download", sample?.networkDownload.map(Self.rate) ?? "..."),
-                ("Upload", sample?.networkUpload.map(Self.rate) ?? "..."),
-                ("Interface", sample?.networkDetails?.interfaceName ?? "..."),
+                ("Download", sample?.networkDownload.map(Self.rate) ?? "—"),
+                ("Upload", sample?.networkUpload.map(Self.rate) ?? "—"),
+                ("Interface", sample?.networkDetails?.interfaceName ?? "—"),
                 ("Local address", sample?.networkDetails?.localAddress ?? "Unavailable"),
             ]
         case .disk:
             [
-                ("Used", sample?.diskUsed.map(Self.bytes) ?? "..."),
+                ("Used", sample?.diskUsed.map(Self.bytes) ?? "—"),
                 ("Available", diskAvailable),
-                ("Capacity", sample?.diskTotal.map(Self.bytes) ?? "..."),
-                ("Read", sample?.diskDetails?.readPerSecond.map(Self.rate) ?? "..."),
-                ("Write", sample?.diskDetails?.writePerSecond.map(Self.rate) ?? "..."),
+                ("Capacity", sample?.diskTotal.map(Self.bytes) ?? "—"),
+                ("Read", sample?.diskDetails?.readPerSecond.map(Self.rate) ?? "—"),
+                ("Write", sample?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
             ]
         case .battery:
             [
@@ -1547,7 +1477,7 @@ struct SystemMonitorTrayView: View {
                 ("Power draw", batteryPower),
             ]
         case .sensors:
-            [("Thermal pressure", sample?.thermalState ?? "...")]
+            [("Thermal pressure", sample?.thermalState ?? "—")]
         case .home, .processes:
             []
         }
@@ -1578,7 +1508,7 @@ struct SystemMonitorTrayView: View {
         Button { pageID = destination.rawValue } label: {
             content.contentShape(Rectangle())
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
+        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.menuTileRadius))
         .focusEffectDisabled()
         .accessibilityHint("Show \(destination.title) details")
         .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
@@ -1592,7 +1522,7 @@ struct SystemMonitorTrayView: View {
         values: [Double],
         accent: Bool = false
     ) -> some View {
-        TaskManagerPanel(textured: true) {
+        OnePlusMenuTile {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     metricIcon(metric)
@@ -1624,14 +1554,11 @@ struct SystemMonitorTrayView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 7)
         }
-        .frame(height: 70)
     }
 
     private var networkCard: some View {
-        TaskManagerPanel(textured: true) {
+        OnePlusMenuTile(span: 2, height: 51) {
             VStack(alignment: .leading, spacing: 3) {
                 metricLabel(.network)
                 HStack(spacing: 10) {
@@ -1639,14 +1566,11 @@ struct SystemMonitorTrayView: View {
                     compactRate("↑", sample?.networkUpload, accent: true)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
         }
-        .frame(height: 51)
     }
 
     private var diskCard: some View {
-        TaskManagerPanel(textured: true) {
+        OnePlusMenuTile(height: 51) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
                     metricIcon(SystemMonitorMenuMetric.disk)
@@ -1664,32 +1588,27 @@ struct SystemMonitorTrayView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
         }
-        .frame(height: 51)
     }
 
     private var thermalCard: some View {
-        TaskManagerPanel(textured: true) {
+        OnePlusMenuTile(span: 2, height: 34) {
             HStack(spacing: 8) {
                 metricLabel(.thermal, title: "Thermal")
                 Spacer(minLength: 4)
-                Text(sample?.thermalState ?? "...")
+                Text(sample?.thermalState ?? "—")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
             }
-            .padding(.horizontal, 8)
         }
-        .frame(height: 34)
     }
 
     private var batteryCard: some View {
-        TaskManagerPanel(textured: true) {
+        OnePlusMenuTile(height: 34) {
             HStack(spacing: 5) {
                 metricIcon(SystemMonitorMenuMetric.battery)
                 Spacer(minLength: 2)
-                Text(sample?.batteryPercent.map { "\($0)%" } ?? "...")
+                Text(sample?.batteryPercent.map { "\($0)%" } ?? "—")
                     .font(.system(size: 14, weight: .medium))
                     .monospacedDigit()
                 if sample?.batteryCharging == true {
@@ -1698,9 +1617,7 @@ struct SystemMonitorTrayView: View {
                         .foregroundStyle(TaskManagerTheme.muted)
                 }
             }
-            .padding(.horizontal, 8)
         }
-        .frame(height: 34)
     }
 
     private func metricLabel(_ metric: SystemMonitorMenuMetric, title: String? = nil) -> some View {
@@ -1716,7 +1633,7 @@ struct SystemMonitorTrayView: View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(arrow)
                 .foregroundStyle(accent ? TaskManagerTheme.accent.opacity(0.78) : TaskManagerTheme.secondary)
-            Text(value.map(Self.rate) ?? "...")
+            Text(value.map(Self.rate) ?? "—")
                 .font(.system(size: 15, weight: .medium))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -1758,21 +1675,21 @@ struct SystemMonitorTrayView: View {
     }
 
     private func percent(_ value: Double?) -> String {
-        value.map { "\(Int($0.rounded()))%" } ?? "..."
+        value.map { "\(Int($0.rounded()))%" } ?? "—"
     }
 
     private var memoryDetail: String {
-        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "..." }
+        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "—" }
         return "\(Self.shortBytes(used)) / \(Self.shortBytes(total))"
     }
 
     private var memoryAvailable: String {
-        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "..." }
+        guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "—" }
         return Self.bytes(max(total - used, 0))
     }
 
     private var diskAvailable: String {
-        guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "..." }
+        guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "—" }
         return Self.bytes(max(total - used, 0)) + " free"
     }
 
@@ -1789,7 +1706,7 @@ struct SystemMonitorTrayView: View {
     }
 
     private var loadValue: String {
-        sample?.loadAverage.map { Self.decimal($0.0) } ?? "..."
+        sample?.loadAverage.map { Self.decimal($0.0) } ?? "—"
     }
 
     nonisolated private static func thermalLevel(_ state: String?) -> Double? {
@@ -1825,29 +1742,20 @@ private struct TaskManagerRemoteMenuCard: View {
     @ViewBuilder
     var body: some View {
         if profiles.isEmpty {
-            Button(action: openRemoteStats) {
-                TaskManagerPanel {
-                    HStack(spacing: 9) {
-                        Image(systemName: "server.rack")
-                            .font(.system(size: 10))
-                            .foregroundStyle(TaskManagerTheme.secondary)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("No remote hosts").font(.system(size: 10, weight: .medium))
-                            Text("Add a Mac, Windows, or Linux computer")
-                                .font(.system(size: 8))
-                                .foregroundStyle(TaskManagerTheme.muted)
-                        }
-                        Spacer()
-                        Text("Add  →")
-                            .font(.system(size: 8))
-                            .foregroundStyle(TaskManagerTheme.muted)
+            OnePlusMenuTile(span: 3, height: 51, action: openRemoteStats) {
+                HStack(spacing: 9) {
+                    Image(systemName: "server.rack")
+                        .font(.system(size: 10))
+                        .foregroundStyle(OnePlusColor.secondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No remote hosts").onePlusText(.row)
+                        Text("Add a Mac, Windows, or Linux computer")
+                            .onePlusText(.caption)
                     }
-                    .padding(.horizontal, 10)
+                    Spacer()
+                    Text("Add  →").onePlusText(.caption)
                 }
-                .frame(height: 43)
             }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
-            .focusEffectDisabled()
         } else {
             LazyVStack(spacing: 6) {
                 ForEach(profiles) { profile in
@@ -1858,117 +1766,41 @@ private struct TaskManagerRemoteMenuCard: View {
     }
 
     private func remoteCard(_ profile: SystemMonitorRemoteProfile) -> some View {
-        TaskManagerPanel {
-            VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    Image(systemName: "server.rack")
-                        .font(.system(size: 9))
-                        .foregroundStyle(TaskManagerTheme.secondary)
-                    Text(profile.name)
-                        .font(.system(size: 9, weight: .medium))
-                        .lineLimit(1)
-                    Spacer(minLength: 6)
-                    Circle()
-                        .strokeBorder(TaskManagerTheme.muted, lineWidth: 1)
-                        .frame(width: 4, height: 4)
-                    Text("Offline")
-                        .font(.system(size: 8))
-                        .foregroundStyle(TaskManagerTheme.muted)
+        OnePlusMenuItemCard(
+            profile.name,
+            status: "Offline",
+            online: false,
+            metrics: [
+                OnePlusMenuMetric("CPU", value: "—"),
+                OnePlusMenuMetric("RAM", value: "—"),
+                OnePlusMenuMetric("Network", value: "—"),
+            ]
+        ) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(profile.platform.rawValue)
+                    Spacer()
+                    Text("—").monospacedDigit()
                 }
-                .padding(.horizontal, 7)
-                .frame(height: 20)
-                .background(Color.white.opacity(0.025))
-
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-
-                HStack(spacing: 0) {
-                    remoteStat("CPU", symbol: "cpu")
-                    divider
-                    remoteStat("RAM", symbol: "memorychip")
-                    divider
-                    remoteStat("Network", symbol: "network")
-                }
-                .frame(height: 36)
-
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-
-                HStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text(profile.platform.rawValue)
-                            Spacer()
-                            Text("—")
-                                .monospacedDigit()
-                        }
-                        .font(.system(size: 8.5))
-                        .foregroundStyle(TaskManagerTheme.secondary)
-                        Capsule().fill(TaskManagerTheme.line).frame(height: 3)
-                        Text("Connect on demand")
-                            .font(.system(size: 8))
-                            .foregroundStyle(TaskManagerTheme.muted)
-                    }
-                    .padding(.horizontal, 7)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
-
-                    VStack(spacing: 0) {
-                        remoteAction("Open SSH", symbol: "arrow.up.right") {
-                            SystemMonitorRemoteTerminal.open(profile)
-                        }
-                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                        remoteAction("Open App", symbol: "arrow.right") {
-                            openRemoteStats()
-                        }
-                    }
-                    .frame(width: 84)
-                }
-                .frame(height: 36)
+                .onePlusText(.caption)
+                Capsule().fill(OnePlusColor.line).frame(height: 3)
+                Text("Connect on demand").onePlusText(.caption)
             }
+        } actions: {
+            Button("Open SSH") { SystemMonitorRemoteTerminal.open(profile) }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("Open SSH for \(profile.name)")
+            OnePlusColor.lineSoft.frame(height: 1)
+            Button("Open App", action: openRemoteStats)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("Open Task Manager for \(profile.name)")
         }
-        .frame(height: 94)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), offline")
     }
 
-    private func remoteStat(_ title: String, symbol: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label(title, systemImage: symbol)
-                .font(.system(size: 8))
-                .foregroundStyle(TaskManagerTheme.muted)
-                .lineLimit(1)
-            Text("—")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(TaskManagerTheme.muted)
-        }
-        .padding(.horizontal, 7)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    private var divider: some View {
-        Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
-    }
-
-    private func remoteAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Text(title)
-                Spacer(minLength: 2)
-                Image(systemName: symbol).font(.system(size: 7.5))
-            }
-            .font(.system(size: 8.5))
-            .foregroundStyle(TaskManagerTheme.secondary)
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
-        .focusEffectDisabled()
-        .accessibilityLabel("\(title) for remote host")
-    }
-
     private func openRemoteStats() {
-        UserDefaults.standard.set("Remote Stats", forKey: "systemMonitor.windowPage")
+        UserDefaults.standard.set("remote", forKey: "systemMonitor.windowPage")
         ToolActionRouter.shared.open(toolID: "system-monitor")
     }
 }
@@ -2055,7 +1887,7 @@ private struct TaskManagerMenuProcessesView: View {
     }
 
     private func openProcesses() {
-        UserDefaults.standard.set("Processes", forKey: "systemMonitor.windowPage")
+        UserDefaults.standard.set("processes", forKey: "systemMonitor.windowPage")
         ToolActionRouter.shared.open(toolID: "system-monitor")
     }
 }

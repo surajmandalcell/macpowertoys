@@ -69,28 +69,24 @@ struct FanControlView: View {
     }
 
     private var compactContent: some View {
-        HStack(spacing: 6) {
-            fanIdentity
-            Spacer(minLength: 4)
-            if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
-                Button { showsSetup = true } label: {
-                    Image(systemName: "exclamationmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(colorScheme == .light ? Color(red: 0.64, green: 0.32, blue: 0) : TaskManagerTheme.accent)
-                        .frame(width: 14, height: 22)
-                        .contentShape(Rectangle())
+        OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: "\(rpm) · \(utilization)") {
+            HStack(spacing: 2) {
+                if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
+                    Button { showsSetup = true } label: {
+                        Image(systemName: "exclamationmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(colorScheme == .light ? OnePlusColor.warn : OnePlusColor.accent)
+                    }
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
+                    .accessibilityHint(detail)
+                    .accessibilityIdentifier("fan-control.setup")
+                    .help(detail)
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .frame(width: 24, height: 30)
-                .contentShape(Rectangle())
-                .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
-                .accessibilityHint(detail)
-                .accessibilityIdentifier("fan-control.setup")
-                .help(detail)
+                presetButtons
             }
-            presetButtons
         }
+        .accessibilityHint(detail)
     }
 
     private var setupPopover: some View {

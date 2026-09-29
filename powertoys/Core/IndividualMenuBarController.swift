@@ -1,5 +1,7 @@
 import AppKit
 import Foundation
+import OnePlusUI
+import SwiftUI
 
 enum MenuBarDisplayMode: String, CaseIterable, Identifiable {
     case none
@@ -114,6 +116,7 @@ final class IndividualMenuBarController: NSObject {
 
     private let defaults = UserDefaults.standard
     private var statusItems: [IndividualMenuBarTool: NSStatusItem] = [:]
+    private var popovers: [IndividualMenuBarTool: NSPopover] = [:]
     private var observers: [NSObjectProtocol] = []
 
     var statusItemOwnerCount: Int { statusItems.count }
@@ -153,6 +156,8 @@ final class IndividualMenuBarController: NSObject {
     func stop() {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers.removeAll()
+        popovers.values.forEach { $0.performClose(nil) }
+        popovers.removeAll()
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
         statusItems.removeAll()
     }
@@ -170,6 +175,7 @@ final class IndividualMenuBarController: NSObject {
             statusItems[tool] = makeStatusItem(for: tool)
         }
         for tool in plan.removals {
+            popovers.removeValue(forKey: tool)?.performClose(nil)
             if let item = statusItems.removeValue(forKey: tool) {
                 NSStatusBar.system.removeStatusItem(item)
             }
@@ -189,7 +195,7 @@ final class IndividualMenuBarController: NSObject {
         button.target = self
         button.action = #selector(activate(_:))
         button.sendAction(on: [.leftMouseUp])
-        button.toolTip = tool.quickAction == nil ? "Open \(tool.title)" : tool.title
+        button.toolTip = tool.title
         return item
     }
 
@@ -199,11 +205,28 @@ final class IndividualMenuBarController: NSObject {
                   identifier == "individual-menu.\($0.id)"
               }) else { return }
 
-        switch tool.activation {
-        case .execute(let action):
-            ToolActionRouter.shared.execute(ToolActionRequest(action: action))
-        case .openTool(let toolID):
-            ToolActionRouter.shared.open(toolID: toolID)
+        let popover = popovers[tool] ?? makePopover(for: tool)
+        popovers[tool] = popover
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
         }
+    }
+
+    private func makePopover(for tool: IndividualMenuBarTool) -> NSPopover {
+        let popover = NSPopover()
+        popover.behavior = .transient
+        let host = NSHostingController(rootView: IndividualToolMenuPanel(tool: tool))
+        host.sizingOptions = [.preferredContentSize]
+        host.view.frame.size.width = OnePlusMenuMetrics.width
+        host.view.layoutSubtreeIfNeeded()
+        let maximumHeight = (NSScreen.main?.visibleFrame.height ?? 900) - 32
+        popover.contentSize = NSSize(
+            width: OnePlusMenuMetrics.width,
+            height: min(max(host.view.fittingSize.height, 72), maximumHeight)
+        )
+        popover.contentViewController = host
+        return popover
     }
 }
