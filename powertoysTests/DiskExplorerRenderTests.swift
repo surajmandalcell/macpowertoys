@@ -48,6 +48,9 @@ final class DiskExplorerRenderTests: XCTestCase {
 
     @MainActor func testResultTabsInBothAppearances() throws {
         let result = largeHomeFixture()
+        XCTAssertEqual(result.root.allocatedBytes, 81_000_761_856)
+        XCTAssertEqual(result.root.fileCount, 1_596_133)
+        XCTAssertTrue(result.largestFiles.allSatisfy { $0.kind == .file })
         let warningResult = DiskScanResult(root: result.root, largestFiles: result.largestFiles,
                                            unreadableCount: 701,
                                            skippedVolumeCount: result.skippedVolumeCount,
@@ -91,14 +94,12 @@ final class DiskExplorerRenderTests: XCTestCase {
 
     private func largeHomeFixture() -> DiskScanResult {
         func folder(_ path: String, children: [DiskEntry]) -> DiskEntry {
-            let entry = DiskEntry(url: URL(fileURLWithPath: path), kind: .directory,
-                                  allocatedBytes: children.reduce(0) { $0 + $1.allocatedBytes },
-                                  apparentBytes: children.reduce(0) { $0 + $1.apparentBytes },
-                                  fileCount: children.reduce(0) { $0 + $1.fileCount },
-                                  directoryCount: 1 + children.reduce(0) { $0 + $1.directoryCount },
-                                  modifiedAt: .distantPast, device: 1, inode: 1)
-            entry.replaceChildren(children)
-            return entry
+            DiskEntry(url: URL(fileURLWithPath: path), kind: .directory,
+                      allocatedBytes: children.reduce(0) { $0 + $1.allocatedBytes },
+                      apparentBytes: children.reduce(0) { $0 + $1.apparentBytes },
+                      fileCount: children.reduce(0) { $0 + $1.fileCount },
+                      directoryCount: 1 + children.reduce(0) { $0 + $1.directoryCount },
+                      modifiedAt: .distantPast, device: 1, inode: 1, children: children)
         }
         let names = ["Library", "Projects", "Downloads", "Pictures", "Documents", "Desktop", "Music", "Movies", ".cache"]
             + (0..<124).map { "Small folder \($0)" }
