@@ -95,6 +95,10 @@ final class OnePlusUITests: XCTestCase {
         let scroller = scroll.verticalScroller
         scroll.configureOnePlusScrollIndicators()
         XCTAssertTrue(scroller === scroll.verticalScroller)
+        scroll.scrollerStyle = .legacy
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+        XCTAssertEqual(scroll.scrollerStyle, .overlay, "System or SwiftUI style changes must not consume a gutter.")
+        XCTAssertEqual(scroll.contentSize.width, 240)
     }
 
     func testAllDynamicTokensResolveToTheContractInBothAppearances() throws {
