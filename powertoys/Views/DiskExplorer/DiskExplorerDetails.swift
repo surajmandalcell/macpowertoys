@@ -20,22 +20,27 @@ enum DiskEntryPresentation {
         case .directory: "Folder"
         case .symbolicLink: "Symbolic link"
         case .aggregate: "Grouped files"
-        default: UTType(filenameExtension: entry.url.pathExtension)?.localizedDescription ?? "File"
+        default: UTType(filenameExtension: (entry.name as NSString).pathExtension)?.localizedDescription ?? "File"
         }
     }
     static func breadcrumbs(to entry: DiskEntry, root: DiskEntry) -> [DiskEntry] {
+        guard let route = entry.identityRoute(from: root.id) else { return [root] }
         var result = [root]
         var node = root
-        while node.id != entry.id, let child = node.children.first(where: {
-            $0.kind == .directory && (entry.id == $0.id || entry.id.hasPrefix($0.id + "/"))
-        }) { result.append(child); node = child }
+        for id in route.dropFirst() {
+            guard let child = node.children.first(where: { $0.id == id }) else { break }
+            result.append(child)
+            node = child
+        }
         return result
     }
     static func find(_ id: String, in root: DiskEntry) -> DiskEntry? {
         if root.id == id { return root }
         if let direct = root.children.first(where: { $0.id == id }) { return direct }
-        guard let child = root.children.first(where: { $0.kind == .directory && id.hasPrefix($0.id + "/") }) else { return nil }
-        return find(id, in: child)
+        for child in root.children where child.kind == .directory {
+            if let match = find(id, in: child) { return match }
+        }
+        return nil
     }
     static func copy(_ paths: [String]) {
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)

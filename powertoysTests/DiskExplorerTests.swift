@@ -4,6 +4,31 @@ import SwiftUI
 @testable import powertoys
 
 final class DiskExplorerTests: XCTestCase {
+    func testEntryIdentityIsCompactAndDoesNotRebuildFromParents() {
+        let fileURL = URL(fileURLWithPath: "/tmp/diskman-identity/original.bin")
+        let first = DiskEntry(url: fileURL, kind: .file, allocatedBytes: 1,
+                              apparentBytes: 1, fileCount: 1, directoryCount: 0,
+                              modifiedAt: .distantPast, device: 7, inode: 42)
+        let same = DiskEntry(url: fileURL, kind: .file, allocatedBytes: 1,
+                             apparentBytes: 1, fileCount: 1, directoryCount: 0,
+                             modifiedAt: .distantPast, device: 7, inode: 42)
+        let hardLink = DiskEntry(url: fileURL.deletingLastPathComponent().appendingPathComponent("link.bin"),
+                                 kind: .file, allocatedBytes: 0, apparentBytes: 0,
+                                 fileCount: 1, directoryCount: 0, modifiedAt: .distantPast,
+                                 device: 7, inode: 42)
+        let storedID = first.id
+        let newParent = DiskEntry(url: URL(fileURLWithPath: "/tmp/elsewhere"), kind: .directory,
+                                  allocatedBytes: 0, apparentBytes: 0, fileCount: 0,
+                                  directoryCount: 1, modifiedAt: .distantPast,
+                                  device: 7, inode: 9, children: [first])
+
+        XCTAssertEqual(first.id, storedID)
+        XCTAssertEqual(first.id, same.id)
+        XCTAssertNotEqual(first.id, hardLink.id)
+        XCTAssertLessThanOrEqual(first.id.utf8.count, 16)
+        XCTAssertTrue(first.parentEntry === newParent)
+    }
+
     func testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross() {
         func directory(lastWeight: Int64) -> DiskEntry {
             let url = URL(fileURLWithPath: "/tmp/diskman-chart-membership")

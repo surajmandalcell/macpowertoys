@@ -50,7 +50,8 @@ struct DiskExplorerWindowView: View {
     }
     private var inspectedParent: DiskEntry? {
         guard let entry = inspected, let root = model.result?.root else { return model.current }
-        return DiskEntryPresentation.find(entry.url.deletingLastPathComponent().path, in: root) ?? root
+        guard let parentID = entry.parentEntry?.id else { return root }
+        return DiskEntryPresentation.find(parentID, in: root) ?? root
     }
 
     @MainActor init() { self.init(model: DiskExplorerModel()) }
