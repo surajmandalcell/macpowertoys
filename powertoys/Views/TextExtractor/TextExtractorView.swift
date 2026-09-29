@@ -28,7 +28,10 @@ struct TextExtractorView: View {
                 Group {
                     switch page {
                     case .history: history
-                    case .settings: TextExtractorSettingsView()
+                    case .settings:
+                        OnePlusPage(layout: .applet, header: { EmptyView() }) {
+                            TextExtractorSettingsView()
+                        }
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -139,25 +142,18 @@ struct TextExtractorSettingsView: View {
     @State private var languages = ""
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                shortcutSettings
-                ShortcutPermissionNotice(action: .textExtractor)
-                recognitionSettings
-                OnePlusCard {
-                    OnePlusCardHeader("Languages", systemImage: "globe")
-                    OnePlusSettingRow("Preferred languages", caption: "Empty means automatic.", separator: false) {
-                        OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
-                            .accessibilityLabel("Preferred languages")
-                            .onChange(of: languages) { applyLanguages() }
-                    }
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            shortcutSettings
+            recognitionSettings
+            OnePlusCard {
+                OnePlusCardHeader("Languages", systemImage: "globe")
+                OnePlusSettingRow("Preferred languages", caption: "Empty means automatic.", separator: false) {
+                    OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
+                        .accessibilityLabel("Preferred languages")
+                        .onChange(of: languages) { applyLanguages() }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, OnePlusMetrics.appletGutter)
-            .padding(.top, OnePlusMetrics.contentTop)
         }
-        .onePlusScrollIndicators()
         .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
     }
 
@@ -172,6 +168,7 @@ struct TextExtractorSettingsView: View {
             OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
                 ShortcutRecorderField(action: .textExtractor).disabled(!shortcuts.isEnabled(.textExtractor))
             }
+            ShortcutPermissionNotice(action: .textExtractor)
         }
     }
 

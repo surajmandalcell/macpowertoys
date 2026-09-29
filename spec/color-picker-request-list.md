@@ -5,6 +5,9 @@ direct user correction or verified result changes a status.
 
 ## OnePlusUI redesign, 2026-09-29
 
+Round 3a uses one cards-only ColorPickerSettingsView. The applet supplies
+OnePlusPage; the launcher supplies its existing page, gutters, and scrolling.
+
 Round 2 requires full-width Settings cards inside 16pt body gutters,
 neutral copy controls, and a protected floating settings area on every page.
 
@@ -13,6 +16,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Embed one cards-only settings view without nested scrolling or gutters. | `ColorPickerSettingsView()` owns only its shortcut and saved-colors cards. The applet supplies OnePlusPage with 16pt gutters. Permission and clear-history paths remain in the shared cards. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |
 | Verify | Keep the floating settings button clear of History, Projects, and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify all three pages and their scroll limits in the next signed capture. |
 | Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
 | Verify | Use the 420pt applet with 250 to 460pt height, three native lights, persistent Pick Color, 16pt gutters, underline tabs, equal-height search and format controls, history actions, project export, and replacing Settings. | Debug build passes. DESIGN.md v14 supersedes the older material, gutters, and two-light rules below. Routes are `history`, `projects`, and `settings`. | Review both appearances, copying, projects, and export in the orchestrator's installed build. |

@@ -60,7 +60,10 @@ struct ColorHistoryView: View {
                     switch page {
                     case .history: history
                     case .projects: projects
-                    case .settings: ColorPickerSettingsView()
+                    case .settings:
+                        OnePlusPage(layout: .applet, header: { EmptyView() }) {
+                            ColorPickerSettingsView()
+                        }
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -207,39 +210,33 @@ struct ColorPickerSettingsView: View {
     @State private var isConfirmingClearAll = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
-                    OnePlusSettingRow("Enable shortcut") {
-                        Toggle("Enable Pick Color shortcut", isOn: Binding(
-                            get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
-                        )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                    }
-                    OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
-                        ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
-                    }
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            OnePlusCard {
+                OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
+                OnePlusSettingRow("Enable shortcut") {
+                    Toggle("Enable Pick Color shortcut", isOn: Binding(
+                        get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
+                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
+                    ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
                 }
                 ShortcutPermissionNotice(action: .colorPicker)
-                OnePlusCard {
-                    OnePlusCardHeader("Saved colors")
-                    OnePlusSettingRow("Copy format") {
-                        OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
-                                      selection: $service.defaultFormat, accessibilityLabel: "Copy format")
-                    }
-                    OnePlusSettingRow("Clear history", caption: "Keeps your projects.", separator: false) {
-                        Button("Clear All", role: .destructive) { isConfirmingClearAll = true }
-                            .buttonStyle(OnePlusButtonStyle(.destructive))
-                            .disabled(service.history.isEmpty).help("Clear every saved color")
-                            .accessibilityIdentifier("color-picker.clear-all")
-                    }
+            }
+            OnePlusCard {
+                OnePlusCardHeader("Saved colors")
+                OnePlusSettingRow("Copy format") {
+                    OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
+                                  selection: $service.defaultFormat, accessibilityLabel: "Copy format")
+                }
+                OnePlusSettingRow("Clear history", caption: "Keeps your projects.", separator: false) {
+                    Button("Clear All", role: .destructive) { isConfirmingClearAll = true }
+                        .buttonStyle(OnePlusButtonStyle(.destructive))
+                        .disabled(service.history.isEmpty).help("Clear every saved color")
+                        .accessibilityIdentifier("color-picker.clear-all")
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, OnePlusMetrics.appletGutter)
-            .padding(.top, OnePlusMetrics.contentTop)
         }
-        .onePlusScrollIndicators()
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
             Button("Clear All", role: .destructive) { service.clearAll() }
             Button("Cancel", role: .cancel) {}

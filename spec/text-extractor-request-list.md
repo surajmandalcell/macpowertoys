@@ -5,6 +5,9 @@ direct user correction or verified result changes a status.
 
 ## OnePlusUI redesign, 2026-09-29
 
+Round 3a uses one cards-only TextExtractorSettingsView. The applet supplies
+OnePlusPage; the launcher supplies its existing page, gutters, and scrolling.
+
 Round 2 requires neutral shortcut hints, equal 16pt Settings gutters,
 and a protected floating settings area on both pages.
 
@@ -13,6 +16,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Embed one cards-only settings view without nested scrolling or gutters. | `TextExtractorSettingsView()` owns shortcut, recognition, and language cards. The applet supplies OnePlusPage with 16pt gutters. The shortcut permission notice stays inside its card. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |
 | Verify | Keep the floating settings button clear of History and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify both pages and their scroll limits in the next signed capture. |
 | Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
 | Verify | Use the 480pt applet with 270 to 462pt height, persistent shortcut menu and Extract Text, history preview/source/time/copy, and replacing Settings with shortcut and language rows. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `history` and `settings`. | Review both appearances, capture states, and recognition controls in the orchestrator's installed build. |

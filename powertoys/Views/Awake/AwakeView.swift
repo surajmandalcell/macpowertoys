@@ -21,12 +21,9 @@ struct AwakeView: View {
                     .fixedSize()
                     .accessibilityIdentifier("awake.keep-display-on")
                 }
-                ScrollView {
+                OnePlusPage(layout: .applet, header: { EmptyView() }) {
                     AwakeSettingsView(showsDisplayToggle: settings, showsStatus: !settings)
-                        .padding(.horizontal, OnePlusMetrics.appletGutter)
-                        .padding(.top, OnePlusMetrics.contentTop)
                 }
-                .onePlusScrollIndicators()
                 .onePlusFloatingSettingsInset()
                 .overlay(alignment: .bottomTrailing) {
                     OnePlusFloatingSettingsButton(isActive: settings) { settings.toggle() }
@@ -49,7 +46,7 @@ struct AwakeView: View {
 
 struct AwakeSettingsView: View {
     var showsDisplayToggle = true
-    var showsStatus = true
+    var showsStatus = false
     @State private var service = AwakeService.shared
     @State private var hours = 0
     @State private var minutes = 30
@@ -57,6 +54,7 @@ struct AwakeSettingsView: View {
     @State private var processID = ""
     @State private var processError: String?
     @State private var presetToRemove: TimeInterval?
+    @State private var presetMinutes = 30
 
     private var duration: TimeInterval { TimeInterval(hours * 3600 + minutes * 60) }
 
@@ -99,7 +97,7 @@ struct AwakeSettingsView: View {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
                     .monospacedDigit()
-                Spacer(minLength: OnePlusMetrics.actionSpacing)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Turn Off") { service.setMode(.passive) }
                     .disabled(service.configuration.mode == .passive)
             }.padding(OnePlusMetrics.cardPadding)
@@ -137,20 +135,33 @@ struct AwakeSettingsView: View {
     private var quickTimes: some View {
         OnePlusCard {
             OnePlusCardHeader("Quick times", systemImage: "clock")
-            ScrollView(.horizontal) {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    ForEach(service.configuration.presets, id: \.self) { seconds in
-                        Button(AwakeService.presetLabel(seconds)) { service.setMode(.timed, duration: seconds) }
-                            .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
-                    }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: OnePlusMetrics.controlColumn / 2), alignment: .leading)],
+                      alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                ForEach(service.configuration.presets, id: \.self) { seconds in
+                    Button(AwakeService.presetLabel(seconds)) { service.setMode(.timed, duration: seconds) }
+                        .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
+                }
+                if !showsDisplayToggle {
                     Button { service.setPresets(service.configuration.presets + [duration]) } label: {
                         Image(systemName: "plus")
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon))
                     .help("Add the current interval as a preset").accessibilityLabel("Add quick time")
                     .disabled(duration == 0)
-                }.padding(OnePlusMetrics.cardPadding)
-            }.onePlusScrollIndicators()
+                }
+            }.padding(OnePlusMetrics.cardPadding)
+            if showsDisplayToggle {
+                OnePlusSettingRow("New preset", caption: "Save up to eight durations.", separator: false) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        OnePlusStepperField("Preset minutes", value: $presetMinutes, in: 1...10_080, unit: "min")
+                        Button("Add") {
+                            service.setPresets(service.configuration.presets + [TimeInterval(presetMinutes * 60)])
+                        }
+                        .disabled(service.configuration.presets.count >= 8
+                                  || service.configuration.presets.contains(TimeInterval(presetMinutes * 60)))
+                    }
+                }
+            }
         }
     }
 
