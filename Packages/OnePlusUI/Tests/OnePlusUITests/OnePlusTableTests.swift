@@ -32,6 +32,8 @@ final class OnePlusTableTests: XCTestCase {
         XCTAssertEqual(table.rowHeight, OnePlusTable.rowHeight(density))
         XCTAssertEqual(table.intercellSpacing, .zero)
         XCTAssertEqual(table.gridColor, NSColor(OnePlusColor.lineSoft))
+        XCTAssertTrue(table.gridStyleMask.isEmpty)
+        XCTAssertTrue(table.subviews.contains { $0 is OnePlusTableLines })
         XCTAssertTrue(table.headerView is OnePlusTableHeaderView)
         }
     }

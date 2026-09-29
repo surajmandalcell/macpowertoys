@@ -58,7 +58,11 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             if table.intercellSpacing != .zero { table.intercellSpacing = .zero }
             table.backgroundColor = NSColor(OnePlusColor.panel)
             table.gridColor = NSColor(OnePlusColor.lineSoft)
-            if table.gridStyleMask != .solidHorizontalGridLineMask { table.gridStyleMask = .solidHorizontalGridLineMask }
+            if !table.gridStyleMask.isEmpty { table.gridStyleMask = [] }
+            table.enclosingScrollView?.borderType = .noBorder
+            if !table.subviews.contains(where: { $0 is OnePlusTableLines }) {
+                table.addSubview(OnePlusTableLines(table: table))
+            }
             table.focusRingType = .none
             if !(table.headerView is OnePlusTableHeaderView) {
                 table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: table.bounds.width, height: 28))
@@ -67,6 +71,34 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
                 column.headerCell = OnePlusTableHeaderCell(textCell: column.title)
             }
             table.headerView?.needsDisplay = true
+        }
+    }
+}
+
+/// View-based SwiftUI rows draw the system separator independently of gridColor.
+/// Paint the shared line above their backgrounds, without replacing their delegate.
+final class OnePlusTableLines: NSView {
+    private weak var table: NSTableView?
+    init(table: NSTableView) {
+        self.table = table
+        super.init(frame: table.bounds)
+        autoresizingMask = [.width, .height]
+        wantsLayer = true
+        layer?.zPosition = 1
+        setAccessibilityElement(false)
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
+    override func draw(_ dirtyRect: NSRect) {
+        guard let table else { return }
+        let rows = table.rows(in: dirtyRect)
+        guard rows.location != NSNotFound else { return }
+        NSColor(OnePlusColor.lineSoft).setFill()
+        for row in rows.location..<NSMaxRange(rows) {
+            let rect = table.rect(ofRow: row)
+            NSRect(x: 0, y: rect.maxY - 1, width: bounds.width, height: 1).fill()
         }
     }
 }
