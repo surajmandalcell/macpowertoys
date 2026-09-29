@@ -89,7 +89,7 @@ final class UtilityModelTests: XCTestCase {
             "Views/AllToolsGridView.swift": 0,
             "Views/Components/SidebarRow.swift": 2,
             "Views/Logs/LogsWindowView.swift": 2,
-            "Views/Marketplace/MarketplaceSettingsView.swift": 2,
+            "Views/Marketplace/MarketplaceSettingsView.swift": 0,
             "Views/TextExtractor/TextExtractorView.swift": 5,
             "Views/TrayPopoverView.swift": 16,
         ]
@@ -107,10 +107,10 @@ final class UtilityModelTests: XCTestCase {
     func testLongPathsUseDedicatedRowsInCompactSettings() throws {
         let marketplace = try sourceFile("Views/Marketplace/MarketplaceSettingsView.swift")
         XCTAssertTrue(marketplace.contains(
-            "VStack(alignment: .leading, spacing: 2) {\n                Text(source.displayName)"
+            "Text(source.url.absoluteString).onePlusText(.mono).lineLimit(1).truncationMode(.middle)"
         ))
         XCTAssertTrue(marketplace.contains(
-            ".lineLimit(1)\n                Text(source.url.absoluteString)"
+            ".help(source.url.absoluteString).textSelection(.enabled)"
         ))
 
         let cleanup = try sourceFile("Views/Rclone/CleanupRemoteSheet.swift")

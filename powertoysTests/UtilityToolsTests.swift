@@ -301,33 +301,22 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(shortcut.display, "⇧⌘3")
     }
 
-    func testToolDetailsHideTheSegmentedPickersDuplicateLabel() throws {
+    func testToolDetailsNameTheMenuPlacementControl() throws {
         let source = try toolAboutViewSource()
-        let picker = try XCTUnwrap(source.range(of: "Picker(\"Menu Bar Icon\""))
-        let identifier = try XCTUnwrap(
-            source.range(
-                of: ".accessibilityIdentifier(\"tool.\\(tool.id).menu-bar-icon\")",
-                range: picker.lowerBound..<source.endIndex
-            )
-        )
-
-        XCTAssertTrue(source[picker.lowerBound..<identifier.upperBound].contains(".labelsHidden()"))
+        XCTAssertTrue(source.contains("accessibilityLabel: \"Menu bar placement\""))
+        XCTAssertTrue(source.contains(".accessibilityIdentifier(\"tool.\\(tool.id).menu-bar-icon\")"))
     }
 
     func testToolDetailsTopAlignSparseSettingsContent() throws {
         XCTAssertTrue(
             try toolAboutViewSource().contains(
-                ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)"
+                ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)"
             )
         )
     }
 
-    func testNetToysRecoverySettingsStayInteractiveWhileToolIsOff() throws {
-        XCTAssertTrue(
-            try toolAboutViewSource().contains(
-                ".disabled(!settings.isToolEnabled(tool.id) && tool.id != \"nettoys\")"
-            )
-        )
+    func testDisabledToolsKeepTheirSettingsInteractive() throws {
+        XCTAssertFalse(try toolAboutViewSource().contains(".disabled(!settings.isToolEnabled"))
     }
 
     func testHeavyToolSettingsYieldBeforeBuildingTheirContent() throws {
@@ -341,7 +330,7 @@ final class UtilityToolsTests: XCTestCase {
         let source = try toolAboutViewSource()
         let settings = try XCTUnwrap(source.range(of: "ToolSettingsContent(toolID: tool.id)"))
         let frame = try XCTUnwrap(source.range(
-            of: ".frame(maxWidth: .infinity, maxHeight: .infinity)",
+            of: ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)",
             range: settings.upperBound..<source.endIndex
         ))
 
