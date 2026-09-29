@@ -21,7 +21,7 @@ struct DiskExplorerReviewSheet: View {
                                 Image(systemName: DiskEntryPresentation.symbol(entry))
                                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                                     Text(entry.name).onePlusText(.row).lineLimit(1)
-                                    Text(entry.url.path).onePlusText(.mono).lineLimit(1).truncationMode(.middle).help(entry.url.path)
+                                    Text(entry.url.path).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
                                 }
                                 Spacer()
                                 Text(entry.allocatedBytes.diskSize).onePlusText(.mono)

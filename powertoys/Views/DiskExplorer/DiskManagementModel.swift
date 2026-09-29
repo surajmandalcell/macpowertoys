@@ -18,6 +18,7 @@ final class DiskManagementModel {
     var selectedDiskID: String?
     var selectedPartitionID: String?
     var lockRevision = 0
+    private var lockStates: [String: Bool] = [:]
     let isPreview: Bool
 
     init(disks: [ManagedDisk] = [], selectedPartitionID: String? = nil, isPreview: Bool = false) {
@@ -30,14 +31,17 @@ final class DiskManagementModel {
     func select(_ disk: ManagedDisk) { selectedDiskID = disk.id; selectedPartitionID = nil }
     func isLocked(_ disk: ManagedDisk) -> Bool {
         _ = lockRevision
-        return !isPreview && DiskWriteLock.isLocked(disk)
+        return !isPreview && (lockStates[disk.identity] ?? true)
     }
     func setLocked(_ locked: Bool, for disk: ManagedDisk) {
         guard !isBusy, !isPreview, disks.contains(where: { $0.identity == disk.identity }) else { return }
-        DiskWriteLock.setLocked(locked, for: disk); lockRevision += 1
+        DiskWriteLock.setLocked(locked, for: disk)
+        lockStates[disk.identity] = locked
+        lockRevision += 1
     }
-    func updateDisks(_ current: [ManagedDisk]) {
+    func updateDisks(_ current: [ManagedDisk], lockStates: [String: Bool]? = nil) {
         disks = current
+        if let lockStates { self.lockStates = lockStates }
         if let selected = current.first(where: { $0.id == selectedDiskID }) {
             if !selected.partitions.contains(where: { $0.id == selectedPartitionID }) { selectedPartitionID = nil }
         } else {
@@ -52,9 +56,9 @@ final class DiskManagementModel {
         isBusy = true
         defer { isBusy = false }
         do {
-            let current = try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value
+            let (current, locks) = try await Task.detached(priority: .utility) { try Self.inventoryAndLocks() }.value
             guard !Task.isCancelled else { return }
-            updateDisks(current); error = nil
+            updateDisks(current, lockStates: locks); error = nil
         } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
     }
     func run(_ request: DiskRequest) async {
@@ -64,11 +68,12 @@ final class DiskManagementModel {
             message = try await Task.detached(priority: .userInitiated) {
                 try DiskManagement.run(request)
             }.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            updateDisks(try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value)
+            let (current, locks) = try await Task.detached(priority: .utility) { try Self.inventoryAndLocks() }.value
+            updateDisks(current, lockStates: locks)
         } catch {
             self.error = error.localizedDescription
-            if let current = try? await Task.detached(priority: .utility, operation: { try DiskManagement.inventory() }).value {
-                updateDisks(current)
+            if let (current, locks) = try? await Task.detached(priority: .utility, operation: { try Self.inventoryAndLocks() }).value {
+                updateDisks(current, lockStates: locks)
             }
         }
         isBusy = false
@@ -82,7 +87,8 @@ final class DiskManagementModel {
                 blockers.isEmpty ? try DiskManagement.run(request) :
                     try DiskManagement.quitBlockersAndEject(blockers, request: request, force: force)
             }.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            updateDisks(try await Task.detached(priority: .utility) { try DiskManagement.inventory() }.value)
+            let (current, locks) = try await Task.detached(priority: .utility) { try Self.inventoryAndLocks() }.value
+            updateDisks(current, lockStates: locks)
         } catch {
             let reason = error.localizedDescription
             let active = await Task.detached(priority: .utility) { DiskManagement.ejectBlockers(on: disk) }.value
@@ -90,5 +96,11 @@ final class DiskManagementModel {
             else { self.error = reason }
         }
         isBusy = false
+    }
+
+    private nonisolated static func inventoryAndLocks() throws -> ([ManagedDisk], [String: Bool]) {
+        let disks = try DiskManagement.inventory()
+        let locks = Dictionary(uniqueKeysWithValues: disks.map { ($0.identity, DiskWriteLock.isLocked($0)) })
+        return (disks, locks)
     }
 }

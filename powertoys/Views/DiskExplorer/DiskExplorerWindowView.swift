@@ -163,8 +163,10 @@ struct DiskExplorerWindowView: View {
     private var explorerPage: some View {
         OnePlusPage(scrolls: false) {
             VStack(spacing: 0) {
-                OnePlusDiskmanHeader(sourceName, path: model.sourceURL?.path ?? "Choose a volume or folder to analyze") { headerActions }
-                stats.padding(.horizontal, OnePlusMetrics.gutter).padding(.top, OnePlusMetrics.contentTop)
+                OnePlusPageHeader(title: sourceName,
+                                  subtitle: model.sourceURL?.path ?? "Choose a volume or folder to analyze",
+                                  subtitleRole: .mono) { headerActions }
+                stats.padding(.horizontal, OnePlusMetrics.gutter).padding(.top, OnePlusMetrics.contentGap)
                     .padding(.bottom, OnePlusMetrics.cardGap)
             }
         } tabs: {
@@ -327,6 +329,8 @@ struct DiskExplorerWindowView: View {
                 breadcrumbs(current).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
             }
             DiskEntryTable(entries: resultTab == .largestFiles ? model.result?.largestFiles ?? [] : current.children,
+                           revision: model.result?.scannedAt ?? .distantPast,
+                           sourceID: resultTab == .largestFiles ? "largest-files" : current.id,
                            search: search, apparent: apparentSize, selection: $selection, open: open,
                            preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results)
                 .id(resultTab)

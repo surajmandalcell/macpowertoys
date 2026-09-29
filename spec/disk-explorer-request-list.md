@@ -24,9 +24,18 @@ scroll container. Chart bounds and fractions must stay finite for empty
 scans, zero totals, and transient zero-size layouts. Invalid geometry must
 produce no clipped chart content.
 
+Round 3 keeps every Diskman toolbar, search row, inspector, footer, status
+row, and page header outside page scrolling. The analysis page never scrolls;
+its charts fill the map card. Native tables keep their header fixed and scroll
+only their rows. Modify, Settings, and About scroll only their card stacks.
+All Diskman pages use the shared page header so foundation owns the 58 pt top
+line. Table sorting and row formatting must run outside SwiftUI body work.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Expose one settings content view without page chrome or scrolling. | `DiskExplorerSettingsView(unreadableCount: Int? = nil)` has an explicit initializer and remains the single implementation. It inherits the caller's density and keeps the short cards in equal columns. Both build targets compile. | Foundation must dispatch directly to this view. Inspect both hosts on the signed build. |
+| Verify | Keep page controls fixed and align content with the shared 58 pt header. | Analyze and Modify now use `OnePlusPageHeader` directly. Analyze already uses a non-scrolling page; its stats, tabs, map header, inspector, chart footer, search row, and notices stay fixed. Native file tables own row scrolling. The inspector no longer contains a nested scroll view. Modify keeps its header outside the scrolling card stack. Debug and build-for-testing compile. | Inspect every page on the signed build. |
+| Verify | Commit page switches within 100 ms and keep file tables smooth. | Largest files and Results build sorted, filtered, formatted row projections in a detached task. SwiftUI body only maps cached strings into native reusable table rows. Modify reads write-lock preferences with device inventory off the main actor and uses an in-memory state lookup while drawing. Per-cell tooltips were removed from partition and review rows. The regression compiles in the desktop test bundle. | Measure page switches and table frames in the signed build. Compilation does not prove the 100 ms gate. |
+| Verify | Expose one settings content view without page chrome or scrolling. | `DiskExplorerSettingsView(unreadableCount: Int? = nil)` has an explicit initializer and remains the single implementation. It inherits the caller's density, keeps the short cards in equal columns, and is dispatched by the main window. Both build targets compile. | Inspect both hosts on the signed build. |
 | Verify | Reject invalid geometry before chart clipping or masking. | Treemap bounds and insets, ring canvases, arcs and label rectangles, inspector shares, and partition widths now reject invalid geometry. Both new regressions compile for empty trees, zero totals, all measures and scan states, NaN, infinity, tiny canvases, and arithmetic overflow. | Execute the hosted checks and replay the signed Home route. The crash trace alone does not establish its originating view or input. |
 | Verify | Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar, 27 pt centerline, and 24 pt gutter. | Diskman uses the shared window root, header, sidebar, cards, tabs, and settings rows. Debug builds with no Diskman warnings. | Inspect both appearances on the signed build. |
 | Verify | Separate selection from navigation and show storage details beside the map. | Single click selects; double-click opens folders. The map has breadcrumbs and a 260 pt inspector. Back, forward, Quick Look, file menus, drag-out, and search have native paths. | Run interaction checks on the installed build. |
