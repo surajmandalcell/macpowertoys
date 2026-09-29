@@ -84,20 +84,23 @@ struct DiskTreemapView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
 
-    var tiles: [DiskChartTile] {
+    var tiles: [DiskChartTile] { tiles(hiding: []) }
+
+    private func tiles(hiding ids: Set<String>) -> [DiskChartTile] {
         let selection = measure.displayedChildren(in: directory, apparent: apparent,
                                                   limit: 80, scanComplete: scanComplete)
-        let shown = selection.shown
+        let shown = selection.shown.filter { !ids.contains($0.id) }
+        let hidden = selection.hidden + selection.shown.filter { ids.contains($0.id) }
         var result = shown.enumerated().map { index, entry in
             DiskChartTile(entry: entry, label: DiskEntryPresentation.name(entry), weight: max(1, measure.weight(entry, apparent: apparent)),
                           detail: measure.detail(entry, apparent: apparent),
                           color: DiskChartPalette.color(for: entry, index: index, measure: measure))
         }
-        let remaining = selection.hidden.reduce(Int64(0)) {
+        let remaining = hidden.reduce(Int64(0)) {
             $0 + max(1, measure.weight($1, apparent: apparent))
         }
-        if !selection.hidden.isEmpty {
-            let measured = selection.hidden.reduce(Int64(0)) {
+        if !hidden.isEmpty {
+            let measured = hidden.reduce(Int64(0)) {
                 $0 + measure.weight($1, apparent: apparent)
             }
             let detail = measure == .files ? "\(measured.formatted()) files" :
@@ -108,19 +111,38 @@ struct DiskTreemapView: View {
         return result
     }
 
+    func tiles(in rect: CGRect) -> [DiskChartTile] {
+        var hidden: Set<String> = []
+        var result = Self.layout(tiles, in: rect)
+        guard scanComplete else { return result }
+        // Keep scanner aggregates explicit. Fold other sub-control targets once
+        // sizes are final, so live membership cannot churn as weights arrive.
+        while true {
+            let small = result.filter {
+                $0.entry != nil && $0.entry?.kind != .aggregate &&
+                    min($0.rect.width, $0.rect.height) < OnePlusMetrics.controlHeight
+            }
+            guard !small.isEmpty else { return result }
+            hidden.formUnion(small.map(\.id))
+            result = Self.layout(tiles(hiding: hidden), in: rect)
+        }
+    }
+
     var body: some View {
         GeometryReader { geometry in
-            let layout = Self.layout(tiles, in: CGRect(origin: .zero, size: geometry.size))
-            ForEach(layout, id: \.id) { tile in tileView(tile) }
+            let layout = tiles(in: CGRect(origin: .zero, size: geometry.size))
+            ZStack {
+                ForEach(layout, id: \.id) { tile in tileView(tile) }
+            }
+                .frame(width: geometry.size.width, height: geometry.size.height)
                 .animation(chartAnimation, value: layout.map(\.id))
+                .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
+                .onMoveCommand { direction in
+                    if let next = DiskChartNavigation.next(layout.compactMap(\.entry), selected: selectedEntryID, direction: direction) { select(next) }
+                }
+                .onKeyPress(.space) { if let entry = layout.compactMap(\.entry).first(where: { $0.id == selectedEntryID && $0.kind != .aggregate }) { preview(entry) }; return .handled }
+                .onKeyPress(.return) { if let entry = layout.compactMap(\.entry).first(where: { $0.id == selectedEntryID && $0.kind != .aggregate }) { open(entry) }; return .handled }
         }
-        .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
-        .onMoveCommand { direction in
-            let entries = tiles.compactMap(\.entry)
-            if let next = DiskChartNavigation.next(entries, selected: selectedEntryID, direction: direction) { select(next) }
-        }
-        .onKeyPress(.space) { if let entry = tiles.compactMap(\.entry).first(where: { $0.id == selectedEntryID && $0.kind != .aggregate }) { preview(entry) }; return .handled }
-        .onKeyPress(.return) { if let entry = tiles.compactMap(\.entry).first(where: { $0.id == selectedEntryID && $0.kind != .aggregate }) { open(entry) }; return .handled }
         .accessibilityElement(children: .contain).accessibilityLabel("Treemap of \(directory.name)")
         .accessibilityHint("Click to select. Double-click a folder to explore.")
         .accessibilityIdentifier("diskExplorer.treemap")
@@ -157,8 +179,11 @@ struct DiskTreemapView: View {
         .frame(width: max(0, rect.width), height: max(0, rect.height)).clipped()
         .position(x: rect.midX, y: rect.midY)
         .onHover { inside in
-            hoveredID = inside ? tile.id : (hoveredID == tile.id ? nil : hoveredID)
-            onHoverDetail(tiles.first { $0.id == hoveredID }.map { "\($0.label) · \($0.detail)" })
+            if inside {
+                hoveredID = tile.id; onHoverDetail("\(tile.label) · \(tile.detail)")
+            } else if hoveredID == tile.id {
+                hoveredID = nil; onHoverDetail(nil)
+            }
         }.animation(chartAnimation, value: rect)
     }
 
@@ -348,7 +373,7 @@ struct DiskSunburstView: View {
         }.allowsHitTesting(false).accessibilityHidden(true)
     }
 
-    private static func hitTest(_ segments: [DiskRingSegment], at point: CGPoint, center: CGPoint) -> DiskRingSegment? {
+    static func hitTest(_ segments: [DiskRingSegment], at point: CGPoint, center: CGPoint) -> DiskRingSegment? {
         let dx = point.x - center.x
         let dy = point.y - center.y
         var angle = atan2(dy, dx)
@@ -360,7 +385,7 @@ struct DiskSunburstView: View {
                          measure: DiskChartMeasure, radius: CGFloat,
                          scanComplete: Bool) -> [DiskRingSegment] {
         var result: [DiskRingSegment] = []
-        let levels = root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
+        let levels = !scanComplete || root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
             root.children.contains { !$0.children.isEmpty } ? 2 : 1
         let band = CGFloat(0.68) / CGFloat(levels)
         func add(_ parent: DiskEntry, start: Double, end: Double, depth: Int, colorIndex: Int) {
@@ -371,9 +396,15 @@ struct DiskSunburstView: View {
             let limit = depth == 0 ? 24 : 12
             let selection = measure.displayedChildren(in: parent, apparent: apparent,
                                                       limit: limit, scanComplete: scanComplete)
-            let children = selection.shown
             let inner = radius * (0.30 + CGFloat(depth) * band)
             let outer = radius * (0.30 + CGFloat(depth + 1) * band) - 2
+            let smallIDs = Set(selection.shown.filter { child in
+                scanComplete && child.kind != .aggregate &&
+                    (end - start) * Double(max(1, measure.weight(child, apparent: apparent))) / Double(total) *
+                    Double((inner + outer) / 2) < Double(OnePlusMetrics.controlHeight)
+            }.map(\.id))
+            let children = selection.shown.filter { !smallIDs.contains($0.id) }
+            let hidden = selection.hidden + selection.shown.filter { smallIDs.contains($0.id) }
             for (index, child) in children.enumerated() {
                 let next = angle + (end - start) * Double(max(1, measure.weight(child, apparent: apparent))) / Double(total)
                 let tint = DiskChartPalette.color(for: child, index: depth == 0 ? index : colorIndex,
@@ -387,8 +418,8 @@ struct DiskSunburstView: View {
                     colorIndex: depth == 0 ? index : colorIndex)
                 angle = next
             }
-            if !selection.hidden.isEmpty {
-                let remaining = selection.hidden.reduce(Int64(0)) {
+            if !hidden.isEmpty {
+                let remaining = hidden.reduce(Int64(0)) {
                     $0 + measure.weight($1, apparent: apparent)
                 }
                 let detail = measure == .files ? "\(remaining.formatted()) files" :
