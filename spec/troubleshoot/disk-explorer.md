@@ -65,6 +65,33 @@
   build-for-testing compile without launching the app. Repeat the signed Time
   Profiler page-switch trace before closing the 100 ms speed gate.
 
+## Live Rings Collapse Into Other
+
+- **Symptom:** A live Home scan shows one dominant Other ring while the
+  inspector lists several large top-level folders.
+- **Cause:** Live ring membership used the first stable entry IDs instead of
+  the largest measured root children. Large folders outside that prefix were
+  folded into Other.
+- **Invariant:** Rank the root ring by the selected measure on each scan
+  revision. Use that same order for the storage-series colors and inspector
+  list. Keep deeper live bands stable. Fold only the remaining children into
+  a neutral Other segment.
+- **Check:** The view regression creates large root children outside the old
+  ID prefix and requires both to remain visible beside Other. Replay a signed
+  live Home scan and compare first-band proportions with the inspector.
+
+## Live File Table Blanks Between Snapshots
+
+- **Symptom:** Largest files reports a nonzero count but replaces its rows
+  with ruled blank space and a spinner during a live scan.
+- **Cause:** Each scan revision used a new projection key. The view discarded
+  the prior projection before the detached sort and formatting task returned.
+- **Invariant:** Keep the last projection when source, query, sort, measure,
+  and columns match. Swap the new rows and entry lookup together without an
+  animation. Before the first projection, show a named loading empty state.
+- **Check:** The request regression permits only a revision change to reuse a
+  projection. Inspect Largest files through several signed live snapshots.
+
 ## Shallow Estimates, Full-Height Charts, And Sidebar Eject
 
 - **Symptom:** The first chart showed zero-size folder skeletons, then a fixed

@@ -13,8 +13,10 @@ does not install or launch the app; the redesign orchestrator owns that gate.
 Round 2 requires equal columns for the short Scanning and Disk access cards.
 The inspector share bar and more menu use the shared neutral control style.
 Completed charts group targets smaller than a control into Other; folded
-file aggregates remain explicit, non-drillable items. Live charts keep their
-path-based membership and measured proportions until the scan completes.
+file aggregates remain explicit, non-drillable items. Live treemaps keep their
+path-based membership. Live root rings rank measured children by the selected
+measure so their first band matches the inspector; the remainder is a neutral
+Other segment.
 Opening a page must not wait for mounted-volume metadata. Read that sidebar
 state off the main actor and discard it if the window task is cancelled.
 
@@ -31,8 +33,16 @@ only their rows. Modify, Settings, and About scroll only their card stacks.
 All Diskman pages use the shared page header so foundation owns the 58 pt top
 line. Table sorting and row formatting must run outside SwiftUI body work.
 
+Round 5 keeps the inspector within the fixed visualization region by using
+28 pt child rows. Largest files and Results retain their last projected rows
+while the next live scan revision is prepared. Device inventory also retains
+the last known rows while a new Diskman window refreshes them.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep Visualization inside the 900 pt canvas. | The inspector child list now uses a 28 pt pitch and consumes only its available fixed region. The map, inspector, stats, tabs, and notices do not add a page scroll view. | Foundation owns top-pinning the shared fixed-window root. Inspect Home and Rings in the next signed capture. |
+| Verify | Make live Rings agree with the inspector. | The root ring ranks all measured children by the active measure, uses the storage-series order for visible children, and folds only the remainder into a neutral Other segment. A regression covers large children outside the old stable-ID prefix. | Run the regression and inspect a large live Home scan in both appearances. |
+| Verify | Keep live rows and device bounds stable during refresh. | File tables retain the prior matching projection across scan revisions and show a named loading state only before their first projection. New Diskman windows seed device rows from the last successful in-process inventory while the detached refresh runs. | Inspect Largest files during a live scan and reopen Home during inventory refresh. |
 | Verify | Keep page controls fixed and align content with the shared 58 pt header. | Analyze and Modify now use `OnePlusPageHeader` directly. Analyze already uses a non-scrolling page; its stats, tabs, map header, inspector, chart footer, search row, and notices stay fixed. Native file tables own row scrolling. The inspector no longer contains a nested scroll view. Modify keeps its header outside the scrolling card stack. Debug and build-for-testing compile. | Inspect every page on the signed build. |
 | Verify | Commit page switches within 100 ms and keep file tables smooth. | Largest files and Results build sorted, filtered, formatted row projections in a detached task. SwiftUI body only maps cached strings into native reusable table rows. Modify reads write-lock preferences with device inventory off the main actor and uses an in-memory state lookup while drawing. Per-cell tooltips were removed from partition and review rows. The regression compiles in the desktop test bundle. | Measure page switches and table frames in the signed build. Compilation does not prove the 100 ms gate. |
 | Verify | Expose one settings content view without page chrome or scrolling. | `DiskExplorerSettingsView(unreadableCount: Int? = nil)` has an explicit initializer and remains the single implementation. It inherits the caller's density, keeps the short cards in equal columns, and is dispatched by the main window. Both build targets compile. | Inspect both hosts on the signed build. |
