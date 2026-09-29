@@ -103,6 +103,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
     @MainActor public final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
         private static let actionCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.action")
         private static let primaryCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.primary")
+        private static let rowID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.row")
         private static let textCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.text")
 
         var owner: OnePlusNativeTable
@@ -164,7 +165,14 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor)])
             return cell
         }
-        public func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? { StorageRow() }
+        public func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+            if let view = tableView.makeView(withIdentifier: Self.rowID, owner: self) as? StorageRow {
+                return view
+            }
+            let view = StorageRow()
+            view.identifier = Self.rowID
+            return view
+        }
         public func tableViewSelectionDidChange(_ notification: Notification) {
             guard !updating, let table = notification.object as? StorageTable else { return }
             owner.selection = table.selectedIDs
