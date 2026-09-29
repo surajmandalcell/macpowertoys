@@ -117,11 +117,21 @@ actor SystemMonitorProcessSampler {
                 userID: info.pbsd.pbi_uid, executablePath: executablePath
             ))
         }
-        if !restrictedPIDs.isEmpty {
+        if previousTime == nil || !restrictedPIDs.isEmpty {
             let publicInfo = await Self.publicProcessInfo()
             processes = processes.map { process in
-                guard restrictedPIDs.contains(process.pid), let info = publicInfo[process.pid] else {
+                guard let info = publicInfo[process.pid] else {
                     return process
+                }
+                guard restrictedPIDs.contains(process.pid) else {
+                    guard process.cpuPercent == nil else { return process }
+                    return SystemMonitorProcess(
+                        pid: process.pid, started: process.started, name: process.name,
+                        cpuPercent: info.cpuPercent, residentBytes: process.residentBytes,
+                        virtualBytes: process.virtualBytes, threads: process.threads,
+                        parentPID: process.parentPID, userID: process.userID,
+                        executablePath: process.executablePath
+                    )
                 }
                 return SystemMonitorProcess(
                     pid: process.pid, started: 0, name: URL(fileURLWithPath: info.path).lastPathComponent,

@@ -423,6 +423,48 @@ nonisolated struct SystemMonitorBatteryDetails: Sendable {
     let amperageMilliamps: Int?
 }
 
+nonisolated enum SystemMonitorBatteryProperties {
+    static func details(from properties: [String: Any]) -> SystemMonitorBatteryDetails {
+        let batteryData = properties["BatteryData"] as? [String: Any] ?? [:]
+        let nominalCapacity = integer("NominalChargeCapacity", in: properties, fallback: batteryData)
+        let designCapacity = integer("DesignCapacity", in: properties, fallback: batteryData)
+        let health = string("BatteryHealth", in: properties, fallback: batteryData)
+            ?? string("Health", in: properties, fallback: batteryData)
+            ?? healthPercent(nominalCapacity: nominalCapacity, designCapacity: designCapacity)
+        return SystemMonitorBatteryDetails(
+            cycleCount: integer("CycleCount", in: properties, fallback: batteryData),
+            health: health,
+            currentCapacity: integer("CurrentCapacity", in: properties, fallback: batteryData),
+            maximumCapacity: integer("MaxCapacity", in: properties, fallback: batteryData),
+            voltageMillivolts: integer("Voltage", in: properties, fallback: batteryData)
+                ?? integer("AppleRawBatteryVoltage", in: properties, fallback: batteryData),
+            amperageMilliamps: integer("Amperage", in: properties, fallback: batteryData)
+                ?? integer("InstantAmperage", in: properties, fallback: batteryData)
+        )
+    }
+
+    private static func integer(
+        _ key: String,
+        in properties: [String: Any],
+        fallback: [String: Any]
+    ) -> Int? {
+        (properties[key] as? NSNumber)?.intValue ?? (fallback[key] as? NSNumber)?.intValue
+    }
+
+    private static func string(
+        _ key: String,
+        in properties: [String: Any],
+        fallback: [String: Any]
+    ) -> String? {
+        (properties[key] as? String) ?? (fallback[key] as? String)
+    }
+
+    private static func healthPercent(nominalCapacity: Int?, designCapacity: Int?) -> String? {
+        guard let nominalCapacity, let designCapacity, designCapacity > 0 else { return nil }
+        return "\(Int((Double(nominalCapacity) / Double(designCapacity) * 100).rounded()))%"
+    }
+}
+
 nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let id = UUID()
     let timestamp: Date
@@ -1105,6 +1147,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
     }
 
     private static func battery() -> BatterySnapshot? {
+        let smartDetails = smartBatteryDetails()
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else { return nil }
         for source in sources {
@@ -1115,16 +1158,36 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
                 percent: Int((Double(current) / Double(maximum) * 100).rounded()),
                 charging: values[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue,
                 details: SystemMonitorBatteryDetails(
-                    cycleCount: values["Cycle Count"] as? Int,
-                    health: values["BatteryHealth"] as? String,
+                    cycleCount: smartDetails?.cycleCount ?? (values["Cycle Count"] as? NSNumber)?.intValue,
+                    health: smartDetails?.health ?? values["BatteryHealth"] as? String,
                     currentCapacity: current,
                     maximumCapacity: maximum,
-                    voltageMillivolts: values["Voltage"] as? Int,
-                    amperageMilliamps: values["Amperage"] as? Int
+                    voltageMillivolts: smartDetails?.voltageMillivolts
+                        ?? (values["Voltage"] as? NSNumber)?.intValue,
+                    amperageMilliamps: smartDetails?.amperageMilliamps
+                        ?? (values["Amperage"] as? NSNumber)?.intValue
                 )
             )
         }
         return nil
+    }
+
+    private static func smartBatteryDetails() -> SystemMonitorBatteryDetails? {
+        let service = IOServiceGetMatchingService(
+            kIOMainPortDefault,
+            IOServiceMatching("AppleSmartBattery")
+        )
+        guard service != 0 else { return nil }
+        defer { IOObjectRelease(service) }
+        var rawProperties: Unmanaged<CFMutableDictionary>?
+        guard IORegistryEntryCreateCFProperties(
+            service,
+            &rawProperties,
+            kCFAllocatorDefault,
+            0
+        ) == KERN_SUCCESS,
+        let properties = rawProperties?.takeRetainedValue() as? [String: Any] else { return nil }
+        return SystemMonitorBatteryProperties.details(from: properties)
     }
 
     private static func thermalState() -> String {
