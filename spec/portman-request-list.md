@@ -1,5 +1,11 @@
 # Portman request list
 
+## OnePlusUI redesign, 2026-09-29
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Keep the Servers composition; move its type, colors, and controls to tokens. Use the 356pt menu shell, Forward cards, and searchable Settings with 28pt controls and a 160pt column. | Debug build passes. Saved tabs, equal Link/Stop actions, scan cancellation, range selection, auth-failure-only password prompts, and idle scan policy remain in source. Open and refresh tasks now cancel. | Review all tabs, tunnels, SSH failures, and cleanup in the orchestrator's installed build. |
+
 The owner requested a MacPowerToys tool based on the detailed WhatThePort
 showcase at `/Users/surajmandal/tmp/what-the-port-showcase/README.md`, adapted
 to MacPowerToys' native design. Portman is a menu-bar-only applet: the launcher,

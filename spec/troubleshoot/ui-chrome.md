@@ -1,5 +1,18 @@
 # UI Chrome Troubleshooting
 
+## OnePlusUI Compact Applets And Portman, 2026-09-29
+
+- **Invariant:** DESIGN.md v14 replaces the older applet material, two-light,
+  and 24pt content-control rules below. Awake, Color Picker, and Text Extractor
+  use `OnePlusWindowRoot` and `OnePlusAppletTitlebar`. All three native lights
+  remain visible; zoom stays disabled. Applet body gutters are 16pt.
+- **Invariant:** Portman uses the 356pt menu shell. Its compact text stays
+  compact while form controls use the 28pt height override. Servers retains
+  its memory summary, usage bar, rows, sparklines, and footer. Settings search
+  exposes First port and Last port; cleanup mode uses segmented buttons.
+- **Check:** The Debug build passes. Installed screenshots, focus checks,
+  panel scrolling, and scan-lifetime checks remain with the orchestrator.
+
 ## Portman Menu-Bar Workflow
 
 - **Symptom:** The Portman tray showed a short list of unrelated listeners and
