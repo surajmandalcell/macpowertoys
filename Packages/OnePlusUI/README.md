@@ -44,6 +44,8 @@ line, density, and native chrome. Do not add another root texture.
 For an existing root, use `.onePlusFixedCanvas(.logs)`. Applet canvases keep
 their fixed width and use the 22 pt title centerline. Color Picker and Text
 Extractor keep their content-driven height. All other canvases fix both axes.
+Canvas sizes describe the visible window, including the hidden titlebar.
+The shared modifier subtracts its measured inset once, including nested roots.
 Chrome keeps all three native traffic lights visible and disables zoom and
 full screen. It measures the zoom button for the title's 14 pt gap.
 
@@ -80,7 +82,9 @@ full screen. It measures the zoom button for the title's 14 pt gap.
 | `OnePlusCardHeader` | Add a 40 pt title row with an optional icon and accessory. |
 | `OnePlusSettingRow` | Supply label, caption, help, reset, and a 160 or 180 pt control column. |
 | `OnePlusSectionTitle` | Label a section with an optional trailing link action. |
-| `OnePlusButtonStyle` | Choose neutral, primary, ghost, destructive, icon, or link; regular or small. |
+| `OnePlusButtonStyle` | Choose a variant; omitted size follows density, while regular and small force 28 or 24 pt. |
+| `OnePlusMenuButton` | Build an action menu with a ghost or neutral trigger. |
+| `.onePlusNeutralControls()` | Give native menus and template images neutral tint. |
 | `OnePlusInteractionStyle` | Add shared interaction feedback to caller-owned row geometry. |
 | `OnePlusControlLabel` | Style a native Menu label with the same button geometry. |
 | `OnePlusControlState` | Show deterministic rest, hover, pressed, and focus samples in the showcase. |
@@ -99,11 +103,12 @@ full screen. It measures the zoom button for the title's 14 pt gap.
 | `OnePlusAreaChart` | Add a cached four-point ordered-dot fill and grid to a chart. |
 | `OnePlusUsageBar` | Show one clamped usage fraction in a five-point track. |
 | `OnePlusSegmentBar` | Show proportional categories from values and series colors. |
-| `OnePlusStatus` | Pair status text with a solid or hollow dot. |
+| `OnePlusStatus` | Pair neutral status text with a dot; request `.success` explicitly for green. |
 | `OnePlusBadge` | Show a count, with an optional pending state. |
 | `OnePlusKeyValueRow` | Align a label and selectable value. |
 | `OnePlusTable` / `.onePlusTableHeader()` / `.onePlusTableRow(selected:)` | Share native Table and List row geometry. |
 | `OnePlusGridColumn` / `OnePlusGridTable` | Show a small read-only table with fixed column widths. |
+| `OnePlusNativeTable` / `.onePlusNativeTable()` | Share 9 pt uppercase native headers and 34 or 28 pt rows. |
 | `OnePlusEmptyState` | Show an icon, title, explanation, and optional action. |
 | `OnePlusDotTitle` | Draw a cached 5 × 7 title with one accessibility label. |
 | `OnePlusToast` | Show a message and post an accessibility announcement; the caller owns its lifetime. |
@@ -119,6 +124,8 @@ full screen. It measures the zoom button for the title's 14 pt gap.
 | `OnePlusMenuOpenApp` | Supply the ghost Open App action. |
 | `OnePlusAppletTitlebar` | Add a 40 pt bar with title and actions on the 22 pt centerline. |
 | `OnePlusFloatingSettingsButton` | Place a 24 pt Settings or Back button at the applet's trailing edge. |
+| `.onePlusFloatingSettingsInset()` | Reserve 52 pt below an applet body before an existing gear overlay. |
+| `.onePlusFloatingSettings(isActive:help:action:)` | Reserve the same area and place the gear in one modifier. |
 | `.onePlusScrollIndicators()` / `OnePlusOverlayScroller` | Keep native scrolling with thin overlay thumbs. |
 
 Catalogs can use `OnePlusSegmented(iconChoices:selection:accessibilityLabel:)`
@@ -149,7 +156,7 @@ swift test
 swift run OnePlusUIShowcase
 ```
 
-The showcase opens a 1240 × 840 window in the background. Its ten pages cover
+The showcase opens a 1240 × 840 window in the background. Its pages cover
 tokens, type, controls, data, settings, Task Manager, menu panels, applets, and
 feedback. Use the header appearance control to check dark and light. All
 sample actions change local state. Quit through the sidebar or window close.
