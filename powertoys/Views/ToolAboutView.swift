@@ -1,226 +1,120 @@
 import SwiftUI
+import OnePlusUI
 
-private enum ToolDetailPage: String, CaseIterable, Identifiable {
-    case settings = "Settings"
-    case guide = "How to Use"
-
-    var id: String { rawValue }
-}
+private enum MainToolTab: String { case settings, guide }
 
 struct ToolAboutView: View {
     let toolId: String
     var showsModalCloseButton = false
     var showsSettings = true
-
+    var changed: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.dismissWindow) private var dismissWindow
-    @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
-    @State private var settings = SettingsManager.shared
-    @State private var page = ToolDetailPage.settings
-
-    private var tool: (any Tool)? {
-        ToolRegistry.tool(for: toolId)
-    }
+    @State private var tab = MainToolTab.settings
 
     var body: some View {
-        if let tool {
-            VStack(spacing: 0) {
-                header(for: tool)
-                if !showsSettings {
-                    QuietDivider()
-                    VStack(spacing: 0) {
-                        ToolDetailIntro(tool: tool)
-                        manualSection(for: tool)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                } else {
-                HStack(spacing: 2) {
-                    ForEach(ToolDetailPage.allCases) { page in
-                        UtilityTabPill(
-                            title: page.rawValue,
-                            isSelected: self.page == page
-                        ) {
-                            self.page = page
-                        }
-                    }
-                    Spacer(minLength: 0)
+        if let tool = ToolRegistry.tool(for: toolId) {
+            if !showsSettings || tab == .guide {
+                OnePlusPage {
+                    header(tool)
+                } tabs: {
+                    if showsSettings { tabs(tool) }
+                } content: {
+                    ForEach(tool.manual) { section in manualCard(section) }
                 }
-                .padding(.top, 6)
-                .padding(.leading, 18)
-                .padding(.trailing, 10)
-                .padding(.bottom, 12)
-                .accessibilityIdentifier("tool.\(tool.id).page")
-
-                QuietDivider()
-
-                Group {
-                    switch page {
-                    case .settings:
-                        VStack(spacing: 0) {
-                            ToolDetailIntro(tool: tool)
-                            ToolSettingsContent(toolID: tool.id)
-                                .id(tool.id)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                        .disabled(!settings.isToolEnabled(tool.id) && tool.id != "nettoys")
-                    case .guide:
-                        manualSection(for: tool)
-                    }
-                }
-                .utilityContentTransition(value: page)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else if tool.id == "ruler" {
+                OnePlusPage { header(tool) } tabs: { tabs(tool) } content: { rulerSettings }
+            } else {
+                VStack(spacing: 0) {
+                    header(tool)
+                    tabs(tool)
+                    ToolSettingsContent(toolID: tool.id)
+                        .id(tool.id)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
             }
         } else {
-            EmptyStateView(icon: "questionmark.circle", message: "Unknown tool")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
+                              caption: "This tool is no longer installed.")
         }
     }
 
-    private func header(for tool: any Tool) -> some View {
-        HStack(spacing: 10) {
-            ToolIconView(tool: tool, size: 30)
-
-            Text(tool.name)
-                .font(.system(size: 17, weight: .medium))
-                .lineLimit(1)
-                .layoutPriority(1)
-
-            Spacer(minLength: 12)
-
-            HStack(spacing: 10) {
-                Toggle(isOn: enabledBinding(for: tool.id)) { EmptyView() }
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .disabled(settings.isToolTransitioning(tool.id))
-                    .accessibilityLabel("Enable \(tool.name)")
-                    .accessibilityIdentifier("tool.\(tool.id).enabled")
-
-                if !showsModalCloseButton {
-                    Button {
-                        ToolActionRouter.shared.open(toolID: tool.id)
-                        if closeMainWindowAfterOpeningTool {
-                            dismissWindow(id: "main")
-                        }
-                    } label: {
-                        Text("Open").utilityActionLabel()
-                    }
-                    .accessibilityLabel("Open \(tool.name)")
-                    .accessibilityIdentifier("tool.\(tool.id).launch")
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
-                    .help(settings.isToolEnabled(tool.id) ? "Open \(tool.name)" : "Enable \(tool.name) to open it")
-                }
-
-                if showsModalCloseButton {
-                    UtilityModalCloseButton { dismiss() }
-                }
+    private func header(_ tool: any Tool) -> some View {
+        OnePlusToolPageHeader(title: tool.name, subtitle: tool.description) {
+            ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
+        } actions: {
+            if showsSettings { MainToolEnableSwitch(tool: tool) }
+            if showsModalCloseButton {
+                Button { dismiss() } label: { Image(systemName: "xmark") }
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .help("Close").accessibilityLabel("Close")
+            } else if showsSettings {
+                MainOpenToolButton(toolID: tool.id)
             }
-            .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
 
-    private func enabledBinding(for toolID: String) -> Binding<Bool> {
-        Binding(
-            get: { settings.isToolEnabled(toolID) },
-            set: { settings.setToolEnabled($0, for: toolID) }
-        )
-    }
-
-    private func manualSection(for tool: any Tool) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(tool.manual) { section in
-                    manualCard(section)
-                }
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    private func tabs(_ tool: any Tool) -> some View {
+        OnePlusTabStrip(tabs: [OnePlusTab(.settings, "Settings"), OnePlusTab(.guide, "How to use")], selection: $tab) {
+            if let menuTool = IndividualMenuBarTool(rawValue: tool.id) { MainMenuBarPlacement(tool: menuTool, changed: changed) }
         }
-        .thinScrollIndicators()
+        .accessibilityIdentifier("tool.\(tool.id).page")
     }
 
     private func manualCard(_ section: ToolManualSection) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(section.title)
-                .font(.system(size: 13, weight: .medium))
+        OnePlusCard {
+            OnePlusCardHeader(section.title)
+            VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.gap) {
+                ForEach(section.points.indices, id: \.self) { index in
+                    HStack(alignment: .firstTextBaseline, spacing: OnePlusCatalogMetrics.gap) {
+                        Text(String(index + 1) + ".").onePlusText(.mono)
+                        Text(section.points[index]).onePlusText(.row).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }.padding(OnePlusMetrics.cardPadding)
+        }
+    }
 
-            ForEach(section.points, id: \.self) { point in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: "circle.fill")
-                        .font(.system(size: 4))
-                        .foregroundStyle(.tertiary)
-
-                    Text(point)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(3)
-                        .textSelection(.enabled)
+    private var rulerSettings: some View {
+        HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+            OnePlusCard {
+                OnePlusCardHeader("Ruler", systemImage: "ruler")
+                OnePlusSettingRow("Active rulers", separator: false) {
+                    Button("Open Ruler Settings") {
+                        ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
+                    }.buttonStyle(OnePlusButtonStyle())
+                }
+            }
+            OnePlusCard {
+                OnePlusCardHeader("Defaults", systemImage: "slider.horizontal.3")
+                OnePlusSettingRow("New rulers", separator: false) {
+                    Button("Open Defaults") { AppDelegate.current?.openPreferences(self) }
+                        .buttonStyle(OnePlusButtonStyle())
                 }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
-private struct ToolDetailIntro: View {
-    let tool: any Tool
-    @AppStorage private var menuBarMode: MenuBarDisplayMode
+private struct MainMenuBarPlacement: View {
+    let tool: IndividualMenuBarTool
+    let changed: () -> Void
+    @AppStorage private var mode: MenuBarDisplayMode
 
-    init(tool: any Tool) {
+    init(tool: IndividualMenuBarTool, changed: @escaping () -> Void) {
         self.tool = tool
-        let menuBarTool = IndividualMenuBarTool(rawValue: tool.id)
-        _menuBarMode = AppStorage(
-            wrappedValue: menuBarTool?.displayMode() ?? .none,
-            menuBarTool?.preferenceKey ?? "tool.\(tool.id).menuBarDisplayMode"
-        )
+        self.changed = changed
+        _mode = AppStorage(wrappedValue: tool.displayMode(), tool.preferenceKey)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(tool.description)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if IndividualMenuBarTool(rawValue: tool.id) != nil {
-                HStack(spacing: 12) {
-                    Text("Menu Bar Icon")
-                        .font(.system(size: 12, weight: .medium))
-                    Spacer(minLength: 12)
-                    Picker("Menu Bar Icon", selection: $menuBarMode) {
-                        ForEach(MenuBarDisplayMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .controlSize(.small)
-                    .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
-                    .frame(width: 240)
-                }
-                .onChange(of: menuBarMode) { _, _ in
-                    IndividualMenuBarController.shared.refresh()
-                }
-            }
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Text("Menu bar").onePlusText(.caption)
+            OnePlusSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
+                             selection: $mode, accessibilityLabel: "Menu bar placement")
+                .frame(width: OnePlusCatalogMetrics.placementWidth)
+                .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
         }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-
-        QuietDivider()
+        .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh(); changed() }
     }
-}
-
-#Preview {
-    ToolAboutView(toolId: "rclone")
-        .frame(width: 560, height: 700)
 }

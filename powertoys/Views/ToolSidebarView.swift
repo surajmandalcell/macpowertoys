@@ -1,83 +1,46 @@
-//
-//  ToolSidebarView.swift
-//  powertoys
-//
-
 import SwiftUI
+import OnePlusUI
 
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
-    @State private var searchText = ""
+    @Binding var searchText: String
+    var modifiedRevision: Int
+    @State private var settings = SettingsManager.shared
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            sidebarBody
-            SidebarTitle(text: "MacPowerToys")
-        }
-    }
-
-    private var sidebarBody: some View {
-        VStack(spacing: 0) {
-            SidebarSearchField(text: $searchText, placeholder: "Search")
-                .padding(.horizontal, 12)
-                .padding(.top, UtilityLayout.workspaceContentTopInset)
-                .padding(.bottom, 12)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    SidebarRow(icon: "square.grid.2x2", title: "All Tools", isSelected: selectedTool == "all-tools") {
-                        selectedTool = "all-tools"
-                    }
-
-                    ForEach(filteredTools, id: \.id) { tool in
-                        SidebarRow(icon: tool.icon, title: tool.name, isSelected: selectedTool == tool.id, logoAsset: tool.logoAsset) {
-                            selectedTool = tool.id
-                        }
-                        .simultaneousGesture(
-                            TapGesture(count: 2).onEnded {
-                                ToolActionRouter.shared.open(toolID: tool.id)
-                            }
-                        )
-                    }
-                }
-                .padding(.horizontal, 12)
+        OnePlusSidebar(title: "MacPowerToys") {
+            OnePlusSidebarSearch(text: $searchText, alternateShortcut: "f")
+        } navigation: {
+            OnePlusNavRow("All tools", systemImage: "square.grid.2x2", selected: selectedTool == "all-tools") {
+                selectedTool = "all-tools"
             }
-            .thinScrollIndicators()
-
-            Spacer(minLength: 0)
-
-            VStack(spacing: 4) {
-                SidebarExternalRow(icon: "doc.text.magnifyingglass", title: "Logs") {
-                    ToolActionRouter.shared.open(toolID: "logs")
-                }
-
-                SidebarRow(icon: "gearshape", title: "Settings", isSelected: false) {
-                    NotificationCenter.default.post(name: .openToolSettings, object: "home")
-                }
-
-                SidebarRow(icon: "rectangle.portrait.and.arrow.right", title: "Exit", isSelected: false) {
-                    NSApplication.shared.terminate(nil)
-                }
+            OnePlusNavCaption("Your tools")
+            ForEach(ToolRegistry.allTools.filter { MainCatalog.matches($0, query: searchText) }, id: \.id) { tool in
+                OnePlusNavRow(tool.name, systemImage: tool.icon, selected: selectedTool == tool.id,
+                              muted: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
+                    .accessibilityIdentifier("main.sidebar.\(tool.id)")
+                    .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")
+                    .simultaneousGesture(TapGesture(count: 2).onEnded {
+                        guard settings.isToolEnabled(tool.id), !settings.isToolTransitioning(tool.id) else { return }
+                        ToolActionRouter.shared.open(toolID: tool.id)
+                    })
+                    .contextMenu { MainToolContextMenu(tool: tool) { selectedTool = tool.id } }
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(VisualEffectBackground())
-    }
-    private var filteredTools: [any Tool] {
-        let tools = ToolRegistry.allTools
-        if searchText.isEmpty {
-            return tools
-        }
-        return tools.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText)
-                || $0.searchKeywords.contains { $0.localizedCaseInsensitiveContains(searchText) }
+        } bottom: {
+            OnePlusNavRow("Modified", systemImage: "arrow.counterclockwise", selected: selectedTool == "modified") {
+                selectedTool = "modified"
+            }
+            .disabled(!hasChanges)
+            OnePlusNavRow("Settings", systemImage: "gearshape", selected: selectedTool == "settings") {
+                selectedTool = "settings"
+            }
+            OnePlusNavRow("Exit", systemImage: "rectangle.portrait.and.arrow.right") { NSApp.terminate(nil) }
         }
     }
-}
 
-#Preview {
-    ToolSidebarView(selectedTool: .constant("all-tools"))
-        .frame(width: 220, height: 500)
+    private var hasChanges: Bool {
+        _ = modifiedRevision
+        _ = settings.disabledToolIDs
+        return SettingsRegistry.hasChanges()
+    }
 }
