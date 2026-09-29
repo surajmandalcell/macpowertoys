@@ -34,13 +34,19 @@ enum NetToysAnchorSheetLayout {
 @Observable
 @MainActor
 final class NetToysAnchorViewModel {
+    private struct Snapshot: Sendable {
+        let entries: [SSHConfigEntry]
+        let configuration: NetToysConfiguration
+        let helperStatus: NetToysHelperStatus?
+    }
+
     var entries: [SSHConfigEntry] = []
     var selectedAlias = ""
     var identityMode = SSHAnchorIdentityMode.stable
     var deviceMAC = ""
     var deviceHostname = ""
-    var configuration = NetToysConfigurationStore.load()
-    var helperStatus = NetToysConfigurationStore.status()
+    var configuration = NetToysConfiguration()
+    var helperStatus: NetToysHelperStatus?
     var errorMessage: String?
     var isInspecting = false
     var requestedAddress: String?
@@ -55,10 +61,6 @@ final class NetToysAnchorViewModel {
 
     private let scanner = NetToysScanner()
     private var keyAccessTask: Task<Void, Never>?
-
-    init() {
-        refresh()
-    }
 
     var selectedEntry: SSHConfigEntry? {
         guard let entry = entries.first(where: { $0.aliases.contains(selectedAlias) }) else {
@@ -77,23 +79,28 @@ final class NetToysAnchorViewModel {
             && NetToysLoginItemManager.hasFreshHeartbeat(helperStatus)
     }
 
-    func refresh() {
-        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config")
-        if let data = try? Data(contentsOf: url) {
-            entries = SSHConfigEditor.anchorEntries(in: data)
-        } else {
-            entries = []
-        }
-        configuration = NetToysConfigurationStore.load()
-        helperStatus = NetToysConfigurationStore.status()
+    func refresh() async {
+        let snapshot = await Task.detached(priority: .utility) {
+            let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config")
+            let entries = (try? Data(contentsOf: url)).map(SSHConfigEditor.anchorEntries(in:)) ?? []
+            return Snapshot(
+                entries: entries,
+                configuration: NetToysConfigurationStore.load(),
+                helperStatus: NetToysConfigurationStore.status()
+            )
+        }.value
+        guard !Task.isCancelled else { return }
+        entries = snapshot.entries
+        configuration = snapshot.configuration
+        helperStatus = snapshot.helperStatus
         if !entries.contains(where: { $0.aliases.contains(selectedAlias) }) {
             selectedAlias = requestedAddress == nil ? entries.first?.aliases.first ?? "" : ""
         }
     }
 
-    func apply(_ prefill: NetToysAnchorPrefill) {
+    func apply(_ prefill: NetToysAnchorPrefill) async {
         requestedAddress = prefill.address
-        refresh()
+        await refresh()
         selectedAlias = prefill.matchingAlias(in: entries) ?? ""
         deviceMAC = prefill.macAddress ?? ""
         deviceHostname = prefill.hostname ?? ""
@@ -163,14 +170,12 @@ final class NetToysAnchorViewModel {
                     configuration.anchors.append(anchor)
                 }
                 try NetToysConfigurationStore.save(configuration)
-                refresh()
-
                 guard await NetToysLoginItemManager.shared.setEnabled(true) else {
                     errorMessage = NetToysLoginItemManager.shared.errorMessage
                         ?? "The NetToys helper could not be enabled."
                     return
                 }
-                helperStatus = NetToysConfigurationStore.status()
+                await refresh()
                 requestedAddress = nil
                 setUpKeyAccess(for: anchor.id)
             } catch {
@@ -393,7 +398,7 @@ final class NetToysAnchorViewModel {
     private func save() {
         do {
             try NetToysConfigurationStore.save(configuration)
-            refresh()
+            Task { await refresh() }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -456,7 +461,7 @@ struct NetToysAnchorView: View {
     @State private var pendingRemoval: UUID?
 
     var body: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(
                 title: "SSH Anchor",
                 subtitle: "Keep SSH aliases attached to local devices"
@@ -470,7 +475,7 @@ struct NetToysAnchorView: View {
                 .toggleStyle(OnePlusSwitchStyle()).fixedSize()
                 .help("Enable SSH Anchor monitoring")
                 Button {
-                    model.refresh()
+                    Task { await model.refresh() }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -483,7 +488,7 @@ struct NetToysAnchorView: View {
         }
         .task {
             while !Task.isCancelled {
-                model.refresh()
+                await model.refresh()
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
             }
         }
@@ -499,7 +504,7 @@ struct NetToysAnchorView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .netToysApplyAnchorPrefill)) { notification in
             guard let prefill = notification.object as? NetToysAnchorPrefill else { return }
-            model.apply(prefill)
+            Task { await model.apply(prefill) }
         }
         .alert("SSH Anchor", isPresented: Binding(
             get: { model.errorMessage != nil },
@@ -539,7 +544,12 @@ struct NetToysAnchorView: View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             if !model.helperIsHealthy {
                 OnePlusBanner("The login helper is not active. Enable it to monitor your saved anchors.", tone: .warning) {
-                    Button("Enable helper") { Task { _ = await NetToysLoginItemManager.shared.setEnabled(true); model.refresh() } }
+                    Button("Enable helper") {
+                        Task {
+                            _ = await NetToysLoginItemManager.shared.setEnabled(true)
+                            await model.refresh()
+                        }
+                    }
                 }
             }
             OnePlusCard {
@@ -683,14 +693,19 @@ struct NetToysAnchorView: View {
                     .padding(OnePlusMetrics.cardPadding)
                 }
 
-                LazyVStack(spacing: 0) {
-                    ForEach(anchors) { anchor in
-                        anchorRow(anchor)
-                        if anchor.id != anchors.last?.id { OnePlusRule() }
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(anchors) { anchor in
+                            anchorRow(anchor)
+                            if anchor.id != anchors.last?.id { OnePlusRule() }
+                        }
                     }
                 }
+                .onePlusScrollIndicators()
+                .frame(maxHeight: .infinity)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func anchorRow(_ anchor: SSHAnchorConfiguration) -> some View {
@@ -704,14 +719,13 @@ struct NetToysAnchorView: View {
             VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
                 HStack(spacing: OnePlusMetrics.spacing[2]) {
                     Text(aliasLabel)
-                        .onePlusText(.row).lineLimit(1).help(aliasLabel)
+                        .onePlusText(.row).lineLimit(1)
                     Text("\(status?.currentHostName ?? anchor.hostName):\(anchor.port)")
                         .onePlusText(.mono).lineLimit(1)
                 }
                 Text(status?.message ?? identityDescription(anchor.identity))
                     .onePlusText(.caption)
                     .lineLimit(1)
-                    .help(status?.message ?? identityDescription(anchor.identity))
             }
 
             Spacer()
@@ -726,8 +740,7 @@ struct NetToysAnchorView: View {
                 } else if let verifiedAt = anchor.keyAccessVerifiedAt {
                     Image(systemName: "key.fill")
                         .foregroundStyle(OnePlusColor.secondary)
-                        .help("Key access verified \(verifiedAt.formatted())")
-                        .accessibilityLabel("Key access verified for \(aliasLabel)")
+                        .accessibilityLabel("Key access verified for \(aliasLabel) at \(verifiedAt.formatted())")
                 } else {
                     Button {
                         model.setUpKeyAccess(for: anchor.id)
@@ -735,7 +748,6 @@ struct NetToysAnchorView: View {
                         Image(systemName: "key")
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon))
-                    .help("Set up key access")
                     .accessibilityLabel("Set up key access for \(aliasLabel)")
                 }
             }
@@ -754,7 +766,6 @@ struct NetToysAnchorView: View {
                     ))
                     .toggleStyle(OnePlusCheckboxStyle())
                     .controlSize(.small)
-                    .help("Prefer the local connection and use Tailscale only while it is unavailable.")
                 }
             }
             .frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
@@ -775,7 +786,6 @@ struct NetToysAnchorView: View {
             }
             .buttonStyle(OnePlusButtonStyle(.icon))
             .accessibilityLabel("Remove \(aliasLabel)")
-            .help("Remove \(aliasLabel)")
         }
         .padding(OnePlusMetrics.cardPadding)
         .contextMenu {
@@ -795,7 +805,7 @@ struct NetToysAnchorView: View {
                             HStack(spacing: OnePlusMetrics.navIconGap) {
                                 VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
                                     Text(peer.hostName)
-                                        .onePlusText(.row).lineLimit(1).help(peer.hostName)
+                                        .onePlusText(.row).lineLimit(1)
                                     Text(peer.ipAddress)
                                         .onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
                                 }
