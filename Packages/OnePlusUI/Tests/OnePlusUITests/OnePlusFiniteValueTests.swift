@@ -5,6 +5,61 @@ import XCTest
 
 @MainActor
 final class OnePlusFiniteValueTests: XCTestCase {
+    func testChartRangesKeepEveryPathPointFinite() {
+        let samples: [[Double]] = [[], [0, 0], [.nan, .infinity, -.infinity],
+                                  [0, .nan, 50, .infinity, 100],
+                                  [-Double.greatestFiniteMagnitude, 0, .greatestFiniteMagnitude]]
+        let ranges: [ClosedRange<Double>] = [0...100, 0...0, -.infinity ... .infinity,
+                                            -Double.greatestFiniteMagnitude ... .greatestFiniteMagnitude]
+        for values in samples {
+            for range in ranges {
+                let paths = OnePlusChartPaths.cached(values: values, range: range)
+                for path in [paths.line, paths.area] {
+                    path.forEach { element in
+                        let points: [CGPoint]
+                        switch element {
+                        case .move(let point), .line(let point): points = [point]
+                        case .quadCurve(let point, let control): points = [point, control]
+                        case .curve(let point, let control1, let control2): points = [point, control1, control2]
+                        case .closeSubpath: points = []
+                        }
+                        for point in points {
+                            XCTAssertTrue(point.x.isFinite && point.y.isFinite, "\(values), \(range): \(point)")
+                            XCTAssertTrue((0...1).contains(point.x) && (0...1).contains(point.y))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func testMenuTileGeometryRejectsInvalidDimensions() {
+        for width in [CGFloat.nan, .infinity, -.infinity, -1, 0, 338] {
+            for span in [Int.min, 0, 1, 3, Int.max] {
+                let width = OnePlusMenuMetrics.columnWidth(span: span, available: width)
+                XCTAssertTrue(width.isFinite && width >= 0)
+            }
+        }
+        for height in [CGFloat.nan, .infinity, -.infinity, -1, 0, 70] {
+            let tile = OnePlusMenuTile(height: height) { Text("Metric") }
+            XCTAssertTrue(tile.height.isFinite && tile.height >= 0)
+        }
+    }
+
+    func testEmptyAndInvalidDataKeepFiniteViewSizes() {
+        for values: [Double] in [[], [0, 0], [.nan, .infinity, -.infinity], [.greatestFiniteMagnitude, .greatestFiniteMagnitude]] {
+            let host = NSHostingView(rootView: VStack {
+                OnePlusUsageBar(value: values.first ?? 0)
+                OnePlusSegmentBar(values: values, colors: [])
+                OnePlusSparkline(values: values).frame(height: 40)
+                OnePlusAreaChart(values: values).frame(height: 60)
+            }.frame(width: 240))
+            host.layoutSubtreeIfNeeded()
+            XCTAssertTrue(host.fittingSize.width.isFinite)
+            XCTAssertTrue(host.fittingSize.height.isFinite)
+        }
+    }
+
     func testStepperRejectsNonFiniteAndOverflowingInput() {
         for value in [Double.nan, .infinity, -.infinity, .greatestFiniteMagnitude, -0.5] {
             XCTAssertNil(OnePlusStepperField.nativeValue(value, in: Int.min...Int.max))
