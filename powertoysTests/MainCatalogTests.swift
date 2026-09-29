@@ -54,14 +54,14 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertTrue(modified.contains("@State private var groupedDifferences"))
     }
 
-    func testModifiedPairsShortGroupsWithoutReorderingLongGroups() {
+    func testModifiedPairsOnlyGroupsWithEqualRowCounts() {
         XCTAssertTrue(MainModifiedView.groupRows([]).isEmpty)
         XCTAssertEqual(MainModifiedView.groupRows([
             ("app", 1), ("rclone", 3), ("ruler", 5), ("awake", 1), ("logs", 2), ("nettoys", 1)
-        ]), [["app", "rclone"], ["ruler"], ["awake", "logs"], ["nettoys"]])
+        ]), [["app", "awake"], ["rclone"], ["ruler"], ["logs"], ["nettoys"]])
         XCTAssertEqual(MainModifiedView.groupRows([
             ("app", 1), ("ruler", 5), ("awake", 1)
-        ]), [["app"], ["ruler"], ["awake"]])
+        ]), [["app", "awake"], ["ruler"]])
     }
 
     func testSearchMatchesEveryFieldAndRequiresEveryTerm() {

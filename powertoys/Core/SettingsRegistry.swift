@@ -597,10 +597,13 @@ private extension SettingsRegistry {
 
 private extension SettingsRegistry {
     static var rulerEntries: [Entry] {
-        [
+        let defaultLengths = RulerLayoutState.defaultLengths()
+        return [
             rulerScalar(id: "unit", label: "Default unit", defaultValue: Prefs.defaultUnit.rawValue, apply: { prefs.unit = Unit(rawValue: $0) ?? Prefs.defaultUnit }),
-            rulerScalar(id: "defaultHorizontalLength", label: "Default horizontal length", defaultValue: Prefs.unsetDefaultRulerLength, apply: { prefs.defaultHorizontalLength = $0 }),
-            rulerScalar(id: "defaultVerticalLength", label: "Default vertical length", defaultValue: Prefs.unsetDefaultRulerLength, apply: { prefs.defaultVerticalLength = $0 }),
+            rulerScalar(id: "defaultHorizontalLength", label: "Default horizontal length", defaultValue: Prefs.unsetDefaultRulerLength,
+                        formatter: { rulerLengthFormat($0, fallback: defaultLengths.horizontal) }, apply: { prefs.defaultHorizontalLength = $0 }),
+            rulerScalar(id: "defaultVerticalLength", label: "Default vertical length", defaultValue: Prefs.unsetDefaultRulerLength,
+                        formatter: { rulerLengthFormat($0, fallback: defaultLengths.vertical) }, apply: { prefs.defaultVerticalLength = $0 }),
             rulerScalar(id: "foregroundOpacity", label: "Foreground opacity", defaultValue: Prefs.defaultForegroundOpacity, formatter: percentFormat, apply: { prefs.foregroundOpacity = $0 }),
             rulerScalar(id: "backgroundOpacity", label: "Background opacity", defaultValue: Prefs.defaultBackgroundOpacity, formatter: percentFormat, apply: { prefs.backgroundOpacity = $0 }),
             rulerScalar(id: "borderOpacity", label: "Border opacity", defaultValue: Prefs.defaultBorderOpacity, formatter: percentFormat, apply: { prefs.borderOpacity = $0 }),
@@ -936,6 +939,11 @@ private extension SettingsRegistry {
 
     static func percentFormat(_ value: Any) -> String {
         "\(numberFormat(value))%"
+    }
+
+    static func rulerLengthFormat(_ value: Any, fallback: CGFloat) -> String {
+        guard let number = value as? NSNumber else { return defaultFormat(value) }
+        return numberFormat(number.doubleValue > Prefs.unsetDefaultRulerLength ? number.doubleValue : Double(fallback))
     }
 
     static func menuItemFormat(_ item: SystemMonitorMenuItemConfiguration) -> String {
