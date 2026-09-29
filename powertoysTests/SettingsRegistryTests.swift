@@ -46,6 +46,15 @@ final class SettingsRegistryTests: XCTestCase {
         }
     }
 
+    func testRulerLengthDefaultsShowTheirEffectiveScreenValues() throws {
+        let lengths = RulerLayoutState.defaultLengths()
+        let horizontal = try XCTUnwrap(SettingsRegistry.entries.first { $0.id == "ruler.defaultHorizontalLength" })
+        let vertical = try XCTUnwrap(SettingsRegistry.entries.first { $0.id == "ruler.defaultVerticalLength" })
+
+        XCTAssertEqual(horizontal.defaultDisplay, NSNumber(value: Double(lengths.horizontal)).stringValue)
+        XCTAssertEqual(vertical.defaultDisplay, NSNumber(value: Double(lengths.vertical)).stringValue)
+    }
+
     func testJSONStringComparisonIgnoresWhitespaceAndObjectOrder() {
         withDefaults { defaults in
             defaults.set(#"{ "items": [1, 2], "enabled": true }"#, forKey: "json")

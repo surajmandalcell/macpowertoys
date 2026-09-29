@@ -26,7 +26,7 @@ struct MainModifiedView: View {
                 ForEach(groupLayout, id: \.first) { ids in
                     HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                         ForEach(ids, id: \.self) { id in
-                            group(id, compact: ids.count == 2).frame(maxWidth: .infinity)
+                            group(id).frame(maxWidth: .infinity)
                         }
                     }
                 }
@@ -58,68 +58,45 @@ struct MainModifiedView: View {
     }
 
     static func groupRows(_ groups: [(id: String, count: Int)]) -> [[String]] {
+        var remaining = groups
         var rows: [[String]] = []
-        var index = 0
-        while index < groups.count {
-            if groups[index].count <= 3, index + 1 < groups.count, groups[index + 1].count <= 3 {
-                rows.append([groups[index].id, groups[index + 1].id])
-                index += 2
-            } else {
-                rows.append([groups[index].id])
-                index += 1
-            }
+        while !remaining.isEmpty {
+            let group = remaining.removeFirst()
+            guard group.count <= 3,
+                  let match = remaining.firstIndex(where: { $0.count == group.count && $0.count <= 3 })
+            else { rows.append([group.id]); continue }
+            rows.append([group.id, remaining.remove(at: match).id])
         }
         return rows
     }
 
-    private func group(_ toolID: String, compact: Bool) -> some View {
+    private func group(_ toolID: String) -> some View {
+        let lastID = groupedDifferences[toolID]?.last?.id
         OnePlusCard {
             OnePlusCardHeader(groupTitles[toolID] ?? toolID)
-            if !compact {
-                HStack(spacing: OnePlusMetrics.cardGap) {
-                    Text("Setting").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Current").frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
-                    Text("Default").frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
-                    Color.clear.frame(width: OnePlusCatalogMetrics.openWidth)
-                }.onePlusTableHeader()
-            }
             LazyVStack(spacing: 0) {
-                ForEach(groupedDifferences[toolID] ?? []) { difference in row(difference, compact: compact) }
+                ForEach(groupedDifferences[toolID] ?? []) { difference in
+                    row(difference, separator: difference.id != lastID)
+                }
             }
         }
     }
 
-    private func row(_ difference: SettingsRegistry.Difference, compact: Bool) -> some View {
-        HStack(spacing: OnePlusMetrics.cardGap) {
-            VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
-                Text(difference.label).onePlusText(.row).lineLimit(1).help(difference.label)
-                if compact {
-                    Text("Current: \(difference.currentDisplay) · Default: \(difference.defaultDisplay)")
-                        .onePlusText(.caption).lineLimit(1).textSelection(.enabled)
-                        .help("Current: \(difference.currentDisplay)\nDefault: \(difference.defaultDisplay)")
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-            if !compact {
-                value(difference.currentDisplay)
-                value(difference.defaultDisplay)
-            }
+    private func row(_ difference: SettingsRegistry.Difference, separator: Bool) -> some View {
+        OnePlusSettingRow(
+            difference.label,
+            caption: "Current: \(difference.currentDisplay) · Default: \(difference.defaultDisplay)",
+            separator: separator
+        ) {
             Button("Reset") { resetRequest = difference.id }
                 .buttonStyle(OnePlusButtonStyle(.neutral, minWidth: OnePlusCatalogMetrics.openWidth))
                 .disabled(resetRequest != nil)
                 .help("Reset \(difference.label)")
                 .accessibilityLabel("Reset \(difference.label)")
         }
-        .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .frame(height: OnePlusMetrics.settingRow)
-        .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
         .contextMenu {
             Button("Reset \(difference.label)") { resetRequest = difference.id }.disabled(resetRequest != nil)
         }
-    }
-
-    private func value(_ text: String) -> some View {
-        Text(text).onePlusText(.mono).lineLimit(1).help(text).textSelection(.enabled)
-            .frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
     }
 
     private func refresh() {
