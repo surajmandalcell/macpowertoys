@@ -24,6 +24,9 @@ struct FanControlView: View {
         if let error = service.errorMessage { return error }
         guard let snapshot = service.snapshot else { return "Fan data unavailable" }
         guard !snapshot.fans.isEmpty else { return "No fans detected" }
+        if !manualControlEnabled, service.canControl || service.canRestoreAutomatic {
+            return "Auto follows macOS"
+        }
         guard service.canControl else {
             if service.canRestoreAutomatic {
                 return snapshot.hasExternalManualControl
@@ -142,11 +145,12 @@ struct FanControlView: View {
             }
             OnePlusSettingRow(
                 "Preset",
-                caption: service.selectedPreset?.rawValue ?? "No MacPowerToys preset",
+                caption: manualControlEnabled ? service.selectedPreset?.rawValue : "Turn on fan control to choose a preset",
                 controlWidth: 160,
                 separator: false
             ) {
                 presetButtons
+                    .disabled(!manualControlEnabled)
             }
         }
     }
@@ -163,6 +167,10 @@ struct FanControlView: View {
                 }
             }
         )
+    }
+
+    private var manualControlEnabled: Bool {
+        service.selectedPreset != nil && service.selectedPreset != .auto
     }
 
     private var fanIdentity: some View {

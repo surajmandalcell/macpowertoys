@@ -97,7 +97,7 @@ nonisolated enum TaskManagerSystemReportParser {
             let field = [prefix, label(key)].filter { !$0.isEmpty }.joined(separator: " · ")
             switch value {
             case let text as String:
-                rows.append(TaskManagerReportRow(field: field, value: text.isEmpty ? "Unavailable" : text))
+                rows.append(TaskManagerReportRow(field: field, value: text.isEmpty ? "—" : text))
             case let number as NSNumber:
                 rows.append(TaskManagerReportRow(field: field, value: number.stringValue))
             case let nested as [String: Any]:
@@ -243,26 +243,25 @@ struct TaskManagerSystemReportView: View {
 
     var body: some View {
         TaskManagerPanel {
-            if isLoading {
-                VStack(spacing: 10) {
-                    ProgressView().controlSize(.small)
-                    Text("Collecting system information…")
-                        .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
+            HStack(spacing: 0) {
+                Group {
+                    if categories.isEmpty { loadingTree } else { tree }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if categories.isEmpty {
-                ContentUnavailableView(
-                    "System information unavailable",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(errorMessage ?? "Task Manager could not read system_profiler output.")
-                )
-            } else {
-                HStack(spacing: 0) {
-                    tree
-                        .frame(width: 180)
-                    Rectangle().fill(TaskManagerTheme.line).frame(width: 1)
+                .frame(width: 180)
+                Rectangle().fill(TaskManagerTheme.line).frame(width: 1)
+                Group {
+                    if isLoading {
+                        loadingReport
+                    } else if categories.isEmpty {
+                        OnePlusEmptyState(
+                            "System information unavailable",
+                            systemImage: "exclamationmark.triangle",
+                            caption: errorMessage ?? "Task Manager could not collect system information."
+                        )
+                    } else {
                     reportContent
                 }
+            }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -277,6 +276,44 @@ struct TaskManagerSystemReportView: View {
             }
             requestedAction = nil
         }
+    }
+
+    private var loadingTree: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(groups, id: \.self) { group in
+                Label(group, systemImage: "chevron.down")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+            }
+            Spacer()
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(TaskManagerTheme.sidebar.opacity(0.56))
+    }
+
+    private var loadingReport: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 9) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 14))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                Text("System information")
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 50)
+            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Collecting system information…")
+                    .font(.system(size: 10))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+            }
+            .padding(18)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var tree: some View {

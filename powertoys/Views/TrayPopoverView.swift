@@ -1451,7 +1451,8 @@ struct SystemMonitorTrayView: View {
                     secondary: page == .network ? history.compactMap(\.networkUpload) : [],
                     range: chartRange(values),
                     unit: page == .network ? "/s" : "%",
-                    compact: true
+                    compact: true,
+                    stepped: page == .sensors
                 )
                 .frame(height: 92)
             }
@@ -1481,14 +1482,14 @@ struct SystemMonitorTrayView: View {
                 ("Available", memoryAvailable),
                 ("Total", sample?.memoryTotal.map(Self.bytes) ?? "—"),
                 ("Compressed", sample?.memoryDetails.map { Self.bytes($0.compressed) } ?? "—"),
-                ("Swap used", sample?.memoryDetails?.swapUsed.map(Self.bytes) ?? "Unavailable"),
+                ("Swap used", sample?.memoryDetails?.swapUsed.map(Self.bytes) ?? "—"),
             ]
         case .network:
             [
                 ("Download", sample?.networkDownload.map(Self.rate) ?? "—"),
                 ("Upload", sample?.networkUpload.map(Self.rate) ?? "—"),
                 ("Interface", sample?.networkDetails?.interfaceName ?? "—"),
-                ("Local address", sample?.networkDetails?.localAddress ?? "Unavailable"),
+                ("Local address", sample?.networkDetails?.localAddress ?? "—"),
             ]
         case .disk:
             [
@@ -1499,12 +1500,7 @@ struct SystemMonitorTrayView: View {
                 ("Write", sample?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
             ]
         case .battery:
-            [
-                ("Status", batteryDetail),
-                ("Health", sample?.batteryDetails?.health ?? "Unavailable"),
-                ("Cycle count", sample?.batteryDetails?.cycleCount.map(String.init) ?? "Unavailable"),
-                ("Power draw", batteryPower),
-            ]
+            batteryPanelRows
         case .sensors:
             [("Thermal pressure", sample?.thermalState ?? "—")]
         case .home, .processes:
@@ -1743,15 +1739,23 @@ struct SystemMonitorTrayView: View {
     }
 
     private var batteryDetail: String {
-        guard let charging = sample?.batteryCharging else { return "Unavailable" }
+        guard let charging = sample?.batteryCharging else { return "—" }
         return charging ? "Connected to power" : "On battery"
     }
 
     private var batteryPower: String {
         guard let voltage = sample?.batteryDetails?.voltageMillivolts,
-              let amperage = sample?.batteryDetails?.amperageMilliamps else { return "Unavailable" }
+              let amperage = sample?.batteryDetails?.amperageMilliamps else { return "—" }
         let watts = Double(voltage) * Double(abs(amperage)) / 1_000_000
         return "\(Self.decimal(watts)) W"
+    }
+
+    private var batteryPanelRows: [(String, String)] {
+        var rows = [("Status", batteryDetail)]
+        if let health = sample?.batteryDetails?.health { rows.append(("Health", health)) }
+        if let cycles = sample?.batteryDetails?.cycleCount { rows.append(("Cycle count", String(cycles))) }
+        if batteryPower != "—" { rows.append(("Power draw", batteryPower)) }
+        return rows
     }
 
     private var loadValue: String {
@@ -1760,9 +1764,9 @@ struct SystemMonitorTrayView: View {
 
     nonisolated private static func thermalLevel(_ state: String?) -> Double? {
         switch state {
-        case "Nominal": 18
-        case "Fair": 48
-        case "Serious": 76
+        case "Nominal": 0
+        case "Fair": 33
+        case "Serious": 66
         case "Critical": 100
         default: nil
         }

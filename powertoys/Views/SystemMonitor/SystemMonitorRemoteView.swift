@@ -144,7 +144,8 @@ struct SystemMonitorRemoteView: View {
                                 Text(profile.name)
                                     .font(.system(size: 10.5, weight: .medium))
                                 Text("\(profile.host) · \(profile.platform.rawValue) · \(intervalTitle(profile.interval))")
-                                    .font(.system(size: 8.5, design: .monospaced))
+                                    .font(.system(size: 8.5))
+                                    .monospacedDigit()
                                     .foregroundStyle(TaskManagerTheme.secondary)
                                     .lineLimit(1)
                             }
@@ -162,7 +163,7 @@ struct SystemMonitorRemoteView: View {
                             .fixedSize()
                         }
                         .padding(.horizontal, 14)
-                        .frame(minHeight: 53)
+                        .frame(height: 56)
                         if profile.id != lastProfileID {
                             Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         }

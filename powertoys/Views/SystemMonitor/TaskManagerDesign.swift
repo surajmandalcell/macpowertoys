@@ -98,19 +98,64 @@ extension TaskManagerHeader where Trailing == EmptyView {
     }
 }
 
+nonisolated enum TaskManagerChartGeometry {
+    static func xPositions(count: Int, capacity: Int, width: CGFloat) -> [CGFloat] {
+        guard count > 0 else { return [] }
+        let capacity = max(capacity, count, 2)
+        let step = width / CGFloat(capacity - 1)
+        let start = max(0, width - step * CGFloat(count - 1))
+        return (0..<count).map { start + CGFloat($0) * step }
+    }
+
+    static func sampleIndex(at x: CGFloat, count: Int, capacity: Int, width: CGFloat) -> Int {
+        guard count > 1 else { return 0 }
+        let positions = xPositions(count: count, capacity: capacity, width: width)
+        let step = width / CGFloat(max(capacity, count, 2) - 1)
+        return min(max(Int(((x - positions[0]) / max(step, 1)).rounded()), 0), count - 1)
+    }
+}
+
 struct TaskManagerHistoryChart: View {
     let values: [Double]
     var secondary: [Double] = []
     var range: ClosedRange<Double> = 0...100
     var unit = "%"
     var compact = false
+    var sampleCapacity = 120
+    var stepped = false
     var upperScaleLabel: String?
+    var middleScaleLabel: String?
     var lowerScaleLabel: String?
     var primaryColor = TaskManagerTheme.ink.opacity(0.76)
     var secondaryColor = TaskManagerTheme.accent
     @State private var hoverX: CGFloat?
 
+    @ViewBuilder
     var body: some View {
+        if compact {
+            plot
+        } else {
+            HStack(spacing: 8) {
+                if let upperScaleLabel, let lowerScaleLabel {
+                    VStack(alignment: .trailing) {
+                        Text(upperScaleLabel)
+                        Spacer()
+                        Text(middleScaleLabel ?? "")
+                        Spacer()
+                        Text(lowerScaleLabel)
+                    }
+                    .font(.system(size: 8))
+                    .monospacedDigit()
+                    .foregroundStyle(TaskManagerTheme.muted)
+                    .frame(width: 54, alignment: .trailing)
+                    .allowsHitTesting(false)
+                }
+                plot
+            }
+        }
+    }
+
+    private var plot: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 Canvas { context, size in
@@ -118,20 +163,13 @@ struct TaskManagerHistoryChart: View {
                     draw(values, color: primaryColor, context: &context, size: size, fills: true)
                     draw(secondary, color: secondaryColor, context: &context, size: size, fills: false)
                 }
-                if !compact, let upperScaleLabel, let lowerScaleLabel {
-                    VStack(alignment: .trailing) {
-                        Text(upperScaleLabel)
-                        Spacer()
-                        Text(lowerScaleLabel)
-                    }
-                    .font(.system(size: 8, design: .monospaced))
-                    .foregroundStyle(TaskManagerTheme.muted)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                    .padding(4)
-                    .allowsHitTesting(false)
-                }
                 if let hoverX, !values.isEmpty {
-                    let index = min(max(Int((hoverX / max(proxy.size.width, 1)) * CGFloat(values.count - 1)), 0), values.count - 1)
+                    let index = TaskManagerChartGeometry.sampleIndex(
+                        at: hoverX,
+                        count: values.count,
+                        capacity: sampleCapacity,
+                        width: proxy.size.width
+                    )
                     Rectangle()
                         .fill(TaskManagerTheme.secondary.opacity(0.65))
                         .frame(width: 1)
@@ -179,16 +217,21 @@ struct TaskManagerHistoryChart: View {
         let samples = samples.filter(\.isFinite)
         guard !samples.isEmpty else { return }
         let span = max(range.upperBound - range.lowerBound, 0.001)
+        let positions = TaskManagerChartGeometry.xPositions(
+            count: samples.count,
+            capacity: sampleCapacity,
+            width: size.width
+        )
         let points = samples.enumerated().map { index, value in
             CGPoint(
-                x: samples.count == 1 ? size.width : CGFloat(index) / CGFloat(samples.count - 1) * size.width,
+                x: positions[index],
                 y: size.height - CGFloat((min(max(value, range.lowerBound), range.upperBound) - range.lowerBound) / span) * size.height
             )
         }
         if fills {
             var area = Path()
-            area.move(to: CGPoint(x: 0, y: size.height))
-            points.forEach { area.addLine(to: $0) }
+            area.move(to: CGPoint(x: points[0].x, y: size.height))
+            append(points, to: &area)
             area.addLine(to: CGPoint(x: size.width, y: size.height))
             area.closeSubpath()
             context.drawLayer { layer in
@@ -209,10 +252,33 @@ struct TaskManagerHistoryChart: View {
             }
         }
         var path = Path()
-        path.addLines(points)
+        path.move(to: points[0])
+        append(Array(points.dropFirst()), after: points[0], to: &path)
         context.stroke(path, with: .color(color),
                        style: StrokeStyle(lineWidth: compact ? 1 : 1.2, lineCap: .round, lineJoin: .round))
+        if points.count == 1 {
+            context.fill(
+                Path(ellipseIn: CGRect(x: points[0].x - 1.5, y: points[0].y - 1.5, width: 3, height: 3)),
+                with: .color(color)
+            )
+        }
     }
+
+    private func append(_ points: [CGPoint], to path: inout Path) {
+        guard let first = points.first else { return }
+        path.addLine(to: first)
+        append(Array(points.dropFirst()), after: first, to: &path)
+    }
+
+    private func append(_ points: [CGPoint], after first: CGPoint, to path: inout Path) {
+        var previous = first
+        for point in points {
+            if stepped { path.addLine(to: CGPoint(x: point.x, y: previous.y)) }
+            path.addLine(to: point)
+            previous = point
+        }
+    }
+
 }
 
 enum TaskManagerHardwareSummary {

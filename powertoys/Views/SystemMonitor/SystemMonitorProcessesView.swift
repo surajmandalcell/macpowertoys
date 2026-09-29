@@ -167,16 +167,12 @@ struct SystemMonitorOverviewProcessesView: View {
     @State private var rows: [SystemMonitorProcessHierarchy.Row] = []
 
     var body: some View {
-        let lastRowID = rows.last?.id
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Top processes").font(.system(size: 11, weight: .medium))
                 Spacer()
                 Button("View all", action: onViewAll)
-                    .font(.system(size: 9))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
+                    .buttonStyle(OnePlusButtonStyle(.link, size: .small))
             }
             .frame(minHeight: 17)
             TaskManagerPanel {
@@ -191,8 +187,8 @@ struct SystemMonitorOverviewProcessesView: View {
                         Button { onSelect(row.process) } label: {
                             HStack(spacing: 8) {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "app")
-                                        .font(.system(size: 10))
+                                    Image(systemName: "gearshape")
+                                        .font(.system(size: 13))
                                         .foregroundStyle(TaskManagerTheme.secondary)
                                         .frame(width: 18, height: 18)
                                     Text(row.process.name)
@@ -211,9 +207,6 @@ struct SystemMonitorOverviewProcessesView: View {
                         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
                         .focusEffectDisabled()
                         .onePlusTableRow()
-                        if row.id != lastRowID {
-                            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                        }
                     }
                     if rows.isEmpty {
                         Text("—")
@@ -361,7 +354,6 @@ struct SystemMonitorProcessesView: View {
     }
 
     private var processTable: some View {
-        let lastRowID = visibleRows.last?.id
         return TaskManagerPanel {
             VStack(spacing: 0) {
                 tableHeader
@@ -369,9 +361,6 @@ struct SystemMonitorProcessesView: View {
                     LazyVStack(spacing: 0) {
                         ForEach(visibleRows) { row in
                             processRow(row)
-                            if row.id != lastRowID {
-                                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                            }
                         }
                         if !didLoad {
                             ProgressView().controlSize(.small)
@@ -397,13 +386,12 @@ struct SystemMonitorProcessesView: View {
 
     private var tableHeader: some View {
         HStack(spacing: 8) {
-            header(.name).frame(maxWidth: .infinity, alignment: .leading)
+            header(.name).padding(.leading, 26).frame(maxWidth: .infinity, alignment: .leading)
             header(.cpu).frame(width: 72, alignment: .trailing)
             header(.memory).frame(width: 90, alignment: .trailing)
             header(.pid).frame(width: 64, alignment: .trailing)
             Color.clear.frame(width: 24)
         }
-        .padding(.horizontal, 12)
         .onePlusTableHeader()
     }
 
@@ -413,8 +401,8 @@ struct SystemMonitorProcessesView: View {
             Button { selectedID = process.id } label: {
                 HStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        Image(systemName: "app")
-                            .font(.system(size: 10))
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 13))
                             .foregroundStyle(TaskManagerTheme.secondary)
                             .frame(width: 18, height: 18)
                         Text(process.name).lineLimit(1)
@@ -538,7 +526,7 @@ struct SystemMonitorProcessesView: View {
     }
 
     private func parentName(for process: SystemMonitorProcess) -> String {
-        guard process.parentPID > 0 else { return "Unavailable" }
+        guard process.parentPID > 0 else { return "—" }
         if let parent = processes.first(where: { $0.pid == process.parentPID }) {
             return "\(parent.name) (\(parent.pid))"
         }
@@ -638,7 +626,7 @@ struct ProcessDetailSheet: View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 9)
                 .fill(Color.white.opacity(0.06))
-                .overlay { Image(systemName: "app").font(.system(size: 22)).foregroundStyle(TaskManagerTheme.secondary) }
+                .overlay { Image(systemName: "gearshape").font(.system(size: 22)).foregroundStyle(TaskManagerTheme.secondary) }
                 .overlay { RoundedRectangle(cornerRadius: 9).strokeBorder(TaskManagerTheme.line) }
                 .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 4) {
@@ -678,9 +666,9 @@ struct ProcessDetailSheet: View {
     private var properties: some View {
         VStack(spacing: 0) {
             property("Parent", parentName)
-            property("User ID", process.userID == UInt32.max ? "Unavailable" : String(process.userID))
-            property("Started", process.started == 0 ? "Unavailable" : startedDate)
-            property("Virtual address space", process.virtualBytes == 0 && process.started == 0 ? "Unavailable" : bytes(process.virtualBytes),
+            property("User ID", process.userID == UInt32.max ? "—" : String(process.userID))
+            property("Started", process.started == 0 ? "—" : startedDate)
+            property("Virtual address space", process.virtualBytes == 0 && process.started == 0 ? "—" : bytes(process.virtualBytes),
                      help: "Reserved or mapped address ranges, including shared files and unused regions. This is not physical RAM. Compare Memory for RAM in use.")
         }
     }
@@ -720,7 +708,7 @@ struct ProcessDetailSheet: View {
                     .help("Copy executable path")
                 }
             }
-            Text(process.executablePath)
+            Text(executablePathDisplay)
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(TaskManagerTheme.secondary)
                 .textSelection(.enabled)
@@ -728,6 +716,11 @@ struct ProcessDetailSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 5))
                 .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.lineSoft) }
+            if executablePathDisplay == "—" {
+                Text("The executable path is not available for this process.")
+                    .font(.system(size: 9))
+                    .foregroundStyle(TaskManagerTheme.muted)
+            }
         }
     }
 
@@ -750,12 +743,17 @@ struct ProcessDetailSheet: View {
             .formatted(date: .abbreviated, time: .standard)
     }
 
+    private var executablePathDisplay: String {
+        process.executablePath == "Unavailable" || process.executablePath == "Protected process"
+            ? "—" : process.executablePath
+    }
+
     private func copyDetails() {
         let details = """
         \(process.name)
         PID: \(process.pid)
         Parent: \(parentName)
-        CPU: \(process.cpuPercent.map { "\($0)%" } ?? "Unavailable")
+        CPU: \(process.cpuPercent.map { "\($0)%" } ?? "—")
         Memory: \(bytes(process.residentBytes))
         Virtual address space: \(bytes(process.virtualBytes))
         Threads: \(process.threads)

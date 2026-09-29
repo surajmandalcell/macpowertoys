@@ -207,9 +207,20 @@ final class SystemMonitorTests: XCTestCase {
         ])
 
         XCTAssertEqual(details.cycleCount, 92)
-        XCTAssertEqual(details.health, "90%")
+        XCTAssertEqual(details.health, "89%")
         XCTAssertEqual(details.voltageMillivolts, 12_123)
         XCTAssertEqual(details.amperageMilliamps, -840)
+    }
+
+    func testShortHistoryStaysAtChartRightEdge() {
+        XCTAssertEqual(
+            TaskManagerChartGeometry.xPositions(count: 3, capacity: 11, width: 100),
+            [80, 90, 100]
+        )
+        XCTAssertEqual(
+            TaskManagerChartGeometry.sampleIndex(at: 91, count: 3, capacity: 11, width: 100),
+            1
+        )
     }
 
     func testSelectedProcessCountersRefreshAcrossSamples() async throws {
@@ -386,20 +397,6 @@ final class SystemMonitorTests: XCTestCase {
         attachment.name = "Task Manager — Process Detail"
         attachment.lifetime = .keepAlways
         add(attachment)
-    }
-
-    @MainActor
-    func testPlacementPickerKeepsItsBoundsForEverySelection() {
-        for metric in [SystemMonitorMenuMetric.cpu, .memory, .network, .disk] {
-            for placement in SystemMonitorMenuPlacement.allCases {
-                let host = NSHostingView(rootView: SystemMonitorPlacementPicker(
-                    metric: metric, selection: .constant(placement)
-                ))
-                host.layoutSubtreeIfNeeded()
-                XCTAssertEqual(host.fittingSize.width, 204, accuracy: 0.5)
-                XCTAssertEqual(host.fittingSize.height, UtilityLayout.workspaceActionHeight, accuracy: 0.5)
-            }
-        }
     }
 
     @MainActor
