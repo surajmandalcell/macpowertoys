@@ -153,17 +153,17 @@ struct NetToysWiFiPriorityView: View {
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(maxHeight: .infinity)
+                .frame(height: CGFloat(min(7, model.configuration.wifiPriority.ssids.count))
+                    * OnePlusMetrics.settingRow)
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func priorityRow(_ ssid: String) -> some View {
         let index = model.configuration.wifiPriority.ssids.firstIndex(of: ssid) ?? 0
         let isCurrent = model.helperStatus?.network?.ssid == ssid
         return HStack(spacing: OnePlusMetrics.navIconGap) {
-            Text("\(index + 1)").onePlusText(.mono).frame(width: OnePlusMetrics.controlHeight)
+            Text("\(index + 1)").onePlusText(.mono).frame(width: OnePlusMetrics.navIcon)
             Text(ssid).onePlusText(.row).lineLimit(1)
             Spacer()
             OnePlusStatus(isCurrent ? "Connected" : "Saved", state: isCurrent ? .online : .offline)
