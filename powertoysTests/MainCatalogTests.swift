@@ -44,6 +44,14 @@ final class MainCatalogTests: XCTestCase {
         let marketplace = try sourceFile("powertoys/Views/Marketplace/MarketplaceSettingsView.swift")
         XCTAssertTrue(marketplace.contains("@State private var installed: [MarketplaceEntry]"))
         XCTAssertFalse(marketplace.contains("private var installed: [MarketplaceEntry] { manager.entries.filter"))
+
+        let modified = try sourceFile("powertoys/Views/Main/MainModifiedView.swift")
+        let modifiedBody = try XCTUnwrap(modified.range(of: "var body: some View"))
+        let rowBuilder = try XCTUnwrap(modified.range(of: "static func groupRows"))
+        let modifiedRender = modified[modifiedBody.lowerBound..<rowBuilder.lowerBound]
+        XCTAssertFalse(modifiedRender.contains(".map"))
+        XCTAssertFalse(modifiedRender.contains(".filter"))
+        XCTAssertTrue(modified.contains("@State private var groupedDifferences"))
     }
 
     func testModifiedPairsShortGroupsWithoutReorderingLongGroups() {
