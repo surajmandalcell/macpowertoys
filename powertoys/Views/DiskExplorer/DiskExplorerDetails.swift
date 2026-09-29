@@ -279,17 +279,19 @@ struct DiskExplorerSettingsView: View {
                     Toggle("Show apparent file size", isOn: $apparentSize).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
             }
-            OnePlusCard {
-                OnePlusCardHeader("Scanning", systemImage: "folder")
-                OnePlusSettingRow("Include hidden files", separator: false) {
-                    Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                OnePlusCard {
+                    OnePlusCardHeader("Scanning", systemImage: "folder")
+                    OnePlusSettingRow("Include hidden files", separator: false) {
+                        Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    }
                 }
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Disk access", systemImage: "lock.shield")
-                OnePlusSettingRow(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked",
-                                  caption: "A scan reports folders that macOS did not let Diskman read.", separator: false) {
-                    Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }.buttonStyle(OnePlusButtonStyle(.link))
+                OnePlusCard {
+                    OnePlusCardHeader("Disk access", systemImage: "lock.shield")
+                    OnePlusSettingRow(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked",
+                                      caption: "A scan reports folders that macOS did not let Diskman read.", separator: false) {
+                        Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }.buttonStyle(OnePlusButtonStyle(.link))
+                    }
                 }
             }
         }
