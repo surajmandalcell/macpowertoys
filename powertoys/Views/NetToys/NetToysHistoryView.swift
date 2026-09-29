@@ -518,12 +518,13 @@ struct NetToysSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            if model.isLoading {
-                ProgressView("Loading network settings...").controlSize(.small)
-                    .onePlusText(.caption).accessibilityIdentifier("nettoys.settings-loading")
-            }
             OnePlusCard {
-                OnePlusCardHeader("Background helper")
+                OnePlusCardHeader("Background helper") {
+                    if model.isLoading {
+                        ProgressView("Loading network settings...").controlSize(.small)
+                            .onePlusText(.caption).accessibilityIdentifier("nettoys.settings-loading")
+                    }
+                }
                 OnePlusSettingRow("Enable NetToys", caption: "Keep SSH Anchor, Wi-Fi failover, and network history available.", separator: false) {
                     Toggle("Enable NetToys", isOn: Binding(get: { settings.isToolEnabled("nettoys") },
                            set: { settings.setToolEnabled($0, for: "nettoys") }))
