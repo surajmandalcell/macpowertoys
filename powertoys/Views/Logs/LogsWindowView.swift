@@ -4,7 +4,7 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-private enum LogsPage: String, CaseIterable, Identifiable {
+private enum LogsPage: String, CaseIterable, Identifiable, Sendable {
     case internalLogs = "internal"
     case systemIssues = "system"
     case settings
@@ -112,18 +112,20 @@ final class SystemLogReader {
     }
 }
 
-nonisolated private struct LogsRow: Identifiable {
+nonisolated private struct LogsRow: Identifiable, Sendable {
     let id: String
     let timestamp: Date
+    let time: String
     let level: String
     let levelFilter: LogLevel
     let symbol: String
     let source: String
     let message: String
 
-    init(_ entry: LogEntryData) {
+    init(_ entry: LogEntryData, time: String) {
         id = entry.id.uuidString
         timestamp = entry.timestamp
+        self.time = time
         levelFilter = entry.level
         switch entry.level {
         case .error: (level, symbol) = ("Error", "xmark.circle.fill")
@@ -135,9 +137,10 @@ nonisolated private struct LogsRow: Identifiable {
         message = entry.message
     }
 
-    init(_ entry: SystemLogLine) {
+    init(_ entry: SystemLogLine, time: String) {
         id = entry.id.uuidString
         timestamp = entry.timestamp
+        self.time = time
         level = entry.level.rawValue
         levelFilter = .error
         symbol = entry.level == .fault ? "bolt.trianglebadge.exclamationmark.fill" : "xmark.circle.fill"
@@ -151,55 +154,39 @@ nonisolated private struct LogsRow: Identifiable {
     }
 }
 
+nonisolated private struct PreparedLogs: Sendable {
+    let rows: [LogsRow]
+    let span: String?
+}
+
+nonisolated private struct LogsVersion: Equatable, Sendable {
+    let count: Int
+    let lastID: UUID?
+}
+
 struct LogsWindowView: View {
     @State private var page = LogsPage.internalLogs
     @State private var selectedLevels = Set(LogLevel.allCases)
     @State private var systemRange = SystemLogRange.oneHour
     @State private var systemLogs = SystemLogReader()
-    @State private var logManager = LogManager.shared
     @State private var search = ""
     @State private var searchFocus = 0
-    @State private var selection: Set<String> = []
-    @State private var sortOrder = [KeyPathComparator(\LogsRow.timestamp, order: .reverse)]
-    @State private var detailID: String?
-    @State private var confirmClear = false
-    @AppStorage("logs.fontSize") private var logsFontSize = 11
-
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter
-    }()
-    private static let spanFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter
-    }()
-
-    private var sourceRows: [LogsRow] {
-        switch page {
-        case .internalLogs, .settings: logManager.logs.map(LogsRow.init)
-        case .systemIssues: systemLogs.entries.map(LogsRow.init)
-        }
-    }
-    private var visibleRows: [LogsRow] {
-        sourceRows
-            .filter {
-                selectedLevels.contains($0.levelFilter)
-                    && (search.isEmpty
-                        || $0.source.localizedCaseInsensitiveContains(search)
-                        || $0.message.localizedCaseInsensitiveContains(search))
-            }
-            .sorted(using: sortOrder)
-    }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .logs) { sidebar } content: { content }
+        OnePlusWindowRoot(canvas: .logs) {
+            LogsSidebar(
+                page: $page,
+                selectedLevels: $selectedLevels,
+                systemLogs: systemLogs,
+                search: $search,
+                searchFocus: searchFocus
+            )
+        } content: {
+            content
+        }
             .background(WindowAccessor(identifier: "logs"))
             .buttonStyle(OnePlusButtonStyle())
             .onChange(of: page) { _, newPage in
-                selection.removeAll()
                 if newPage == .systemIssues && systemLogs.entries.isEmpty { systemLogs.refresh(range: systemRange) }
             }
             .onChange(of: systemRange) { _, _ in
@@ -211,17 +198,6 @@ struct LogsWindowView: View {
                 page = .settings
             }
             .onOpenToolPage("logs") { open(page: $0) }
-            .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
-                if let detailID, let row = row(for: detailID) {
-                    LogDetailSheet(row: row, fontSize: logsFontSize) { self.detailID = nil }
-                }
-            }
-            .confirmationDialog("Clear all internal logs?", isPresented: $confirmClear) {
-                Button("Clear Logs", role: .destructive) { logManager.clearMemoryLogs() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This clears the in-memory internal log list.")
-            }
             .overlay(alignment: .topLeading) {
                 Button("") { searchFocus &+= 1 }
                     .keyboardShortcut("f")
@@ -231,9 +207,43 @@ struct LogsWindowView: View {
             }
     }
 
-    private var sidebar: some View {
-        let counts = Dictionary(grouping: logManager.logs, by: \.level).mapValues(\.count)
-        return OnePlusSidebar(title: "Logs") {
+    @ViewBuilder private var content: some View {
+        switch page {
+        case .internalLogs, .systemIssues:
+            LogsPageView(
+                page: page,
+                selectedLevels: selectedLevels,
+                systemRange: $systemRange,
+                systemLogs: systemLogs,
+                search: search
+            )
+        case .settings: LogsSettingsPage()
+        }
+    }
+
+    private func open(page pageID: String) {
+        guard let requested = LogsPage(rawValue: pageID) else { return }
+        page = requested
+    }
+}
+
+private struct LogsSidebar: View {
+    @Binding var page: LogsPage
+    @Binding var selectedLevels: Set<LogLevel>
+    let systemLogs: SystemLogReader
+    @Binding var search: String
+    let searchFocus: Int
+
+    @State private var logManager = LogManager.shared
+    @State private var counts: [LogLevel: Int] = [:]
+    @State private var countTask: Task<Void, Never>?
+
+    private var version: LogsVersion {
+        LogsVersion(count: logManager.logs.count, lastID: logManager.logs.last?.id)
+    }
+
+    var body: some View {
+        OnePlusSidebar(title: "Logs") {
             OnePlusSearchField(
                 prompt: "Search logs",
                 text: $search,
@@ -245,14 +255,20 @@ struct LogsWindowView: View {
             )
         } navigation: {
             OnePlusNavCaption("Sources")
-            OnePlusNavRow("Internal", systemImage: LogsPage.internalLogs.icon, selected: page == .internalLogs, count: logManager.logs.count) {
-                page = .internalLogs
-            }
-            .keyboardShortcut("1")
-            OnePlusNavRow("System issues", systemImage: LogsPage.systemIssues.icon, selected: page == .systemIssues, count: systemLogs.entries.count) {
-                page = .systemIssues
-            }
-            .keyboardShortcut("2")
+            OnePlusNavRow(
+                "Internal",
+                systemImage: LogsPage.internalLogs.icon,
+                selected: page == .internalLogs,
+                count: logManager.logs.count
+            ) { page = .internalLogs }
+                .keyboardShortcut("1")
+            OnePlusNavRow(
+                "System issues",
+                systemImage: LogsPage.systemIssues.icon,
+                selected: page == .systemIssues,
+                count: systemLogs.entries.count
+            ) { page = .systemIssues }
+                .keyboardShortcut("2")
 
             OnePlusNavCaption("Levels")
             ForEach(LogLevel.allCases, id: \.self) { level in
@@ -262,22 +278,68 @@ struct LogsWindowView: View {
                     selected: false,
                     count: counts[level, default: 0]
                 ) { toggle(level) }
-                .accessibilityValue(selectedLevels.contains(level) ? "Included" : "Excluded")
+                    .accessibilityValue(selectedLevels.contains(level) ? "Included" : "Excluded")
             }
         } bottom: {
             OnePlusNavRow("Settings", systemImage: "gearshape", selected: page == .settings) { page = .settings }
                 .keyboardShortcut(",")
         }
-    }
-
-    @ViewBuilder private var content: some View {
-        switch page {
-        case .internalLogs, .systemIssues: logPage
-        case .settings: LogsSettingsPage()
+        .task { rebuildCounts() }
+        .onChange(of: version) { rebuildCounts() }
+        .onDisappear {
+            countTask?.cancel()
+            countTask = nil
         }
     }
 
-    private var logPage: some View {
+    private func toggle(_ level: LogLevel) {
+        if selectedLevels.contains(level) { selectedLevels.remove(level) }
+        else { selectedLevels.insert(level) }
+    }
+
+    private func rebuildCounts() {
+        countTask?.cancel()
+        let logs = logManager.logs
+        countTask = Task {
+            let prepared = await Task.detached(priority: .userInitiated) {
+                Dictionary(grouping: logs, by: \.level).mapValues(\.count)
+            }.value
+            guard !Task.isCancelled else { return }
+            counts = prepared
+        }
+    }
+}
+
+private struct LogsPageView: View {
+    let page: LogsPage
+    let selectedLevels: Set<LogLevel>
+    @Binding var systemRange: SystemLogRange
+    let systemLogs: SystemLogReader
+    let search: String
+
+    @State private var logManager = LogManager.shared
+    @State private var selection: Set<String> = []
+    @State private var sortOrder = [KeyPathComparator(\LogsRow.timestamp, order: .reverse)]
+    @State private var visibleRows: [LogsRow] = []
+    @State private var visibleSpan: String?
+    @State private var rowLoadTask: Task<Void, Never>?
+    @State private var detailID: String?
+    @State private var confirmClear = false
+    @AppStorage("logs.fontSize") private var logsFontSize = 11
+
+    private var internalVersion: LogsVersion {
+        page == .internalLogs
+            ? LogsVersion(count: logManager.logs.count, lastID: logManager.logs.last?.id)
+            : LogsVersion(count: 0, lastID: nil)
+    }
+
+    private var systemVersion: LogsVersion {
+        page == .systemIssues
+            ? LogsVersion(count: systemLogs.entries.count, lastID: systemLogs.entries.last?.id)
+            : LogsVersion(count: 0, lastID: nil)
+    }
+
+    var body: some View {
         OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: page.title, subtitle: subtitle) {
                 if page == .systemIssues {
@@ -324,9 +386,9 @@ struct LogsWindowView: View {
                 .frame(maxHeight: .infinity)
             } else {
                 OnePlusCard {
-                    Table(visibleRows, selection: $selection, sortOrder: $sortOrder) {
+                    Table(visibleRows, selection: $selection, sortOrder: sortBinding) {
                         TableColumn("Time", value: \LogsRow.timestamp) { row in
-                            Text(Self.timeFormatter.string(from: row.timestamp))
+                            Text(row.time)
                                 .onePlusText(.mono)
                                 .textSelection(.enabled)
                         }
@@ -342,7 +404,6 @@ struct LogsWindowView: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                                 .textSelection(.enabled)
-                                .help(row.source)
                         }
                         .width(min: 140, ideal: 160, max: 180)
                         TableColumn("Message", value: \LogsRow.message) { row in
@@ -350,7 +411,6 @@ struct LogsWindowView: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                                 .textSelection(.enabled)
-                                .help(row.message)
                         }
                         .width(min: 320, ideal: 500)
                     }
@@ -365,26 +425,93 @@ struct LogsWindowView: View {
             }
         }
         .accessibilityIdentifier("logs.\(page.rawValue)")
+        .task { rebuildRows() }
+        .onChange(of: page) {
+            selection.removeAll()
+            rebuildRows()
+        }
+        .onChange(of: search) { rebuildRows() }
+        .onChange(of: selectedLevels) { rebuildRows() }
+        .onChange(of: internalVersion) { rebuildRows() }
+        .onChange(of: systemVersion) { rebuildRows() }
+        .onDisappear {
+            rowLoadTask?.cancel()
+            rowLoadTask = nil
+        }
+        .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
+            if let detailID, let row = row(for: detailID) {
+                LogDetailSheet(row: row, fontSize: logsFontSize) { self.detailID = nil }
+            }
+        }
+        .confirmationDialog("Clear all internal logs?", isPresented: $confirmClear) {
+            Button("Clear Logs", role: .destructive) { logManager.clearMemoryLogs() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This clears the in-memory internal log list.")
+        }
     }
 
     private var subtitle: String {
-        guard let first = visibleRows.map(\.timestamp).min(), let last = visibleRows.map(\.timestamp).max() else {
+        guard let visibleSpan else {
             return page == .systemIssues ? "0 entries · read on demand · up to \(SystemLogReader.maximumEntries)" : "0 entries"
         }
-        return "\(visibleRows.count) entries · \(Self.spanFormatter.string(from: first)) – \(Self.spanFormatter.string(from: last))"
+        return "\(visibleRows.count) entries · \(visibleSpan)"
     }
 
-    private func open(page pageID: String) {
-        guard let requested = LogsPage(rawValue: pageID) else { return }
-        page = requested
+    private var sortBinding: Binding<[KeyPathComparator<LogsRow>]> {
+        Binding(
+            get: { sortOrder },
+            set: {
+                sortOrder = $0
+                rebuildRows()
+            }
+        )
     }
 
-    private func toggle(_ level: LogLevel) {
-        if selectedLevels.contains(level) { selectedLevels.remove(level) }
-        else { selectedLevels.insert(level) }
+    private func rebuildRows() {
+        rowLoadTask?.cancel()
+        let internalEntries = page == .internalLogs ? logManager.logs : []
+        let systemEntries = page == .systemIssues ? systemLogs.entries : []
+        let page = page
+        let selectedLevels = selectedLevels
+        let search = search
+        let sortOrder = sortOrder
+
+        rowLoadTask = Task {
+            let prepared = await Task.detached(priority: .userInitiated) {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "HH:mm:ss"
+                let source = page == .internalLogs
+                    ? internalEntries.map { LogsRow($0, time: formatter.string(from: $0.timestamp)) }
+                    : systemEntries.map { LogsRow($0, time: formatter.string(from: $0.timestamp)) }
+                let rows = source
+                    .filter {
+                        selectedLevels.contains($0.levelFilter)
+                            && (search.isEmpty
+                                || $0.source.localizedCaseInsensitiveContains(search)
+                                || $0.message.localizedCaseInsensitiveContains(search))
+                    }
+                    .sorted(using: sortOrder)
+                let firstTimestamp = rows.map(\.timestamp).min()
+                let lastTimestamp = rows.map(\.timestamp).max()
+                let span: String?
+                if let firstTimestamp, let lastTimestamp {
+                    let spanFormatter = DateFormatter()
+                    spanFormatter.dateStyle = .short
+                    spanFormatter.timeStyle = .short
+                    span = spanFormatter.string(from: firstTimestamp) + " – " + spanFormatter.string(from: lastTimestamp)
+                } else {
+                    span = nil
+                }
+                return PreparedLogs(rows: rows, span: span)
+            }.value
+            guard !Task.isCancelled else { return }
+            visibleRows = prepared.rows
+            visibleSpan = prepared.span
+        }
     }
 
-    private func row(for id: String) -> LogsRow? { sourceRows.first { $0.id == id } }
+    private func row(for id: String) -> LogsRow? { visibleRows.first { $0.id == id } }
 
     private func openDetail(_ ids: Set<String>) { detailID = ids.first }
 
@@ -415,7 +542,7 @@ struct LogsWindowView: View {
     }
 
     private func rowText(_ row: LogsRow) -> String {
-        "[\(Self.timeFormatter.string(from: row.timestamp))] [\(row.level)] \(row.source): \(row.message)"
+        "[\(row.time)] [\(row.level)] \(row.source): \(row.message)"
     }
 
     private func copyRows() { copy(selectedOrVisibleRows().map(rowText).joined(separator: "\n")) }
