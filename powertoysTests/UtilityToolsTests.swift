@@ -319,14 +319,21 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertFalse(try toolAboutViewSource().contains(".disabled(!settings.isToolEnabled"))
     }
 
-    func testHeavyToolSettingsYieldBeforeBuildingTheirContent() throws {
-        XCTAssertTrue(ToolSettingsContent.defersInitialLoad(for: "nettoys"))
-        XCTAssertTrue(ToolSettingsContent.defersInitialLoad(for: "system-monitor"))
-        XCTAssertFalse(ToolSettingsContent.defersInitialLoad(for: "awake"))
-        XCTAssertTrue(try toolSettingsContentSource().contains(".task(id: toolID)"))
+    func testEmbeddedSettingsLeavePageLayoutToTheirHost() throws {
+        let source = try toolSettingsContentSource()
+        for forbidden in ["OnePlusPage(", "ScrollView", ".padding(", "Spacer(", "maxHeight:"] {
+            XCTAssertFalse(source.contains(forbidden), forbidden)
+        }
+        for content in ["RcloneSettingsView()", "AwakeSettingsView()", "SwitchSettingsContent()",
+                        "MacTweaksSettingsContent()", "InputDevicesSettingsContent()",
+                        "SystemMonitorSettingsContent()", "SystemCareSettingsCards(mode:",
+                        "NetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView()",
+                        "ColorPickerSettingsView()", "TextExtractorSettingsView()", "LogsSettingsView()"] {
+            XCTAssertTrue(source.contains(content), content)
+        }
     }
 
-    func testHeavyToolSettingsReturnToLoadingWhenSelectionChanges() throws {
+    func testToolSettingsResetTheirStateWhenSelectionChanges() throws {
         let source = try toolAboutViewSource()
         let settings = try XCTUnwrap(source.range(of: "ToolSettingsContent(toolID: tool.id, changed: changed)"))
         let frame = try XCTUnwrap(source.range(
