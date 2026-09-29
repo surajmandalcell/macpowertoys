@@ -16,6 +16,11 @@ fields, selects, steppers, and buttons are 24pt. Switch rows use their control's
 width, captions live inside 56pt rows, Forward actions are both 64pt, and the
 Servers sort select is 96pt.
 
+Round 5 follow-up keeps the popover on the current app appearance when reused,
+falls back to the process name when a server works from `/`, adds the required
+Open App action, and keeps Forward's two 64pt action columns aligned. The manual
+port field remains readable before a host is entered.
+
 Round 2 keeps the Servers composition. Sort by must show a menu affordance
 and match Clean up in height and baseline. Port and memory values stay mono.
 Forward and Settings use 24pt compact controls and aligned control columns.
@@ -25,6 +30,7 @@ not executed. Signed menu, form, and interaction checks remain with the orchestr
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Fix the remaining Round 2 Portman panel review findings. | Reused popovers take `NSApp.appearance`, root-folder servers show their process name, Open App routes to the Portman tool page, and the Forward form keeps a 234pt field column beside 64pt actions. | Recapture Servers, Forward, and Settings in both appearances with the corrected diagnostics tab selection. |
 | Verify | Use compact controls and readable setting rows throughout the menu panel. | The panel inherits shared compact density. Switch rows release the 160pt field column, protected-app and cleanup captions use `OnePlusSettingRow`, and separators remain between rows. | Verify label fit and 24pt controls in every panel tab. |
 | Verify | Keep Portman controls fixed, scroll only row or card regions, and meet the 100ms page-switch gate. | Servers caches sorted rows, memory totals, cleanup suggestions, and sparklines off the main actor. Forward keeps its host form fixed. Settings keeps search fixed. Detail keeps its header fixed. | Remeasure page switches and scrolling in the signed build. |
 | Verify | Share one cards-only settings view with inherited density. | `PortmanSettingsView(search: "")` owns the setting cards. The menu host owns search, scrolling, and 24pt compact density. The no-result state is a card. Debug and build-for-testing pass. | Foundation must remove its page wrapper; then verify regular embedded settings and compact menu search. |
