@@ -122,7 +122,7 @@ struct MarketplaceSettingsView: View {
 
     private func toolRow(_ entry: MarketplaceEntry) -> some View {
         let versionText = version(entry)
-        HStack(spacing: OnePlusCatalogMetrics.gap) {
+        return HStack(spacing: OnePlusCatalogMetrics.gap) {
             MarketplaceToolIcon(entry: entry)
             VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
