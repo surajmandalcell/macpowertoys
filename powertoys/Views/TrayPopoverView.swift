@@ -1174,8 +1174,8 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .home: "house"
-        case .cpu: "gearshape"
-        case .gpu: "display"
+        case .cpu: "cpu"
+        case .gpu: "rectangle.3.group"
         case .memory: "memorychip"
         case .network: "network"
         case .disk: "internaldrive"
@@ -1686,26 +1686,16 @@ struct SystemMonitorTrayView: View {
         .minimumScaleFactor(0.7)
     }
 
-    @ViewBuilder
     private func metricIcon(_ page: SystemMonitorTrayPage) -> some View {
-        if page == .gpu {
-            GPUCardIcon().foregroundStyle(TaskManagerTheme.secondary)
-        } else {
-            Image(systemName: page.symbol)
-                .font(.system(size: 8.5, weight: .medium))
-                .foregroundStyle(TaskManagerTheme.secondary)
-        }
+        Image(systemName: page.symbol)
+            .font(.system(size: 8.5, weight: .medium))
+            .foregroundStyle(TaskManagerTheme.secondary)
     }
 
-    @ViewBuilder
     private func metricIcon(_ metric: SystemMonitorMenuMetric) -> some View {
-        if metric == .gpu {
-            GPUCardIcon().foregroundStyle(TaskManagerTheme.secondary)
-        } else {
-            Image(systemName: metric.symbol)
-                .font(.system(size: 8.5, weight: .medium))
-                .foregroundStyle(metric == .memory ? TaskManagerTheme.accent : TaskManagerTheme.secondary)
-        }
+        Image(systemName: metric == .gpu ? SystemMonitorTrayPage.gpu.symbol : metric.symbol)
+            .font(.system(size: 8.5, weight: .medium))
+            .foregroundStyle(TaskManagerTheme.secondary)
     }
 
     private func chartRange(

@@ -9,7 +9,6 @@ struct FanControlView: View {
 
     @State private var service = FanControlService.shared
     @State private var showsSetup = false
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
 
     private var rpm: String {
@@ -72,15 +71,11 @@ struct FanControlView: View {
     }
 
     private var compactContent: some View {
-        OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: "\(rpm) · \(utilization)") {
+        OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: compactStatus) {
             HStack(spacing: 2) {
                 if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
-                    Button { showsSetup = true } label: {
-                        Image(systemName: "exclamationmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(colorScheme == .light ? OnePlusColor.warn : OnePlusColor.accent)
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    Button("Set up") { showsSetup = true }
+                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
                     .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
                     .accessibilityHint(detail)
                     .accessibilityIdentifier("fan-control.setup")
@@ -90,6 +85,16 @@ struct FanControlView: View {
             }
         }
         .accessibilityHint(detail)
+    }
+
+    private var compactStatus: String {
+        if service.errorMessage != nil { return "Fan issue" }
+        if service.hasCompletedRead && !service.canControl {
+            if service.needsApproval { return "Approval needed" }
+            if service.needsHelperUpdate { return "Update needed" }
+            return "Helper needed"
+        }
+        return "\(rpm) · \(utilization)"
     }
 
     private var setupPopover: some View {

@@ -37,6 +37,8 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(SystemMonitorTrayPage.battery.metrics, [.battery])
         XCTAssertEqual(SystemMonitorTrayPage.sensors.metrics, [.thermal])
         XCTAssertEqual(SystemMonitorTrayPage.processes.metrics, [])
+        XCTAssertEqual(SystemMonitorTrayPage.cpu.symbol, "cpu")
+        XCTAssertEqual(SystemMonitorTrayPage.gpu.symbol, "rectangle.3.group")
     }
 
     func testTaskManagerWindowActivityRequiresVisibleUnminimizedWindow() {
