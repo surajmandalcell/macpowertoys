@@ -5,6 +5,36 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testNativeTableCellsHaveReuseIdentifiersWithoutRowTooltips() throws {
+        let rows = [OnePlusTableItem(id: "1", cells: ["Workstation", "Apple"], symbol: "desktopcomputer")]
+        let tableView = OnePlusNativeTable(
+            columns: [.init("Name", width: 180), .init("Vendor", width: 120)],
+            rows: rows,
+            selection: .constant([]),
+            sort: { _, _ in },
+            open: { _ in },
+            preview: { _ in },
+            remove: { _ in },
+            actions: { _ in [] }
+        )
+        let host = NSHostingView(rootView: tableView.frame(width: 380, height: 100))
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+
+        func find(_ view: NSView) -> NSTableView? {
+            if let table = view as? NSTableView { return table }
+            return view.subviews.lazy.compactMap { find($0) }.first
+        }
+        let table = try XCTUnwrap(find(host))
+        let primary = try XCTUnwrap(table.view(atColumn: 0, row: 0, makeIfNecessary: true) as? NSTableCellView)
+        let action = try XCTUnwrap(table.view(atColumn: 2, row: 0, makeIfNecessary: true) as? NSButton)
+        XCTAssertEqual(primary.identifier?.rawValue, "OnePlusNativeTable.primary")
+        XCTAssertEqual(action.identifier?.rawValue, "OnePlusNativeTable.action")
+        XCTAssertNil(primary.textField?.toolTip)
+        XCTAssertNil(action.toolTip)
+        XCTAssertEqual(action.accessibilityLabel(), "File actions")
+    }
+
     func testSwiftUIOwnsTableStyleAndGridColorDuringRowUpdates() throws {
         let model = TableRows()
         let host = NSHostingView(rootView: UpdatingTable(model: model))
