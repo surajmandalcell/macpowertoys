@@ -96,6 +96,21 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertEqual(final.root.allocatedBytes, try duBytes(root))
     }
 
+    func testScannerStopsAtEntryLimit() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        for index in 0..<8 {
+            try Data("item".utf8).write(to: root.appendingPathComponent("item-\(index)"))
+        }
+        let session = DiskScanSession(maximumEntries: 3)
+
+        XCTAssertThrowsError(try DiskExplorerScanner.scan(root, session: session)) { error in
+            XCTAssertEqual(error as? DiskExplorerScanError, .entryLimitExceeded(3))
+        }
+        XCTAssertEqual(session.entryCount, 3)
+    }
+
     func testScannerMatchesDuAndDoesNotFollowLinks() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
