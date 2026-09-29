@@ -20,7 +20,7 @@ colors:
   line-soft: { dark: "#2B2B2B", light: "#E1E1E1" }
   ink: { dark: "#EDEDED", light: "#242424" }
   secondary: { dark: "#A3A3A3", light: "#656565" }
-  muted: { dark: "#777777", light: "#777777" }
+  muted: { dark: "#8A8A8A", light: "#707070" }  # at least 4.5:1 on panel and window
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
   primary-fill: { dark: "#DDDDDD", light: "#383838" }
@@ -126,6 +126,10 @@ Color rules:
   gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`. Diskman keeps
   its storage series (see the Diskman recipe).
 - Text selection uses accent at 28% with primary text.
+- Every text token reaches at least 4.5:1 contrast on `window`, `sidebar`,
+  and `panel` in its appearance. Small captions never go below `muted`.
+- Menus, menu buttons, icon buttons, drag handles, and shortcut hints use
+  `controlInk` or `secondary`, never the system accent tint.
 
 ## Typography
 
@@ -186,7 +190,9 @@ Compact applets use a 40 pt titlebar with `C = 22`.
 ### Fixed window sizes
 
 No window is resizable. Zoom is disabled. Each size fits a 1920 x 1080
-display with the Dock and a 1728 x 1117 laptop display. The front matter
+display with the Dock and a 1728 x 1117 laptop display. The size is the
+visible window, including the hidden titlebar area: a 1080 x 660 canvas is a
+1080 x 660 window on screen, not 1080 x 692. The front matter
 lists every size, sidebar width, and density. Each window opens at its saved
 position, never a saved size, clamped to the visible frame of its display.
 
@@ -249,6 +255,8 @@ x=0                                  x=200 (216)
   icon, or geometry. No side stripe.
 - Count badges are 9 pt SF Mono `muted` text on the trailing edge.
 - Compact density uses 29 pt rows and 11.5 pt text. Everything else is equal.
+- Entity rows that need a second line (accounts, devices) are 44 pt with the
+  second line in the caption role. Plain destinations stay one line.
 
 ### Page
 
@@ -272,6 +280,10 @@ C=27  Page title                          [action] [action]
   line. Selection never moves tabs. Trailing tab tools center in the strip.
 - The first content element starts 16 pt below the header block or tab strip.
 - Content never touches the header. No second page header inside content.
+- Page scroll views always use overlay scrollers, even when the system
+  setting shows legacy scroll bars, so the right gutter stays 24 pt.
+- Buttons default to the window's density: 28 pt in regular windows, 24 pt
+  in compact windows and menu panels.
 
 ### Cards, rows, and the control column
 
