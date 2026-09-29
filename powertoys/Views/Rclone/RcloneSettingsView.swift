@@ -30,11 +30,19 @@ struct RcloneSettingsView: View {
 
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
-            syncEngineCard
-            transfersCard
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                syncEngineCard
+                    .frame(maxWidth: .infinity)
+                transfersCard
+                    .frame(maxWidth: .infinity)
+            }
             ignorePatternsCard
-            retriesCard
-            rcloneCard
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                retriesCard
+                    .frame(maxWidth: .infinity)
+                rcloneCard
+                    .frame(maxWidth: .infinity)
+            }
         }
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
@@ -50,7 +58,7 @@ struct RcloneSettingsView: View {
             OnePlusSettingRow("Show in menu bar", caption: "Show MacPowerToys transfer status in the menu bar.") {
                 Toggle("Show in menu bar", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            OnePlusSettingRow("Retry interrupted transfers", caption: "Queue unfinished transfers after the engine starts.", separator: false) {
+            OnePlusSettingRow("Retry interrupted transfers", caption: "Always on. Cloud Sync safely resumes unfinished transfers.", separator: false) {
                 Toggle("Retry interrupted transfers", isOn: .constant(true))
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
@@ -76,6 +84,7 @@ struct RcloneSettingsView: View {
                 OnePlusSelect(
                     choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
                     selection: $defaultOperation,
+                    width: OnePlusMetrics.wideControlColumn,
                     accessibilityLabel: "Default operation"
                 )
             }

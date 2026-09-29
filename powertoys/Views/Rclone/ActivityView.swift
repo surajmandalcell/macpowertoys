@@ -85,9 +85,9 @@ struct ActivityView: View {
                 OnePlusCard {
                     OnePlusNativeTable(
                         columns: [
-                            OnePlusGridColumn("Time", width: 140),
+                            OnePlusGridColumn("Time", width: 176),
                             OnePlusGridColumn("Operation", width: 88),
-                            OnePlusGridColumn("Source", width: 200),
+                            OnePlusGridColumn("Source", width: 188),
                             OnePlusGridColumn("Destination", width: 200),
                             OnePlusGridColumn("Size", width: 88, trailing: true),
                             OnePlusGridColumn("Duration", width: 88, trailing: true),
@@ -147,8 +147,7 @@ struct ActivityView: View {
         ascending: Bool
     ) -> PreparedActivity {
         let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
+        formatter.setLocalizedDateFormatFromTemplate("MMM d HH:mm")
         let filtered = snapshots.filter {
             search.isEmpty
                 || $0.source.localizedCaseInsensitiveContains(search)
