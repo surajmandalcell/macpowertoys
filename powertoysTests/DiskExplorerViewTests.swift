@@ -48,7 +48,7 @@ final class DiskExplorerViewTests: XCTestCase {
 
     func testCompletedChartsFoldTinyTargetsWithoutChangingLiveMembership() throws {
         let root = entry("/tmp/Diskman", kind: .directory)
-        let large = entry("/tmp/Diskman/Library", kind: .directory, bytes: 1_000_000)
+        let large = entry("/tmp/Diskman/other", kind: .directory, bytes: 1_000_000)
         let small = (0..<60).map { entry("/tmp/Diskman/tiny-\($0)", bytes: 1) }
         let aggregate = entry("/tmp/Diskman/folded", kind: .aggregate, bytes: 40, files: 100)
         root.replaceChildren([large, aggregate] + small)
@@ -63,14 +63,15 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertTrue(tiles.filter { $0.entry?.kind != .aggregate && $0.entry != nil }
             .allSatisfy { min($0.rect.width, $0.rect.height) >= 28 })
         let rings = DiskSunburstView.segments(for: root, apparent: false, measure: .space, radius: 250, scanComplete: true)
-        XCTAssertEqual(Set(rings.map(\.id)), Set([large.id, aggregate.id, root.id + "/other"]))
+        XCTAssertEqual(Set(rings.map(\.id)), Set([large.id, aggregate.id, root.id + "\0other"]))
+        XCTAssertEqual(Set(rings.map(\.id)).count, rings.count)
         XCTAssertEqual(rings.reduce(0) { $0 + $1.end - $1.start }, 2 * .pi, accuracy: 0.000001)
         let segment = try XCTUnwrap(rings.first { $0.entry === large })
         let angle = (segment.start + segment.end) / 2
         let radius = (segment.inner + segment.outer) / 2
         let hit = DiskSunburstView.hitTest(rings, at: CGPoint(x: cos(angle) * radius, y: sin(angle) * radius), center: .zero)
         XCTAssertTrue(hit?.entry === large)
-        XCTAssertEqual(hit?.label, "Library")
+        XCTAssertEqual(hit?.label, "other")
         XCTAssertEqual(hit?.detail, large.allocatedBytes.diskSize)
     }
 
