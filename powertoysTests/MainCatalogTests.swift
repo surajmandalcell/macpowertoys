@@ -40,6 +40,10 @@ final class MainCatalogTests: XCTestCase {
         let home = try sourceFile("powertoys/Views/HomeView.swift")
         XCTAssertFalse(home.contains("ForEach(Array(ToolRegistry.allTools"))
         XCTAssertTrue(home.contains("ForEach(shortcutTools.indices"))
+
+        let marketplace = try sourceFile("powertoys/Views/Marketplace/MarketplaceSettingsView.swift")
+        XCTAssertTrue(marketplace.contains("@State private var installed: [MarketplaceEntry]"))
+        XCTAssertFalse(marketplace.contains("private var installed: [MarketplaceEntry] { manager.entries.filter"))
     }
 
     func testModifiedPairsShortGroupsWithoutReorderingLongGroups() {

@@ -11,10 +11,11 @@ struct MarketplaceSettingsView: View {
     @State private var operation: Task<Void, Never>?
     @State private var busyID: String?
     @State private var refreshing = false
+    @State private var sources: [MarketplaceSource] = []
+    @State private var installed: [MarketplaceEntry] = []
+    @State private var available: [MarketplaceEntry] = []
 
     private var busy: Bool { busyID != nil || refreshing }
-    private var installed: [MarketplaceEntry] { manager.entries.filter { $0.receipt != nil } }
-    private var available: [MarketplaceEntry] { manager.entries.filter { $0.receipt == nil } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
@@ -24,12 +25,15 @@ struct MarketplaceSettingsView: View {
         }
         .task {
             refreshing = true
-            defer { refreshing = false }
-            for source in manager.sources {
+            refreshPresentation()
+            defer { refreshing = false; refreshPresentation() }
+            for source in sources {
                 guard !Task.isCancelled else { return }
                 await manager.refresh(source.url)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .marketplaceSourcesChanged)) { _ in refreshPresentation() }
+        .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshPresentation() }
         .onDisappear { operation?.cancel(); operation = nil }
         .confirmationDialog(removalTitle, isPresented: removalPresented, titleVisibility: .visible) {
             removalButtons
@@ -62,7 +66,7 @@ struct MarketplaceSettingsView: View {
             OnePlusSettingRow("Built-in tools", caption: "Included with MacPowerToys") {
                 Text("Built-in").onePlusText(.caption)
             }
-            ForEach(manager.sources) { source in sourceRow(source) }
+            ForEach(sources) { source in sourceRow(source) }
             VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                 HStack(alignment: .top, spacing: OnePlusMetrics.actionSpacing) {
                     OnePlusTextField("https://raw.githubusercontent.com/user/repo/main/catalog.json", text: $newSourceText,
@@ -206,7 +210,7 @@ struct MarketplaceSettingsView: View {
 
     private func install(_ entry: MarketplaceEntry) {
         guard let manifest = entry.manifest, let url = entry.sourceURL,
-              let source = manager.sources.first(where: { $0.url == url }) else { return }
+              let source = sources.first(where: { $0.url == url }) else { return }
         run(id: entry.id) { try await manager.installTool(manifest, from: source) }
     }
 
@@ -215,11 +219,18 @@ struct MarketplaceSettingsView: View {
         busyID = id
         toolError = nil
         operation = Task {
-            defer { busyID = nil; operation = nil }
+            defer { busyID = nil; operation = nil; refreshPresentation() }
             do { try Task.checkCancellation(); try await action() }
             catch is CancellationError { }
             catch { if !Task.isCancelled { toolError = Self.describe(error) } }
         }
+    }
+
+    private func refreshPresentation() {
+        sources = manager.sources
+        let entries = manager.entries
+        installed = entries.filter { $0.receipt != nil }
+        available = entries.filter { $0.receipt == nil }
     }
 
     private static func describe(_ error: Error) -> String {
