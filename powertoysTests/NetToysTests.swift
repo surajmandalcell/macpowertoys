@@ -1224,12 +1224,13 @@ final class NetToysTests: XCTestCase {
     }
 
     func testTailscalePeerChooserUsesCompactShortAndScrollingListGeometry() {
-        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerWidth, 360)
-        XCTAssertEqual(NetToysAnchorSheetLayout.titleRowHeight, 44)
-        XCTAssertEqual(NetToysAnchorSheetLayout.peerRowHeight, 40)
-        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 1), 93)
-        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 5), 257)
-        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 6), 260)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerWidth, 420)
+        XCTAssertEqual(NetToysAnchorSheetLayout.titleRowHeight, 40)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerRowHeight, 44)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: -1), 80)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 1), 124)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 5), 300)
+        XCTAssertEqual(NetToysAnchorSheetLayout.peerPickerHeight(peerCount: 6), 300)
         XCTAssertFalse(NetToysAnchorSheetLayout.peerPickerNeedsScrolling(peerCount: 5))
         XCTAssertTrue(NetToysAnchorSheetLayout.peerPickerNeedsScrolling(peerCount: 6))
     }
@@ -1249,26 +1250,18 @@ final class NetToysTests: XCTestCase {
         let keyAccessStart = try XCTUnwrap(source.range(of: "private struct SSHKeyAccessSheet"))
         let keyAccessSheet = source[keyAccessStart.lowerBound..<source.endIndex]
 
-        XCTAssertTrue(peerPicker.contains("UtilityModalCloseButton(action: model.cancelTailscaleSelection)"))
-        XCTAssertTrue(keyAccessSheet.contains("UtilityModalCloseButton(action: onCancel)"))
-        XCTAssertTrue(peerPicker.contains("UtilityInteractionButtonStyle("))
-        XCTAssertTrue(peerPicker.contains("cornerRadius: NetToysAnchorSheetLayout.peerCornerRadius"))
-        XCTAssertEqual(
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: true,
-                isHovering: true,
-                isPressed: false
-            ),
-            0.06
-        )
-        XCTAssertEqual(
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: true,
-                isHovering: false,
-                isPressed: true
-            ),
-            0.1
-        )
+        XCTAssertTrue(peerPicker.contains("OnePlusSheet(\"Choose Tailscale device\", width: .small, close: model.cancelTailscaleSelection)"))
+        XCTAssertTrue(keyAccessSheet.contains("OnePlusSheet(\"Set up key access\", width: .small, close: onCancel)"))
+        XCTAssertTrue(peerPicker.contains("OnePlusInteractionStyle()"))
+        XCTAssertTrue(keyAccessSheet.contains("OnePlusSecureField.focusedOnOpen(\"Password\", text: $password)"))
+        XCTAssertTrue(keyAccessSheet.contains("password = \"\"\n        onContinue(submittedPassword)"))
+    }
+
+    @MainActor
+    func testNetToysPageIDsCoverEverySidebarDestination() {
+        XCTAssertEqual(NetToysPage.allCases.map(\.pageID), [
+            "scanner", "ssh-anchor", "wifi", "history", "settings", "how-to-use"
+        ])
     }
 
     func testLegacySSHAnchorDefaultsToLocalOnly() throws {
