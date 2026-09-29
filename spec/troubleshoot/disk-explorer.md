@@ -73,8 +73,8 @@
   the largest measured root children. Large folders outside that prefix were
   folded into Other.
 - **Invariant:** Rank the root ring by the selected measure on each scan
-  revision. Use that same order for the storage-series colors and inspector
-  list. Keep deeper live bands stable. Fold only the remaining children into
+  revision. Show the inspector's five largest children in storage-series
+  order. Keep deeper live bands stable. Fold only the remaining children into
   a neutral Other segment.
 - **Check:** The view regression creates large root children outside the old
   ID prefix and requires both to remain visible beside Other. Replay a signed
