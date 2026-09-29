@@ -565,7 +565,11 @@ both appearances:
    blocking work on the main thread in `body`, `onAppear`, or `init`; data
    loads off the main thread and fills in); tables with 1,000 or more rows
    scroll without dropped frames (native row reuse, no per-row tooltips,
-   overlays, GeometryReaders, or formatters created in `body`).
+   overlays, GeometryReaders, or formatters created in `body`). All windows
+   share one main thread, so a window that is occluded, minimized, or not
+   showing a live page, and a menu panel that is closed, stops redrawing
+   live data (samplers may keep collecting; views stop observing). Live
+   charts and progress update the UI at most 4 times per second.
 10. Fixed regions: toolbars, inspectors, and footers stay put while rows
     scroll.
 11. A capture of the running signed build, compared at the same scale with
