@@ -1322,6 +1322,12 @@ struct SystemMonitorTrayView: View {
                 default: detailPage
                 }
             }
+            .onAppear {
+                service.startDetailed(owner: "tray", metrics: page.metrics)
+            }
+            .onDisappear {
+                service.stopDetailed(owner: "tray")
+            }
         }
         .background(GeometryReader { proxy in
             Color.clear.preference(key: TaskManagerMenuMeasuredHeightKey.self, value: proxy.size.height)
@@ -1332,7 +1338,6 @@ struct SystemMonitorTrayView: View {
         }
         .onAppear {
             if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
-            service.startDetailed(owner: "tray", metrics: page.metrics)
             reportPreferredHeight(for: rememberPage ? page : .home)
         }
         .onChange(of: pageID) { _, _ in
@@ -1342,7 +1347,6 @@ struct SystemMonitorTrayView: View {
         .onChange(of: remoteProfiles.count) { _, _ in
             reportPreferredHeight(for: page)
         }
-        .onDisappear { service.stopDetailed(owner: "tray") }
     }
 
     private func reportPreferredHeight(for page: SystemMonitorTrayPage) {

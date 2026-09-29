@@ -1,102 +1,14 @@
-import AppKit
 import OnePlusUI
 import SwiftUI
 
-nonisolated enum TaskManagerWindowActivity {
-    static func isActive(
-        isVisible: Bool,
-        isMiniaturized: Bool,
-        isOcclusionVisible: Bool
-    ) -> Bool {
-        isVisible && !isMiniaturized && isOcclusionVisible
-    }
-}
+private struct TaskManagerVisibilityBinding: View {
+    @Environment(\.onePlusIsVisible) private var sharedVisibility
+    @Binding var isVisible: Bool
 
-private struct TaskManagerWindowVisibilityReader: NSViewRepresentable {
-    @Binding var isActive: Bool
-
-    func makeNSView(context: Context) -> NSView {
-        TaskManagerWindowVisibilityView { isActive = $0 }
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        guard let view = nsView as? TaskManagerWindowVisibilityView else { return }
-        view.report = { isActive = $0 }
-        view.updateVisibility()
-    }
-
-    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
-        (nsView as? TaskManagerWindowVisibilityView)?.stopObserving()
-    }
-}
-
-private final class TaskManagerWindowVisibilityView: NSView {
-    var report: (Bool) -> Void
-    private weak var observedWindow: NSWindow?
-    private var lastReported: Bool?
-
-    init(report: @escaping (Bool) -> Void) {
-        self.report = report
-        super.init(frame: .zero)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        stopObserving()
-        guard let window else { return }
-        observedWindow = window
-        let center = NotificationCenter.default
-        for name in [
-            NSWindow.didBecomeKeyNotification,
-            NSWindow.didResignKeyNotification,
-            NSWindow.didMiniaturizeNotification,
-            NSWindow.didDeminiaturizeNotification,
-            NSWindow.didChangeOcclusionStateNotification,
-        ] {
-            center.addObserver(
-                self,
-                selector: #selector(windowVisibilityChanged),
-                name: name,
-                object: window
-            )
-        }
-        center.addObserver(
-            self,
-            selector: #selector(windowWillClose),
-            name: NSWindow.willCloseNotification,
-            object: window
-        )
-        DispatchQueue.main.async { [weak self] in self?.updateVisibility() }
-    }
-
-    @objc private func windowVisibilityChanged(_ notification: Notification) {
-        updateVisibility()
-    }
-
-    @objc private func windowWillClose(_ notification: Notification) {
-        report(false)
-        stopObserving()
-    }
-
-    func updateVisibility() {
-        guard let window = observedWindow else { return }
-        let active = TaskManagerWindowActivity.isActive(
-            isVisible: window.isVisible,
-            isMiniaturized: window.isMiniaturized,
-            isOcclusionVisible: window.occlusionState.contains(.visible)
-        )
-        guard active != lastReported else { return }
-        lastReported = active
-        report(active)
-    }
-
-    func stopObserving() {
-        NotificationCenter.default.removeObserver(self)
-        observedWindow = nil
-        lastReported = nil
+    var body: some View {
+        Color.clear
+            .onAppear { isVisible = sharedVisibility }
+            .onChange(of: sharedVisibility) { _, visible in isVisible = visible }
     }
 }
 
@@ -227,7 +139,7 @@ struct SystemMonitorWindowView: View {
     @State private var reportAction: TaskManagerSystemReportAction?
     @State private var processSearchFocusTrigger = 0
     @State private var remoteAddRequest = 0
-    @State private var isWindowActive = true
+    @State private var isWindowActive = false
 
     init(
         reportSnapshot: [TaskManagerReportCategory] = [],
@@ -261,12 +173,10 @@ struct SystemMonitorWindowView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .background(TaskManagerVisibilityBinding(isVisible: $isWindowActive))
         }
         .onePlusDensity(.compact)
-        .background {
-            WindowAccessor(identifier: "system-monitor")
-            TaskManagerWindowVisibilityReader(isActive: $isWindowActive)
-        }
+        .background(WindowAccessor(identifier: "system-monitor"))
         .onAppear {
             pageID = page.rawValue
             updateSamplingForWindowVisibility()
