@@ -424,7 +424,7 @@ struct DiskSunburstView: View {
                 }
                 let detail = measure == .files ? "\(remaining.formatted()) files" :
                     remaining.diskSize
-                result.append(DiskRingSegment(id: parent.id + "/other", entry: nil,
+                result.append(DiskRingSegment(id: parent.id + "\0other", entry: nil,
                                               label: "Other items", detail: detail,
                                               start: angle, end: end,
                                               inner: inner, outer: outer,
