@@ -514,7 +514,7 @@ struct DiskSunburstView: View {
             let total = parent.children.reduce(0.0) { $0 + Double(max(1, measure.weight($1, apparent: apparent))) }
             guard total.isFinite, total > 0 else { return }
             var angle = start
-            let limit = depth == 0 ? 24 : 12
+            let limit = depth == 0 ? OnePlusDiskmanMetrics.inspectorChildren : 12
             let selection: (shown: [DiskEntry], hidden: [DiskEntry])
             if depth == 0 {
                 let ranked = parent.children.sorted {

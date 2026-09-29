@@ -166,6 +166,7 @@ final class DiskExplorerViewTests: XCTestCase {
         let rings = DiskSunburstView.segments(for: root, apparent: false, measure: .space,
                                               radius: 250, scanComplete: false)
         let visible = Set(rings.compactMap(\.entry?.id))
+        XCTAssertEqual(visible.count, 5)
         XCTAssertTrue(visible.contains(largest.id))
         XCTAssertTrue(visible.contains(second.id))
         XCTAssertTrue(rings.contains { $0.entry == nil && $0.label == "Other items" })
