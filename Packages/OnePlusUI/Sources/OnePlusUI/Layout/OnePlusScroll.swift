@@ -3,7 +3,27 @@ import ObjectiveC
 import SwiftUI
 
 public extension View {
-    func onePlusScrollIndicators() -> some View { background(OnePlusScrollConfigurator()) }
+    func onePlusScrollIndicators() -> some View { modifier(OnePlusScrollModifier()) }
+}
+
+private struct OnePlusPageScrollBottomInsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var onePlusPageScrollBottomInset: CGFloat {
+        get { self[OnePlusPageScrollBottomInsetKey.self] }
+        set { self[OnePlusPageScrollBottomInsetKey.self] = newValue }
+    }
+}
+
+private struct OnePlusScrollModifier: ViewModifier {
+    @Environment(\.onePlusPageScrollBottomInset) private var bottomInset
+    func body(content: Content) -> some View {
+        content
+            .contentMargins(.bottom, bottomInset, for: .scrollContent)
+            .background(OnePlusScrollConfigurator())
+    }
 }
 
 private struct OnePlusScrollConfigurator: NSViewRepresentable {
