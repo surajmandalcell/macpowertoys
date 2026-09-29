@@ -167,6 +167,22 @@ final class OnePlusUITests: XCTestCase {
         XCTAssertNil(OnePlusSegmented<String>.nextSelection(in: [], current: "On", direction: 1))
     }
 
+    func testSegmentsKeepTheirFullLabelWidths() {
+        for labels in [["Default (Off)", "On", "Off"], ["None", "Combined", "Separate"]] {
+            for density in OnePlusDensity.allCases {
+                let host = NSHostingView(rootView: OnePlusSegmented(
+                    choices: labels.map { ($0, $0) }, selection: .constant(labels[0]))
+                    .onePlusDensity(density))
+                let font = NSFont.systemFont(ofSize: OnePlusTextRole.control.size(for: density))
+                let required = labels.reduce(CGFloat(8)) { $0 + ($1 as NSString).size(withAttributes: [.font: font]).width + 8 }
+                XCTAssertGreaterThanOrEqual(host.fittingSize.width, floor(required))
+                XCTAssertLessThanOrEqual(host.fittingSize.width, OnePlusMetrics.wideControlColumn)
+                XCTAssertEqual(host.fittingSize.height, density.controlHeight)
+                print("Segment width", labels.joined(separator: " / "), density, host.fittingSize.width)
+            }
+        }
+    }
+
     func testMenuGridMatchesMeasuredReference() {
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(), 109.333333333, accuracy: 0.000001)
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(span: 2), 223.666666667, accuracy: 0.000001)

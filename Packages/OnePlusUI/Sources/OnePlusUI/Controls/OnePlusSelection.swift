@@ -55,6 +55,14 @@ public struct OnePlusSegmented<Value: Hashable>: View {
         return values[min(max(index + direction, 0), values.count - 1)]
     }
 
+    private var labelPadding: CGFloat {
+        guard !choices.isEmpty, symbols.isEmpty else { return 8 }
+        let font = NSFont.systemFont(ofSize: OnePlusTextRole.control.size(for: density))
+        let labelsWidth = choices.reduce(CGFloat.zero) { $0 + ceil(($1.1 as NSString).size(withAttributes: [.font: font]).width) }
+        let remaining = OnePlusMetrics.wideControlColumn - labelsWidth - 4 - CGFloat(choices.count - 1) * 2
+        return min(8, max(4, floor(remaining / CGFloat(choices.count)) / 2))
+    }
+
     public var body: some View {
         HStack(spacing: 2) {
             ForEach(choices.indices, id: \.self) { index in
@@ -67,8 +75,8 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                             Text(choice.1)
                         }
                     }.onePlusText(.control, selected: selection == choice.0)
-                        .lineLimit(1).padding(.horizontal, 8)
-                        .frame(maxWidth: .infinity).frame(height: (controlHeight ?? density.controlHeight) - 4)
+                        .lineLimit(1).fixedSize(horizontal: true, vertical: false).padding(.horizontal, labelPadding)
+                        .frame(height: (controlHeight ?? density.controlHeight) - 4)
                         .background(selection == choice.0 ? OnePlusColor.selectedControl : .clear,
                                     in: RoundedRectangle(cornerRadius: 3))
                 }
@@ -77,7 +85,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                 .help(choice.1)
             }
         }
-        .padding(2).frame(height: controlHeight ?? density.controlHeight)
+        .padding(2).fixedSize(horizontal: true, vertical: false).frame(height: controlHeight ?? density.controlHeight)
         .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
         .animation(OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.selection), value: selection)
