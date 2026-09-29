@@ -45,7 +45,7 @@ struct ToolAboutView: View {
                     .buttonStyle(OnePlusButtonStyle(.icon))
                     .help("Close").accessibilityLabel("Close")
             } else if showsSettings {
-                MainOpenToolButton(toolID: tool.id)
+                MainOpenToolButton(toolID: tool.id, toolName: tool.name)
             }
         }
     }

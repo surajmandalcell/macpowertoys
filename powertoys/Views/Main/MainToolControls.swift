@@ -38,11 +38,13 @@ struct MainToolEnableSwitch: View {
 
 struct MainOpenToolButton: View {
     let toolID: String?
+    var toolName: String? = nil
     var title = "Open"
     var showsArrow = false
     @State private var settings = SettingsManager.shared
 
     var body: some View {
+        let resolvedToolName = toolName ?? toolID.flatMap { ToolRegistry.tool(for: $0)?.name } ?? "selected tool"
         Button {
             guard let toolID else { return }
             ToolActionRouter.shared.open(toolID: toolID)
@@ -55,8 +57,8 @@ struct MainOpenToolButton: View {
         .buttonStyle(OnePlusButtonStyle.catalogOpen)
         .disabled(toolID == nil || !settings.isToolEnabled(toolID ?? "") || settings.isToolTransitioning(toolID ?? ""))
         .accessibilityIdentifier("tool.\(toolID ?? "none").\(showsArrow ? "open" : "launch")")
-        .accessibilityLabel("Open \(toolID.flatMap { ToolRegistry.tool(for: $0)?.name } ?? "selected tool")")
-        .help("Open \(toolID.flatMap { ToolRegistry.tool(for: $0)?.name } ?? "selected tool")")
+        .accessibilityLabel("Open \(resolvedToolName)")
+        .help("Open \(resolvedToolName)")
     }
 }
 
@@ -68,7 +70,7 @@ struct MainToolContextMenu: View {
 
     var body: some View {
         Button("Settings", action: select)
-        MainOpenToolButton(toolID: tool.id)
+        MainOpenToolButton(toolID: tool.id, toolName: tool.name)
         Button(settings.isToolEnabled(tool.id) ? "Disable" : "Enable") {
             settings.setToolEnabled(!settings.isToolEnabled(tool.id), for: tool.id)
         }.disabled(settings.isToolTransitioning(tool.id))
