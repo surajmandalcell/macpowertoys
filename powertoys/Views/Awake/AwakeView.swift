@@ -21,8 +21,14 @@ struct AwakeView: View {
                     .fixedSize()
                     .accessibilityIdentifier("awake.keep-display-on")
                 }
-                OnePlusPage(layout: .applet, header: { EmptyView() }) {
-                    AwakeSettingsView(showsDisplayToggle: settings, showsStatus: !settings)
+                Group {
+                    if settings {
+                        OnePlusPage(layout: .applet, header: { EmptyView() }) {
+                            AwakeSettingsView()
+                        }
+                    } else {
+                        AwakeHomeView()
+                    }
                 }
                 .onePlusFloatingSettingsInset()
                 .overlay(alignment: .bottomTrailing) {
@@ -44,9 +50,41 @@ struct AwakeView: View {
     }
 }
 
+private struct AwakeHomeView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            AwakeStatusCard()
+            ScrollView {
+                AwakeSettingsView(showsDisplayToggle: false)
+            }
+            .onePlusScrollIndicators()
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, OnePlusMetrics.appletGutter)
+        .padding(.top, OnePlusMetrics.contentTop)
+    }
+}
+
+private struct AwakeStatusCard: View {
+    @State private var service = AwakeService.shared
+
+    var body: some View {
+        OnePlusCard {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("Turn Off") { service.setMode(.passive) }
+                    .disabled(service.configuration.mode == .passive)
+            }.padding(OnePlusMetrics.cardPadding)
+            if let error = service.assertionError { OnePlusBanner(error, tone: .error) }
+        }
+        .buttonStyle(OnePlusButtonStyle())
+    }
+}
+
 struct AwakeSettingsView: View {
     var showsDisplayToggle = true
-    var showsStatus = false
     @State private var service = AwakeService.shared
     @State private var hours = 0
     @State private var minutes = 30
@@ -60,7 +98,6 @@ struct AwakeSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            if showsStatus { status }
             if showsDisplayToggle {
                 OnePlusCard {
                     OnePlusCardHeader("Display")
@@ -89,19 +126,6 @@ struct AwakeSettingsView: View {
                 service.setPresets(service.configuration.presets.filter { $0 != presetToRemove })
                 presetToRemove = nil
             }
-        }
-    }
-
-    private var status: some View {
-        OnePlusCard {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Button("Turn Off") { service.setMode(.passive) }
-                    .disabled(service.configuration.mode == .passive)
-            }.padding(OnePlusMetrics.cardPadding)
-            if let error = service.assertionError { OnePlusBanner(error, tone: .error) }
         }
     }
 

@@ -15,6 +15,63 @@ enum ColorPickerLayout {
     }
 }
 
+nonisolated struct ColorPickerHistoryRequest: Hashable, Sendable {
+    struct Revision: Hashable, Sendable {
+        let id: UUID
+        let projectID: UUID?
+        let isPinned: Bool
+    }
+
+    let revisions: [Revision]
+    let projectID: UUID?
+    let search: String
+    let format: ColorCopyFormat
+}
+
+nonisolated struct ColorSamplePresentation: Identifiable, Sendable {
+    let sample: ColorSample
+    let value: String
+    let accessibilityValue: String
+    let timestamp: String
+    var id: UUID { sample.id }
+}
+
+nonisolated struct ColorPickerPresentation: Sendable {
+    let samples: [ColorSamplePresentation]
+    let projectCounts: [UUID: Int]
+    let unfiledCount: Int
+}
+
+nonisolated func colorPickerPresentation(
+    history: [ColorSample], projectID: UUID?, search: String,
+    format: ColorCopyFormat, now: Date = Date()
+) -> ColorPickerPresentation {
+    let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+    let dateFormatter = RelativeDateTimeFormatter()
+    dateFormatter.dateTimeStyle = .numeric
+    dateFormatter.unitsStyle = .abbreviated
+    let samples = history.lazy.filter { sample in
+        guard sample.projectID == projectID else { return false }
+        return query.isEmpty || ColorCopyFormat.allCases.contains {
+            sample.string($0).localizedCaseInsensitiveContains(query)
+        }
+    }.map {
+        ColorSamplePresentation(
+            sample: $0,
+            value: $0.string(format),
+            accessibilityValue: $0.string(.hex),
+            timestamp: dateFormatter.localizedString(for: $0.createdAt, relativeTo: now)
+        )
+    }
+    return ColorPickerPresentation(
+        samples: Array(samples),
+        projectCounts: Dictionary(grouping: history.compactMap { sample in
+            sample.projectID.map { ($0, sample.id) }
+        }, by: \.0).mapValues(\.count),
+        unfiledCount: history.lazy.filter { $0.projectID == nil }.count
+    )
+}
+
 struct ColorHistoryView: View {
     @State private var service = ColorPickerService.shared
     @State private var page = ColorPickerPage.history
@@ -22,13 +79,17 @@ struct ColorHistoryView: View {
     @State private var focusSearch = 0
     @State private var isCreatingProject = false
     @State private var newProjectName = ""
+    @State private var sampleRows: [ColorSamplePresentation] = []
+    @State private var projectCounts: [UUID: Int] = [:]
+    @State private var unfiledCount = 0
 
-    private var samples: [ColorSample] {
-        let samples = service.samples(in: service.selectedProjectID)
-        guard !search.isEmpty else { return samples }
-        return samples.filter { sample in
-            ColorCopyFormat.allCases.contains { sample.string($0).localizedCaseInsensitiveContains(search) }
-        }
+    private var historyRequest: ColorPickerHistoryRequest {
+        ColorPickerHistoryRequest(
+            revisions: service.history.map { .init(id: $0.id, projectID: $0.projectID, isPinned: $0.isPinned) },
+            projectID: service.selectedProjectID,
+            search: search,
+            format: service.defaultFormat
+        )
     }
 
     private var selectedProjectName: String {
@@ -37,7 +98,7 @@ struct ColorHistoryView: View {
 
     private var windowHeight: CGFloat {
         switch page {
-        case .history: ColorPickerLayout.historyHeight(count: samples.count)
+        case .history: ColorPickerLayout.historyHeight(count: sampleRows.count)
         case .projects:
             min(ColorPickerLayout.maximumWindowHeight, OnePlusWindowCanvas.colorPicker.size.height
                 + CGFloat(min(service.projects.count, 4) + (isCreatingProject ? 1 : 0)) * OnePlusMetrics.settingRow)
@@ -94,6 +155,25 @@ struct ColorHistoryView: View {
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("color-picker") == true else { return }
             page = .settings
         }
+        .task(id: historyRequest) {
+            let request = historyRequest
+            let history = service.history
+            let task = Task.detached(priority: .userInitiated) {
+                colorPickerPresentation(
+                    history: history, projectID: request.projectID,
+                    search: request.search, format: request.format
+                )
+            }
+            let presentation = await withTaskCancellationHandler {
+                await task.value
+            } onCancel: {
+                task.cancel()
+            }
+            guard !Task.isCancelled, historyRequest == request else { return }
+            sampleRows = presentation.samples
+            projectCounts = presentation.projectCounts
+            unfiledCount = presentation.unfiledCount
+        }
     }
 
     private var tabBar: some View {
@@ -114,13 +194,21 @@ struct ColorHistoryView: View {
                     .accessibilityIdentifier("color-picker.format")
             }
             .padding(.horizontal, OnePlusMetrics.appletGutter)
-            if samples.isEmpty {
+            if sampleRows.isEmpty {
                 OnePlusEmptyState(search.isEmpty ? "Pick a color for \(selectedProjectName)" : "No matching colors",
                                   systemImage: search.isEmpty ? "eyedropper" : "magnifyingglass")
             } else {
                 ScrollView {
                     LazyVStack(spacing: OnePlusMetrics.actionSpacing) {
-                        ForEach(samples) { ColorSampleRow(sample: $0) }
+                        ForEach(sampleRows) { row in
+                            ColorSampleRow(
+                                row: row,
+                                defaultFormat: service.defaultFormat,
+                                copy: service.copy,
+                                togglePin: service.togglePin,
+                                remove: service.remove
+                            )
+                        }
                     }
                     .padding(.horizontal, OnePlusMetrics.appletGutter)
                 }.onePlusScrollIndicators()
@@ -129,25 +217,26 @@ struct ColorHistoryView: View {
     }
 
     private var projects: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    OnePlusCardHeader("Color projects") {
-                        Button("New Project", systemImage: "plus") { isCreatingProject.toggle() }
-                            .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-                    }
-                    if isCreatingProject { newProjectField }
-                    LazyVStack(spacing: 0) {
-                        projectRow(id: nil, name: "Unfiled", project: nil)
-                        ForEach(service.projects) { project in
-                            projectRow(id: project.id, name: project.name, project: project)
-                        }
+        OnePlusCard {
+            OnePlusCardHeader("Color projects") {
+                Button("New Project", systemImage: "plus") { isCreatingProject.toggle() }
+                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+            }
+            if isCreatingProject { newProjectField }
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    projectRow(id: nil, name: "Unfiled", project: nil)
+                    ForEach(service.projects) { project in
+                        projectRow(id: project.id, name: project.name, project: project)
                     }
                 }
             }
-            .padding(.horizontal, OnePlusMetrics.appletGutter)
-            .padding(.top, OnePlusMetrics.contentTop)
-        }.onePlusScrollIndicators()
+            .onePlusScrollIndicators()
+            .frame(maxHeight: .infinity)
+        }
+        .frame(maxHeight: .infinity)
+        .padding(.horizontal, OnePlusMetrics.appletGutter)
+        .padding(.top, OnePlusMetrics.contentTop)
     }
 
     private var newProjectField: some View {
@@ -169,7 +258,7 @@ struct ColorHistoryView: View {
     }
 
     private func projectRow(id: UUID?, name: String, project: ColorProject?) -> some View {
-        let count = service.samples(in: id).count
+        let count = id.map { projectCounts[$0, default: 0] } ?? unfiledCount
         let selected = service.selectedProjectID == id
         return HStack(spacing: OnePlusMetrics.actionSpacing) {
             Button { selectProject(id) } label: {
@@ -247,27 +336,29 @@ struct ColorPickerSettingsView: View {
 private enum ColorPickerPage: String { case history, projects, settings }
 
 private struct ColorSampleRow: View {
-    private static let relativeDateStyle = Date.RelativeFormatStyle(presentation: .numeric, unitsStyle: .abbreviated)
-    let sample: ColorSample
-    @State private var service = ColorPickerService.shared
+    let row: ColorSamplePresentation
+    let defaultFormat: ColorCopyFormat
+    let copy: (ColorSample, ColorCopyFormat) -> Void
+    let togglePin: (UUID) -> Void
+    let remove: (UUID) -> Void
     @State private var hovering = false
     @State private var confirmingDelete = false
     @FocusState private var focused: Bool
 
     var body: some View {
+        let sample = row.sample
         OnePlusCard {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
                     .fill(Color(nsColor: sample.color))
                     .frame(width: OnePlusMetrics.searchHeight, height: OnePlusMetrics.searchHeight)
                     .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius).strokeBorder(OnePlusColor.line) }
-                    .accessibilityLabel(sample.string(.hex))
+                    .accessibilityLabel(row.accessibilityValue)
                 HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                    Text(sample.string(service.defaultFormat)).onePlusText(.mono)
+                    Text(row.value).onePlusText(.mono)
                         .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                        .help(sample.string(service.defaultFormat))
                     Spacer(minLength: 0)
-                    Text(sample.createdAt.formatted(Self.relativeDateStyle)).onePlusText(.caption).fixedSize()
+                    Text(row.timestamp).onePlusText(.caption).fixedSize()
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 actions
                     .opacity(hovering || focused || NSApp.isFullKeyboardAccessEnabled ? 1 : 0)
@@ -278,22 +369,22 @@ private struct ColorSampleRow: View {
         }
         .contentShape(Rectangle()).focusable().focused($focused)
         .onHover { hovering = $0 }
-        .onKeyPress(.return) { service.copy(sample, as: service.defaultFormat); return .handled }
+        .onKeyPress(.return) { copy(sample, defaultFormat); return .handled }
         .onKeyPress(.delete) { confirmingDelete = true; return .handled }
         .onKeyPress(characters: CharacterSet(charactersIn: "123456789")) { press in
             guard let number = Int(press.characters), ColorCopyFormat.allCases.indices.contains(number - 1) else { return .ignored }
-            service.copy(sample, as: ColorCopyFormat.allCases[number - 1])
+            copy(sample, ColorCopyFormat.allCases[number - 1])
             return .handled
         }
         .contextMenu {
             ForEach(ColorCopyFormat.allCases) { format in
-                Button("Copy \(format.title)") { service.copy(sample, as: format) }
+                Button("Copy \(format.title)") { copy(sample, format) }
             }
-            Button(sample.isPinned ? "Unpin" : "Pin") { service.togglePin(sample.id) }
+            Button(sample.isPinned ? "Unpin" : "Pin") { togglePin(sample.id) }
             Button("Delete", role: .destructive) { confirmingDelete = true }
         }
         .confirmationDialog("Delete this color?", isPresented: $confirmingDelete) {
-            Button("Delete", role: .destructive) { service.remove(sample.id) }
+            Button("Delete", role: .destructive) { remove(sample.id) }
         }
     }
 
@@ -301,16 +392,16 @@ private struct ColorSampleRow: View {
         HStack(spacing: OnePlusMetrics.spacing[0]) {
             Menu {
                 ForEach(ColorCopyFormat.allCases) { format in
-                    Button(format.title) { service.copy(sample, as: format) }
+                    Button(format.title) { copy(row.sample, format) }
                 }
             } label: {
                 OnePlusControlLabel(variant: .icon, size: .small) { Image(systemName: "doc.on.doc") }
             }.menuStyle(.borderlessButton).menuIndicator(.hidden)
-                .help("Copy as").accessibilityLabel("Copy color as")
-            Button { service.togglePin(sample.id) } label: { Image(systemName: sample.isPinned ? "pin.fill" : "pin") }
-                .help(sample.isPinned ? "Unpin" : "Pin").accessibilityLabel(sample.isPinned ? "Unpin color" : "Pin color")
+                .accessibilityLabel("Copy color as")
+            Button { togglePin(row.id) } label: { Image(systemName: row.sample.isPinned ? "pin.fill" : "pin") }
+                .accessibilityLabel(row.sample.isPinned ? "Unpin color" : "Pin color")
             Button { confirmingDelete = true } label: { Image(systemName: "trash") }
-                .help("Delete").accessibilityLabel("Delete color")
+                .accessibilityLabel("Delete color")
         }.buttonStyle(OnePlusButtonStyle(.icon, size: .small))
     }
 }

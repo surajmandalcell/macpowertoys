@@ -14,12 +14,32 @@ enum TextExtractorLayout {
     }
 }
 
+nonisolated struct TextExtractionPresentation: Identifiable, Sendable {
+    let extraction: TextExtraction
+    let timestamp: String
+    let openableURL: URL?
+    var id: UUID { extraction.id }
+}
+
+nonisolated func textExtractionPresentations(
+    _ history: [TextExtraction], now: Date = Date()
+) -> [TextExtractionPresentation] {
+    history.map {
+        TextExtractionPresentation(
+            extraction: $0,
+            timestamp: $0.relativeTimestamp(at: now),
+            openableURL: $0.openableURL
+        )
+    }
+}
+
 struct TextExtractorView: View {
     @State private var service = TextExtractorService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var page = TextExtractorPage.history
     @State private var selectedExtraction: TextExtraction?
     @State private var confirmingClear = false
+    @State private var historyRows: [TextExtractionPresentation] = []
 
     var body: some View {
         OnePlusWindowRoot(canvas: .textExtractor, sidebar: { EmptyView() }) {
@@ -59,6 +79,19 @@ struct TextExtractorView: View {
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("text-extractor") == true else { return }
             page = .settings
         }
+        .task(id: service.history.map(\.id)) {
+            let history = service.history
+            let task = Task.detached(priority: .userInitiated) {
+                textExtractionPresentations(history)
+            }
+            let rows = await withTaskCancellationHandler {
+                await task.value
+            } onCancel: {
+                task.cancel()
+            }
+            guard !Task.isCancelled, service.history.map(\.id) == history.map(\.id) else { return }
+            historyRows = rows
+        }
     }
 
     private var titlebar: some View {
@@ -86,24 +119,30 @@ struct TextExtractorView: View {
     }
 
     private var history: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                statusBanner
-                if service.history.isEmpty {
-                    OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder",
-                                      caption: "Drag a region. Recognized text is copied automatically.")
-                } else {
-                    OnePlusSectionTitle("History", actionTitle: "Clear") { confirmingClear = true }
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            statusBanner
+            if service.history.isEmpty {
+                OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder",
+                                  caption: "Drag a region. Recognized text is copied automatically.")
+            } else {
+                OnePlusSectionTitle("History", actionTitle: "Clear") { confirmingClear = true }
+                ScrollView {
                     LazyVStack(spacing: OnePlusMetrics.actionSpacing) {
-                        ForEach(service.history) { extraction in
-                            TextExtractionRow(extraction: extraction) { selectedExtraction = extraction }
+                        ForEach(historyRows) { row in
+                            TextExtractionRow(
+                                row: row,
+                                onOpen: { selectedExtraction = row.extraction },
+                                onCopy: { service.copy(row.extraction) },
+                                onDelete: { service.remove(row.id) }
+                            )
                         }
                     }
-                }
+                }.onePlusScrollIndicators()
             }
-            .padding(.horizontal, OnePlusMetrics.appletGutter)
-            .padding(.top, OnePlusMetrics.contentTop)
-        }.onePlusScrollIndicators()
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, OnePlusMetrics.appletGutter)
+        .padding(.top, OnePlusMetrics.contentTop)
     }
 
     @ViewBuilder private var statusBanner: some View {
@@ -154,7 +193,12 @@ struct TextExtractorSettingsView: View {
                 }
             }
         }
-        .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
+        .task {
+            let preferredLanguages = service.settings.preferredLanguages
+            languages = await Task.detached(priority: .userInitiated) {
+                preferredLanguages.joined(separator: ", ")
+            }.value
+        }
     }
 
     private var shortcutSettings: some View {
@@ -199,45 +243,47 @@ struct TextExtractorSettingsView: View {
 private enum TextExtractorPage: String { case history, settings }
 
 private struct TextExtractionRow: View {
-    let extraction: TextExtraction
+    let row: TextExtractionPresentation
     let onOpen: () -> Void
-    @State private var service = TextExtractorService.shared
+    let onCopy: () -> Void
+    let onDelete: () -> Void
     @State private var confirmingDelete = false
 
     var body: some View {
+        let extraction = row.extraction
         OnePlusCard {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 Button(action: onOpen) {
                     VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                            Text(extraction.text).onePlusText(.row).lineLimit(1).help(extraction.text)
+                            Text(extraction.text).onePlusText(.row).lineLimit(1)
                             Spacer(minLength: 0)
-                            Text(extraction.relativeTimestamp()).onePlusText(.caption).fixedSize()
+                            Text(row.timestamp).onePlusText(.caption).fixedSize()
                         }
                         Text("Screen selection").onePlusText(.caption)
                     }.frame(maxWidth: .infinity, minHeight: TextExtractorLayout.historyRowHeight, alignment: .leading)
                         .contentShape(Rectangle())
-                }.buttonStyle(OnePlusInteractionStyle()).help("Open full text")
-                Button { service.copy(extraction) } label: { Image(systemName: "doc.on.doc") }
-                    .help("Copy text").accessibilityLabel("Copy text")
-                if let url = extraction.openableURL {
+                }.buttonStyle(OnePlusInteractionStyle()).accessibilityLabel("Open full text")
+                Button(action: onCopy) { Image(systemName: "doc.on.doc") }
+                    .accessibilityLabel("Copy text")
+                if let url = row.openableURL {
                     Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.right.square") }
-                        .help("Open link").accessibilityLabel("Open link")
+                        .accessibilityLabel("Open link")
                 }
                 Button { confirmingDelete = true } label: { Image(systemName: "trash") }
-                    .help("Delete").accessibilityLabel("Delete extraction")
+                    .accessibilityLabel("Delete extraction")
             }
             .padding(.horizontal, OnePlusMetrics.actionSpacing)
             .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         }
         .contextMenu {
             Button("Open full text", action: onOpen)
-            Button("Copy text") { service.copy(extraction) }
-            if let url = extraction.openableURL { Button("Open link") { NSWorkspace.shared.open(url) } }
+            Button("Copy text", action: onCopy)
+            if let url = row.openableURL { Button("Open link") { NSWorkspace.shared.open(url) } }
             Button("Delete", role: .destructive) { confirmingDelete = true }
         }
         .confirmationDialog("Delete this extraction?", isPresented: $confirmingDelete) {
-            Button("Delete", role: .destructive) { service.remove(extraction.id) }
+            Button("Delete", role: .destructive, action: onDelete)
         }
     }
 }
