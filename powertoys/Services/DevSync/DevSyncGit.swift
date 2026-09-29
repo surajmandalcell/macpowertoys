@@ -39,6 +39,8 @@ private nonisolated final class DevGitProcessHandle: @unchecked Sendable {
 nonisolated enum DevGit {
     private static let maximumTextBytes = 1_048_576
     private static let textReadChunkBytes = 64 * 1_024
+    // ponytail: Git capture is capped at 64 MiB; stream manifests if repositories exceed it.
+    private static let maximumCommandOutputBytes = 64 * 1_024 * 1_024
 
     private static let developerDirectoryPath: URL? = {
         let process = Process()
@@ -73,7 +75,12 @@ nonisolated enum DevGit {
         developerDirectoryPath?.appendingPathComponent("usr/bin/git")
     }
 
-    static func run(_ arguments: [String], in directory: URL, input: Data? = nil) async throws -> Data {
+    static func run(
+        _ arguments: [String],
+        in directory: URL,
+        input: Data? = nil,
+        maximumOutputBytes: Int = maximumCommandOutputBytes
+    ) async throws -> Data {
         guard !directory.path.contains("\0"), arguments.allSatisfy({ !$0.contains("\0") }) else {
             throw DevGitError.failed(exitCode: -1, stderr: "Invalid Git path or argument")
         }
@@ -111,10 +118,18 @@ nonisolated enum DevGit {
             defer { processHandle.clear() }
 
             let outputReader = Task.detached(priority: .utility) {
-                (try? outputPipe.fileHandleForReading.readToEnd()) ?? Data()
+                readBounded(
+                    outputPipe.fileHandleForReading,
+                    maximumBytes: maximumOutputBytes,
+                    process: process
+                )
             }
             let errorReader = Task.detached(priority: .utility) {
-                (try? errorPipe.fileHandleForReading.readToEnd()) ?? Data()
+                readBounded(
+                    errorPipe.fileHandleForReading,
+                    maximumBytes: maximumOutputBytes,
+                    process: process
+                )
             }
 
             do {
@@ -142,19 +157,45 @@ nonisolated enum DevGit {
             let output = await outputReader.value
             let error = await errorReader.value
             try Task.checkCancellation()
+            guard !output.exceeded, !error.exceeded else {
+                throw DevGitError.failed(
+                    exitCode: -1,
+                    stderr: "Git output exceeded \(maximumOutputBytes) bytes."
+                )
+            }
             guard process.terminationStatus == 0 else {
                 throw DevGitError.failed(
                     exitCode: process.terminationStatus,
-                    stderr: String(decoding: error, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                    stderr: String(decoding: error.data, as: UTF8.self)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
                 )
             }
-            return output
+            return output.data
         }
         return try await withTaskCancellationHandler {
             try await operation.value
         } onCancel: {
             operation.cancel()
             processHandle.cancel()
+        }
+    }
+
+    private static func readBounded(
+        _ handle: FileHandle,
+        maximumBytes: Int,
+        process: Process
+    ) -> (data: Data, exceeded: Bool) {
+        var data = Data()
+        var exceeded = false
+        while true {
+            let chunk = handle.readData(ofLength: 64 * 1_024)
+            guard !chunk.isEmpty else { return (data, exceeded) }
+            let remaining = max(maximumBytes - data.count, 0)
+            data.append(contentsOf: chunk.prefix(remaining))
+            if chunk.count > remaining {
+                exceeded = true
+                if process.isRunning { process.terminate() }
+            }
         }
     }
 
