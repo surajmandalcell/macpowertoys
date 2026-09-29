@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import OnePlusUI
 import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
@@ -636,7 +637,11 @@ struct NetToysScannerView: View {
     @Bindable var model: NetToysScannerViewModel
     @AppStorage("nettoys.scanner.table-columns")
     private var columnCustomization: TableColumnCustomization<NetToysScanResult>
-    @State private var showSettings = false
+    let openSettings: () -> Void
+    @State private var searchFocus = 0
+    @State private var pendingRemoval = Set<String>()
+    @State private var confirmRemoval = false
+    @State private var networkSubtitle = "No active network"
     @State private var showRandomTargets = false
     @State private var showStatistics = false
     @State private var detailResult: NetToysScanResult?
@@ -656,40 +661,35 @@ struct NetToysScannerView: View {
         model.results.filter { model.selection.contains($0.id) }
     }
 
-    init(model: NetToysScannerViewModel) {
+    init(model: NetToysScannerViewModel, openSettings: @escaping () -> Void = {}) {
         self.model = model
+        self.openSettings = openSettings
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            NetToysPageHeader(title: "IP Scanner", subtitle: scanSubtitle) {
-                if macAccessEnabled {
-                    Label("MAC Access", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                } else {
-                    Button {
-                        neighborService.enable()
-                    } label: {
-                        Label("Enable MAC Access", systemImage: "lock.open")
-                    }
-                }
-                Button {
-                    showSettings = true
-                } label: {
+        OnePlusPage(scrolls: false) {
+            OnePlusPageHeader(title: "IP Scanner", subtitle: networkSubtitle) {
+                OnePlusStatus("MAC access: \(macAccessTitle)", state: macAccessEnabled ? .online : .warning)
+                Button(action: openSettings) {
                     Label("Scanner Settings", systemImage: "slider.horizontal.3")
                 }
+                .buttonStyle(OnePlusButtonStyle(.ghost))
             }
-
-            scanControls
-            QuietDivider()
+        } content: {
+            OnePlusCard { scanControls.padding(OnePlusMetrics.cardPadding) }
+            if !macAccessEnabled {
+                OnePlusBanner(neighborService.errorMessage ?? "Allow MAC access to identify neighboring devices.", tone: .warning) {
+                    Button(neighborService.status == .requiresApproval ? "Open Login Items" : "Enable MAC Access") {
+                        neighborService.enable()
+                    }
+                }
+            }
             resultControls
-            QuietDivider()
-            resultsTable
-            QuietDivider()
-            statusBar
-        }
-        .sheet(isPresented: $showSettings) {
-            NetToysScannerSettingsView(model: model)
+            OnePlusCard {
+                resultsTable.frame(maxHeight: .infinity)
+                OnePlusRule()
+                statusBar
+            }.frame(maxHeight: .infinity)
         }
         .sheet(isPresented: $showRandomTargets) {
             NetToysRandomTargetsView(model: model)
@@ -718,9 +718,20 @@ struct NetToysScannerView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             neighborService.refresh()
+            refreshNetworkSubtitle()
         }
         .onAppear {
             applyPrefill(DeepLinkHandler.shared.takeNetToysPrefill())
+            refreshNetworkSubtitle()
+        }
+        .background { Button("Find results") { searchFocus += 1 }.keyboardShortcut("f").hidden() }
+        .confirmationDialog("Remove selected results?", isPresented: $confirmRemoval, titleVisibility: .visible) {
+            Button("Remove Results", role: .destructive) {
+                model.removeResults(ids: pendingRemoval)
+                model.selection.subtract(pendingRemoval)
+                pendingRemoval.removeAll()
+            }
+            Button("Cancel", role: .cancel) { pendingRemoval.removeAll() }
         }
         .alert("IP Scanner", isPresented: Binding(
             get: { model.errorMessage != nil },
@@ -733,17 +744,13 @@ struct NetToysScannerView: View {
     }
 
     private var scanControls: some View {
-        HStack(spacing: 8) {
-            TextField("Address, range, CIDR, or list", text: $model.targetInput)
-                .textFieldStyle(.roundedBorder)
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusTextField("Address, range, CIDR, or list", text: $model.targetInput)
                 .accessibilityLabel("Scan targets")
-
-            TextField("Ports", text: $model.portInput)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 150)
+            OnePlusTextField("Ports", text: $model.portInput)
+                .frame(width: OnePlusMetrics.controlColumn)
                 .accessibilityLabel("TCP ports")
-
-            Menu {
+            OnePlusActionMenu(model.isImporting ? "Importing..." : "Presets") {
                 Button("Use Local Subnet") {
                     if let network = LocalIPv4Network.active() { model.targetInput = network.cidr }
                 }
@@ -765,29 +772,18 @@ struct NetToysScannerView: View {
                         }
                     }
                 }
-            } label: {
-                if model.isImporting {
-                    ProgressView().controlSize(.mini)
-                } else {
-                    Image(systemName: "ellipsis.circle")
-                }
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
             .accessibilityLabel(model.isImporting ? "Importing scan file" : "More scan options")
 
             if model.isScanning {
                 Button("Stop", role: .cancel) { model.cancel() }
             } else {
                 Button("Scan") { model.start() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OnePlusButtonStyle(.primary))
                     .keyboardShortcut(.return, modifiers: [])
                     .disabled(model.isImporting)
             }
         }
-        .controlSize(.small)
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .padding(.vertical, 10)
     }
 
     private func applyPrefill(_ prefill: NetToysScanPrefill?) {
@@ -797,23 +793,19 @@ struct NetToysScannerView: View {
     }
 
     private var resultControls: some View {
-        HStack(spacing: 10) {
-            Picker("Results", selection: $model.filter) {
-                ForEach(NetToysResultFilter.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(width: 220)
-
-            NativeSearchField(text: $model.searchText, placeholder: "Find address, host, MAC, or port")
-                .frame(maxWidth: 320)
-                .frame(height: UtilityLayout.workspaceActionHeight)
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSegmented(choices: [
+                (.all, "All \(model.results.count)"),
+                (.alive, "Alive \(model.results.filter(\.isReachable).count)"),
+                (.openPorts, "Open Ports \(model.results.filter { !$0.openPorts.isEmpty }.count)")
+            ], selection: $model.filter, accessibilityLabel: "Results")
+                .fixedSize()
+            OnePlusSearchField(prompt: "Find address, host, MAC, or port", text: $model.searchText,
+                               width: nil, focusTrigger: searchFocus)
 
             Spacer()
 
-            Menu("More") {
+            OnePlusActionMenu("More", width: OnePlusMetrics.controlColumn / 2) {
                 Menu("Go to Result") {
                     Button("Next Alive Host") { select(offset: 1, where: \.isReachable) }
                     Button("Previous Alive Host") { select(offset: -1, where: \.isReachable) }
@@ -834,8 +826,8 @@ struct NetToysScannerView: View {
                 Button("Copy Selected Details") { copyDetails(selectedRows) }
                     .disabled(model.selection.isEmpty)
                 Button("Delete Selected", role: .destructive) {
-                    model.removeResults(ids: model.selection)
-                    model.selection.removeAll()
+                    pendingRemoval = model.selection
+                    confirmRemoval = true
                 }
                 .disabled(model.selection.isEmpty)
             }
@@ -851,7 +843,7 @@ struct NetToysScannerView: View {
             }
             .disabled(model.selection.isEmpty || model.isScanning)
 
-            Menu("Export") {
+            OnePlusActionMenu("Export", width: OnePlusMetrics.controlColumn / 2) {
                 ForEach(NetToysExportFormat.allCases) { format in
                     Button(format.rawValue) {
                         model.export(format, rows: selectedRows.isEmpty ? sortedResults : selectedRows)
@@ -873,9 +865,6 @@ struct NetToysScannerView: View {
                     .accessibilityLabel("Exporting scan results")
             }
         }
-        .controlSize(.small)
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .padding(.vertical, 8)
     }
 
     private var resultsTable: some View {
@@ -887,7 +876,8 @@ struct NetToysScannerView: View {
         ) {
             TableColumn("IP Address", value: \.sortAddress) { result in
                 Text(result.address.description)
-                    .font(.system(.body, design: .monospaced))
+                    .onePlusText(.mono)
+                    .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
             }
             .width(min: 112, ideal: 126)
             .customizationID("nettoys.ip")
@@ -895,22 +885,22 @@ struct NetToysScannerView: View {
 
             Group {
                 TableColumn("Status", value: \NetToysScanResult.statusTitle) { result in
-                    Label(result.statusTitle, systemImage: result.isReachable ? "circle.fill" : "circle")
-                        .labelStyle(.titleAndIcon)
-                        .foregroundStyle(result.isReachable ? .green : .secondary)
+                    OnePlusStatus(result.statusTitle, state: result.isReachable ? .online : .offline)
                 }
                 .width(min: 68, ideal: 76)
                 .customizationID("nettoys.status")
 
                 TableColumn("Response", value: \NetToysScanResult.responseTitle) { result in
                     Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
-                        .monospacedDigit()
+                        .onePlusText(.mono)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 76, ideal: 86)
                 .customizationID("nettoys.response")
 
                 TableColumn("TTL", value: \NetToysScanResult.ttlTitle) { result in
                     Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 44, ideal: 48)
                 .customizationID("nettoys.ttl")
@@ -919,6 +909,7 @@ struct NetToysScannerView: View {
                 TableColumn("Loss", value: \NetToysScanResult.packetLossTitle) { result in
                     Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
                         .monospacedDigit()
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 58, ideal: 66)
                 .customizationID("nettoys.loss")
@@ -928,30 +919,33 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Hostname", value: \NetToysScanResult.hostnameTitle) { result in
                     Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.hostnameTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 116, ideal: 154)
                 .customizationID("nettoys.hostname")
 
                 TableColumn("MAC Address", value: \NetToysScanResult.macTitle) { result in
                     Text(result.macTitle.isEmpty ? "—" : result.macTitle)
-                        .font(.system(.body, design: .monospaced))
+                        .onePlusText(.mono)
                         .help(result.macHelp)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 130, ideal: 142)
                 .customizationID("nettoys.mac")
 
                 TableColumn("MAC Vendor", value: \NetToysScanResult.vendorTitle) { result in
                     Text(result.vendorTitle.isEmpty ? "—" : result.vendorTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.vendorTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 120, ideal: 160)
                 .customizationID("nettoys.vendor")
-                .defaultVisibility(.hidden)
 
                 TableColumn("NetBIOS Info", value: \NetToysScanResult.netBIOSTitle) { result in
                     Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.netBIOSTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 90, ideal: 120)
                 .customizationID("nettoys.netbios")
@@ -961,12 +955,15 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Open Ports", value: \NetToysScanResult.portsTitle) { result in
                     Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
+                        .lineLimit(1).help(result.portsTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 86, ideal: 106)
                 .customizationID("nettoys.open-ports")
 
                 TableColumn("Filtered", value: \NetToysScanResult.filteredPortsTitle) { result in
                     Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 80, ideal: 100)
                 .customizationID("nettoys.filtered-ports")
@@ -974,7 +971,8 @@ struct NetToysScannerView: View {
 
                 TableColumn("HTTP Server", value: \NetToysScanResult.httpServerTitle) { result in
                     Text(result.httpServerTitle.isEmpty ? "—" : result.httpServerTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.httpServerTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 110, ideal: 150)
                 .customizationID("nettoys.http-server")
@@ -982,7 +980,8 @@ struct NetToysScannerView: View {
 
                 TableColumn("HTTP Proxy", value: \NetToysScanResult.httpProxyTitle) { result in
                     Text(result.httpProxyTitle.isEmpty ? "—" : result.httpProxyTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.httpProxyTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 100, ideal: 140)
                 .customizationID("nettoys.http-proxy")
@@ -990,7 +989,8 @@ struct NetToysScannerView: View {
 
                 TableColumn("Custom Text", value: \NetToysScanResult.customTextTitle) { result in
                     Text(result.customTextTitle.isEmpty ? "—" : result.customTextTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.customTextTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 110, ideal: 160)
                 .customizationID("nettoys.custom-text")
@@ -998,10 +998,12 @@ struct NetToysScannerView: View {
 
                 TableColumn("Comments", value: \NetToysScanResult.commentTitle) { result in
                     Text(result.commentTitle.isEmpty ? "—" : result.commentTitle)
-                        .lineLimit(1)
+                        .lineLimit(1).help(result.commentTitle)
+                        .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 100, ideal: 150)
                 .customizationID("nettoys.comments")
+                .defaultVisibility(.hidden)
             }
         }
         .contextMenu(forSelectionType: String.self) { selected in
@@ -1013,6 +1015,12 @@ struct NetToysScannerView: View {
                     model.saveAnnotation(annotation, for: result.id)
                 }
                 Button("Add SSH Anchor") { openSSHAnchor(result) }
+                if let opener = (model.openers + NetToysOpener.defaults).first(where: { $0.applies(to: result) && $0.urlTemplate.hasPrefix("http") }) {
+                    Button("Open in Browser") { preview(opener, result: result) }
+                }
+                if let opener = (model.openers + NetToysOpener.defaults).first(where: { $0.applies(to: result) && $0.urlTemplate.hasPrefix("ssh:") }) {
+                    Button("SSH") { preview(opener, result: result) }
+                }
                 Divider()
                 let openers = model.openers.filter { $0.applies(to: result) }
                 if !openers.isEmpty {
@@ -1029,25 +1037,33 @@ struct NetToysScannerView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(rows.map { $0.address.description }.joined(separator: "\n"), forType: .string)
             }
-            Button("Copy Details") {
+            Button("Copy Row") {
                 copyDetails(model.results.filter { selected.contains($0.id) })
             }
-            Button("Rescan") {
+            Button("Rescan Host") {
                 model.start(targets: model.results.filter { selected.contains($0.id) }.map(\.address))
             }
             .disabled(model.isScanning)
             Button("Delete", role: .destructive) {
-                model.removeResults(ids: selected)
-                model.selection.subtract(selected)
+                pendingRemoval = selected
+                confirmRemoval = true
             }
         } primaryAction: { selected in
             detailResult = model.results.first { selected.contains($0.id) }
         }
-        .thinScrollIndicators()
+        .onePlusNativeTable()
+        .overlay {
+            if sortedResults.isEmpty && !model.isScanning {
+                OnePlusEmptyState(model.results.isEmpty ? "Ready to scan" : "No matching hosts",
+                                  systemImage: "network", caption: model.results.isEmpty
+                                  ? "Enter targets and ports, then press Return to scan."
+                                  : "Change the filter or search to show more results.")
+            }
+        }
     }
 
     private var statusBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
             if model.isScanning {
                 ProgressView(value: Double(model.completed), total: Double(max(model.total, 1)))
                     .progressViewStyle(.linear)
@@ -1070,15 +1086,27 @@ struct NetToysScannerView: View {
                 Text("Completed in \(duration.formatted(.number.precision(.fractionLength(1)))) s")
             }
         }
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .frame(height: 30)
+        .onePlusText(.caption)
+        .padding(.horizontal, OnePlusMetrics.cardPadding)
+        .frame(height: OnePlusMetrics.cardHeader)
     }
 
-    private var scanSubtitle: String? {
-        if model.isScanning { return "Scanning \(model.total) addresses" }
-        return model.results.isEmpty ? "Enter a target and one or more TCP ports" : nil
+    private var macAccessTitle: String {
+        _ = neighborService.revision
+        return switch neighborService.status {
+        case .enabled: "Allowed"
+        case .requiresApproval: "Needs Approval"
+        case .notRegistered: "Not Enabled"
+        default: "Unavailable"
+        }
+    }
+
+    private func refreshNetworkSubtitle() {
+        guard let network = LocalIPv4Network.active() else { networkSubtitle = "No active network"; return }
+        let status = NetToysConfigurationStore.status()
+        let identity = status?.network.map { NetworkIdentity(networkID: $0.networkID, ssid: $0.ssid) }
+        let ssid = status?.ssidAccess == .allowed && identity?.interfaceName == network.interfaceName ? identity?.ssid : nil
+        networkSubtitle = [network.interfaceName, ssid, network.cidr].compactMap { $0 }.joined(separator: " · ")
     }
 
     private func preview(_ opener: NetToysOpener, result: NetToysScanResult) {
@@ -1125,14 +1153,9 @@ private struct NetToysStatisticsView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Scan Statistics")
-                    .font(.title2.weight(.semibold))
-                Spacer()
-                UtilityModalCloseButton { dismiss() }
-            }
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
+        OnePlusSheet("Scan statistics", close: { dismiss() }) {
+            OnePlusCard {
+                VStack(spacing: 0) {
                 row("Addresses", statistics.addressCount.formatted())
                 row("Reachable", statistics.reachableCount.formatted())
                 row("Down", statistics.downCount.formatted())
@@ -1143,18 +1166,14 @@ private struct NetToysStatisticsView: View {
                 row("Slowest response", milliseconds(statistics.slowestResponseMilliseconds))
                 row("Duration", statistics.duration.map { "\($0.formatted(.number.precision(.fractionLength(1)))) s" } ?? "Not available")
                 row("Scan rate", statistics.addressesPerSecond.map { "\($0.formatted(.number.precision(.fractionLength(1)))) addresses/s" } ?? "Not available")
+                }.padding(OnePlusMetrics.cardPadding)
             }
         }
-        .padding(20)
-        .frame(width: 480)
     }
 
     @ViewBuilder
     private func row(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(.secondary)
-            Text(value).monospacedDigit()
-        }
+        OnePlusKeyValueRow(label, value: value, monospaced: true)
     }
 
     private func milliseconds(_ value: Double?) -> String {
@@ -1162,11 +1181,12 @@ private struct NetToysStatisticsView: View {
     }
 }
 
-private struct NetToysScannerSettingsView: View {
+struct NetToysScannerSettingsView: View {
     @Bindable var model: NetToysScannerViewModel
-    @Environment(\.dismiss) private var dismiss
     @State private var errorMessage: String?
     @State private var openers: [NetToysOpener]
+    @State private var pendingOpenerRemoval: UUID?
+    @State private var confirmRestore = false
 
     init(model: NetToysScannerViewModel) {
         self.model = model
@@ -1174,38 +1194,18 @@ private struct NetToysScannerSettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Scanner Settings")
-                    .font(.title2.weight(.semibold))
-                Spacer()
-                UtilityModalCloseButton(action: saveAndDismiss)
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                     settingsSection("Scan Engine") {
-                        SingleStepStepper("TCP timeout: \(model.timeoutMilliseconds) ms", value: $model.timeoutMilliseconds, in: 100...5_000, step: 100)
-                        SingleStepStepper("Parallel connections: \(model.concurrency)", value: $model.concurrency, in: 1...256)
-                        SingleStepStepper(
-                            "Launch delay: \(model.launchDelayMilliseconds) ms",
-                            value: $model.launchDelayMilliseconds,
-                            in: 0...100,
-                            step: 5
-                        )
+                        stepper("TCP timeout", value: $model.timeoutMilliseconds, range: 100...5_000, step: 100, unit: "ms")
+                        stepper("Parallel connections", value: $model.concurrency, range: 1...256)
+                        stepper("Launch delay", value: $model.launchDelayMilliseconds, range: 0...100, step: 5, unit: "ms")
                     }
 
                     settingsSection("Host Detection") {
-                        HStack {
-                            Text("Liveness")
-                            Spacer()
-                            Picker("Liveness", selection: $model.livenessMethod) {
-                                ForEach(NetToysLivenessMethod.allCases) { method in
-                                    Text(method.rawValue).tag(method)
-                                }
-                            }
-                            .labelsHidden()
-                            .frame(width: 180)
+                        OnePlusSettingRow("Liveness", controlWidth: OnePlusMetrics.wideControlColumn) {
+                            OnePlusSelect(choices: NetToysLivenessMethod.allCases.map { ($0, $0.rawValue) },
+                                          selection: $model.livenessMethod, width: OnePlusMetrics.wideControlColumn,
+                                          accessibilityLabel: "Liveness")
                         }
                         settingsToggle("Use response-based TCP timeout", isOn: $model.adaptiveTCPTimeout)
                         if model.livenessMethod == .icmpAndTCP {
@@ -1213,8 +1213,8 @@ private struct NetToysScannerSettingsView: View {
                         }
                         settingsToggle("Collect ICMP TTL and packet loss", isOn: $model.collectPingDetails)
                         if model.collectPingDetails || model.livenessMethod == .icmpAndTCP || model.adaptiveTCPTimeout {
-                            SingleStepStepper("ICMP timeout: \(model.pingTimeoutMilliseconds) ms", value: $model.pingTimeoutMilliseconds, in: 100...5_000, step: 100)
-                            SingleStepStepper("ICMP probes: \(model.pingProbeCount)", value: $model.pingProbeCount, in: 1...5)
+                            stepper("ICMP timeout", value: $model.pingTimeoutMilliseconds, range: 100...5_000, step: 100, unit: "ms")
+                            stepper("ICMP probes", value: $model.pingProbeCount, range: 1...5)
                         }
                     }
 
@@ -1224,61 +1224,53 @@ private struct NetToysScannerSettingsView: View {
                         settingsToggle("Read NetBIOS names", isOn: $model.detectNetBIOS)
                         settingsToggle("Use custom text probe", isOn: $model.customTextEnabled)
                         if model.customTextEnabled {
-                            SingleStepStepper("Custom port: \(model.customTextPort)", value: $model.customTextPort, in: 1...65_535)
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("Request")
-                                Spacer()
-                                TextField("Request", text: $model.customTextRequest, axis: .vertical)
-                                    .labelsHidden()
-                                    .lineLimit(2...4)
-                                    .frame(minWidth: 280)
-                            }
-                            HStack {
-                                Text("Response regular expression")
-                                Spacer()
-                                TextField("Response regular expression", text: $model.customTextPattern)
-                                    .labelsHidden()
-                                    .frame(minWidth: 280)
+                            stepper("Custom port", value: $model.customTextPort, range: 1...65_535)
+                            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                                Text("Request").onePlusText(.row).frame(maxWidth: .infinity, alignment: .leading)
+                                OnePlusTextEditor("Request", text: $model.customTextRequest)
+                                    .frame(width: OnePlusMetrics.controlColumn * 3, height: OnePlusMetrics.controlHeight * 3)
+                            }.padding(OnePlusMetrics.cardPadding)
+                            OnePlusSettingRow("Response regular expression", controlWidth: OnePlusMetrics.controlColumn * 3) {
+                                OnePlusTextField("Response regular expression", text: $model.customTextPattern)
                             }
                         }
                     }
 
                     settingsSection("MAC Addresses") {
-                        Text("macOS restricts neighboring device MAC addresses to processes with Apple's private neighbor-cache privilege. NetToys never presents the system's privacy placeholder as a device MAC.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                        Text("Allow MAC access in Permissions, then rescan devices with missing addresses.")
+                            .onePlusText(.row).padding(OnePlusMetrics.cardPadding)
                     }
 
                     settingsSection("Openers") {
-                        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                        Grid(alignment: .leading, horizontalSpacing: OnePlusMetrics.actionSpacing,
+                             verticalSpacing: OnePlusMetrics.actionSpacing) {
                             GridRow {
                                 Text("Name")
                                 Text("URL template")
                                 Text("Port")
-                                Color.clear.frame(width: 20)
+                                Color.clear.frame(width: OnePlusMetrics.controlHeight)
                             }
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                            .onePlusText(.tableHeader)
 
                             ForEach($openers) { $opener in
                                 GridRow {
-                                    TextField("Name", text: $opener.name)
-                                        .frame(width: 110)
-                                    TextField("URL template", text: $opener.urlTemplate)
-                                        .frame(minWidth: 280)
-                                    TextField("Port", value: $opener.requiredPort, format: .number)
-                                        .frame(width: 60)
+                                    OnePlusTextField("Name", text: $opener.name)
+                                        .frame(width: OnePlusMetrics.controlColumn)
+                                    OnePlusTextField("URL template", text: $opener.urlTemplate)
+                                    OnePlusStepperField("Port", value: $opener.requiredPort,
+                                                        in: 1...65_535).frame(width: OnePlusMetrics.controlColumn)
                                     Button(role: .destructive) {
-                                        openers.removeAll { $0.id == opener.id }
+                                        pendingOpenerRemoval = opener.id
                                     } label: {
                                         Image(systemName: "trash")
                                     }
-                                    .buttonStyle(.borderless)
-                                    .focusEffectDisabled()
+                                    .buttonStyle(OnePlusButtonStyle(.icon))
+                                    .help("Delete \(opener.name) opener")
                                     .accessibilityLabel("Delete \(opener.name) opener")
                                 }
                             }
                         }
+                        .padding(OnePlusMetrics.cardPadding)
 
                         HStack {
                             Button("Add Opener") {
@@ -1289,43 +1281,39 @@ private struct NetToysScannerSettingsView: View {
                                     requiredPort: 80
                                 ))
                             }
-                            Button("Restore Defaults") { openers = NetToysOpener.defaults }
+                            Button("Restore Defaults") { confirmRestore = true }
                         }
+                        .padding(.horizontal, OnePlusMetrics.cardPadding)
                         Text("Use {ip}, {hostname}, and {port}. NetToys opens only URL protocols and always shows a preview.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                            .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.trailing, 4)
-            }
-            .thinScrollIndicators()
-            .frame(height: 540)
-
-            HStack {
-                Spacer()
-                Button("Done", action: saveAndDismiss)
-                    .keyboardShortcut(.defaultAction)
-            }
+            if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
         }
-        .padding(20)
-        .frame(width: 700)
         .onDisappear { model.savePreferences() }
-        .alert("Openers", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
+        .onChange(of: openers) { saveOpeners() }
+        .onChange(of: model.livenessMethod) { model.savePreferences() }
+        .onChange(of: model.customTextRequest) { model.savePreferences() }
+        .onChange(of: model.customTextPattern) { model.savePreferences() }
+        .confirmationDialog("Remove this opener?", isPresented: Binding(
+            get: { pendingOpenerRemoval != nil }, set: { if !$0 { pendingOpenerRemoval = nil } }
         )) {
-            Button("OK") { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
+            Button("Remove opener", role: .destructive) {
+                openers.removeAll { $0.id == pendingOpenerRemoval }
+                pendingOpenerRemoval = nil
+            }
+            Button("Cancel", role: .cancel) { pendingOpenerRemoval = nil }
         }
+        .confirmationDialog("Restore default openers?", isPresented: $confirmRestore) {
+            Button("Restore defaults", role: .destructive) { openers = NetToysOpener.defaults }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("This replaces your current opener list.") }
     }
 
-    private func saveAndDismiss() {
+    private func saveOpeners() {
         do {
             try model.saveOpeners(openers)
             model.savePreferences()
-            dismiss()
+            errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1335,24 +1323,28 @@ private struct NetToysScannerSettingsView: View {
         _ title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 10) {
-                content()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .font(.system(size: 12))
-            .controlSize(.small)
-            .utilitySectionCard()
+        OnePlusCard {
+            OnePlusCardHeader(title)
+            content()
         }
     }
 
     private func settingsToggle(_ title: String, isOn: Binding<Bool>) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Toggle(title, isOn: isOn)
-                .labelsHidden()
+        OnePlusSettingRow(title) {
+            Toggle(title, isOn: Binding(get: { isOn.wrappedValue }, set: {
+                isOn.wrappedValue = $0
+                model.savePreferences()
+            })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+        }
+    }
+
+    private func stepper(_ title: String, value: Binding<Int>, range: ClosedRange<Int>,
+                         step: Int = 1, unit: String? = nil) -> some View {
+        OnePlusSettingRow(title) {
+            OnePlusStepperField(title, value: Binding(get: { value.wrappedValue }, set: {
+                value.wrappedValue = $0
+                model.savePreferences()
+            }), in: range, step: step, unit: unit)
         }
     }
 }
@@ -1368,36 +1360,27 @@ private struct NetToysOpenerPreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Open with \(preview.name)?")
-                    .font(.title2.weight(.semibold))
-                Spacer()
-                UtilityModalCloseButton { dismiss() }
-            }
+        OnePlusSheet("Open with \(preview.name)?", close: { dismiss() }) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             Text("Review the complete URL before another app opens it.")
-                .foregroundStyle(.secondary)
+                .onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
+            OnePlusCard {
             Text(preview.url.absoluteString)
-                .font(.system(.body, design: .monospaced))
+                .onePlusText(.mono)
                 .textSelection(.enabled)
-                .padding(10)
+                .padding(OnePlusMetrics.cardPadding)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
+            }
+            }
+        } footer: {
+                Button("Cancel") { dismiss() }.buttonStyle(OnePlusButtonStyle(.ghost))
                 Button("Open") {
                     NSWorkspace.shared.open(preview.url)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OnePlusButtonStyle(.primary))
                 .keyboardShortcut(.defaultAction)
-            }
-            .controlSize(.small)
         }
-        .padding(20)
-        .frame(width: 560)
     }
 }
 
@@ -1408,48 +1391,28 @@ private struct NetToysRandomTargetsView: View {
     @State private var count = 32
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Random Targets")
-                    .font(.title2.weight(.semibold))
-                Spacer()
-                UtilityModalCloseButton { dismiss() }
-            }
+        OnePlusSheet("Random targets", close: { dismiss() }) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             Text("Generate unique usable IPv4 addresses inside one CIDR block.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("TARGETS").utilitySectionHeader()
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("CIDR")
-                        Spacer()
-                        TextField("CIDR", text: $cidr)
-                            .labelsHidden()
-                            .font(.system(size: 12, design: .monospaced))
-                            .frame(width: 180)
-                    }
-                    SingleStepStepper("Address count: \(count)", value: $count, in: 1...1_024)
+                .onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
+            OnePlusCard {
+                OnePlusSettingRow("CIDR", controlWidth: OnePlusMetrics.wideControlColumn) {
+                    OnePlusTextField("CIDR", text: $cidr)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .font(.system(size: 12))
-                .controlSize(.small)
-                .utilitySectionCard()
+                OnePlusSettingRow("Address count") {
+                    OnePlusStepperField("Address count", value: $count, in: 1...1_024)
+                }
             }
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
+            }
+        } footer: {
+                Button("Cancel") { dismiss() }.buttonStyle(OnePlusButtonStyle(.ghost))
                 Button("Generate") {
                     model.generateRandomTargets(cidr: cidr, count: count)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OnePlusButtonStyle(.primary))
                 .keyboardShortcut(.defaultAction)
-            }
-            .controlSize(.small)
         }
-        .padding(20)
-        .frame(width: 430)
     }
 }
 
@@ -1466,22 +1429,19 @@ private struct NetToysHostDetailsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(result.address.description)
-                        .font(.title2.weight(.semibold).monospaced())
+        OnePlusSheet(result.address.description, close: { dismiss() }) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                HStack {
                     Text(result.hostnameTitle.isEmpty ? "No reverse hostname" : result.hostnameTitle)
-                        .foregroundStyle(.secondary)
-                }
+                        .onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
                 Spacer()
                 Toggle("Favorite", isOn: $annotation.isFavorite)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                UtilityModalCloseButton { dismiss() }
+                    .toggleStyle(OnePlusSwitchStyle()).fixedSize()
             }
 
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
+            ScrollView {
+            OnePlusCard {
+                VStack(spacing: 0) {
                 detailRow("Status", result.statusTitle)
                 detailRow("Response", result.responseTitle.isEmpty ? "Not available" : "\(result.responseTitle) ms")
                 detailRow("TTL", result.ttlTitle.isEmpty ? "Not collected" : result.ttlTitle)
@@ -1494,40 +1454,29 @@ private struct NetToysHostDetailsView: View {
                 detailRow("HTTP proxy", result.httpProxyTitle.isEmpty ? "Not detected" : result.httpProxyTitle)
                 detailRow("NetBIOS name", result.netBIOSTitle.isEmpty ? "Not detected" : result.netBIOSTitle)
                 detailRow("Custom text", result.customTextTitle.isEmpty ? "No match" : result.customTextTitle)
+                }.padding(OnePlusMetrics.cardPadding)
+            }.frame(maxWidth: .infinity)
+            }.frame(maxHeight: OnePlusMetrics.captionedSettingRow * 6).onePlusScrollIndicators()
+            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                Text("Comment").onePlusText(.cardTitle)
+                OnePlusTextEditor("Host comment", text: $annotation.comment)
+                    .frame(height: OnePlusMetrics.controlHeight * 3)
+                    .accessibilityLabel("Host comment")
             }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("COMMENT").utilitySectionHeader()
-                TextEditor(text: $annotation.comment)
-                    .thinScrollIndicators()
-                    .font(.system(size: 12))
-                    .frame(height: 84)
-                    .padding(6)
-                    .background(Color.primary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
+        } footer: {
+                Button("Cancel") { dismiss() }.buttonStyle(OnePlusButtonStyle(.ghost))
                 Button("Save") {
                     model.saveAnnotation(annotation, for: result.id)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OnePlusButtonStyle(.primary))
                 .keyboardShortcut(.defaultAction)
-            }
-            .controlSize(.small)
         }
-        .padding(20)
-        .frame(width: 470)
     }
 
     @ViewBuilder
     private func detailRow(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(.secondary)
-            Text(value).textSelection(.enabled)
-        }
+        OnePlusKeyValueRow(label, value: value)
     }
 }
