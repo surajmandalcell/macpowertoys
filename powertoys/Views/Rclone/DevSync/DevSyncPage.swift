@@ -136,7 +136,6 @@ struct DevSyncPage: View {
                 emptyState
             }
         }
-        .utilityAnimation(value: manager.isShowingPairSettings)
         .sheet(isPresented: $manager.isPresentingSetup) {
             DevSyncSetupSheet()
         }
