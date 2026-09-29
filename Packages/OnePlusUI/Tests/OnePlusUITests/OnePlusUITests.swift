@@ -183,6 +183,17 @@ final class OnePlusUITests: XCTestCase {
         }
     }
 
+    func testSettingRowsIncludeTheirSeparatorInThePitch() {
+        for separator in [true, false] {
+            let host = NSHostingView(rootView: OnePlusCard {
+                OnePlusSettingRow("First", separator: separator) { Text("Value") }
+                OnePlusSettingRow("Second", separator: separator) { Text("Value") }
+                OnePlusSettingRow("Third", caption: "Details", separator: separator) { Text("Value") }
+            }.frame(width: 500))
+            XCTAssertEqual(host.fittingSize.height, 44 + 44 + 56)
+        }
+    }
+
     func testMenuGridMatchesMeasuredReference() {
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(), 109.333333333, accuracy: 0.000001)
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(span: 2), 223.666666667, accuracy: 0.000001)
