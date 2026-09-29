@@ -179,6 +179,41 @@ enum TaskManagerSystemReportAction: Equatable {
     case exportJSON
 }
 
+nonisolated struct TaskManagerReportMatch: Identifiable, Sendable {
+    let category: TaskManagerReportCategory
+    let section: TaskManagerReportSection
+    let row: TaskManagerReportRow
+    let sectionIndex: Int
+    let rowIndex: Int
+
+    var id: String { "\(category.id):\(sectionIndex):\(rowIndex)" }
+}
+
+nonisolated enum TaskManagerReportSearch {
+    static func matches(
+        query: String,
+        categories: [TaskManagerReportCategory]
+    ) -> [TaskManagerReportMatch] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+        return categories.flatMap { category in
+            category.sections.enumerated().flatMap { sectionIndex, section in
+                section.rows.enumerated().compactMap { rowIndex, row in
+                    guard "\(category.title) \(section.title) \(row.field) \(row.value)"
+                        .localizedCaseInsensitiveContains(query) else { return nil }
+                    return TaskManagerReportMatch(
+                        category: category,
+                        section: section,
+                        row: row,
+                        sectionIndex: sectionIndex,
+                        rowIndex: rowIndex
+                    )
+                }
+            }
+        }
+    }
+}
+
 struct TaskManagerSystemReportView: View {
     @Binding var search: String
     @Binding var requestedAction: TaskManagerSystemReportAction?
@@ -187,6 +222,7 @@ struct TaskManagerSystemReportView: View {
     @State private var collapsedGroups = Set<String>()
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var matches: [TaskManagerReportMatch] = []
 
     init(
         search: Binding<String>,
@@ -203,18 +239,7 @@ struct TaskManagerSystemReportView: View {
     private var selected: TaskManagerReportCategory? {
         categories.first { $0.id == selectedID } ?? categories.first
     }
-    private var matches: [(TaskManagerReportCategory, TaskManagerReportSection, TaskManagerReportRow)] {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return [] }
-        return categories.flatMap { category in
-            category.sections.flatMap { section in
-                section.rows.compactMap { row in
-                    "\(category.title) \(section.title) \(row.field) \(row.value)"
-                        .localizedCaseInsensitiveContains(query) ? (category, section, row) : nil
-                }
-            }
-        }
-    }
+    private var searchRequest: String { "\(categories.count):\(search)" }
 
     var body: some View {
         TaskManagerPanel {
@@ -240,7 +265,9 @@ struct TaskManagerSystemReportView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await load() }
+        .task(id: searchRequest) { await updateMatches() }
         .onChange(of: requestedAction) { _, action in
             guard let action else { return }
             switch action {
@@ -313,24 +340,26 @@ struct TaskManagerSystemReportView: View {
     }
 
     private func categoryView(_ category: TaskManagerReportCategory) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 9) {
-                    Image(systemName: category.symbol).font(.system(size: 14)).foregroundStyle(TaskManagerTheme.secondary)
-                    Text(category.title).font(.system(size: 15, weight: .medium))
-                }
-                .padding(.horizontal, 18)
-                .frame(height: 50)
-                ForEach(category.sections) { section in
-                    reportSection(section)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 9) {
+                Image(systemName: category.symbol).font(.system(size: 14)).foregroundStyle(TaskManagerTheme.secondary)
+                Text(category.title).font(.system(size: 15, weight: .medium))
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 50)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(category.sections) { section in
+                        reportSection(section)
+                    }
                 }
             }
+            .thinScrollIndicators()
         }
-        .thinScrollIndicators()
     }
 
     private func reportSection(_ section: TaskManagerReportSection) -> some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             HStack {
                 Text(section.title).font(.system(size: 10, weight: .medium))
                 Spacer()
@@ -357,43 +386,61 @@ struct TaskManagerSystemReportView: View {
     }
 
     private var searchResults: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                if matches.isEmpty {
-                    ContentUnavailableView.search(text: search)
-                        .frame(maxWidth: .infinity, minHeight: 260)
-                } else {
-                    HStack {
-                        Text("\(matches.count) matches")
-                            .font(.system(size: 10, weight: .medium))
-                        Spacer()
-                    }
-                    .padding(18)
-                    ForEach(matches.indices, id: \.self) { index in
-                        let match = matches[index]
-                        Button {
-                            selectedID = match.0.id
-                            search = ""
-                        } label: {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("\(match.0.title) · \(match.1.title)")
-                                    .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.muted)
-                                HStack(alignment: .firstTextBaseline, spacing: 14) {
-                                    Text(match.2.field).font(.system(size: 10)).frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(match.2.value).font(.system(size: 10)).frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 0) {
+            if !matches.isEmpty {
+                HStack {
+                    Text("\(matches.count) matches")
+                        .font(.system(size: 10, weight: .medium))
+                    Spacer()
+                }
+                .padding(18)
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    if matches.isEmpty {
+                        ContentUnavailableView.search(text: search)
+                            .frame(maxWidth: .infinity, minHeight: 260)
+                    } else {
+                        ForEach(matches) { match in
+                            Button {
+                                selectedID = match.category.id
+                                search = ""
+                            } label: {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("\(match.category.title) · \(match.section.title)")
+                                        .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.muted)
+                                    HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                        Text(match.row.field)
+                                            .font(.system(size: 10))
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text(match.row.value)
+                                            .font(.system(size: 10))
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
                                 }
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 9)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 9)
-                            .contentShape(Rectangle())
+                            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
+                            .focusEffectDisabled()
+                            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         }
-                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0)).focusEffectDisabled()
-                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                     }
                 }
             }
+            .thinScrollIndicators()
         }
-        .thinScrollIndicators()
+    }
+
+    private func updateMatches() async {
+        let query = search
+        let categories = categories
+        let result = await Task.detached(priority: .userInitiated) {
+            TaskManagerReportSearch.matches(query: query, categories: categories)
+        }.value
+        guard !Task.isCancelled, search == query else { return }
+        matches = result
     }
 
     private func load() async {

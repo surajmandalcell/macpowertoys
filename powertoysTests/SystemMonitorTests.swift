@@ -233,6 +233,28 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertFalse(rows.contains { $0.field.localizedCaseInsensitiveContains("serial") || $0.value == "SECRET" })
     }
 
+    func testSystemReportSearchBuildsStableMatches() throws {
+        let category = TaskManagerReportCategory(
+            id: "hardware",
+            title: "Hardware",
+            symbol: "desktopcomputer",
+            group: "Hardware",
+            sections: [TaskManagerReportSection(
+                title: "Memory",
+                rows: [
+                    TaskManagerReportRow(field: "Type", value: "Unified"),
+                    TaskManagerReportRow(field: "Capacity", value: "32 GB"),
+                ]
+            )]
+        )
+
+        let matches = TaskManagerReportSearch.matches(query: "32 gb", categories: [category])
+
+        XCTAssertEqual(matches.map(\.id), ["hardware:0:1"])
+        XCTAssertEqual(matches.first?.row.field, "Capacity")
+        XCTAssertTrue(TaskManagerReportSearch.matches(query: " ", categories: [category]).isEmpty)
+    }
+
     func testProtectedProcessFallbackParsesPublicCountersAndPath() {
         let row = "   1   0   0  21344 488724304   0.6 /System/Example App.app/Contents/MacOS/Example App\n"
         let result = SystemMonitorProcessSampler.parsePublicProcessInfo(row)
@@ -254,6 +276,37 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .memory, descending: false).first?.pid, 1)
         XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .pid, descending: true).count, 60)
         XCTAssertEqual(SystemMonitorProcessSorting.sorted(processes, by: .name, descending: false).first?.pid, 1)
+    }
+
+    func testPreparedProcessRowsFilterSortLimitAndFormatBeforeRendering() {
+        let processes = (1...12).map { index in
+            SystemMonitorProcess(
+                pid: Int32(index),
+                started: UInt64(index),
+                name: "Worker \(index)",
+                cpuPercent: Double(index),
+                residentBytes: UInt64(index * 1_024),
+                virtualBytes: 0,
+                threads: 1,
+                parentPID: 1,
+                userID: 501,
+                executablePath: "/bin/worker-\(index)"
+            )
+        }
+
+        let result = SystemMonitorProcessRows.prepare(
+            processes,
+            search: "worker",
+            hierarchy: false,
+            column: .cpu,
+            descending: true,
+            limit: 5
+        )
+
+        XCTAssertEqual(result.matchingCount, 12)
+        XCTAssertEqual(result.rows.map(\.process.pid), [12, 11, 10, 9, 8])
+        XCTAssertEqual(result.rows.first?.cpuText, "12.0%")
+        XCTAssertNotEqual(result.rows.first?.memoryText, "—")
     }
 
     func testUnknownProcessUsageSortsLastInEitherDirection() {

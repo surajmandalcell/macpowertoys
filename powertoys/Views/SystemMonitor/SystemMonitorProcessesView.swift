@@ -2,7 +2,7 @@ import AppKit
 import OnePlusUI
 import SwiftUI
 
-nonisolated enum ProcessSortColumn: String, CaseIterable {
+nonisolated enum ProcessSortColumn: String, CaseIterable, Hashable, Sendable {
     case name, cpu, memory, pid
 
     var title: String {
@@ -49,10 +49,28 @@ nonisolated enum SystemMonitorProcessSorting {
 }
 
 nonisolated enum SystemMonitorProcessHierarchy {
-    struct Row: Identifiable {
+    struct Row: Identifiable, Sendable {
         let process: SystemMonitorProcess
         let depth: Int
+        let cpuText: String
+        let memoryText: String
+        let pidText: String
         var id: String { process.id }
+
+        init(process: SystemMonitorProcess, depth: Int) {
+            self.process = process
+            self.depth = depth
+            cpuText = process.cpuPercent.map {
+                "\($0.formatted(.number.precision(.fractionLength(1))))%"
+            } ?? "—"
+            memoryText = process.residentBytes == 0 && process.started == 0
+                ? "—"
+                : ByteCountFormatter.string(
+                    fromByteCount: Int64(min(process.residentBytes, UInt64(Int64.max))),
+                    countStyle: .memory
+                )
+            pidText = String(process.pid)
+        }
     }
 
     static func rows(
@@ -83,12 +101,159 @@ nonisolated enum SystemMonitorProcessHierarchy {
     }
 }
 
+nonisolated enum SystemMonitorProcessRows {
+    struct Result: Sendable {
+        let rows: [SystemMonitorProcessHierarchy.Row]
+        let matchingCount: Int
+    }
+
+    static func prepare(
+        _ processes: [SystemMonitorProcess],
+        search: String,
+        hierarchy: Bool,
+        column: ProcessSortColumn,
+        descending: Bool,
+        limit: Int? = nil
+    ) -> Result {
+        let filtered = processes.filter {
+            search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)
+                || String($0.pid).contains(search)
+                || $0.executablePath.localizedCaseInsensitiveContains(search)
+        }
+        let prepared = hierarchy
+            ? SystemMonitorProcessHierarchy.rows(filtered, by: column, descending: descending)
+            : SystemMonitorProcessSorting.sorted(filtered, by: column, descending: descending)
+                .map { SystemMonitorProcessHierarchy.Row(process: $0, depth: 0) }
+        return Result(
+            rows: limit.map { Array(prepared.prefix($0)) } ?? prepared,
+            matchingCount: filtered.count
+        )
+    }
+
+    static func prepareOffMain(
+        _ processes: [SystemMonitorProcess],
+        search: String,
+        hierarchy: Bool,
+        column: ProcessSortColumn,
+        descending: Bool,
+        limit: Int? = nil
+    ) async -> Result {
+        await Task.detached(priority: .userInitiated) {
+            prepare(
+                processes,
+                search: search,
+                hierarchy: hierarchy,
+                column: column,
+                descending: descending,
+                limit: limit
+            )
+        }.value
+    }
+}
+
+private struct SystemMonitorProcessRowsRequest: Hashable {
+    let generation: Int
+    let search: String
+    let hierarchy: Bool
+    let column: ProcessSortColumn
+    let descending: Bool
+}
+
+struct SystemMonitorOverviewProcessesView: View {
+    let onViewAll: () -> Void
+    let onSelect: (SystemMonitorProcess) -> Void
+
+    @State private var sampler = SystemMonitorProcessSampler()
+    @State private var rows: [SystemMonitorProcessHierarchy.Row] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Top processes").font(.system(size: 11, weight: .medium))
+                Spacer()
+                Button("View all", action: onViewAll)
+                    .font(.system(size: 9))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+            }
+            .frame(minHeight: 17)
+            TaskManagerPanel {
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Text("PROCESS").frame(maxWidth: .infinity, alignment: .leading)
+                        Text("CPU").frame(width: 62, alignment: .trailing)
+                        Text("MEMORY").frame(width: 82, alignment: .trailing)
+                    }
+                    .onePlusTableHeader()
+                    ForEach(rows) { row in
+                        Button { onSelect(row.process) } label: {
+                            HStack(spacing: 8) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "app")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(TaskManagerTheme.secondary)
+                                        .frame(width: 18, height: 18)
+                                    Text(row.process.name)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(TaskManagerTheme.ink)
+                                        .lineLimit(1)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(row.cpuText).frame(width: 62, alignment: .trailing)
+                                Text(row.memoryText).frame(width: 82, alignment: .trailing)
+                            }
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(TaskManagerTheme.secondary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
+                        .focusEffectDisabled()
+                        .onePlusTableRow()
+                        if row.id != rows.last?.id {
+                            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                        }
+                    }
+                    if rows.isEmpty {
+                        Text("—")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(TaskManagerTheme.muted)
+                            .frame(maxWidth: .infinity, minHeight: 165)
+                    }
+                }
+            }
+            .frame(height: 203)
+        }
+        .task { await sample() }
+    }
+
+    private func sample() async {
+        while !Task.isCancelled {
+            let processes = await sampler.sample()
+            let result = await SystemMonitorProcessRows.prepareOffMain(
+                processes,
+                search: "",
+                hierarchy: false,
+                column: .cpu,
+                descending: true,
+                limit: 5
+            )
+            guard !Task.isCancelled else { return }
+            rows = result.rows
+            try? await Task.sleep(for: .seconds(3))
+        }
+    }
+}
+
 struct SystemMonitorProcessesView: View {
     @AppStorage("systemMonitor.processSortColumn") private var sortColumn = ProcessSortColumn.cpu.rawValue
     @AppStorage("systemMonitor.processSortDescending") private var descending = true
     @AppStorage("systemMonitor.processHierarchy") private var storedHierarchy = false
     @State private var sampler = SystemMonitorProcessSampler()
     @State private var processes: [SystemMonitorProcess] = []
+    @State private var visibleRows: [SystemMonitorProcessHierarchy.Row] = []
+    @State private var matchingCount = 0
+    @State private var processGeneration = 0
     @State private var internalSearch = ""
     @State private var didLoad = false
     @State private var selectedID: String?
@@ -99,7 +264,6 @@ struct SystemMonitorProcessesView: View {
     @State private var lastUpdated: Date?
     @State private var networkEndpoints: [String] = []
     @State private var endpointsLoaded = false
-    @State private var hoveredProcessID: String?
 
     private let externalSearch: Binding<String>?
     private let externalHierarchy: Binding<Bool>?
@@ -119,18 +283,14 @@ struct SystemMonitorProcessesView: View {
     private var hierarchy: Bool { externalHierarchy?.wrappedValue ?? storedHierarchy }
     private var selected: SystemMonitorProcess? { processes.first { $0.id == selectedID } }
     private var activeColumn: ProcessSortColumn { ProcessSortColumn(rawValue: sortColumn) ?? .cpu }
-    private var filteredProcesses: [SystemMonitorProcess] {
-        processes.filter {
-            search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)
-                || String($0.pid).contains(search)
-                || $0.executablePath.localizedCaseInsensitiveContains(search)
-        }
-    }
-    private var visibleRows: [SystemMonitorProcessHierarchy.Row] {
-        hierarchy
-            ? SystemMonitorProcessHierarchy.rows(filteredProcesses, by: activeColumn, descending: descending)
-            : SystemMonitorProcessSorting.sorted(filteredProcesses, by: activeColumn, descending: descending)
-                .map { .init(process: $0, depth: 0) }
+    private var rowsRequest: SystemMonitorProcessRowsRequest {
+        SystemMonitorProcessRowsRequest(
+            generation: processGeneration,
+            search: search,
+            hierarchy: hierarchy,
+            column: activeColumn,
+            descending: descending
+        )
     }
 
     var body: some View {
@@ -146,6 +306,7 @@ struct SystemMonitorProcessesView: View {
         }
         .foregroundStyle(TaskManagerTheme.ink)
         .task { await sampleProcesses() }
+        .task(id: rowsRequest) { await prepareVisibleRows(rowsRequest) }
         .task(id: selectedID) { await sampleEndpoints() }
         .sheet(isPresented: Binding(
             get: { selectedID != nil },
@@ -213,7 +374,7 @@ struct SystemMonitorProcessesView: View {
                         if !didLoad {
                             ProgressView().controlSize(.small)
                                 .frame(maxWidth: .infinity, minHeight: 180)
-                        } else if filteredProcesses.isEmpty {
+                        } else if matchingCount == 0 {
                             VStack(spacing: 8) {
                                 Text("No matching processes").font(.system(size: 12, weight: .medium))
                                 Text("Search for a process name, path, or PID.")
@@ -250,31 +411,19 @@ struct SystemMonitorProcessesView: View {
             Button { selectedID = process.id } label: {
                 HStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.white.opacity(0.055))
-                            .overlay { Image(systemName: "app").font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary) }
-                            .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(TaskManagerTheme.line) }
+                        Image(systemName: "app")
+                            .font(.system(size: 10))
+                            .foregroundStyle(TaskManagerTheme.secondary)
                             .frame(width: 18, height: 18)
                         Text(process.name).lineLimit(1)
                     }
                     .padding(.leading, CGFloat(row.depth) * 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        hoveredProcessID == process.id ? Color.white.opacity(0.055) : .clear,
-                        in: RoundedRectangle(cornerRadius: 4)
-                    )
-                    .onHover { inside in
-                        if inside {
-                            hoveredProcessID = process.id
-                        } else if hoveredProcessID == process.id {
-                            hoveredProcessID = nil
-                        }
-                    }
-                    Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
+                    Text(row.cpuText)
                         .frame(width: 72, alignment: .trailing)
-                    Text(process.residentBytes == 0 && process.started == 0 ? "—" : bytes(process.residentBytes))
+                    Text(row.memoryText)
                         .frame(width: 90, alignment: .trailing)
-                    Text("\(process.pid)").frame(width: 64, alignment: .trailing)
+                    Text(row.pidText).frame(width: 64, alignment: .trailing)
                 }
                 .font(.system(size: 10))
                 .monospacedDigit()
@@ -349,6 +498,7 @@ struct SystemMonitorProcessesView: View {
             let result = await sampler.sample()
             guard !Task.isCancelled else { return }
             processes = result
+            processGeneration &+= 1
             lastUpdated = Date()
             didLoad = true
             if let selectedID, !result.contains(where: { $0.id == selectedID }) {
@@ -356,6 +506,19 @@ struct SystemMonitorProcessesView: View {
             }
             try? await Task.sleep(for: .seconds(3))
         }
+    }
+
+    private func prepareVisibleRows(_ request: SystemMonitorProcessRowsRequest) async {
+        let result = await SystemMonitorProcessRows.prepareOffMain(
+            processes,
+            search: request.search,
+            hierarchy: request.hierarchy,
+            column: request.column,
+            descending: request.descending
+        )
+        guard !Task.isCancelled, rowsRequest == request else { return }
+        visibleRows = result.rows
+        matchingCount = result.matchingCount
     }
 
     private func sampleEndpoints() async {
@@ -391,9 +554,6 @@ struct SystemMonitorProcessesView: View {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
-    private func bytes(_ value: UInt64) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
-    }
 }
 
 struct ProcessDetailSheet: View {
