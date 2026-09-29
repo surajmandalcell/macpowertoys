@@ -2,8 +2,13 @@
 
 ## OnePlusUI redesign, 2026-09-29
 
+Round 2 keeps the Servers composition. Sort by must show a menu affordance
+and match Clean up in height and baseline. Port and memory values stay mono.
+Forward and Settings keep 28pt form controls and aligned control columns.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Make Sort by read as a menu beside Clean up, with mono memory and port values. | Round 2 gives Sort by the same 24pt neutral style as Clean up and a chevron. The large memory value and detail port use mono type. Local link hover is neutral; the panel uses shared tint defaults. Debug compilation passes. Settings retain the 160pt column and 28pt controls. Forward retains its full-width host field and 84pt item action column. | Inspect all tabs, sort choices, and hover in the next signed capture. |
 | Verify | Keep the Servers composition; move its type, colors, and controls to tokens. Use the 356pt menu shell, Forward cards, and searchable Settings with 28pt controls and a 160pt column. | Debug build passes. Saved tabs, equal Link/Stop actions, scan cancellation, range selection, auth-failure-only password prompts, and idle scan policy remain in source. Open and refresh tasks now cancel. | Review all tabs, tunnels, SSH failures, and cleanup in the orchestrator's installed build. |
 
 The owner requested a MacPowerToys tool based on the detailed WhatThePort
