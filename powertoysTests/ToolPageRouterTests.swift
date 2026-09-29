@@ -96,6 +96,39 @@ struct ToolPageRouterTests {
         #expect(router.take(tool: "system-monitor")?.page == "cpu")
     }
 
+    @MainActor @Test func diagnosticsSelectOnlyKnownPanelTabs() throws {
+        let suite = "ToolPageRouterTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let panels: [(DiagnosticsPanel, String, [(String, String)])] = [
+            (.main, "tray.selectedTab.v2", [("home", "home"), ("cloud-sync", "rclone"),
+                ("input-devices", "input-devices"), ("system-care", "system-care"),
+                ("nettoys", "nettoys"), ("switch", "switch")]),
+            (.systemMonitor, "systemMonitor.trayPage", ["home", "cpu", "gpu", "memory", "network",
+                "disk", "battery", "sensors", "processes"].map { ($0, $0) }),
+            (.portman, "portman.selectedPage", [("servers", "Servers"), ("forward", "Forward"), ("settings", "Settings")])
+        ]
+        for (panel, key, tabs) in panels {
+            for (id, saved) in tabs {
+                let url = try #require(URL(string: "macpowertoys://diagnostics/open-panel/\(panel.rawValue)?tab=\(id)"))
+                #expect(DiagnosticsRoute.parse(url) == .openPanel(panel, tab: id))
+                panel.selectTab(id, defaults: defaults)
+                #expect(defaults.string(forKey: key) == saved)
+            }
+            let saved = defaults.string(forKey: key)
+            for unknown in [nil, "", "unknown", "CPU", "rclone", "../home"] as [String?] {
+                panel.selectTab(unknown, defaults: defaults)
+                #expect(defaults.string(forKey: key) == saved)
+            }
+        }
+        for value in ["powertoys://open/open-panel/main?tab=home",
+                      "powertoys://diagnostics/open-panel/main?tab=home&tab=switch",
+                      "powertoys://diagnostics/open-panel/main?tab",
+                      "powertoys://diagnostics/appearance/dark?tab=home"] {
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: value))) == nil)
+        }
+    }
+
     @Test func parsesCaptureDiagnosticsOnlyUnderDiagnosticsHost() throws {
         for scheme in ["macpowertoys", "powertoys"] {
             for appearance in AppAppearance.allCases {
