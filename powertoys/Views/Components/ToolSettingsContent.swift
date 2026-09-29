@@ -9,6 +9,7 @@ import OnePlusUI
 struct ToolSettingsContent: View {
     let toolID: String
     @State private var isReady: Bool
+    @AppStorage("systemCare.defaultMode") private var systemCareMode = SystemCareMode.quick.rawValue
 
     init(toolID: String) {
         self.toolID = toolID
@@ -45,19 +46,17 @@ struct ToolSettingsContent: View {
     private var settingsContent: some View {
         switch toolID {
         case "rclone":
-            RcloneSettingsPage(showsHeader: false)
+            OnePlusPage(header: { EmptyView() }) { RcloneSettingsPage(showsHeader: false) }
         case "ruler":
             RulerLauncherSettingsView()
         case "awake":
-            AwakeSettingsView()
-                .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
-                .settingsScrollContainer()
+            OnePlusPage(header: { EmptyView() }) { AwakePreferencesView() }
         case "color-picker":
             ColorPickerSettingsView()
         case "text-extractor":
             TextExtractorSettingsView()
         case "nettoys":
-            NetToysSettingsView()
+            OnePlusPage(header: { EmptyView() }) { NetToysSettingsView() }
         case "switch":
             SwitchLauncherSettingsView()
         case "mac-tweaks":
@@ -68,13 +67,22 @@ struct ToolSettingsContent: View {
                     .controlSize(.small)
                 Spacer()
             }
-            .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
+            .settingsPageInsets(horizontal: OnePlusMetrics.gutter, top: OnePlusMetrics.contentTop, bottom: OnePlusMetrics.gutter)
         case "input-devices":
             InputDevicesSettingsView()
         case "system-monitor":
-            SystemMonitorMenuSettingsView()
+            OnePlusPage(header: { EmptyView() }) { SystemMonitorMenuSettingsView(showsContainerScroll: false) }
+        case "system-care":
+            OnePlusPage(header: { EmptyView() }) {
+                SystemCareSettingsContent(mode: Binding(
+                    get: { SystemCareMode(rawValue: systemCareMode) ?? .quick },
+                    set: { systemCareMode = $0.rawValue }
+                ))
+            }
+        case "portman":
+            OnePlusPage(header: { EmptyView() }) { PortmanSettingsView() }
         case "disk-explorer":
-            DiskExplorerSettingsView()
+            OnePlusPage(header: { EmptyView() }) { DiskExplorerSettingsView() }
         case "logs":
             LogsSettingsView()
         default:
@@ -92,7 +100,7 @@ private struct SwitchLauncherSettingsView: View {
                 .utilitySectionCard()
             Spacer()
         }
-        .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
+        .settingsPageInsets(horizontal: OnePlusMetrics.gutter, top: OnePlusMetrics.contentTop, bottom: OnePlusMetrics.gutter)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
@@ -120,29 +128,18 @@ struct RulerLauncherSettingsView: View {
 
             Spacer()
         }
-        .settingsPageInsets(horizontal: 24, top: 24, bottom: 24)
+        .settingsPageInsets(horizontal: OnePlusMetrics.gutter, top: OnePlusMetrics.contentTop, bottom: OnePlusMetrics.gutter)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
 extension View {
-    func settingsScrollContainer() -> some View {
-        modifier(SettingsScrollContainer())
-    }
-
     func settingsPageInsets(
         horizontal: CGFloat,
         top: CGFloat = 0,
         bottom: CGFloat
     ) -> some View {
         modifier(SettingsPageInsets(horizontal: horizontal, top: top, bottom: bottom))
-    }
-}
-
-private struct SettingsScrollContainer: ViewModifier {
-    func body(content: Content) -> some View {
-        ScrollView { content }
-            .thinScrollIndicators()
     }
 }
 
