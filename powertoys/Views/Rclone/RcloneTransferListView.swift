@@ -27,7 +27,7 @@ struct RcloneTransferListView: View {
     }
 
     var body: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: title, subtitle: subtitle) {
                 if hasTerminalJobs {
                     Button("Clear finished") { manager.clearFinished() }
@@ -50,13 +50,17 @@ struct RcloneTransferListView: View {
             if manager.filteredJobs.isEmpty {
                 OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption) {
                     Button("New Transfer") { manager.isPresentingNewTransfer = true }
-                        .buttonStyle(OnePlusButtonStyle(.primary))
+                        .buttonStyle(OnePlusButtonStyle(.neutral))
                 }
-                .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                LazyVStack(spacing: OnePlusMetrics.spacing[3]) {
-                    ForEach(manager.filteredJobs) { TransferJobRow(job: $0) }
+                ScrollView {
+                    LazyVStack(spacing: OnePlusMetrics.spacing[3]) {
+                        ForEach(manager.filteredJobs) { TransferJobRow(job: $0) }
+                    }
                 }
+                .onePlusScrollIndicators()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .accessibilityIdentifier("rclone.transfers.\(manager.filter.rawValue)")

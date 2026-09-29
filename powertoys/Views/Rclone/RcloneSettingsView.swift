@@ -15,6 +15,8 @@ nonisolated enum RcloneBandwidthInput {
 }
 
 struct RcloneSettingsView: View {
+    @AppStorage("tool.rclone.startAtLaunch") private var startAtLaunch = false
+    @AppStorage("app.showTray") private var showTray = true
     @AppStorage(RcloneDefaults.ignorePatternsKey) private var ignorePatterns = RcloneDefaults.ignorePatterns
     @AppStorage(RcloneDefaults.transfersKey) private var transfers = RcloneDefaults.transfers
     @AppStorage(RcloneDefaults.checkersKey) private var checkers = RcloneDefaults.checkers
@@ -27,18 +29,58 @@ struct RcloneSettingsView: View {
     @AppStorage(RcloneDefaults.binaryPathKey) private var binaryPath = RcloneDefaults.binaryPath
 
     var body: some View {
-        OnePlusSectionTitle("Transfers")
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                syncEngineCard
+                    .frame(maxWidth: .infinity)
+                transfersCard
+                    .frame(maxWidth: .infinity)
+            }
+            ignorePatternsCard
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                retriesCard
+                    .frame(maxWidth: .infinity)
+                rcloneCard
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .onChange(of: startAtLaunch) { _, enabled in
+            Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
+        }
+    }
+
+    private var syncEngineCard: some View {
         OnePlusCard {
-            OnePlusSettingRow("Parallel transfers", caption: "Files copied at the same time.") {
+            OnePlusCardHeader("Sync engine")
+            OnePlusSettingRow("Start at launch", caption: "Keep the sync engine ready after sign-in.") {
+                Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("Show in menu bar", caption: "Show MacPowerToys transfer status in the menu bar.") {
+                Toggle("Show in menu bar", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("Retry interrupted transfers", caption: "Queue unfinished transfers after the engine starts.", separator: false) {
+                Toggle("Retry interrupted transfers", isOn: .constant(true))
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
+                    .disabled(true)
+                    .help("Cloud Sync always protects and resumes interrupted transfers.")
+            }
+        }
+    }
+
+    private var transfersCard: some View {
+        OnePlusCard {
+            OnePlusCardHeader("Transfers")
+            OnePlusSettingRow("Parallel transfers", caption: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
             }
-            OnePlusSettingRow("Checkers", caption: "Remote checks performed at the same time.") {
+            OnePlusSettingRow("Checkers", caption: "Remote checks performed at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
             }
             OnePlusSettingRow("Bandwidth limit", caption: "Leave blank or enter off for no limit.", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
             }
-            OnePlusSettingRow("Default operation", separator: false) {
+            OnePlusSettingRow("Default operation", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                 OnePlusSelect(
                     choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
                     selection: $defaultOperation,
@@ -46,9 +88,11 @@ struct RcloneSettingsView: View {
                 )
             }
         }
+    }
 
-        OnePlusSectionTitle("Ignore patterns")
+    private var ignorePatternsCard: some View {
         OnePlusCard {
+            OnePlusCardHeader("Ignore patterns")
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
                 OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
                     .frame(height: OnePlusMetrics.spacing[8] * 5)
@@ -57,9 +101,11 @@ struct RcloneSettingsView: View {
             }
             .padding(OnePlusMetrics.cardPadding)
         }
+    }
 
-        OnePlusSectionTitle("Retries")
+    private var retriesCard: some View {
         OnePlusCard {
+            OnePlusCardHeader("Retries")
             OnePlusSettingRow("Max retries") {
                 OnePlusStepperField("Max retries", value: $maxRetries, in: 0...20)
             }
@@ -76,9 +122,11 @@ struct RcloneSettingsView: View {
                 OnePlusStepperField("Concurrent jobs", value: $maxConcurrentJobs, in: 1...16)
             }
         }
+    }
 
-        OnePlusSectionTitle("rclone")
+    private var rcloneCard: some View {
         OnePlusCard {
+            OnePlusCardHeader("rclone")
             OnePlusSettingRow("Binary path", caption: "Leave blank to use the bundled or detected binary.", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                 OnePlusTextField("Auto-detected", text: $binaryPath)
             }
