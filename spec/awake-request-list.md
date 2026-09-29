@@ -11,6 +11,10 @@ editing when the foundation removes the old launcher-only preferences view.
 Round 3 keeps the applet's 40pt titlebar. The status card stays fixed while
 the mode, quick-time, and process cards own the home-page scrolling.
 
+Round 5 keeps the titlebar display switch as the only display control in the
+applet. Quick times use one 8pt-spaced row, minute labels include a space, and
+every settings card header uses a 13pt symbol.
+
 Round 2 requires a protected floating settings area and a readable 12pt
 status row. Window height uses the shared fixed-canvas correction.
 
@@ -19,8 +23,9 @@ not executed. Signed screenshot and interaction checks remain with the orchestra
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Remove the duplicate applet display control and align the quick-time row. | The applet passes `showsDisplayToggle: false`; quick times use one leading 8pt-spaced row with the add icon after the presets. Minute labels render as `15 min` and `30 min`. | Verify Home and Settings in both appearances. |
 | Verify | Keep Awake's status visible while its controls scroll, without adding a workspace header inset. | Home now places `AwakeStatusCard` above the only `ScrollView`; Settings still uses the shared cards-only implementation inside `OnePlusPage`. | Verify scroll limits and page switching in the signed build. |
-| Verify | Share one cards-only settings view between Awake and the main tool page. | `AwakeSettingsView()` owns the display, mode, quick-time, and process cards. The applet owns its OnePlusPage and floating-settings inset. Quick times wrap; the minute-based preset editor remains available. Debug and build-for-testing pass. | Foundation must dispatch to this type and remove AwakePreferencesView; then verify both hosts. |
+| Verify | Share one cards-only settings view between Awake and the main tool page. | `AwakeSettingsView()` owns the display, mode, quick-time, and process cards. The applet owns its OnePlusPage and floating-settings inset. Quick times use one row; the minute-based preset editor remains available. Debug and build-for-testing pass. | Foundation must dispatch to this type and remove AwakePreferencesView; then verify both hosts. |
 | Verify | Keep the floating settings button clear of both page bodies. | Round 2 applies the shared 52pt body inset before the gear overlay. The old inner 44pt padding is removed. The gear keeps its 8pt edge inset and Command-comma action. | Verify scrolling, window size, and both pages in the next signed capture. |
 | Verify | Render the Awake status in readable row type. | Round 2 uses OnePlusStatus with the regular 12pt row role and a neutral dot. Debug compilation passes. | Review active and inactive states in the next signed capture. |
 | Verify | Use the 560 x 500 OnePlusUI applet, persistent display switch, status card, segmented modes, quick times, process attachment, and a replacing Settings page. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `home` and `settings`. | Review both appearances and controls in the orchestrator's installed build. |

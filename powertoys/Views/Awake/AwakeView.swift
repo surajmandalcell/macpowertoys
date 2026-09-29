@@ -24,7 +24,7 @@ struct AwakeView: View {
                 Group {
                     if settings {
                         OnePlusPage(layout: .applet, header: { EmptyView() }) {
-                            AwakeSettingsView()
+                            AwakeSettingsView(showsDisplayToggle: false)
                         }
                     } else {
                         AwakeHomeView()
@@ -100,7 +100,7 @@ struct AwakeSettingsView: View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             if showsDisplayToggle {
                 OnePlusCard {
-                    OnePlusCardHeader("Display")
+                    OnePlusCardHeader("Display", systemImage: "display")
                     OnePlusSettingRow("Keep display on", separator: false) {
                         Toggle("Keep Display On", isOn: Binding(
                             get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
@@ -159,10 +159,9 @@ struct AwakeSettingsView: View {
     private var quickTimes: some View {
         OnePlusCard {
             OnePlusCardHeader("Quick times", systemImage: "clock")
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: OnePlusMetrics.controlColumn / 2), alignment: .leading)],
-                      alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
                 ForEach(service.configuration.presets, id: \.self) { seconds in
-                    Button(AwakeService.presetLabel(seconds)) { service.setMode(.timed, duration: seconds) }
+                    Button(quickTimeLabel(seconds)) { service.setMode(.timed, duration: seconds) }
                         .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
                 }
                 if !showsDisplayToggle {
@@ -173,7 +172,9 @@ struct AwakeSettingsView: View {
                     .help("Add the current interval as a preset").accessibilityLabel("Add quick time")
                     .disabled(duration == 0)
                 }
-            }.padding(OnePlusMetrics.cardPadding)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(OnePlusMetrics.cardPadding)
             if showsDisplayToggle {
                 OnePlusSettingRow("New preset", caption: "Save up to eight durations.", separator: false) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
@@ -215,6 +216,10 @@ struct AwakeSettingsView: View {
         case .until: service.setMode(mode, until: expiration)
         default: service.setMode(mode)
         }
+    }
+
+    private func quickTimeLabel(_ seconds: TimeInterval) -> String {
+        AwakeService.presetLabel(seconds).replacingOccurrences(of: "min", with: " min")
     }
 
     private func attach() {
