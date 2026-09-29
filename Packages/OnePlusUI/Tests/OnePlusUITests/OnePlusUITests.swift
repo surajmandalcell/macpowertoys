@@ -226,13 +226,13 @@ final class OnePlusUITests: XCTestCase {
     }
 
     func testMenuPanelMeasuresShortContentWithoutCollapsingItsBody() {
-        let host = NSHostingView(rootView: OnePlusMenuPanel(maximumHeight: 300) {
-            OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")], selection: .constant("home"))
-        } actions: {
-            OnePlusMenuOpenApp {}
-        } content: {
-            Color.clear.frame(height: 100)
-        })
+        let host = NSHostingView(rootView: OnePlusMenuPanelShell(
+            maximumHeight: 300,
+            tabs: OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")],
+                                      selection: .constant("home")),
+            actions: OnePlusMenuOpenApp {},
+            content: { Color.clear.frame(height: 100) }
+        ).environment(\.onePlusIsVisible, true))
         host.frame.size = NSSize(width: 356, height: 300)
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
