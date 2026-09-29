@@ -18,8 +18,16 @@ path-based membership and measured proportions until the scan completes.
 Opening a page must not wait for mounted-volume metadata. Read that sidebar
 state off the main actor and discard it if the window task is cancelled.
 
+Round 3 keeps one embeddable settings view with cards and 16 pt gaps. The
+standalone Settings page owns its page wrapper; the main window owns its
+scroll container. Chart bounds and fractions must stay finite for empty
+scans, zero totals, and transient zero-size layouts. Invalid geometry must
+produce no clipped chart content.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Expose one settings content view without page chrome or scrolling. | `DiskExplorerSettingsView(unreadableCount: Int? = nil)` has an explicit initializer and remains the single implementation. It inherits the caller's density and keeps the short cards in equal columns. | Foundation must dispatch directly to this view. Compile and inspect both hosts. |
+| Open | Reject invalid geometry before chart clipping or masking. | The reported crash reaches SwiftUI mask layout. Current rings can calculate negative outer radii in tiny canvases; treemap bounds lack finite checks. The exact crash input is not known. | Guard all four data views and compile empty, zero-total, and nonfinite regressions. Signed crash replay remains with the orchestrator. |
 | Verify | Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar, 27 pt centerline, and 24 pt gutter. | Diskman uses the shared window root, header, sidebar, cards, tabs, and settings rows. Debug builds with no Diskman warnings. | Inspect both appearances on the signed build. |
 | Verify | Separate selection from navigation and show storage details beside the map. | Single click selects; double-click opens folders. The map has breadcrumbs and a 260 pt inspector. Back, forward, Quick Look, file menus, drag-out, and search have native paths. | Run interaction checks on the installed build. |
 | Verify | Show folded files without treating them as a real file. | `.aggregate` uses `fileCount` for `N smaller files`. Charts retain its tile; Results uses a grouped row. No file URL, drill, preview, or removal action is exposed. The new view regression compiles. | Run the aggregate view regression on hosted CI. |
