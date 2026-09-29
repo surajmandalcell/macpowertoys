@@ -118,7 +118,8 @@ struct DiskEntryTable: View {
     var showsFileCount = false
     @State private var column = 2
     @State private var ascending = false
-    @State private var projection = DiskEntryTableProjection.empty
+    @State private var projections: [DiskEntryTableRequest: DiskEntryTableProjection] = [:]
+    @State private var tableItems: [DiskEntryTableRequest: [OnePlusTableItem]] = [:]
 
     nonisolated static func sorted(_ entries: [DiskEntry], column: Int, ascending: Bool, apparent: Bool) -> [DiskEntry] {
         entries.sorted { left, right in
@@ -158,12 +159,12 @@ struct DiskEntryTable: View {
         let request = DiskEntryTableRequest(revision: revision, sourceID: sourceID, search: search,
                                             column: column, ascending: ascending, apparent: apparent,
                                             showsFileCount: showsFileCount)
-        let current = projection.request == request ? projection : .empty
+        let current = projections[request] ?? .empty
         let columns: [OnePlusGridColumn] = [.init("Name", width: 450), .init("Kind", width: 180),
             .init("Size", width: 120, trailing: true), .init("Modified", width: 180)] +
             (showsFileCount ? [.init("Files", width: 80, trailing: true)] : [])
         OnePlusNativeTable(columns: columns,
-                           rows: current.rows.map(\.tableItem), selection: $selection,
+                           rows: tableItems[request] ?? [], selection: $selection,
                            sortColumn: column, ascending: ascending,
                            sort: { column = $0; ascending = $1 },
                            open: { $0.compactMap { current.entriesByID[$0] }.filter { $0.kind != .aggregate }.forEach(open) },
@@ -172,22 +173,43 @@ struct DiskEntryTable: View {
                            actions: { actions($0.sorted().compactMap { current.entriesByID[$0] }) })
             .thinScrollIndicators()
             .overlay {
-                if projection.request != request { ProgressView().controlSize(.small) }
-                else if projection.rows.isEmpty { OnePlusEmptyState("No matching items", systemImage: "doc.text.magnifyingglass", caption: "Try another search or location.") }
+                if projections[request] == nil { ProgressView().controlSize(.small) }
+                else if current.rows.isEmpty { OnePlusEmptyState("No matching items", systemImage: "doc.text.magnifyingglass", caption: "Try another search or location.") }
             }
             .task(id: request) {
+                guard projections[request] == nil else { return }
                 let source = entries
                 let next = await Task.detached(priority: .userInitiated) { Self.project(source, request: request) }.value
                 guard !Task.isCancelled else { return }
-                projection = next
+                if projections.keys.contains(where: { $0.revision != request.revision }) || projections.count >= 12 {
+                    projections.removeAll(keepingCapacity: true)
+                    tableItems.removeAll(keepingCapacity: true)
+                }
+                tableItems[request] = next.rows.map(\.tableItem)
+                projections[request] = next
             }
     }
+}
+
+nonisolated struct DiskInspectorRequest: Hashable, Sendable {
+    let revision: Date
+    let entryID: String
+    let apparent: Bool
+}
+
+nonisolated struct DiskInspectorProjection: Sendable {
+    let request: DiskInspectorRequest?
+    let path: String
+    let folderCount: Int
+    let children: [DiskEntry]
+    static let empty = DiskInspectorProjection(request: nil, path: "", folderCount: 0, children: [])
 }
 
 struct DiskSelectionInspector: View {
     let entry: DiskEntry?
     let parent: DiskEntry
     let apparent: Bool
+    let revision: Date
     let select: (DiskEntry) -> Void
     let explore: (DiskEntry) -> Void
     let copy: (DiskEntry) -> Void
@@ -195,16 +217,19 @@ struct DiskSelectionInspector: View {
     let preview: (DiskEntry) -> Void
     let actions: ([DiskEntry]) -> [OnePlusTableAction]
     var availableBytes: Int64?
+    @State private var projection = DiskInspectorProjection.empty
 
     var body: some View {
+        let request = entry.map { DiskInspectorRequest(revision: revision, entryID: $0.id, apparent: apparent) }
+        let current = projection.request == request ? projection : .empty
         OnePlusCard {
             VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                 Text("Selection").onePlusText(.captionUpper)
                 if let entry {
                     VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                        identity(entry).modifier(DiskChartFileActions(entry: entry, actions: actions))
-                        facts(entry)
-                        if entry.kind == .directory { children(entry) }
+                        identity(entry, path: current.path).modifier(DiskChartFileActions(entry: entry, actions: actions))
+                        facts(entry, folderCount: current.folderCount)
+                        if entry.kind == .directory { children(current.children) }
                     }
                     Spacer(minLength: 0)
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
@@ -219,12 +244,31 @@ struct DiskSelectionInspector: View {
                 }
             }.padding(OnePlusMetrics.cardPadding).frame(maxHeight: .infinity, alignment: .topLeading)
         }
+        .task(id: request) {
+            guard let entry, let request else {
+                projection = .empty
+                return
+            }
+            let limit = OnePlusDiskmanMetrics.inspectorChildren
+            let next = await Task.detached(priority: .userInitiated) {
+                DiskInspectorProjection(
+                    request: request,
+                    path: entry.url.path,
+                    folderCount: entry.children.reduce(0) { $0 + ($1.kind == .directory ? 1 : 0) },
+                    children: Array(entry.children.sorted {
+                        $0.bytes(apparent: request.apparent) > $1.bytes(apparent: request.apparent)
+                    }.prefix(limit))
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            projection = next
+        }
     }
-    private func identity(_ entry: DiskEntry) -> some View {
+    private func identity(_ entry: DiskEntry, path: String) -> some View {
         let share = DiskChartGeometry.fraction(Double(entry.bytes(apparent: apparent)), of: Double(parent.bytes(apparent: apparent)))
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             Label(entry.name, systemImage: DiskEntryPresentation.symbol(entry)).onePlusText(.sectionTitle).lineLimit(2).help(entry.name)
-            Text(entry.url.path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(entry.url.path)
+            Text(path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(path)
             DiskSizeLabel(bytes: entry.bytes(apparent: apparent)).padding(.top, OnePlusMetrics.actionSpacing)
             HStack {
                 Text("Of parent folder")
@@ -234,19 +278,19 @@ struct DiskSelectionInspector: View {
             OnePlusUsageBar(value: share)
         }
     }
-    private func facts(_ entry: DiskEntry) -> some View {
+    private func facts(_ entry: DiskEntry, folderCount: Int) -> some View {
         VStack(spacing: 0) {
             OnePlusKeyValueRow("Kind", value: DiskEntryPresentation.kind(entry))
             OnePlusKeyValueRow("Files", value: entry.fileCount.formatted(), monospaced: true)
-            OnePlusKeyValueRow("Contents", value: "\(entry.children.filter { $0.kind == .directory }.count) folders")
+            OnePlusKeyValueRow("Contents", value: "\(folderCount) folders")
             if let availableBytes { OnePlusKeyValueRow("Free on disk", value: availableBytes.diskSize, monospaced: true) }
         }
     }
-    private func children(_ entry: DiskEntry) -> some View {
+    private func children(_ children: [DiskEntry]) -> some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             OnePlusColor.lineSoft.frame(height: 1)
             Text("Inside this folder").onePlusText(.caption)
-            ForEach(entry.children.sorted { $0.bytes(apparent: apparent) > $1.bytes(apparent: apparent) }.prefix(OnePlusDiskmanMetrics.inspectorChildren)) { child in
+            ForEach(children) { child in
                 Button {
                     guard child.kind != .aggregate else { return }
                     select(child)

@@ -66,6 +66,43 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertFalse(model.isLocked(disk))
     }
 
+    func testChartCacheSeparatesRevisionTabMeasureAndSize() {
+        let root = entry("/tmp/Diskman", kind: .directory, bytes: 100)
+        let revision = Date(timeIntervalSince1970: 1_000)
+        let mapKey = DiskChartCacheKey(revision: revision, tab: .treemap,
+                                       directoryID: root.id, measure: .space,
+                                       apparent: false, scanComplete: true,
+                                       width: 800, height: 500)
+        let ringKey = DiskChartCacheKey(revision: revision, tab: .sunburst,
+                                        directoryID: root.id, measure: .space,
+                                        apparent: false, scanComplete: true,
+                                        width: 800, height: 500)
+        let cache = DiskChartLayoutCache()
+        cache.store([DiskChartTile(entry: root, label: root.name, weight: 100,
+                                   detail: "100 bytes", color: .blue)], for: mapKey)
+        cache.store([DiskRingSegment(id: root.id, entry: root, label: root.name,
+                                     detail: "100 bytes", start: 0, end: 1,
+                                     inner: 1, outer: 2, color: .blue)], for: ringKey)
+
+        XCTAssertTrue(cache.treemap(for: mapKey)?.first?.entry === root)
+        XCTAssertTrue(cache.rings(for: ringKey)?.first?.entry === root)
+        XCTAssertNil(cache.treemap(for: DiskChartCacheKey(
+            revision: revision, tab: .treemap, directoryID: root.id,
+            measure: .files, apparent: false, scanComplete: true,
+            width: 800, height: 500)))
+        XCTAssertNil(cache.rings(for: DiskChartCacheKey(
+            revision: revision, tab: .sunburst, directoryID: root.id,
+            measure: .space, apparent: false, scanComplete: true,
+            width: 801, height: 500)))
+        let nextRevisionKey = DiskChartCacheKey(
+            revision: revision.addingTimeInterval(1), tab: .treemap,
+            directoryID: root.id, measure: .space, apparent: false,
+            scanComplete: true, width: 800, height: 500)
+        XCTAssertNil(cache.treemap(for: nextRevisionKey))
+        cache.store([DiskChartTile](), for: nextRevisionKey)
+        XCTAssertNil(cache.rings(for: ringKey))
+    }
+
     func testCompletedChartsFoldTinyTargetsWithoutChangingLiveMembership() throws {
         let root = entry("/tmp/Diskman", kind: .directory)
         let large = entry("/tmp/Diskman/other", kind: .directory, bytes: 1_000_000)

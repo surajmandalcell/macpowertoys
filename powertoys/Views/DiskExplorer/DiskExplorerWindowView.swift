@@ -21,6 +21,7 @@ struct DiskExplorerWindowView: View {
     @State private var resultTab = DiskResultTab.visualization
     @State private var search = ""
     @State private var searchFocus = 0
+    @State private var chartLayouts = DiskChartLayoutCache()
     @State private var selection: Set<String> = []
     @State private var selectedID: String?
     @State private var history: [String] = []
@@ -286,6 +287,7 @@ struct DiskExplorerWindowView: View {
                 }.onePlusText(.caption).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
             }
             DiskSelectionInspector(entry: inspected, parent: inspectedParent ?? current, apparent: apparentSize,
+                                   revision: model.result?.scannedAt ?? .distantPast,
                                    select: select, explore: navigate, copy: { DiskEntryPresentation.copy([$0.url.path]) },
                                    open: open, preview: preview, actions: fileActions,
                                    availableBytes: model.volumes.first { $0.url == inspected?.url }?.available)
@@ -306,12 +308,16 @@ struct DiskExplorerWindowView: View {
             OnePlusEmptyState(model.isScanning ? "Reading this folder..." : "No measured items", systemImage: "folder")
         } else if chart == .treemap {
             DiskTreemapView(directory: current, apparent: apparentSize, measure: measure,
-                            scanComplete: model.result?.isComplete == true, select: select,
+                            scanComplete: model.result?.isComplete == true,
+                            revision: model.result?.scannedAt ?? .distantPast,
+                            cache: chartLayouts, select: select,
                             onHoverDetail: { hoveredDetail = $0 }, selectedEntryID: selectedID,
                             open: open, preview: preview, actions: fileActions)
         } else {
             DiskSunburstView(directory: current, apparent: apparentSize, measure: measure,
-                             scanComplete: model.result?.isComplete == true, select: select,
+                             scanComplete: model.result?.isComplete == true,
+                             revision: model.result?.scannedAt ?? .distantPast,
+                             cache: chartLayouts, select: select,
                              onHoverDetail: { hoveredDetail = $0 }, selectedEntryID: selectedID,
                              open: open, preview: preview, actions: fileActions)
         }
@@ -334,7 +340,6 @@ struct DiskExplorerWindowView: View {
                            sourceID: resultTab == .largestFiles ? "largest-files" : current.id,
                            search: search, apparent: apparentSize, selection: $selection, open: open,
                            preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results)
-                .id(resultTab)
                 .frame(maxHeight: .infinity)
         }.frame(maxHeight: .infinity)
     }

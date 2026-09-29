@@ -45,6 +45,26 @@
   pre-limit scanner to 76.72 MiB with the compact tree. The Debug app and
   desktop test bundles compile without launching them.
 
+## Page Switching Rebuilds Every Entry Path And Chart Segment
+
+- **Symptom:** Switching Diskman tabs can block the main thread for more than
+  two seconds after a large scan.
+- **Cause:** Entry identity and path access both walked the parent chain during
+  SwiftUI updates. Tables rebuilt sorted rows and AppKit row values during
+  render. Charts sorted and laid out every segment again, then installed four
+  animations on each ring segment.
+- **Invariant:** Store one compact 64-bit identity when each node is created;
+  do not restore a full URL on each compact-tree node. Derive a URL only for a
+  file action. Cache table projections by scan revision, page, query, and sort.
+  Cache chart layouts by scan revision, chart tab, measure, folder, completion
+  state, and rounded plot size. Build inspector facts outside render. Keep a
+  stable table identity and no per-segment ring animations.
+- **Check:** The 97-node Debug harness completed 9,700 stored-ID reads in
+  1.18 ms and the same parent-derived URL reads in 1,378.90 ms. Focused checks
+  cover compact identity and chart cache separation. Debug and
+  build-for-testing compile without launching the app. Repeat the signed Time
+  Profiler page-switch trace before closing the 100 ms speed gate.
+
 ## Shallow Estimates, Full-Height Charts, And Sidebar Eject
 
 - **Symptom:** The first chart showed zero-size folder skeletons, then a fixed
