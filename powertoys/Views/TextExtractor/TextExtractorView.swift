@@ -1,65 +1,55 @@
 import SwiftUI
+import OnePlusUI
 
 enum TextExtractorLayout {
-    static let windowWidth: CGFloat = 480
-    static let historyBaseHeight: CGFloat = 230
-    static let maximumWindowHeight: CGFloat = 422
-    static let settingsHeight: CGFloat = 440
-    static let maximumVisibleItems = 4
-    static let historyRowHeight: CGFloat = 48
+    static let windowWidth = OnePlusWindowCanvas.textExtractor.size.width
+    static let historyBaseHeight = OnePlusWindowCanvas.textExtractor.size.height - OnePlusMetrics.appletTitlebar
+    static let maximumWindowHeight = OnePlusWindowCanvas.textExtractor.heightRange!.upperBound
+    static let settingsHeight = maximumWindowHeight - OnePlusMetrics.appletTitlebar
+    static let historyRowHeight = OnePlusMetrics.captionedSettingRow
+
+    static func historyHeight(count: Int) -> CGFloat {
+        min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
+            + CGFloat(max(0, min(count, 5) - 1)) * historyRowHeight)
+    }
 }
 
 struct TextExtractorView: View {
     @State private var service = TextExtractorService.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
     @State private var page = TextExtractorPage.history
     @State private var selectedExtraction: TextExtraction?
-
-    private var windowHeight: CGFloat {
-        switch page {
-        case .history:
-            min(
-                TextExtractorLayout.maximumWindowHeight,
-                TextExtractorLayout.historyBaseHeight
-                    + CGFloat(max(0, min(service.history.count, TextExtractorLayout.maximumVisibleItems) - 1))
-                    * TextExtractorLayout.historyRowHeight
-            )
-        case .settings:
-            TextExtractorLayout.settingsHeight
-        }
-    }
+    @State private var confirmingClear = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            titlebar
-            ZStack(alignment: .bottomTrailing) {
+        OnePlusWindowRoot(canvas: .textExtractor, sidebar: { EmptyView() }) {
+            VStack(spacing: 0) {
+                titlebar
                 Group {
                     switch page {
                     case .history: history
-                    case .settings: settings
+                    case .settings: TextExtractorSettingsView()
                     }
                 }
-                .utilityContentTransition(value: page)
-
-                FloatingSettingsButton(
-                    isActive: page == .settings,
-                    helpText: page == .settings ? "Back to History" : "Recognition Settings"
-                ) {
-                    page = page == .settings ? .history : .settings
+                .frame(maxHeight: .infinity, alignment: .top)
+                .overlay(alignment: .bottomTrailing) {
+                    OnePlusFloatingSettingsButton(isActive: page == .settings, help: page == .settings ? "Back to History" : "Recognition Settings") {
+                        page = page == .settings ? .history : .settings
+                    }
+                    .keyboardShortcut(",")
+                    .accessibilityIdentifier("text-extractor.settings")
+                    .padding(OnePlusMetrics.actionSpacing)
                 }
-                .accessibilityIdentifier("text-extractor.settings")
-                .padding([.trailing, .bottom], UtilityLayout.floatingButtonEdgeInset)
-                .offset(y: UtilityLayout.hiddenTitlebarBottomSurplus)
             }
         }
-        .frame(
-            width: TextExtractorLayout.windowWidth,
-            height: windowHeight + UtilityLayout.compactTitlebarHeight
-        )
-        .ignoresSafeArea(.container, edges: .top)
-        .utilityWindowBackground()
-        .utilityAnimation(value: windowHeight)
-        .sheet(item: $selectedExtraction) { extraction in
-            TextExtractionDetailView(extraction: extraction)
+        .frame(height: page == .settings ? TextExtractorLayout.maximumWindowHeight
+               : TextExtractorLayout.historyHeight(count: service.history.count))
+        .sheet(item: $selectedExtraction) { TextExtractionDetailView(extraction: $0) }
+        .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
+            Button("Clear History", role: .destructive) { service.clearHistory() }
+        }
+        .onOpenToolPage("text-extractor") { id in
+            if let destination = TextExtractorPage(rawValue: id) { page = destination }
         }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("text-extractor") == true else { return }
@@ -68,135 +58,72 @@ struct TextExtractorView: View {
     }
 
     private var titlebar: some View {
-        CompactTitlebar {
-            CompactTitlebarTitle(title: "Text Extractor")
-        } actions: {
-            CompactTitlebarButton(title: "Extract Text", isPrimary: true) { service.begin() }
-                .disabled(isExtracting)
-                .help("Select text anywhere on screen")
-                .accessibilityIdentifier("text-extractor.extract")
+        OnePlusAppletTitlebar(title: "Text Extractor") {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Menu {
+                    Toggle("Enable Extract Text shortcut", isOn: Binding(
+                        get: { shortcuts.isEnabled(.textExtractor) },
+                        set: { shortcuts.setEnabled($0, for: .textExtractor) }
+                    ))
+                    Button("Change shortcut…") { page = .settings }
+                } label: {
+                    OnePlusControlLabel(variant: .ghost, size: .small) {
+                        Text(shortcuts.shortcut(for: .textExtractor).display)
+                    }
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                .help("Extract Text shortcut").accessibilityLabel("Extract Text shortcut")
+                Button("Extract Text") { service.begin() }
+                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .disabled(isExtracting).help("Select text anywhere on screen")
+                    .accessibilityIdentifier("text-extractor.extract")
+            }
         }
     }
 
     private var history: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Text("HISTORY").utilitySectionHeader()
-                if !service.history.isEmpty {
-                    Text("\(service.history.count)")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer()
-                if !service.history.isEmpty {
-                    Button("Clear") { service.clearHistory() }
-                        .buttonStyle(.plain)
-                        .focusEffectDisabled()
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .contentShape(Rectangle())
-                        .help("Clear text extraction history")
-                }
-            }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
-            .frame(height: 40)
-
-            statusBanner
-                .utilityContentTransition(value: statusKey)
-
-            Group {
+        ScrollView {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                statusBanner
                 if service.history.isEmpty {
-                    capturePrompt
+                    OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder",
+                                      caption: "Drag a region. Recognized text is copied automatically.")
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 6) {
-                            ForEach(service.history) { extraction in
-                                TextExtractionRow(extraction: extraction) {
-                                    selectedExtraction = extraction
-                                }
-                            }
+                    OnePlusSectionTitle("History", actionTitle: "Clear") { confirmingClear = true }
+                    LazyVStack(spacing: OnePlusMetrics.actionSpacing) {
+                        ForEach(service.history) { extraction in
+                            TextExtractionRow(extraction: extraction) { selectedExtraction = extraction }
                         }
-                        .padding(.horizontal, UtilityLayout.horizontalInset)
-                        .padding(.bottom, UtilityLayout.floatingButtonContentInset)
                     }
-                    .thinScrollIndicators()
                 }
             }
-            .utilityContentTransition(value: service.history.isEmpty)
-        }
+            .padding(.horizontal, OnePlusMetrics.appletGutter)
+            .padding(.top, OnePlusMetrics.contentTop)
+            .padding(.bottom, OnePlusMetrics.settingRow)
+        }.onePlusScrollIndicators()
     }
 
-    private var capturePrompt: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "viewfinder")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 42, height: 42)
-                .background(Color.accentColor.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Select text anywhere")
-                    .font(.system(size: 13, weight: .medium))
-                Text("Drag a region. Recognized text is copied automatically.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .frame(maxHeight: .infinity, alignment: .center)
-        .padding(.bottom, 24)
-    }
-
-    @ViewBuilder
-    private var statusBanner: some View {
+    @ViewBuilder private var statusBanner: some View {
         switch service.state {
+        case .selecting:
+            OnePlusBanner("Drag to select text. Press Escape to cancel.")
         case .recognizing:
-            TextExtractorStatusBanner(
-                icon: "text.magnifyingglass",
-                message: "Recognizing text on this Mac…",
-                tint: .accentColor
-            )
+            OnePlusBanner("Recognizing text on this Mac…") {
+                ProgressView().controlSize(.small).accessibilityLabel("Recognizing text")
+            }
         case .permissionDenied(let message):
-            TextExtractorStatusBanner(
-                icon: "exclamationmark.triangle",
-                message: message,
-                tint: .red,
-                actionTitle: "Privacy Settings",
-                action: openPrivacySettings
-            )
-        case .failed(let message):
-            TextExtractorStatusBanner(
-                icon: "exclamationmark.triangle",
-                message: message,
-                tint: .red
-            )
-        default:
-            EmptyView()
+            OnePlusBanner(message, tone: .warning) {
+                Button("Privacy Settings", action: openPrivacySettings)
+            }
+        case .failed(let message): OnePlusBanner(message, tone: .error)
+        default: EmptyView()
         }
-    }
-
-    private var settings: some View {
-        TextExtractorSettingsView()
     }
 
     private var isExtracting: Bool {
         switch service.state {
         case .selecting, .recognizing: true
         default: false
-        }
-    }
-
-    private var statusKey: String {
-        switch service.state {
-        case .recognizing: "recognizing"
-        case .permissionDenied(let message): "permission-denied|\(message)"
-        case .failed(let message): "failed|\(message)"
-        default: "idle"
         }
     }
 
@@ -212,251 +139,109 @@ struct TextExtractorSettingsView: View {
     @State private var languages = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            shortcutSettings
-            recognitionSettings
+        ScrollView {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                shortcutSettings
+                ShortcutPermissionNotice(action: .textExtractor)
+                recognitionSettings
+                OnePlusCard {
+                    OnePlusCardHeader("Languages", systemImage: "globe")
+                    OnePlusSettingRow("Preferred languages", caption: "Empty means automatic.", separator: false) {
+                        OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
+                            .accessibilityLabel("Preferred languages")
+                            .onChange(of: languages) { applyLanguages() }
+                    }
+                }
+            }
+            .padding(.horizontal, OnePlusMetrics.appletGutter)
+            .padding(.top, OnePlusMetrics.contentTop)
+            .padding(.bottom, OnePlusMetrics.settingRow)
         }
-        .settingsPageInsets(
-            horizontal: UtilityLayout.horizontalInset,
-            top: 14,
-            bottom: UtilityLayout.floatingButtonContentInset
-        )
-        .settingsScrollContainer()
-        .onAppear {
-            languages = service.settings.preferredLanguages.joined(separator: ", ")
-        }
+        .onePlusScrollIndicators()
+        .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }
     }
 
     private var shortcutSettings: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("GLOBAL SHORTCUT").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 0) {
+        OnePlusCard {
+            OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
+            OnePlusSettingRow("Enable shortcut") {
                 Toggle("Enable Extract Text shortcut", isOn: Binding(
-                    get: { shortcuts.isEnabled(.textExtractor) },
-                    set: { shortcuts.setEnabled($0, for: .textExtractor) }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .padding(.bottom, 12)
-
-                QuietDivider()
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Keyboard shortcut")
-                            .font(.system(size: 12, weight: .medium))
-                        Text("Works in every app.")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    ShortcutRecorderField(action: .textExtractor)
-                        .disabled(!shortcuts.isEnabled(.textExtractor))
-                }
-                .padding(.top, 12)
-
-                ShortcutPermissionNotice(action: .textExtractor)
+                    get: { shortcuts.isEnabled(.textExtractor) }, set: { shortcuts.setEnabled($0, for: .textExtractor) }
+                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            .font(.system(size: 12))
-            .utilitySectionCard()
+            OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
+                ShortcutRecorderField(action: .textExtractor).disabled(!shortcuts.isEnabled(.textExtractor))
+            }
         }
     }
 
     private var recognitionSettings: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("RECOGNITION OPTIONS").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Recognition quality")
-                            .font(.system(size: 12, weight: .medium))
-                        Text("Best for small or styled text.")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Picker("Recognition quality", selection: $service.settings.speed) {
-                        ForEach(TextRecognitionSpeed.allCases) { speed in
-                            Text(speed.title).tag(speed)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 110)
-                }
-                .padding(.bottom, 12)
-
-                QuietDivider()
-
-                HStack {
-                    Text("Use language correction")
-                    Spacer()
-                    Toggle("Use language correction", isOn: $service.settings.languageCorrection)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .accessibilityLabel("Use language correction")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-
-                QuietDivider()
-
-                HStack {
-                    Text("Detect QR codes and barcodes")
-                    Spacer()
-                    Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .accessibilityLabel("Detect QR codes and barcodes")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-
-                QuietDivider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Preferred languages")
-                        .font(.system(size: 12, weight: .medium))
-                    HStack(spacing: 8) {
-                        TextField("Automatic, en-US, fr-FR", text: $languages)
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 8)
-                            .frame(height: 28)
-                            .background(Color.primary.opacity(0.06))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .onSubmit(applyLanguages)
-                        Button("Apply", action: applyLanguages)
-                            .controlSize(.small)
-                    }
-                    Text("Leave empty to detect languages automatically.")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 12)
+        OnePlusCard {
+            OnePlusCardHeader("Recognition", systemImage: "text.viewfinder")
+            OnePlusSettingRow("Recognition quality") {
+                OnePlusSegmented(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
+                                 selection: $service.settings.speed, accessibilityLabel: "Recognition quality")
             }
-            .font(.system(size: 12))
-            .utilitySectionCard()
+            OnePlusSettingRow("Language correction") {
+                Toggle("Use language correction", isOn: $service.settings.languageCorrection)
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("QR codes and barcodes", separator: false) {
+                Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
         }
     }
 
     private func applyLanguages() {
-        service.settings.preferredLanguages = languages
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-    }
-
-}
-
-private enum TextExtractorPage {
-    case history, settings
-}
-
-private struct TextExtractorStatusBanner: View {
-    let icon: String
-    let message: String
-    let tint: Color
-    var actionTitle: String?
-    var action: (() -> Void)?
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: icon)
-                .foregroundStyle(tint)
-            Text(message)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
-            if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                    .focusEffectDisabled()
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .contentShape(Rectangle())
-            }
-        }
-        .padding(10)
-        .background(tint.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, UtilityLayout.horizontalInset)
-        .padding(.bottom, 8)
+        service.settings.preferredLanguages = languages.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 }
+
+private enum TextExtractorPage: String { case history, settings }
 
 private struct TextExtractionRow: View {
     let extraction: TextExtraction
     let onOpen: () -> Void
     @State private var service = TextExtractorService.shared
-    @State private var isHovering = false
+    @State private var confirmingDelete = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            if extraction.needsExpandedView {
-                Button(action: onOpen) { summary }
-                    .buttonStyle(UtilityInteractionButtonStyle())
-                    .focusEffectDisabled()
-                    .help("Open full text")
-            } else {
-                summary
-            }
-
-            Button { service.copy(extraction) } label: {
-                Image(systemName: "doc.on.doc").frame(width: 24, height: 24)
-            }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-            .help("Copy text")
-
-            if let url = extraction.openableURL {
-                Button { NSWorkspace.shared.open(url) } label: {
-                    Image(systemName: "arrow.up.right.square").frame(width: 24, height: 24)
-                }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                .help("Open link")
-            }
-
-            if extraction.needsExpandedView {
+        OnePlusCard {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
                 Button(action: onOpen) {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .frame(width: 24, height: 24)
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
+                            Text(extraction.text).onePlusText(.row).lineLimit(1).help(extraction.text)
+                            Spacer(minLength: 0)
+                            Text(extraction.relativeTimestamp()).onePlusText(.caption).fixedSize()
+                        }
+                        Text("Screen selection").onePlusText(.caption)
+                    }.frame(maxWidth: .infinity, minHeight: TextExtractorLayout.historyRowHeight, alignment: .leading)
+                        .contentShape(Rectangle())
+                }.buttonStyle(OnePlusInteractionStyle()).help("Open full text")
+                Button { service.copy(extraction) } label: { Image(systemName: "doc.on.doc") }
+                    .help("Copy text").accessibilityLabel("Copy text")
+                if let url = extraction.openableURL {
+                    Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.right.square") }
+                        .help("Open link").accessibilityLabel("Open link")
                 }
-                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                .help("Open full text")
+                Button { confirmingDelete = true } label: { Image(systemName: "trash") }
+                    .help("Delete").accessibilityLabel("Delete extraction")
             }
-
-            Button(role: .destructive) { service.remove(extraction.id) } label: {
-                Image(systemName: "trash").frame(width: 24, height: 24)
-            }
-            .help("Delete")
+            .padding(.horizontal, OnePlusMetrics.actionSpacing)
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         }
-        .buttonStyle(.borderless)
-        .focusEffectDisabled()
-        .padding(9)
-        .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
-    }
-
-    private var summary: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(extraction.text)
-                .font(.system(size: 12))
-                .lineLimit(1)
-                .multilineTextAlignment(.leading)
-                .layoutPriority(1)
-            Spacer(minLength: 0)
-            Text(extraction.relativeTimestamp())
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-                .fixedSize()
+        .contextMenu {
+            Button("Open full text", action: onOpen)
+            Button("Copy text") { service.copy(extraction) }
+            if let url = extraction.openableURL { Button("Open link") { NSWorkspace.shared.open(url) } }
+            Button("Delete", role: .destructive) { confirmingDelete = true }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
+        .confirmationDialog("Delete this extraction?", isPresented: $confirmingDelete) {
+            Button("Delete", role: .destructive) { service.remove(extraction.id) }
+        }
     }
 }
 
@@ -466,35 +251,14 @@ private struct TextExtractionDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 0) {
-            CompactTitlebar(clearsTrafficLights: false) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("Extracted Text")
-                        .font(.system(size: 13, weight: .medium))
-                    Text(extraction.relativeTimestamp())
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .fixedSize()
-                }
-            } actions: {
-                HStack(spacing: 6) {
-                    CompactTitlebarButton(title: "Copy") { service.copy(extraction) }
-                    UtilityModalCloseButton { dismiss() }
-                }
-            }
-
+        OnePlusSheet("Extracted Text", close: { dismiss() }) {
             ScrollView {
-                Text(extraction.text)
-                    .font(.system(size: 12))
-                    .textSelection(.enabled)
+                Text(extraction.text).onePlusText(.row).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-            }
-            .thinScrollIndicators()
-            .background(Color.primary.opacity(0.03))
+            }.onePlusScrollIndicators().frame(height: OnePlusWindowCanvas.textExtractor.size.height)
+        } footer: {
+            Button("Copy") { service.copy(extraction) }.buttonStyle(OnePlusButtonStyle(.primary))
         }
-        .frame(width: 520, height: 360)
-        .utilityWindowBackground()
         .onExitCommand { dismiss() }
     }
 }
