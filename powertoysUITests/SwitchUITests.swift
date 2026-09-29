@@ -76,7 +76,7 @@ final class SwitchUITests: XCTestCase {
 
         settings.click()
         XCTAssertTrue(window.staticTexts["Data locations"].waitForExistence(timeout: 5))
-        XCTAssertTrue(window.staticTexts["Appearance"].exists)
+        XCTAssertFalse(window.staticTexts["Appearance"].exists)
         attach(window.screenshot(), named: "Switch Settings")
 
         app.buttons["switch.about"].click()
