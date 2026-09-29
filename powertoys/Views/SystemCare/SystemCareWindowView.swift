@@ -13,6 +13,65 @@ struct SystemCareByteMetric: Equatable {
     }
 }
 
+nonisolated struct SystemCareStorageRow: Identifiable, Equatable, Sendable {
+    let entry: StorageEntry
+    let size: String
+    var id: String { entry.id }
+}
+
+nonisolated struct SystemCareCleanupRow: Identifiable, Equatable, Sendable {
+    let candidate: CleanupCandidate
+    let size: String
+    var id: String { candidate.id }
+}
+
+nonisolated struct SystemCareApplicationRow: Identifiable, Equatable, Sendable {
+    let application: InstalledApplication
+    let size: String
+    let lastUsed: String
+    var id: String { application.id }
+}
+
+nonisolated enum SystemCarePresentationRows {
+    static func storage(_ entries: [StorageEntry]) -> [SystemCareStorageRow] {
+        let formatter = byteFormatter()
+        return entries.map {
+            SystemCareStorageRow(entry: $0, size: formatter.string(fromByteCount: $0.size))
+        }
+    }
+
+    static func cleanup(_ candidates: [CleanupCandidate]) -> [SystemCareCleanupRow] {
+        let formatter = byteFormatter()
+        return candidates.map {
+            SystemCareCleanupRow(candidate: $0, size: formatter.string(fromByteCount: $0.size))
+        }
+    }
+
+    static func applications(_ applications: [InstalledApplication]) -> [SystemCareApplicationRow] {
+        let formatter = byteFormatter()
+        let dateStyle = Date.FormatStyle(date: .abbreviated, time: .omitted)
+        return applications.map { application in
+            let values = try? application.url.resourceValues(forKeys: [
+                .totalFileAllocatedSizeKey,
+                .fileAllocatedSizeKey,
+                .contentAccessDateKey
+            ])
+            let bytes = values?.totalFileAllocatedSize ?? values?.fileAllocatedSize
+            return SystemCareApplicationRow(
+                application: application,
+                size: bytes.map { formatter.string(fromByteCount: Int64($0)) } ?? "Unknown",
+                lastUsed: values?.contentAccessDate.map { dateStyle.format($0) } ?? "Unknown"
+            )
+        }
+    }
+
+    private static func byteFormatter() -> ByteCountFormatter {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter
+    }
+}
+
 struct SystemCareSettingsCards: View {
     @Binding var mode: SystemCareMode
 
@@ -92,10 +151,11 @@ private enum SystemCarePage: String, CaseIterable, Identifiable {
 struct SystemCareWindowView: View {
     @State private var manager = SystemCareManager.shared
     @State private var page = SystemCarePage.overview
-    @State private var cleanupMode = SystemCareMode(
-        rawValue: UserDefaults.standard.string(forKey: "systemCare.defaultMode") ?? ""
-    ) ?? .quick
+    @State private var cleanupMode = SystemCareMode.quick
     @State private var categories = Set(SystemCareCategoryID.allCases)
+    @State private var storageRows: [SystemCareStorageRow] = []
+    @State private var cleanupRows: [SystemCareCleanupRow] = []
+    @State private var applicationRows: [SystemCareApplicationRow] = []
     @State private var appSearch = ""
     @State private var appSearchFocus = 0
     @State private var selectedApplication: InstalledApplication?
@@ -107,14 +167,47 @@ struct SystemCareWindowView: View {
         OnePlusWindowRoot(canvas: .systemCare) {
             sidebar
         } content: {
-            ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
                 pageContent
                 statusBanner
             }
         }
         .background(WindowAccessor(identifier: "system-care"))
         .buttonStyle(OnePlusButtonStyle())
-        .onAppear { manager.refresh() }
+        .task {
+            manager.refresh()
+            let savedMode = await Task.detached(priority: .utility) {
+                UserDefaults.standard.string(forKey: "systemCare.defaultMode")
+            }.value
+            guard !Task.isCancelled else { return }
+            if let savedMode, let mode = SystemCareMode(rawValue: savedMode) {
+                cleanupMode = mode
+            }
+        }
+        .task(id: manager.storageEntries) {
+            let entries = manager.storageEntries
+            let rows = await Task.detached(priority: .utility) {
+                SystemCarePresentationRows.storage(entries)
+            }.value
+            guard !Task.isCancelled else { return }
+            storageRows = rows
+        }
+        .task(id: manager.cleanupCandidates) {
+            let candidates = manager.cleanupCandidates
+            let rows = await Task.detached(priority: .utility) {
+                SystemCarePresentationRows.cleanup(candidates)
+            }.value
+            guard !Task.isCancelled else { return }
+            cleanupRows = rows
+        }
+        .task(id: manager.applications) {
+            let applications = manager.applications
+            let rows = await Task.detached(priority: .utility) {
+                SystemCarePresentationRows.applications(applications)
+            }.value
+            guard !Task.isCancelled else { return }
+            applicationRows = rows
+        }
         .onDisappear { manager.cancel() }
         .onOpenToolPage("system-care") { pageID in
             if let destination = SystemCarePage(rawValue: pageID) { open(destination) }
@@ -262,7 +355,7 @@ struct SystemCareWindowView: View {
     }
 
     private var storagePage: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(
                 title: "Storage",
                 subtitle: manager.storageURL?.path ?? "Choose a folder to begin"
@@ -300,6 +393,7 @@ struct SystemCareWindowView: View {
                 storageBreadcrumbCard
                 storageSummaryCard
                 storageTableCard
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
         }
     }
@@ -332,21 +426,21 @@ struct SystemCareWindowView: View {
             }
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[4]) {
                 OnePlusSegmentBar(
-                    values: manager.storageEntries.prefix(8).map { Double($0.size) },
+                    values: storageRows.prefix(8).map { Double($0.entry.size) },
                     colors: OnePlusColor.storageSeries
                 )
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: OnePlusMetrics.controlColumn))],
                     spacing: OnePlusMetrics.spacing[2]
                 ) {
-                    ForEach(Array(manager.storageEntries.prefix(8).enumerated()), id: \.element.id) { index, entry in
+                    ForEach(Array(storageRows.prefix(8).enumerated()), id: \.element.id) { index, row in
                         HStack(spacing: OnePlusMetrics.spacing[2]) {
                             Circle()
                                 .fill(OnePlusColor.storageSeries[index % OnePlusColor.storageSeries.count])
                                 .frame(width: OnePlusMetrics.spacing[3], height: OnePlusMetrics.spacing[3])
-                            Text(entry.name).onePlusText(.caption).lineLimit(1)
+                            Text(row.entry.name).onePlusText(.caption).lineLimit(1)
                             Spacer()
-                            Text(entry.size.formattedByteCount).onePlusText(.mono)
+                            Text(row.size).onePlusText(.mono)
                         }
                     }
                 }
@@ -361,19 +455,26 @@ struct SystemCareWindowView: View {
                 Text("\(manager.storageFileCount.formatted()) entries").onePlusText(.caption)
             }
             storageTableHeader
-            ForEach(manager.storageEntries) { entry in
-                Group {
-                    if entry.isDirectory {
-                        Button { manager.analyze(entry.url) } label: { storageRow(entry) }
-                            .buttonStyle(OnePlusInteractionStyle())
-                    } else {
-                        storageRow(entry)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(storageRows) { row in
+                        Group {
+                            if row.entry.isDirectory {
+                                Button { manager.analyze(row.entry.url) } label: { storageRow(row) }
+                                    .buttonStyle(OnePlusInteractionStyle())
+                            } else {
+                                storageRow(row)
+                            }
+                        }
+                        .contextMenu {
+                            Button("Show in Finder") {
+                                NSWorkspace.shared.activateFileViewerSelecting([row.entry.url])
+                            }
+                        }
                     }
                 }
-                .contextMenu {
-                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([entry.url]) }
-                }
             }
+            .onePlusScrollIndicators()
         }
     }
 
@@ -386,21 +487,21 @@ struct SystemCareWindowView: View {
         .onePlusTableHeader()
     }
 
-    private func storageRow(_ entry: StorageEntry) -> some View {
+    private func storageRow(_ row: SystemCareStorageRow) -> some View {
         HStack {
-            Label(entry.name, systemImage: entry.isDirectory ? "folder" : "doc")
+            Label(row.entry.name, systemImage: row.entry.isDirectory ? "folder" : "doc")
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lineLimit(1)
-            Text(entry.isDirectory ? "Folder" : "File")
+            Text(row.entry.isDirectory ? "Folder" : "File")
                 .frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
-            Text(entry.size.formattedByteCount)
+            Text(row.size)
                 .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
         }
         .onePlusTableRow()
     }
 
     private var cleanupPage: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "Cleanup", subtitle: "Preview every item before removal") {
                 OnePlusSelect(
                     choices: SystemCareMode.allCases.map { ($0, $0.rawValue) },
@@ -417,15 +518,9 @@ struct SystemCareWindowView: View {
         } content: {
             if cleanupMode == .guided { cleanupCategoriesCard }
             cleanupPreviewCard
+                .frame(maxHeight: .infinity, alignment: .top)
             if manager.hasCleanupScan {
-                HStack {
-                    Text("\(manager.selectedCandidateIDs.count) selected, \(manager.selectedSize.formattedByteCount)")
-                        .onePlusText(.caption)
-                    Spacer()
-                    Button("Move to Trash", systemImage: "trash") { showingTrashConfirmation = true }
-                        .buttonStyle(OnePlusButtonStyle(.primary))
-                        .disabled(manager.selectedCandidateIDs.isEmpty || cleanupMode == .analysis)
-                }
+                cleanupFooter
                 if cleanupMode == .analysis {
                     OnePlusBanner("Analysis Only keeps all removal actions disabled.", tone: .information)
                 }
@@ -474,34 +569,50 @@ struct SystemCareWindowView: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.wideControlColumn)
             } else {
-                ForEach(manager.cleanupCandidates) { candidate in
-                    HStack(spacing: OnePlusMetrics.spacing[3]) {
-                        Toggle(
-                            candidate.name,
-                            isOn: Binding(
-                                get: { manager.selectedCandidateIDs.contains(candidate.id) },
-                                set: { manager.setCandidate(candidate.id, selected: $0) }
-                            )
-                        )
-                        .labelsHidden()
-                        .toggleStyle(OnePlusCheckboxStyle())
-                        Image(systemName: candidate.category.icon)
-                            .foregroundStyle(OnePlusColor.secondary)
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                            Text(candidate.name).onePlusText(.row).lineLimit(1)
-                            Text(candidate.category.title).onePlusText(.caption)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(cleanupRows) { row in
+                            HStack(spacing: OnePlusMetrics.spacing[3]) {
+                                Toggle(
+                                    row.candidate.name,
+                                    isOn: Binding(
+                                        get: { manager.selectedCandidateIDs.contains(row.id) },
+                                        set: { manager.setCandidate(row.id, selected: $0) }
+                                    )
+                                )
+                                .labelsHidden()
+                                .toggleStyle(OnePlusCheckboxStyle())
+                                Image(systemName: row.candidate.category.icon)
+                                    .foregroundStyle(OnePlusColor.secondary)
+                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                                    Text(row.candidate.name).onePlusText(.row).lineLimit(1)
+                                    Text(row.candidate.category.title).onePlusText(.caption)
+                                }
+                                Spacer()
+                                Text(row.size).onePlusText(.mono)
+                            }
+                            .onePlusTableRow()
                         }
-                        Spacer()
-                        Text(candidate.size.formattedByteCount).onePlusText(.mono)
                     }
-                    .onePlusTableRow()
                 }
+                .onePlusScrollIndicators()
             }
         }
     }
 
+    private var cleanupFooter: some View {
+        HStack {
+            Text("\(manager.selectedCandidateIDs.count) selected, \(manager.selectedSize.formattedByteCount)")
+                .onePlusText(.caption)
+            Spacer()
+            Button("Move to Trash", systemImage: "trash") { showingTrashConfirmation = true }
+                .buttonStyle(OnePlusButtonStyle(.primary))
+                .disabled(manager.selectedCandidateIDs.isEmpty || cleanupMode == .analysis)
+        }
+    }
+
     private var applicationsPage: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "Applications", subtitle: "Review applications and related files")
         } content: {
             if manager.molePath == nil {
@@ -523,6 +634,7 @@ struct SystemCareWindowView: View {
                 applicationDetail
                     .frame(width: OnePlusMetrics.wideControlColumn * 2)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .background { Button("") { appSearchFocus &+= 1 }.keyboardShortcut("f").hidden() }
     }
@@ -530,7 +642,7 @@ struct SystemCareWindowView: View {
     private var applicationsTable: some View {
         OnePlusCard {
             OnePlusCardHeader("Installed applications", systemImage: "app.dashed") {
-                Text(filteredApplications.count.formatted()).onePlusText(.caption)
+                Text(filteredApplicationRows.count.formatted()).onePlusText(.caption)
             }
             HStack {
                 Text("Application").frame(maxWidth: .infinity, alignment: .leading)
@@ -538,29 +650,35 @@ struct SystemCareWindowView: View {
                 Text("Last used").frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
             }
             .onePlusTableHeader()
-            ForEach(filteredApplications) { application in
-                Button { selectedApplication = application } label: {
-                    HStack {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: application.url.path))
-                            .resizable()
-                            .frame(width: OnePlusMetrics.controlHeight, height: OnePlusMetrics.controlHeight)
-                            .accessibilityHidden(true)
-                        Text(application.name).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
-                        Text(application.formattedSize)
-                            .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
-                        Text(application.formattedLastUsed)
-                            .frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredApplicationRows) { row in
+                        let application = row.application
+                        Button { selectedApplication = application } label: {
+                            HStack {
+                                Image(systemName: "app")
+                                    .frame(width: OnePlusMetrics.controlHeight)
+                                    .accessibilityHidden(true)
+                                Text(application.name).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
+                                Text(row.size)
+                                    .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
+                                Text(row.lastUsed)
+                                    .frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
+                            }
+                            .onePlusTableRow(selected: selectedApplication == application)
+                        }
+                        .buttonStyle(OnePlusInteractionStyle(selected: selectedApplication == application))
+                        .contextMenu {
+                            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([application.url]) }
+                            Button("Preview Leftovers") { manager.openMoleUninstall(application, dryRun: true) }
+                                .disabled(manager.molePath == nil)
+                        }
                     }
-                    .onePlusTableRow(selected: selectedApplication == application)
-                }
-                .buttonStyle(OnePlusInteractionStyle(selected: selectedApplication == application))
-                .contextMenu {
-                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([application.url]) }
-                    Button("Preview Leftovers") { manager.openMoleUninstall(application, dryRun: true) }
-                        .disabled(manager.molePath == nil)
                 }
             }
+            .onePlusScrollIndicators()
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var applicationDetail: some View {
@@ -568,8 +686,7 @@ struct SystemCareWindowView: View {
             if let application = selectedApplication {
                 OnePlusCardHeader(application.name, systemImage: "app")
                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[4]) {
-                    Image(nsImage: NSWorkspace.shared.icon(forFile: application.url.path))
-                        .resizable()
+                    Image(systemName: "app")
                         .frame(width: OnePlusMetrics.spacing[9] * 2, height: OnePlusMetrics.spacing[9] * 2)
                     Text(application.url.path).onePlusText(.mono).textSelection(.enabled)
                     Button("Review Leftovers", systemImage: "doc.text.magnifyingglass") {
@@ -593,10 +710,11 @@ struct SystemCareWindowView: View {
                 .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.wideControlColumn)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var molePage: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "Mole", subtitle: "Advanced maintenance in a visible Terminal") {
                 Button(manager.molePath == nil ? "Install with Homebrew…" : "Check for Update…") {
                     showingInstallConfirmation = true
@@ -610,27 +728,33 @@ struct SystemCareWindowView: View {
             )
             OnePlusCard {
                 OnePlusCardHeader("Maintenance commands", systemImage: "terminal")
-                ForEach(MoleOperation.allCases) { operation in
-                    HStack(spacing: OnePlusMetrics.spacing[4]) {
-                        Image(systemName: operation.icon)
-                            .foregroundStyle(OnePlusColor.secondary)
-                            .frame(width: OnePlusMetrics.controlHeight)
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
-                            Text(operation.title).onePlusText(.row)
-                            Text(operation.detail).onePlusText(.caption)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(MoleOperation.allCases) { operation in
+                            HStack(spacing: OnePlusMetrics.spacing[4]) {
+                                Image(systemName: operation.icon)
+                                    .foregroundStyle(OnePlusColor.secondary)
+                                    .frame(width: OnePlusMetrics.controlHeight)
+                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
+                                    Text(operation.title).onePlusText(.row)
+                                    Text(operation.detail).onePlusText(.caption)
+                                }
+                                Spacer()
+                                Button("Preview") { manager.openMole(operation, dryRun: true) }
+                                    .buttonStyle(OnePlusButtonStyle(.ghost))
+                                Button("Open in Terminal…") { manager.openMole(operation, dryRun: false) }
+                                    .buttonStyle(OnePlusButtonStyle(.neutral))
+                            }
+                            .padding(.horizontal, OnePlusMetrics.cardPadding)
+                            .frame(height: OnePlusMetrics.captionedSettingRow)
+                            .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
+                            .disabled(manager.molePath == nil)
                         }
-                        Spacer()
-                        Button("Preview") { manager.openMole(operation, dryRun: true) }
-                            .buttonStyle(OnePlusButtonStyle(.ghost))
-                        Button("Open in Terminal…") { manager.openMole(operation, dryRun: false) }
-                            .buttonStyle(OnePlusButtonStyle(.neutral))
                     }
-                    .padding(.horizontal, OnePlusMetrics.cardPadding)
-                    .frame(height: OnePlusMetrics.captionedSettingRow)
-                    .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
-                    .disabled(manager.molePath == nil)
                 }
+                .onePlusScrollIndicators()
             }
+            .frame(maxHeight: .infinity, alignment: .top)
             HStack {
                 Button("Manage Whitelist…") { manager.openMoleWhitelist() }
                     .buttonStyle(OnePlusButtonStyle(.neutral))
@@ -642,7 +766,7 @@ struct SystemCareWindowView: View {
     }
 
     private var historyPage: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "History", subtitle: "Recent Mole operations") {
                 Button("Refresh", systemImage: "arrow.clockwise") { manager.loadHistory() }
                     .buttonStyle(OnePlusButtonStyle(.neutral))
@@ -663,15 +787,21 @@ struct SystemCareWindowView: View {
                         Text("Details").frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .onePlusTableHeader()
-                    ForEach(manager.history) { item in
-                        HStack {
-                            Text(item.title).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
-                            Text(item.detail).onePlusText(.mono).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(manager.history) { item in
+                                HStack {
+                                    Text(item.title).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
+                                    Text(item.detail).onePlusText(.mono).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
+                                }
+                                .onePlusTableRow()
+                            }
                         }
-                        .onePlusTableRow()
                     }
+                    .onePlusScrollIndicators()
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -718,7 +848,8 @@ struct SystemCareWindowView: View {
                         .buttonStyle(OnePlusButtonStyle(.ghost))
                 }
             }
-            .padding(OnePlusMetrics.gutter)
+            .padding(.horizontal, OnePlusMetrics.gutter)
+            .padding(.bottom, OnePlusMetrics.gutter)
         }
     }
 
@@ -741,9 +872,9 @@ struct SystemCareWindowView: View {
         cleanupMode == .guided ? categories : Set(SystemCareCategoryID.allCases)
     }
 
-    private var filteredApplications: [InstalledApplication] {
-        appSearch.isEmpty ? manager.applications : manager.applications.filter {
-            $0.name.localizedCaseInsensitiveContains(appSearch)
+    private var filteredApplicationRows: [SystemCareApplicationRow] {
+        appSearch.isEmpty ? applicationRows : applicationRows.filter {
+            $0.application.name.localizedCaseInsensitiveContains(appSearch)
         }
     }
 
@@ -761,19 +892,6 @@ struct SystemCareWindowView: View {
         if panel.runModal() == .OK, let url = panel.url {
             manager.analyze(url, resetBreadcrumbs: true)
         }
-    }
-}
-
-private extension InstalledApplication {
-    var formattedSize: String {
-        let values = try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey, .fileAllocatedSizeKey])
-        guard let size = values?.totalFileAllocatedSize ?? values?.fileAllocatedSize else { return "Unknown" }
-        return Int64(size).formattedByteCount
-    }
-
-    var formattedLastUsed: String {
-        let values = try? url.resourceValues(forKeys: [.contentAccessDateKey])
-        return values?.contentAccessDate?.formatted(date: .abbreviated, time: .omitted) ?? "Unknown"
     }
 }
 
