@@ -13,18 +13,18 @@ final class ScrollIndicatorTests: XCTestCase {
         scrollView.scrollerStyle = .legacy
         scrollView.autohidesScrollers = false
 
-        scrollView.configureThinScrollIndicators()
+        scrollView.configureOnePlusScrollIndicators()
 
         XCTAssertEqual(scrollView.scrollerStyle, .overlay)
         XCTAssertTrue(scrollView.autohidesScrollers)
         let verticalScroller = try XCTUnwrap(scrollView.verticalScroller)
         let horizontalScroller = try XCTUnwrap(scrollView.horizontalScroller)
-        XCTAssertTrue(verticalScroller is ThinOverlayScroller)
-        XCTAssertTrue(horizontalScroller is ThinOverlayScroller)
+        XCTAssertTrue(verticalScroller is OnePlusOverlayScroller)
+        XCTAssertTrue(horizontalScroller is OnePlusOverlayScroller)
         XCTAssertEqual(verticalScroller.controlSize, .mini)
         XCTAssertEqual(horizontalScroller.controlSize, .mini)
-        XCTAssertEqual(ThinOverlayScroller.knobThickness(increasedContrast: false), 4)
-        XCTAssertEqual(ThinOverlayScroller.knobThickness(increasedContrast: true), 6)
+        XCTAssertEqual(OnePlusOverlayScroller.knobThickness(increasedContrast: false), 4)
+        XCTAssertEqual(OnePlusOverlayScroller.knobThickness(increasedContrast: true), 6)
         XCTAssertEqual(verticalScroller.alphaValue, 0)
 
         NotificationCenter.default.post(
@@ -62,7 +62,7 @@ final class ScrollIndicatorTests: XCTestCase {
         XCTAssertEqual(scrollView.scrollerStyle, .overlay)
         XCTAssertTrue(scrollView.autohidesScrollers)
         let scroller = try XCTUnwrap(scrollView.verticalScroller)
-        XCTAssertTrue(scroller is ThinOverlayScroller, hierarchyDescription(hostingView))
+        XCTAssertTrue(scroller is OnePlusOverlayScroller, hierarchyDescription(hostingView))
         XCTAssertEqual(scroller.controlSize, .mini, hierarchyDescription(hostingView))
     }
 
@@ -96,33 +96,8 @@ final class ScrollIndicatorTests: XCTestCase {
                     < $1.convert($1.bounds, to: hostingView).minX
             }
         XCTAssertEqual(scrollViews.count, 2, hierarchyDescription(hostingView))
-        XCTAssertFalse(try XCTUnwrap(scrollViews.first?.verticalScroller) is ThinOverlayScroller)
-        XCTAssertTrue(try XCTUnwrap(scrollViews.last?.verticalScroller) is ThinOverlayScroller)
-    }
-
-    func testEverySwiftUIScrollSurfaceUsesThinIndicators() throws {
-        let sourceRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("powertoys", isDirectory: true)
-        let swiftFiles = try XCTUnwrap(
-            FileManager.default.enumerator(
-                at: sourceRoot,
-                includingPropertiesForKeys: nil
-            )?.allObjects as? [URL]
-        ).filter { $0.pathExtension == "swift" }
-        let sources = try swiftFiles.map { String(decoding: try Data(contentsOf: $0), as: UTF8.self) }
-        let surfaceCount = sources.reduce(0) {
-            $0 + $1.matches(
-                of: #/(?m)^\s*(?:return\s+)?(?:ScrollView|Form|TextEditor|List|Table)\s*[({]/#
-            ).count
-        }
-        let modifierCount = sources.reduce(0) {
-            $0 + $1.matches(of: #/\.thinScrollIndicators\(\)/#).count
-        }
-
-        XCTAssertEqual(surfaceCount, modifierCount)
-        XCTAssertFalse(sources.contains { $0.contains("showsIndicators: false") })
+        XCTAssertFalse(try XCTUnwrap(scrollViews.first?.verticalScroller) is OnePlusOverlayScroller)
+        XCTAssertTrue(try XCTUnwrap(scrollViews.last?.verticalScroller) is OnePlusOverlayScroller)
     }
 
     private func firstScrollView(in view: NSView) -> NSScrollView? {

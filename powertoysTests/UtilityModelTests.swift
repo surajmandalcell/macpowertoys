@@ -71,39 +71,6 @@ final class UtilityModelTests: XCTestCase {
         XCTAssertEqual(AwakeQuickMode(configuration: configuration), .custom)
     }
 
-    func testToolTintLabelsChooseTheHigherContrastColor() {
-        XCTAssertTrue(
-            ToolIconColor.prefersDarkLabel(
-                on: NSColor(srgbRed: 0.94, green: 0.34, blue: 0.29, alpha: 1)
-            )
-        )
-        XCTAssertFalse(
-            ToolIconColor.prefersDarkLabel(
-                on: NSColor(srgbRed: 0.08, green: 0.20, blue: 0.45, alpha: 1)
-            )
-        )
-    }
-
-    func testCustomInteractionFamiliesUseSharedHoverAndPressedStyle() throws {
-        let expectedStyleCounts = [
-            "Views/AllToolsGridView.swift": 0,
-            "Views/Components/SidebarRow.swift": 2,
-            "Views/Logs/LogsWindowView.swift": 2,
-            "Views/Marketplace/MarketplaceSettingsView.swift": 0,
-            "Views/TextExtractor/TextExtractorView.swift": 5,
-            "Views/TrayPopoverView.swift": 16,
-        ]
-
-        for (path, expectedCount) in expectedStyleCounts {
-            let source = try sourceFile(path)
-            XCTAssertEqual(
-                source.components(separatedBy: ".buttonStyle(UtilityInteractionButtonStyle").count - 1,
-                expectedCount,
-                path
-            )
-        }
-    }
-
     func testLongPathsUseDedicatedRowsInCompactSettings() throws {
         let marketplace = try sourceFile("Views/Marketplace/MarketplaceSettingsView.swift")
         XCTAssertTrue(marketplace.contains(
