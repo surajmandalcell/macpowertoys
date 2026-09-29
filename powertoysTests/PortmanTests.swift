@@ -78,6 +78,32 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(ports[2].command, "python3")
     }
 
+    func testOverviewPresentationSortsAndAggregatesAwayFromViewRendering() {
+        let first = PortmanLocalPort(
+            pid: 42, port: 3000, address: "127.0.0.1", command: "node",
+            launchCommand: "node server.js", memoryBytes: 1_024, cpuPercent: 1.5,
+            uptime: "1m", started: 1_000_000, userID: 501
+        )
+        let second = PortmanLocalPort(
+            pid: 51, port: 8000, address: "127.0.0.1", command: "python3",
+            launchCommand: "python3 app.py", memoryBytes: 4_096, cpuPercent: 2.5,
+            uptime: "2m", started: 2_000_000, userID: 501
+        )
+
+        let presentation = portmanOverviewPresentation(
+            ports: [first, second], history: [:], metadata: [:], lastConnectionAt: [:],
+            sort: .memory, selectedProcessIDs: [], cleanupMode: false,
+            idleHours: 4, runningDays: 3, policyMode: .off,
+            includeDeletedFolders: false, scanRange: 3000...9999
+        )
+
+        XCTAssertEqual(presentation.rows.map(\.port.port), [8000, 3000])
+        XCTAssertEqual(presentation.uniquePortCount, 2)
+        XCTAssertEqual(presentation.memoryBytes, 5_120)
+        XCTAssertEqual(presentation.cpuPercent, 4)
+        XCTAssertEqual(presentation.scanRangeText, "3000–9999")
+    }
+
     func testRemotePortsAndTunnelStayOnLoopback() throws {
         let output = """
         LISTEN 0 4096 127.0.0.1:3000 0.0.0.0:*
