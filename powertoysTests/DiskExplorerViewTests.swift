@@ -55,6 +55,17 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertTrue(projection.entriesByID[big.id] === big)
     }
 
+    func testTableKeepsItsPresentationAcrossScanRevisions() {
+        let original = DiskEntryTableRequest(revision: .distantPast, sourceID: "largest-files", search: "",
+                                             column: 2, ascending: false, apparent: false, showsFileCount: false)
+        let refreshed = DiskEntryTableRequest(revision: Date(), sourceID: "largest-files", search: "",
+                                              column: 2, ascending: false, apparent: false, showsFileCount: false)
+        let searched = DiskEntryTableRequest(revision: refreshed.revision, sourceID: "largest-files", search: "Library",
+                                             column: 2, ascending: false, apparent: false, showsFileCount: false)
+        XCTAssertTrue(original.hasSamePresentation(as: refreshed))
+        XCTAssertFalse(original.hasSamePresentation(as: searched))
+    }
+
     func testDiskLockPresentationUsesCachedState() {
         let disk = ManagedDisk(id: "disk12", name: "Test card", size: 1_000_000, bus: "USB", scheme: "GPT",
                                devicePath: "test", writable: true, manageable: true, mediaRegistryID: 9, partitions: [])
@@ -143,6 +154,21 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertEqual(before.id, after.id)
         XCTAssertEqual(before.inner, after.inner)
         XCTAssertEqual(before.outer, after.outer)
+    }
+
+    func testLiveRingShowsTheLargestTopLevelFolders() {
+        let root = entry("/tmp/Diskman", kind: .directory)
+        let small = (0..<30).map { entry("/tmp/Diskman/small-\($0)", bytes: 1) }
+        let largest = entry("/tmp/Diskman/Library", bytes: 1_000)
+        let second = entry("/tmp/Diskman/.codex", bytes: 900)
+        root.replaceChildren(small + [largest, second])
+
+        let rings = DiskSunburstView.segments(for: root, apparent: false, measure: .space,
+                                              radius: 250, scanComplete: false)
+        let visible = Set(rings.compactMap(\.entry?.id))
+        XCTAssertTrue(visible.contains(largest.id))
+        XCTAssertTrue(visible.contains(second.id))
+        XCTAssertTrue(rings.contains { $0.entry == nil && $0.label == "Other items" })
     }
 
     func testEmptyAndZeroTotalChartsKeepFiniteGeometry() {

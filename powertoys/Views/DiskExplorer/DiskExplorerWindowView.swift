@@ -14,6 +14,7 @@ enum DiskResultTab: String, CaseIterable, Identifiable {
 }
 
 struct DiskExplorerWindowView: View {
+    @MainActor private static var retainedDisks: [ManagedDisk] = []
     @State private var model: DiskExplorerModel
     @State private var diskManagement: DiskManagementModel
     private let scansOnAppear: Bool
@@ -61,9 +62,9 @@ struct DiskExplorerWindowView: View {
         #if DEBUG
         _diskManagement = State(initialValue: ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1"
             ? DiskManagementModel(disks: [Self.modifyPreviewDisk], selectedPartitionID: "disk91s2", isPreview: true)
-            : DiskManagementModel())
+            : DiskManagementModel(disks: Self.retainedDisks))
         #else
-        _diskManagement = State(initialValue: DiskManagementModel())
+        _diskManagement = State(initialValue: DiskManagementModel(disks: Self.retainedDisks))
         #endif
         _resultTab = State(initialValue: initialTab)
         self.scansOnAppear = scansOnAppear
@@ -253,11 +254,13 @@ struct DiskExplorerWindowView: View {
             Text(title).onePlusText(.caption)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
     }
-    private var tabTools: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSegmented(choices: DiskChartStyle.allCases.map { ($0.rawValue, $0.rawValue) }, selection: $chartStyle,
-                             accessibilityLabel: "Visualization").fixedSize()
-            OnePlusSelect(choices: DiskEntryPresentation.measures, selection: measureBinding, accessibilityLabel: "Measure")
+    @ViewBuilder private var tabTools: some View {
+        if resultTab == .visualization {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                OnePlusSegmented(choices: DiskChartStyle.allCases.map { ($0.rawValue, $0.rawValue) }, selection: $chartStyle,
+                                 accessibilityLabel: "Visualization").fixedSize()
+                OnePlusSelect(choices: DiskEntryPresentation.measures, selection: measureBinding, accessibilityLabel: "Measure")
+            }
         }
     }
     private var measureBinding: Binding<String> {
@@ -279,7 +282,7 @@ struct DiskExplorerWindowView: View {
                 chartView(current).padding(OnePlusMetrics.actionSpacing).frame(maxWidth: .infinity, maxHeight: .infinity)
                 if measure == .age { ageLegend }
                 HStack {
-                    Text(hoveredDetail ?? (measure == .files ? "Area represents file count" : apparentSize ? "Area represents apparent size" : "Area represents space used"))
+                    Text(hoveredDetail ?? chartCaption)
                         .lineLimit(1).help(hoveredDetail ?? "")
                         .accessibilityIdentifier("diskExplorer.hoverDetail").accessibilityValue(hoveredDetail ?? "")
                     Spacer(minLength: OnePlusMetrics.actionSpacing)
@@ -293,6 +296,12 @@ struct DiskExplorerWindowView: View {
                                    availableBytes: model.volumes.first { $0.url == inspected?.url }?.available)
                 .frame(width: OnePlusDiskmanMetrics.inspectorWidth)
         }.frame(maxHeight: .infinity)
+    }
+    private var chartCaption: String {
+        let unit = chart == .sunburst ? "Arc length" : "Area"
+        if measure == .files { return "\(unit) represents file count" }
+        if apparentSize { return "\(unit) represents apparent size" }
+        return "\(unit) represents space used"
     }
     private var ageLegend: some View {
         HStack(spacing: OnePlusMetrics.cardGap) {
@@ -349,7 +358,7 @@ struct DiskExplorerWindowView: View {
             HStack(spacing: OnePlusMetrics.spacing[1]) {
                 ForEach(nodes) { entry in
                     Button { navigate(entry) } label: { Label(entry.name, systemImage: "folder") }
-                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small)).help(entry.url.path)
+                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small, horizontalPadding: 0)).help(entry.url.path)
                         .modifier(DiskChartFileActions(entry: entry, actions: fileActions))
                     if entry.id != nodes.last?.id { Image(systemName: "chevron.right").onePlusText(.caption) }
                 }
@@ -372,7 +381,8 @@ struct DiskExplorerWindowView: View {
                 Text("\(count.formatted()) items could not be read.").onePlusText(.row)
                 Text("Grant Full Disk Access to complete the scan.").onePlusText(.caption)
                 Spacer()
-                Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }.buttonStyle(OnePlusButtonStyle(.link))
+                Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
+                    .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
             }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.settingRow)
         }.accessibilityIdentifier("diskExplorer.unreadableInfo")
     }
@@ -436,7 +446,11 @@ struct DiskExplorerWindowView: View {
     }
     private func rescan() { if let source = model.sourceURL { startScan(source) } }
     private func refreshInventory() {
-        inventoryTask?.cancel(); inventoryTask = Task { await diskManagement.refresh(); selectPendingDevice() }
+        inventoryTask?.cancel(); inventoryTask = Task {
+            await diskManagement.refresh()
+            if !diskManagement.disks.isEmpty { Self.retainedDisks = diskManagement.disks }
+            selectPendingDevice()
+        }
     }
     private func eject(_ disk: ManagedDisk) {
         diskManagement.select(disk); page = .modify
