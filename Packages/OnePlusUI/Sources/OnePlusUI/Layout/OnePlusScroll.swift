@@ -1,4 +1,5 @@
 import AppKit
+import ObjectiveC
 import SwiftUI
 
 public extension View {
@@ -58,6 +59,7 @@ private final class OnePlusScrollProbe: NSView {
 
 public extension NSScrollView {
     func configureOnePlusScrollIndicators() {
+        OnePlusScrollPolicy.install(on: self)
         if hasVerticalScroller, !(verticalScroller is OnePlusOverlayScroller) { verticalScroller = OnePlusOverlayScroller() }
         if hasHorizontalScroller, !(horizontalScroller is OnePlusOverlayScroller) { horizontalScroller = OnePlusOverlayScroller() }
         if scrollerStyle != .overlay { scrollerStyle = .overlay }
@@ -69,36 +71,58 @@ public extension NSScrollView {
     }
 }
 
+@MainActor
+private final class OnePlusScrollPolicy {
+    private static var key: UInt8 = 0
+    private var observations: [NSKeyValueObservation] = []
+    private var pending: DispatchWorkItem?
+    isolated deinit { pending?.cancel() }
+
+    static func install(on scroll: NSScrollView) {
+        guard objc_getAssociatedObject(scroll, &key) == nil else { return }
+        let policy = OnePlusScrollPolicy()
+        objc_setAssociatedObject(scroll, &key, policy, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        policy.observations = [
+            scroll.observe(\.scrollerStyle) { [weak policy] scroll, _ in
+                MainActor.assumeIsolated { policy?.schedule(scroll) }
+            },
+            scroll.observe(\.verticalScroller) { [weak policy] scroll, _ in
+                MainActor.assumeIsolated { policy?.schedule(scroll) }
+            },
+            scroll.observe(\.horizontalScroller) { [weak policy] scroll, _ in
+                MainActor.assumeIsolated { policy?.schedule(scroll) }
+            }
+        ]
+    }
+
+    private func schedule(_ scroll: NSScrollView) {
+        guard pending == nil else { return }
+        let work = DispatchWorkItem { [weak self, weak scroll] in
+            self?.pending = nil
+            scroll?.configureOnePlusScrollIndicators()
+        }
+        pending = work
+        DispatchQueue.main.async(execute: work)
+    }
+}
+
 /// Native overlay scroller with a four-point thumb. No idle timer or polling.
 public final class OnePlusOverlayScroller: NSScroller {
     private weak var observedClipView: NSClipView?
     private var area: NSTrackingArea?
     private var hideTask: Task<Void, Never>?
-    private var styleObservation: NSKeyValueObservation?
-    private var restoreStyle: DispatchWorkItem?
     private var pointerInside = false
     public override class var isCompatibleWithOverlayScrollers: Bool { true }
     public static func knobThickness(increasedContrast: Bool) -> CGFloat { increasedContrast ? 6 : 4 }
     public override init(frame: NSRect) { super.init(frame: frame); alphaValue = 0 }
     public required init?(coder: NSCoder) { super.init(coder: coder); alphaValue = 0 }
-    isolated deinit { hideTask?.cancel(); restoreStyle?.cancel(); NotificationCenter.default.removeObserver(self) }
+    isolated deinit { hideTask?.cancel(); NotificationCenter.default.removeObserver(self) }
 
     public func observeScrolling(in scrollView: NSScrollView) {
         let clip = scrollView.contentView
         guard observedClipView !== clip else { return }
         NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: observedClipView)
         observedClipView = clip
-        styleObservation = scrollView.observe(\.scrollerStyle) { [weak self] scroll, _ in
-            MainActor.assumeIsolated {
-                guard scroll.scrollerStyle != .overlay, let self, self.restoreStyle == nil else { return }
-                let work = DispatchWorkItem { [weak self, weak scroll] in
-                    self?.restoreStyle = nil
-                    scroll?.configureOnePlusScrollIndicators()
-                }
-                self.restoreStyle = work
-                DispatchQueue.main.async(execute: work)
-            }
-        }
         clip.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(positionChanged),
                                               name: NSView.boundsDidChangeNotification, object: clip)
@@ -109,8 +133,6 @@ public final class OnePlusOverlayScroller: NSScroller {
             hideTask?.cancel(); hideTask = nil
             NotificationCenter.default.removeObserver(self)
             observedClipView = nil
-            styleObservation = nil
-            restoreStyle?.cancel(); restoreStyle = nil
         } else if let scrollView = enclosingScrollView { observeScrolling(in: scrollView) }
     }
     public override func updateTrackingAreas() {
