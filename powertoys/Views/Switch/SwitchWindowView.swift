@@ -48,7 +48,6 @@ nonisolated enum SwitchPageRoute: Equatable {
 struct SwitchWindowView: View {
     @State private var model: SwitchWorkspaceModel
     @State private var page: SwitchPage
-    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark.rawValue
     @AppStorage("switchUsageShowsUsed") private var showUsageAsUsed = true
     @AppStorage(SwitchTrayUsagePreferences.defaultKey) private var defaultShowTrayUsage = true
     @AppStorage(SwitchTrayUsagePreferences.periodKey) private var trayTokenPeriod = SwitchTrayTokenPeriod.sinceReset.rawValue
@@ -487,7 +486,7 @@ struct SwitchWindowView: View {
             OnePlusCard {
                 OnePlusCardHeader("Available to import", systemImage: "square.and.arrow.down")
                 ForEach(model.importableDiscoveries) { source in
-                    OnePlusSettingRow(source.identity?.email ?? source.path.lastPathComponent, caption: source.path.path) {
+                    OnePlusPathSettingRow(source.identity?.email ?? source.path.lastPathComponent, path: source.path.path) {
                         Button("Review Import") { Task { await model.reviewImport(source: source.path, mode: .authOnly) } }
                             .disabled(model.isWorking)
                     }
@@ -507,7 +506,7 @@ struct SwitchWindowView: View {
                     }
                 } else {
                     ForEach(model.pendingRecovery) { operation in
-                        OnePlusSettingRow(operation.kind.capitalized, caption: operation.destination.path) {
+                        OnePlusPathSettingRow(operation.kind.capitalized, path: operation.destination.path) {
                             if operation.phase == .conflicted { Button("Resolve") { conflictToResolve = operation } }
                             else { OnePlusStatus(operation.phase.rawValue, state: .warning) }
                         }
@@ -518,7 +517,7 @@ struct SwitchWindowView: View {
                 OnePlusCard {
                     OnePlusCardHeader("Linked settings", systemImage: "link")
                     ForEach(model.linkedSettingsIssues) { issue in
-                        OnePlusSettingRow(issue.relativePath, caption: issue.localPath.path) {
+                        OnePlusPathSettingRow("Linked setting", path: issue.localPath.path) {
                             Button("Review repair") { linkedIssueToRepair = issue }
                         }
                     }
@@ -558,11 +557,6 @@ struct SwitchWindowView: View {
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .disabled(settings.isToolTransitioning("switch"))
                 }
-                OnePlusSettingRow("Appearance", caption: "Applies to every MacPowerToys window.") {
-                    OnePlusSelect(choices: AppAppearance.allCases.map { ($0.rawValue, $0.title) },
-                                  selection: $appearance, accessibilityLabel: "Appearance")
-                        .onChange(of: appearance) { (AppAppearance(rawValue: appearance) ?? .dark).apply() }
-                }
                 OnePlusSettingRow("Show percentage used", caption: "Turn off to show the percentage left.", separator: false) {
                     Toggle("Show percentage used", isOn: $showUsageAsUsed).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
@@ -588,7 +582,7 @@ struct SwitchWindowView: View {
     }
 
     private func dataLocationRow(_ title: String, url: URL) -> some View {
-        OnePlusSettingRow(title, caption: url.path) {
+        OnePlusPathSettingRow(title, path: url.path) {
             Button("Reveal", systemImage: "folder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         }.contextMenu {
             Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
@@ -688,21 +682,22 @@ struct SwitchWindowView: View {
         if let plan = model.importPlan {
             OnePlusSheet("Review import", width: .large, close: model.dismissImport) {
                 VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                    OnePlusKeyValueRow("Account", value: plan.identity.email ?? plan.source.path)
+                    OnePlusKeyValueRow("Account", value: plan.identity.email ?? plan.source.path,
+                                       monospaced: plan.identity.email == nil)
                     OnePlusKeyValueRow("Import size", value: "\(plan.manifest.count) items · \(ByteCountFormatter.string(fromByteCount: plan.requiredBytes, countStyle: .file))")
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                             ForEach(plan.warnings, id: \.self) { OnePlusBanner($0, tone: .warning) }
                             ForEach(plan.conflicts) { conflict in
                                 OnePlusCard {
-                                    OnePlusSettingRow(conflict.relativePath) {
+                                    OnePlusPathSettingRow("Conflicting setting", path: conflict.relativePath) {
                                         OnePlusSelect(choices: [(.keepShared, "Keep saved"), (.useImported, "Use imported")],
                                                       selection: Binding(get: { importDecisions[conflict.relativePath] ?? .keepShared },
                                                                          set: { importDecisions[conflict.relativePath] = $0 }),
                                                       accessibilityLabel: conflict.relativePath)
                                     }
                                     if let target = conflict.externalTarget {
-                                        OnePlusSettingRow("External setting", caption: target.path) {
+                                        OnePlusPathSettingRow("External setting", path: target.path) {
                                             Button("Review") { Task { await model.reviewExternalSetting(conflict.relativePath) } }
                                         }
                                     }
