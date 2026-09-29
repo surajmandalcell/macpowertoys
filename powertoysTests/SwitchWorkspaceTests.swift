@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class SwitchWorkspaceTests: XCTestCase {
-    func testAppletRendersOriginalAccountsBackupAndSettingsLayout() async throws {
+    func testAppletRendersSharedCardsAtFixedCanvasInBothAppearances() async throws {
         let files = FileManager.default
         let root = files.temporaryDirectory
             .appendingPathComponent("mpt-switch-render-\(UUID().uuidString)", isDirectory: true)
@@ -14,7 +14,7 @@ final class SwitchWorkspaceTests: XCTestCase {
         let model = SwitchWorkspaceModel(paths: ManagerPaths.environment(["AI_MANAGER_ROOT": root.path]))
         await model.load()
 
-        for size in [NSSize(width: 1_120, height: 740), NSSize(width: 880, height: 600)] {
+        for size in [NSSize(width: 1_240, height: 840)] {
             for scheme in [ColorScheme.light, .dark] {
                 try await attachRender(of: .accounts, model: model, size: size,
                                        scheme: scheme, state: "Empty")
@@ -35,7 +35,7 @@ final class SwitchWorkspaceTests: XCTestCase {
         model.selectedAccountID = second.id
         model.setUsageForRender(sampleUsage(), accountID: second.id)
 
-        for size in [NSSize(width: 1_120, height: 740), NSSize(width: 880, height: 600)] {
+        for size in [NSSize(width: 1_240, height: 840)] {
             for scheme in [ColorScheme.light, .dark] {
                 for page in SwitchPage.allCases {
                     try await attachRender(of: page, model: model, size: size,
@@ -47,6 +47,20 @@ final class SwitchWorkspaceTests: XCTestCase {
                        VerificationState.verifiedWithCodex.rawValue)
         for scheme in [ColorScheme.light, .dark] {
             try await attachTrayRender(model: model, scheme: scheme)
+        }
+    }
+
+    func testSwitchPageRoutesAcceptSavedAccountIDsAndRejectMalformedIDs() {
+        let id = UUID(uuidString: "52E4321A-F67C-4874-BA55-8D6E70719EC7")!
+        XCTAssertEqual(SwitchPageRoute(pageID: "account/\(id.uuidString)"), .account(id))
+        XCTAssertEqual(SwitchPageRoute(pageID: "account/\(id.uuidString.lowercased())"), .account(id))
+        XCTAssertEqual(SwitchPageRoute(pageID: "accounts"), .accounts)
+        XCTAssertEqual(SwitchPageRoute(pageID: "add"), .add)
+        XCTAssertEqual(SwitchPageRoute(pageID: "backup"), .backup)
+        XCTAssertEqual(SwitchPageRoute(pageID: "settings"), .settings)
+        XCTAssertEqual(SwitchPageRoute(pageID: "about"), .about)
+        for invalid in ["account/", "account/not-an-id", "account/\(id.uuidString)/extra", "unknown"] {
+            XCTAssertNil(SwitchPageRoute(pageID: invalid))
         }
     }
 
