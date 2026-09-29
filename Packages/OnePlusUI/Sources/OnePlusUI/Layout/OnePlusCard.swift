@@ -1,0 +1,97 @@
+import SwiftUI
+
+public struct OnePlusCard<Content: View>: View {
+    private let textured: Bool
+    private let content: Content
+    public init(textured: Bool = false, @ViewBuilder content: () -> Content) {
+        self.textured = textured; self.content = content()
+    }
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 0) { content }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(OnePlusColor.panel)
+            .overlay { if textured { OnePlusDitherTexture() } }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(OnePlusColor.line, lineWidth: 1) }
+    }
+}
+
+public struct OnePlusPanel<Content: View>: View {
+    private let textured: Bool
+    private let content: Content
+    public init(textured: Bool = false, @ViewBuilder content: () -> Content) { self.textured = textured; self.content = content() }
+    public var body: some View {
+        OnePlusCard(textured: textured) { content.frame(maxWidth: .infinity, maxHeight: .infinity) }
+    }
+}
+
+public struct OnePlusCardHeader<Accessory: View>: View {
+    private let title: String
+    private let icon: String?
+    private let accessory: Accessory
+    public init(_ title: String, systemImage: String? = nil, @ViewBuilder accessory: () -> Accessory) {
+        self.title = title; icon = systemImage; self.accessory = accessory()
+    }
+    public var body: some View {
+        HStack(spacing: 8) {
+            if let icon { Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true) }
+            Text(title).onePlusText(.cardTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            accessory
+        }.padding(.horizontal, 16).frame(height: 40)
+            .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
+    }
+}
+
+public extension OnePlusCardHeader where Accessory == EmptyView {
+    init(_ title: String, systemImage: String? = nil) { self.init(title, systemImage: systemImage, accessory: { EmptyView() }) }
+}
+
+public struct OnePlusSettingRow<Control: View>: View {
+    private let label: String
+    private let caption: String?
+    private let help: String?
+    private let reset: (() -> Void)?
+    private let controlWidth: CGFloat
+    private let separator: Bool
+    private let control: Control
+    public init(_ label: String, caption: String? = nil, help: String? = nil, reset: (() -> Void)? = nil,
+                controlWidth: CGFloat = 160, separator: Bool = true, @ViewBuilder control: () -> Control) {
+        self.label = label; self.caption = caption; self.help = help; self.reset = reset
+        self.controlWidth = controlWidth; self.separator = separator; self.control = control()
+    }
+    public var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(label).onePlusText(.row).lineLimit(1).help(label)
+                    if let help { Image(systemName: "questionmark.circle").foregroundStyle(OnePlusColor.muted).help(help).accessibilityLabel(help) }
+                }
+                if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Button { reset?() } label: { Image(systemName: "arrow.counterclockwise") }
+                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                .help("Reset \(label)").accessibilityLabel("Reset \(label)")
+                .opacity(reset == nil ? 0 : 1).disabled(reset == nil).accessibilityHidden(reset == nil)
+            control.frame(width: controlWidth, alignment: .trailing)
+        }
+        .padding(.horizontal, 16).frame(height: caption == nil ? 44 : 56)
+        .overlay(alignment: .bottom) { if separator { OnePlusColor.lineSoft.frame(height: 1) } }
+    }
+}
+
+public struct OnePlusSectionTitle: View {
+    let title: String
+    let actionTitle: String?
+    let action: (() -> Void)?
+    public init(_ title: String, actionTitle: String? = nil, action: (() -> Void)? = nil) {
+        self.title = title; self.actionTitle = actionTitle; self.action = action
+    }
+    public var body: some View {
+        HStack {
+            Text(title).onePlusText(.sectionTitle).accessibilityAddTraits(.isHeader)
+            Spacer()
+            if let actionTitle, let action { Button(actionTitle, action: action).buttonStyle(OnePlusButtonStyle(.link, size: .small)) }
+        }
+    }
+}
