@@ -398,7 +398,6 @@ final class NetToysAnchorViewModel {
     private func save() {
         do {
             try NetToysConfigurationStore.save(configuration)
-            Task { await refresh() }
         } catch {
             errorMessage = error.localizedDescription
         }
