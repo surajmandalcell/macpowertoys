@@ -38,7 +38,6 @@ struct TextExtractorView: View {
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var page = TextExtractorPage.history
     @State private var selectedExtraction: TextExtraction?
-    @State private var confirmingClear = false
     @State private var historyRows: [TextExtractionPresentation] = []
 
     var body: some View {
@@ -69,9 +68,6 @@ struct TextExtractorView: View {
         .frame(height: page == .settings ? TextExtractorLayout.maximumWindowHeight
                : TextExtractorLayout.historyHeight(count: service.history.count))
         .sheet(item: $selectedExtraction) { TextExtractionDetailView(extraction: $0) }
-        .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
-            Button("Clear History", role: .destructive) { service.clearHistory() }
-        }
         .onOpenToolPage("text-extractor") { id in
             if let destination = TextExtractorPage(rawValue: id) { page = destination }
         }
@@ -111,7 +107,7 @@ struct TextExtractorView: View {
                 .menuStyle(.borderlessButton).menuIndicator(.hidden)
                 .help("Extract Text shortcut").accessibilityLabel("Extract Text shortcut")
                 Button("Extract Text") { service.begin() }
-                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
                     .disabled(isExtracting).help("Select text anywhere on screen")
                     .accessibilityIdentifier("text-extractor.extract")
             }
@@ -125,19 +121,26 @@ struct TextExtractorView: View {
                 OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder",
                                   caption: "Drag a region. Recognized text is copied automatically.")
             } else {
-                OnePlusSectionTitle("History", actionTitle: "Clear") { confirmingClear = true }
-                ScrollView {
-                    LazyVStack(spacing: OnePlusMetrics.actionSpacing) {
-                        ForEach(historyRows) { row in
-                            TextExtractionRow(
-                                row: row,
-                                onOpen: { selectedExtraction = row.extraction },
-                                onCopy: { service.copy(row.extraction) },
-                                onDelete: { service.remove(row.id) }
-                            )
+                OnePlusSectionTitle("History")
+                OnePlusCard {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(historyRows) { row in
+                                if row.id != historyRows.first?.id {
+                                    OnePlusColor.lineSoft.frame(height: 1)
+                                }
+                                TextExtractionRow(
+                                    row: row,
+                                    onOpen: { selectedExtraction = row.extraction },
+                                    onCopy: { service.copy(row.extraction) },
+                                    onDelete: { service.remove(row.id) }
+                                )
+                            }
                         }
                     }
-                }.onePlusScrollIndicators()
+                    .onePlusScrollIndicators()
+                }
+                .frame(maxHeight: .infinity)
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
@@ -179,6 +182,7 @@ struct TextExtractorSettingsView: View {
     @State private var service = TextExtractorService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var languages = ""
+    @State private var confirmingClear = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
@@ -192,6 +196,21 @@ struct TextExtractorSettingsView: View {
                         .onChange(of: languages) { applyLanguages() }
                 }
             }
+            OnePlusCard {
+                OnePlusCardHeader("History", systemImage: "clock.arrow.circlepath")
+                OnePlusSettingRow("Clear history", caption: "Removes saved extracted text.", separator: false) {
+                    Button("Clear", role: .destructive) { confirmingClear = true }
+                        .buttonStyle(OnePlusButtonStyle(.destructive))
+                        .disabled(service.history.isEmpty)
+                        .accessibilityIdentifier("text-extractor.clear-history")
+                }
+            }
+        }
+        .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
+            Button("Clear History", role: .destructive) { service.clearHistory() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes every saved text extraction.")
         }
         .task {
             let preferredLanguages = service.settings.preferredLanguages
@@ -251,31 +270,32 @@ private struct TextExtractionRow: View {
 
     var body: some View {
         let extraction = row.extraction
-        OnePlusCard {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Button(action: onOpen) {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Button(action: onOpen) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
                     VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                            Text(extraction.text).onePlusText(.row).lineLimit(1)
-                            Spacer(minLength: 0)
-                            Text(row.timestamp).onePlusText(.caption).fixedSize()
-                        }
+                        Text(extraction.text).onePlusText(.row).lineLimit(1)
                         Text("Screen selection").onePlusText(.caption)
-                    }.frame(maxWidth: .infinity, minHeight: TextExtractorLayout.historyRowHeight, alignment: .leading)
-                        .contentShape(Rectangle())
-                }.buttonStyle(OnePlusInteractionStyle()).accessibilityLabel("Open full text")
-                Button(action: onCopy) { Image(systemName: "doc.on.doc") }
-                    .accessibilityLabel("Copy text")
-                if let url = row.openableURL {
-                    Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.right.square") }
-                        .accessibilityLabel("Open link")
+                    }
+                    Spacer(minLength: 0)
+                    Text(row.timestamp).onePlusText(.caption).fixedSize()
                 }
-                Button { confirmingDelete = true } label: { Image(systemName: "trash") }
-                    .accessibilityLabel("Delete extraction")
+                .frame(maxWidth: .infinity, minHeight: TextExtractorLayout.historyRowHeight, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, OnePlusMetrics.actionSpacing)
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .buttonStyle(OnePlusInteractionStyle())
+            .accessibilityLabel("Open full text")
+            Button(action: onCopy) { Image(systemName: "doc.on.doc") }
+                .accessibilityLabel("Copy text")
+            if let url = row.openableURL {
+                Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.right.square") }
+                    .accessibilityLabel("Open link")
+            }
+            Button { confirmingDelete = true } label: { Image(systemName: "trash") }
+                .accessibilityLabel("Delete extraction")
         }
+        .padding(.horizontal, OnePlusMetrics.actionSpacing)
+        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         .contextMenu {
             Button("Open full text", action: onOpen)
             Button("Copy text", action: onCopy)
