@@ -4,6 +4,29 @@ Requested on 2026-09-25, using [disktree](https://github.com/tobi/disktree) and
 [DaisyDisk](https://daisydiskapp.com/) as behavior references. This is an
 independent Swift and SwiftUI implementation in MacPowerToys.
 
+## Native redesign, 2026-09-29
+
+`DESIGN.md` version 14 controls the native shell and alignment. The HTML
+reference supplies content and storage chart texture. The surface worker
+does not install or launch the app; the redesign orchestrator owns that gate.
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar, 27 pt centerline, and 24 pt gutter. | Diskman uses the shared window root, header, sidebar, cards, tabs, and settings rows. Debug builds with no Diskman warnings. | Inspect both appearances on the signed build. |
+| Verify | Separate selection from navigation and show storage details beside the map. | Single click selects; double-click opens folders. The map has breadcrumbs and a 260 pt inspector. Back, forward, Quick Look, file menus, drag-out, and search have native paths. | Run interaction checks on the installed build. |
+| Verify | Show folded files without treating them as a real file. | `.aggregate` uses `fileCount` for `N smaller files`. Charts retain its tile; Results uses a grouped row. No file URL, drill, preview, or removal action is exposed. The new view regression compiles. | Run the aggregate view regression on hosted CI. |
+| Verify | Keep Largest files and Results in the same native table language. | Both use the additive OnePlusUI native table with sorting, multiple selection, keyboard actions, context menus, and drag-out. Removal enters review and a native confirmation. | Verify sorting, selection, menus, drag-out, and confirmations in both appearances. |
+| Verify | Keep disk write protections while changing Modify's layout. | Device header, partition map, partition rows, direct action groups, and staged review use OnePlusUI. Command checks still bind to media identity and enforce the write lock, EFI protection, and typed review. | Run hosted safety and review tests. Do not write to physical disks during redesign review. |
+| Verify | Provide first-run, scanning, completed, stopped, unreadable, and error states. | The stats update from scanner snapshots. Stable chart membership and count-based splits remain. Choose Folder is a 460 pt native sheet; unreadable rows link to Full Disk Access. | Capture each state and inspect all page deep links. |
+| Verify | Restyle Settings and About without losing preferences or guidance. | Shared cards retain chart, measure, apparent-size, hidden-file, enable, and disk-access controls. About includes the guide and keyboard shortcuts. | Inspect controls and saved settings in both appearances. |
+| Verify | Route home, largest-files, results, rings, choose-folder, settings, about, and device/bsd-name pages. | The window handles every page through `.onOpenToolPage`. The shared route parser still rejects the third device-path segment. | Foundation must accept nested device page IDs; then verify all links. |
+
+The desktop test build compiles the Diskman unit, render, and UI sources.
+Its current blocker is an unrelated missing OnePlusUI import in
+`ScrollIndicatorTests.swift`. Signed visual review and hosted execution
+remain open; compilation does not prove interaction or appearance.
+
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Make each physical disk the Modify entry and place Eject in its sidebar row. | The separate Manage Disks row is removed. Eject keeps the existing per-media write lock and identity checks. A failed normal eject can list open processes; Close sends a normal app quit or TERM, while Force Quit sends KILL only after a separate button press. Both recheck the disk and process identity. Hosted run `36279617042` passed sidebar selection and the blocked-eject preview, including disabled quit actions in test mode. | A real process-blocked eject remains untested: the authorized 16 GB card is absent from the current disk inventory. |

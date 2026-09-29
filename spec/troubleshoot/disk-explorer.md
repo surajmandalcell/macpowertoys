@@ -1,5 +1,29 @@
 # Diskman Troubleshooting
 
+## Native Redesign And Folded File Rows
+
+- **Symptom:** The web-style layout had uneven edges and did not use native
+  file selection. Folded scanner children could look like real files.
+- **Cause:** Diskman used separate page chrome and drew file rows itself.
+- **Invariant:** Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar,
+  27 pt title centerline, and 24 pt page gutter. First launch asks for a
+  location. Analyze uses live summary cards, three tabs, map breadcrumbs,
+  and a 260 pt inspector. Click selects; double-click enters a folder.
+  Native tables supply multiple selection, sorting, file menus, and drag-out.
+  `.aggregate` displays `fileCount` as `N smaller files` and remains visible
+  in bounded charts. Its synthetic URL never becomes a file action or drag.
+  Keep scan membership, count-based splits, cancellation, and partial-result
+  removal gates. Keep every disk command, write lock, media identity check,
+  protected EFI check, typed review, and blocked-eject check.
+  This recipe replaces the older Contents toggle, statistics popover,
+  warning-button placement, and single-click drill rules below.
+- **Check:** Debug compilation passes. Added view checks cover aggregate
+  retention, byte sorting, breadcrumb boundaries, and keyboard selection.
+  Hosted UI checks cover the new controls without executing disk writes.
+  Render tests use the fixed canvas and cover both table tabs and charts in
+  both appearances. Execution, signed captures, and idle CPU measurement
+  remain with the redesign orchestrator.
+
 ## Large Scans Stop At 250,000 Entries
 
 - **Symptom:** Diskman stops normal home-folder and startup-disk scans after
@@ -33,9 +57,9 @@
 - **Invariant:** Publish the skeleton, then measure immediate children of every
   top-level folder once before deep walking them. Label partial sizes as
   measured so far; they are estimates until completion. Let the plot fill the
-  remaining workspace height. Show hover details in the existing breadcrumb
-  line and accessibility labels, without an idle row. Put the unreadable
-  warning next to View. A physical disk row opens Modify and offers Eject.
+  remaining workspace height. Show hover details in the map footer and
+  accessibility labels. Put the unreadable warning below the map card.
+  A physical disk row opens Modify and offers Eject.
   On a blocked eject, list open processes and offer normal close, deliberate
   force quit, and Cancel. Recheck the disk, lock, and process identity before
   signaling; never force-eject.
@@ -128,7 +152,7 @@
   largest measured entries once, retain path order within that set, and animate
   the change. Split by count and interpolate each tile or ring segment as
   measured weights arrive. Keep scan status outside the plotted region;
-  hovered names and sizes remain accessible without a reserved detail row.
+  hovered names and sizes use the map's existing footer caption.
   Reduce Motion stays immediate.
 - **Check:** `testTreemapKeepsTileGroupsWhenMeasuredSizesCross` fails with the
   prior weight-based grouping. `testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross`
@@ -198,9 +222,9 @@
   used scarce body height, and a two-level ring used only part of its canvas.
 - **Cause:** The old layout kept both panes in one row, and rings reserved
   fixed widths for three levels even when the tree had fewer levels.
-- **Invariant:** Visualization uses the result width. Contents starts closed
-  and can be opened. Largest Files has its own tab; counts sit in a header
-  popover. Ring bands adapt to the visible tree depth, and chart hover shows
+- **Invariant:** Visualization fills the space beside the inspector. Results
+  and Largest files have their own tabs; counts sit in the summary card.
+  Ring bands adapt to the visible tree depth, and chart hover shows
   the item name and size. Respect Reduce Motion for navigation.
 - **Check:** Hosted run `36138597977` passed the focused scanner, render, and
   focus checks. Its 1120 × 760 renders cover both appearances and both charts;
@@ -224,8 +248,9 @@
 - **Symptom:** Hosted `FocusEffectTests` reported the new Largest Files action
   buttons as using a mismatched native focus outline.
 - **Cause:** Their plain button style lacked the shared focus-effect override.
-- **Invariant:** Pair each plain or borderless custom action with
-  `.focusEffectDisabled()` and keep its accessible name and hover help.
+- **Invariant:** Follow OnePlusUI's focus handling for plain actions. Suppress
+  the default outline when Full Keyboard Access is off; preserve keyboard
+  focus indication when it is on. Keep accessible names and hover help.
 - **Check:**
   `FocusEffectTests.testCustomButtonStylesSuppressTheMismatchedSystemOutline`
   passed in hosted run `36138597977`.
