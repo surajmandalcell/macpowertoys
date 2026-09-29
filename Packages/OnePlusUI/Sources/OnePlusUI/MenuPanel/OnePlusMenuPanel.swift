@@ -45,8 +45,8 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
         let defaultHeight = screenHeight.isFinite ? max(0, screenHeight) * OnePlusMenuMetrics.heightFraction : 720
         let requestedHeight = maximumHeight.flatMap { $0.isFinite ? max(0, $0) : nil } ?? defaultHeight
-        let cap = max(OnePlusMenuMetrics.topBar + 2, requestedHeight)
-        let bodyCap = cap - OnePlusMenuMetrics.topBar - 2
+        let cap = max(OnePlusMenuMetrics.topBar, min(requestedHeight, defaultHeight))
+        let bodyCap = cap - OnePlusMenuMetrics.topBar
         VStack(spacing: 0) {
             HStack(spacing: 7) {
                 tabs
