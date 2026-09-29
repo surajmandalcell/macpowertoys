@@ -130,8 +130,30 @@ struct InputDeviceCard: View {
 
 }
 
+nonisolated struct InputKeyboardDetails: Equatable, Sendable {
+    let keyRepeat: String
+    let functionKeys: String
+
+    init(keyRepeat: Int?, standardFunctionKeys: Bool?) {
+        if let keyRepeat {
+            self.keyRepeat = keyRepeat <= 2 ? "Fast" : keyRepeat >= 6 ? "Slow" : "Medium"
+        } else {
+            self.keyRepeat = "System default"
+        }
+        functionKeys = standardFunctionKeys == true ? "Standard F keys" : "Media keys"
+    }
+
+    static func load() -> Self {
+        let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain) ?? [:]
+        return Self(
+            keyRepeat: global["KeyRepeat"] as? Int,
+            standardFunctionKeys: global["com.apple.keyboard.fnState"] as? Bool
+        )
+    }
+}
+
 struct InputKeyboardCard: View {
-    private let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain) ?? [:]
+    @State private var details = InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: nil)
 
     var body: some View {
         OnePlusCard {
@@ -141,20 +163,18 @@ struct InputKeyboardCard: View {
             VStack(spacing: 0) {
                 OnePlusKeyValueRow("Connection", value: "Managed by macOS")
                 OnePlusKeyValueRow("Battery", value: "Not reported")
-                OnePlusKeyValueRow("Key repeat", value: keyRepeatLabel)
-                OnePlusKeyValueRow("Function keys", value: functionKeyLabel)
+                OnePlusKeyValueRow("Key repeat", value: details.keyRepeat)
+                OnePlusKeyValueRow("Function keys", value: details.functionKeys)
             }
             .padding(OnePlusMetrics.cardPadding)
         }
-    }
-
-    private var keyRepeatLabel: String {
-        guard let value = global["KeyRepeat"] as? Int else { return "System default" }
-        return value <= 2 ? "Fast" : value >= 6 ? "Slow" : "Medium"
-    }
-
-    private var functionKeyLabel: String {
-        (global["com.apple.keyboard.fnState"] as? Bool) == true ? "Standard F keys" : "Media keys"
+        .task {
+            let loaded = await Task.detached(priority: .utility) {
+                InputKeyboardDetails.load()
+            }.value
+            guard !Task.isCancelled else { return }
+            details = loaded
+        }
     }
 }
 
