@@ -5,6 +5,10 @@ private struct OnePlusZoomTrailingKey: EnvironmentKey {
     static let defaultValue: CGFloat = 70
 }
 
+private struct OnePlusCanvasAppliedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 public extension EnvironmentValues {
     var onePlusZoomTrailingX: CGFloat {
         get { self[OnePlusZoomTrailingKey.self] }
@@ -17,6 +21,7 @@ public struct OnePlusFixedWindowChrome: NSViewRepresentable {
     private let centerline: CGFloat
     private let sizing: OnePlusChromeSizing
     private let onZoomTrailingX: (CGFloat) -> Void
+    private var onTopInset: (CGFloat) -> Void = { _ in }
 
     public init(contentSize: NSSize, centerline: CGFloat = OnePlusMetrics.centerline,
                 onZoomTrailingX: @escaping (CGFloat) -> Void = { _ in }) {
@@ -30,15 +35,19 @@ public struct OnePlusFixedWindowChrome: NSViewRepresentable {
         self.init(contentSize: contentSize, centerline: 16 + trafficLightVerticalOffset)
     }
 
-    init(canvas: OnePlusWindowCanvas, onZoomTrailingX: @escaping (CGFloat) -> Void) {
+    init(canvas: OnePlusWindowCanvas, onTopInset: @escaping (CGFloat) -> Void,
+         onZoomTrailingX: @escaping (CGFloat) -> Void) {
         contentSize = canvas.size
         centerline = canvas.centerline
         sizing = canvas.heightRange == nil ? .swiftUI : .swiftUIHeight
         self.onZoomTrailingX = onZoomTrailingX
+        self.onTopInset = onTopInset
     }
 
     public func makeNSView(context: Context) -> NSView {
-        OnePlusChromeView(size: contentSize, centerline: centerline, sizing: sizing, report: onZoomTrailingX)
+        let view = OnePlusChromeView(size: contentSize, centerline: centerline, sizing: sizing, report: onZoomTrailingX)
+        view.reportTopInset = onTopInset
+        return view
     }
 
     public func updateNSView(_ nsView: NSView, context: Context) {
@@ -47,6 +56,7 @@ public struct OnePlusFixedWindowChrome: NSViewRepresentable {
         view.centerline = centerline
         view.sizing = sizing
         view.report = onZoomTrailingX
+        view.reportTopInset = onTopInset
         view.apply()
     }
 
@@ -62,6 +72,8 @@ final class OnePlusChromeView: NSView {
     var centerline: CGFloat
     var sizing: OnePlusChromeSizing
     var report: (CGFloat) -> Void
+    var reportTopInset: (CGFloat) -> Void = { _ in }
+    private var lastTopInset: CGFloat?
     private weak var observedWindow: NSWindow?
     private var applying = false
     private var pendingPass: DispatchWorkItem?
@@ -139,6 +151,7 @@ final class OnePlusChromeView: NSView {
         buttonObservations.removeAll()
         observedWindow = nil
         lastTrailingX = nil
+        lastTopInset = nil
     }
 
     func apply() {
@@ -166,12 +179,17 @@ final class OnePlusChromeView: NSView {
         if window.styleMask != style { window.styleMask = style }
         if window.titleVisibility != .hidden { window.titleVisibility = .hidden }
         if !window.titlebarAppearsTransparent { window.titlebarAppearsTransparent = true }
+        let topInset = window.contentView?.safeAreaInsets.top ?? 0
+        if lastTopInset != topInset {
+            lastTopInset = topInset
+            reportTopInset(topInset)
+        }
         if window.tabbingMode != .disallowed { window.tabbingMode = .disallowed }
         if window.isRestorable { window.isRestorable = false }
         let behavior = window.collectionBehavior.subtracting([.fullScreenPrimary, .fullScreenAuxiliary]).union(.fullScreenNone)
         if window.collectionBehavior != behavior { window.collectionBehavior = behavior }
-        let minimum = NSSize(width: size.width, height: sizing == .swiftUIHeight ? window.contentMinSize.height : size.height)
-        let maximum = NSSize(width: size.width, height: sizing == .swiftUIHeight ? window.contentMaxSize.height : size.height)
+        let minimum = NSSize(width: size.width, height: sizing == .native ? size.height : window.contentMinSize.height)
+        let maximum = NSSize(width: size.width, height: sizing == .native ? size.height : window.contentMaxSize.height)
         if window.contentMinSize != minimum { window.contentMinSize = minimum }
         if window.contentMaxSize != maximum { window.contentMaxSize = maximum }
         if sizing == .native, let current = window.contentView?.bounds.size,
@@ -214,17 +232,28 @@ public extension View {
 
 private struct OnePlusFixedCanvasModifier: ViewModifier {
     let canvas: OnePlusWindowCanvas
+    @Environment(\.self) private var environment
     @State private var zoomTrailingX: CGFloat = 70
+    @State private var topInset: CGFloat = 0
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
+        if environment[OnePlusCanvasAppliedKey.self] {
+            content
+        } else {
+            content
             .frame(width: canvas.size.width, height: canvas.heightRange == nil ? canvas.size.height : nil)
+            // The host adds its native titlebar inset to the measured content size.
+            // Extend the content into that inset without adding it to the canvas.
+            .padding(.top, -topInset)
             .background {
-                OnePlusFixedWindowChrome(canvas: canvas) {
+                OnePlusFixedWindowChrome(canvas: canvas, onTopInset: { topInset = $0 }) {
                     zoomTrailingX = $0
                 }
             }
+            .transformEnvironment(\.self) { $0[OnePlusCanvasAppliedKey.self] = true }
             .environment(\.onePlusZoomTrailingX, zoomTrailingX)
             .onePlusDensity(canvas.density)
+        }
     }
 }
