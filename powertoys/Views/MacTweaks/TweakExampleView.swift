@@ -15,7 +15,7 @@ enum MacTweaksPalette {
 
 enum MacTweaksGlyphName: Hashable {
     case input, dock, finder, windows, screenshots, apps, power, menubar
-    case motion, animation, layers
+    case motion, animation, layers, priority, microphone, keyboard
 }
 
 extension MacTweaksGlyphName {
@@ -32,6 +32,9 @@ extension MacTweaksGlyphName {
         case .motion: "gauge.with.dots.needle.33percent"
         case .animation: "sparkles.rectangle.stack"
         case .layers: "square.3.layers.3d"
+        case .priority: "arrow.up.arrow.down"
+        case .microphone: "mic"
+        case .keyboard: "keyboard"
         }
     }
 }
@@ -65,6 +68,19 @@ private struct MacTweaksGlyphShape: Shape {
             path.move(to: .init(x: 12, y: 3)); path.addLine(to: .init(x: 21, y: 8)); path.addLine(to: .init(x: 12, y: 13)); path.addLine(to: .init(x: 3, y: 8)); path.closeSubpath()
             path.move(to: .init(x: 3, y: 12)); path.addLine(to: .init(x: 12, y: 17)); path.addLine(to: .init(x: 21, y: 12))
             path.move(to: .init(x: 3, y: 16)); path.addLine(to: .init(x: 12, y: 21)); path.addLine(to: .init(x: 21, y: 16))
+        case .priority:
+            path.move(to: .init(x: 7, y: 20)); path.addLine(to: .init(x: 7, y: 4))
+            path.move(to: .init(x: 3, y: 8)); path.addLine(to: .init(x: 7, y: 4)); path.addLine(to: .init(x: 11, y: 8))
+            path.move(to: .init(x: 17, y: 4)); path.addLine(to: .init(x: 17, y: 20))
+            path.move(to: .init(x: 13, y: 16)); path.addLine(to: .init(x: 17, y: 20)); path.addLine(to: .init(x: 21, y: 16))
+        case .microphone:
+            path.addRoundedRect(in: CGRect(x: 8, y: 3, width: 8, height: 12), cornerSize: .init(width: 4, height: 4))
+            path.move(to: .init(x: 5, y: 11)); path.addCurve(to: .init(x: 19, y: 11), control1: .init(x: 5, y: 20), control2: .init(x: 19, y: 20))
+            path.move(to: .init(x: 12, y: 18)); path.addLine(to: .init(x: 12, y: 22))
+        case .keyboard:
+            path.addRoundedRect(in: CGRect(x: 2, y: 5, width: 20, height: 14), cornerSize: .init(width: 3, height: 3))
+            path.move(to: .init(x: 6, y: 10)); path.addLine(to: .init(x: 18, y: 10))
+            path.move(to: .init(x: 7, y: 15)); path.addLine(to: .init(x: 17, y: 15))
         case .input:
             path.addRoundedRect(in: CGRect(x: 2, y: 5, width: 20, height: 14), cornerSize: .init(width: 3, height: 3))
             for y in [9.0, 13.0] {
@@ -240,7 +256,6 @@ struct MacTweaksPreviewView: View {
                 MacTweaksFilmBackground()
                     .scaleEffect(1.08)
                     .blur(radius: 10)
-                    .opacity(0.56)
                 renderedPreview(progress: progress)
                     .frame(width: 600, height: 304)
                     .scaleEffect(scale)
@@ -358,7 +373,7 @@ private struct DesktopPreviewScene: View {
             Text(kind == .apps ? "Settings" : "Finder").font(.system(size: 8, weight: .semibold))
             ForEach(["File", "Edit", "View", "Go", "Window"], id: \.self) { Text($0) }
             Spacer()
-            ForEach(0..<3, id: \.self) { _ in Circle().fill(MacTweaksPalette.secondary).frame(width: 4, height: 4) }
+            ForEach(0..<3, id: \.self) { _ in Circle().fill(MacTweaksPreviewPalette.secondary).frame(width: 4, height: 4) }
             Text("Tue 10:24").font(.system(size: 7.5).monospacedDigit())
         }
         .font(.system(size: 7.5))
@@ -546,6 +561,12 @@ private struct MacTweaksFilmBackground: View {
     }
 }
 
+private enum MacTweaksPreviewPalette {
+    static let text = Color(white: 0.93)
+    static let secondary = Color(white: 0.74)
+    static let muted = Color(white: 0.52)
+}
+
 private enum PreviewApp: CaseIterable {
     case finder, safari, mail, notes, photos, terminal, settings, folder, trash
 }
@@ -731,7 +752,7 @@ private struct FinderPreviewWindow: View {
                 .background(Color.white.opacity(0.075))
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("FAVORITES").font(.system(size: 6.5, weight: .medium)).foregroundStyle(MacTweaksPalette.muted)
+                        Text("FAVORITES").font(.system(size: 6.5, weight: .medium)).foregroundStyle(MacTweaksPreviewPalette.muted)
                         ForEach(Array(sidebarItems.enumerated()), id: \.offset) { _, item in
                             HStack(spacing: 5) {
                                 Image(systemName: item.1)
@@ -741,21 +762,21 @@ private struct FinderPreviewWindow: View {
                                 Text(item.0)
                             }
                             .font(.system(size: 7.5))
-                            .foregroundStyle(item.0 == "Documents" ? MacTweaksPalette.text : MacTweaksPalette.secondary)
+                            .foregroundStyle(item.0 == "Documents" ? MacTweaksPreviewPalette.text : MacTweaksPreviewPalette.secondary)
                         }
                         Spacer()
                         HStack(spacing: 5) {
                             Image(systemName: "internaldrive").font(.system(size: 6.5)).frame(width: 9)
                             Text("Macintosh HD")
                         }
-                        .font(.system(size: 7.5)).foregroundStyle(MacTweaksPalette.secondary)
+                        .font(.system(size: 7.5)).foregroundStyle(MacTweaksPreviewPalette.secondary)
                     }
                     .padding(11)
                     .frame(width: proxy.size.width * 0.28, alignment: .leading)
                     .background(Color.white.opacity(0.035))
                     VStack(spacing: 0) {
                         HStack { Text("Name"); Spacer(); Text("Date Modified") }
-                            .font(.system(size: 6.5)).foregroundStyle(MacTweaksPalette.muted)
+                            .font(.system(size: 6.5)).foregroundStyle(MacTweaksPreviewPalette.muted)
                             .padding(.horizontal, 10).frame(height: 17)
                         ForEach(Array(files.enumerated()), id: \.offset) { index, name in
                             let selected = index == 1 ? 1 - selectionAmount : index == 3 ? selectionAmount : 0
@@ -766,7 +787,7 @@ private struct FinderPreviewWindow: View {
                                 Text(index < 2 ? "Today" : "Yesterday")
                             }
                             .font(.system(size: 7.5))
-                            .foregroundStyle(MacTweaksPalette.text.opacity(0.88 + 0.12 * selected))
+                            .foregroundStyle(MacTweaksPreviewPalette.text.opacity(0.88 + 0.12 * selected))
                             .padding(.horizontal, 10)
                             .frame(height: name == ".env" ? 19 * hiddenFileOpacity : 19)
                             .background(Color.blue.opacity(0.52 * selected))
@@ -779,7 +800,7 @@ private struct FinderPreviewWindow: View {
                             Text("6 items, 184 GB available").opacity(Double(hiddenFileOpacity))
                         }
                             .font(.system(size: 6.5))
-                            .foregroundStyle(MacTweaksPalette.muted)
+                            .foregroundStyle(MacTweaksPreviewPalette.muted)
                             .frame(maxWidth: .infinity, minHeight: 17)
                             .background(Color.white.opacity(0.025))
                     }
@@ -863,19 +884,6 @@ private struct PowerPreviewScene: View {
                 }
                 .shadow(color: Color.white.opacity(0.08 + Double(pulse) * 0.15), radius: 22 + 24 * pulse)
                 .offset(y: -28)
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(active ? MacTweaksPalette.secondary : MacTweaksPalette.muted)
-                    .frame(width: 8, height: 8)
-                Text(active ? "Keeping this Mac awake" : "Hover to preview")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color(white: 0.68))
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 38)
-            .background(Color.black.opacity(0.38), in: Capsule())
-            .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.7))
-            .offset(y: 88)
         }
         .frame(width: 600, height: 304)
         .clipped()

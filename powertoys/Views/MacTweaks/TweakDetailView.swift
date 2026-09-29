@@ -36,6 +36,7 @@ struct MacTweaksPreferenceRows: View {
     let revision: Int
     let selections: [String: Int]
     let modifiedIdentities: Set<String>
+    let backedUpIdentities: Set<String>
     let onChanged: (String) -> Void
     let onError: (String) -> Void
 
@@ -52,6 +53,7 @@ struct MacTweaksPreferenceRows: View {
                 revision: revision,
                 selection: selections[field.identity] ?? -1,
                 isModified: modifiedIdentities.contains(field.identity),
+                hasBackup: backedUpIdentities.contains(field.identity),
                 onChanged: onChanged,
                 onError: onError
             )
@@ -68,6 +70,7 @@ struct MacTweaksPreferenceRow: View {
     let revision: Int
     let selection: Int
     let isModified: Bool
+    let hasBackup: Bool
     let onChanged: (String) -> Void
     let onError: (String) -> Void
 
@@ -102,7 +105,11 @@ struct MacTweaksPreferenceRow: View {
 
     private func restore() {
         do {
-            try TweakPreferenceStore.shared.restore([field])
+            if hasBackup {
+                try TweakPreferenceStore.shared.restore([field])
+            } else {
+                try TweakPreferenceStore.shared.apply([field], selections: [field.identity: -1])
+            }
             onChanged(itemID)
         } catch {
             onError(error.localizedDescription)
@@ -156,10 +163,14 @@ private struct MacTweaksMenuControl: View {
 
     var body: some View {
         OnePlusSelect(
-            choices: [(-1, "System default")] + field.choices.indices.map { ($0, field.choices[$0].label) },
+            choices: [(-1, defaultLabel)] + field.choices.indices.map { ($0, field.choices[$0].label) },
             selection: Binding(get: { selection }, set: onSelection),
             accessibilityLabel: field.label
         )
+    }
+
+    private var defaultLabel: String {
+        "Default\(field.defaultLabel.map { " (\($0))" } ?? "")"
     }
 }
 
@@ -173,17 +184,46 @@ private struct MacTweaksTimingField: View {
         return field.choices[selection].value as? Double
     }
 
-    var body: some View {
-        OnePlusStepperField(
-            field.label,
-            value: Binding(
-                get: { Int(((selectedValue ?? 0) * 100).rounded()) },
-                set: { choose(Double($0) / 100) }
-            ),
-            in: 0...300,
-            step: 5,
-            unit: "cs"
+    private var defaultValue: Double {
+        guard let index = field.defaultSelection,
+              field.choices.indices.contains(index),
+              let value = field.choices[index].value as? Double
+        else { return 0 }
+        return value
+    }
+
+    private var hundredths: Binding<Int> {
+        Binding(
+            get: { Int(((selectedValue ?? defaultValue) * 100).rounded()) },
+            set: { choose(Double($0) / 100) }
         )
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(selectedValue.map { String(format: "%.2f", $0) }
+                 ?? "Default (\(field.defaultLabel ?? String(format: "%.2f", defaultValue)))")
+                .onePlusText(.control)
+                .padding(.horizontal, OnePlusMetrics.spacing[3])
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("s").onePlusText(.caption).padding(.trailing, OnePlusMetrics.spacing[3])
+            OnePlusColor.line.frame(width: 1)
+            Stepper(field.label, value: hundredths, in: 0...300, step: 5)
+                .labelsHidden()
+                .controlSize(.small)
+                .frame(width: OnePlusMetrics.spacing[7])
+                .clipped()
+        }
+        .frame(height: OnePlusMetrics.controlHeight)
+        .background(OnePlusColor.field, in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
+                .strokeBorder(OnePlusColor.line, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(field.label)
+        .accessibilityValue(selectedValue.map { String(format: "%.2f seconds", $0) }
+                            ?? "Default, \(field.defaultLabel ?? String(format: "%.2f", defaultValue)) seconds")
     }
 
     private func choose(_ value: Double) {
@@ -203,7 +243,7 @@ struct MacTweaksRowDivider: View {
 
 enum MacTweaksPreferenceValue {
     static func label(for selection: Int, field: TweakPreferenceField) -> String {
-        if selection == -1 { return "System default\(field.defaultLabel.map { " (\($0))" } ?? "")" }
+        if selection == -1 { return "Default\(field.defaultLabel.map { " (\($0))" } ?? "")" }
         if field.choices.indices.contains(selection) { return field.choices[selection].label }
         return "Custom value"
     }

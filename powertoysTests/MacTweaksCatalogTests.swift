@@ -38,6 +38,24 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertEqual(shadowField.choices[1].value as? Bool, true)
     }
 
+    func testDeclaredDefaultsDriveModifiedStateAndControlLabels() {
+        let hiddenFiles = TweakPreferences.fields(for: "finder.hidden-files")[0]
+        XCTAssertFalse(hiddenFiles.differsFromDefault(-1))
+        XCTAssertFalse(hiddenFiles.differsFromDefault(1))
+        XCTAssertTrue(hiddenFiles.differsFromDefault(0))
+
+        let revealDelay = TweakPreferences.fields(for: "dock.reveal-delay")[0]
+        XCTAssertEqual(revealDelay.defaultLabel, "0.40")
+        XCTAssertEqual(revealDelay.defaultSelection, 8)
+        XCTAssertFalse(revealDelay.differsFromDefault(8))
+        XCTAssertTrue(revealDelay.differsFromDefault(0))
+
+        let menuSpacing = TweakPreferences.fields(for: "menubar.spacing")[0]
+        XCTAssertEqual(menuSpacing.defaultLabel, "Always")
+        XCTAssertFalse(menuSpacing.differsFromDefault(-1))
+        XCTAssertTrue(menuSpacing.differsFromDefault(0))
+    }
+
     func testExactPreferenceUndoRestoresAbsentAndExistingValues() throws {
         let domain = "com.macpowertoys.tweak-test.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))

@@ -1,5 +1,13 @@
 # Mac Tweaks request list
 
+## Round 5 screenshot corrections, 2026-09-29
+
+- [x] Derive Modified from live values versus declared defaults, including values changed outside Mac Tweaks. Keep exact-value restore for backed-up changes and return untracked changes to the system default.
+- [x] Show Dock timing defaults as `Default (0.40)` and `Default (0.35)` with seconds, and show declared defaults in select controls.
+- [x] Keep preview scenes and labels on fixed dark colors in Light and Dark. Remove the Power preview instruction chip and use sentence case for the live status.
+- [x] Keep long Finder, Windows, and microphone controls readable. Use distinct Input section icons and keep the input meter visible beside Test.
+- [~] Recapture all ten pages from the exact signed build. The 41pt scroll gutter and 28pt header gap remain shared OnePlusUI foundation fixes.
+
 ## Owner review 1 corrections, 2026-09-29
 
 - [x] Keep the shared page header at `T = 58` and every card on its 24pt leading edge. Mac Tweaks draws no local page header or second body inset.

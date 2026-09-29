@@ -12,22 +12,31 @@ nonisolated struct TweakPreferenceField: @unchecked Sendable {
     let key: String
     let choices: [TweakChoice]
     let defaultLabel: String?
+    let defaultSelection: Int?
 
     init(
         label: String,
         domain: String,
         key: String,
         choices: [TweakChoice],
-        defaultLabel: String? = nil
+        defaultLabel: String? = nil,
+        defaultSelection: Int? = nil
     ) {
         self.label = label
         self.domain = domain
         self.key = key
         self.choices = choices
         self.defaultLabel = defaultLabel
+        self.defaultSelection = defaultSelection
     }
 
     var identity: String { "\(domain)/\(key)" }
+
+    func differsFromDefault(_ selection: Int) -> Bool {
+        guard selection != -1 else { return false }
+        guard let defaultSelection else { return true }
+        return selection != defaultSelection
+    }
 
     static func flag(
         _ label: String,
@@ -37,7 +46,8 @@ nonisolated struct TweakPreferenceField: @unchecked Sendable {
     ) -> Self {
         .init(label: label, domain: domain, key: key,
               choices: [.init(label: "On", value: true), .init(label: "Off", value: false)],
-              defaultLabel: defaultValue.map { $0 ? "On" : "Off" })
+              defaultLabel: defaultValue.map { $0 ? "On" : "Off" },
+              defaultSelection: defaultValue.map { $0 ? 0 : 1 })
     }
 }
 
@@ -67,35 +77,35 @@ enum TweakPreferences {
         case "dock.stack-selection": return [.flag("Highlight stack selection", dock, "mouse-over-hilite-stack", default: false)]
         case "dock.minimize-effect": return [.init(label: "Minimize effect", domain: dock, key: "mineffect",
                                                   choices: [.init(label: "Suck", value: "suck"), .init(label: "Genie", value: "genie"), .init(label: "Scale", value: "scale")],
-                                                  defaultLabel: "Genie")]
+                                                  defaultLabel: "Genie", defaultSelection: 1)]
         case "dock.slow-motion": return [.flag("Shift slow motion", dock, "slow-motion-allowed", default: false)]
         case "dock.switcher-displays": return [.flag("Cmd-Tab on every display", dock, "appswitcher-all-displays", default: false)]
         case "finder.hidden-files": return [.flag("Show hidden files", finder, "AppleShowAllFiles", default: false)]
         case "finder.quit": return [.flag("Quit Finder menu item", finder, "QuitMenuItem", default: false)]
         case "finder.path-title": return [.flag("Full path in the title bar", finder, "_FXShowPosixPathInTitle", default: false)]
         case "finder.sounds": return [.flag("Finder sounds", finder, "FinderSounds", default: true)]
-        case "finder.network-metadata": return [.flag("Avoid metadata on network shares", "com.apple.desktopservices", "DSDontWriteNetworkStores", default: false)]
+        case "finder.network-metadata": return [.flag("Avoid network metadata", "com.apple.desktopservices", "DSDontWriteNetworkStores", default: false)]
         case "input.press-hold": return [.init(
             label: "Repeat instead of accents", domain: global, key: "ApplePressAndHoldEnabled",
             choices: [.init(label: "On", value: false), .init(label: "Off", value: true)],
-            defaultLabel: "Off"
+            defaultLabel: "Off", defaultSelection: 1
         )]
         case "dialogs.expanded-save": return [
             .flag("Expanded Save panels", global, "NSNavPanelExpandedStateForSaveMode", default: true),
-            .flag("Expanded alternate Save panels", global, "NSNavPanelExpandedStateForSaveMode2", default: true)
+            .flag("Expand alternate Save panels", global, "NSNavPanelExpandedStateForSaveMode2", default: true)
         ]
         case "windows.scroll-animation": return [.flag("Page-scroll animation", global, "NSScrollAnimationEnabled", default: true)]
         case "menubar.spacing": return [
-            points("Item spacing", global, "NSStatusItemSpacing", [2, 4, 6, 8, 10, 12, 14, 16]),
-            points("Selection padding", global, "NSStatusItemSelectionPadding", [2, 4, 6, 8, 10, 12, 14, 16])
+            points("Item spacing", global, "NSStatusItemSpacing", [2, 4, 6, 8, 10, 12, 14, 16], default: "Always"),
+            points("Selection padding", global, "NSStatusItemSelectionPadding", [2, 4, 6, 8, 10, 12, 14, 16], default: "Always")
         ]
         case "screenshots.format": return [.init(label: "Image format", domain: capture, key: "type",
                                                   choices: ["png", "jpg", "pdf", "tiff"].map { .init(label: $0.uppercased(), value: $0) },
-                                                  defaultLabel: "PNG")]
+                                                  defaultLabel: "PNG", defaultSelection: 0)]
         case "screenshots.shadow": return [.init(
             label: "Include window shadows", domain: capture, key: "disable-shadow",
             choices: [.init(label: "On", value: false), .init(label: "Off", value: true)],
-            defaultLabel: "On"
+            defaultLabel: "On", defaultSelection: 0
         )]
         case "screenshots.date": return [.flag("Timestamp in filename", capture, "include-date", default: true)]
         case "terminal.pointer-focus": return [.flag("Terminal pointer focus", "com.apple.Terminal", "FocusFollowsMouse", default: false)]
@@ -115,14 +125,23 @@ enum TweakPreferences {
         default defaultValue: Double
     ) -> TweakPreferenceField {
         let values = (0...60).map { Double($0) * 0.05 }
+        let defaultSelection = values.firstIndex { abs($0 - defaultValue) < 0.001 }
         return .init(label: label, domain: domain, key: key,
-                     choices: values.map { .init(label: String(format: "%.2f seconds", $0), value: $0) },
-                     defaultLabel: String(format: "%.2f seconds", defaultValue))
+                     choices: values.map { .init(label: String(format: "%.2f s", $0), value: $0) },
+                     defaultLabel: String(format: "%.2f", defaultValue),
+                     defaultSelection: defaultSelection)
     }
 
-    private static func points(_ label: String, _ domain: String, _ key: String, _ values: [Int]) -> TweakPreferenceField {
+    private static func points(
+        _ label: String,
+        _ domain: String,
+        _ key: String,
+        _ values: [Int],
+        default defaultLabel: String
+    ) -> TweakPreferenceField {
         .init(label: label, domain: domain, key: key,
-              choices: values.map { .init(label: "\($0) points", value: $0) })
+              choices: values.map { .init(label: "\($0) points", value: $0) },
+              defaultLabel: defaultLabel)
     }
 }
 
