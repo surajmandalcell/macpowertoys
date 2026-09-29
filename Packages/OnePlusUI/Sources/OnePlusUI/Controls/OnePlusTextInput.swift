@@ -78,9 +78,16 @@ public struct OnePlusStepperField: View {
         value = parsed; error = nil
     }
     private func change(by delta: Int) {
-        let (next, overflow) = value.addingReportingOverflow(delta)
-        guard !overflow, range.contains(next) else { return }
+        guard let next = Self.nextValue(value, by: delta, in: range) else { return }
         value = next; draft = String(next); error = nil
+    }
+    static func nextValue(_ value: Int, by delta: Int, in range: ClosedRange<Int>) -> Int? {
+        let (next, overflow) = value.addingReportingOverflow(delta)
+        return !overflow && range.contains(next) ? next : nil
+    }
+    static func nativeValue(_ value: Double, in range: ClosedRange<Int>) -> Int? {
+        guard value.isFinite, let integer = Int(exactly: value), range.contains(integer) else { return nil }
+        return integer
     }
 }
 
@@ -90,7 +97,7 @@ private struct OnePlusNativeStepper: NSViewRepresentable {
     let range: ClosedRange<Int>
     let step: Int
     let enabled: Bool
-    func makeCoordinator() -> Coordinator { Coordinator(value: $value) }
+    func makeCoordinator() -> Coordinator { Coordinator(value: $value, range: range) }
     func makeNSView(context: Context) -> NSStepper {
         let view = NSStepper()
         view.target = context.coordinator
@@ -102,14 +109,19 @@ private struct OnePlusNativeStepper: NSViewRepresentable {
     }
     func updateNSView(_ view: NSStepper, context: Context) {
         context.coordinator.value = $value
+        context.coordinator.range = range
         view.minValue = Double(range.lowerBound); view.maxValue = Double(range.upperBound)
         view.increment = Double(step); view.integerValue = value; view.isEnabled = enabled
         view.setAccessibilityLabel(title)
     }
     @MainActor final class Coordinator: NSObject {
         var value: Binding<Int>
-        init(value: Binding<Int>) { self.value = value }
-        @objc func changed(_ sender: NSStepper) { value.wrappedValue = sender.integerValue }
+        var range: ClosedRange<Int>
+        init(value: Binding<Int>, range: ClosedRange<Int>) { self.value = value; self.range = range }
+        @objc func changed(_ sender: NSStepper) {
+            guard let next = OnePlusStepperField.nativeValue(sender.doubleValue, in: range) else { return }
+            value.wrappedValue = next
+        }
     }
 }
 
