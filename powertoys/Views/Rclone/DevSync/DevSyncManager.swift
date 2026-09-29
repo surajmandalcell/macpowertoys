@@ -12,7 +12,10 @@ final class DevSyncManager {
     static let shared = DevSyncManager(engine: DevSyncPreviewEngine())
 
     var engine: DevSyncEngine {
-        didSet { restartUpdates() }
+        didSet {
+            hasLoaded = false
+            restartUpdates()
+        }
     }
 
     private(set) var pairs: [DevSyncPair] = []
@@ -31,6 +34,7 @@ final class DevSyncManager {
     var errorBanner: String?
 
     private var updatesTask: Task<Void, Never>?
+    private var hasLoaded = false
 
     init(engine: DevSyncEngine) {
         self.engine = engine
@@ -72,6 +76,11 @@ final class DevSyncManager {
 
     // MARK: Loading
 
+    func loadIfNeeded() async {
+        guard !hasLoaded else { return }
+        await load()
+    }
+
     func load() async {
         await engine.start()
         pairs = await engine.pairs()
@@ -82,6 +91,7 @@ final class DevSyncManager {
             selectedPairID = pairs.first?.id
         }
         restartUpdates()
+        hasLoaded = true
     }
 
     private func loadPair(_ pairID: UUID) async {

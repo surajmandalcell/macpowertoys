@@ -3,6 +3,46 @@ import OnePlusUI
 import SwiftData
 import SwiftUI
 
+nonisolated private struct ActivitySnapshot: Sendable {
+    let id: String
+    let createdAt: Date
+    let operation: String
+    let source: String
+    let destination: String
+    let bytes: Int64
+    let duration: TimeInterval
+    let state: String
+    let symbol: String
+
+    @MainActor init(_ record: TransferRecord) {
+        id = record.id.uuidString
+        createdAt = record.createdAt
+        operation = record.operation.displayName
+        source = record.sourceDisplay
+        destination = record.destinationDisplay
+        bytes = record.bytes
+        duration = record.duration ?? 0
+        state = record.state.displayName
+        symbol = record.state.icon
+    }
+}
+
+nonisolated private struct ActivityDisplayRow: Sendable {
+    let id: String
+    let cells: [String]
+    let symbol: String
+}
+
+nonisolated private struct PreparedActivity: Sendable {
+    let rows: [ActivityDisplayRow]
+    let totalBytes: Int64
+}
+
+nonisolated private struct ActivityVersion: Equatable, Sendable {
+    let count: Int
+    let firstID: UUID?
+}
+
 struct ActivityView: View {
     @Query(sort: \TransferRecord.createdAt, order: .reverse) private var records: [TransferRecord]
     @State private var search = ""
@@ -12,66 +52,19 @@ struct ActivityView: View {
     @State private var ascending = false
     @State private var details: TransferDetails?
     @State private var showDetails = false
+    @State private var rows: [OnePlusTableItem] = []
+    @State private var aggregateBytes: Int64 = 0
+    @State private var projectionTask: Task<Void, Never>?
 
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter
-    }()
-
-    private var visibleRecords: [TransferRecord] {
-        records
-            .filter {
-                search.isEmpty
-                    || $0.sourceDisplay.localizedCaseInsensitiveContains(search)
-                    || $0.destinationDisplay.localizedCaseInsensitiveContains(search)
-                    || $0.operation.displayName.localizedCaseInsensitiveContains(search)
-                    || $0.state.displayName.localizedCaseInsensitiveContains(search)
-            }
-            .sorted { left, right in
-                let result: ComparisonResult = switch sortColumn {
-                case 1: left.operation.displayName.localizedStandardCompare(right.operation.displayName)
-                case 2: left.sourceDisplay.localizedStandardCompare(right.sourceDisplay)
-                case 3: left.destinationDisplay.localizedStandardCompare(right.destinationDisplay)
-                case 4: left.bytes == right.bytes ? .orderedSame : left.bytes < right.bytes ? .orderedAscending : .orderedDescending
-                case 5: compare(left.duration ?? 0, right.duration ?? 0)
-                case 6: left.state.displayName.localizedStandardCompare(right.state.displayName)
-                default: left.createdAt.compare(right.createdAt)
-                }
-                return ascending ? result == .orderedAscending : result == .orderedDescending
-            }
-    }
-
-    private func compare<T: Comparable>(_ left: T, _ right: T) -> ComparisonResult {
-        if left < right { return .orderedAscending }
-        if left > right { return .orderedDescending }
-        return .orderedSame
-    }
-
-    private var rows: [OnePlusTableItem] {
-        visibleRecords.map {
-            OnePlusTableItem(
-                id: $0.id.uuidString,
-                cells: [
-                    Self.timeFormatter.string(from: $0.createdAt),
-                    $0.operation.displayName,
-                    $0.sourceDisplay,
-                    $0.destinationDisplay,
-                    RcloneFormat.bytes($0.bytes),
-                    RcloneFormat.duration($0.duration),
-                    $0.state.displayName
-                ],
-                symbol: $0.state.icon
-            )
-        }
+    private var recordVersion: ActivityVersion {
+        ActivityVersion(count: records.count, firstID: records.first?.id)
     }
 
     var body: some View {
         OnePlusPage(scrolls: false) {
             OnePlusPageHeader(
                 title: "Activity",
-                subtitle: "\(records.count) transfers · \(RcloneFormat.bytes(records.reduce(0) { $0 + $1.bytes })) moved"
+                subtitle: "\(records.count) transfers · \(RcloneFormat.bytes(aggregateBytes)) moved"
             ) {
                 OnePlusSearchField(
                     prompt: "Search activity",
@@ -117,8 +110,88 @@ struct ActivityView: View {
         .sheet(isPresented: $showDetails) {
             if let details { TransferInfoSheet(details: details) }
         }
+        .task { rebuildRows() }
+        .onChange(of: recordVersion) { rebuildRows() }
+        .onChange(of: search) { rebuildRows() }
+        .onChange(of: sortColumn) { rebuildRows() }
+        .onChange(of: ascending) { rebuildRows() }
+        .onDisappear {
+            projectionTask?.cancel()
+            projectionTask = nil
+        }
         .background { Button("") { searchFocus &+= 1 }.keyboardShortcut("f").hidden() }
         .accessibilityIdentifier("rclone.activity")
+    }
+
+    private func rebuildRows() {
+        projectionTask?.cancel()
+        let snapshots = records.map(ActivitySnapshot.init)
+        let search = search
+        let sortColumn = sortColumn
+        let ascending = ascending
+
+        projectionTask = Task {
+            let prepared = await Task.detached(priority: .userInitiated) {
+                Self.prepare(snapshots, search: search, sortColumn: sortColumn, ascending: ascending)
+            }.value
+            guard !Task.isCancelled else { return }
+            rows = prepared.rows.map { OnePlusTableItem(id: $0.id, cells: $0.cells, symbol: $0.symbol) }
+            aggregateBytes = prepared.totalBytes
+        }
+    }
+
+    nonisolated private static func prepare(
+        _ snapshots: [ActivitySnapshot],
+        search: String,
+        sortColumn: Int,
+        ascending: Bool
+    ) -> PreparedActivity {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        let filtered = snapshots.filter {
+            search.isEmpty
+                || $0.source.localizedCaseInsensitiveContains(search)
+                || $0.destination.localizedCaseInsensitiveContains(search)
+                || $0.operation.localizedCaseInsensitiveContains(search)
+                || $0.state.localizedCaseInsensitiveContains(search)
+        }
+        let sorted = filtered.sorted { left, right in
+            let result: ComparisonResult = switch sortColumn {
+            case 1: left.operation.localizedStandardCompare(right.operation)
+            case 2: left.source.localizedStandardCompare(right.source)
+            case 3: left.destination.localizedStandardCompare(right.destination)
+            case 4: compare(left.bytes, right.bytes)
+            case 5: compare(left.duration, right.duration)
+            case 6: left.state.localizedStandardCompare(right.state)
+            default: left.createdAt.compare(right.createdAt)
+            }
+            return ascending ? result == .orderedAscending : result == .orderedDescending
+        }
+        return PreparedActivity(
+            rows: sorted.map {
+                ActivityDisplayRow(
+                    id: $0.id,
+                    cells: [
+                        formatter.string(from: $0.createdAt),
+                        $0.operation,
+                        $0.source,
+                        $0.destination,
+                        RcloneProjectionFormat.bytes($0.bytes),
+                        RcloneProjectionFormat.duration($0.duration),
+                        $0.state
+                    ],
+                    symbol: $0.symbol
+                )
+            },
+            totalBytes: snapshots.reduce(0) { $0 + $1.bytes }
+        )
+    }
+
+    nonisolated private static func compare<T: Comparable>(_ left: T, _ right: T) -> ComparisonResult {
+        if left < right { return .orderedAscending }
+        if left > right { return .orderedDescending }
+        return .orderedSame
     }
 
     private func record(for id: String) -> TransferRecord? {

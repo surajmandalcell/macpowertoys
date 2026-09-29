@@ -64,7 +64,6 @@ struct TransferJobRow: View {
             .onePlusText(.mono)
             .lineLimit(1)
             .truncationMode(.middle)
-            .help(value)
             .padding(.horizontal, OnePlusMetrics.spacing[3])
             .frame(height: OnePlusMetrics.compactControlHeight)
             .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
@@ -125,24 +124,15 @@ struct TransferJobRow: View {
     }
 
     private var priorityMenu: some View {
-        Menu {
-            ForEach(TransferPriority.allCases.reversed(), id: \.self) { priority in
-                Button {
-                    manager.setPriority(priority, for: job)
-                } label: {
-                    if job.priority == priority { Label(priority.displayName, systemImage: "checkmark") }
-                    else { Text(priority.displayName) }
-                }
-            }
-        } label: {
-            Image(systemName: job.priority.icon)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("Priority: \(job.priority.displayName)")
-        .accessibilityLabel("File priority")
-        .accessibilityValue(job.priority.displayName)
+        OnePlusSelect(
+            choices: TransferPriority.allCases.reversed().map { ($0, $0.displayName) },
+            selection: Binding(
+                get: { job.priority },
+                set: { manager.setPriority($0, for: job) }
+            ),
+            width: OnePlusMetrics.controlColumn,
+            accessibilityLabel: "File priority"
+        )
     }
 
     private var actionButtons: some View {
@@ -228,27 +218,28 @@ private struct TransferFileProgressRow: View {
     let ignore: (Bool) -> Void
 
     var body: some View {
-        HStack(spacing: OnePlusMetrics.spacing[3]) {
-            Text(file.name)
-                .onePlusText(.mono)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help(file.name)
-            Text(RcloneFormat.bytes(file.size)).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
-            OnePlusUsageBar(value: file.fraction).frame(width: OnePlusMetrics.spacing[8] * 3)
-            Text("\(file.percentage)%").onePlusText(.mono).monospacedDigit()
-            Text(RcloneFormat.speed(file.speed)).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
-            Menu {
-                Button("Ignore This Time") { ignore(false) }
-                Button("Ignore and Add to Ignore List") { ignore(true) }
-            } label: { Image(systemName: "nosign") }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Ignore this file")
+        VStack(spacing: 0) {
+            HStack(spacing: OnePlusMetrics.spacing[3]) {
+                Text(file.name)
+                    .onePlusText(.mono)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(RcloneFormat.bytes(file.size)).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
+                OnePlusUsageBar(value: file.fraction).frame(width: OnePlusMetrics.spacing[8] * 3)
+                Text("\(file.percentage)%").onePlusText(.mono).monospacedDigit()
+                Text(RcloneFormat.speed(file.speed)).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
+                Menu {
+                    Button("Ignore This Time") { ignore(false) }
+                    Button("Ignore and Add to Ignore List") { ignore(true) }
+                } label: { Image(systemName: "nosign") }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("Ignore this file")
+            }
+            .frame(minHeight: OnePlusTable.rowHeight(.regular))
+            OnePlusColor.lineSoft.frame(height: 1)
         }
-        .frame(minHeight: OnePlusTable.rowHeight(.regular))
-        .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }
 }

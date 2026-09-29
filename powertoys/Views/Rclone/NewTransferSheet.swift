@@ -267,38 +267,12 @@ private struct EndpointCard: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             } else {
-                Menu {
-                    ForEach(remotes) { remote in
-                        Button {
-                            config.remoteName = remote.name
-                        } label: {
-                            Label("\(remote.name)  ·  \(remote.typeLabel)", systemImage: remote.icon)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: selectedRemote?.icon ?? "cloud")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                        Text(config.remoteName.isEmpty ? "Choose remote" : config.remoteName)
-                            .font(.system(size: 13))
-                            .foregroundStyle(config.remoteName.isEmpty ? .secondary : .primary)
-                        Spacer()
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.06))
-                    )
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderless)
-                .focusEffectDisabled()
-                .menuIndicator(.hidden)
+                OnePlusSelect(
+                    choices: remotes.map { ($0.name, "\($0.name) · \($0.typeLabel)") },
+                    selection: $config.remoteName,
+                    width: OnePlusMetrics.wideControlColumn,
+                    accessibilityLabel: "Remote"
+                )
 
                 TextField("Path within remote (optional)", text: $config.remotePath)
                     .textFieldStyle(.plain)
@@ -311,10 +285,6 @@ private struct EndpointCard: View {
                     )
             }
         }
-    }
-
-    private var selectedRemote: RcloneRemote? {
-        remotes.first { $0.name == config.remoteName }
     }
 
     private func chooseLocalPath() {

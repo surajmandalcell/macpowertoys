@@ -141,14 +141,12 @@ struct TransferInfoSheet: View {
                                 .font(.system(size: 13))
                                 .foregroundStyle(.secondary)
                             Spacer(minLength: 12)
-                            Picker("Transfer order", selection: settingBinding(job, \.transferOrder)) {
-                                ForEach(TransferOrder.allCases, id: \.self) { order in
-                                    Text(order.displayName).tag(order)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
-                            .fixedSize()
+                            OnePlusSelect(
+                                choices: TransferOrder.allCases.map { ($0, $0.displayName) },
+                                selection: settingBinding(job, \.transferOrder),
+                                width: OnePlusMetrics.controlColumn,
+                                accessibilityLabel: "Transfer order"
+                            )
                         }
                     }
 

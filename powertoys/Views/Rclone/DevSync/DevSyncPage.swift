@@ -140,7 +140,7 @@ struct DevSyncPage: View {
         .sheet(isPresented: $manager.isPresentingSetup) {
             DevSyncSetupSheet()
         }
-        .task { await manager.load() }
+        .task { await manager.loadIfNeeded() }
     }
 
     private var emptyState: some View {
@@ -169,8 +169,6 @@ private struct DevSyncPairPage: View {
     let manager: DevSyncManager
 
     private var status: DevPairStatus { manager.status(for: pair.id) }
-    private var unresolvedConflicts: [DevConflict] { manager.unresolvedConflicts(for: pair.id) }
-
     private var subtitle: String {
         [
             status.state.displayName,
@@ -180,7 +178,7 @@ private struct DevSyncPairPage: View {
     }
 
     var body: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: pair.displayName, subtitle: subtitle) {
                 DevSyncPairActions(pair: pair, manager: manager, isConfirmingRemoval: $isConfirmingRemoval)
             }
@@ -191,15 +189,8 @@ private struct DevSyncPairPage: View {
 
             DevSyncStatusCard(pair: pair, status: status)
 
-            DevSyncSectionHeader(title: "Projects")
-            projectList
-
-            if !unresolvedConflicts.isEmpty {
-                DevSyncSectionHeader(title: "Conflicts")
-                ForEach(unresolvedConflicts) { conflict in
-                    DevSyncConflictCard(pair: pair, conflict: conflict, manager: manager)
-                }
-            }
+            DevSyncProjectsList(pair: pair, manager: manager)
+                .frame(maxHeight: .infinity)
 
             DevSyncSectionHeader(title: "Safety")
             safetyCard
@@ -214,26 +205,6 @@ private struct DevSyncPairPage: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Removing the pair stops syncing and keeps every project file on both drives. The safety store holds retained versions and conflict copies in .cloudsync-system on the external drive.")
-        }
-    }
-
-    @ViewBuilder
-    private var projectList: some View {
-        let projects = manager.projects(for: pair.id)
-        if projects.isEmpty {
-            Text("No projects discovered yet.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        } else {
-            let groups = DevSyncProjectGrouping.groups(projects)
-            ForEach(groups) { group in
-                if !group.title.isEmpty {
-                    DevSyncSectionHeader(title: group.title)
-                }
-                ForEach(group.projects) { project in
-                    DevSyncProjectRow(pair: pair, project: project, manager: manager)
-                }
-            }
         }
     }
 
@@ -259,6 +230,44 @@ private struct DevSyncPairPage: View {
     }
 }
 
+private struct DevSyncProjectsList: View {
+    let pair: DevSyncPair
+    let manager: DevSyncManager
+
+    private var projects: [DevProject] { manager.projects(for: pair.id) }
+    private var conflicts: [DevConflict] { manager.unresolvedConflicts(for: pair.id) }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                DevSyncSectionHeader(title: "Projects")
+                if projects.isEmpty {
+                    Text("No projects discovered yet.")
+                        .onePlusText(.caption)
+                        .foregroundStyle(OnePlusColor.secondary)
+                } else {
+                    ForEach(DevSyncProjectGrouping.groups(projects)) { group in
+                        if !group.title.isEmpty {
+                            DevSyncSectionHeader(title: group.title)
+                        }
+                        ForEach(group.projects) { project in
+                            DevSyncProjectRow(pair: pair, project: project, manager: manager)
+                        }
+                    }
+                }
+
+                if !conflicts.isEmpty {
+                    DevSyncSectionHeader(title: "Conflicts")
+                    ForEach(conflicts) { conflict in
+                        DevSyncConflictCard(pair: pair, conflict: conflict, manager: manager)
+                    }
+                }
+            }
+        }
+        .onePlusScrollIndicators()
+    }
+}
+
 // MARK: - Actions
 
 private struct DevSyncPairActions: View {
@@ -273,14 +282,12 @@ private struct DevSyncPairActions: View {
         @Bindable var manager = manager
 
         if manager.pairs.count > 1 {
-            Picker("Pair", selection: $manager.selectedPairID) {
-                ForEach(manager.pairs) { pair in
-                    Text(pair.displayName).tag(Optional(pair.id))
-                }
-            }
-            .labelsHidden()
-            .frame(maxWidth: 180)
-            .accessibilityLabel("Selected pair")
+            OnePlusSelect(
+                choices: manager.pairs.map { (Optional($0.id), $0.displayName) },
+                selection: $manager.selectedPairID,
+                width: OnePlusMetrics.wideControlColumn,
+                accessibilityLabel: "Selected pair"
+            )
         }
 
         Button("Sync Now") {
