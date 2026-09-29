@@ -644,7 +644,7 @@ struct NetToysAnchorView: View {
 
                         Button("Add Anchor") { model.addAnchor() }
                             .buttonStyle(OnePlusButtonStyle())
-                            .frame(minWidth: OnePlusMetrics.controlColumn)
+                            .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
                             .fixedSize(horizontal: true, vertical: false)
                             .disabled(model.selectedEntry == nil)
                     }
