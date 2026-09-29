@@ -40,7 +40,8 @@ private final class OnePlusScrollProbe: NSView {
     override func layout() { super.layout(); configure() }
 
     func configure() {
-        guard pending == nil else { return }
+        apply()
+        guard configured == nil, pending == nil else { return }
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.pending = nil
@@ -65,7 +66,10 @@ private final class OnePlusScrollProbe: NSView {
             }
             ancestor = view.superview
         }
-        enclosingScrollView?.configureOnePlusScrollIndicators()
+        if let scroll = enclosingScrollView {
+            scroll.configureOnePlusScrollIndicators()
+            configured = scroll
+        }
     }
     private func find(in view: NSView, point: NSPoint) -> NSScrollView? {
         for child in view.subviews {

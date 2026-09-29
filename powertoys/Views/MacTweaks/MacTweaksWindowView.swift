@@ -196,7 +196,8 @@ struct MacTweaksWindowView: View {
 
     private var sidebar: some View {
         OnePlusSidebar(title: "Mac Tweaks") {
-            OnePlusSidebarSearch("Search tweaks", text: $search)
+            OnePlusSidebarSearch("Search tweaks", text: $search,
+                                 accessibilityIdentifier: "mac-tweaks.search")
         } navigation: {
             OnePlusNavCaption("Everyday")
             sidebarGroup("Everyday")
@@ -217,6 +218,7 @@ struct MacTweaksWindowView: View {
                 systemImage: "info.circle",
                 selected: !isSearching && selectedPage == "about"
             ) { navigate(to: "about") }
+            .accessibilityIdentifier("mac-tweaks.about")
         }
     }
 
