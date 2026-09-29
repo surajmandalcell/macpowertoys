@@ -17,13 +17,18 @@ public enum OnePlusMenuMetrics {
     public static let actionColumn: CGFloat = 84
     public static func columnWidth(span: Int = 1, available: CGFloat = bodyWidth) -> CGFloat {
         let span = CGFloat(min(max(span, 1), columns))
-        return (available - CGFloat(columns - 1) * tileGap) / CGFloat(columns) * span + (span - 1) * tileGap
+        let available = available.isFinite ? max(0, available) : 0
+        let column = max(0, available - CGFloat(columns - 1) * tileGap) / CGFloat(columns)
+        return column * span + (span - 1) * tileGap
     }
 }
 
 private struct OnePlusMenuHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next.isFinite { value = max(value, next) }
+    }
 }
 
 public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
@@ -37,7 +42,10 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
         self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content()
     }
     public var body: some View {
-        let cap = max(OnePlusMenuMetrics.topBar + 2, maximumHeight ?? ((NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction))
+        let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
+        let defaultHeight = screenHeight.isFinite ? max(0, screenHeight) * OnePlusMenuMetrics.heightFraction : 720
+        let requestedHeight = maximumHeight.flatMap { $0.isFinite ? max(0, $0) : nil } ?? defaultHeight
+        let cap = max(OnePlusMenuMetrics.topBar + 2, requestedHeight)
         let bodyCap = cap - OnePlusMenuMetrics.topBar - 2
         VStack(spacing: 0) {
             HStack(spacing: 7) {
@@ -51,7 +59,7 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
                     .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
             }
             .onePlusScrollIndicators().frame(height: min(contentHeight ?? bodyCap, bodyCap))
-            .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0 > 0 { contentHeight = $0 } }
+            .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0.isFinite, $0 > 0 { contentHeight = $0 } }
         }.padding(1).frame(width: 356).background(OnePlusColor.sidebar)
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
@@ -149,7 +157,9 @@ public struct OnePlusMenuTile<Content: View>: View {
     @State private var hover = false
     public init(span: Int = 1, height: CGFloat = 70, textured: Bool = true,
                 action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
-        self.span = span; self.height = height; self.textured = textured
+        self.span = min(max(span, 1), OnePlusMenuMetrics.columns)
+        self.height = height.isFinite ? max(0, height) : 0
+        self.textured = textured
         self.action = action; self.content = content()
     }
     public var body: some View {

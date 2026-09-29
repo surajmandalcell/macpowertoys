@@ -29,13 +29,15 @@ private struct OnePlusPlot: View {
     var body: some View {
         let paths = OnePlusChartPaths.cached(values: values, range: range)
         Canvas { context, size in
-            let transform = CGAffineTransform(scaleX: size.width, y: max(0, size.height - 2)).translatedBy(x: 0, y: 0)
+            let width = size.width.isFinite ? max(0, size.width) : 0
+            let height = size.height.isFinite ? max(0, size.height) : 0
+            let transform = CGAffineTransform(scaleX: width, y: max(0, height - 2))
             let line = paths.line.applying(transform)
             if area {
                 for y in [CGFloat(0), 0.5, 1] {
                     var grid = Path()
-                    grid.move(to: CGPoint(x: 0, y: y * size.height))
-                    grid.addLine(to: CGPoint(x: size.width, y: y * size.height))
+                    grid.move(to: CGPoint(x: 0, y: y * height))
+                    grid.addLine(to: CGPoint(x: width, y: y * height))
                     context.stroke(grid, with: .color(OnePlusColor.chartGrid), lineWidth: 1)
                 }
                 context.withCGContext { cg in
@@ -47,12 +49,12 @@ private struct OnePlusPlot: View {
                     let gray: CGFloat = colorScheme == .dark ? 1 : 0
                     var components: [CGFloat] = [gray, gray, gray, 1]
                     cg.setFillPattern(OnePlusChartPattern.pattern, colorComponents: &components)
-                    cg.fill(CGRect(origin: .zero, size: size))
+                    cg.fill(CGRect(x: 0, y: 0, width: width, height: height))
                     cg.setBlendMode(.destinationIn)
                     let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                                               colors: [CGColor(gray: 0, alpha: 0.63), CGColor(gray: 0, alpha: 0.06)] as CFArray,
                                               locations: [0, 1])!
-                    cg.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+                    cg.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: height), options: [])
                     cg.endTransparencyLayer()
                     cg.restoreGState()
                 }
@@ -81,7 +83,11 @@ final class OnePlusChartPaths {
     init(values: [Double], range: ClosedRange<Double>) {
         var line = Path()
         var area = Path()
-        let span = max(range.upperBound - range.lowerBound, 0.001)
+        let lower = range.lowerBound.isFinite ? range.lowerBound : 0
+        let upper = range.upperBound.isFinite ? range.upperBound : 100
+        let scale = max(lower.magnitude, upper.magnitude, 1)
+        let scaledLower = lower / scale
+        let scaledSpan = max(upper / scale - scaledLower, 0.001)
         var last: CGPoint?
         for (index, value) in values.enumerated() {
             guard value.isFinite else {
@@ -90,7 +96,9 @@ final class OnePlusChartPaths {
                 continue
             }
             let x = values.count == 1 ? 0 : Double(index) / Double(values.count - 1)
-            let point = CGPoint(x: x, y: 1 - min(max((value - range.lowerBound) / span, 0), 1))
+            let scaledValue = value / scale
+            let fraction = min(max((scaledValue - scaledLower) / scaledSpan, 0), 1)
+            let point = CGPoint(x: x, y: 1 - (fraction.isFinite ? fraction : 0))
             if last == nil {
                 line.move(to: point)
                 area.move(to: CGPoint(x: point.x, y: 1))
@@ -114,8 +122,10 @@ public struct OnePlusUsageBar: View {
     public init(value: Double, color: Color = OnePlusColor.chartSeries[0]) { self.value = value; self.color = color }
     public var body: some View {
         GeometryReader { proxy in
+            let width = proxy.size.width.isFinite ? max(0, proxy.size.width) : 0
+            let fraction = value.isFinite ? min(max(value, 0), 1) : 0
             Capsule().fill(OnePlusColor.line)
-                .overlay(alignment: .leading) { Capsule().fill(color).frame(width: proxy.size.width * CGFloat(value.isFinite ? min(max(value, 0), 1) : 0)) }
+                .overlay(alignment: .leading) { Capsule().fill(color).frame(width: width * fraction) }
         }.frame(height: 5)
             .accessibilityElement(children: .ignore).accessibilityLabel("Usage")
             .accessibilityValue(value.isFinite ? "\(Int(min(max(value, 0), 1) * 100)) percent" : "Unavailable")
@@ -129,14 +139,17 @@ public struct OnePlusSegmentBar: View {
     public var body: some View {
         GeometryReader { proxy in
             let usable = values.map { $0.isFinite ? max(0, $0) : 0 }
-            let total = usable.reduce(0, +)
+            let largest = usable.max() ?? 0
+            let weights = largest > 0 ? usable.map { $0 / largest } : usable
+            let total = weights.reduce(0, +)
             let count = usable.filter { $0 > 0 }.count
-            let width = max(0, proxy.size.width - CGFloat(max(0, count - 1)) * 2)
+            let available = proxy.size.width.isFinite ? max(0, proxy.size.width) : 0
+            let width = max(0, available - CGFloat(max(0, count - 1)) * 2)
             HStack(spacing: 2) {
                 ForEach(usable.indices, id: \.self) { index in
                     if usable[index] > 0, total > 0 {
                         Capsule().fill(colors.isEmpty ? OnePlusColor.chartLine : colors[index % colors.count])
-                            .frame(width: width * usable[index] / total)
+                            .frame(width: width * weights[index] / total)
                     }
                 }
             }.frame(maxWidth: .infinity, alignment: .leading).background(OnePlusColor.line, in: Capsule())
