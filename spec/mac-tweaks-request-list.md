@@ -1,5 +1,13 @@
 # Mac Tweaks request list
 
+## Owner review 1 corrections, 2026-09-29
+
+- [x] Keep the shared page header at `T = 58` and every card on its 24pt leading edge. Mac Tweaks draws no local page header or second body inset.
+- [x] Keep the Modified table header and Reset all action fixed. Only its lazy settings rows scroll.
+- [x] Remove preference reads from SwiftUI body evaluation. Load current values on a utility task, cache modified rows, and enumerate microphone devices away from the main actor.
+- [x] Use `OnePlusSelect` for every value selector. Keep action-only menus native until `OnePlusMenuButton` lands.
+- [~] Measure the 100ms page-switch gate and inspect the fixed Modified header in the exact signed build.
+
 ## Settings embedding contract, 2026-09-29
 
 - [x] Expose `MacTweaksSettingsContent()` as one 16pt card stack with no page, scroll view, outer padding, page header, spacer, or maximum-height frame.

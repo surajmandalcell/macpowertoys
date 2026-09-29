@@ -1,12 +1,12 @@
 import CoreFoundation
 import Foundation
 
-struct TweakChoice {
+struct TweakChoice: @unchecked Sendable {
     let label: String
     let value: Any
 }
 
-struct TweakPreferenceField {
+struct TweakPreferenceField: @unchecked Sendable {
     let label: String
     let domain: String
     let key: String
@@ -180,8 +180,30 @@ final class TweakPreferenceStore {
 
     func selectedChoice(for field: TweakPreferenceField) -> Int {
         try? reconcilePendingWrite(for: field)
-        guard let current = value(for: field), let data = archive(current) else { return -1 }
-        return field.choices.firstIndex { archive($0.value) == data } ?? -2
+        return Self.readSelectedChoice(for: field)
+    }
+
+    nonisolated static func readSelectedChoice(for field: TweakPreferenceField) -> Int {
+        guard let current = CFPreferencesCopyValue(
+            field.key as CFString,
+            field.domain == ".GlobalPreferences" ? kCFPreferencesAnyApplication : field.domain as CFString,
+            kCFPreferencesCurrentUser,
+            kCFPreferencesAnyHost
+        ), let data = archiveValue(current) else { return -1 }
+        return field.choices.firstIndex { archiveValue($0.value) == data } ?? -2
+    }
+
+    func storedOriginalChoices(for fields: [TweakPreferenceField]) -> [String: Int] {
+        for field in fields where records[field.identity] != nil {
+            try? reconcilePendingWrite(for: field)
+        }
+        return Dictionary(uniqueKeysWithValues: fields.compactMap { field in
+            guard let original = records[field.identity]?.original else {
+                return records[field.identity] == nil ? nil : (field.identity, -1)
+            }
+            let choice = field.choices.firstIndex { Self.archiveValue($0.value) == original } ?? -2
+            return (field.identity, choice)
+        })
     }
 
     func hasBackup(for fields: [TweakPreferenceField]) -> Bool {
@@ -322,6 +344,10 @@ final class TweakPreferenceStore {
     }
 
     private func archive(_ value: Any) -> Data? {
+        Self.archiveValue(value)
+    }
+
+    nonisolated private static func archiveValue(_ value: Any) -> Data? {
         try? PropertyListSerialization.data(fromPropertyList: ["value": value], format: .binary, options: 0)
     }
 

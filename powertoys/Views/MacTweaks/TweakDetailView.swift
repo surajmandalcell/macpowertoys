@@ -34,6 +34,8 @@ struct MacTweaksPreferenceRows: View {
     let fields: [TweakPreferenceField]
     let summary: String
     let revision: Int
+    let selections: [String: Int]
+    let modifiedIdentities: Set<String>
     let onChanged: (String) -> Void
     let onError: (String) -> Void
 
@@ -48,6 +50,8 @@ struct MacTweaksPreferenceRows: View {
                 controlWidth: controlWidth,
                 help: fields.count == 1 || index == 0 ? summary : "This companion key keeps the same behavior in alternate native dialogs.",
                 revision: revision,
+                selection: selections[field.identity] ?? -1,
+                isModified: modifiedIdentities.contains(field.identity),
                 onChanged: onChanged,
                 onError: onError
             )
@@ -62,11 +66,11 @@ struct MacTweaksPreferenceRow: View {
     let controlWidth: CGFloat
     let help: String
     let revision: Int
+    let selection: Int
+    let isModified: Bool
     let onChanged: (String) -> Void
     let onError: (String) -> Void
 
-    private var selection: Int { TweakPreferenceStore.shared.selectedChoice(for: field) }
-    private var isModified: Bool { TweakPreferenceStore.shared.isModified(field) }
     private var canWrite: Bool {
         TweakPreferences.supportsWrites(for: itemID) || isModified
     }
