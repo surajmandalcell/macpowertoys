@@ -273,7 +273,7 @@ struct LogsWindowView: View {
     @ViewBuilder private var content: some View {
         switch page {
         case .internalLogs, .systemIssues: logPage
-        case .settings: LogsSettingsView()
+        case .settings: LogsSettingsPage()
         }
     }
 
@@ -469,13 +469,22 @@ private struct LogDetailSheet: View {
     }
 }
 
-struct LogsSettingsView: View {
-    @AppStorage("logs.fontSize") private var fontSize = 11
-
+struct LogsSettingsPage: View {
     var body: some View {
         OnePlusPage {
             OnePlusPageHeader(title: "Settings", subtitle: "Log display and retention")
         } content: {
+            LogsSettingsView()
+        }
+        .accessibilityIdentifier("logs.settings")
+    }
+}
+
+struct LogsSettingsView: View {
+    @AppStorage("logs.fontSize") private var fontSize = 11
+
+    var body: some View {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
                 OnePlusCardHeader("Logs")
                 OnePlusSettingRow("Font size", caption: "Used for selectable log detail text.") {
@@ -485,13 +494,18 @@ struct LogsSettingsView: View {
                         accessibilityLabel: "Log font size"
                     )
                 }
-                OnePlusSettingRow("Retention", caption: "Internal entries older than this are removed.", separator: false) {
+                OnePlusSettingRow("Retention", caption: "Internal entries older than this are removed.") {
                     Text("2 days").onePlusText(.mono)
                 }
+                OnePlusSettingRow(
+                    "System issues",
+                    caption: "Read from macOS only when requested.",
+                    separator: false
+                ) {
+                    Text("Never saved").onePlusText(.mono)
+                }
             }
-            OnePlusBanner("System issues are read from macOS only when requested. MacPowerToys never saves them.")
         }
-        .accessibilityIdentifier("logs.settings")
     }
 }
 
