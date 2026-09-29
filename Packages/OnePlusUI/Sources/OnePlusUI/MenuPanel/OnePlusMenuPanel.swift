@@ -3,7 +3,11 @@ import SwiftUI
 
 public enum OnePlusMenuMetrics {
     public static let width: CGFloat = 356
-    public static let topBar: CGFloat = 35
+    public static let topBarTop: CGFloat = 10
+    public static let topBarBottom: CGFloat = 6
+    public static let topBar: CGFloat = topBarTop + tab + topBarBottom + 2 * tabGroupInset + 2
+    public static let tabGroupInset: CGFloat = 2
+    public static let heightFraction: CGFloat = 0.9
     public static let tab: CGFloat = 26
     public static let tabGap: CGFloat = 2
     public static let bodyInset: CGFloat = 8
@@ -33,14 +37,14 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
         self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content()
     }
     public var body: some View {
-        let cap = max(37, maximumHeight ?? ((NSScreen.main?.visibleFrame.height ?? 800) - 32))
-        let bodyCap = cap - 37
+        let cap = max(OnePlusMenuMetrics.topBar + 2, maximumHeight ?? ((NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction))
+        let bodyCap = cap - OnePlusMenuMetrics.topBar - 2
         VStack(spacing: 0) {
             HStack(spacing: 7) {
                 tabs
                 Spacer(minLength: 0)
                 HStack(spacing: 2) { actions }.fixedSize()
-            }.padding(.horizontal, 8).padding(.top, 5).padding(.bottom, 4).frame(height: 35)
+            }.padding(.horizontal, 8).padding(.top, OnePlusMenuMetrics.topBarTop).padding(.bottom, OnePlusMenuMetrics.topBarBottom)
             ScrollView {
                 VStack(alignment: .leading, spacing: 5) { content }
                     .frame(width: 338).padding(.horizontal, 8).padding(.top, 3).padding(.bottom, 8)
@@ -77,8 +81,8 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
     }
     public var body: some View {
         ViewThatFits(in: .horizontal) {
-            tabButtons
-            ScrollView(.horizontal) { tabButtons }.onePlusScrollIndicators().frame(height: 26)
+            tabButtons.onePlusMenuTabGroup()
+            ScrollView(.horizontal) { tabButtons }.onePlusScrollIndicators().frame(height: 26).onePlusMenuTabGroup()
         }
     }
     private var tabButtons: some View {
@@ -108,6 +112,14 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
         .onMoveCommand { direction in
             if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection, direction: direction == .left ? -1 : 1) { selection = next }
         }
+    }
+}
+
+public extension View {
+    func onePlusMenuTabGroup() -> some View {
+        padding(OnePlusMenuMetrics.tabGroupInset)
+            .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: 7))
+            .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(OnePlusColor.line, lineWidth: 1) }
     }
 }
 

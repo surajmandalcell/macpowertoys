@@ -62,7 +62,7 @@ enum TrayPopoverLayout {
     static let netToysDisclosureVerticalPadding: CGFloat = 6
     static let minimumBodyHeight: CGFloat = 54
     static let topChromeHeight = OnePlusMenuMetrics.topBar
-    static let heightFraction: CGFloat = 0.7
+    static let heightFraction = OnePlusMenuMetrics.heightFraction
     static let transitionDuration = UtilityMotion.standardDuration
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
@@ -266,7 +266,7 @@ struct IndividualToolMenuPanel: View {
     let tool: IndividualMenuBarTool
 
     var body: some View {
-        OnePlusMenuPanel(maximumHeight: (NSScreen.main?.visibleFrame.height ?? 900) - 32) {
+        OnePlusMenuPanel {
             HStack(spacing: 7) {
                 Image(systemName: tool.symbol).font(.system(size: 13))
                 Text(tool.title).onePlusText(.cardTitle)
@@ -322,14 +322,15 @@ private struct TrayTabStrip: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            tabRow.fixedSize(horizontal: true, vertical: false)
+            tabRow.fixedSize(horizontal: true, vertical: false).onePlusMenuTabGroup()
             ScrollView(.horizontal) {
                 tabRow
             }
             .thinScrollIndicators()
             .scrollClipDisabled()
+            .frame(height: TrayPopoverLayout.tabHeight)
+            .onePlusMenuTabGroup()
         }
-        .frame(height: TrayPopoverLayout.tabHeight)
     }
 
     private var tabRow: some View {
@@ -446,16 +447,22 @@ private struct TrayHomeActionButton: View {
     let action: () -> Void
 
     var body: some View {
-        OnePlusMenuTile(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
+        Button(action: action) {
+            HStack(spacing: 6) {
                 Image(systemName: symbol)
                     .rotationEffect(.degrees(iconRotation))
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 13, weight: .medium))
-                    .frame(width: 16, height: 16, alignment: .leading)
+                    .frame(width: 16, height: 16)
                 Text(title).onePlusText(.row).lineLimit(1)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 32)
+            .background(OnePlusColor.panelHover, in: RoundedRectangle(cornerRadius: 6))
+            .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
+            .contentShape(RoundedRectangle(cornerRadius: 6))
         }
+        .buttonStyle(OnePlusInteractionStyle(radius: 6))
         .disabled(!enabled)
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
         .accessibilityLabel(title)
@@ -496,7 +503,6 @@ private struct AwakeTrayRow: View {
                     ],
                     selection: quickMode
                 )
-                .frame(width: 152)
                 .accessibilityLabel("Awake duration")
             }
             OnePlusMenuControlRow("Keep display on", systemImage: "display") {
