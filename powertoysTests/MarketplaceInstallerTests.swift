@@ -235,6 +235,20 @@ final class MarketplaceInstallerTests: XCTestCase {
         XCTAssertLessThan(start.duration(to: .now), .seconds(1))
     }
 
+    func testCommandOutputIsBounded() async throws {
+        do {
+            _ = try await MarketplaceInstaller.run(
+                "/usr/bin/yes", [], maximumOutputBytes: 1_024
+            )
+            XCTFail("Expected oversized output to stop the process")
+        } catch let error as MarketplaceInstallError {
+            guard case let .commandFailed(message) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertTrue(message.contains("output exceeded 1024 bytes"))
+        }
+    }
+
     func testManagerInstallToolRecordsReceipt() async throws {
         let manager = MarketplaceManager(
             rootDirectory: root,

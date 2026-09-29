@@ -73,13 +73,24 @@ nonisolated struct InstallerAdapters: Sendable {
 
 nonisolated private final class MarketplaceProcessState: @unchecked Sendable {
     private let lock = NSLock()
+    private let maximumOutputBytes: Int
     private var data = Data()
     private var cancelled = false
+    private var exceeded = false
 
-    func append(_ chunk: Data) {
+    init(maximumOutputBytes: Int) {
+        self.maximumOutputBytes = maximumOutputBytes
+    }
+
+    @discardableResult
+    func append(_ chunk: Data) -> Bool {
         lock.lock()
-        data.append(chunk)
+        let remaining = max(maximumOutputBytes - data.count, 0)
+        data.append(contentsOf: chunk.prefix(remaining))
+        exceeded = exceeded || chunk.count > remaining
+        let shouldTerminate = exceeded
         lock.unlock()
+        return shouldTerminate
     }
 
     func cancel() {
@@ -88,10 +99,10 @@ nonisolated private final class MarketplaceProcessState: @unchecked Sendable {
         lock.unlock()
     }
 
-    func result() -> (Data, Bool) {
+    func result() -> (data: Data, cancelled: Bool, exceeded: Bool) {
         lock.lock()
         defer { lock.unlock() }
-        return (data, cancelled)
+        return (data, cancelled, exceeded)
     }
 }
 
@@ -238,12 +249,16 @@ actor MarketplaceInstaller {
         }
     }
 
-    nonisolated static func run(_ tool: String, _ arguments: [String]) async throws -> String {
+    nonisolated static func run(
+        _ tool: String,
+        _ arguments: [String],
+        maximumOutputBytes: Int = 8 * 1_024 * 1_024
+    ) async throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
         process.arguments = arguments
         let pipe = Pipe()
-        let state = MarketplaceProcessState()
+        let state = MarketplaceProcessState(maximumOutputBytes: maximumOutputBytes)
         process.standardOutput = pipe
         process.standardError = pipe
 
@@ -251,17 +266,25 @@ actor MarketplaceInstaller {
             try await withCheckedThrowingContinuation { continuation in
                 pipe.fileHandleForReading.readabilityHandler = { handle in
                     let chunk = handle.availableData
-                    if !chunk.isEmpty { state.append(chunk) }
+                    if !chunk.isEmpty, state.append(chunk), process.isRunning {
+                        process.terminate()
+                    }
                 }
                 process.terminationHandler = { finished in
                     pipe.fileHandleForReading.readabilityHandler = nil
                     state.append(pipe.fileHandleForReading.readDataToEndOfFile())
-                    let (data, cancelled) = state.result()
-                    if cancelled {
+                    let result = state.result()
+                    if result.cancelled {
                         continuation.resume(throwing: CancellationError())
                         return
                     }
-                    let output = String(decoding: data, as: UTF8.self)
+                    if result.exceeded {
+                        continuation.resume(throwing: MarketplaceInstallError.commandFailed(
+                            "\(tool): output exceeded \(maximumOutputBytes) bytes."
+                        ))
+                        return
+                    }
+                    let output = String(decoding: result.data, as: UTF8.self)
                     guard finished.terminationStatus == 0 else {
                         continuation.resume(throwing: MarketplaceInstallError.commandFailed(
                             "\(tool): \(output.trimmingCharacters(in: .whitespacesAndNewlines))"
