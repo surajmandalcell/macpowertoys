@@ -41,6 +41,7 @@ public enum OnePlusMetrics {
     public static let gutter: CGFloat = 24
     public static let taskManagerGutter: CGFloat = 20
     public static let appletGutter: CGFloat = 16
+    public static let floatingSettingsInset: CGFloat = 52
     public static let cardGap: CGFloat = 16
     public static let cardPadding: CGFloat = 16
     public static let contentTop: CGFloat = 16
