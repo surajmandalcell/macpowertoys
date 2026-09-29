@@ -47,6 +47,7 @@ public struct OnePlusActionMenu<Content: View>: View {
     public var body: some View {
         Menu { content } label: { OnePlusMenuLabel(title: title, width: width) }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .onePlusNeutralControls()
             .focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
             .accessibilityLabel(title)
     }

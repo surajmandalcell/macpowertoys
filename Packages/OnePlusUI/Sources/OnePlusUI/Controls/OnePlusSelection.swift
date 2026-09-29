@@ -148,6 +148,7 @@ public struct OnePlusSelect<Value: Hashable>: View {
             OnePlusMenuLabel(title: choices.first { $0.0 == selection }?.1 ?? "Select", width: width)
         }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .onePlusNeutralControls()
         .focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
         .accessibilityLabel(label)
         .accessibilityValue(choices.first { $0.0 == selection }?.1 ?? "No selection")

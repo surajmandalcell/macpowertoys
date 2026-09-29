@@ -100,6 +100,7 @@ public struct OnePlusSheet<Body: View, Footer: View>: View {
                 HStack(spacing: 8) { Spacer(); footer }.padding(20)
             }
         }.frame(width: width).background(OnePlusColor.window).onePlusDensity(.regular)
+            .onePlusNeutralControls()
     }
 }
 

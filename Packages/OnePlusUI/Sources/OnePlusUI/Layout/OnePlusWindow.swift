@@ -23,7 +23,7 @@ public struct OnePlusWindowRoot<Sidebar: View, Content: View>: View {
             }
         }
         .ignoresSafeArea().onePlusFixedCanvas(canvas)
-        .tint(OnePlusColor.accent)
+        .onePlusNeutralControls()
     }
 }
 

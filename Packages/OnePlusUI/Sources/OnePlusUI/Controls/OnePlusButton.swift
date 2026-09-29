@@ -77,6 +77,7 @@ private struct OnePlusButtonBody<Label: View>: View {
         .font(.system(size: style.variant == .icon ? 14 : style.size == .small ? 11 : OnePlusTextRole.control.size(for: density),
                       weight: style.variant == .primary ? .medium : .regular))
         .foregroundStyle(foreground)
+        .tint(foreground)
         .padding(.horizontal, style.variant == .icon ? 0 : style.horizontalPadding)
         .frame(minWidth: style.variant == .icon ? height : style.minWidth)
         .frame(height: height)
@@ -144,6 +145,7 @@ private struct OnePlusInteractionBody<Label: View>: View {
     let radius: CGFloat
     var body: some View {
         label
+            .tint(OnePlusColor.secondary)
             .background(enabled && pressed ? OnePlusColor.pressed : selected || (enabled && focused) ? OnePlusColor.selection : enabled && hover ? OnePlusColor.raised : .clear,
                         in: RoundedRectangle(cornerRadius: radius))
             .overlay { RoundedRectangle(cornerRadius: radius).strokeBorder(enabled && focused ? OnePlusColor.focus : .clear, lineWidth: 1) }
@@ -178,6 +180,11 @@ public struct OnePlusControlButtonStyle: ButtonStyle {
 }
 
 public extension View {
+    /// Native menus and template images inherit neutral ink instead of the app accent.
+    func onePlusNeutralControls() -> some View {
+        tint(OnePlusColor.controlInk).accentColor(OnePlusColor.controlInk)
+    }
+
     func onePlusControl(_ tone: OnePlusControlTone = .standard, minWidth: CGFloat? = nil,
                         minHeight: CGFloat = OnePlusMetrics.controlHeight,
                         horizontalPadding: CGFloat = OnePlusMetrics.controlHorizontalPadding) -> some View {

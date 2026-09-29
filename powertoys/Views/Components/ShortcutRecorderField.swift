@@ -18,6 +18,7 @@ struct ShortcutRecorderField: View {
                 .frame(minWidth: 96)
         }
         .buttonStyle(OnePlusButtonStyle())
+        .onePlusNeutralControls()
         .environment(\.onePlusControlState, isRecording ? .focus : .rest)
         .help(isRecording ? "Press the new keys, or Escape to cancel" : "Click, then press the new shortcut")
         .accessibilityLabel("Record keyboard shortcut")
