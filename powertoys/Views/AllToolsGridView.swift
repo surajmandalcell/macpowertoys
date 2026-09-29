@@ -28,7 +28,7 @@ struct AllToolsGridView: View {
     }
 
     var body: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: !visibleTools.isEmpty) {
             OnePlusPageHeader(title: "All tools", subtitle: "Your Mac, a little more capable.")
         } tabs: {
             OnePlusTabStrip(tabs: [
@@ -101,6 +101,7 @@ struct AllToolsGridView: View {
                           caption: query.isEmpty
                             ? filter == .favorites ? "Use the star on a tool to add a favorite." : "Enable a tool to show it here."
                             : "Try another name, category, or keyword.")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func favoriteBinding(_ id: String) -> Binding<Bool> {
