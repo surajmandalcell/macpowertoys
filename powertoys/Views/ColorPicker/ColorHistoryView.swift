@@ -236,6 +236,7 @@ struct ColorPickerSettingsView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusMetrics.appletGutter)
             .padding(.top, OnePlusMetrics.contentTop)
             .padding(.bottom, OnePlusMetrics.settingRow)
