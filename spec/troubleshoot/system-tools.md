@@ -472,6 +472,25 @@
 
 ## System Monitor
 
+- **Symptom:** Task Manager page changes pause, body cards start on a second
+  inset, or search, headers, sidebars, and footers move with table rows.
+- **Cause:** The window used one outer page scroller, process and report rows
+  sorted or searched in `body`, remote profiles loaded from defaults during
+  view creation, and every sample invalidated the complete window or panel.
+- **Invariant:** Use the shared page header at `T = 58` and one Task Manager
+  gutter. Card pages scroll only their card stack. Processes keeps search and
+  its table header fixed around lazy rows. Remote Stats keeps status fixed.
+  System Report keeps search, actions, category title, and its own sidebar
+  fixed while report rows scroll. Load profiles and prepare large row sets on
+  utility tasks. Keep full-page identity stable and do not animate page
+  replacement. Store the final stable ID once before each row loop. Scope
+  sample observation below window and panel chrome. Let `OnePlusMenuPanel`
+  own the 90 percent visible-screen height cap. Keep all value selectors on
+  `OnePlusSelect`; action and context menus stay native.
+- **Check:** Switch through all 13 routes in under 100ms, scroll at least 1,000
+  process rows without dropped frames, and confirm every fixed region stays in
+  place. Close the window and panel, then require their sampling owners to stop.
+
 - **Symptom:** Task Manager stays dark in Light appearance, its settings table
   drifts between metrics, or its menu panel clips the top or bottom edge.
 - **Cause:** The owned views forced a dark color scheme, settings controls used
