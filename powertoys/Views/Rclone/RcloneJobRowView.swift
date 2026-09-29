@@ -164,7 +164,7 @@ struct TransferJobRow: View {
     }
 
     private var fileDetails: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        LazyVStack(alignment: .leading, spacing: 0) {
             OnePlusColor.lineSoft.frame(height: 1)
             if job.stats.transferring.isEmpty {
                 Text("No files transferring")
