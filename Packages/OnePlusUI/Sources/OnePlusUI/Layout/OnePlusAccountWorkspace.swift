@@ -99,3 +99,16 @@ public struct OnePlusSecureField: View {
             .accessibilityLabel(title)
     }
 }
+
+/// Original provider art keeps its white backing in either app appearance.
+public struct OnePlusProviderTile<Content: View>: View {
+    let size: CGFloat
+    let content: Content
+    public init(size: CGFloat, @ViewBuilder content: () -> Content) {
+        self.size = size; self.content = content()
+    }
+    public var body: some View {
+        content.padding(size / 8).frame(width: size, height: size)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 3))
+    }
+}
