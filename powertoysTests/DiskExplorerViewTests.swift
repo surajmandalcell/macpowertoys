@@ -89,10 +89,10 @@ final class DiskExplorerViewTests: XCTestCase {
                                         width: 800, height: 500)
         let cache = DiskChartLayoutCache()
         cache.store([DiskChartTile(entry: root, label: root.name, weight: 100,
-                                   detail: "100 bytes", color: .blue)], for: mapKey)
+                                   detail: "100 bytes", style: .storage(0))], for: mapKey)
         cache.store([DiskRingSegment(id: root.id, entry: root, label: root.name,
                                      detail: "100 bytes", start: 0, end: 1,
-                                     inner: 1, outer: 2, color: .blue)], for: ringKey)
+                                     inner: 1, outer: 2, style: .storage(0))], for: ringKey)
 
         XCTAssertTrue(cache.treemap(for: mapKey)?.first?.entry === root)
         XCTAssertTrue(cache.rings(for: ringKey)?.first?.entry === root)
@@ -111,6 +111,31 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertNil(cache.treemap(for: nextRevisionKey))
         cache.store([DiskChartTile](), for: nextRevisionKey)
         XCTAssertNil(cache.rings(for: ringKey))
+    }
+
+    func testChartLayoutsPrepareInDetachedTasks() async {
+        let root = entry("/tmp/Diskman", kind: .directory)
+        root.replaceChildren([
+            entry("/tmp/Diskman/Library", kind: .directory, bytes: 700),
+            entry("/tmp/Diskman/.codex", kind: .directory, bytes: 300)
+        ])
+        let input = DiskChartInput(directory: root, apparent: false,
+                                   measure: .space, scanComplete: true)
+        let prepared = await Task.detached {
+            (DiskTreemapView.tiles(for: input, in: CGRect(x: 0, y: 0, width: 800, height: 500)),
+             DiskSunburstView.segments(for: input, radius: 240))
+        }.value
+
+        XCTAssertEqual(Set(prepared.0.compactMap(\.entry?.id)), Set(root.children.map(\.id)))
+        XCTAssertEqual(Set(prepared.1.compactMap(\.entry?.id)), Set(root.children.map(\.id)))
+    }
+
+    func testLiveUpdatesUseAQuarterSecondGate() {
+        var gate = DiskLiveUpdateGate()
+        XCTAssertEqual(gate.delay(at: 10), 0)
+        gate.didPresent(at: 10)
+        XCTAssertEqual(gate.delay(at: 10.10), 0.15, accuracy: 0.000_001)
+        XCTAssertEqual(gate.delay(at: 10.25), 0, accuracy: 0.000_001)
     }
 
     func testCompletedChartsFoldTinyTargetsWithoutChangingLiveMembership() throws {
@@ -239,7 +264,7 @@ final class DiskExplorerViewTests: XCTestCase {
             XCTAssertEqual(DiskChartGeometry.fraction(value, of: total), expected)
         }
         XCTAssertNil(DiskSunburstView.hitTest([], at: CGPoint(x: CGFloat.nan, y: 0), center: .zero))
-        let extreme = DiskChartTile(entry: nil, label: "Large", weight: .max, detail: "", color: .clear)
+        let extreme = DiskChartTile(entry: nil, label: "Large", weight: .max, detail: "", style: .muted)
         XCTAssertEqual(DiskTreemapView.layout([extreme, extreme], in: bounds).count, 2)
     }
 

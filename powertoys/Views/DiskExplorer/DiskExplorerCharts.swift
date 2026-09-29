@@ -2,7 +2,7 @@ import AppKit
 import OnePlusUI
 import SwiftUI
 
-enum DiskChartGeometry {
+nonisolated enum DiskChartGeometry {
     static func fraction(_ value: Double, of total: Double) -> Double {
         guard value.isFinite, total.isFinite, value > 0, total > 0 else { return 0 }
         return min(value, total) / total
@@ -21,7 +21,7 @@ enum DiskChartGeometry {
     }
 }
 
-enum DiskChartStyle: String, CaseIterable, Identifiable {
+nonisolated enum DiskChartStyle: String, CaseIterable, Identifiable, Sendable {
     case treemap = "Treemap"
     case sunburst = "Rings"
 
@@ -29,7 +29,7 @@ enum DiskChartStyle: String, CaseIterable, Identifiable {
     var symbol: String { self == .treemap ? "square.grid.3x3.fill" : "circle.hexagongrid.fill" }
 }
 
-enum DiskChartMeasure: String, CaseIterable, Identifiable {
+nonisolated enum DiskChartMeasure: String, CaseIterable, Identifiable, Sendable {
     case space = "Space"
     case files = "Files"
     case age = "Age"
@@ -43,7 +43,7 @@ enum DiskChartMeasure: String, CaseIterable, Identifiable {
 
     func detail(_ entry: DiskEntry, apparent: Bool) -> String {
         self == .files ? "\(entry.fileCount.formatted()) files" :
-            entry.bytes(apparent: apparent).diskSize
+            entry.bytes(apparent: apparent).formatted(.byteCount(style: .file))
     }
 
     func displayedChildren(in directory: DiskEntry, apparent: Bool, limit: Int,
@@ -61,23 +61,37 @@ enum DiskChartMeasure: String, CaseIterable, Identifiable {
     }
 }
 
-enum DiskChartPalette {
-    static func color(_ index: Int, depth: Int = 0) -> Color {
-        OnePlusColor.storageSeries[index % OnePlusColor.storageSeries.count]
-    }
+nonisolated enum DiskChartColor: Sendable, Equatable {
+    case storage(Int)
+    case muted
 
-    static func color(for entry: DiskEntry, index: Int, measure: DiskChartMeasure,
-                      depth: Int = 0) -> Color {
-        guard measure == .age else { return color(index, depth: depth) }
-        let days = Date().timeIntervalSince(entry.modifiedAt) / 86_400
-        if days <= 7 { return color(1, depth: depth) }
-        if days <= 30 { return color(6, depth: depth) }
-        if days <= 365 { return color(0, depth: depth) }
-        return color(3, depth: depth)
+    @MainActor var color: Color {
+        switch self {
+        case .storage(let index):
+            OnePlusColor.storageSeries[index % OnePlusColor.storageSeries.count]
+        case .muted:
+            OnePlusColor.muted
+        }
     }
 }
 
-struct DiskChartCacheKey: Hashable {
+nonisolated enum DiskChartPalette {
+    @MainActor static func color(_ index: Int, depth: Int = 0) -> Color {
+        DiskChartColor.storage(index).color
+    }
+
+    static func style(for entry: DiskEntry, index: Int, measure: DiskChartMeasure,
+                      depth: Int = 0) -> DiskChartColor {
+        guard measure == .age else { return .storage(index) }
+        let days = Date().timeIntervalSince(entry.modifiedAt) / 86_400
+        if days <= 7 { return .storage(1) }
+        if days <= 30 { return .storage(6) }
+        if days <= 365 { return .storage(0) }
+        return .storage(3)
+    }
+}
+
+nonisolated struct DiskChartCacheKey: Hashable, Sendable {
     let revision: Date
     let tab: DiskChartStyle
     let directoryID: String
@@ -86,6 +100,13 @@ struct DiskChartCacheKey: Hashable {
     let scanComplete: Bool
     let width: Int
     let height: Int
+}
+
+nonisolated struct DiskChartInput: Sendable {
+    let directory: DiskEntry
+    let apparent: Bool
+    let measure: DiskChartMeasure
+    let scanComplete: Bool
 }
 
 @MainActor final class DiskChartLayoutCache {
@@ -123,12 +144,12 @@ struct DiskChartCacheKey: Hashable {
     }
 }
 
-struct DiskChartTile {
+nonisolated struct DiskChartTile: Sendable {
     let entry: DiskEntry?
     let label: String
     let weight: Int64
     let detail: String
-    let color: Color
+    let style: DiskChartColor
     var rect: CGRect = .zero
     var id: String { entry?.id ?? "other" }
 }
@@ -153,37 +174,48 @@ struct DiskTreemapView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
 
-    var tiles: [DiskChartTile] { tiles(hiding: []) }
+    var tiles: [DiskChartTile] { Self.tiles(for: input, hiding: []) }
 
-    private func tiles(hiding ids: Set<String>) -> [DiskChartTile] {
-        let selection = measure.displayedChildren(in: directory, apparent: apparent,
-                                                  limit: 80, scanComplete: scanComplete)
+    private var input: DiskChartInput {
+        DiskChartInput(directory: directory, apparent: apparent, measure: measure,
+                       scanComplete: scanComplete)
+    }
+
+    nonisolated private static func tiles(for input: DiskChartInput,
+                                          hiding ids: Set<String>) -> [DiskChartTile] {
+        let selection = input.measure.displayedChildren(in: input.directory, apparent: input.apparent,
+                                                        limit: 80, scanComplete: input.scanComplete)
         let shown = selection.shown.filter { !ids.contains($0.id) }
         let hidden = selection.hidden + selection.shown.filter { ids.contains($0.id) }
         var result = shown.enumerated().map { index, entry in
-            DiskChartTile(entry: entry, label: DiskEntryPresentation.name(entry), weight: max(1, measure.weight(entry, apparent: apparent)),
-                          detail: measure.detail(entry, apparent: apparent),
-                          color: DiskChartPalette.color(for: entry, index: index, measure: measure))
+            DiskChartTile(entry: entry, label: DiskEntryPresentation.name(entry),
+                          weight: max(1, input.measure.weight(entry, apparent: input.apparent)),
+                          detail: input.measure.detail(entry, apparent: input.apparent),
+                          style: DiskChartPalette.style(for: entry, index: index, measure: input.measure))
         }
         let remaining = hidden.reduce(Int64(0)) {
-            $0 + max(1, measure.weight($1, apparent: apparent))
+            $0 + max(1, input.measure.weight($1, apparent: input.apparent))
         }
         if !hidden.isEmpty {
             let measured = hidden.reduce(Int64(0)) {
-                $0 + measure.weight($1, apparent: apparent)
+                $0 + input.measure.weight($1, apparent: input.apparent)
             }
-            let detail = measure == .files ? "\(measured.formatted()) files" :
-                measured.diskSize
+            let detail = input.measure == .files ? "\(measured.formatted()) files" :
+                measured.formatted(.byteCount(style: .file))
             result.append(DiskChartTile(entry: nil, label: "Other items", weight: remaining, detail: detail,
-                                        color: OnePlusColor.storageSeries.last!))
+                                        style: .storage(OnePlusColor.storageSeries.count - 1)))
         }
         return result
     }
 
     func tiles(in rect: CGRect) -> [DiskChartTile] {
+        Self.tiles(for: input, in: rect)
+    }
+
+    nonisolated static func tiles(for input: DiskChartInput, in rect: CGRect) -> [DiskChartTile] {
         var hidden: Set<String> = []
-        var result = Self.layout(tiles, in: rect)
-        guard scanComplete else { return result }
+        var result = layout(tiles(for: input, hiding: []), in: rect)
+        guard input.scanComplete else { return result }
         // Keep scanner aggregates explicit. Fold other sub-control targets once
         // sizes are final, so live membership cannot churn as weights arrive.
         while true {
@@ -193,7 +225,7 @@ struct DiskTreemapView: View {
             }
             guard !small.isEmpty else { return result }
             hidden.formUnion(small.map(\.id))
-            result = Self.layout(tiles(hiding: hidden), in: rect)
+            result = layout(tiles(for: input, hiding: hidden), in: rect)
         }
     }
 
@@ -218,7 +250,10 @@ struct DiskTreemapView: View {
                         displayedTileIDs = cached.map(\.id)
                         return
                     }
-                    let next = tiles(in: bounds)
+                    let input = self.input
+                    let next = await Task.detached(priority: .userInitiated) {
+                        Self.tiles(for: input, in: bounds)
+                    }.value
                     guard !Task.isCancelled else { return }
                     cache.store(next, for: key)
                     displayedLayout = next
@@ -247,7 +282,7 @@ struct DiskTreemapView: View {
                 select(entry)
                 if NSApp.currentEvent?.clickCount == 2 && entry.kind != .aggregate { open(entry) }
             } label: {
-                OnePlusStorageTile(color: tile.color, selected: selectedEntryID == tile.id, hovered: hoveredID == tile.id) {
+                OnePlusStorageTile(color: tile.style.color, selected: selectedEntryID == tile.id, hovered: hoveredID == tile.id) {
                     if rect.width > OnePlusDiskmanMetrics.tileLabelWidth && rect.height > OnePlusDiskmanMetrics.tileLabelHeight {
                         VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                             Text(tile.label).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
@@ -278,7 +313,7 @@ struct DiskTreemapView: View {
         }
     }
 
-    static func layout(_ tiles: [DiskChartTile], in rect: CGRect, depth: Int = 0) -> [DiskChartTile] {
+    nonisolated static func layout(_ tiles: [DiskChartTile], in rect: CGRect, depth: Int = 0) -> [DiskChartTile] {
         guard !tiles.isEmpty, DiskChartGeometry.isDrawable(rect) else { return [] }
         let total = tiles.reduce(0.0) { $0 + Double(max(0, $1.weight)) }
         guard total.isFinite, total > 0 else { return [] }
@@ -303,7 +338,7 @@ struct DiskTreemapView: View {
     }
 }
 
-struct DiskRingSegment {
+nonisolated struct DiskRingSegment: Sendable {
     let id: String
     let entry: DiskEntry?
     let label: String
@@ -312,7 +347,7 @@ struct DiskRingSegment {
     let end: Double
     let inner: CGFloat
     let outer: CGFloat
-    let color: Color
+    let style: DiskChartColor
 
     func contains(angle: Double, radius: CGFloat) -> Bool {
         angle >= start && angle < end && radius >= inner && radius <= outer
@@ -405,8 +440,11 @@ struct DiskSunburstView: View {
                         displayedSegmentIDs = cached.map(\.id)
                         return
                     }
-                    let next = Self.segments(for: directory, apparent: apparent, measure: measure,
-                                             radius: radius, scanComplete: scanComplete)
+                    let input = DiskChartInput(directory: directory, apparent: apparent,
+                                               measure: measure, scanComplete: scanComplete)
+                    let next = await Task.detached(priority: .userInitiated) {
+                        Self.segments(for: input, radius: radius)
+                    }.value
                     guard !Task.isCancelled else { return }
                     cache.store(next, for: key)
                     displayedSegments = next
@@ -451,7 +489,7 @@ struct DiskSunburstView: View {
             select(entry)
             if NSApp.currentEvent?.clickCount == 2 && entry.kind != .aggregate { open(entry) }
         } label: {
-            shape.fill(segment.color)
+            shape.fill(segment.style.color)
                 .overlay { OnePlusStorageTexture(selected: selectedEntryID == segment.id).mask(shape) }
                 .overlay { shape.stroke(selectedEntryID == segment.id ? OnePlusStorageStyle.selectedLine : hoveredID == segment.id ? OnePlusStorageStyle.hoverLine : OnePlusStorageStyle.line, lineWidth: 1) }
                 .overlay { ringLabel(segment) }
@@ -501,10 +539,21 @@ struct DiskSunburstView: View {
         return segments.reversed().first { $0.contains(angle: angle, radius: hypot(dx, dy)) }
     }
 
-    static func segments(for root: DiskEntry, apparent: Bool,
-                         measure: DiskChartMeasure, radius: CGFloat,
-                         scanComplete: Bool) -> [DiskRingSegment] {
+    nonisolated static func segments(for root: DiskEntry, apparent: Bool,
+                                     measure: DiskChartMeasure, radius: CGFloat,
+                                     scanComplete: Bool) -> [DiskRingSegment] {
+        segments(for: DiskChartInput(directory: root, apparent: apparent,
+                                     measure: measure, scanComplete: scanComplete),
+                 radius: radius)
+    }
+
+    nonisolated static func segments(for input: DiskChartInput,
+                                     radius: CGFloat) -> [DiskRingSegment] {
         guard radius.isFinite, radius > 0, (radius * 2).isFinite else { return [] }
+        let root = input.directory
+        let apparent = input.apparent
+        let measure = input.measure
+        let scanComplete = input.scanComplete
         var result: [DiskRingSegment] = []
         let levels = !scanComplete || root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
             root.children.contains { !$0.children.isEmpty } ? 2 : 1
@@ -540,13 +589,13 @@ struct DiskSunburstView: View {
             for (index, child) in children.enumerated() {
                 let next = min(end, angle + (end - start) * DiskChartGeometry.fraction(Double(max(1, measure.weight(child, apparent: apparent))), of: total))
                 guard next.isFinite, next > angle else { continue }
-                let tint = DiskChartPalette.color(for: child, index: depth == 0 ? index : colorIndex,
-                                                  measure: measure, depth: depth)
+                let style = DiskChartPalette.style(for: child, index: depth == 0 ? index : colorIndex,
+                                                   measure: measure, depth: depth)
                 result.append(DiskRingSegment(id: child.id, entry: child, label: DiskEntryPresentation.name(child),
                                               detail: measure.detail(child, apparent: apparent),
                                               start: angle, end: next,
                                               inner: inner, outer: outer,
-                                              color: tint))
+                                              style: style))
                 add(child, start: angle, end: next, depth: depth + 1,
                     colorIndex: depth == 0 ? index : colorIndex)
                 angle = next
@@ -556,12 +605,12 @@ struct DiskSunburstView: View {
                     $0 + measure.weight($1, apparent: apparent)
                 }
                 let detail = measure == .files ? "\(remaining.formatted()) files" :
-                    remaining.diskSize
+                    remaining.formatted(.byteCount(style: .file))
                 result.append(DiskRingSegment(id: parent.id + "\0other", entry: nil,
                                               label: "Other items", detail: detail,
                                               start: angle, end: end,
                                               inner: inner, outer: outer,
-                                              color: OnePlusColor.muted))
+                                              style: .muted))
             }
         }
         add(root, start: -.pi / 2, end: 3 * .pi / 2, depth: 0, colorIndex: 0)
