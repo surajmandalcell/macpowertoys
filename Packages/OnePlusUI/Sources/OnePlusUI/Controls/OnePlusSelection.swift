@@ -4,9 +4,7 @@ import SwiftUI
 public struct OnePlusSwitchStyle: ToggleStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        HStack {
-            configuration.label.onePlusText(.row)
-            Spacer(minLength: 8)
+        LabeledContent {
             Button { configuration.isOn.toggle() } label: {
                 Capsule().fill(configuration.isOn ? OnePlusColor.primaryFill : OnePlusColor.selection)
                     .overlay { Capsule().strokeBorder(OnePlusColor.line, lineWidth: 1) }
@@ -21,6 +19,8 @@ public struct OnePlusSwitchStyle: ToggleStyle {
             .accessibilityRepresentation {
                 Toggle(isOn: configuration.$isOn) { configuration.label }
             }
+        } label: {
+            configuration.label.onePlusText(.row)
         }
     }
 }
@@ -129,7 +129,7 @@ public struct OnePlusSelect<Value: Hashable>: View {
         } label: {
             OnePlusMenuLabel(title: choices.first { $0.0 == selection }?.1 ?? "Select", width: width)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
         .focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
         .accessibilityLabel(label)
         .accessibilityValue(choices.first { $0.0 == selection }?.1 ?? "No selection")
