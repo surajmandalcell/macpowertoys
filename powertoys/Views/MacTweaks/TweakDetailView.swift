@@ -1,8 +1,6 @@
 import OnePlusUI
 import SwiftUI
 
-private let macTweaksChoiceControlWidth = OnePlusMetrics.controlColumn
-
 struct MacTweaksNotice: Equatable {
     let message: String
     var actionTitle: String?
@@ -23,7 +21,7 @@ struct MacTweaksPanel<Content: View>: View {
     }
 
     var body: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             OnePlusCardHeader(title, systemImage: glyph.systemImage)
             content
         }
@@ -40,10 +38,14 @@ struct MacTweaksPreferenceRows: View {
     let onError: (String) -> Void
 
     var body: some View {
+        let controlWidth = fields.contains { $0.choices.count == 2 }
+            ? OnePlusMetrics.wideControlColumn
+            : OnePlusMetrics.controlColumn
         ForEach(Array(fields.enumerated()), id: \.element.identity) { index, field in
             MacTweaksPreferenceRow(
                 itemID: itemID,
                 field: field,
+                controlWidth: controlWidth,
                 help: fields.count == 1 || index == 0 ? summary : "This companion key keeps the same behavior in alternate native dialogs.",
                 revision: revision,
                 onChanged: onChanged,
@@ -57,6 +59,7 @@ struct MacTweaksPreferenceRows: View {
 struct MacTweaksPreferenceRow: View {
     let itemID: String
     let field: TweakPreferenceField
+    let controlWidth: CGFloat
     let help: String
     let revision: Int
     let onChanged: (String) -> Void
@@ -76,7 +79,7 @@ struct MacTweaksPreferenceRow: View {
             field.label,
             help: help,
             reset: resetAction,
-            controlWidth: macTweaksChoiceControlWidth,
+            controlWidth: controlWidth,
             separator: false
         ) {
             MacTweaksChoiceControl(field: field, selection: selection, isEnabled: canWrite, onSelection: apply)

@@ -241,14 +241,13 @@ struct MacTweaksPreviewView: View {
                     .scaleEffect(1.08)
                     .blur(radius: 10)
                     .opacity(0.56)
-                preview(progress: progress)
+                renderedPreview(progress: progress)
                     .frame(width: 600, height: 304)
                     .scaleEffect(scale)
                     .position(
                         x: proxy.size.width / 2 + (300 - crop.midX) * scale,
                         y: sceneHeight / 2 + (152 - crop.midY) * scale
                     )
-                    .drawingGroup(opaque: false, colorMode: .linear)
                 HStack(spacing: 2) {
                     ForEach(0..<4, id: \.self) { _ in
                         Rectangle().fill(Color.white.opacity(0.10))
@@ -278,6 +277,16 @@ struct MacTweaksPreviewView: View {
             PowerPreviewScene(progress: progress, active: isHovering && !shouldReduceMotion)
         } else {
             DesktopPreviewScene(kind: kind, progress: progress, active: isHovering && !shouldReduceMotion)
+        }
+    }
+
+    @ViewBuilder
+    private func renderedPreview(progress: Double) -> some View {
+        if kind == .power {
+            preview(progress: progress)
+        } else {
+            preview(progress: progress)
+                .drawingGroup(opaque: false, colorMode: .linear)
         }
     }
 }
@@ -856,9 +865,8 @@ private struct PowerPreviewScene: View {
                 .offset(y: -28)
             HStack(spacing: 10) {
                 Circle()
-                    .fill(active ? Color.green.opacity(0.82) : MacTweaksPalette.muted)
+                    .fill(active ? MacTweaksPalette.secondary : MacTweaksPalette.muted)
                     .frame(width: 8, height: 8)
-                    .shadow(color: active ? Color.green.opacity(0.38) : .clear, radius: 8)
                 Text(active ? "Keeping this Mac awake" : "Hover to preview")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color(white: 0.68))
