@@ -27,6 +27,7 @@ public struct OnePlusSwitchStyle: ToggleStyle {
 
 public struct OnePlusSegmented<Value: Hashable>: View {
     private let choices: [(Value, String)]
+    private let symbols: [Value: String]
     @Binding private var selection: Value
     private let label: String
     @Environment(\.onePlusDensity) private var density
@@ -35,6 +36,14 @@ public struct OnePlusSegmented<Value: Hashable>: View {
 
     public init(choices: [(Value, String)], selection: Binding<Value>, accessibilityLabel: String = "Selection") {
         self.choices = choices
+        symbols = [:]
+        _selection = selection
+        label = accessibilityLabel
+    }
+
+    public init(iconChoices: [(Value, String, String)], selection: Binding<Value>, accessibilityLabel: String) {
+        choices = iconChoices.map { ($0.0, $0.1) }
+        symbols = Dictionary(uniqueKeysWithValues: iconChoices.map { ($0.0, $0.2) })
         _selection = selection
         label = accessibilityLabel
     }
@@ -50,7 +59,13 @@ public struct OnePlusSegmented<Value: Hashable>: View {
             ForEach(choices.indices, id: \.self) { index in
                 let choice = choices[index]
                 Button { selection = choice.0 } label: {
-                    Text(choice.1).onePlusText(.control, selected: selection == choice.0)
+                    Group {
+                        if let symbol = symbols[choice.0] {
+                            Image(systemName: symbol).accessibilityLabel(choice.1)
+                        } else {
+                            Text(choice.1)
+                        }
+                    }.onePlusText(.control, selected: selection == choice.0)
                         .lineLimit(1).padding(.horizontal, 8)
                         .frame(maxWidth: .infinity).frame(height: density.controlHeight - 4)
                         .background(selection == choice.0 ? OnePlusColor.selectedControl : .clear,
@@ -58,6 +73,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                 }
                 .buttonStyle(OnePlusInteractionStyle(radius: 3))
                 .accessibilityAddTraits(selection == choice.0 ? .isSelected : [])
+                .help(choice.1)
             }
         }
         .padding(2).frame(height: density.controlHeight)

@@ -71,6 +71,8 @@ full screen. It measures the zoom button for the title's 14 pt gap.
 | `OnePlusNavCaption` | Label a navigation section in its fixed slot. |
 | `OnePlusNavBadge` | Display a text-only navigation count. |
 | `OnePlusPageHeader` | Supply title, subtitle, `.system` or `.dotMatrix`, and actions. |
+| `OnePlusToolPageHeader` | Align a 40 pt tool icon, title, subtitle, and actions on the window centerline. |
+| `OnePlusCatalogMetrics` | Read fixed catalog card, list, icon, and action geometry. |
 | `OnePlusTab` / `OnePlusTabStrip` | Bind selection to underline tabs with counts and trailing tools. |
 | `OnePlusPage` | Keep header and tabs fixed while content scrolls inside shared gutters. |
 | `OnePlusCard` | Group natural-height content with a shared fill, line, and radius. |
@@ -118,6 +120,11 @@ full screen. It measures the zoom button for the title's 14 pt gap.
 | `OnePlusAppletTitlebar` | Add a 40 pt bar with title and actions on the 22 pt centerline. |
 | `OnePlusFloatingSettingsButton` | Place a 24 pt Settings or Back button at the applet's trailing edge. |
 | `.onePlusScrollIndicators()` / `OnePlusOverlayScroller` | Keep native scrolling with thin overlay thumbs. |
+
+Catalogs can use `OnePlusSegmented(iconChoices:selection:accessibilityLabel:)`
+for labeled icon segments and `OnePlusButtonStyle.catalogOpen` for 26 pt Open
+actions. `OnePlusNavRow(muted:)` dims a label while keeping navigation active.
+`OnePlusSidebarSearch(alternateShortcut:)` adds a shortcut beside Command-K.
 
 ## Add a variant
 

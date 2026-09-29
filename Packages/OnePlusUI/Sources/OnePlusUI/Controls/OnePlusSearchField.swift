@@ -36,13 +36,19 @@ public struct OnePlusSearchField: View {
 public struct OnePlusSidebarSearch: View {
     @Binding private var text: String
     private let prompt: String
+    private let alternateShortcut: KeyEquivalent?
     @State private var focusTrigger = 0
-    public init(_ prompt: String = "Search", text: Binding<String>) { self.prompt = prompt; _text = text }
+    public init(_ prompt: String = "Search", text: Binding<String>, alternateShortcut: KeyEquivalent? = nil) {
+        self.prompt = prompt; _text = text; self.alternateShortcut = alternateShortcut
+    }
     public var body: some View {
         OnePlusSearchField(prompt: prompt, text: $text, width: nil, focusTrigger: focusTrigger,
                            height: 32, shortcutHint: "⌘K")
             .background {
                 Button("Focus search") { focusTrigger += 1 }.keyboardShortcut("k").hidden()
+                if let alternateShortcut {
+                    Button("Find a tool") { focusTrigger += 1 }.keyboardShortcut(alternateShortcut).hidden()
+                }
             }
     }
 }

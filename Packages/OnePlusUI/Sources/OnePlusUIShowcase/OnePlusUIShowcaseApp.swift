@@ -224,6 +224,16 @@ private struct OnePlusUIShowcase: View {
                     Spacer()
                 }.padding(16)
             }
+            OnePlusCard {
+                OnePlusToolPageHeader(title: "Catalog tool", subtitle: "A tool page with an icon and separate actions.") {
+                    Image(systemName: "wrench.adjustable").resizable().scaledToFit()
+                } actions: {
+                    Toggle("Enable tool", isOn: $enabled).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    Button("Open") { announce("Opened catalog tool") }.buttonStyle(OnePlusButtonStyle.catalogOpen)
+                    Button("Open") {}.buttonStyle(OnePlusButtonStyle.catalogOpen).disabled(true)
+                }
+                OnePlusNavRow("Disabled tool", systemImage: "wrench.adjustable", muted: true) { announce("Tool settings opened") }
+            }
             OnePlusBanner("All actions update the sample toast. Destructive actions affect sample data only.")
         }
     }
@@ -243,6 +253,11 @@ private struct OnePlusUIShowcase: View {
                     OnePlusSettingRow("Disabled") { Toggle("Disabled", isOn: .constant(false)).labelsHidden().toggleStyle(OnePlusSwitchStyle()).disabled(true) }
                     OnePlusSettingRow("Mode") { OnePlusSegmented(choices: [("Off", "Off"), ("Auto", "Auto"), ("On", "On")], selection: $mode) }
                     OnePlusSettingRow("Popup") { OnePlusSelect(choices: [("Off", "Off"), ("Auto", "Auto"), ("On", "On")], selection: $mode, accessibilityLabel: "Mode") }
+                    OnePlusSettingRow("Catalog view") {
+                        OnePlusSegmented(iconChoices: [("Off", "Grid", "square.grid.2x2"), ("Auto", "List", "list.bullet")],
+                                         selection: $mode, accessibilityLabel: "Catalog view")
+                            .frame(width: OnePlusCatalogMetrics.viewControlWidth)
+                    }
                     OnePlusSettingRow("Checkbox") { Toggle("Keep history", isOn: $checked).toggleStyle(OnePlusCheckboxStyle()) }
                     OnePlusSettingRow("Radio", separator: false) { OnePlusRadio("Mode", choices: [("Off", "Off"), ("Auto", "Auto")], selection: $mode).horizontalRadioGroupLayout().labelsHidden() }
                 }

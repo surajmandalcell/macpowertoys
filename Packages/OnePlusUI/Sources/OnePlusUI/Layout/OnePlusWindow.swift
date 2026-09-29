@@ -90,12 +90,13 @@ public struct OnePlusNavRow: View {
     private let selected: Bool
     private let count: Int?
     private let external: Bool
+    private let muted: Bool
     private let action: () -> Void
     @Environment(\.onePlusDensity) private var density
     public init(_ title: String, systemImage: String, image: Image? = nil, selected: Bool = false,
-                count: Int? = nil, external: Bool = false, action: @escaping () -> Void) {
+                count: Int? = nil, external: Bool = false, muted: Bool = false, action: @escaping () -> Void) {
         self.title = title; self.systemImage = systemImage; self.image = image
-        self.selected = selected; self.count = count; self.external = external; self.action = action
+        self.selected = selected; self.count = count; self.external = external; self.muted = muted; self.action = action
     }
     public var body: some View {
         Button(action: action) {
@@ -103,6 +104,7 @@ public struct OnePlusNavRow: View {
                 if let image { image.resizable().scaledToFit().frame(width: 15, height: 15).accessibilityHidden(true) }
                 else { Image(systemName: systemImage).font(.system(size: 15, weight: .regular)).frame(width: 15).accessibilityHidden(true) }
                 Text(title).lineLimit(1)
+                    .foregroundStyle(muted ? OnePlusColor.muted : selected ? OnePlusColor.ink : OnePlusColor.secondary)
                 Spacer(minLength: 4)
                 if let count { OnePlusNavBadge(count) }
                 if external { Image(systemName: "arrow.up.right").font(.system(size: 10)).accessibilityHidden(true) }
