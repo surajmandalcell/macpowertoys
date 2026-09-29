@@ -13,17 +13,33 @@ final class SystemCareTests: XCTestCase {
         XCTAssertEqual(kilobyte.unit, "KB")
     }
 
-    func testPresentationRowsKeepUnavailableApplicationMetadataExplicit() {
+    func testApplicationMetadataUsesFinalUnavailableLabels() {
         let application = InstalledApplication(
             name: "Missing App",
             url: URL(fileURLWithPath: "/path/that/does/not/exist/Missing.app")
         )
 
-        let row = SystemCarePresentationRows.applications([application])[0]
+        let metadata = SystemCarePresentationRows.application(application)
 
-        XCTAssertEqual(row.application, application)
-        XCTAssertEqual(row.size, "Unknown")
-        XCTAssertEqual(row.lastUsed, "Unknown")
+        XCTAssertEqual(metadata.id, application.id)
+        XCTAssertEqual(metadata.size, "Unavailable")
+        XCTAssertEqual(metadata.lastUsed, "Not available")
+    }
+
+    func testApplicationMetadataRecursivelyCountsAllocatedBundleFiles() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SystemCareTests-\(UUID().uuidString).app", isDirectory: true)
+        let nested = root.appendingPathComponent("Contents/Resources", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        try Data(repeating: 0xA5, count: 8_192).write(to: nested.appendingPathComponent("payload.bin"))
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let metadata = SystemCarePresentationRows.application(
+            InstalledApplication(name: "Test App", url: root)
+        )
+
+        XCTAssertNotEqual(metadata.size, "Unavailable")
+        XCTAssertNotEqual(metadata.size, "Zero KB")
     }
 
     func testCleanupCandidateMustBeAChildOfItsAllowedRoot() {
