@@ -26,8 +26,10 @@ final class OnePlusTableTests: XCTestCase {
             return view.subviews.lazy.compactMap { find($0) }.first
         }
         let table = try XCTUnwrap(find(host))
+        let row = try XCTUnwrap(table.rowView(atRow: 0, makeIfNecessary: true))
         let primary = try XCTUnwrap(table.view(atColumn: 0, row: 0, makeIfNecessary: true) as? NSTableCellView)
         let action = try XCTUnwrap(table.view(atColumn: 2, row: 0, makeIfNecessary: true) as? NSButton)
+        XCTAssertEqual(row.identifier?.rawValue, "OnePlusNativeTable.row")
         XCTAssertEqual(primary.identifier?.rawValue, "OnePlusNativeTable.primary")
         XCTAssertEqual(action.identifier?.rawValue, "OnePlusNativeTable.action")
         XCTAssertNil(primary.textField?.toolTip)
