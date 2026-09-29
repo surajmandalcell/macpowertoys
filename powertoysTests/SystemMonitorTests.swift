@@ -1,4 +1,6 @@
 import AppKit
+import OnePlusUI
+import OnePlusUI
 import SwiftUI
 import XCTest
 @testable import powertoys
