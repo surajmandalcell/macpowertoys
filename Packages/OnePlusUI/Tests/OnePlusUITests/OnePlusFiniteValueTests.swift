@@ -60,6 +60,25 @@ final class OnePlusFiniteValueTests: XCTestCase {
         }
     }
 
+    func testTablesAndPanelsRejectInvalidDimensions() {
+        for dimension in [CGFloat.nan, .infinity, -.infinity, -1, 0, 120] {
+            let column = OnePlusGridColumn("Value", width: dimension)
+            XCTAssertTrue(column.width.isFinite && column.width >= 0)
+
+            let table = NSHostingView(rootView: OnePlusGridTable(columns: [column], rows: [["Sample"]]))
+            XCTAssertTrue(table.fittingSize.width.isFinite && table.fittingSize.height.isFinite)
+
+            let panel = NSHostingView(rootView: OnePlusMenuPanel(maximumHeight: dimension) {
+                EmptyView()
+            } actions: {
+                EmptyView()
+            } content: {
+                Text("Sample")
+            })
+            XCTAssertTrue(panel.fittingSize.width.isFinite && panel.fittingSize.height.isFinite)
+        }
+    }
+
     func testStepperRejectsNonFiniteAndOverflowingInput() {
         for value in [Double.nan, .infinity, -.infinity, .greatestFiniteMagnitude, -0.5] {
             XCTAssertNil(OnePlusStepperField.nativeValue(value, in: Int.min...Int.max))

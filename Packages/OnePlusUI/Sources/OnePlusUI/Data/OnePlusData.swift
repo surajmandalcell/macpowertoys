@@ -134,7 +134,11 @@ public struct OnePlusGridColumn: Identifiable, Sendable {
     public let title: String
     public let width: CGFloat
     public let trailing: Bool
-    public init(_ title: String, width: CGFloat, trailing: Bool = false) { self.title = title; self.width = width; self.trailing = trailing }
+    public init(_ title: String, width: CGFloat, trailing: Bool = false) {
+        self.title = title
+        self.width = width.isFinite ? max(0, width) : 0
+        self.trailing = trailing
+    }
 }
 
 /// Small read-only tables. Use native Table for selectable or sortable data.
