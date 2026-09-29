@@ -203,7 +203,6 @@ struct TrayPopoverView: View {
                 .id(selectedTabID)
                 .transition(.opacity)
         }
-        .environment(\.colorScheme, .dark)
         .onAppear(perform: normalizeSelection)
         .onChange(of: storedTabOrder) { normalizeSelection() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -281,7 +280,6 @@ struct IndividualToolMenuPanel: View {
         } content: {
             content
         }
-        .environment(\.colorScheme, .dark)
     }
 
     @ViewBuilder
@@ -454,6 +452,7 @@ private struct TrayHomeActionButton: View {
                     .rotationEffect(.degrees(iconRotation))
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 13, weight: .medium))
+                    .frame(width: 16, height: 16, alignment: .leading)
                 Text(title).onePlusText(.row).lineLimit(1)
             }
         }
@@ -488,7 +487,7 @@ private struct AwakeTrayRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             OnePlusMenuControlRow("Awake", systemImage: "moon.zzz", status: status) {
-                TaskManagerSegments(
+                OnePlusSegmented(
                     choices: [
                         (AwakeQuickMode?.some(.off), "Off"),
                         (AwakeQuickMode?.some(.thirtyMinutes), "30m"),
@@ -506,8 +505,7 @@ private struct AwakeTrayRow: View {
                     set: service.setKeepDisplayOn
                 ))
                 .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(OnePlusSwitchStyle())
                 .accessibilityIdentifier("awake.keep-display-on")
             }
             if let assertionError = service.assertionError {
@@ -1234,6 +1232,13 @@ enum TaskManagerMenuLayout {
     }
 }
 
+private struct TaskManagerMenuMeasuredHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct SystemMonitorMenuPopoverView: View {
     private let remoteProfiles: [SystemMonitorRemoteProfile]
     private let onPreferredHeight: (CGFloat) -> Void
@@ -1257,8 +1262,7 @@ struct SystemMonitorMenuPopoverView: View {
             preferredHeight = height
             onPreferredHeight(height)
         }
-        .frame(width: TaskManagerMenuLayout.width, height: preferredHeight)
-        .environment(\.colorScheme, .dark)
+        .frame(width: TaskManagerMenuLayout.width)
         .utilityMotionPolicy()
     }
 }
@@ -1301,6 +1305,13 @@ struct SystemMonitorTrayView: View {
             case .processes: TaskManagerMenuProcessesView()
             default: detailPage
             }
+        }
+        .background(GeometryReader { proxy in
+            Color.clear.preference(key: TaskManagerMenuMeasuredHeightKey.self, value: proxy.size.height)
+        })
+        .onPreferenceChange(TaskManagerMenuMeasuredHeightKey.self) { height in
+            guard height > 0 else { return }
+            onPreferredHeight(min(height, TaskManagerMenuLayout.maximumHeight))
         }
         .onAppear {
             if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
@@ -1363,7 +1374,7 @@ struct SystemMonitorTrayView: View {
 
     private var remoteSummary: some View {
         VStack(alignment: .leading, spacing: 5) {
-            OnePlusMenuSectionHeader("Remote instances", actionTitle: "Manage") {
+            OnePlusMenuSectionHeader("Remote instances", actionTitle: "Manage", compactAction: true) {
                 UserDefaults.standard.set("remote", forKey: "systemMonitor.windowPage")
                 ToolActionRouter.shared.open(toolID: "system-monitor")
             }
@@ -1414,9 +1425,7 @@ struct SystemMonitorTrayView: View {
                         .foregroundStyle(TaskManagerTheme.secondary)
                     Spacer()
                 }
-                Text(value)
-                    .font(.system(size: 28, weight: .medium))
-                    .monospacedDigit()
+                panelMetricValue(value)
                 TaskManagerHistoryChart(
                     values: values,
                     secondary: page == .network ? history.compactMap(\.networkUpload) : [],
@@ -1532,11 +1541,7 @@ struct SystemMonitorTrayView: View {
                     Spacer(minLength: 0)
                 }
                 HStack(spacing: 4) {
-                    Text(value)
-                        .font(.system(size: 20, weight: .medium))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    panelMetricValue(value)
                     Spacer(minLength: 2)
                     TaskManagerHistoryChart(
                         values: values,
@@ -1558,19 +1563,21 @@ struct SystemMonitorTrayView: View {
     }
 
     private var networkCard: some View {
-        OnePlusMenuTile(span: 2, height: 51) {
+        OnePlusMenuTile(span: 2, height: 51, textured: false) {
             VStack(alignment: .leading, spacing: 3) {
                 metricLabel(.network)
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     compactRate("↓", sample?.networkDownload)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     compactRate("↑", sample?.networkUpload, accent: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
     }
 
     private var diskCard: some View {
-        OnePlusMenuTile(height: 51) {
+        OnePlusMenuTile(height: 51, textured: false) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
                     metricIcon(SystemMonitorMenuMetric.disk)
@@ -1592,7 +1599,7 @@ struct SystemMonitorTrayView: View {
     }
 
     private var thermalCard: some View {
-        OnePlusMenuTile(span: 2, height: 34) {
+        OnePlusMenuTile(span: 2, height: 34, textured: false) {
             HStack(spacing: 8) {
                 metricLabel(.thermal, title: "Thermal")
                 Spacer(minLength: 4)
@@ -1604,7 +1611,7 @@ struct SystemMonitorTrayView: View {
     }
 
     private var batteryCard: some View {
-        OnePlusMenuTile(height: 34) {
+        OnePlusMenuTile(height: 34, textured: false) {
             HStack(spacing: 5) {
                 metricIcon(SystemMonitorMenuMetric.battery)
                 Spacer(minLength: 2)
@@ -1630,15 +1637,37 @@ struct SystemMonitorTrayView: View {
     }
 
     private func compactRate(_ arrow: String, _ value: Double?, accent: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
+        let parts = TaskManagerMetricText.parts(value.map(Self.rate) ?? "—")
+        return HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(arrow)
                 .foregroundStyle(accent ? TaskManagerTheme.accent.opacity(0.78) : TaskManagerTheme.secondary)
-            Text(value.map(Self.rate) ?? "—")
+            Text(parts.value)
                 .font(.system(size: 15, weight: .medium))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
+            if !parts.unit.isEmpty {
+                Text(parts.unit)
+                    .font(.system(size: 9))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+            }
         }
+    }
+
+    private func panelMetricValue(_ text: String) -> some View {
+        let parts = TaskManagerMetricText.parts(text)
+        return HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(parts.value)
+                .font(.system(size: 21, weight: .medium))
+                .monospacedDigit()
+            if !parts.unit.isEmpty {
+                Text(parts.unit)
+                    .font(.system(size: 10))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 
     @ViewBuilder
@@ -1742,7 +1771,7 @@ private struct TaskManagerRemoteMenuCard: View {
     @ViewBuilder
     var body: some View {
         if profiles.isEmpty {
-            OnePlusMenuTile(span: 3, height: 51, action: openRemoteStats) {
+            OnePlusMenuTile(span: 3, height: 51, textured: false, action: openRemoteStats) {
                 HStack(spacing: 9) {
                     Image(systemName: "server.rack")
                         .font(.system(size: 10))
