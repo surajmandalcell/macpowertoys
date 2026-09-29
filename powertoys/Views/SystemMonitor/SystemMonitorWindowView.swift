@@ -169,7 +169,6 @@ struct SystemMonitorWindowView: View {
             } content: {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .utilityContentTransition(value: pageID)
             }
         }
         .onePlusDensity(.compact)
