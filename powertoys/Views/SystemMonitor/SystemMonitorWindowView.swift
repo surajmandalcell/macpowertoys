@@ -363,7 +363,7 @@ struct SystemMonitorWindowView: View {
                 .padding(.top, TaskManagerTheme.pageTopInset)
                 .padding(.bottom, 18)
         case .about: scrollPage { aboutPage }
-        case .settings: scrollPage { settingsPage }
+        case .settings: settingsPage
         }
     }
 
@@ -1008,7 +1008,9 @@ struct SystemMonitorWindowView: View {
     }
 
     private var settingsPage: some View {
-        SystemMonitorMenuSettingsView(showsContainerScroll: false)
+        OnePlusPage(header: { EmptyView() }) {
+            SystemMonitorSettingsContent()
+        }
     }
 
     private var aboutPage: some View {
@@ -1163,57 +1165,11 @@ struct SystemMonitorWindowView: View {
         }
     }
 
-    private func settingRow<Content: View>(_ title: String, detail: String, @ViewBuilder control: () -> Content) -> some View {
-        HStack(spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 11))
-                Text(detail).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
-            }
-            Spacer(minLength: 20)
-            control()
-        }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 58)
-    }
-
     private var rowDivider: some View { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
 
     @ViewBuilder
     private func monitorIcon(_ metric: SystemMonitorMenuMetric) -> some View {
         if metric == .gpu { GPUCardIcon() } else { Image(systemName: metric.symbol).font(.system(size: 11)) }
-    }
-
-    private var menuDisplayBinding: Binding<String> {
-        Binding(
-            get: {
-                guard service.menuSettings.enabled else { return "off" }
-                return service.menuSettings.enabledItems.allSatisfy { $0.placement == .separate } ? "separate" : "grouped"
-            },
-            set: { value in
-                service.updateMenuSettings { settings in
-                    if value == "off" { settings.enabled = false; return }
-                    settings.enabled = true
-                    if settings.enabledItems.isEmpty { settings.setPlacement(.combined, for: .memory) }
-                    for index in settings.items.indices where settings.items[index].enabled {
-                        settings.items[index].placement = value == "separate" ? .separate : .combined
-                    }
-                }
-            }
-        )
-    }
-
-    private var rememberPanelBinding: Binding<Bool> {
-        Binding(
-            get: { UserDefaults.standard.object(forKey: "systemMonitor.rememberTrayPage") as? Bool ?? true },
-            set: { UserDefaults.standard.set($0, forKey: "systemMonitor.rememberTrayPage") }
-        )
-    }
-
-    private var menuIntervalBinding: Binding<TimeInterval> {
-        Binding(
-            get: { service.menuSettings.interval },
-            set: { value in service.updateMenuSettings { $0.interval = value } }
-        )
     }
 
     private var memoryDetail: String {
@@ -1312,41 +1268,19 @@ struct SystemMonitorWindowView: View {
     }
 }
 
-struct SystemMonitorMenuSettingsView: View {
+struct SystemMonitorSettingsContent: View {
     @State private var service = SystemMonitorService.shared
     @State private var expandedMetric: SystemMonitorMenuMetric?
     @AppStorage("systemMonitor.rememberTrayPage") private var rememberPanel = true
     @AppStorage("systemMonitor.historyMinutes") private var historyMinutes = 2
-    let showsContainerScroll: Bool
-    let showsDisplaySection: Bool
 
-    init(showsContainerScroll: Bool = true, showsDisplaySection: Bool = true) {
-        self.showsContainerScroll = showsContainerScroll
-        self.showsDisplaySection = showsDisplaySection
-    }
+    init() {}
 
-    @ViewBuilder
     var body: some View {
-        if showsContainerScroll {
-            ScrollView {
-                settingsContent
-                    .padding(.horizontal, UtilityLayout.horizontalInset)
-                    .padding(.vertical, 12)
-            }
-            .thinScrollIndicators()
-        } else {
-            settingsContent
-        }
-    }
-
-    private var settingsContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if showsDisplaySection { displaySection }
+        VStack(alignment: .leading, spacing: 16) {
+            displaySection
             itemsSection
         }
-        .font(.system(size: 12))
-        .controlSize(.small)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var displaySection: some View {
@@ -1379,7 +1313,6 @@ struct SystemMonitorMenuSettingsView: View {
                 )
             }
         }
-        .environment(\.onePlusControlHeight, 28)
     }
 
     private var globalIntervalControl: some View {
@@ -1396,25 +1329,16 @@ struct SystemMonitorMenuSettingsView: View {
     }
 
     private var itemsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("MENU BAR ITEMS").utilitySectionHeader()
+        OnePlusCard {
+            OnePlusCardHeader("Menu bar items") {
                 Text("Drag to reorder")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                    .onePlusText(.caption)
             }
-
             LazyVStack(spacing: 0) {
                 itemsHeader
                 ForEach(service.menuSettings.items) { item in
                     itemRow(item)
                 }
-            }
-            .background(TaskManagerTheme.card)
-            .clipShape(RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
-                    .strokeBorder(TaskManagerTheme.line)
             }
         }
     }
@@ -1428,8 +1352,8 @@ struct SystemMonitorMenuSettingsView: View {
             Text("Update").frame(width: 100, alignment: .leading)
             Text("Format").frame(width: 162, alignment: .leading)
             Text("").frame(width: 28)
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onePlusTableHeader()
     }
 
@@ -1438,7 +1362,7 @@ struct SystemMonitorMenuSettingsView: View {
             HStack(spacing: 8) {
                 reorderMenu(item.metric).frame(width: 28)
                 Label(item.metric.title, systemImage: item.symbol)
-                    .font(.system(size: 10, weight: .medium))
+                    .onePlusText(.row)
                     .frame(width: 110, alignment: .leading)
                     .lineLimit(1)
                 placementControl(item).frame(width: 106)
@@ -1453,11 +1377,10 @@ struct SystemMonitorMenuSettingsView: View {
                 .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                 .frame(width: 28)
                 .accessibilityLabel("\(item.metric.title) details")
-                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .frame(height: 34)
-            .environment(\.onePlusControlHeight, 28)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
             if expandedMetric == item.metric { detailsRow(item) }
         }
@@ -1558,8 +1481,7 @@ struct SystemMonitorMenuSettingsView: View {
             )
         case .cpu, .gpu:
             Text("Default")
-                .font(.system(size: 10))
-                .foregroundStyle(OnePlusColor.secondary)
+                .onePlusText(.control)
                 .frame(width: 162, alignment: .leading)
         }
     }
@@ -1567,8 +1489,7 @@ struct SystemMonitorMenuSettingsView: View {
     private func detailsRow(_ item: SystemMonitorMenuItemConfiguration) -> some View {
         HStack(spacing: 12) {
             Text("Details")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(OnePlusColor.muted)
+                .onePlusText(.caption)
             TaskManagerSelect(
                 choices: item.metric.symbols.map { ($0, Self.iconTitle($0, for: item.metric)) },
                 selection: itemSetting(item, get: { $0.symbol }, set: { $0.symbol = $1 }),
@@ -1584,194 +1505,14 @@ struct SystemMonitorMenuSettingsView: View {
                 )
             } else {
                 Text("Uses the global interval unless Update overrides it.")
-                    .font(.system(size: 9))
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .onePlusText(.caption)
             }
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 48)
         .frame(height: 44)
-        .environment(\.onePlusControlHeight, 28)
         .background(OnePlusColor.panelHover)
         .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
-    }
-
-    private func itemIdentity(_ item: SystemMonitorMenuItemConfiguration) -> some View {
-        HStack(spacing: 8) {
-            reorderMenu(item.metric)
-
-            TaskManagerSelect(
-                choices: SystemMonitorMenuPlacement.allCases.map { ($0, $0.title) },
-                selection: Binding<SystemMonitorMenuPlacement>(
-                    get: {
-                        guard let current = service.menuSettings.items.first(where: { $0.metric == item.metric }),
-                              current.enabled else { return .off }
-                        return current.placement
-                    },
-                    set: { placement in
-                        service.updateMenuSettings { $0.setPlacement(placement, for: item.metric) }
-                    }
-                ),
-                width: 120,
-                accessibilityLabel: "\(item.metric.title) menu bar placement"
-            )
-            .frame(height: UtilityLayout.workspaceActionHeight)
-            .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).placement")
-
-            Label(item.metric.title, systemImage: item.symbol)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 104, alignment: .leading)
-                .lineLimit(1)
-        }
-    }
-
-    private func itemControls(_ item: SystemMonitorMenuItemConfiguration) -> some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            primaryItemControls(item)
-            itemSpecificControl(item)
-                .frame(width: 230, alignment: .leading)
-        }
-    }
-
-    private func primaryItemControls(_ item: SystemMonitorMenuItemConfiguration) -> some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            settingControl("STYLE", width: 92) {
-                TaskManagerSelect(
-                    choices: SystemMonitorMenuItemStyle.allCases.map { ($0, $0.title) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.style },
-                        set: { $0.style = $1 }
-                    ),
-                    width: 92,
-                    accessibilityLabel: "\(item.metric.title) style"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).style")
-            }
-
-            settingControl("ICON", width: 82) {
-                TaskManagerSelect(
-                    choices: item.metric.symbols.map { ($0, Self.iconTitle($0, for: item.metric)) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.symbol },
-                        set: { $0.symbol = $1 }
-                    ),
-                    width: 82,
-                    accessibilityLabel: "\(item.metric.title) icon"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).icon")
-            }
-
-            settingControl("INTERVAL", width: 94) {
-                TaskManagerSelect(
-                    choices: item.metric.supportedIntervals(global: service.menuSettings.interval)
-                        .map { ($0, $0.title) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.interval },
-                        set: { $0.interval = $1 }
-                    ),
-                    width: 94,
-                    accessibilityLabel: "\(item.metric.title) interval"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).interval")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func itemSpecificControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
-        switch item.metric {
-        case .memory:
-            settingControl("UNIT", width: 88) {
-                TaskManagerSelect(
-                    choices: SystemMonitorMemoryUnit.allCases.map { ($0, $0.title) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.memoryUnit },
-                        set: { $0.memoryUnit = $1 }
-                    ),
-                    width: 88,
-                    accessibilityLabel: "Memory unit"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.memory.unit")
-            }
-        case .disk:
-            settingControl("UNIT", width: 88) {
-                TaskManagerSelect(
-                    choices: SystemMonitorDiskUnit.allCases.map { ($0, $0.title) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.diskUnit },
-                        set: { $0.diskUnit = $1 }
-                    ),
-                    width: 88,
-                    accessibilityLabel: "Disk unit"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.disk.unit")
-            }
-        case .network:
-            HStack(alignment: .bottom, spacing: 10) {
-                settingControl("DIRECTION", width: 94) {
-                    TaskManagerSelect(
-                        choices: SystemMonitorNetworkDirection.allCases.map { ($0, $0.title) },
-                        selection: itemSetting(
-                            item,
-                            get: { $0.networkDirection },
-                            set: { $0.networkDirection = $1 }
-                        ),
-                        width: 94,
-                        accessibilityLabel: "Network direction"
-                    )
-                    .accessibilityIdentifier("system-monitor.menu.item.network.direction")
-                }
-
-                settingControl("UNIT", width: 126) {
-                    TaskManagerSelect(
-                        choices: SystemMonitorNetworkUnit.allCases.map { ($0, $0.title) },
-                        selection: itemSetting(
-                            item,
-                            get: { $0.networkUnit },
-                            set: { $0.networkUnit = $1 }
-                        ),
-                        width: 126,
-                        accessibilityLabel: "Network unit"
-                    )
-                    .accessibilityIdentifier("system-monitor.menu.item.network.unit")
-                }
-            }
-        case .battery:
-            settingControl("DISPLAY", width: 150) {
-                TaskManagerSelect(
-                    choices: SystemMonitorBatteryDisplay.allCases.map { ($0, $0.title) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.batteryDisplay },
-                        set: { $0.batteryDisplay = $1 }
-                    ),
-                    width: 150,
-                    accessibilityLabel: "Battery display"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.battery.display")
-            }
-        case .thermal:
-            settingControl("DISPLAY", width: 100) {
-                TaskManagerSelect(
-                    choices: SystemMonitorThermalDisplay.allCases.map { ($0, $0.title) },
-                    selection: itemSetting(
-                        item,
-                        get: { $0.thermalDisplay },
-                        set: { $0.thermalDisplay = $1 }
-                    ),
-                    width: 100,
-                    accessibilityLabel: "Thermal display"
-                )
-                .accessibilityIdentifier("system-monitor.menu.item.thermal.display")
-            }
-        default:
-            EmptyView()
-        }
     }
 
     private func reorderMenu(_ metric: SystemMonitorMenuMetric) -> some View {
@@ -1783,7 +1524,7 @@ struct SystemMonitorMenuSettingsView: View {
                 .disabled(index == service.menuSettings.items.indices.last)
         } label: {
             Image(systemName: "line.3.horizontal")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(OnePlusColor.secondary)
                 .frame(width: 16, height: 20)
         }
         .menuStyle(.borderlessButton)
@@ -1793,20 +1534,6 @@ struct SystemMonitorMenuSettingsView: View {
         .help("Reorder \(metric.title)")
         .accessibilityLabel("Reorder \(metric.title)")
         .accessibilityIdentifier("system-monitor.menu.item.\(metric.rawValue).reorder")
-    }
-
-    private func settingControl<Content: View>(
-        _ label: String,
-        width: CGFloat,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.secondary)
-            content()
-        }
-        .frame(width: width, alignment: .leading)
     }
 
     private func menuSetting<Value>(
