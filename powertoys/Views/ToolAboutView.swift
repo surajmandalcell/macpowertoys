@@ -109,6 +109,7 @@ private struct MainMenuBarPlacement: View {
             Text("Menu bar").onePlusText(.caption)
             OnePlusSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
                              selection: $mode, accessibilityLabel: "Menu bar placement")
+                .fixedSize(horizontal: true, vertical: false)
                 .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
         }
         .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh(); changed() }
