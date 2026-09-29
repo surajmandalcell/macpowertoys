@@ -306,7 +306,12 @@ struct LogsWindowView: View {
                 }
             }
             if systemLogs.isLoading && page == .systemIssues && systemLogs.entries.isEmpty {
-                OnePlusCard { ProgressView("Reading system issues…").frame(maxWidth: .infinity).padding(OnePlusMetrics.spacing[8]) }
+                OnePlusCard {
+                    ProgressView("Reading system issues…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(OnePlusMetrics.spacing[8])
+                }
+                .frame(maxHeight: .infinity)
             } else if visibleRows.isEmpty {
                 OnePlusCard {
                     OnePlusEmptyState(
@@ -314,7 +319,9 @@ struct LogsWindowView: View {
                         systemImage: page == .internalLogs ? "doc.text" : "checkmark.circle",
                         caption: search.isEmpty ? "No entries match the selected levels." : "Clear the search or include another level."
                     )
+                    .frame(maxHeight: .infinity)
                 }
+                .frame(maxHeight: .infinity)
             } else {
                 OnePlusCard {
                     Table(visibleRows, selection: $selection, sortOrder: $sortOrder) {
@@ -323,13 +330,13 @@ struct LogsWindowView: View {
                                 .onePlusText(.mono)
                                 .textSelection(.enabled)
                         }
-                        .width(min: 92, ideal: 104)
+                        .width(100)
                         TableColumn("Level", value: \LogsRow.level) { row in
                             Label(row.level, systemImage: row.symbol)
                                 .foregroundStyle(levelColor(row))
                                 .textSelection(.enabled)
                         }
-                        .width(min: 82, ideal: 92)
+                        .width(96)
                         TableColumn("Source", value: \LogsRow.source) { row in
                             Text(row.source)
                                 .lineLimit(1)
@@ -337,14 +344,15 @@ struct LogsWindowView: View {
                                 .textSelection(.enabled)
                                 .help(row.source)
                         }
-                        .width(min: 150, ideal: 180)
+                        .width(min: 140, ideal: 160, max: 180)
                         TableColumn("Message", value: \LogsRow.message) { row in
                             Text(row.message)
                                 .lineLimit(1)
+                                .truncationMode(.tail)
                                 .textSelection(.enabled)
                                 .help(row.message)
                         }
-                        .width(min: 280, ideal: 430)
+                        .width(min: 320, ideal: 500)
                     }
                     .contextMenu(forSelectionType: String.self) { selected in
                         logContextMenu(selected)
@@ -468,8 +476,8 @@ struct LogsSettingsView: View {
         OnePlusPage {
             OnePlusPageHeader(title: "Settings", subtitle: "Log display and retention")
         } content: {
-            OnePlusSectionTitle("Logs")
             OnePlusCard {
+                OnePlusCardHeader("Logs")
                 OnePlusSettingRow("Font size", caption: "Used for selectable log detail text.") {
                     OnePlusSelect(
                         choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],

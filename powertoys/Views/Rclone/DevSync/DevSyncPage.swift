@@ -144,19 +144,18 @@ struct DevSyncPage: View {
     }
 
     private var emptyState: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "Dev Sync", subtitle: "Review every change before files move")
         } content: {
-            OnePlusCard {
-                OnePlusEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", caption: "Pair an internal development folder with an external drive.") {
-                    Button {
-                        manager.isPresentingSetup = true
-                    } label: {
-                        Label("Set Up Dev Sync", systemImage: "plus")
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.primary))
+            OnePlusEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", caption: "Pair an internal development folder with an external drive.") {
+                Button {
+                    manager.isPresentingSetup = true
+                } label: {
+                    Label("Set Up Dev Sync", systemImage: "plus")
                 }
+                .buttonStyle(OnePlusButtonStyle(.neutral))
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

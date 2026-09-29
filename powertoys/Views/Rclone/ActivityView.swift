@@ -85,18 +85,20 @@ struct ActivityView: View {
             if records.isEmpty {
                 OnePlusCard {
                     OnePlusEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
+                        .frame(maxHeight: .infinity)
                 }
+                .frame(maxHeight: .infinity)
             } else {
                 OnePlusCard {
                     OnePlusNativeTable(
                         columns: [
-                            OnePlusGridColumn("Time", width: 116),
-                            OnePlusGridColumn("Operation", width: 86),
-                            OnePlusGridColumn("Source", width: 170),
-                            OnePlusGridColumn("Destination", width: 170),
-                            OnePlusGridColumn("Size", width: 82, trailing: true),
-                            OnePlusGridColumn("Duration", width: 74, trailing: true),
-                            OnePlusGridColumn("Result", width: 82)
+                            OnePlusGridColumn("Time", width: 140),
+                            OnePlusGridColumn("Operation", width: 88),
+                            OnePlusGridColumn("Source", width: 200),
+                            OnePlusGridColumn("Destination", width: 200),
+                            OnePlusGridColumn("Size", width: 88, trailing: true),
+                            OnePlusGridColumn("Duration", width: 88, trailing: true),
+                            OnePlusGridColumn("Result", width: 108)
                         ],
                         rows: rows,
                         selection: $selection,
