@@ -69,7 +69,7 @@ private struct OnePlusNativeSearch: NSViewRepresentable {
         view.field.setAccessibilityLabel(prompt)
         view.field.setAccessibilityIdentifier(identifier)
         view.field.isEnabled = enabled
-        view.field.focusRingType = NSApp.isFullKeyboardAccessEnabled ? .exterior : .none
+        view.field.focusRingType = .none
         view.field.font = .systemFont(ofSize: fontSize)
         if view.field.stringValue != text { view.field.stringValue = text }
         view.hint.stringValue = hint ?? ""
