@@ -48,6 +48,7 @@ struct MacPowerToysApp: App {
 
     @MainActor
     private func configureApplication() {
+        _ = DiagnosticsMenuPanels.shared
         appearance.apply()
         appDelegate.configureApplication {
             DeepLinkHandler.shared.setOpenWindowAction(openWindow)
@@ -239,6 +240,7 @@ struct MacPowerToysApp: App {
             TrayPopoverView()
                 .utilityMotionPolicy()
                 .modelContainer(modelContainer)
+                .background(DiagnosticsMainMenuWindow())
         } label: {
             Image("MenuBarIcon")
                 .resizable()
