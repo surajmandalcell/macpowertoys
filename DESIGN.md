@@ -37,7 +37,8 @@ rounded: { segment: 3, nav-row: 5, icon-button: 5, control: 6, menu-tile: 6, car
 spacing: { scale: [2, 4, 6, 8, 10, 12, 16, 20, 24, 28], gutter: 24, task-manager-gutter: 20, card-gap: 16, card-padding: 16, content-top: 16 }
 geometry:
   title-row: 54
-  centerline: 27
+  centerline: 27            # traffic lights and sidebar title only
+  content-top: 58           # page title first line box; sidebar content starts at 54
   applet-titlebar: 40
   applet-centerline: 22
   sidebar-title-gap-after-zoom: 14
@@ -61,7 +62,9 @@ windows:
   awake: { size: [560, 500], applet: true }
   color-picker: { width: 420, height: [250, 460], applet: true }
   text-extractor: { width: 480, height: [270, 462], applet: true }
-menu-panel: { width: 356, top-bar: 35, tab: 26, tab-gap: 2, body-inset: 8, tile-radius: 6, tile-gap: 5, columns: 3 }
+menu-panel: { width: 356, max-height-fraction: 0.9, top-bar-padding: [10, 8, 6], tab-group-radius: 7, tab: 26, tab-gap: 2, body-inset: 8, tile-radius: 6, tile-gap: 5, columns: 3, action-button-height: 32 }
+popup-menu: { padding: 5, radius: 7, item: 28, item-compact: 24, item-radius: 4, item-padding: 9, max-visible-items: 12 }
+performance: { page-switch-ms: 100, table-rows-smooth: 1000 }
 texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [240, 150], card-grain: 0.14, menu-grain: 0.11, chart-dot-cell: 4 }
 motion: { hover: 0.10, selection: 0.14, content: 0.12, idle-animation: none }
 ---
@@ -87,8 +90,11 @@ shell of controls whose behavior stays native.
 
 Alignment is the first quality bar. Every container has one leading edge.
 Controls that share a row have one height and one text baseline. Every window
-aligns its traffic lights, sidebar title, page title, and header actions on one
-horizontal centerline.
+aligns its traffic lights and sidebar title on one horizontal centerline, and
+starts its sidebar content and its page content on one shared top line.
+
+Speed is part of the look. A sidebar page switch shows the new page in the
+next frame, and every table scrolls smoothly with thousands of rows.
 
 ## Sources of truth
 
@@ -172,11 +178,20 @@ Every window with a sidebar has a 54 pt title row. Its centerline is
 
 - the native close, minimize, and zoom buttons (zoom stays visible and
   disabled because windows are fixed);
-- the sidebar title, which starts 14 pt after the zoom button;
-- the first line of the page title;
-- page header actions (buttons, switches, selects).
+- the sidebar title, which starts 14 pt after the zoom button.
 
-Compact applets use a 40 pt titlebar with `C = 22`.
+The workspace side of the title row stays empty: it is a drag area where
+the window texture shows. Owner correction (2026-09-29): page content must
+not stick to the window top.
+
+### The content top line
+
+`T = 58` pt below the window's top edge. The sidebar's first element (search
+field or first navigation row) starts at 54. The page header's first line
+box starts at `T`, 4 pt lower, so the body never sits higher than the
+sidebar. Header actions center on the page title's first line.
+
+Compact applets keep their 40 pt titlebar with `C = 22`.
 
 ### Spacing and radius scales
 
@@ -261,19 +276,28 @@ x=0                                  x=200 (216)
 ### Page
 
 ```text
-C=27  Page title                          [action] [action]
+C=27  (empty drag area, texture only)
+T=58  Page title                          [action] [action]
       Subtitle (optional)
       Tab   Tab 12   Tab                         [trailing tab tools]
       ------------------------------------------------------------ lineSoft
       16 pt
-      [ card ]  16  [ card ]
+      [ toolbar: search, filters ]   (fixed)
+      [ card ]  16  [ card ]         (scrolls)
+      [ footer / status row ]        (fixed)
 ```
 
-- Content gutter: 24 pt on both sides (Task Manager uses 20).
-- The first line of the page title centers on `C`. The subtitle sits 2 pt
-  below the title line. Header actions center on `C` and end 24 pt from the
-  edge.
-- The header, subtitle, and tabs stay fixed. Only the content below scrolls.
+- Content gutter: 24 pt on both sides (Task Manager uses 20). Every body
+  element, including embedded settings, starts on the page title's leading
+  edge. Nothing adds a second inset.
+- The first line box of the page title starts at `T`. The subtitle sits 2 pt
+  below the title line. Header actions center on the title's first line and
+  end 24 pt from the edge.
+- Fixed regions: header, subtitle, tabs, page toolbars (search, filter, and
+  action rows), inspectors, and footers or status rows. Scrolling region:
+  on settings and card pages, the card stack; on table and list pages, only
+  the rows inside the table card, while its header row stays fixed. A page
+  never scrolls its inspector, toolbar, or footer together with its rows.
 - Tab strip: 36 pt high below the header, 22 pt between tabs, labels start on
   the gutter, a 2 pt accent underline under the selected tab only, counts in
   9 pt SF Mono 6 pt after the label, and one full-width `lineSoft` bottom
@@ -319,7 +343,9 @@ Use only these. Names are the package API.
 | `.small` size | 24 pt high, 11 pt text, radius 5. For compact and menu-panel headers. |
 | `OnePlusSwitchStyle` | A `Toggle` style. 29 x 17 capsule, 1 pt line, 11 pt knob, 12 pt travel. Off: `selection` track and `secondary` knob. On: `primaryFill` track and `primaryInk` knob. |
 | `OnePlusSegmented` | Radio group. 28 pt high (24 compact), 2 pt inset, 2 pt gaps, radius 6 outer and 3 inner, `track` fill, 1 pt `line`, selected segment `selectedControl` with `ink` text. Supports the `Default (value) / On / Off` pattern. |
-| `OnePlusSelect` | A styled trigger (28 pt, radius 6, `raised`, 1 pt `line`, 10 pt padding, trailing chevron) that opens a native `Menu`. Its width follows the control column. |
+| `OnePlusSelect` | A styled trigger (28 pt, radius 6, `raised`, 1 pt `line`, 10 pt padding, trailing chevron) that opens `OnePlusPopupMenu`. Its width follows the control column. |
+| `OnePlusPopupMenu` | Custom dark popup for selects and menu buttons (owner correction: native glass menus do not fit). A borderless panel below the trigger (above when there is no room), at least the trigger width, 5 pt padding, radius 7, `raised` fill, 1 pt `line`, one soft shadow. Items 28 pt (24 compact), radius 4, 9 pt horizontal padding, checkmark column for the selected value, hover and keyboard highlight `selection`, disabled items at 0.38, section captions and separators. Keyboard: arrows, Return, Escape, type-select. Scrolls after 12 items. Closes on outside click, Escape, window move, or app deactivation. Right-click context menus stay native. |
+| `OnePlusMenuButton` | A ghost or neutral button with a trailing chevron that opens `OnePlusPopupMenu` with actions ("More", "Export", "Presets"). |
 | `OnePlusStepperField` | A native text field with native stepper behavior in one 28 pt frame, an optional 9 pt SF Mono unit, and a 17 pt arrow column behind a 1 pt separator. |
 | `OnePlusTextField` | Native `TextField` in a 28 pt `field` bezel, radius 6, 1 pt `line`, 8 pt padding. Focus: `fieldFocus` fill and a 1 pt inset neutral line, no outer ring, no size change. Error: `dangerLine` plus a caption below. |
 | `OnePlusSearchField` | Native search field in the same bezel with a leading 13 pt magnifier, a clear button, and an optional trailing shortcut hint. 32 pt in sidebars, 28 pt in pages. Escape clears first. |
@@ -351,8 +377,9 @@ bounds and add a caption.
 
 A surface fails review if any of these is missing where it applies:
 
-- Menus are native `NSMenu`s: select popups, context menus on every list row,
-  tile, and file item, and the app's menu bar commands.
+- Select popups and menu buttons use `OnePlusPopupMenu` (custom, with full
+  keyboard behavior). Context menus on every list row, tile, and file item,
+  and the app's menu bar commands, stay native `NSMenu`s.
 - Text input is native: selection, undo, IME, Return commits, and Escape
   cancels or clears. Spell checking is off in code and rule editors.
 - Lists and tables: arrow-key selection, Return opens, Space shows Quick Look
@@ -386,15 +413,20 @@ The Task Manager panel is the pattern for every menu-bar panel: the combined
 MacPowerToys panel, the Task Manager panel, the Portman panel, and any
 separate tool panel.
 
-- Shell: 356 pt wide, content-sized, capped at the visible screen height.
+- Shell: 356 pt wide, content-sized, capped at 90% of the visible screen
+  height (owner correction: never cut content short to keep a panel small).
   Only the body scrolls. One opaque `sidebar` surface. No blur, glass, or
   stacked shells.
-- Top bar: 35 pt with padding 5 top, 8 horizontal, 4 bottom. An icon tab
-  strip on the leading side: 26 pt square tabs, 2 pt gaps, radius 5, 13 pt
-  glyphs. Rest `secondary`; hover `ink` on a faint fill; selected `ink` on
-  `selection`. Trailing: `Open App` as a small ghost text button (70 x 24, the
-  main panel's text style), then optional small ghost icon buttons (Settings,
-  Quit).
+- Top bar: padding 10 top, 8 horizontal, 6 bottom (owner correction: more
+  room at the top). An icon tab group on the leading side: the tabs sit in
+  one container (`track` fill, 1 pt `line`, radius 7, 2 pt inset), 26 pt
+  square tabs, 2 pt gaps, radius 5, 13 pt glyphs. Rest `secondary`; hover
+  `ink` on a faint fill; selected `ink` on `selection`. Trailing: `Open App`
+  as a small ghost text button (70 x 24, the main panel's text style), then
+  optional small ghost icon buttons (Settings, Quit).
+- Action buttons (Pick Color, Extract Text, Ruler): one row of equal
+  buttons, 32 pt high, glyph and label on the same line, centered, radius 6,
+  tile fill and line. Never stack the glyph above the label.
 - Body: padding 3 top, 8 horizontal, 8 bottom. Content width 338.
 - Tiles (`OnePlusMenuTile`): radius 6, one step above `panel` (`#262626`
   dark), 1 pt `line`, 7 x 8 padding, grain 0.11, 5 pt grid gaps, three
@@ -513,8 +545,9 @@ controls for their bodies.
 A window, panel, or sheet is accepted only after it passes all of these in
 both appearances:
 
-1. Centerline: traffic lights, sidebar title, page title, and header actions
-   share `C`.
+1. Top lines: traffic lights and the sidebar title share `C`; the page
+   title's first line box starts at `T`, never above the sidebar's first
+   element.
 2. One leading edge per container. Tab labels, section titles, and card
    edges share the gutter.
 3. Controls in one row share height and baseline. The control column never
@@ -528,6 +561,13 @@ both appearances:
 7. Every native behavior contract item that applies is present.
 8. No idle CPU: with the window open and data unchanged, the process stays
    near 0% CPU and adds no timers.
-9. A capture of the running signed build, compared at the same scale with
+9. Speed: a sidebar page switch commits its new page within 100 ms (no
+   blocking work on the main thread in `body`, `onAppear`, or `init`; data
+   loads off the main thread and fills in); tables with 1,000 or more rows
+   scroll without dropped frames (native row reuse, no per-row tooltips,
+   overlays, GeometryReaders, or formatters created in `body`).
+10. Fixed regions: toolbars, inspectors, and footers stay put while rows
+    scroll.
+11. A capture of the running signed build, compared at the same scale with
    the reference, shows no material difference in spacing, alignment, or
    density.
