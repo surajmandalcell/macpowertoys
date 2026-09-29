@@ -134,10 +134,9 @@ enum SystemMonitorPage: String, CaseIterable, Identifiable {
 
 struct SystemMonitorWindowView: View {
     private let reportSnapshot: [TaskManagerReportCategory]
-    private let remoteProfilesOverride: [SystemMonitorRemoteProfile]?
+    private let loadsRemoteProfiles: Bool
     @State private var service = SystemMonitorService.shared
-    @State private var overviewSampler = SystemMonitorProcessSampler()
-    @State private var overviewProcesses: [SystemMonitorProcess] = []
+    @State private var remoteProfiles: [SystemMonitorRemoteProfile]
     @AppStorage("systemMonitor.windowPage") private var pageID = SystemMonitorPage.overview.rawValue
     @AppStorage("systemMonitor.processHierarchy") private var processHierarchy = false
     @AppStorage("systemMonitor.historyMinutes") private var historyMinutes = 2
@@ -152,13 +151,11 @@ struct SystemMonitorWindowView: View {
         remoteProfiles: [SystemMonitorRemoteProfile]? = nil
     ) {
         self.reportSnapshot = reportSnapshot
-        remoteProfilesOverride = remoteProfiles
+        loadsRemoteProfiles = remoteProfiles == nil
+        _remoteProfiles = State(initialValue: remoteProfiles ?? [])
     }
 
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
-    private var remoteProfiles: [SystemMonitorRemoteProfile] {
-        remoteProfilesOverride ?? SystemMonitorRemoteProfiles.load()
-    }
     private var recentHistory: [SystemMonitorSample] {
         Array(service.history.suffix(max(60, historyMinutes * 60)))
     }
@@ -167,8 +164,9 @@ struct SystemMonitorWindowView: View {
         OnePlusWindowRoot(canvas: .systemMonitor) {
             sidebar
         } content: {
-            VStack(spacing: 0) {
+            OnePlusPage(scrolls: false) {
                 header
+            } content: {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .utilityContentTransition(value: pageID)
@@ -186,9 +184,13 @@ struct SystemMonitorWindowView: View {
             guard let destination = SystemMonitorPage.resolve(requestedPage) else { return }
             pageID = destination.rawValue
         }
-        .task(id: pageID) {
-            guard page == .overview else { return }
-            await sampleOverviewProcesses()
+        .task {
+            guard loadsRemoteProfiles else { return }
+            let profiles = await Task.detached(priority: .userInitiated) {
+                SystemMonitorRemoteProfiles.load()
+            }.value
+            guard !Task.isCancelled else { return }
+            remoteProfiles = profiles
         }
         .overlay(alignment: .topLeading) {
             Button("") {
@@ -331,39 +333,43 @@ struct SystemMonitorWindowView: View {
     @ViewBuilder
     private var pageContent: some View {
         switch page {
-        case .overview: scrollPage { overviewPage }
+        case .overview:
+            SystemMonitorObservationScope { scrollPage { overviewPage } }
         case .processes:
             SystemMonitorProcessesView(
                 search: $processSearch,
                 hierarchy: $processHierarchy,
                 showsToolbar: false
             )
-            .padding(.horizontal, TaskManagerTheme.contentInset)
-            .padding(.top, TaskManagerTheme.pageTopInset)
-            .padding(.bottom, 18)
-        case .cpu: scrollPage { cpuPage }
-        case .gpu: scrollPage { gpuPage }
-        case .memory: scrollPage { memoryPage }
-        case .network: scrollPage { networkPage }
-        case .disk: scrollPage { diskPage }
-        case .battery: scrollPage { batteryPage }
-        case .sensors: scrollPage { sensorsPage }
+        case .cpu:
+            SystemMonitorObservationScope { scrollPage { cpuPage } }
+        case .gpu:
+            SystemMonitorObservationScope { scrollPage { gpuPage } }
+        case .memory:
+            SystemMonitorObservationScope { scrollPage { memoryPage } }
+        case .network:
+            SystemMonitorObservationScope { scrollPage { networkPage } }
+        case .disk:
+            SystemMonitorObservationScope { scrollPage { diskPage } }
+        case .battery:
+            SystemMonitorObservationScope { scrollPage { batteryPage } }
+        case .sensors:
+            SystemMonitorObservationScope { scrollPage { sensorsPage } }
         case .remote:
-            SystemMonitorRemoteView(addRequest: remoteAddRequest)
-                .padding(.horizontal, TaskManagerTheme.contentInset)
-                .padding(.top, TaskManagerTheme.pageTopInset)
-                .padding(.bottom, 18)
+            SystemMonitorRemoteView(
+                addRequest: remoteAddRequest,
+                initialProfiles: remoteProfiles
+            ) { remoteProfiles = $0 }
         case .report:
             TaskManagerSystemReportView(
                 search: $reportSearch,
                 requestedAction: $reportAction,
                 initialCategories: reportSnapshot
             )
-                .padding(.horizontal, TaskManagerTheme.contentInset)
-                .padding(.top, TaskManagerTheme.pageTopInset)
-                .padding(.bottom, 18)
-        case .about: scrollPage { aboutPage }
-        case .settings: settingsPage
+        case .about:
+            scrollPage { aboutPage }
+        case .settings:
+            scrollPage { SystemMonitorSettingsContent() }
         }
     }
 
@@ -372,9 +378,6 @@ struct SystemMonitorWindowView: View {
             content()
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .contentMargins(.horizontal, TaskManagerTheme.contentInset, for: .scrollContent)
-        .contentMargins(.top, TaskManagerTheme.pageTopInset, for: .scrollContent)
-        .contentMargins(.bottom, 18, for: .scrollContent)
         .thinScrollIndicators()
     }
 
@@ -402,7 +405,12 @@ struct SystemMonitorWindowView: View {
             remoteOverview
 
             LazyVGrid(columns: [GridItem(.flexible(minimum: 0), spacing: 10), GridItem(.flexible(minimum: 0))], spacing: 10) {
-                topProcesses
+                SystemMonitorOverviewProcessesView {
+                    pageID = SystemMonitorPage.processes.rawValue
+                } onSelect: { process in
+                    pageID = SystemMonitorPage.processes.rawValue
+                    processSearch = String(process.pid)
+                }
                 memoryAllocation
             }
         }
@@ -522,48 +530,6 @@ struct SystemMonitorWindowView: View {
                 .scrollIndicators(.visible)
                 .thinScrollIndicators()
             }
-        }
-    }
-
-    private var topProcesses: some View {
-        let sorted = Array(SystemMonitorProcessSorting.sorted(overviewProcesses, by: .cpu, descending: true).prefix(5))
-        return VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("Top processes", action: "View all") { pageID = SystemMonitorPage.processes.rawValue }
-            TaskManagerPanel {
-                VStack(spacing: 0) {
-                    tableHeader([("Process", nil), ("CPU", 62), ("Memory", 82)])
-                    ForEach(sorted) { process in
-                        Button {
-                            pageID = SystemMonitorPage.processes.rawValue
-                            processSearch = String(process.pid)
-                        } label: {
-                            HStack(spacing: 8) {
-                                processIdentity(process).frame(maxWidth: .infinity, alignment: .leading)
-                                Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
-                                    .frame(width: 62, alignment: .trailing)
-                                Text(process.residentBytes == 0 ? "—" : Self.bytes(process.residentBytes))
-                                    .frame(width: 82, alignment: .trailing)
-                            }
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(TaskManagerTheme.secondary)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
-                        .focusEffectDisabled()
-                        .onePlusTableRow()
-                        if process.id != sorted.last?.id {
-                            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                        }
-                    }
-                    if sorted.isEmpty {
-                        Text("—")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(TaskManagerTheme.muted)
-                            .frame(maxWidth: .infinity, minHeight: 165)
-                    }
-                }
-            }
-            .frame(height: 203)
         }
     }
 
@@ -1007,12 +973,6 @@ struct SystemMonitorWindowView: View {
         }
     }
 
-    private var settingsPage: some View {
-        OnePlusPage(header: { EmptyView() }) {
-            SystemMonitorSettingsContent()
-        }
-    }
-
     private var aboutPage: some View {
         VStack(spacing: 16) {
             TaskManagerPanel(textured: true) {
@@ -1091,31 +1051,6 @@ struct SystemMonitorWindowView: View {
         .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         .help(label)
         .accessibilityLabel(label)
-    }
-
-    private func tableHeader(_ columns: [(String, CGFloat?)]) -> some View {
-        HStack(spacing: 8) {
-            ForEach(columns.indices, id: \.self) { index in
-                Text(columns[index].0.uppercased())
-                    .font(.system(size: 8))
-                    .tracking(0.4)
-                    .foregroundStyle(TaskManagerTheme.muted)
-                    .frame(width: columns[index].1, alignment: columns[index].1 == nil ? .leading : .trailing)
-                    .frame(maxWidth: columns[index].1 == nil ? .infinity : nil, alignment: .leading)
-            }
-        }
-        .onePlusTableHeader()
-    }
-
-    private func processIdentity(_ process: SystemMonitorProcess) -> some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.white.opacity(0.055))
-                .overlay { Image(systemName: "app").font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary) }
-                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(TaskManagerTheme.line) }
-                .frame(width: 18, height: 18)
-            Text(process.name).font(.system(size: 10)).foregroundStyle(TaskManagerTheme.ink).lineLimit(1)
-        }
     }
 
     private func allocationRow(_ title: String, value: String) -> some View {
@@ -1230,14 +1165,6 @@ struct SystemMonitorWindowView: View {
     }
 
     private func percent(_ value: Double?) -> String { value.map { "\(Int($0.rounded()))%" } ?? "—" }
-
-    private func sampleOverviewProcesses() async {
-        guard page == .overview else { return }
-        while !Task.isCancelled {
-            overviewProcesses = await overviewSampler.sample()
-            try? await Task.sleep(for: .seconds(3))
-        }
-    }
 
     nonisolated private static func decimal(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(value < 10 ? 2 : 1)))
@@ -1531,7 +1458,6 @@ struct SystemMonitorSettingsContent: View {
         .menuIndicator(.hidden)
         .focusEffectDisabled()
         .fixedSize()
-        .help("Reorder \(metric.title)")
         .accessibilityLabel("Reorder \(metric.title)")
         .accessibilityIdentifier("system-monitor.menu.item.\(metric.rawValue).reorder")
     }

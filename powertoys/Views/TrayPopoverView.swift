@@ -1246,18 +1246,20 @@ private struct TaskManagerMenuMeasuredHeightKey: PreferenceKey {
 }
 
 struct SystemMonitorMenuPopoverView: View {
-    private let remoteProfiles: [SystemMonitorRemoteProfile]
+    private let loadsRemoteProfiles: Bool
     private let onPreferredHeight: (CGFloat) -> Void
+    @State private var remoteProfiles: [SystemMonitorRemoteProfile]
     @State private var preferredHeight: CGFloat
 
     init(
         remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
         onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
     ) {
-        let profiles = remoteProfiles ?? SystemMonitorRemoteProfiles.load()
-        self.remoteProfiles = profiles
+        let profiles = remoteProfiles ?? []
+        loadsRemoteProfiles = remoteProfiles == nil
         self.onPreferredHeight = onPreferredHeight
-        _preferredHeight = State(initialValue: TaskManagerMenuLayout.initialHeight(
+        _remoteProfiles = State(initialValue: profiles)
+        _preferredHeight = State(initialValue: TaskManagerMenuLayout.initialHomeHeight(
             profileCount: profiles.count
         ))
     }
@@ -1270,6 +1272,14 @@ struct SystemMonitorMenuPopoverView: View {
         }
         .frame(width: TaskManagerMenuLayout.width)
         .utilityMotionPolicy()
+        .task {
+            guard loadsRemoteProfiles else { return }
+            let profiles = await Task.detached(priority: .userInitiated) {
+                SystemMonitorRemoteProfiles.load()
+            }.value
+            guard !Task.isCancelled else { return }
+            remoteProfiles = profiles
+        }
     }
 }
 
@@ -1281,10 +1291,10 @@ struct SystemMonitorTrayView: View {
     private let onPreferredHeight: (CGFloat) -> Void
 
     init(
-        remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
+        remoteProfiles: [SystemMonitorRemoteProfile] = [],
         onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
     ) {
-        self.remoteProfiles = remoteProfiles ?? SystemMonitorRemoteProfiles.load()
+        self.remoteProfiles = remoteProfiles
         self.onPreferredHeight = onPreferredHeight
     }
 
@@ -1306,10 +1316,12 @@ struct SystemMonitorTrayView: View {
             }
             .accessibilityIdentifier("system-monitor.menu.open-app")
         } content: {
-            switch page {
-            case .home: homePage
-            case .processes: TaskManagerMenuProcessesView()
-            default: detailPage
+            SystemMonitorObservationScope {
+                switch page {
+                case .home: homePage
+                case .processes: TaskManagerMenuProcessesView()
+                default: detailPage
+                }
             }
         }
         .background(GeometryReader { proxy in
@@ -1326,6 +1338,9 @@ struct SystemMonitorTrayView: View {
         }
         .onChange(of: pageID) { _, _ in
             service.updateDetailed(owner: "tray", metrics: page.metrics)
+            reportPreferredHeight(for: page)
+        }
+        .onChange(of: remoteProfiles.count) { _, _ in
             reportPreferredHeight(for: page)
         }
         .onDisappear { service.stopDetailed(owner: "tray") }
@@ -1840,18 +1855,21 @@ private struct TaskManagerRemoteMenuCard: View {
     }
 }
 
+private struct TaskManagerMenuProcessRequest: Hashable {
+    let generation: Int
+    let search: String
+}
+
 private struct TaskManagerMenuProcessesView: View {
     @State private var sampler = SystemMonitorProcessSampler()
     @State private var processes: [SystemMonitorProcess] = []
+    @State private var rows: [SystemMonitorProcessHierarchy.Row] = []
+    @State private var processCount = 0
+    @State private var generation = 0
     @State private var search = ""
 
-    private var filtered: [SystemMonitorProcess] {
-        let matching = processes.filter {
-            search.isEmpty
-                || $0.name.localizedCaseInsensitiveContains(search)
-                || String($0.pid).contains(search)
-        }
-        return Array(SystemMonitorProcessSorting.sorted(matching, by: .cpu, descending: true).prefix(9))
+    private var request: TaskManagerMenuProcessRequest {
+        TaskManagerMenuProcessRequest(generation: generation, search: search)
     }
 
     var body: some View {
@@ -1873,36 +1891,39 @@ private struct TaskManagerMenuProcessesView: View {
                     .frame(height: 25)
                     .background(TaskManagerTheme.desktop.opacity(0.12))
 
-                    ForEach(filtered) { process in
-                        Button { openProcesses() } label: {
-                            HStack(spacing: 7) {
-                                Image(systemName: "app")
-                                    .font(.system(size: 8))
-                                    .frame(width: 16, height: 16)
-                                    .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 3))
-                                    .overlay { RoundedRectangle(cornerRadius: 3).strokeBorder(TaskManagerTheme.line) }
-                                Text(process.name)
-                                    .font(.system(size: 9.5))
-                                    .lineLimit(1)
-                                Spacer(minLength: 4)
-                                Text(process.cpuPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "—")
-                                    .frame(width: 52, alignment: .trailing)
-                                Text(ByteCountFormatter.string(fromByteCount: Int64(min(process.residentBytes, UInt64(Int64.max))),
-                                                                   countStyle: .memory))
-                                    .frame(width: 72, alignment: .trailing)
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(rows) { row in
+                                Button { openProcesses() } label: {
+                                    HStack(spacing: 7) {
+                                        Image(systemName: "app")
+                                            .font(.system(size: 8))
+                                            .frame(width: 16, height: 16)
+                                        Text(row.process.name)
+                                            .font(.system(size: 9.5))
+                                            .lineLimit(1)
+                                        Spacer(minLength: 4)
+                                        Text(row.cpuText)
+                                            .frame(width: 52, alignment: .trailing)
+                                        Text(row.memoryText)
+                                            .frame(width: 72, alignment: .trailing)
+                                    }
+                                    .font(.system(size: 8.5, design: .monospaced))
+                                    .foregroundStyle(TaskManagerTheme.secondary)
+                                    .padding(.horizontal, 9)
+                                    .frame(height: 28)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .focusEffectDisabled()
+                                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                             }
-                            .font(.system(size: 8.5, design: .monospaced))
-                            .foregroundStyle(TaskManagerTheme.secondary)
-                            .padding(.horizontal, 9)
-                            .frame(height: 28)
-                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
-                        .focusEffectDisabled()
-                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                     }
+                    .frame(height: 232)
+                    .thinScrollIndicators()
 
-                    Button("All \(processes.count) processes  →") { openProcesses() }
+                    Button("All \(processCount) processes  →") { openProcesses() }
                         .font(.system(size: 8))
                         .foregroundStyle(TaskManagerTheme.muted)
                         .buttonStyle(.plain)
@@ -1912,13 +1933,28 @@ private struct TaskManagerMenuProcessesView: View {
                 }
             }
         }
-        .padding(10)
         .task {
             while !Task.isCancelled {
                 processes = await sampler.sample()
+                processCount = processes.count
+                generation &+= 1
                 try? await Task.sleep(for: .seconds(2))
             }
         }
+        .task(id: request) { await prepareRows(request) }
+    }
+
+    private func prepareRows(_ request: TaskManagerMenuProcessRequest) async {
+        let result = await SystemMonitorProcessRows.prepareOffMain(
+            processes,
+            search: request.search,
+            hierarchy: false,
+            column: .cpu,
+            descending: true,
+            limit: 9
+        )
+        guard !Task.isCancelled, self.request == request else { return }
+        rows = result.rows
     }
 
     private func openProcesses() {

@@ -51,6 +51,18 @@ typealias TaskManagerSelect<Value: Hashable> = OnePlusSelect<Value>
 typealias TaskManagerSearchField = OnePlusSearchField
 typealias TaskManagerSegments<Value: Hashable> = OnePlusSegments<Value>
 
+struct SystemMonitorObservationScope<Content: View>: View {
+    private let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        content()
+    }
+}
+
 enum TaskManagerMetricText {
     static func parts(_ text: String) -> (value: String, unit: String) {
         guard !text.isEmpty else { return ("", "") }

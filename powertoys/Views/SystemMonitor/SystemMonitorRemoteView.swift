@@ -4,7 +4,9 @@ import SwiftUI
 
 struct SystemMonitorRemoteView: View {
     let addRequest: Int
-    @State private var profiles = SystemMonitorRemoteProfiles.load()
+    private let loadsProfiles: Bool
+    private let onProfilesChange: ([SystemMonitorRemoteProfile]) -> Void
+    @State private var profiles: [SystemMonitorRemoteProfile]
     @State private var poller = SystemMonitorRemotePoller()
     @State private var connectedID: String?
     @State private var reading: SystemMonitorRemoteReading?
@@ -14,8 +16,15 @@ struct SystemMonitorRemoteView: View {
     @State private var refreshGeneration = 0
     @State private var editor: SystemMonitorRemoteProfile?
 
-    init(addRequest: Int = 0) {
+    init(
+        addRequest: Int = 0,
+        initialProfiles: [SystemMonitorRemoteProfile]? = nil,
+        onProfilesChange: @escaping ([SystemMonitorRemoteProfile]) -> Void = { _ in }
+    ) {
         self.addRequest = addRequest
+        loadsProfiles = initialProfiles == nil
+        self.onProfilesChange = onProfilesChange
+        _profiles = State(initialValue: initialProfiles ?? [])
     }
 
     private var activeProfile: SystemMonitorRemoteProfile? {
@@ -23,33 +32,44 @@ struct SystemMonitorRemoteView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                remoteHeader
-                if profiles.isEmpty {
-                    emptyState
-                } else {
-                    LazyVGrid(
-                        columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())],
-                        spacing: 10
-                    ) {
-                        ForEach(profiles) { profile in remoteCard(profile) }
+        VStack(alignment: .leading, spacing: 10) {
+            remoteHeader
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.system(size: 10))
+                    .foregroundStyle(TaskManagerTheme.accent)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(TaskManagerTheme.card,
+                                in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    if profiles.isEmpty {
+                        emptyState
+                    } else {
+                        LazyVGrid(
+                            columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())],
+                            spacing: 10
+                        ) {
+                            ForEach(profiles) { profile in remoteCard(profile) }
+                        }
+                        connectionSettings
                     }
-                    connectionSettings
-                }
-                if let errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 10))
-                        .foregroundStyle(TaskManagerTheme.accent)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(TaskManagerTheme.card,
-                                    in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
                 }
             }
+            .thinScrollIndicators()
         }
-        .thinScrollIndicators()
         .foregroundStyle(TaskManagerTheme.ink)
+        .task {
+            guard loadsProfiles else { return }
+            let loaded = await Task.detached(priority: .userInitiated) {
+                SystemMonitorRemoteProfiles.load()
+            }.value
+            guard !Task.isCancelled else { return }
+            profiles = loaded
+            onProfilesChange(loaded)
+        }
         .task(id: taskID) { await poll() }
         .onChange(of: addRequest) { _, _ in
             editor = SystemMonitorRemoteProfile(name: "", host: "")
@@ -245,6 +265,7 @@ struct SystemMonitorRemoteView: View {
             profiles.append(profile)
         }
         SystemMonitorRemoteProfiles.save(profiles)
+        onProfilesChange(profiles)
         editor = nil
         errorMessage = nil
         if wasConnected || shouldConnect { connect(profile.id) }
@@ -254,6 +275,7 @@ struct SystemMonitorRemoteView: View {
         if connectedID == id { disconnect() }
         profiles.removeAll { $0.id == id }
         SystemMonitorRemoteProfiles.save(profiles)
+        onProfilesChange(profiles)
         editor = nil
     }
 

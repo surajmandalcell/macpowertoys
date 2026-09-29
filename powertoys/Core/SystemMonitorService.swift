@@ -1504,7 +1504,7 @@ final class SystemMonitorMenuController: NSObject {
         popover.contentSize = NSSize(
             width: TaskManagerMenuLayout.width,
             height: TaskManagerMenuLayout.initialHeight(
-                profileCount: SystemMonitorRemoteProfiles.load(defaults: defaults).count,
+                profileCount: 0,
                 defaults: defaults
             )
         )
