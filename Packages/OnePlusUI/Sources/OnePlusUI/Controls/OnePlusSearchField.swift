@@ -150,7 +150,7 @@ final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     func controlTextDidBeginEditing(_ notification: Notification) {
         focused = true; needsDisplay = true
         (field.currentEditor() as? NSTextView)?.selectedTextAttributes = [
-            .backgroundColor: NSColor(OnePlusColor.accent).withAlphaComponent(0.28),
+            .backgroundColor: NSColor(OnePlusColor.selection),
             .foregroundColor: NSColor(OnePlusColor.ink)
         ]
     }

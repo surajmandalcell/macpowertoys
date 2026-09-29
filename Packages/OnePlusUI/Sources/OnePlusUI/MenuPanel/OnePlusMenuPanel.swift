@@ -52,6 +52,7 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
             .onePlusDensity(.compact)
+            .onePlusNeutralControls()
     }
 }
 

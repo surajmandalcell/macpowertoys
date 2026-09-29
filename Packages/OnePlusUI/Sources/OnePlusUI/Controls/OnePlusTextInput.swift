@@ -156,7 +156,7 @@ public struct OnePlusTextEditor: NSViewRepresentable {
         editor.font = .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: density), weight: .regular)
         editor.textColor = NSColor(OnePlusColor.controlInk)
         editor.insertionPointColor = NSColor(OnePlusColor.ink)
-        editor.selectedTextAttributes = [.backgroundColor: NSColor(OnePlusColor.accent).withAlphaComponent(0.28), .foregroundColor: NSColor(OnePlusColor.ink)]
+        editor.selectedTextAttributes = [.backgroundColor: NSColor(OnePlusColor.selection), .foregroundColor: NSColor(OnePlusColor.ink)]
         editor.setAccessibilityLabel(label)
         (scroll as? OnePlusEditorScrollView)?.updateSurface()
         scroll.alphaValue = enabled ? 1 : OnePlusMetrics.disabledOpacity
