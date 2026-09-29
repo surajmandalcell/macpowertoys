@@ -1,9 +1,32 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import OnePlusUI
 
 @MainActor
 final class OnePlusChromeTests: XCTestCase {
+    func testCanvasUsesVisibleHeightWithoutAddingTheTitlebar() {
+        for canvas in [OnePlusWindowCanvas.systemMonitor, .diskExplorer, .awake, .colorPicker, .textExtractor] {
+            let height = canvas.heightRange?.upperBound ?? canvas.size.height
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: canvas.size),
+                                  styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+                                  backing: .buffered, defer: false)
+            let host = NSHostingView(rootView:
+                OnePlusWindowRoot(canvas: canvas) { Color.clear } content: { Color.clear }
+                    .frame(height: height).onePlusFixedCanvas(canvas))
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
+            XCTAssertEqual(host.fittingSize.width, canvas.size.width)
+            XCTAssertEqual(host.fittingSize.height, height)
+            NotificationCenter.default.post(name: NSWindow.didResizeNotification, object: window)
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            XCTAssertEqual(window.frame.height, height)
+            let zoom = window.standardWindowButton(.zoomButton)!
+            XCTAssertEqual(height - zoom.convert(zoom.bounds, to: nil).midY, canvas.centerline, accuracy: 0.5)
+        }
+    }
+
     func testRepeatedNativeLayoutDoesNotWriteWindowPropertiesSynchronously() {
         let window = ChromeCountingWindow(contentRect: NSRect(x: -2000, y: -2000, width: 420, height: 300),
                                           styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
