@@ -30,19 +30,11 @@ struct RcloneSettingsView: View {
 
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                syncEngineCard
-                    .frame(maxWidth: .infinity)
-                transfersCard
-                    .frame(maxWidth: .infinity)
-            }
+            syncEngineCard
+            transfersCard
             ignorePatternsCard
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                retriesCard
-                    .frame(maxWidth: .infinity)
-                rcloneCard
-                    .frame(maxWidth: .infinity)
-            }
+            retriesCard
+            rcloneCard
         }
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
