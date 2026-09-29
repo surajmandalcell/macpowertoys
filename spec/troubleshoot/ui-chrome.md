@@ -1,5 +1,18 @@
 # UI Chrome Troubleshooting
 
+## Applet Settings Embedding, 2026-09-29
+
+- **Symptom:** Embedded settings collapse or have extra gutters when the
+  main tool page and its settings content both own scrolling and padding.
+- **Invariant:** Awake, Color Picker, Text Extractor, and Portman each expose
+  one cards-only settings stack with 16pt gaps and inherited density.
+  Applet window hosts use `OnePlusPage(layout: .applet)` for 16pt gutters.
+  The main tool page supplies its own page. The Portman menu shell supplies
+  its own scrolling, search, compact density, and 28pt controls.
+- **Check:** Dispatch directly to the shared settings types. Remove the old
+  launcher-only Awake preferences view after moving its preset editor.
+  Check all cards, the last control, and the floating gear in both hosts.
+
 ## Applet And Portman Screenshot Review, 2026-09-29
 
 - **Symptom:** Round 1 applet captures show gears crossing card borders,
