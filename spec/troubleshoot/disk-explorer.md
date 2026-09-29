@@ -154,6 +154,11 @@
   measured weights arrive. Keep scan status outside the plotted region;
   hovered names and sizes use the map's existing footer caption.
   Reduce Motion stays immediate.
+  Reserve all three ring bands during scanning so discovery cannot change
+  the band width. A large Other segment is valid while the path cutoff
+  hides late-named folders. On completion, merge targets smaller than a
+  control into Other, preserving their measured total. Keep scanner file
+  aggregates explicit. Keyboard selection follows the visible targets.
 - **Check:** `testTreemapKeepsTileGroupsWhenMeasuredSizesCross` fails with the
   prior weight-based grouping. `testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross`
   covers the 80-tile and 24-segment live cutoffs plus final selection of a

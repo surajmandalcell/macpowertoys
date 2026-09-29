@@ -47,16 +47,7 @@ final class DiskExplorerRenderTests: XCTestCase {
     }
 
     @MainActor func testResultTabsInBothAppearances() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-        for index in 0..<9 {
-            let folder = root.appendingPathComponent("Folder \(index + 1)")
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try Data(repeating: UInt8(index), count: (10 - index) * 4096)
-                .write(to: folder.appendingPathComponent("Document \(index + 1).bin"))
-        }
-        let result = try DiskExplorerScanner.scan(root)
+        let result = largeHomeFixture()
         let warningResult = DiskScanResult(root: result.root, largestFiles: result.largestFiles,
                                            unreadableCount: 701,
                                            skippedVolumeCount: result.skippedVolumeCount,
@@ -96,5 +87,34 @@ final class DiskExplorerRenderTests: XCTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
         }
+    }
+
+    private func largeHomeFixture() -> DiskScanResult {
+        func folder(_ path: String, children: [DiskEntry]) -> DiskEntry {
+            let entry = DiskEntry(url: URL(fileURLWithPath: path), kind: .directory,
+                                  allocatedBytes: children.reduce(0) { $0 + $1.allocatedBytes },
+                                  apparentBytes: children.reduce(0) { $0 + $1.apparentBytes },
+                                  fileCount: children.reduce(0) { $0 + $1.fileCount },
+                                  directoryCount: 1 + children.reduce(0) { $0 + $1.directoryCount },
+                                  modifiedAt: .distantPast, device: 1, inode: 1)
+            entry.replaceChildren(children)
+            return entry
+        }
+        let names = ["Library", "Projects", "Downloads", "Pictures", "Documents", "Desktop", "Music", "Movies", ".cache"]
+            + (0..<124).map { "Small folder \($0)" }
+        let folders = names.enumerated().map { index, name in
+            let path = "/Users/Diskman/\(name)"
+            let bytes = index < 9 ? Int64(10 - index) * 1_000_000_000 : 4096
+            let file = DiskEntry(url: URL(fileURLWithPath: path + "/Document.bin"), kind: .file,
+                                 allocatedBytes: bytes, apparentBytes: bytes, fileCount: 1, directoryCount: 0,
+                                 modifiedAt: .distantPast, device: 1, inode: UInt64(index + 2))
+            let aggregate = DiskEntry(url: URL(fileURLWithPath: path + "/folded"), kind: .aggregate,
+                                      allocatedBytes: bytes / 2, apparentBytes: bytes / 2,
+                                      fileCount: 12_000, directoryCount: 0, modifiedAt: .distantPast, device: 1, inode: 0)
+            return folder(path, children: [file, folder(path + "/Contents", children: [aggregate])])
+        }
+        let root = folder("/Users/Diskman", children: folders)
+        return DiskScanResult(root: root, largestFiles: Array(folders.compactMap { $0.children.first }.prefix(100)), unreadableCount: 0,
+                              skippedVolumeCount: 0, scannedAt: Date(timeIntervalSince1970: 1_790_668_800), isComplete: true)
     }
 }
