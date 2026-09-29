@@ -449,6 +449,12 @@ Follows `macpowertoys-repaired.html` and its handoff comment.
   tool, value, and default and a reset action. Reset all asks first.
 - Enablement, menu-bar placement, runtime state, and window visibility stay
   separate states.
+- Settings embedding contract: each tool exposes one settings content view
+  that returns only its cards (a `VStack` of `OnePlusCard`s with 16 pt gaps):
+  no `OnePlusPage`, no scroll view, no outer padding, no page header, no
+  `Spacer`, and no maximum-height frame. The tool's own Settings page wraps
+  it in `OnePlusPage`; the main window's tool page places it inside its
+  single scrolling page. `ToolSettingsContent` only dispatches by tool id.
 
 ### Task Manager
 
