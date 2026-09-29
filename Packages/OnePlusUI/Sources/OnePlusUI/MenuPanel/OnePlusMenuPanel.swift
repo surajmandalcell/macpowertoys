@@ -77,8 +77,7 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
     }
     private var tabButtons: some View {
         HStack(spacing: 2) {
-            ForEach(tabs.indices, id: \.self) { index in
-                let tab = tabs[index]
+            ForEach(tabs) { tab in
                 Button { selection = tab.id } label: {
                     Image(systemName: tab.systemImage).font(.system(size: 13))
                         .foregroundStyle(selection == tab.id ? OnePlusColor.ink : OnePlusColor.secondary)
@@ -88,8 +87,12 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
                 .help(tab.title).accessibilityLabel(tab.title).accessibilityAddTraits(selection == tab.id ? .isSelected : [])
                 .contextMenu {
                     if let onMove {
-                        Button("Move left") { onMove(index, index - 1) }.disabled(index == 0)
-                        Button("Move right") { onMove(index, index + 1) }.disabled(index == tabs.count - 1)
+                        Button("Move left") {
+                            if let index = tabs.firstIndex(where: { $0.id == tab.id }), index > 0 { onMove(index, index - 1) }
+                        }.disabled(tabs.first?.id == tab.id)
+                        Button("Move right") {
+                            if let index = tabs.firstIndex(where: { $0.id == tab.id }), index < tabs.count - 1 { onMove(index, index + 1) }
+                        }.disabled(tabs.last?.id == tab.id)
                     }
                 }
             }
