@@ -233,19 +233,19 @@ private struct DevSyncProjectsList: View {
     let pair: DevSyncPair
     let manager: DevSyncManager
 
-    private var projects: [DevProject] { manager.projects(for: pair.id) }
-    private var conflicts: [DevConflict] { manager.unresolvedConflicts(for: pair.id) }
+    @State private var projection = DevSyncProjectsProjection.empty
+    @State private var projectionTask: Task<Void, Never>?
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                 DevSyncSectionHeader(title: "Projects")
-                if projects.isEmpty {
+                if projection.groups.isEmpty {
                     Text("No projects discovered yet.")
                         .onePlusText(.caption)
                         .foregroundStyle(OnePlusColor.secondary)
                 } else {
-                    ForEach(DevSyncProjectGrouping.groups(projects)) { group in
+                    ForEach(projection.groups) { group in
                         if !group.title.isEmpty {
                             DevSyncSectionHeader(title: group.title)
                         }
@@ -255,15 +255,42 @@ private struct DevSyncProjectsList: View {
                     }
                 }
 
-                if !conflicts.isEmpty {
+                if !projection.conflicts.isEmpty {
                     DevSyncSectionHeader(title: "Conflicts")
-                    ForEach(conflicts) { conflict in
+                    ForEach(projection.conflicts) { conflict in
                         DevSyncConflictCard(pair: pair, conflict: conflict, manager: manager)
                     }
                 }
             }
         }
         .onePlusScrollIndicators()
+        .task(id: pair.id) { rebuildProjection() }
+        .onChange(of: manager.projects(for: pair.id)) { rebuildProjection() }
+        .onChange(of: manager.conflicts[pair.id] ?? []) { rebuildProjection() }
+        .onChange(of: manager.focusedConflictProjectID) { rebuildProjection() }
+        .onDisappear {
+            projectionTask?.cancel()
+            projectionTask = nil
+        }
+    }
+
+    private func rebuildProjection() {
+        projectionTask?.cancel()
+        let projects = manager.projects(for: pair.id)
+        let conflicts = manager.conflicts[pair.id] ?? []
+        let focusedProjectID = manager.focusedConflictProjectID
+
+        projectionTask = Task {
+            let prepared = await Task.detached(priority: .userInitiated) {
+                DevSyncProjectsProjection.make(
+                    projects: projects,
+                    conflicts: conflicts,
+                    focusedProjectID: focusedProjectID
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            projection = prepared
+        }
     }
 }
 
@@ -438,7 +465,32 @@ struct DevSyncErrorBanner: View {
         .frame(width: 760, height: 720)
 }
 
-struct DevSyncProjectGrouping: Identifiable {
+nonisolated struct DevSyncProjectsProjection: Sendable {
+    let groups: [DevSyncProjectGrouping]
+    let conflicts: [DevConflict]
+
+    static let empty = DevSyncProjectsProjection(groups: [], conflicts: [])
+
+    static func make(
+        projects: [DevProject],
+        conflicts: [DevConflict],
+        focusedProjectID: UUID?
+    ) -> DevSyncProjectsProjection {
+        DevSyncProjectsProjection(
+            groups: DevSyncProjectGrouping.groups(projects),
+            conflicts: conflicts
+                .filter { !$0.isResolved }
+                .sorted { left, right in
+                    let leftFocused = left.projectID == focusedProjectID
+                    let rightFocused = right.projectID == focusedProjectID
+                    if leftFocused != rightFocused { return leftFocused }
+                    return left.createdAt < right.createdAt
+                }
+        )
+    }
+}
+
+nonisolated struct DevSyncProjectGrouping: Identifiable, Sendable {
     var title: String
     var projects: [DevProject]
     var id: String { title }

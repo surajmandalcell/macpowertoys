@@ -145,6 +145,17 @@ final class DevSyncInterfaceTests: XCTestCase {
         XCTAssertEqual(manager.unresolvedConflicts(for: seed.pair.id).first?.id, seed.conflicts[1].id)
     }
 
+    func testProjectProjectionGroupsAndPrioritizesConflicts() {
+        let projection = DevSyncProjectsProjection.make(
+            projects: seed.projects,
+            conflicts: seed.conflicts,
+            focusedProjectID: seed.conflicts[1].projectID
+        )
+
+        XCTAssertEqual(projection.groups.map(\.title), ["archive", "personal", "work"])
+        XCTAssertEqual(projection.conflicts.first?.id, seed.conflicts[1].id)
+    }
+
     func testSafetyStorePathUsesTheSystemDirectoryAndPairIdentifier() async {
         let url = manager.safetyStoreURL(for: seed.pair)
 
