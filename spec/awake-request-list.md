@@ -7,6 +7,9 @@ Reviewed against current source and Git history on 2026-08-31.
 Round 2 requires a protected floating settings area and a readable 12pt
 status row. Window height uses the shared fixed-canvas correction.
 
+Round 2 verification: Debug and build-for-testing pass. Tests were compiled,
+not executed. Signed screenshot and interaction checks remain with the orchestrator.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Keep the floating settings button clear of both page bodies. | Round 2 applies the shared 52pt body inset before the gear overlay. The old inner 44pt padding is removed. The gear keeps its 8pt edge inset and Command-comma action. | Verify scrolling, window size, and both pages in the next signed capture. |

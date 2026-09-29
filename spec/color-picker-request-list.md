@@ -8,10 +8,13 @@ direct user correction or verified result changes a status.
 Round 2 requires full-width Settings cards inside 16pt body gutters,
 neutral copy controls, and a protected floating settings area on every page.
 
+Round 2 verification: Debug and build-for-testing pass with shared fixes B
+and I. Tests were compiled, not executed. Signed screenshot review remains.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Keep the floating settings button clear of History, Projects, and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify all three pages and their scroll limits in the next signed capture. |
-| Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Scroller gutter removal belongs to shared fix B. | Rebuild and inspect both appearances after the shared scroller fix. |
+| Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
 | Verify | Use the 420pt applet with 250 to 460pt height, three native lights, persistent Pick Color, 16pt gutters, underline tabs, equal-height search and format controls, history actions, project export, and replacing Settings. | Debug build passes. DESIGN.md v14 supersedes the older material, gutters, and two-light rules below. Routes are `history`, `projects`, and `settings`. | Review both appearances, copying, projects, and export in the orchestrator's installed build. |
 
 | Status | Request | Evidence | Remaining work |

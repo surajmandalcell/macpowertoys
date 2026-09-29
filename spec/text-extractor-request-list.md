@@ -8,10 +8,13 @@ direct user correction or verified result changes a status.
 Round 2 requires neutral shortcut hints, equal 16pt Settings gutters,
 and a protected floating settings area on both pages.
 
+Round 2 verification: Debug and build-for-testing pass with shared fixes B
+and I. Tests were compiled, not executed. Signed screenshot review remains.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Keep the floating settings button clear of History and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify both pages and their scroll limits in the next signed capture. |
-| Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Scroller gutter removal belongs to shared fix B. | Rebuild and inspect both appearances after the shared scroller fix. |
+| Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
 | Verify | Use the 480pt applet with 270 to 462pt height, persistent shortcut menu and Extract Text, history preview/source/time/copy, and replacing Settings with shortcut and language rows. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `history` and `settings`. | Review both appearances, capture states, and recognition controls in the orchestrator's installed build. |
 
 | Status | Request | Evidence | Remaining work |

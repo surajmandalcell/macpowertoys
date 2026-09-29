@@ -6,6 +6,9 @@ Round 2 keeps the Servers composition. Sort by must show a menu affordance
 and match Clean up in height and baseline. Port and memory values stay mono.
 Forward and Settings keep 28pt form controls and aligned control columns.
 
+Round 2 verification: Debug and build-for-testing pass. Tests were compiled,
+not executed. Signed menu, form, and interaction checks remain with the orchestrator.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Make Sort by read as a menu beside Clean up, with mono memory and port values. | Round 2 gives Sort by the same 24pt neutral style as Clean up and a chevron. The large memory value and detail port use mono type. Local link hover is neutral; the panel uses shared tint defaults. Debug compilation passes. Settings retain the 160pt column and 28pt controls. Forward retains its full-width host field and 84pt item action column. | Inspect all tabs, sort choices, and hover in the next signed capture. |
