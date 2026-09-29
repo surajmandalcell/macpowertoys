@@ -566,12 +566,16 @@ struct DiskSunburstView: View {
             let limit = depth == 0 ? OnePlusDiskmanMetrics.inspectorChildren : 12
             let selection: (shown: [DiskEntry], hidden: [DiskEntry])
             if depth == 0 {
-                let ranked = parent.children.sorted {
+                let aggregates = parent.children.filter { $0.kind == .aggregate }
+                let ranked = parent.children.filter { $0.kind != .aggregate }.sorted {
                     let left = measure.weight($0, apparent: apparent)
                     let right = measure.weight($1, apparent: apparent)
                     return left == right ? $0.id < $1.id : left > right
                 }
-                selection = (Array(ranked.prefix(limit)), Array(ranked.dropFirst(limit)))
+                let shown = Array(ranked.prefix(max(0, limit - aggregates.count)))
+                    + Array(aggregates.prefix(limit))
+                let shownIDs = Set(shown.map(\.id))
+                selection = (shown, parent.children.filter { !shownIDs.contains($0.id) })
             } else {
                 selection = measure.displayedChildren(in: parent, apparent: apparent,
                                                       limit: limit, scanComplete: scanComplete)

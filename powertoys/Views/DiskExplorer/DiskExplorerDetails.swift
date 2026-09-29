@@ -140,7 +140,11 @@ struct DiskEntryTable: View {
             case 4: comparison = left.fileCount == right.fileCount ? .orderedSame : left.fileCount < right.fileCount ? .orderedAscending : .orderedDescending
             default: comparison = DiskEntryPresentation.name(left).localizedStandardCompare(DiskEntryPresentation.name(right))
             }
-            if comparison == .orderedSame { return left.id < right.id }
+            if comparison == .orderedSame {
+                let name = DiskEntryPresentation.name(left)
+                    .localizedStandardCompare(DiskEntryPresentation.name(right))
+                return name == .orderedSame ? left.id < right.id : name == .orderedAscending
+            }
             return comparison == (ascending ? .orderedAscending : .orderedDescending)
         }
     }

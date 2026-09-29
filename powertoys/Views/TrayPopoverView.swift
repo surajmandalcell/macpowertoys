@@ -1305,7 +1305,8 @@ struct SystemMonitorTrayView: View {
         OnePlusMenuPanel {
             OnePlusMenuTabStrip(
                 tabs: SystemMonitorTrayPage.allCases.map {
-                    OnePlusMenuTab($0, $0.title, systemImage: $0.symbol)
+                    OnePlusMenuTab($0, $0.title, systemImage: $0.symbol,
+                                   accessibilityIdentifier: "system-monitor.tray.\($0.rawValue)")
                 },
                 selection: Binding(get: { page }, set: { pageID = $0.rawValue })
             )

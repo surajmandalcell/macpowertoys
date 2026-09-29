@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class ScrollIndicatorTests: XCTestCase {
-    func testConfiguresOverlayAutohidingMiniScrollers() throws {
+    func testConfiguresOverlayAutohidingMiniScrollers() async throws {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
@@ -32,7 +32,7 @@ final class ScrollIndicatorTests: XCTestCase {
             object: scrollView.contentView
         )
         XCTAssertEqual(verticalScroller.alphaValue, 1)
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.2))
+        try await Task.sleep(for: .milliseconds(1_200))
         XCTAssertEqual(verticalScroller.alphaValue, 0, accuracy: 0.01)
     }
 

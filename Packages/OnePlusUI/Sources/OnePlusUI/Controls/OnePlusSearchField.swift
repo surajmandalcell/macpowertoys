@@ -37,13 +37,16 @@ public struct OnePlusSidebarSearch: View {
     @Binding private var text: String
     private let prompt: String
     private let alternateShortcut: KeyEquivalent?
+    private let identifier: String?
     @State private var focusTrigger = 0
-    public init(_ prompt: String = "Search", text: Binding<String>, alternateShortcut: KeyEquivalent? = nil) {
+    public init(_ prompt: String = "Search", text: Binding<String>, alternateShortcut: KeyEquivalent? = nil,
+                accessibilityIdentifier: String? = nil) {
         self.prompt = prompt; _text = text; self.alternateShortcut = alternateShortcut
+        identifier = accessibilityIdentifier
     }
     public var body: some View {
         OnePlusSearchField(prompt: prompt, text: $text, width: nil, focusTrigger: focusTrigger,
-                           height: 32, shortcutHint: "⌘K")
+                           accessibilityIdentifier: identifier, height: 32, shortcutHint: "⌘K")
             .background {
                 Button("Focus search") { focusTrigger += 1 }.keyboardShortcut("k").hidden()
                 if let alternateShortcut {
