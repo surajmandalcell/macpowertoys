@@ -169,6 +169,7 @@ final class RcloneDaemon {
             do {
                 try proc.run()
             } catch {
+                errPipe.fileHandleForReading.readabilityHandler = nil
                 lastError = error
                 continue
             }
