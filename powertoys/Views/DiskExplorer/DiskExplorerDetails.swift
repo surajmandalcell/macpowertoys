@@ -177,7 +177,7 @@ struct DiskSelectionInspector: View {
                 Spacer()
                 Text((Double(entry.bytes(apparent: apparent)) / Double(max(1, parent.bytes(apparent: apparent)))).formatted(.percent.precision(.fractionLength(1))))
             }.onePlusText(.caption)
-            OnePlusUsageBar(value: Double(entry.bytes(apparent: apparent)) / Double(max(1, parent.bytes(apparent: apparent))), color: OnePlusColor.accent)
+            OnePlusUsageBar(value: Double(entry.bytes(apparent: apparent)) / Double(max(1, parent.bytes(apparent: apparent))))
         }
     }
     private func facts(_ entry: DiskEntry) -> some View {
