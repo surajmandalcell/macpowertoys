@@ -470,6 +470,22 @@
 
 ## System Monitor
 
+- **Symptom:** Task Manager stays dark in Light appearance, its settings table
+  drifts between metrics, or its menu panel clips the top or bottom edge.
+- **Cause:** The owned views forced a dark color scheme, settings controls used
+  content-sized groups with repeated labels, and the native popover trusted an
+  estimated height instead of the rendered menu shell.
+- **Invariant:** Inherit the app appearance on every Task Manager surface. Use
+  one fixed settings header with 34pt rows and centered 28pt controls; place
+  format-specific fields in one details row. Use 10pt detail gaps, 12pt card
+  padding, 27pt window values with 12pt units, and 21pt panel values with 10pt
+  units. Measure the complete 356pt menu shell and preserve its 35pt top bar,
+  3pt body start, and 8pt bottom clearance.
+- **Check:** Compile the Debug app and desktop-test bundle. Then recapture every
+  page and both menu panels in light and dark from the signed orchestrator
+  build. Measure settings columns, table rows, value-unit baselines, and both
+  popover edges before approval.
+
 - **Symptom:** Task Manager declares a 220pt sidebar, but its visible surface
   ends at 175pt and becomes 220pt only in the native strip below the SwiftUI
   body, which looks like a transparent or overextended bottom section.
