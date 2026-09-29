@@ -8,14 +8,23 @@ nonisolated struct OpenToolRoute: Equatable, Sendable {
     static func parse(_ url: URL) -> Self? {
         guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "open",
               url.user == nil, url.password == nil, url.port == nil, url.fragment == nil else { return nil }
-        let parts = url.path.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
-        guard (1...2).contains(parts.count), parts.allSatisfy({ part in
-            !part.isEmpty && part.count <= 80 && part.utf8.allSatisfy {
-                (97...122).contains($0) || (48...57).contains($0) || $0 == 45
-            }
+        guard let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath,
+              path.hasPrefix("/"), path.utf8.count <= 8_192 else { return nil }
+        var values: [String] = []
+        for part in path.dropFirst().split(separator: "/", omittingEmptySubsequences: false) {
+            guard let value = String(part).removingPercentEncoding,
+                  !value.isEmpty, value != ".", value != "..", value.utf8.count <= 255,
+                  !value.contains("/"), !value.contains("\\"),
+                  !value.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { return nil }
+            values.append(value)
+        }
+        guard let tool = values.first, tool.utf8.count <= 80, tool.utf8.allSatisfy({
+            (97...122).contains($0) || (48...57).contains($0) || $0 == 45
         }) else { return nil }
-        let values = parts.map(String.init)
-        return Self(tool: values[0], page: values.count == 2 ? values[1] : nil)
+        // Bound the decoded page, while allowing any number of path segments.
+        let page = values.dropFirst().joined(separator: "/")
+        guard page.utf8.count <= 2_048 else { return nil }
+        return Self(tool: tool, page: values.count > 1 ? page : nil)
     }
 }
 
@@ -32,6 +41,13 @@ extension Notification.Name {
 final class ToolPageRouter {
     static let shared = ToolPageRouter()
     private var pending: [String: ToolPageRequest] = [:]
+
+    func handleNativeURL(_ url: URL, tool: String) {
+        // SwiftUI opens native scenes itself. Deliver their page without reopening.
+        guard !AppDelegate.requiresManualURLRouting(url),
+              let route = OpenToolRoute.parse(url), route.tool == tool, let page = route.page else { return }
+        post(tool: tool, page: page)
+    }
 
     func post(tool: String, page: String) {
         let request = ToolPageRequest(tool: tool, page: page)
@@ -66,6 +82,10 @@ private struct OpenToolPageModifier: ViewModifier {
 }
 
 extension View {
+    func onNativeToolPageURL(_ tool: String) -> some View {
+        onOpenURL { ToolPageRouter.shared.handleNativeURL($0, tool: tool) }
+    }
+
     func onOpenToolPage(_ tool: String, matching page: String? = nil,
                         perform action: @escaping (String) -> Void) -> some View {
         modifier(OpenToolPageModifier(tool: tool, page: page, action: action))
