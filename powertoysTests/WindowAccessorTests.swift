@@ -1,269 +1,57 @@
 import AppKit
+import OnePlusUI
 import SwiftUI
 import XCTest
 @testable import powertoys
 
 @MainActor
 final class WindowAccessorTests: XCTestCase {
-    private static var retainedWindows: [NSWindow] = []
-
-    func testCompactAppletWindowsUseFixedAlignedChrome() throws {
-        for identifier in ["awake", "color-picker", "text-extractor"] {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                backing: .buffered,
-                defer: false
-            )
-            Self.retainedWindows.append(window)
-
-            let initialCloseButtonY = try XCTUnwrap(
-                window.standardWindowButton(.closeButton)?.frame.origin.y
-            )
-            window.contentView = NSHostingView(
-                rootView: WindowAccessor(identifier: identifier)
-            )
-            window.contentView?.layoutSubtreeIfNeeded()
-            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
-
-            let adjustedCloseButtonY = try XCTUnwrap(
-                window.standardWindowButton(.closeButton)?.frame.origin.y
-            )
-            let adjustedMinimizeButtonY = try XCTUnwrap(
-                window.standardWindowButton(.miniaturizeButton)?.frame.origin.y
-            )
-            XCTAssertFalse(window.styleMask.contains(.resizable), identifier)
-            XCTAssertEqual(
-                adjustedCloseButtonY,
-                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
-                accuracy: 0.5,
-                identifier
-            )
-            XCTAssertEqual(
-                adjustedMinimizeButtonY,
-                adjustedCloseButtonY,
-                accuracy: 0.5,
-                identifier
-            )
-            let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
-            let closeButtonSuperview = try XCTUnwrap(closeButton.superview)
-            let closeButtonCenter = closeButtonSuperview.convert(
-                NSPoint(x: closeButton.frame.midX, y: closeButton.frame.midY),
-                to: window.contentView
-            )
-            let expectedCenterline = (
-                UtilityLayout.compactTitlebarHeight + UtilityLayout.compactTitlebarTopInset
-            ) / 2
-            let contentView = try XCTUnwrap(window.contentView)
-            let closeButtonTopGap = contentView.isFlipped
-                ? closeButtonCenter.y
-                : contentView.bounds.maxY - closeButtonCenter.y
-            XCTAssertEqual(
-                closeButtonTopGap,
-                expectedCenterline,
-                accuracy: 0.5,
-                identifier
-            )
-            XCTAssertTrue(
-                try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden),
-                identifier
-            )
-
-            for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
-                guard let button = window.standardWindowButton(buttonType) else {
-                    return XCTFail("Missing traffic light for \(identifier)")
-                }
-                button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: initialCloseButtonY))
-            }
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.3))
-
-            let reappliedCloseButtonY = try XCTUnwrap(
-                window.standardWindowButton(.closeButton)?.frame.origin.y
-            )
-            let reappliedMinimizeButtonY = try XCTUnwrap(
-                window.standardWindowButton(.miniaturizeButton)?.frame.origin.y
-            )
-            XCTAssertEqual(
-                reappliedCloseButtonY,
-                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
-                accuracy: 0.5,
-                identifier
-            )
-            XCTAssertEqual(
-                reappliedMinimizeButtonY,
-                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
-                accuracy: 0.5,
-                identifier
-            )
-
-            for buttonType in [NSWindow.ButtonType.closeButton, .miniaturizeButton] {
-                guard let button = window.standardWindowButton(buttonType) else { continue }
-                button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: initialCloseButtonY))
-            }
-            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
-
-            XCTAssertEqual(
-                try XCTUnwrap(window.standardWindowButton(.closeButton)?.frame.origin.y),
-                initialCloseButtonY - UtilityLayout.compactTitlebarTrafficLightVerticalOffset,
-                accuracy: 0.5,
-                "Late native titlebar layout must be corrected when \(identifier) becomes key"
-            )
-            let firstResponder = try XCTUnwrap(window.firstResponder as? NSView)
-            XCTAssertTrue(
-                firstResponder === contentView || firstResponder.isDescendant(of: contentView),
-                identifier
-            )
-            XCTAssertFalse(firstResponder is NSControl, identifier)
-        }
-    }
-
-    func testWindowMovementStaysInTitlebar() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
+    func testAccessorSetsIdentityWithoutTakingOverSceneSizing() {
+        let window = AccessorCountingWindow(
+            contentRect: NSRect(x: -2000, y: -2000, width: 420, height: 300),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false
         )
-        Self.retainedWindows.append(window)
-
-        window.contentView = NSHostingView(
-            rootView: WindowAccessor(identifier: "main")
+        window.isMovableByWindowBackground = true
+        window.appearance = NSAppearance(named: .darkAqua)
+        let identifier = "window-accessor-test-\(UUID().uuidString)"
+        window.contentView = NSHostingView(rootView:
+            Color.clear.frame(width: 420, height: 300)
+                .background(WindowAccessor(identifier: identifier))
         )
         window.contentView?.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
 
-        XCTAssertEqual(window.identifier?.rawValue, "main")
+        XCTAssertEqual(window.identifier?.rawValue, identifier)
         XCTAssertFalse(window.isMovableByWindowBackground)
         XCTAssertTrue(window.isMovable)
+        XCTAssertNil(window.appearance)
+        XCTAssertTrue(window.styleMask.contains(.resizable), "The canvas modifier owns fixed chrome.")
+        XCTAssertEqual(window.contentSizeWrites, 0, "The accessor must not fight SwiftUI sizing.")
+        // Native chrome layout, centerlines, and resize policy are exercised by
+        // OnePlusChromeTests in the package that now owns that behavior.
     }
 
-    func testWorkspaceTrafficLightsUseBalancedSharedChrome() throws {
-        for identifier in [
-            "main", "rclone", "logs", "input-devices",
-            "system-care", "system-monitor", "nettoys", "disk-explorer"
-        ] {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                backing: .buffered,
-                defer: false
-            )
-            Self.retainedWindows.append(window)
-            let initialY = try XCTUnwrap(window.standardWindowButton(.closeButton)?.frame.origin.y)
-            window.contentView = NSHostingView(rootView: WindowAccessor(identifier: identifier))
-            window.contentView?.layoutSubtreeIfNeeded()
-            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
-
-            let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
-            let buttonSuperview = try XCTUnwrap(closeButton.superview)
-            let center = buttonSuperview.convert(
-                NSPoint(x: closeButton.frame.midX, y: closeButton.frame.midY),
-                to: window.contentView
-            )
-            let contentView = try XCTUnwrap(window.contentView)
-            let topGap = contentView.isFlipped ? center.y : contentView.bounds.maxY - center.y
-            XCTAssertEqual(topGap, UtilityLayout.workspaceTitlebarHeight / 2, accuracy: 0.5, identifier)
-
-            let visibleButtonTypes: [NSWindow.ButtonType] = identifier == "system-monitor"
-                ? [.closeButton, .miniaturizeButton]
-                : [.closeButton, .miniaturizeButton, .zoomButton]
-            for type in visibleButtonTypes {
-                XCTAssertEqual(
-                    try XCTUnwrap(window.standardWindowButton(type)?.frame.origin.y),
-                    initialY - UtilityLayout.workspaceTrafficLightVerticalOffset,
-                    accuracy: 0.5,
-                    identifier
-                )
-            }
-            let zoomButton = try XCTUnwrap(window.standardWindowButton(.zoomButton))
-            if identifier == "system-monitor" {
-                XCTAssertTrue(zoomButton.isHidden, identifier)
-            } else {
-                XCTAssertFalse(zoomButton.isHidden, identifier)
-                XCTAssertGreaterThanOrEqual(
-                    UtilityLayout.workspaceTitleLeadingInset - zoomButton.frame.maxX,
-                    12,
-                    identifier
-                )
-            }
-        }
-    }
-
-    func testTaskManagerReappliesItsFixedWindowPolicyWhenKey() throws {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 900, height: 580),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        Self.retainedWindows.append(window)
-        window.contentView = NSHostingView(rootView: WindowAccessor(identifier: "system-monitor"))
-        window.contentView?.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
-
-        XCTAssertFalse(window.styleMask.contains(.resizable))
-        XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
-        XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
-        XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
-        XCTAssertTrue(window.isOpaque)
-        XCTAssertEqual(window.backgroundColor, TaskManagerTheme.windowNSColor)
-        let backdropView = try XCTUnwrap(window.contentView?.superview?.subviews.first(where: {
-            $0.identifier?.rawValue == "task-manager.window-backdrop"
-        }))
-        let sidebarBackdrop = try XCTUnwrap(backdropView.layer?.sublayers?.first(where: {
-            $0.name == "task-manager.sidebar-backdrop"
-        }))
-        XCTAssertEqual(sidebarBackdrop.frame.width, TaskManagerTheme.sidebarWidth)
-        XCTAssertEqual(sidebarBackdrop.frame.height, TaskManagerTheme.windowContentSize.height)
-
-        window.styleMask.insert(.resizable)
-        window.contentMinSize = .zero
-        window.contentMaxSize = NSSize(width: 2_000, height: 2_000)
-        window.styleMask.remove(.fullSizeContentView)
-        window.standardWindowButton(.zoomButton)?.isHidden = false
-        window.standardWindowButton(.zoomButton)?.isEnabled = true
-        window.setContentSize(NSSize(width: 920, height: 600))
-        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.12))
-
-        XCTAssertFalse(window.styleMask.contains(.resizable))
-        XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
-        XCTAssertEqual(window.contentView?.bounds.size, TaskManagerTheme.windowContentSize)
-        XCTAssertEqual(window.frame.size, TaskManagerTheme.windowContentSize)
-        XCTAssertTrue(window.isOpaque)
-        XCTAssertEqual(window.backgroundColor, TaskManagerTheme.windowNSColor)
-        XCTAssertTrue(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
-        XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isEnabled))
-    }
-
-    func testWorkspaceWindowsEnforceTheirFamilyMinimumContentSize() {
-        let expectedSizes: [String: NSSize] = [
-            "main": UtilityLayout.launcherWindowSize,
-            "rclone": NSSize(width: 880, height: 600),
-            "logs": NSSize(width: 860, height: 600),
-            "input-devices": NSSize(width: 860, height: 600),
-            "system-care": NSSize(width: 880, height: 600),
-            "system-monitor": TaskManagerTheme.windowContentSize,
-            "nettoys": NSSize(width: 1_100, height: 700),
-            "disk-explorer": NSSize(width: 880, height: 600),
+    func testWorkspaceSizeLookupUsesEveryRegisteredCanvas() throws {
+        let expected: [String: NSSize] = [
+            "main": NSSize(width: 1240, height: 840),
+            "rclone": NSSize(width: 1240, height: 840),
+            "logs": NSSize(width: 1080, height: 660),
+            "input-devices": NSSize(width: 1080, height: 660),
+            "system-care": NSSize(width: 1240, height: 840),
+            "system-monitor": NSSize(width: 1080, height: 660),
+            "nettoys": NSSize(width: 1440, height: 900),
+            "disk-explorer": NSSize(width: 1440, height: 900),
+            "switch": NSSize(width: 1240, height: 840),
+            "mac-tweaks": NSSize(width: 1120, height: 826),
+            "awake": NSSize(width: 560, height: 500),
+            "color-picker": NSSize(width: 420, height: 250),
+            "text-extractor": NSSize(width: 480, height: 270),
         ]
-
-        for (identifier, expectedSize) in expectedSizes {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                backing: .buffered,
-                defer: false
-            )
-            Self.retainedWindows.append(window)
-            window.contentView = NSHostingView(rootView: WindowAccessor(identifier: identifier))
-            window.contentView?.layoutSubtreeIfNeeded()
-
-            XCTAssertEqual(window.contentMinSize, expectedSize, identifier)
+        for (identifier, size) in expected {
+            XCTAssertEqual(try XCTUnwrap(UtilityLayout.minimumContentSize(for: identifier)), size, identifier)
         }
-        XCTAssertEqual(UtilityLayout.netToysDefaultContentSize, NSSize(width: 1_280, height: 800))
+        XCTAssertNil(UtilityLayout.minimumContentSize(for: "unknown"))
     }
 
     func testLauncherContentPaneFitsFourToolCardsInOneRow() {
@@ -273,87 +61,59 @@ final class WindowAccessorTests: XCTestCase {
         let required = columns * layout.launcherCardMinimumWidth
             + (columns - 1) * layout.launcherGridSpacing
             + 2 * layout.launcherContentInset
-
-        XCTAssertEqual(contentWidth, 980)
+        XCTAssertEqual(contentWidth, 1024)
         XCTAssertEqual(required, 976)
         XCTAssertGreaterThanOrEqual(contentWidth, required)
-
-        let fifthColumn = required + layout.launcherGridSpacing + layout.launcherCardMinimumWidth
-        XCTAssertLessThan(contentWidth, fifthColumn)
+        XCTAssertLessThan(contentWidth, required + layout.launcherGridSpacing + layout.launcherCardMinimumWidth)
     }
 
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
         XCTAssertTrue(WindowStateManager.restoresPositionOnly("main"))
         XCTAssertTrue(WindowStateManager.restoresPositionOnly("system-monitor"))
         XCTAssertFalse(WindowStateManager.restoresPositionOnly("rclone"))
-
         let saved = NSRect(x: 40, y: 60, width: 780, height: 732)
-        let restored = WindowStateManager.positionOnlyFrame(
-            saved: saved,
-            currentSize: NSSize(width: 1_200, height: 752)
-        )
-        XCTAssertEqual(restored.size, NSSize(width: 1_200, height: 752))
+        let restored = WindowStateManager.positionOnlyFrame(saved: saved, currentSize: NSSize(width: 1240, height: 840))
+        XCTAssertEqual(restored.size, NSSize(width: 1240, height: 840))
         XCTAssertEqual(restored.minX, 40)
         XCTAssertEqual(restored.maxY, saved.maxY)
     }
 
-    func testWorkspaceDensityUsesCompactSharedMetrics() {
-        XCTAssertEqual(UtilityLayout.compactSidebarWidth, 220)
-        XCTAssertEqual(UtilityLayout.dataSidebarWidth, 240)
-        XCTAssertEqual(UtilityLayout.sidebarRowHeight, 28)
-        XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 40)
-        XCTAssertEqual(UtilityLayout.workspaceContentTopInset, 44)
+    func testWorkspaceDensityUsesFoundationMetrics() {
+        XCTAssertEqual(UtilityLayout.compactSidebarWidth, 216)
+        XCTAssertEqual(UtilityLayout.dataSidebarWidth, 216)
+        XCTAssertEqual(UtilityLayout.sidebarRowHeight, 32)
+        XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 54)
+        XCTAssertEqual(UtilityLayout.workspaceContentTopInset, 54)
         XCTAssertEqual(UtilityLayout.workspaceTitleLeadingInset, 84)
-        XCTAssertEqual(UtilityLayout.workspaceActionHeight, 24)
-        XCTAssertEqual(UtilityLayout.separatorOpacity, 0.22)
-        XCTAssertEqual(UtilityLayout.increasedContrastSeparatorOpacity, 0.44)
-        XCTAssertGreaterThan(
-            UtilityLayout.increasedContrastSeparatorOpacity,
-            UtilityLayout.separatorOpacity
-        )
+        XCTAssertEqual(UtilityLayout.workspaceActionHeight, 28)
+        XCTAssertEqual(UtilityLayout.separatorOpacity, 1)
+        XCTAssertEqual(UtilityLayout.increasedContrastSeparatorOpacity, 1)
     }
 
-    func testNativeSearchFieldUsesTheSmallControlInContent() throws {
-        let hostingView = NSHostingView(
-            rootView: NativeSearchField(
-                text: .constant(""),
-                placeholder: "Find content"
-            )
-            .frame(width: 240, height: UtilityLayout.workspaceActionHeight)
+    func testNativeSearchWrapperKeepsEditingAndSharedType() throws {
+        let host = NSHostingView(rootView:
+            NativeSearchField(text: .constant(""), placeholder: "Find content")
+                .frame(width: 240, height: 28)
         )
-        hostingView.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: 240,
-            height: UtilityLayout.workspaceActionHeight
-        )
-        hostingView.layoutSubtreeIfNeeded()
-
-        let searchField = try XCTUnwrap(firstSearchField(in: hostingView))
-        XCTAssertEqual(searchField.controlSize, .small)
-        XCTAssertLessThanOrEqual(
-            searchField.frame.height,
-            UtilityLayout.workspaceActionHeight
-        )
+        host.frame = NSRect(x: 0, y: 0, width: 240, height: 28)
+        host.layoutSubtreeIfNeeded()
+        let search = try XCTUnwrap(firstView(of: NSSearchField.self, in: host))
+        XCTAssertTrue(search.isEditable)
+        XCTAssertTrue(search.isSelectable)
+        XCTAssertEqual(search.font?.pointSize, 12)
+        XCTAssertEqual(search.accessibilityLabel(), "Find content")
+        XCTAssertLessThanOrEqual(search.frame.height, 28)
     }
 
     func testSingleStepStepperDoesNotRepeatWhileMouseIsHeld() throws {
         var value = 800
-        let hostingView = NSHostingView(
-            rootView: SingleStepStepper(
-                "TCP timeout: 800 ms",
-                value: Binding(
-                    get: { value },
-                    set: { value = $0 }
-                ),
-                in: 100...5_000,
-                step: 100
-            )
-        )
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 28)
-        hostingView.layoutSubtreeIfNeeded()
-
-        let stepper = try XCTUnwrap(firstStepper(in: hostingView))
+        let host = NSHostingView(rootView: SingleStepStepper(
+            "TCP timeout: 800 ms", value: Binding(get: { value }, set: { value = $0 }),
+            in: 100...5_000, step: 100
+        ))
+        host.frame = NSRect(x: 0, y: 0, width: 320, height: 28)
+        host.layoutSubtreeIfNeeded()
+        let stepper = try XCTUnwrap(firstView(of: NSStepper.self, in: host))
         XCTAssertFalse(stepper.autorepeat)
         XCTAssertEqual(stepper.increment, 100)
         stepper.integerValue = 900
@@ -361,17 +121,10 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(value, 900)
     }
 
-    func testFloatingButtonOffsetsThroughHiddenTitlebarSurplus() {
-        XCTAssertEqual(UtilityLayout.hiddenTitlebarBottomSurplus, 32, accuracy: 0.5)
-    }
-
-    func testMacTweaksContentSizeProducesTheReferenceOuterFrame() {
+    func testMacTweaksContentSizeAccountsForNativeTitlebar() {
         XCTAssertEqual(MacTweaksLayout.contentSize.width, MacTweaksLayout.windowSize.width)
-        XCTAssertEqual(
-            MacTweaksLayout.contentSize.height + UtilityLayout.hiddenTitlebarBottomSurplus,
-            MacTweaksLayout.windowSize.height,
-            accuracy: 0.5
-        )
+        XCTAssertEqual(MacTweaksLayout.contentSize.height + UtilityLayout.hiddenTitlebarBottomSurplus,
+                       MacTweaksLayout.windowSize.height, accuracy: 0.5)
     }
 
     func testUtilityMotionStopsWhenReduceMotionIsEnabled() {
@@ -380,47 +133,23 @@ final class WindowAccessorTests: XCTestCase {
     }
 
     func testUtilityInteractionButtonStates() {
-        XCTAssertEqual(
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: true,
-                isHovering: false,
-                isPressed: false
-            ),
-            0
-        )
-        XCTAssertEqual(
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: true,
-                isHovering: true,
-                isPressed: false
-            ),
-            0.06
-        )
-        XCTAssertEqual(
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: true,
-                isHovering: true,
-                isPressed: true
-            ),
-            0.1
-        )
-        XCTAssertEqual(
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: false,
-                isHovering: true,
-                isPressed: true
-            ),
-            0
-        )
+        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: true, isHovering: false, isPressed: false), 0)
+        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: true, isHovering: true, isPressed: false), 0.06)
+        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: true, isHovering: true, isPressed: true), 0.1)
+        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: false, isHovering: true, isPressed: true), 0)
     }
 
-    private func firstSearchField(in view: NSView) -> NSSearchField? {
-        if let searchField = view as? NSSearchField { return searchField }
-        return view.subviews.lazy.compactMap(firstSearchField(in:)).first
+    private func firstView<T: NSView>(of type: T.Type, in view: NSView) -> T? {
+        if let result = view as? T { return result }
+        return view.subviews.lazy.compactMap { self.firstView(of: type, in: $0) }.first
     }
+}
 
-    private func firstStepper(in view: NSView) -> NSStepper? {
-        if let stepper = view as? NSStepper { return stepper }
-        return view.subviews.lazy.compactMap(firstStepper(in:)).first
+@MainActor
+private final class AccessorCountingWindow: NSWindow {
+    var contentSizeWrites = 0
+    override func setContentSize(_ size: NSSize) {
+        contentSizeWrites += 1
+        super.setContentSize(size)
     }
 }
