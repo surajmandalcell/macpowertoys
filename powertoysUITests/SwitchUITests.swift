@@ -38,7 +38,7 @@ final class SwitchUITests: XCTestCase {
     }
 
     @MainActor
-    func testSwitchOpensFromCLIRouteAndNavigatesFunctionalRail() throws {
+    func testSwitchOpensFromCLIRouteAndNavigatesSharedSidebar() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mpt-switch-ui-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -52,39 +52,36 @@ final class SwitchUITests: XCTestCase {
 
         let window = app.windows["Switch"]
         XCTAssertTrue(window.waitForExistence(timeout: 10))
-        let accounts = app.buttons["switch.page.Accounts"]
         let backup = app.buttons["switch.page.Backup"]
         let settings = app.buttons["switch.page.Settings"]
-        XCTAssertTrue(accounts.exists)
         XCTAssertTrue(backup.exists)
         XCTAssertTrue(settings.exists)
-        XCTAssertTrue(app.buttons["switch.appearance"].exists)
-        XCTAssertTrue(app.buttons["switch.close"].exists)
+        XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
         let add = app.descendants(matching: .any).matching(identifier: "switch.add").firstMatch
         XCTAssertTrue(add.exists)
         add.click()
         XCTAssertTrue(app.buttons["switch.provider.claude-code"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Continue"].exists)
         attach(window.screenshot(), named: "Switch Add Account")
-        app.buttons["Cancel"].click()
+        app.buttons["Close"].click()
         XCTAssertTrue(app.buttons["switch.about"].exists)
         XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch Accounts")
 
         backup.click()
-        XCTAssertTrue(window.staticTexts["No interrupted backup work needs attention."].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.staticTexts["No interrupted operations"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch Backup")
+        app.buttons["View accounts"].click()
+        XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
 
         settings.click()
         XCTAssertTrue(window.staticTexts["Data locations"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.staticTexts["Appearance"].exists)
         attach(window.screenshot(), named: "Switch Settings")
-
-        accounts.click()
-        XCTAssertTrue(window.staticTexts["Add your first account"].waitForExistence(timeout: 5))
 
         app.buttons["switch.about"].click()
         XCTAssertFalse(app.buttons["tool.switch.launch"].exists)
-        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.staticTexts["About"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Switch About")
     }
 
