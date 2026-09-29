@@ -1,5 +1,12 @@
 # Mac Tweaks request list
 
+## Round 2 screenshot corrections, 2026-09-29
+
+- [x] Remove corner grain from settings and preview cards. Use regular button sizing and the 180pt control column for cards that contain three-way controls.
+- [x] Keep Input volume on one baseline. Give the remaining control width to the slider.
+- [x] Render the simple Power preview without the deferred desktop drawing group. Use a neutral status dot.
+- [~] Recapture every page in dark and light from the signed installed build. Shared window height, segmented labels, row pitch, status color, and muted contrast fixes remain with the foundation.
+
 ## OnePlusUI normalization, 2026-09-29
 
 - [x] Normalize Mac Tweaks to the fixed 1120 x 826 OnePlusUI canvas. Use the 200pt sidebar, 54pt title row, page header, cards, 40pt card headers, 44pt setting rows, 160pt control column, and shared search and selection controls.
