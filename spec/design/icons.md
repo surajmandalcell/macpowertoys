@@ -56,8 +56,13 @@ variant weakens the deliberate temperature and contrast difference.
 | Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
-| Switch | Original Switch mark | Original light and dark neutral tiles | Approved standalone Switch icon artwork |
+| Switch | Chosen Color | Chosen Color | Owner-selected 01-refined emergency-stop switch on an ivory tile |
 | Mac Tweaks | Chosen Color | Chosen Color | Owner-selected 01 Faders in both appearances |
+
+Switch uses the same emergency-stop artwork in both appearances and in the
+standalone app. Its MacPowerToys image set contains a 512px copy of the
+standalone 1024px master. The original mark remains available for the tiny
+menu-bar template, where the physical switch would lose detail.
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
 the prior identities for these six tools. They use 512px PNG image sets with
@@ -251,4 +256,3 @@ image set, transparent corners, and 512/64/32/16px visual checks.
 
 Menu bar icons are the exception: use a single-color template silhouette of the
 same metaphor because macOS controls their tint.
-
