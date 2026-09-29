@@ -29,7 +29,10 @@ public struct OnePlusPageHeader<Actions: View>: View {
                     if titleStyle == .dotMatrix { OnePlusDotTitle(title) }
                     else { Text(title).onePlusText(.pageTitle).lineLimit(1).help(title) }
                 }.frame(height: titleHeight).accessibilityAddTraits(.isHeader)
-                if let subtitle { Text(subtitle).onePlusText(subtitleRole).lineLimit(1).help(subtitle) }
+                if let subtitle {
+                    Text(subtitle).onePlusText(subtitleRole).lineLimit(1)
+                        .truncationMode(subtitleRole == .mono ? .middle : .tail).help(subtitle)
+                }
             }
             Spacer(minLength: 0)
             HStack(spacing: 8) { actions }.frame(height: titleHeight).fixedSize(horizontal: true, vertical: false)
@@ -42,8 +45,10 @@ public struct OnePlusPageHeader<Actions: View>: View {
 }
 
 public extension OnePlusPageHeader where Actions == EmptyView {
-    init(title: String, subtitle: String? = nil, titleStyle: OnePlusTitleStyle = .system) {
-        self.init(title: title, subtitle: subtitle, titleStyle: titleStyle, actions: { EmptyView() })
+    init(title: String, subtitle: String? = nil, titleStyle: OnePlusTitleStyle = .system,
+         subtitleRole: OnePlusTextRole = .subtitle) {
+        self.init(title: title, subtitle: subtitle, titleStyle: titleStyle,
+                  subtitleRole: subtitleRole, actions: { EmptyView() })
     }
 }
 
