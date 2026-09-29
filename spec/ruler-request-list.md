@@ -8,6 +8,7 @@ Update this list whenever Ruler requirements or verification results change.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Apply the owner-review fixed-region and render-path rules to Ruler Settings and Defaults. | Both native AppKit windows are fixed card stacks. They have no table, list, toolbar, inspector, footer, scroll view, SwiftUI page header, or dropdown. XIB loading remains on the main actor as AppKit requires. No source change was needed. | Recheck both native windows in the signed build. |
 | Verify | Restyle Settings and Defaults bodies with OnePlusUI cards and native controls. Keep native titlebars, independent windows, localization, key order, and the pinned overlay. | Debug build passes. Both XIBs use shared native surfaces, switches, and dimension steppers. Preference observers capture the controller weakly. DESIGN.md v14 replaces the older HUD material rules below. | Review both windows, localized labels, color panels, and key order in the orchestrator's installed build. |
 
 ## Current parity contract

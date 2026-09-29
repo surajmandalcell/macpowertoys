@@ -968,6 +968,23 @@
 - **Check:** Enter settings from every home page, confirm home navigation is
   absent, then toggle back and confirm home state returns.
 
+## Fixed Controls Around Scrolling Rows
+
+- **Symptom:** A page title, search field, status card, inspector, or footer
+  moves when the user scrolls a table or list. Switching pages can also pause
+  while rows format or scan local state.
+- **Cause:** The page shell owns one scroll view around all content, or row
+  presentation performs sorting, formatting, file checks, or app discovery in
+  `body`.
+- **Invariant:** Keep page controls outside the scrolling region. Only the rows
+  inside the list or table card scroll. Prepare noninteractive row data in a
+  cancellable task outside the main actor. Use stable row IDs and keep row
+  bodies free of per-cell help, geometry readers, and file checks.
+- **Check:** Scroll each populated page and confirm its controls do not move.
+  Switch between pages in the signed build and confirm content appears within
+  100ms. Profile a populated list and confirm no synchronous file or process
+  scan runs on the main actor.
+
 ## Global Shortcut Recording
 
 - **Symptom:** Recording Command-Shift-3 appears as `⇧⌘#`, or displays correctly
