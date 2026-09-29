@@ -204,6 +204,13 @@ final class OnePlusUITests: XCTestCase {
         }
     }
 
+    func testFloatingGearReservesItsBodyArea() {
+        let host = NSHostingView(rootView: Color.clear.frame(width: 300, height: 100)
+            .onePlusFloatingSettings(isActive: false) {})
+        XCTAssertEqual(host.fittingSize.height, 152)
+        XCTAssertEqual(host.fittingSize.width, 300)
+    }
+
     func testMenuGridMatchesMeasuredReference() {
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(), 109.333333333, accuracy: 0.000001)
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(span: 2), 223.666666667, accuracy: 0.000001)

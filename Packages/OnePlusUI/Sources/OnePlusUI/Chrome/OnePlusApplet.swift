@@ -45,3 +45,18 @@ public struct OnePlusFloatingSettingsButton: View {
         .help(label).accessibilityLabel(label)
     }
 }
+
+public extension View {
+    /// Apply to the applet body before an existing bottom-trailing gear overlay.
+    func onePlusFloatingSettingsInset() -> some View {
+        padding(.bottom, OnePlusMetrics.floatingSettingsInset)
+    }
+
+    /// Reserves the gear's area and places it at the shared eight-point inset.
+    func onePlusFloatingSettings(isActive: Bool, help: String? = nil,
+                                action: @escaping () -> Void) -> some View {
+        onePlusFloatingSettingsInset().overlay(alignment: .bottomTrailing) {
+            OnePlusFloatingSettingsButton(isActive: isActive, help: help, action: action).padding(8)
+        }
+    }
+}
