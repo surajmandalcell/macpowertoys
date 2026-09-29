@@ -21,7 +21,7 @@ struct MainToolCard: View {
                         MainToolIdentity(tool: tool)
                         Spacer(minLength: OnePlusMetrics.compactControlHeight)
                     }
-                    Text(tool.description).onePlusText(.row)
+                    Text(tool.summary).onePlusText(.row)
                         .foregroundStyle(OnePlusColor.secondary)
                         .lineLimit(2).help(tool.description)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,7 +81,7 @@ struct MainToolListRow: View {
                 HStack(spacing: OnePlusCatalogMetrics.gap) {
                     ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
                     MainToolIdentity(tool: tool).frame(width: OnePlusCatalogMetrics.listNameWidth, alignment: .leading)
-                    Text(tool.description).onePlusText(.caption).lineLimit(2).help(tool.description)
+                    Text(tool.summary).onePlusText(.caption).lineLimit(2).help(tool.description)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, minHeight: OnePlusCatalogMetrics.rowHeight, alignment: .leading)
