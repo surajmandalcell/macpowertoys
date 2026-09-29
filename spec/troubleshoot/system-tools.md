@@ -803,3 +803,30 @@
   ten RSS samples form a stable band with no cycle-by-cycle growth. Do not
   require process-wide zero CPU or an exact RSS return because allocators and
   other enabled tools share the process.
+
+- **Symptom:** A large Diskman scan can retain gigabytes after the scan ends.
+- **Cause:** The result tree kept one `DiskEntry` for every file and folder with
+  no entry ceiling.
+- **Invariant:** Stop after 250,000 entries. Keep the last partial result marked
+  incomplete, block removal from it, and ask the user to scan a smaller folder.
+- **Check:** Run the injected small-limit regression in hosted tests. On a signed
+  build, scan a larger tree and confirm memory stops growing at the limit.
+
+- **Symptom:** A subprocess can block on a full pipe, retain unlimited output,
+  outlive cancellation, or leave a readability handler installed.
+- **Cause:** Marketplace and Tailscale retained output to EOF, Portman drained
+  tunnel errors only after exit, and failed rclone launch skipped handler cleanup.
+- **Invariant:** Drain pipes while the child runs, retain only the stated cap,
+  stop oversized or timed-out commands, and clear every readability handler on
+  launch failure and termination.
+- **Check:** Run the Marketplace, Tailscale, and Portman focused regressions in
+  hosted tests. Force rclone launch failure and confirm its handler count returns.
+
+- **Symptom:** Repeated project branches or deleted SSH Anchors can grow service
+  dictionaries for the life of the process.
+- **Cause:** Portman never evicted GitHub link results, and the NetToys helper
+  retained retry, route, Tailscale, and host-policy state for removed anchor IDs.
+- **Invariant:** Expire Portman results after two minutes and retain at most 64.
+  On each helper tick, retain state only for configured SSH Anchor IDs.
+- **Check:** Run the Portman cache regression. Add and remove anchors repeatedly,
+  then confirm helper state stays proportional to the current configuration.
