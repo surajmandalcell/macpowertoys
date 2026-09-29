@@ -77,6 +77,52 @@ enum DiskChartPalette {
     }
 }
 
+struct DiskChartCacheKey: Hashable {
+    let revision: Date
+    let tab: DiskChartStyle
+    let directoryID: String
+    let measure: DiskChartMeasure
+    let apparent: Bool
+    let scanComplete: Bool
+    let width: Int
+    let height: Int
+}
+
+@MainActor final class DiskChartLayoutCache {
+    private var revision: Date?
+    private var treemaps: [DiskChartCacheKey: [DiskChartTile]] = [:]
+    private var rings: [DiskChartCacheKey: [DiskRingSegment]] = [:]
+
+    func treemap(for key: DiskChartCacheKey) -> [DiskChartTile]? {
+        guard revision == key.revision else { return nil }
+        return treemaps[key]
+    }
+
+    func rings(for key: DiskChartCacheKey) -> [DiskRingSegment]? {
+        guard revision == key.revision else { return nil }
+        return rings[key]
+    }
+
+    func store(_ layout: [DiskChartTile], for key: DiskChartCacheKey) {
+        prepare(for: key.revision)
+        if treemaps.count >= 12 { treemaps.removeAll(keepingCapacity: true) }
+        treemaps[key] = layout
+    }
+
+    func store(_ layout: [DiskRingSegment], for key: DiskChartCacheKey) {
+        prepare(for: key.revision)
+        if rings.count >= 12 { rings.removeAll(keepingCapacity: true) }
+        rings[key] = layout
+    }
+
+    private func prepare(for revision: Date) {
+        guard self.revision != revision else { return }
+        self.revision = revision
+        treemaps.removeAll(keepingCapacity: true)
+        rings.removeAll(keepingCapacity: true)
+    }
+}
+
 struct DiskChartTile {
     let entry: DiskEntry?
     let label: String
@@ -92,6 +138,8 @@ struct DiskTreemapView: View {
     let apparent: Bool
     let measure: DiskChartMeasure
     let scanComplete: Bool
+    var revision: Date = .distantPast
+    var cache = DiskChartLayoutCache()
     let select: (DiskEntry) -> Void
     var onHoverDetail: (String?) -> Void = { _ in }
     var selectedEntryID: String?
@@ -99,6 +147,7 @@ struct DiskTreemapView: View {
     var preview: (DiskEntry) -> Void = { _ in }
     var actions: ([DiskEntry]) -> [OnePlusTableAction] = { _ in [] }
     @State private var hoveredID: String?
+    @State private var displayedLayout: [DiskChartTile] = []
     @FocusState private var focused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
@@ -151,12 +200,27 @@ struct DiskTreemapView: View {
         GeometryReader { geometry in
             let bounds = CGRect(origin: .zero, size: geometry.size)
             if DiskChartGeometry.isDrawable(bounds) {
-                let layout = tiles(in: bounds)
+                let key = DiskChartCacheKey(revision: revision, tab: .treemap,
+                                            directoryID: directory.id, measure: measure,
+                                            apparent: apparent, scanComplete: scanComplete,
+                                            width: Int(geometry.size.width.rounded()),
+                                            height: Int(geometry.size.height.rounded()))
+                let layout = cache.treemap(for: key) ?? displayedLayout
                 ZStack {
                     ForEach(layout, id: \.id) { tile in tileView(tile) }
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .animation(chartAnimation, value: layout.map(\.id))
+                .task(id: key) {
+                    if let cached = cache.treemap(for: key) {
+                        displayedLayout = cached
+                        return
+                    }
+                    let next = tiles(in: bounds)
+                    guard !Task.isCancelled else { return }
+                    cache.store(next, for: key)
+                    displayedLayout = next
+                }
                 .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
                 .onMoveCommand { direction in
                     if let next = DiskChartNavigation.next(layout.compactMap(\.entry), selected: selectedEntryID, direction: direction) { select(next) }
@@ -290,6 +354,8 @@ struct DiskSunburstView: View {
     let apparent: Bool
     let measure: DiskChartMeasure
     let scanComplete: Bool
+    var revision: Date = .distantPast
+    var cache = DiskChartLayoutCache()
     let select: (DiskEntry) -> Void
     var onHoverDetail: (String?) -> Void = { _ in }
     var selectedEntryID: String?
@@ -297,6 +363,7 @@ struct DiskSunburstView: View {
     var preview: (DiskEntry) -> Void = { _ in }
     var actions: ([DiskEntry]) -> [OnePlusTableAction] = { _ in [] }
     @State private var hoveredID: String?
+    @State private var displayedSegments: [DiskRingSegment] = []
     @FocusState private var focused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
@@ -306,8 +373,12 @@ struct DiskSunburstView: View {
             if DiskChartGeometry.isDrawable(CGRect(origin: .zero, size: geometry.size)) {
                 let plotHeight = geometry.size.height
                 let radius = max(0, min(geometry.size.width, plotHeight) / 2 - 10)
-                let segments = Self.segments(for: directory, apparent: apparent, measure: measure,
-                                             radius: radius, scanComplete: scanComplete)
+                let key = DiskChartCacheKey(revision: revision, tab: .sunburst,
+                                            directoryID: directory.id, measure: measure,
+                                            apparent: apparent, scanComplete: scanComplete,
+                                            width: Int(geometry.size.width.rounded()),
+                                            height: Int(geometry.size.height.rounded()))
+                let segments = cache.rings(for: key) ?? displayedSegments
                 let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
                 ZStack {
                     ForEach(segments, id: \.id) { segment in segmentView(segment) }
@@ -324,6 +395,17 @@ struct DiskSunburstView: View {
                     .allowsHitTesting(false)
                 }
                 .frame(height: plotHeight)
+                .task(id: key) {
+                    if let cached = cache.rings(for: key) {
+                        displayedSegments = cached
+                        return
+                    }
+                    let next = Self.segments(for: directory, apparent: apparent, measure: measure,
+                                             radius: radius, scanComplete: scanComplete)
+                    guard !Task.isCancelled else { return }
+                    cache.store(next, for: key)
+                    displayedSegments = next
+                }
                 .onContinuousHover { phase in
                     let next: DiskRingSegment?
                     switch phase {
@@ -374,8 +456,6 @@ struct DiskSunburstView: View {
         .help("\(segment.label) · \(segment.detail)")
         .accessibilityLabel("\(segment.label), \(segment.detail)")
         .accessibilityAddTraits(selectedEntryID == segment.id ? .isSelected : [])
-        .animation(chartAnimation, value: segment.start).animation(chartAnimation, value: segment.end)
-        .animation(chartAnimation, value: segment.inner).animation(chartAnimation, value: segment.outer)
     }
 
     private func ringLabel(_ segment: DiskRingSegment) -> some View {
