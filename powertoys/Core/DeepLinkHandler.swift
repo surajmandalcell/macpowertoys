@@ -180,8 +180,7 @@ final class DeepLinkHandler {
 
     private func processURL(_ url: URL) {
         if case .openPanel(let panel, let tab) = DiagnosticsRoute.parse(url) {
-            panel.selectTab(tab)
-            panel.open()
+            DiagnosticsMenuPanels.shared.open(panel, tab: tab)
             return
         }
         if ToolActionRouter.shared.execute(url: url) { return }

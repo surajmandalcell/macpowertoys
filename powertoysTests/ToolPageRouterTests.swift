@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import powertoys
@@ -127,6 +128,22 @@ struct ToolPageRouterTests {
                       "powertoys://diagnostics/appearance/dark?tab=home"] {
             #expect(DiagnosticsRoute.parse(try #require(URL(string: value))) == nil)
         }
+    }
+
+    @MainActor @Test func diagnosticsFindFlattenedMainStatusLabelWithoutGuessing() {
+        let main = NSStatusBarButton(frame: .zero)
+        let monitor = NSStatusBarButton(frame: .zero)
+        monitor.identifier = NSUserInterfaceItemIdentifier("SystemMonitorMenuBarItem")
+        let portman = NSStatusBarButton(frame: .zero)
+        portman.setAccessibilityIdentifier("portman.statusItem")
+        let individual = NSStatusBarButton(frame: .zero)
+        individual.identifier = NSUserInterfaceItemIdentifier("individual-menu.awake")
+        let buttons = [individual, monitor, main, portman]
+        #expect(DiagnosticsPanel.main.matchingButton(in: buttons) === main)
+        #expect(DiagnosticsPanel.systemMonitor.matchingButton(in: buttons) === monitor)
+        #expect(DiagnosticsPanel.portman.matchingButton(in: buttons) === portman)
+        #expect(DiagnosticsPanel.main.matchingButton(in: [main, NSStatusBarButton(frame: .zero)]) == nil)
+        #expect(DiagnosticsPanel.main.matchingButton(in: [monitor, portman, individual]) == nil)
     }
 
     @Test func parsesCaptureDiagnosticsOnlyUnderDiagnosticsHost() throws {
