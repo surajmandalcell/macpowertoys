@@ -164,6 +164,36 @@ nonisolated private struct LogsVersion: Equatable, Sendable {
     let lastID: UUID?
 }
 
+nonisolated enum LogsPresentation {
+    static func rowTime(_ date: Date, timeZone: TimeZone = .current) -> String {
+        rowTimeFormatter(timeZone: timeZone).string(from: date)
+    }
+
+    static func rowTimeFormatter(timeZone: TimeZone = .current) -> DateFormatter {
+        formatter("MM-dd HH:mm:ss", timeZone: timeZone)
+    }
+
+    static func span(from first: Date, to last: Date, timeZone: TimeZone = .current) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        if calendar.isDate(first, inSameDayAs: last) {
+            let date = formatter("yyyy-MM-dd", timeZone: timeZone).string(from: first)
+            let time = formatter("h:mm:ss a", timeZone: timeZone)
+            return "\(date), \(time.string(from: first)) – \(time.string(from: last))"
+        }
+        let dateTime = formatter("yyyy-MM-dd, h:mm a", timeZone: timeZone)
+        return "\(dateTime.string(from: first)) – \(dateTime.string(from: last))"
+    }
+
+    private static func formatter(_ format: String, timeZone: TimeZone) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = format
+        return formatter
+    }
+}
+
 struct LogsWindowView: View {
     @State private var page = LogsPage.internalLogs
     @State private var selectedLevels = Set(LogLevel.allCases)
@@ -276,7 +306,7 @@ private struct LogsSidebar: View {
                     level.name,
                     systemImage: selectedLevels.contains(level) ? level.icon : "circle",
                     selected: false,
-                    count: counts[level, default: 0]
+                    count: count(for: level)
                 ) { toggle(level) }
                     .accessibilityValue(selectedLevels.contains(level) ? "Included" : "Excluded")
             }
@@ -295,6 +325,13 @@ private struct LogsSidebar: View {
     private func toggle(_ level: LogLevel) {
         if selectedLevels.contains(level) { selectedLevels.remove(level) }
         else { selectedLevels.insert(level) }
+    }
+
+    private func count(for level: LogLevel) -> Int {
+        if page == .systemIssues {
+            return level == .error ? systemLogs.entries.count : 0
+        }
+        return counts[level, default: 0]
     }
 
     private func rebuildCounts() {
@@ -358,7 +395,7 @@ private struct LogsPageView: View {
                 Button("Copy") { copyRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
                 Button("Export") { exportRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
                 if page == .internalLogs {
-                    Button("Clear") { confirmClear = true }.buttonStyle(OnePlusButtonStyle(.destructive)).disabled(logManager.logs.isEmpty)
+                    Button("Clear") { confirmClear = true }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(logManager.logs.isEmpty)
                 }
             }
         } content: {
@@ -392,27 +429,32 @@ private struct LogsPageView: View {
                                 .onePlusText(.mono)
                                 .textSelection(.enabled)
                         }
-                        .width(100)
+                        .width(116)
                         TableColumn("Level", value: \LogsRow.level) { row in
-                            Label(row.level, systemImage: row.symbol)
-                                .foregroundStyle(levelColor(row))
+                            HStack(spacing: OnePlusMetrics.spacing[1]) {
+                                Image(systemName: row.symbol)
+                                    .foregroundStyle(levelGlyphColor(row))
+                                    .accessibilityHidden(true)
+                                Text(row.level)
+                                    .foregroundStyle(OnePlusColor.secondary)
+                            }
                                 .textSelection(.enabled)
                         }
-                        .width(96)
+                        .width(84)
                         TableColumn("Source", value: \LogsRow.source) { row in
                             Text(row.source)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                                 .textSelection(.enabled)
                         }
-                        .width(min: 140, ideal: 160, max: 180)
+                        .width(215)
                         TableColumn("Message", value: \LogsRow.message) { row in
                             Text(row.message)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                                 .textSelection(.enabled)
                         }
-                        .width(min: 320, ideal: 500)
+                        .width(min: 300, ideal: 500)
                     }
                     .contextMenu(forSelectionType: String.self) { selected in
                         logContextMenu(selected)
@@ -453,9 +495,14 @@ private struct LogsPageView: View {
 
     private var subtitle: String {
         guard let visibleSpan else {
-            return page == .systemIssues ? "0 entries · read on demand · up to \(SystemLogReader.maximumEntries)" : "0 entries"
+            return page == .systemIssues
+                ? "0 entries · read on demand · \(SystemLogReader.maximumEntries)-entry limit"
+                : "0 entries"
         }
-        return "\(visibleRows.count) entries · \(visibleSpan)"
+        let summary = "\(visibleRows.count) entries · \(visibleSpan)"
+        return page == .systemIssues
+            ? "\(summary) · \(SystemLogReader.maximumEntries)-entry limit"
+            : summary
     }
 
     private var sortBinding: Binding<[KeyPathComparator<LogsRow>]> {
@@ -479,11 +526,10 @@ private struct LogsPageView: View {
 
         rowLoadTask = Task {
             let prepared = await Task.detached(priority: .userInitiated) {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "HH:mm:ss"
+                let rowTimeFormatter = LogsPresentation.rowTimeFormatter()
                 let source = page == .internalLogs
-                    ? internalEntries.map { LogsRow($0, time: formatter.string(from: $0.timestamp)) }
-                    : systemEntries.map { LogsRow($0, time: formatter.string(from: $0.timestamp)) }
+                    ? internalEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp)) }
+                    : systemEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp)) }
                 let rows = source
                     .filter {
                         selectedLevels.contains($0.levelFilter)
@@ -496,10 +542,7 @@ private struct LogsPageView: View {
                 let lastTimestamp = rows.map(\.timestamp).max()
                 let span: String?
                 if let firstTimestamp, let lastTimestamp {
-                    let spanFormatter = DateFormatter()
-                    spanFormatter.dateStyle = .short
-                    spanFormatter.timeStyle = .short
-                    span = spanFormatter.string(from: firstTimestamp) + " – " + spanFormatter.string(from: lastTimestamp)
+                    span = LogsPresentation.span(from: firstTimestamp, to: lastTimestamp)
                 } else {
                     span = nil
                 }
@@ -526,7 +569,7 @@ private struct LogsPageView: View {
         }
     }
 
-    private func levelColor(_ row: LogsRow) -> Color {
+    private func levelGlyphColor(_ row: LogsRow) -> Color {
         if row.level == SystemLogLine.Level.fault.rawValue { return OnePlusColor.danger }
         switch row.levelFilter {
         case .error: return OnePlusColor.danger
@@ -624,13 +667,13 @@ struct LogsSettingsView: View {
                 OnePlusSettingRow("Retention", caption: "Internal entries older than this are removed.") {
                     Text("2 days").onePlusText(.mono)
                 }
-                OnePlusSettingRow(
-                    "System issues",
-                    caption: "Read from macOS only when requested.",
-                    separator: false
-                ) {
-                    Text("Never saved").onePlusText(.mono)
+                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
+                    OnePlusKeyValueRow("System issues", value: "Not stored")
+                    Text("Read from macOS only when requested.")
+                        .onePlusText(.caption)
                 }
+                .padding(.horizontal, OnePlusMetrics.cardPadding)
+                .frame(height: OnePlusMetrics.captionedSettingRow)
             }
         }
     }
