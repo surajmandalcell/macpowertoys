@@ -88,14 +88,17 @@ public extension OnePlusTabStrip where Tools == EmptyView {
 }
 
 public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
+    public enum Layout: Sendable { case workspace, applet }
     private let header: Header
     private let tabs: Tabs
     private let content: Content
     private let scrolls: Bool
+    private let layout: Layout
     @Environment(\.onePlusDensity) private var density
-    public init(scrolls: Bool = true, @ViewBuilder header: () -> Header,
+    public init(scrolls: Bool = true, layout: Layout = .workspace, @ViewBuilder header: () -> Header,
                 @ViewBuilder tabs: () -> Tabs, @ViewBuilder content: () -> Content) {
-        self.scrolls = scrolls; self.header = header(); self.tabs = tabs(); self.content = content()
+        self.scrolls = scrolls; self.layout = layout
+        self.header = header(); self.tabs = tabs(); self.content = content()
     }
     public var body: some View {
         VStack(spacing: 0) {
@@ -107,13 +110,16 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
     }
     private var bodyContent: some View {
         VStack(alignment: .leading, spacing: 16) { content }
-            .padding(.horizontal, density.gutter).padding(.top, 16).padding(.bottom, 24)
+            .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter)
+            .padding(.top, OnePlusMetrics.contentTop)
+            .padding(.bottom, layout == .applet ? 0 : OnePlusMetrics.gutter)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 public extension OnePlusPage where Tabs == EmptyView {
-    init(scrolls: Bool = true, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
-        self.init(scrolls: scrolls, header: header, tabs: { EmptyView() }, content: content)
+    init(scrolls: Bool = true, layout: Layout = .workspace,
+         @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
+        self.init(scrolls: scrolls, layout: layout, header: header, tabs: { EmptyView() }, content: content)
     }
 }
