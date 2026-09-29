@@ -213,7 +213,15 @@ struct PortmanPanelView: View {
         )
     }
 
+    private var selectedPortLoadID: String {
+        "\(selectedPortID ?? "")|\(sessionLinksEnabled)|\(publicGitHubLinksEnabled)"
+    }
+
     var body: some View {
+        panelDialogs
+    }
+
+    private var panel: some View {
         OnePlusMenuPanel {
             OnePlusMenuTabStrip(tabs: [
                 OnePlusMenuTab(.local, "Servers", systemImage: "server.rack", accessibilityIdentifier: "portman.page.Servers"),
@@ -245,6 +253,10 @@ struct PortmanPanelView: View {
             PortmanMenuController.shared.setHeight($0)
         }
         .environment(\.onePlusControlHeight, OnePlusMetrics.controlHeight)
+    }
+
+    private var panelWithLifecycle: some View {
+        panel
         .onAppear {
             if page == .local {
                 service.beginMonitoring()
@@ -337,15 +349,11 @@ struct PortmanPanelView: View {
             passwordPromptError = nil
             passwordPromptHost = tunnel.host
         }
-        .task(id: "\(selectedPortID ?? "")|\(sessionLinksEnabled)|\(publicGitHubLinksEnabled)") {
-            hoveredTime = nil
-            if let selectedPort {
-                await service.loadMetadata(for: selectedPort)
-                await service.loadRestartAvailability(for: selectedPort)
-                await service.loadSession(for: selectedPort)
-                await service.loadGitHubLinks(for: selectedPort)
-            }
-        }
+        .task(id: selectedPortLoadID) { await loadSelectedPortDetails() }
+    }
+
+    private var panelDialogs: some View {
+        panelWithLifecycle
         .confirmationDialog("Stop this server process?", isPresented: showingStopConfirmation,
                             presenting: pendingStop) { port in
             Button("Stop PID \(String(port.pid))", role: .destructive) { service.stopLocal(port) }
@@ -383,6 +391,15 @@ struct PortmanPanelView: View {
         selectedPortID = nil
         cleanupMode = false
         selectedCleanupProcesses = []
+    }
+
+    private func loadSelectedPortDetails() async {
+        hoveredTime = nil
+        guard let selectedPort else { return }
+        await service.loadMetadata(for: selectedPort)
+        await service.loadRestartAvailability(for: selectedPort)
+        await service.loadSession(for: selectedPort)
+        await service.loadGitHubLinks(for: selectedPort)
     }
 
     private func prepareOverview() async {
