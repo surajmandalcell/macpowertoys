@@ -9,11 +9,14 @@ nonisolated struct PortmanGitHubLinks: Sendable {
 
 actor PortmanGitHubLookup {
     static let shared = PortmanGitHubLookup()
+    private static let cacheLifetime: TimeInterval = 120
+    private static let cacheLimit = 64
 
     private let session: URLSession
     private var cache: [String: (links: PortmanGitHubLinks, date: Date)] = [:]
+    var cachedResultCount: Int { cache.count }
 
-    private init() {
+    init() {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCredentialStorage = nil
         configuration.httpCookieStorage = nil
@@ -23,12 +26,18 @@ actor PortmanGitHubLookup {
     }
 
     func lookup(root: String, branch: String) async -> PortmanGitHubLinks {
+        let now = Date()
+        cache = cache.filter { now.timeIntervalSince($0.value.date) < Self.cacheLifetime }
         let key = root + "|" + branch
-        if let cached = cache[key], Date().timeIntervalSince(cached.date) < 120 {
+        if let cached = cache[key] {
             return cached.links
         }
         let result = await fetch(root: root, branch: branch)
-        cache[key] = (result, Date())
+        cache[key] = (result, now)
+        if cache.count > Self.cacheLimit,
+           let oldestKey = cache.min(by: { $0.value.date < $1.value.date })?.key {
+            cache.removeValue(forKey: oldestKey)
+        }
         return result
     }
 
