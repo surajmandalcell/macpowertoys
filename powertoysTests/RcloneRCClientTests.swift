@@ -290,6 +290,18 @@ final class RcloneRCClientTests: XCTestCase {
         XCTAssertEqual(id, "folder-1")
     }
 
+    func testCreateDirectoryUsesMkdirWithRemotePath() async throws {
+        URLProtocolStub.handler = { request in
+            XCTAssertEqual(request.url?.path, "/operations/mkdir")
+            let body = try Self.body(for: request)
+            XCTAssertEqual(body["fs"] as? String, "drive:")
+            XCTAssertEqual(body["remote"] as? String, "photos/2026")
+            return try Self.response(for: request, json: [:])
+        }
+
+        try await makeClient().createDirectory(fs: "drive:", remote: "photos/2026")
+    }
+
     func testCopyFileAndMaintenanceCommandsSendExpectedBodies() async throws {
         var calls: [(String, [String: Any])] = []
         URLProtocolStub.handler = { request in

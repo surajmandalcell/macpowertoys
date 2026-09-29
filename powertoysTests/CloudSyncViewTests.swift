@@ -10,4 +10,13 @@ final class CloudSyncViewTests: XCTestCase {
         XCTAssertNil(RcloneBandwidthInput.error(for: "1.5GiB"))
         XCTAssertNotNil(RcloneBandwidthInput.error(for: "fast"))
     }
+
+    func testRemoteFolderNameAcceptsOneSafePathComponent() {
+        XCTAssertNil(RemoteFolderName.error(for: "Sprint Assets"))
+        XCTAssertNil(RemoteFolderName.error(for: "設計"))
+        XCTAssertNotNil(RemoteFolderName.error(for: ""))
+        XCTAssertNotNil(RemoteFolderName.error(for: ".."))
+        XCTAssertNotNil(RemoteFolderName.error(for: "nested/folder"))
+        XCTAssertNotNil(RemoteFolderName.error(for: "nested\\folder"))
+    }
 }
