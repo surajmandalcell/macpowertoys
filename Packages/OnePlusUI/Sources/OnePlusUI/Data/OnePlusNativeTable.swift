@@ -101,6 +101,10 @@ public struct OnePlusNativeTable: NSViewRepresentable {
     }
 
     @MainActor public final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
+        private static let actionCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.action")
+        private static let primaryCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.primary")
+        private static let textCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.text")
+
         var owner: OnePlusNativeTable
         var updating = false
         init(_ owner: OnePlusNativeTable) { self.owner = owner }
@@ -109,32 +113,52 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             guard owner.rows.indices.contains(row), let column = tableColumn else { return nil }
             let item = owner.rows[row]
             if column.identifier.rawValue == "actions" {
-                let button = NSButton(image: NSImage(systemSymbolName: "ellipsis", accessibilityDescription: "File actions")!,
-                                      target: self, action: #selector(showActions(_:)))
-                button.isBordered = false; button.tag = row; button.toolTip = "File actions"
+                let button = tableView.makeView(withIdentifier: Self.actionCellID, owner: self) as? NSButton
+                    ?? makeActionButton()
+                button.tag = row
                 button.contentTintColor = NSColor(OnePlusColor.secondary)
                 button.isEnabled = !owner.actions([item.id]).isEmpty
                 return button
             }
             guard let index = Int(column.identifier.rawValue), item.cells.indices.contains(index) else { return nil }
-            let cell = NSTableCellView()
-            let text = NSTextField(labelWithString: item.cells[index])
+            let identifier = index == 0 ? Self.primaryCellID : Self.textCellID
+            let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
+                ?? makeTextCell(identifier: identifier, includesIcon: index == 0)
+            guard let text = cell.textField else { return cell }
+            text.stringValue = item.cells[index]
             text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: owner.density), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: owner.density))
             text.textColor = NSColor(index == 0 ? OnePlusColor.ink : OnePlusColor.secondary)
-            text.lineBreakMode = .byTruncatingMiddle; text.toolTip = item.cells[index]
+            text.alignment = owner.columns[index].trailing ? .right : .left
+            cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
+            return cell
+        }
+        private func makeActionButton() -> NSButton {
+            let image = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: nil) ?? NSImage()
+            let button = NSButton(image: image, target: self, action: #selector(showActions(_:)))
+            button.identifier = Self.actionCellID
+            button.isBordered = false
+            button.setAccessibilityLabel("File actions")
+            return button
+        }
+        private func makeTextCell(identifier: NSUserInterfaceItemIdentifier, includesIcon: Bool) -> NSTableCellView {
+            let cell = NSTableCellView()
+            cell.identifier = identifier
+            let text = NSTextField(labelWithString: "")
+            text.lineBreakMode = .byTruncatingMiddle
             text.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(text); cell.textField = text
             var inset: CGFloat = 12
-            if index == 0 {
-                let icon = NSImageView(image: NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil) ?? NSImage())
+            if includesIcon {
+                let icon = NSImageView()
                 icon.contentTintColor = NSColor(OnePlusColor.secondary)
-                icon.translatesAutoresizingMaskIntoConstraints = false; cell.addSubview(icon)
+                icon.translatesAutoresizingMaskIntoConstraints = false
+                icon.setAccessibilityElement(false)
+                cell.addSubview(icon); cell.imageView = icon
                 NSLayoutConstraint.activate([icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
                     icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor), icon.widthAnchor.constraint(equalToConstant: 15),
                     icon.heightAnchor.constraint(equalToConstant: 15)])
                 inset = 35
             }
-            text.alignment = owner.columns[index].trailing ? .right : .left
             NSLayoutConstraint.activate([text.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: inset),
                 text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12),
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor)])
