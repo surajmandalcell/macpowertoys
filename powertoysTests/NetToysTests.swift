@@ -318,11 +318,46 @@ final class NetToysTests: XCTestCase {
             ],
             from: start,
             to: end,
-            currentState: .reachable,
+            currentGateway: .reachable,
+            currentInternet: .reachable,
             currentNetwork: "Guest Wi-Fi"
         )
         XCTAssertEqual(repaired.first { $0.network == "Home Wi-Fi" }?.unavailableDuration, 40)
         XCTAssertEqual(repaired.first { $0.network == "Guest Wi-Fi" }?.unavailableDuration, 0)
+    }
+
+    func testNetworkAvailabilityCountsGatewayOutagesShownInTransitions() throws {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let end = start.addingTimeInterval(100)
+        let events = [
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi",
+                date: start.addingTimeInterval(-10),
+                changes: [
+                    .gateway(from: .unknown, to: .reachable),
+                    .internet(from: .unknown, to: .reachable)
+                ]
+            ),
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi",
+                date: start.addingTimeInterval(20),
+                changes: [.gateway(from: .reachable, to: .unreachable)]
+            ),
+            NetworkTransitionEvent(
+                networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi",
+                date: start.addingTimeInterval(50),
+                changes: [.gateway(from: .unreachable, to: .reachable)]
+            )
+        ]
+
+        let summary = try XCTUnwrap(
+            networkAvailabilitySummaries(events: events, from: start, to: end).first
+        )
+
+        XCTAssertEqual(summary.knownDuration, 100)
+        XCTAssertEqual(summary.unavailableDuration, 30)
+        XCTAssertEqual(summary.outages.count, 1)
+        XCTAssertEqual(summary.uptime, 0.7)
     }
 
     func testHistoryPresentationFiltersAndFormatsRowsBeforeRendering() {
@@ -343,7 +378,8 @@ final class NetToysTests: XCTestCase {
             runs: [],
             range: .day,
             query: "office",
-            currentState: .unreachable,
+            currentGateway: .reachable,
+            currentInternet: .unreachable,
             currentNetwork: "Office Wi-Fi"
         )
 
@@ -354,6 +390,39 @@ final class NetToysTests: XCTestCase {
         XCTAssertTrue(presentation.availability.summaries.contains {
             $0.summary.network == "Office Wi-Fi" && !$0.label.isEmpty
         })
+    }
+
+    func testHistoryPresentationLeavesUnsampledRangeHollow() throws {
+        let now = Date(timeIntervalSince1970: 200_000)
+        let outage = now.addingTimeInterval(-3_600)
+        let presentation = netToysHistoryPresentation(
+            events: [
+                NetworkTransitionEvent(
+                    networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi",
+                    date: outage,
+                    changes: [.gateway(from: .reachable, to: .unreachable)]
+                )
+            ],
+            runs: [],
+            range: .day,
+            query: "",
+            currentGateway: .unreachable,
+            currentInternet: .reachable,
+            currentNetwork: "Home Wi-Fi",
+            now: now
+        )
+
+        XCTAssertEqual(presentation.availability.start, now.addingTimeInterval(-86_400))
+        XCTAssertNotEqual(
+            presentation.availability.startLabel,
+            presentation.availability.start.formatted(date: .omitted, time: .shortened)
+        )
+        let summary = try XCTUnwrap(presentation.availability.summaries.first?.summary)
+        XCTAssertEqual(summary.segments.first?.state, .unknown)
+        XCTAssertEqual(summary.segments.first?.start, presentation.availability.start)
+        XCTAssertEqual(summary.segments.first?.end, outage)
+        XCTAssertEqual(summary.unavailableDuration, 3_600)
+        XCTAssertEqual(summary.outages.count, 1)
     }
 
     func testNetworkIdentityUsesSSIDWithRouteFallback() {
