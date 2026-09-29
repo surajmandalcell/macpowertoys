@@ -227,9 +227,9 @@ final class OnePlusUITests: XCTestCase {
 
     func testMenuPanelMeasuresShortContentWithoutCollapsingItsBody() {
         let host = NSHostingView(rootView: OnePlusMenuPanel(maximumHeight: 300) {
-            Text("Tabs")
+            OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")], selection: .constant("home"))
         } actions: {
-            Text("Open App")
+            OnePlusMenuOpenApp {}
         } content: {
             Color.clear.frame(height: 100)
         })
@@ -238,7 +238,7 @@ final class OnePlusUITests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
         host.layoutSubtreeIfNeeded()
         XCTAssertEqual(host.fittingSize.width, 356, accuracy: 0.5)
-        XCTAssertEqual(host.fittingSize.height, 148, accuracy: 0.5)
+        XCTAssertEqual(host.fittingSize.height, OnePlusMenuMetrics.topBar + 100 + 3 + 8, accuracy: 0.5)
     }
 
     func testAllFourTextureResourcesKeepTheirPixelDimensions() throws {
