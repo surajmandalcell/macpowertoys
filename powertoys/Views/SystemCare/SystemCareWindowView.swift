@@ -2,6 +2,17 @@ import AppKit
 import OnePlusUI
 import SwiftUI
 
+struct SystemCareByteMetric: Equatable {
+    let value: String
+    let unit: String
+
+    init(_ bytes: Int64) {
+        let parts = bytes.formattedByteCount.split(maxSplits: 1, whereSeparator: \.isWhitespace)
+        value = bytes == 0 ? "0" : String(parts.first ?? "0")
+        unit = parts.count == 2 ? String(parts[1]) : ""
+    }
+}
+
 private enum SystemCarePage: String, CaseIterable, Identifiable {
     case overview
     case storage
@@ -145,13 +156,15 @@ struct SystemCareWindowView: View {
     }
 
     private var overviewPage: some View {
-        OnePlusPage {
+        let reclaimableMetric = SystemCareByteMetric(reclaimableSize)
+        let cleanupMetric = SystemCareByteMetric(manager.lastRecoveredBytes)
+        return OnePlusPage {
             OnePlusPageHeader(title: "Overview", subtitle: "Storage, cleanup, and maintenance") {
                 Button("Scan for Cleanup", systemImage: "sparkles") {
                     page = .cleanup
                     manager.scanCleanup(categories: effectiveCategories)
                 }
-                .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
+                .buttonStyle(OnePlusButtonStyle(.primary))
                 .disabled(manager.isWorking)
                 .accessibilityIdentifier("system-care.overview.scan")
             }
@@ -170,7 +183,8 @@ struct SystemCareWindowView: View {
                 OnePlusMetricTile(
                     "Reclaimable",
                     systemImage: "sparkles",
-                    value: reclaimableSize.formattedByteCount,
+                    value: reclaimableMetric.value,
+                    unit: reclaimableMetric.unit,
                     caption: manager.hasCleanupScan ? "Latest saved scan" : "Run a cleanup scan",
                     action: { page = .cleanup }
                 )
@@ -184,7 +198,8 @@ struct SystemCareWindowView: View {
                 OnePlusMetricTile(
                     "Last cleanup",
                     systemImage: "trash",
-                    value: manager.lastRecoveredBytes.formattedByteCount,
+                    value: cleanupMetric.value,
+                    unit: cleanupMetric.unit,
                     caption: manager.lastRecoveredBytes == 0 ? "No cleanup this session" : "Moved to Trash",
                     action: { page = .history }
                 )
@@ -229,10 +244,10 @@ struct SystemCareWindowView: View {
                     .menuStyle(.button)
                     .menuIndicator(.hidden)
                     Button("Rescan") { manager.analyze(url, resetBreadcrumbs: true) }
-                        .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.primary))
                 } else {
                     Button("Choose Folder…") { chooseStorageFolder() }
-                        .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.primary))
                 }
             }
         } content: {
@@ -243,7 +258,7 @@ struct SystemCareWindowView: View {
                     caption: "See the folders and files that use the most space."
                 ) {
                     Button("Choose Folder…") { chooseStorageFolder() }
-                        .buttonStyle(OnePlusButtonStyle(.primary))
+                        .buttonStyle(OnePlusButtonStyle(.neutral))
                 }
                 .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.wideControlColumn)
             } else {
@@ -263,7 +278,7 @@ struct SystemCareWindowView: View {
                         Button(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent) {
                             manager.navigateStorage(to: url)
                         }
-                        .buttonStyle(OnePlusButtonStyle(.link, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.link))
                         if index < manager.storageBreadcrumbs.count - 1 {
                             Image(systemName: "chevron.right").onePlusText(.caption)
                         }
@@ -276,7 +291,7 @@ struct SystemCareWindowView: View {
     }
 
     private var storageSummaryCard: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             OnePlusCardHeader("Usage", systemImage: "chart.bar.fill") {
                 Text(manager.storageTotal.formattedByteCount).onePlusText(.mono)
             }
@@ -360,7 +375,7 @@ struct SystemCareWindowView: View {
                 Button(manager.hasCleanupScan ? "Rescan" : "Scan") {
                     manager.scanCleanup(categories: effectiveCategories)
                 }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                .buttonStyle(OnePlusButtonStyle(.neutral))
                 .disabled(manager.isWorking)
                 .accessibilityIdentifier("system-care.cleanup.scan")
             }
@@ -411,9 +426,9 @@ struct SystemCareWindowView: View {
             OnePlusCardHeader("Cleanup preview", systemImage: "eye") {
                 if manager.hasCleanupScan {
                     Button("All") { manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: true) }
-                        .buttonStyle(OnePlusButtonStyle(.link, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.link))
                     Button("None") { manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: false) }
-                        .buttonStyle(OnePlusButtonStyle(.link, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.link))
                 }
             }
             if manager.cleanupCandidates.isEmpty {
@@ -457,7 +472,7 @@ struct SystemCareWindowView: View {
             if manager.molePath == nil {
                 OnePlusBanner("Install Mole to preview leftovers or uninstall applications.", tone: .warning) {
                     Button("Open Mole") { page = .mole }
-                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.ghost))
                 }
             }
             OnePlusSearchField(
@@ -514,7 +529,7 @@ struct SystemCareWindowView: View {
     }
 
     private var applicationDetail: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             if let application = selectedApplication {
                 OnePlusCardHeader(application.name, systemImage: "app")
                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[4]) {
@@ -551,7 +566,7 @@ struct SystemCareWindowView: View {
                 Button(manager.molePath == nil ? "Install with Homebrew…" : "Check for Update…") {
                     showingInstallConfirmation = true
                 }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                .buttonStyle(OnePlusButtonStyle(.neutral))
             }
         } content: {
             OnePlusBanner(
@@ -571,9 +586,9 @@ struct SystemCareWindowView: View {
                         }
                         Spacer()
                         Button("Preview") { manager.openMole(operation, dryRun: true) }
-                            .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                            .buttonStyle(OnePlusButtonStyle(.ghost))
                         Button("Open in Terminal…") { manager.openMole(operation, dryRun: false) }
-                            .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                            .buttonStyle(OnePlusButtonStyle(.neutral))
                     }
                     .padding(.horizontal, OnePlusMetrics.cardPadding)
                     .frame(height: OnePlusMetrics.captionedSettingRow)
@@ -595,7 +610,7 @@ struct SystemCareWindowView: View {
         OnePlusPage {
             OnePlusPageHeader(title: "History", subtitle: "Recent Mole operations") {
                 Button("Refresh", systemImage: "arrow.clockwise") { manager.loadHistory() }
-                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
                     .disabled(manager.molePath == nil)
             }
         } content: {
@@ -668,7 +683,7 @@ struct SystemCareWindowView: View {
         OnePlusPage {
             OnePlusPageHeader(title: "About", subtitle: "System Care")
         } content: {
-            OnePlusCard(textured: true) {
+            OnePlusCard {
                 OnePlusCardHeader("System Care", systemImage: "sparkles")
                 OnePlusSettingRow("Native cleanup", caption: "Review and move rebuildable data to Trash.") {
                     OnePlusStatus("Included", state: .success)
@@ -690,7 +705,7 @@ struct SystemCareWindowView: View {
             ) {
                 if manager.isWorking {
                     Button("Cancel") { manager.cancel() }
-                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                        .buttonStyle(OnePlusButtonStyle(.ghost))
                 }
             }
             .padding(OnePlusMetrics.gutter)
