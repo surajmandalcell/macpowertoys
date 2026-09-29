@@ -145,6 +145,7 @@ struct SystemMonitorWindowView: View {
     @State private var reportSearch = ""
     @State private var reportAction: TaskManagerSystemReportAction?
     @State private var processSearchFocusTrigger = 0
+    @State private var remoteAddRequest = 0
 
     init(
         reportSnapshot: [TaskManagerReportCategory] = [],
@@ -174,7 +175,6 @@ struct SystemMonitorWindowView: View {
             }
         }
         .onePlusDensity(.compact)
-        .environment(\.colorScheme, .dark)
         .background(WindowAccessor(identifier: "system-monitor"))
         .onAppear {
             pageID = page.rawValue
@@ -269,11 +269,9 @@ struct SystemMonitorWindowView: View {
                         Button("Save Text Report…") { reportAction = .exportText }
                         Button("Save JSON Report…") { reportAction = .exportJSON }
                     } label: {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 10))
-                            .frame(width: 29, height: 29)
-                            .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 5))
-                            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+                        OnePlusControlLabel(variant: .icon, size: .small) {
+                            Image(systemName: "square.and.arrow.down")
+                        }
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
@@ -298,6 +296,16 @@ struct SystemMonitorWindowView: View {
             metricHeader(.battery)
         case .sensors:
             metricHeader(.thermal)
+        case .remote:
+            TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
+                Button {
+                    remoteAddRequest &+= 1
+                } label: {
+                    Label("Add host", systemImage: "plus")
+                }
+                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                .accessibilityIdentifier("system-monitor.remote.add-host")
+            }
         default:
             TaskManagerHeader(page.title, subtitle: page.subtitle)
         }
@@ -341,7 +349,7 @@ struct SystemMonitorWindowView: View {
         case .battery: scrollPage { batteryPage }
         case .sensors: scrollPage { sensorsPage }
         case .remote:
-            SystemMonitorRemoteView()
+            SystemMonitorRemoteView(addRequest: remoteAddRequest)
                 .padding(.horizontal, TaskManagerTheme.contentInset)
                 .padding(.top, TaskManagerTheme.pageTopInset)
                 .padding(.bottom, 18)
@@ -393,7 +401,7 @@ struct SystemMonitorWindowView: View {
 
             remoteOverview
 
-            LazyVGrid(columns: [GridItem(.flexible(minimum: 0), spacing: 14), GridItem(.flexible(minimum: 0))], spacing: 14) {
+            LazyVGrid(columns: [GridItem(.flexible(minimum: 0), spacing: 10), GridItem(.flexible(minimum: 0))], spacing: 10) {
                 topProcesses
                 memoryAllocation
             }
@@ -448,12 +456,7 @@ struct SystemMonitorWindowView: View {
                                 .font(.system(size: 8, weight: .medium))
                                 .foregroundStyle(TaskManagerTheme.muted)
                         }
-                        Text(value)
-                            .font(.system(size: value.count > 9 ? 22 : 27, weight: .medium))
-                            .tracking(-0.7)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
+                        metricValue(value, valueSize: 27, unitSize: 12)
                             .padding(.top, 7)
                         Text(detail)
                             .font(.system(size: 9))
@@ -500,7 +503,7 @@ struct SystemMonitorWindowView: View {
                 .buttonStyle(.plain).focusEffectDisabled()
             } else {
                 ScrollView(.horizontal) {
-                    LazyHStack(spacing: 12) {
+                    LazyHStack(spacing: 10) {
                         ForEach(remoteProfiles) { profile in
                             TaskManagerRemoteCard(
                                 profile: profile,
@@ -543,12 +546,11 @@ struct SystemMonitorWindowView: View {
                             }
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundStyle(TaskManagerTheme.secondary)
-                            .padding(.horizontal, 12)
-                            .frame(height: 33)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
                         .focusEffectDisabled()
+                        .onePlusTableRow()
                         if process.id != sorted.last?.id {
                             Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         }
@@ -581,7 +583,7 @@ struct SystemMonitorWindowView: View {
         let applications = max(used - wired - compressed, 0)
         let available = max(total - used, 0)
         return TaskManagerPanel {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 GeometryReader { proxy in
                     HStack(spacing: 2) {
                         Rectangle().fill(TaskManagerTheme.ink.opacity(0.82))
@@ -601,7 +603,7 @@ struct SystemMonitorWindowView: View {
                 Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                 allocationRow("Available", value: Self.bytes(available))
             }
-            .padding(14)
+            .padding(12)
         }
     }
 
@@ -613,22 +615,26 @@ struct SystemMonitorWindowView: View {
         values: [Double],
         secondary: [Double] = [],
         range: ClosedRange<Double>,
+        upperScaleLabel: String? = nil,
+        lowerScaleLabel: String? = nil,
+        seriesLabels: (String, String)? = nil,
         stats: [(String, String)]
     ) -> some View {
-        TaskManagerPanel(textured: true) {
-            VStack(spacing: 12) {
+        let displayed = unit.isEmpty ? TaskManagerMetricText.parts(value) : (value, unit)
+        return TaskManagerPanel(textured: true) {
+            VStack(spacing: 10) {
                 HStack(alignment: .top, spacing: 18) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(label)
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(TaskManagerTheme.secondary)
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text(value)
-                                .font(.system(size: 32, weight: .medium))
+                            Text(displayed.0)
+                                .font(.system(size: 27, weight: .medium))
                                 .tracking(-1)
                                 .monospacedDigit()
-                            if !unit.isEmpty {
-                                Text(unit).font(.system(size: 14)).foregroundStyle(TaskManagerTheme.secondary)
+                            if !displayed.1.isEmpty {
+                                Text(displayed.1).font(.system(size: 12)).foregroundStyle(TaskManagerTheme.secondary)
                             }
                         }
                         Text(detail).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
@@ -645,11 +651,26 @@ struct SystemMonitorWindowView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 14)
-                TaskManagerHistoryChart(values: values, secondary: secondary, range: range, unit: unit)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                if let seriesLabels {
+                    HStack(spacing: 12) {
+                        chartLegend(seriesLabels.0, color: TaskManagerTheme.ink.opacity(0.76))
+                        chartLegend(seriesLabels.1, color: TaskManagerTheme.accent)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                }
+                TaskManagerHistoryChart(
+                    values: values,
+                    secondary: secondary,
+                    range: range,
+                    unit: unit,
+                    upperScaleLabel: upperScaleLabel,
+                    lowerScaleLabel: lowerScaleLabel
+                )
                     .frame(height: 138)
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 12)
                 HStack {
                     Text("−\(historyMinutes) min")
                     Spacer()
@@ -657,25 +678,26 @@ struct SystemMonitorWindowView: View {
                 }
                 .font(.system(size: 8, design: .monospaced))
                 .foregroundStyle(TaskManagerTheme.muted)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 12)
                 .padding(.bottom, 10)
             }
         }
     }
 
     private var cpuPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             detailHero(
                 label: "CPU usage", value: service.snapshot?.cpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) logical cores",
                 values: recentHistory.compactMap(\.cpuUsage), range: 0...100,
+                upperScaleLabel: "100%", lowerScaleLabel: "0%",
                 stats: [
                     ("User", service.snapshot?.cpuDetails.map { "\(Int($0.user.rounded()))%" } ?? "—"),
                     ("System", service.snapshot?.cpuDetails.map { "\(Int($0.system.rounded()))%" } ?? "—"),
                     ("Idle", service.snapshot?.cpuDetails.map { "\(Int($0.idle.rounded()))%" } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                 coreActivity
                 informationPanel("Load average", rows: [
                     ("1 minute", service.snapshot?.loadAverage.map { Self.decimal($0.0) } ?? "—"),
@@ -691,8 +713,8 @@ struct SystemMonitorWindowView: View {
     private var coreActivity: some View {
         let cores = service.snapshot?.cpuDetails?.cores ?? []
         return TaskManagerPanel(textured: true) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 10) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Core activity")
                             .font(.system(size: 11, weight: .semibold))
@@ -757,7 +779,7 @@ struct SystemMonitorWindowView: View {
                     }
                 }
             }
-            .padding(14)
+            .padding(12)
         }
     }
 
@@ -783,14 +805,15 @@ struct SystemMonitorWindowView: View {
     }
 
     private var gpuPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             detailHero(
                 label: "GPU usage", value: service.snapshot?.gpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Integrated graphics",
                 values: recentHistory.compactMap(\.gpuUsage), range: 0...100,
+                upperScaleLabel: "100%", lowerScaleLabel: "0%",
                 stats: [("Memory", "Unified"), ("Thermal pressure", service.snapshot?.thermalState ?? "—")]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                 informationPanel("Graphics details", rows: [
                     ("Architecture", "Integrated"), ("Memory", "Unified"),
                     ("Utilization", percent(service.snapshot?.gpuUsage)),
@@ -804,15 +827,17 @@ struct SystemMonitorWindowView: View {
     }
 
     private var memoryPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             detailHero(
                 label: "Memory in use", value: service.snapshot?.memoryUsed.map(Self.bytes) ?? "—",
                 detail: "\(service.snapshot?.memoryTotal.map(Self.bytes) ?? "—") unified memory",
                 values: recentHistory.compactMap { $0.memoryUsed.map(Double.init) },
                 range: 0...Double(max(service.snapshot?.memoryTotal ?? 1, 1)),
+                upperScaleLabel: service.snapshot?.memoryTotal.map(Self.bytes) ?? "—",
+                lowerScaleLabel: "0 GB",
                 stats: [("Used", service.snapshot?.memoryUsage.percent ?? "—"), ("Available", memoryAvailable)]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                 VStack(alignment: .leading, spacing: 9) {
                     Text("Allocation").font(.system(size: 11, weight: .medium))
                     memoryAllocationPanel.frame(height: 203)
@@ -832,18 +857,20 @@ struct SystemMonitorWindowView: View {
     }
 
     private var networkPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             detailHero(
                 label: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                 detail: "All active non-loopback interfaces",
                 values: recentHistory.compactMap(\.networkDownload),
                 secondary: recentHistory.compactMap(\.networkUpload), range: networkRange,
+                upperScaleLabel: Self.rate(networkRange.upperBound), lowerScaleLabel: "0 KB/s",
+                seriesLabels: ("Download", "Upload"),
                 stats: [
                     ("Upload", service.snapshot?.networkUpload.map(Self.rate) ?? "—"),
                     ("Interface", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                 ]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                 informationPanel("Interface", rows: [
                     ("Name", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                     ("Local address", service.snapshot?.networkDetails?.localAddress ?? "Unavailable"),
@@ -860,15 +887,14 @@ struct SystemMonitorWindowView: View {
     }
 
     private var diskPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             TaskManagerPanel(textured: true) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 7) {
                             Label("Startup volume", systemImage: "internaldrive")
                                 .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
-                            Text(service.snapshot?.diskUsed.map(Self.bytes) ?? "—")
-                                .font(.system(size: 32, weight: .medium)).tracking(-1).monospacedDigit()
+                            metricValue(service.snapshot?.diskUsed.map(Self.bytes) ?? "—", valueSize: 27, unitSize: 12)
                             Text("used of \(service.snapshot?.diskTotal.map(Self.bytes) ?? "—")")
                                 .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                         }
@@ -885,7 +911,7 @@ struct SystemMonitorWindowView: View {
                     }
                     .frame(height: 8)
                 }
-                .padding(14)
+                .padding(12)
             }
             detailHero(
                 label: "Disk activity",
@@ -894,12 +920,14 @@ struct SystemMonitorWindowView: View {
                 values: recentHistory.compactMap { $0.diskDetails?.readPerSecond },
                 secondary: recentHistory.compactMap { $0.diskDetails?.writePerSecond },
                 range: diskRateRange,
+                upperScaleLabel: Self.rate(diskRateRange.upperBound), lowerScaleLabel: "0 KB/s",
+                seriesLabels: ("Read", "Write"),
                 stats: [
                     ("Write", service.snapshot?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
                     ("Read total", service.snapshot?.diskDetails.map { Self.bytes($0.readTotal) } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                 informationPanel("Volume", rows: [("Mount point", "/"), ("Used", service.snapshot?.diskUsed.map(Self.bytes) ?? "—"), ("Available", diskAvailable)])
                 informationPanel("Storage", rows: [
                     ("Capacity", service.snapshot?.diskTotal.map(Self.bytes) ?? "—"),
@@ -912,14 +940,15 @@ struct SystemMonitorWindowView: View {
     }
 
     private var batteryPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             detailHero(
                 label: "Battery charge", value: service.snapshot?.batteryPercent.map(String.init) ?? "—", unit: "%",
                 detail: batteryDetail,
                 values: recentHistory.compactMap { $0.batteryPercent.map(Double.init) }, range: 0...100,
+                upperScaleLabel: "100%", lowerScaleLabel: "0%",
                 stats: [("Power source", powerSourceDetail), ("Status", batteryDetail)]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                 informationPanel("Battery details", rows: [
                     ("Charge", service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—"),
                     ("Power source", powerSourceDetail),
@@ -940,9 +969,11 @@ struct SystemMonitorWindowView: View {
                 Label("Power draw", systemImage: "bolt")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(TaskManagerTheme.secondary)
-                Text(service.snapshot.flatMap(Self.powerDraw).map { "\(Self.decimal($0)) W" } ?? "Unavailable")
-                    .font(.system(size: 28, weight: .medium))
-                    .monospacedDigit()
+                metricValue(
+                    service.snapshot.flatMap(Self.powerDraw).map { "\(Self.decimal($0)) W" } ?? "Unavailable",
+                    valueSize: 27,
+                    unitSize: 12
+                )
                 TaskManagerHistoryChart(
                     values: values,
                     range: 0...max((values.max() ?? 1) * 1.15, 1),
@@ -955,16 +986,17 @@ struct SystemMonitorWindowView: View {
                     .font(.system(size: 8.5))
                     .foregroundStyle(TaskManagerTheme.muted)
             }
-            .padding(14)
+            .padding(12)
         }
     }
 
     private var sensorsPage: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             detailHero(
                 label: "Thermal pressure", value: service.snapshot?.thermalState ?? "—",
                 detail: "System-reported thermal state",
                 values: recentHistory.compactMap { Self.thermalLevel($0.thermalState) }, range: 0...100,
+                upperScaleLabel: "Critical", lowerScaleLabel: "Nominal",
                 stats: [("State", service.snapshot?.thermalState ?? "—"), ("Temperature", "Hardware dependent")]
             )
             informationPanel("Temperature sensors", rows: [
@@ -976,46 +1008,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var settingsPage: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            Text("MENU BAR").taskManagerSectionTitle()
-            TaskManagerPanel { settingsRows }
-            Text("ADVANCED ITEMS").taskManagerSectionTitle()
-            SystemMonitorMenuSettingsView(showsContainerScroll: false, showsDisplaySection: false)
-        }
-        .frame(maxWidth: 760)
-        .frame(maxWidth: .infinity)
-    }
-
-    private var settingsRows: some View {
-        VStack(spacing: 0) {
-            settingRow("Menu bar items", detail: "Show one grouped monitor or separate metrics.") {
-                TaskManagerSegments(choices: [("grouped", "Grouped"), ("separate", "Separate"), ("off", "Off")],
-                                    selection: menuDisplayBinding)
-            }
-            rowDivider
-            settingRow("Remember last panel", detail: "Reopen the last selected menu-bar tab.") {
-                Toggle("Remember last panel", isOn: rememberPanelBinding)
-                    .labelsHidden().toggleStyle(.switch).controlSize(.small)
-            }
-            rowDivider
-            settingRow("Refresh interval", detail: "Used by enabled menu-bar readings.") {
-                TaskManagerSelect(
-                    choices: [10.0, 30.0, 60.0].map { ($0, "\(Int($0)) seconds") },
-                    selection: menuIntervalBinding,
-                    width: 120,
-                    accessibilityLabel: "Refresh interval"
-                )
-            }
-            rowDivider
-            settingRow("History window", detail: "The visible range for live charts.") {
-                TaskManagerSelect(
-                    choices: [(1, "1 minute"), (2, "2 minutes"), (5, "5 minutes")],
-                    selection: $historyMinutes,
-                    width: 120,
-                    accessibilityLabel: "History window"
-                )
-            }
-        }
+        SystemMonitorMenuSettingsView(showsContainerScroll: false)
     }
 
     private var aboutPage: some View {
@@ -1091,13 +1084,9 @@ struct SystemMonitorWindowView: View {
     private func reportButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 10))
-                .frame(width: 29, height: 29)
-                .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 5))
-                .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
+                .font(.system(size: 11))
         }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         .help(label)
         .accessibilityLabel(label)
     }
@@ -1113,9 +1102,7 @@ struct SystemMonitorWindowView: View {
                     .frame(maxWidth: columns[index].1 == nil ? .infinity : nil, alignment: .leading)
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 33)
-        .background(Color(red: 0.11, green: 0.11, blue: 0.11))
+        .onePlusTableHeader()
     }
 
     private func processIdentity(_ process: SystemMonitorProcess) -> some View {
@@ -1150,6 +1137,30 @@ struct SystemMonitorWindowView: View {
             Text(value).font(.system(size: 12, design: .monospaced))
         }
         .padding(.leading, 24)
+    }
+
+    private func metricValue(_ text: String, valueSize: CGFloat, unitSize: CGFloat) -> some View {
+        let parts = TaskManagerMetricText.parts(text)
+        return HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(parts.value)
+                .font(.system(size: valueSize, weight: .medium))
+                .tracking(-0.7)
+                .monospacedDigit()
+            if !parts.unit.isEmpty {
+                Text(parts.unit)
+                    .font(.system(size: unitSize))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+    }
+
+    private func chartLegend(_ title: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Rectangle().fill(color).frame(width: 9, height: 2)
+            Text(title).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.secondary)
+        }
     }
 
     private func settingRow<Content: View>(_ title: String, detail: String, @ViewBuilder control: () -> Content) -> some View {
@@ -1303,6 +1314,9 @@ struct SystemMonitorWindowView: View {
 
 struct SystemMonitorMenuSettingsView: View {
     @State private var service = SystemMonitorService.shared
+    @State private var expandedMetric: SystemMonitorMenuMetric?
+    @AppStorage("systemMonitor.rememberTrayPage") private var rememberPanel = true
+    @AppStorage("systemMonitor.historyMinutes") private var historyMinutes = 2
     let showsContainerScroll: Bool
     let showsDisplaySection: Bool
 
@@ -1326,43 +1340,59 @@ struct SystemMonitorMenuSettingsView: View {
     }
 
     private var settingsContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             if showsDisplaySection { displaySection }
             itemsSection
         }
         .font(.system(size: 12))
         .controlSize(.small)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .environment(\.colorScheme, .dark)
     }
 
     private var displaySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("DISPLAY").utilitySectionHeader()
-            Toggle("Show Task Manager in Menu Bar", isOn: menuSetting(
-                get: { $0.enabled },
-                set: { $0.enabled = $1 }
-            ))
-            .accessibilityIdentifier("system-monitor.menu.enabled")
-            globalIntervalControl
-                .disabled(!service.menuSettings.enabled)
+        OnePlusCard {
+            OnePlusCardHeader("Display")
+            OnePlusSettingRow("Show in menu bar", controlWidth: 180) {
+                Toggle("Show in menu bar", isOn: menuSetting(
+                    get: { $0.enabled },
+                    set: { $0.enabled = $1 }
+                ))
+                .labelsHidden()
+                .toggleStyle(OnePlusSwitchStyle())
+                .accessibilityIdentifier("system-monitor.menu.enabled")
+            }
+            OnePlusSettingRow("Remember last panel", controlWidth: 180) {
+                Toggle("Remember last panel", isOn: $rememberPanel)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("Global interval", controlWidth: 180) {
+                globalIntervalControl
+                    .disabled(!service.menuSettings.enabled)
+            }
+            OnePlusSettingRow("History window", controlWidth: 180, separator: false) {
+                TaskManagerSelect(
+                    choices: [(1, "1 minute"), (2, "2 minutes"), (5, "5 minutes")],
+                    selection: $historyMinutes,
+                    width: 180,
+                    accessibilityLabel: "History window"
+                )
+            }
         }
-        .utilitySectionCard()
+        .environment(\.onePlusControlHeight, 28)
     }
 
     private var globalIntervalControl: some View {
-        settingControl("GLOBAL INTERVAL", width: 112) {
-            TaskManagerSelect(
-                choices: SystemMonitorMenuInterval.allowedSeconds.map { ($0, Self.intervalTitle($0)) },
-                selection: menuSetting(
-                    get: { $0.interval },
-                    set: { $0.interval = $1 }
-                ),
-                width: 112,
-                accessibilityLabel: "Global interval"
-            )
-            .accessibilityIdentifier("system-monitor.menu.global-interval")
-        }
+        TaskManagerSelect(
+            choices: SystemMonitorMenuInterval.allowedSeconds.map { ($0, Self.intervalTitle($0)) },
+            selection: menuSetting(
+                get: { $0.interval },
+                set: { $0.interval = $1 }
+            ),
+            width: 180,
+            accessibilityLabel: "Global interval"
+        )
+        .accessibilityIdentifier("system-monitor.menu.global-interval")
     }
 
     private var itemsSection: some View {
@@ -1378,9 +1408,6 @@ struct SystemMonitorMenuSettingsView: View {
                 itemsHeader
                 ForEach(service.menuSettings.items) { item in
                     itemRow(item)
-                    if item.metric != service.menuSettings.items.last?.metric {
-                        QuietDivider()
-                    }
                 }
             }
             .background(TaskManagerTheme.card)
@@ -1393,27 +1420,47 @@ struct SystemMonitorMenuSettingsView: View {
     }
 
     private var itemsHeader: some View {
-        HStack(spacing: 10) {
-            Text("").frame(width: 16)
-            Text("Placement").frame(width: 120, alignment: .leading)
-            Text("Metric").frame(width: 104, alignment: .leading)
-            Spacer(minLength: 12)
-            Text("Style").frame(width: 92, alignment: .leading)
-            Text("Icon").frame(width: 82, alignment: .leading)
-            Text("Interval").frame(width: 94, alignment: .leading)
-            Text("Metric options").frame(width: 230, alignment: .leading)
+        HStack(spacing: 8) {
+            Text("").frame(width: 28)
+            Text("Metric").frame(width: 110, alignment: .leading)
+            Text("Placement").frame(width: 106, alignment: .leading)
+            Text("Style").frame(width: 104, alignment: .leading)
+            Text("Update").frame(width: 100, alignment: .leading)
+            Text("Format").frame(width: 162, alignment: .leading)
+            Text("").frame(width: 28)
+            Spacer(minLength: 0)
         }
         .onePlusTableHeader()
     }
 
     private func itemRow(_ item: SystemMonitorMenuItemConfiguration) -> some View {
-        HStack(spacing: 12) {
-            itemIdentity(item)
-            Spacer(minLength: 12)
-            itemControls(item)
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                reorderMenu(item.metric).frame(width: 28)
+                Label(item.metric.title, systemImage: item.symbol)
+                    .font(.system(size: 10, weight: .medium))
+                    .frame(width: 110, alignment: .leading)
+                    .lineLimit(1)
+                placementControl(item).frame(width: 106)
+                styleControl(item).frame(width: 104)
+                intervalControl(item).frame(width: 100)
+                formatControl(item).frame(width: 162)
+                Button {
+                    expandedMetric = expandedMetric == item.metric ? nil : item.metric
+                } label: {
+                    Image(systemName: expandedMetric == item.metric ? "chevron.up" : "ellipsis")
+                }
+                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                .frame(width: 28)
+                .accessibilityLabel("\(item.metric.title) details")
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .environment(\.onePlusControlHeight, 28)
+            .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
+            if expandedMetric == item.metric { detailsRow(item) }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
         .contentShape(Rectangle())
         .draggable(item.metric.rawValue)
         .dropDestination(for: String.self) { values, _ in
@@ -1429,6 +1476,124 @@ struct SystemMonitorMenuSettingsView: View {
         }
         .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue)")
         .accessibilityHint("Drag, or use Up Arrow and Down Arrow, to reorder")
+    }
+
+    private func placementControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        TaskManagerSelect(
+            choices: SystemMonitorMenuPlacement.allCases.map { ($0, $0.title) },
+            selection: Binding(
+                get: {
+                    guard let current = service.menuSettings.items.first(where: { $0.metric == item.metric }),
+                          current.enabled else { return .off }
+                    return current.placement
+                },
+                set: { placement in
+                    service.updateMenuSettings { $0.setPlacement(placement, for: item.metric) }
+                }
+            ),
+            width: 106,
+            accessibilityLabel: "\(item.metric.title) menu bar placement"
+        )
+        .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).placement")
+    }
+
+    private func styleControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        TaskManagerSelect(
+            choices: SystemMonitorMenuItemStyle.allCases.map { ($0, $0.title) },
+            selection: itemSetting(item, get: { $0.style }, set: { $0.style = $1 }),
+            width: 104,
+            accessibilityLabel: "\(item.metric.title) style"
+        )
+        .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).style")
+    }
+
+    private func intervalControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        TaskManagerSelect(
+            choices: item.metric.supportedIntervals(global: service.menuSettings.interval)
+                .map { ($0, $0.title) },
+            selection: itemSetting(item, get: { $0.interval }, set: { $0.interval = $1 }),
+            width: 100,
+            accessibilityLabel: "\(item.metric.title) update interval"
+        )
+        .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).interval")
+    }
+
+    @ViewBuilder
+    private func formatControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        switch item.metric {
+        case .memory:
+            TaskManagerSelect(
+                choices: SystemMonitorMemoryUnit.allCases.map { ($0, $0.title) },
+                selection: itemSetting(item, get: { $0.memoryUnit }, set: { $0.memoryUnit = $1 }),
+                width: 162,
+                accessibilityLabel: "Memory format"
+            )
+        case .disk:
+            TaskManagerSelect(
+                choices: SystemMonitorDiskUnit.allCases.map { ($0, $0.title) },
+                selection: itemSetting(item, get: { $0.diskUnit }, set: { $0.diskUnit = $1 }),
+                width: 162,
+                accessibilityLabel: "Disk format"
+            )
+        case .network:
+            TaskManagerSelect(
+                choices: SystemMonitorNetworkUnit.allCases.map { ($0, $0.title) },
+                selection: itemSetting(item, get: { $0.networkUnit }, set: { $0.networkUnit = $1 }),
+                width: 162,
+                accessibilityLabel: "Network format"
+            )
+        case .battery:
+            TaskManagerSelect(
+                choices: SystemMonitorBatteryDisplay.allCases.map { ($0, $0.title) },
+                selection: itemSetting(item, get: { $0.batteryDisplay }, set: { $0.batteryDisplay = $1 }),
+                width: 162,
+                accessibilityLabel: "Battery format"
+            )
+        case .thermal:
+            TaskManagerSelect(
+                choices: SystemMonitorThermalDisplay.allCases.map { ($0, $0.title) },
+                selection: itemSetting(item, get: { $0.thermalDisplay }, set: { $0.thermalDisplay = $1 }),
+                width: 162,
+                accessibilityLabel: "Thermal format"
+            )
+        case .cpu, .gpu:
+            Text("Default")
+                .font(.system(size: 10))
+                .foregroundStyle(OnePlusColor.secondary)
+                .frame(width: 162, alignment: .leading)
+        }
+    }
+
+    private func detailsRow(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+        HStack(spacing: 12) {
+            Text("Details")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(OnePlusColor.muted)
+            TaskManagerSelect(
+                choices: item.metric.symbols.map { ($0, Self.iconTitle($0, for: item.metric)) },
+                selection: itemSetting(item, get: { $0.symbol }, set: { $0.symbol = $1 }),
+                width: 126,
+                accessibilityLabel: "\(item.metric.title) icon"
+            )
+            if item.metric == .network {
+                TaskManagerSelect(
+                    choices: SystemMonitorNetworkDirection.allCases.map { ($0, $0.title) },
+                    selection: itemSetting(item, get: { $0.networkDirection }, set: { $0.networkDirection = $1 }),
+                    width: 126,
+                    accessibilityLabel: "Network direction"
+                )
+            } else {
+                Text("Uses the global interval unless Update overrides it.")
+                    .font(.system(size: 9))
+                    .foregroundStyle(OnePlusColor.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 48)
+        .frame(height: 44)
+        .environment(\.onePlusControlHeight, 28)
+        .background(OnePlusColor.panelHover)
+        .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }
 
     private func itemIdentity(_ item: SystemMonitorMenuItemConfiguration) -> some View {

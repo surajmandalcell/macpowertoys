@@ -16,6 +16,15 @@ final class SystemMonitorTests: XCTestCase {
         ])
     }
 
+    func testMetricTextSeparatesCompactValuesFromUnits() {
+        XCTAssertEqual(TaskManagerMetricText.parts("42%").value, "42")
+        XCTAssertEqual(TaskManagerMetricText.parts("42%").unit, "%")
+        XCTAssertEqual(TaskManagerMetricText.parts("1.2 GB/s").value, "1.2")
+        XCTAssertEqual(TaskManagerMetricText.parts("1.2 GB/s").unit, "GB/s")
+        XCTAssertEqual(TaskManagerMetricText.parts("Nominal").unit, "")
+        XCTAssertEqual(TaskManagerMetricText.parts("—").value, "—")
+    }
+
     func testTrayPagesSampleOnlyTheirMetricFamilies() {
         XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 9)
         XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))

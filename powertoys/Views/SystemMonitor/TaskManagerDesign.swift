@@ -51,6 +51,17 @@ typealias TaskManagerSelect<Value: Hashable> = OnePlusSelect<Value>
 typealias TaskManagerSearchField = OnePlusSearchField
 typealias TaskManagerSegments<Value: Hashable> = OnePlusSegments<Value>
 
+enum TaskManagerMetricText {
+    static func parts(_ text: String) -> (value: String, unit: String) {
+        guard !text.isEmpty else { return ("", "") }
+        if text.hasSuffix("%") { return (String(text.dropLast()), "%") }
+        guard let split = text.lastIndex(of: " "), split < text.index(before: text.endIndex) else {
+            return (text, "")
+        }
+        return (String(text[..<split]), String(text[text.index(after: split)...]))
+    }
+}
+
 extension View {
     func taskManagerControl(
         _ tone: TaskManagerControlTone = .standard,
@@ -81,6 +92,8 @@ struct TaskManagerHistoryChart: View {
     var range: ClosedRange<Double> = 0...100
     var unit = "%"
     var compact = false
+    var upperScaleLabel: String?
+    var lowerScaleLabel: String?
     var primaryColor = TaskManagerTheme.ink.opacity(0.76)
     var secondaryColor = TaskManagerTheme.accent
     @State private var hoverX: CGFloat?
@@ -92,6 +105,18 @@ struct TaskManagerHistoryChart: View {
                     drawGrid(context: &context, size: size)
                     draw(values, color: primaryColor, context: &context, size: size, fills: true)
                     draw(secondary, color: secondaryColor, context: &context, size: size, fills: false)
+                }
+                if !compact, let upperScaleLabel, let lowerScaleLabel {
+                    VStack(alignment: .trailing) {
+                        Text(upperScaleLabel)
+                        Spacer()
+                        Text(lowerScaleLabel)
+                    }
+                    .font(.system(size: 8, design: .monospaced))
+                    .foregroundStyle(TaskManagerTheme.muted)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                    .padding(4)
+                    .allowsHitTesting(false)
                 }
                 if let hoverX, !values.isEmpty {
                     let index = min(max(Int((hoverX / max(proxy.size.width, 1)) * CGFloat(values.count - 1)), 0), values.count - 1)
