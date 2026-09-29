@@ -1,35 +1,30 @@
-//
-//  InputDevicesSettingsView.swift
-//  powertoys
-//
-
+import OnePlusUI
 import SwiftUI
 
 struct InputDevicesSettingsView: View {
     var showsHeader = true
     var showsContainerScroll = true
-    var contentTopInset: CGFloat = 14
+    var contentTopInset: CGFloat = OnePlusMetrics.contentTop
+    var density: OnePlusDensity = .compact
 
     @ViewBuilder
     var body: some View {
-        if showsContainerScroll {
-            VStack(spacing: 0) {
-                settingsContent.settingsScrollContainer()
-                InputScrollDeviceBar()
+        VStack(spacing: 0) {
+            if showsContainerScroll {
+                ScrollView { settingsContent }.onePlusScrollIndicators()
+            } else {
+                settingsContent
             }
-        } else {
-            settingsContent
             InputScrollDeviceBar()
         }
+        .onePlusDensity(density)
     }
 
     private var settingsContent: some View {
         InputDevicesScrollSettings(showsHeaders: showsHeader)
-            .settingsPageInsets(
-                horizontal: UtilityLayout.horizontalInset,
-                top: contentTopInset,
-                bottom: 24
-            )
+            .padding(.horizontal, density.gutter)
+            .padding(.top, contentTopInset)
+            .padding(.bottom, OnePlusMetrics.gutter)
     }
 }
 
@@ -38,27 +33,23 @@ struct InputScrollDeviceBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            QuietDivider()
-            InputSettingRow(
-                label: "Scroll device",
-                help: "Automatic sends continuous events to Trackpad and wheel notches to Mouse."
+            OnePlusColor.line.frame(height: 1)
+            OnePlusSettingRow(
+                "Scroll device",
+                help: "Automatic separates continuous trackpad events from mouse wheel steps.",
+                separator: false
             ) {
-                Picker("Scroll device", selection: Binding(
-                    get: { manager.settings.eventOverride },
-                    set: { value in manager.update { $0.eventOverride = value } }
-                )) {
-                    ForEach(InputEventOverride.allCases) { option in
-                        Text(option.title).tag(option)
-                    }
-                }
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(width: 160, alignment: .trailing)
+                OnePlusSelect(
+                    choices: InputEventOverride.allCases.map { ($0, $0.title) },
+                    selection: Binding(
+                        get: { manager.settings.eventOverride },
+                        set: { value in manager.update { $0.eventOverride = value } }
+                    ),
+                    accessibilityLabel: "Scroll device"
+                )
             }
-            .padding(.horizontal, UtilityLayout.horizontalInset)
-            .padding(.vertical, UtilityLayout.headerVerticalInset)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(OnePlusColor.window)
     }
 }
 
@@ -68,57 +59,18 @@ struct InputDevicesScrollSettings: View {
     @State private var manager = InputDevicesManager.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
-            section("Scroll Control") {
-                VStack(alignment: .leading, spacing: 10) {
-                    InputSettingRow(
-                        label: "Adjust scrolling system wide",
-                        help: "Install the scroll event tap so these profiles apply outside MacPowerToys."
-                    ) {
-                        Toggle("Adjust scrolling system wide", isOn: setting(
-                            get: { $0.scrollControlEnabled },
-                            set: { $0.scrollControlEnabled = $1 }
-                        ))
-                    }
-                    if !manager.permissionGranted {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Accessibility permission")
-                                .font(.system(size: 12))
-                            HStack(spacing: 8) {
-                                Button("Grant Permission") { manager.requestPermission() }
-                                Button("Open Privacy Settings") { manager.openPrivacySettings() }
-                            }
-                        }
-                    }
-                    if let errorMessage = manager.errorMessage {
-                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.red)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            if showsHeaders { OnePlusSectionTitle("Scroll control") }
+            scrollControlCard
+            if showsHeaders { OnePlusSectionTitle("Profiles") }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    mouseProfile
+                    trackpadProfile
                 }
-                .controlSize(.small)
-                .utilitySectionCard()
-            }
-
-            section("Profiles") {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 320), spacing: 12)],
-                    alignment: .leading,
-                    spacing: 12
-                ) {
-                    InputScrollProfileCard(
-                        title: "Mouse",
-                        icon: InputDeviceDescriptor.Kind.mouse.icon,
-                        deviceCount: deviceCount(of: .mouse),
-                        profile: profileBinding(\.mouse)
-                    )
-                    InputScrollProfileCard(
-                        title: "Trackpad",
-                        icon: InputDeviceDescriptor.Kind.trackpad.icon,
-                        deviceCount: deviceCount(of: .trackpad),
-                        profile: profileBinding(\.trackpad)
-                    )
+                VStack(spacing: OnePlusMetrics.cardGap) {
+                    mouseProfile
+                    trackpadProfile
                 }
             }
         }
@@ -126,16 +78,63 @@ struct InputDevicesScrollSettings: View {
         .onAppear { manager.refresh() }
     }
 
-    private func section<Content: View>(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if showsHeaders {
-                Text(title.uppercased()).utilitySectionHeader()
+    private var scrollControlCard: some View {
+        OnePlusCard {
+            OnePlusCardHeader("System-wide control", systemImage: "cursorarrow.motionlines") {
+                OnePlusStatus(manager.interceptionActive ? "Active" : "Inactive",
+                              state: manager.interceptionActive ? .success : .offline)
             }
-            content()
+            OnePlusSettingRow(
+                "Adjust scrolling system wide",
+                caption: "Use the mouse and trackpad profiles outside MacPowerToys.",
+                separator: !manager.permissionGranted || manager.errorMessage != nil
+            ) {
+                Toggle(
+                    "Adjust scrolling system wide",
+                    isOn: setting(
+                        get: { $0.scrollControlEnabled },
+                        set: { $0.scrollControlEnabled = $1 }
+                    )
+                )
+                .labelsHidden()
+                .toggleStyle(OnePlusSwitchStyle())
+            }
+            if !manager.permissionGranted {
+                OnePlusSettingRow(
+                    "Accessibility permission",
+                    caption: "Allow MacPowerToys to adjust scroll events.",
+                    separator: manager.errorMessage != nil
+                ) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        Button("Grant") { manager.requestPermission() }
+                            .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                        Button("Settings") { manager.openPrivacySettings() }
+                            .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                    }
+                }
+            }
+            if let errorMessage = manager.errorMessage {
+                OnePlusBanner(errorMessage, tone: .error)
+            }
         }
+    }
+
+    private var mouseProfile: some View {
+        InputScrollProfileCard(
+            title: "Mouse",
+            icon: InputDeviceDescriptor.Kind.mouse.icon,
+            deviceCount: deviceCount(of: .mouse),
+            profile: profileBinding(\.mouse)
+        )
+    }
+
+    private var trackpadProfile: some View {
+        InputScrollProfileCard(
+            title: "Trackpad",
+            icon: InputDeviceDescriptor.Kind.trackpad.icon,
+            deviceCount: deviceCount(of: .trackpad),
+            profile: profileBinding(\.trackpad)
+        )
     }
 
     private func deviceCount(of kind: InputDeviceDescriptor.Kind) -> Int {

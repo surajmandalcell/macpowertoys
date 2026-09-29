@@ -1,11 +1,21 @@
+import OnePlusUI
 import SwiftUI
 
 enum InputDevicesPage: String, CaseIterable, Identifiable {
-    case devices = "Devices"
-    case scrolling = "Scrolling"
-    case about = "About"
+    case devices
+    case scrolling
+    case about
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .devices: "Devices"
+        case .scrolling: "Scrolling"
+        case .about: "About"
+        }
+    }
+
     var icon: String {
         switch self {
         case .devices: "computermouse"
@@ -24,96 +34,119 @@ struct InputDevicesWindowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        OnePlusWindowRoot(canvas: .inputDevices) {
             sidebar
-                .frame(width: UtilityLayout.compactSidebarWidth)
-            content
-                .utilityContentTransition(value: page)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+        } content: {
+            pageContent
         }
-        .ignoresSafeArea()
         .background(WindowAccessor(identifier: "input-devices"))
+        .buttonStyle(OnePlusButtonStyle())
         .onAppear { manager.refresh() }
+        .onOpenToolPage("input-devices") { pageID in
+            if let destination = InputDevicesPage(rawValue: pageID) {
+                page = destination
+            }
+        }
+        .background {
+            ForEach(Array(InputDevicesPage.allCases.enumerated()), id: \.offset) { index, destination in
+                Button("") { page = destination }
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+                    .hidden()
+            }
+        }
     }
 
     private var sidebar: some View {
-        ZStack(alignment: .topLeading) {
-            VisualEffectBackground(material: .sidebar)
-            SidebarTitle(text: "Input Devices")
-            VStack(spacing: 4) {
-                ForEach(InputDevicesPage.allCases) { item in
-                    SidebarRow(icon: item.icon, title: item.rawValue, isSelected: page == item) {
-                        page = item
-                    }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, UtilityLayout.workspaceContentTopInset)
-            .padding(.bottom, 12)
+        OnePlusSidebar(title: "Input Devices") {
+            OnePlusNavRow(
+                InputDevicesPage.devices.title,
+                systemImage: InputDevicesPage.devices.icon,
+                selected: page == .devices
+            ) { page = .devices }
+            OnePlusNavRow(
+                InputDevicesPage.scrolling.title,
+                systemImage: InputDevicesPage.scrolling.icon,
+                selected: page == .scrolling
+            ) { page = .scrolling }
+        } bottom: {
+            OnePlusNavRow(
+                InputDevicesPage.about.title,
+                systemImage: InputDevicesPage.about.icon,
+                selected: page == .about
+            ) { page = .about }
         }
     }
 
     @ViewBuilder
-    private var content: some View {
+    private var pageContent: some View {
         switch page {
-        case .devices: devicesPage
-        case .scrolling: scrollingPage
-        case .about: ToolAboutView(toolId: "input-devices", showsSettings: false)
+        case .devices:
+            devicesPage
+        case .scrolling:
+            scrollingPage
+        case .about:
+            aboutPage
         }
     }
 
     private var devicesPage: some View {
-        WorkspacePage(
-            "Devices",
-            subtitle: deviceSubtitle,
-            actions: {
+        OnePlusPage {
+            OnePlusPageHeader(title: "Devices", subtitle: deviceSubtitle) {
                 Button("Refresh", systemImage: "arrow.clockwise") { manager.refresh() }
+                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
             }
-        ) {
-            Group {
-                if manager.devices.isEmpty {
-                    ContentUnavailableView(
-                        "No Pointing Devices Found",
-                        systemImage: "computermouse",
-                        description: Text("Connect a mouse or trackpad, then refresh.")
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 260)
-                } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 12)], spacing: 12) {
-                        ForEach(manager.devices) { device in
-                            InputDeviceCard(
-                                device: device,
-                                profile: profile(for: device.kind),
-                                state: InputControlState.state(
-                                    settings: manager.settings,
-                                    permissionGranted: manager.permissionGranted,
-                                    kind: device.kind
-                                )
-                            )
-                        }
-                    }
-                }
+        } content: {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 250), spacing: OnePlusMetrics.cardGap)],
+                alignment: .leading,
+                spacing: OnePlusMetrics.cardGap
+            ) {
+                ForEach(manager.devices) { device in deviceCard(device) }
+                if !manager.devices.contains(where: { $0.kind == .mouse }) { missingDeviceCard(.mouse) }
+                if !manager.devices.contains(where: { $0.kind == .trackpad }) { missingDeviceCard(.trackpad) }
+                InputKeyboardCard()
             }
-            .utilityContentTransition(value: manager.devices.isEmpty)
         }
     }
 
     private var deviceSubtitle: String {
         let count = manager.devices.count
-        return count == 1 ? "1 connected" : "\(count) connected"
+        return count == 1 ? "1 pointing device found" : "\(count) pointing devices found"
     }
 
     private var scrollingPage: some View {
-        WorkspacePage(
-            "Scrolling",
-            subtitle: manager.interceptionActive ? "Control active" : "Control inactive"
-        ) {
-            InputDevicesScrollSettings()
+        VStack(spacing: 0) {
+            OnePlusPageHeader(
+                title: "Scrolling",
+                subtitle: manager.interceptionActive ? "System-wide control is active" : "System-wide control is inactive"
+            )
+            InputDevicesSettingsView(
+                showsHeader: false,
+                showsContainerScroll: true,
+                contentTopInset: 0,
+                density: .regular
+            )
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            InputScrollDeviceBar()
+    }
+
+    private var aboutPage: some View {
+        OnePlusPage {
+            OnePlusPageHeader(title: "About", subtitle: "Input Devices")
+        } content: {
+            OnePlusCard(textured: true) {
+                OnePlusCardHeader("Input Devices", systemImage: "computermouse")
+                OnePlusSettingRow("Profiles", caption: "Mouse and trackpad settings stay independent.") {
+                    OnePlusStatus("Saved locally", state: .success)
+                }
+                OnePlusSettingRow(
+                    "System control",
+                    caption: "Accessibility permission is required only for system-wide scrolling.",
+                    separator: false
+                ) {
+                    OnePlusStatus(manager.permissionGranted ? "Allowed" : "Permission needed",
+                                  state: manager.permissionGranted ? .success : .warning)
+                }
+            }
         }
     }
 
@@ -121,8 +154,28 @@ struct InputDevicesWindowView: View {
         kind == .mouse ? manager.settings.mouse : manager.settings.trackpad
     }
 
+    private func deviceCard(_ device: InputDeviceDescriptor) -> some View {
+        InputDeviceCard(
+            device: device,
+            profile: profile(for: device.kind),
+            state: InputControlState.state(
+                settings: manager.settings,
+                permissionGranted: manager.permissionGranted,
+                kind: device.kind
+            )
+        )
+    }
+
+    private func missingDeviceCard(_ kind: InputDeviceDescriptor.Kind) -> some View {
+        InputDeviceCard(
+            device: nil,
+            kind: kind,
+            profile: profile(for: kind),
+            state: .disabled
+        )
+    }
 }
 
 #Preview {
-    InputDevicesWindowView().frame(width: 980, height: 700)
+    InputDevicesWindowView()
 }

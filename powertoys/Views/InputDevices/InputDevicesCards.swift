@@ -1,3 +1,4 @@
+import OnePlusUI
 import SwiftUI
 
 enum InputControlState {
@@ -26,20 +27,11 @@ enum InputControlState {
         }
     }
 
-    var icon: String {
+    var status: OnePlusStatus.State {
         switch self {
-        case .disabled: "circle.dashed"
-        case .permissionNeeded: "exclamationmark.triangle.fill"
-        case .passthrough: "arrow.right"
-        case .active: "checkmark.circle.fill"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .disabled, .passthrough: .secondary
-        case .permissionNeeded: .orange
-        case .active: .green
+        case .disabled, .passthrough: .offline
+        case .permissionNeeded: .warning
+        case .active: .success
         }
     }
 }
@@ -48,101 +40,77 @@ struct InputStateLabel: View {
     let state: InputControlState
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: state.icon).font(.system(size: 9, weight: .medium))
-            Text(state.title).font(.system(size: 11, weight: .medium))
-        }
-        .foregroundStyle(state.tint)
-        .lineLimit(1)
-        .fixedSize()
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct InputCardSurface<Content: View>: View {
-    @State private var isHovering = false
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            content
-        }
-        .padding(UtilityLayout.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(isHovering ? 0.06 : 0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .onHover { isHovering = $0 }
-        .utilityAnimation(value: isHovering)
-    }
-}
-
-private struct InputCardHeader<Accessory: View>: View {
-    let icon: String
-    let title: String
-    let detail: String
-    @ViewBuilder let accessory: Accessory
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .frame(width: 30, height: 30)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 8) {
-                    Text(detail)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
-                    accessory
-                }
-            }
-        }
-        .frame(height: 40)
+        OnePlusStatus(state.title, state: state.status)
     }
 }
 
 struct InputDeviceCard: View {
-    let device: InputDeviceDescriptor
+    let device: InputDeviceDescriptor?
+    let kind: InputDeviceDescriptor.Kind
     let profile: InputScrollProfile
     let state: InputControlState
 
+    init(
+        device: InputDeviceDescriptor?,
+        kind: InputDeviceDescriptor.Kind,
+        profile: InputScrollProfile,
+        state: InputControlState
+    ) {
+        self.device = device
+        self.kind = kind
+        self.profile = profile
+        self.state = state
+    }
+
+    init(device: InputDeviceDescriptor, profile: InputScrollProfile, state: InputControlState) {
+        self.init(device: device, kind: device.kind, profile: profile, state: state)
+    }
+
     var body: some View {
-        InputCardSurface {
-            InputCardHeader(
-                icon: device.kind.icon,
-                title: device.name,
-                detail: device.isBuiltIn ? "\(device.kind.rawValue) · Built in" : device.kind.rawValue
-            ) {
-                InputStateLabel(state: state)
+        OnePlusCard(textured: true) {
+            OnePlusCardHeader(device?.name ?? "No \(kind.rawValue.lowercased()) detected", systemImage: kind.icon) {
+                InputStateLabel(state: device == nil ? .disabled : state)
             }
-            QuietDivider()
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                alignment: .leading,
-                spacing: 8
-            ) {
-                ForEach(rows, id: \.label) { row in
-                    cell(row)
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                OnePlusSettingRow(row.label) {
+                    Text(row.value ?? "Not reported")
+                        .onePlusText(row.monospaced ? .mono : .control)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(row.value ?? "Not reported")
                 }
+            }
+            OnePlusSettingRow("Scroll profile") {
+                OnePlusStatus(profile.enabled ? "Enabled" : "Off", state: profile.enabled ? .success : .offline)
             }
         }
     }
 
     var rows: [Row] {
-        [
+        guard let device else {
+            return [
+                Row(label: "Model", value: nil),
+                Row(label: "Vendor", value: nil),
+                Row(label: "Device ID", value: nil, monospaced: true),
+                Row(label: "Firmware", value: nil, monospaced: true),
+                Row(label: "Serial", value: nil, monospaced: true),
+                Row(label: "Connection", value: nil),
+                Row(label: "Battery", value: nil),
+                Row(label: "Buttons", value: nil),
+                Row(label: "Resolution", value: nil),
+                Row(label: "Polling", value: nil),
+                Row(label: "Tracking", value: nil),
+                Row(label: "Scroll speed", value: profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
+            ]
+        }
+        return [
             Row(label: "Model", value: device.modelNumber),
             Row(label: "Vendor", value: device.vendorName),
             Row(label: "Device ID", value: String(format: "%04X:%04X", device.vendorID, device.productID), monospaced: true),
             Row(label: "Firmware", value: device.firmwareVersion, monospaced: true),
             Row(label: "Serial", value: device.serialNumber.flatMap { $0.isEmpty ? nil : $0 }, monospaced: true),
-            Row(label: "Connection", value: device.connectionSummary),
+            Row(label: "Connection", value: device.connectionSummary.components(separatedBy: " · ").first),
+            Row(label: "Battery", value: device.batteryPercent.map { "\($0)%" }),
             Row(label: "Buttons", value: device.buttonCount.flatMap { $0 > 0 ? $0.formatted() : nil }),
             Row(label: "Resolution", value: device.pointerResolutionDPI.map {
                 $0.formatted(.number.precision(.fractionLength(0))) + " dpi"
@@ -161,25 +129,38 @@ struct InputDeviceCard: View {
         var monospaced = false
     }
 
-    private func cell(_ row: Row) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(row.label)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Text(row.value ?? "—")
-                .font(row.monospaced && row.value != nil
-                    ? .system(size: 11, design: .monospaced)
-                    : .system(size: 11))
-                .foregroundStyle(row.value == nil ? .secondary : .primary)
-                .textSelection(.enabled)
-                .lineLimit(1)
-                .truncationMode(.middle)
+}
+
+struct InputKeyboardCard: View {
+    private let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain) ?? [:]
+
+    var body: some View {
+        OnePlusCard(textured: true) {
+            OnePlusCardHeader("Keyboard", systemImage: "keyboard") {
+                OnePlusStatus("System managed", state: .online)
+            }
+            OnePlusSettingRow("Connection") {
+                Text("Managed by macOS").onePlusText(.control)
+            }
+            OnePlusSettingRow("Battery") {
+                Text("Not reported").onePlusText(.control)
+            }
+            OnePlusSettingRow("Key repeat") {
+                Text(keyRepeatLabel).onePlusText(.control)
+            }
+            OnePlusSettingRow("Function keys", separator: false) {
+                Text(functionKeyLabel).onePlusText(.control)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .font(.system(size: 11))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(row.label): \(row.value ?? "Not reported")")
-        .help(row.value ?? "Not reported")
+    }
+
+    private var keyRepeatLabel: String {
+        guard let value = global["KeyRepeat"] as? Int else { return "System default" }
+        return value <= 2 ? "Fast" : value >= 6 ? "Slow" : "Medium"
+    }
+
+    private var functionKeyLabel: String {
+        (global["com.apple.keyboard.fnState"] as? Bool) == true ? "Standard F keys" : "Media keys"
     }
 }
 
@@ -189,18 +170,7 @@ struct InputSettingRow<Control: View>: View {
     @ViewBuilder let control: Control
 
     var body: some View {
-        HStack(spacing: 12) {
-            Text(label)
-                .font(.system(size: 12))
-                .lineLimit(1)
-            Spacer(minLength: 12)
-            control
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .accessibilityLabel(label)
-        }
-        .frame(minHeight: 22)
-        .help(help ?? label)
+        OnePlusSettingRow(label, help: help, control: { control })
     }
 }
 
@@ -211,66 +181,79 @@ struct InputScrollProfileCard: View {
     @Binding var profile: InputScrollProfile
 
     var body: some View {
-        InputCardSurface {
-            InputCardHeader(icon: icon, title: title, detail: deviceDetail) { EmptyView() }
-            QuietDivider()
-            InputSettingRow(
-                label: "Use this profile",
+        OnePlusCard(textured: true) {
+            OnePlusCardHeader(title, systemImage: icon) {
+                OnePlusStatus(deviceDetail, state: deviceCount > 0 ? .online : .offline)
+            }
+            OnePlusSettingRow(
+                "Use this profile",
                 help: "Apply this profile to \(title.lowercased()) scroll events."
             ) {
                 Toggle("Use this profile", isOn: $profile.enabled)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
             }
             settingRows
         }
-        .controlSize(.small)
-        .utilityAnimation(value: profile)
     }
 
     @ViewBuilder
     private var settingRows: some View {
         Group {
-            InputSettingRow(
-                label: "Scroll speed",
-                help: "Multiply every scroll delta from this device kind."
+            OnePlusSettingRow(
+                "Direction",
+                help: "Choose natural or reversed vertical scrolling."
             ) {
-                HStack(spacing: 8) {
+                OnePlusSegmented(
+                    choices: [(false, "Natural"), (true, "Reversed")],
+                    selection: $profile.reverseVertical,
+                    accessibilityLabel: "\(title) scroll direction"
+                )
+            }
+            OnePlusSettingRow(
+                "Scroll speed",
+                help: "Multiply every scroll delta from this device type."
+            ) {
+                HStack(spacing: OnePlusMetrics.spacing[3]) {
                     Slider(value: $profile.speed, in: 0.35...3, step: 0.05)
                     Text(profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
-                        .font(.system(size: 11, design: .monospaced))
-                        .frame(width: 42, alignment: .trailing)
+                        .onePlusText(.mono)
                 }
             }
-            InputSettingRow(
-                label: "Reverse vertical",
-                help: "Invert up and down scrolling for this device kind."
-            ) {
-                Toggle("Reverse vertical", isOn: $profile.reverseVertical)
-            }
-            InputSettingRow(
-                label: "Horizontal scrolling",
-                help: "Pass horizontal scroll through. Turn it off to block sideways movement."
+            OnePlusSettingRow(
+                "Horizontal scrolling",
+                help: "Pass horizontal scroll events through."
             ) {
                 Toggle("Horizontal scrolling", isOn: $profile.horizontalEnabled)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
             }
-            InputSettingRow(
-                label: "Reverse horizontal",
-                help: "Invert left and right scrolling. Needs horizontal scrolling."
+            OnePlusSettingRow(
+                "Reverse horizontal",
+                help: "Invert left and right scrolling."
             ) {
                 Toggle("Reverse horizontal", isOn: $profile.reverseHorizontal)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
             }
             .disabled(!profile.horizontalEnabled)
-            InputSettingRow(
-                label: "Shift scrolls sideways",
-                help: "Hold Shift and scroll to move left and right. Needs horizontal scrolling."
+            OnePlusSettingRow(
+                "Shift scrolls sideways",
+                help: "Hold Shift and use the wheel to move sideways."
             ) {
                 Toggle("Shift scrolls sideways", isOn: $profile.shiftScrollsHorizontally)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
             }
             .disabled(!profile.horizontalEnabled)
-            InputSettingRow(
-                label: "Smooth wheel steps",
-                help: "Split a coarse wheel notch into small steps. Continuous scrolling is unchanged."
+            OnePlusSettingRow(
+                "Smoothing",
+                help: "Split a coarse wheel notch into smaller steps.",
+                separator: false
             ) {
-                Toggle("Smooth wheel steps", isOn: $profile.smooth)
+                Toggle("Smoothing", isOn: $profile.smooth)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
             }
         }
         .disabled(!profile.enabled)
@@ -278,9 +261,9 @@ struct InputScrollProfileCard: View {
 
     private var deviceDetail: String {
         switch deviceCount {
-        case 0: "No device connected"
-        case 1: "1 device connected"
-        default: "\(deviceCount) devices connected"
+        case 0: "No device"
+        case 1: "1 connected"
+        default: "\(deviceCount) connected"
         }
     }
 }
