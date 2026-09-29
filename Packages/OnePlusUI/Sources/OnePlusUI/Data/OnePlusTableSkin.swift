@@ -68,7 +68,12 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
                 table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: table.bounds.width, height: 28))
             }
             for column in table.tableColumns where !(column.headerCell is OnePlusTableHeaderCell) {
-                column.headerCell = OnePlusTableHeaderCell(textCell: column.title)
+                let alignment: OnePlusGridColumn.Alignment = switch column.headerCell.alignment {
+                case .center: .center
+                case .right: .trailing
+                default: .leading
+                }
+                column.headerCell = OnePlusTableHeaderCell(textCell: column.title, alignment: alignment)
             }
             table.headerView?.needsDisplay = true
         }

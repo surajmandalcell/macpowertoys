@@ -104,13 +104,17 @@ public struct OnePlusKeyValueRow: View {
 }
 
 public enum OnePlusTable {
+    public static let cellInset: CGFloat = 12
+    public static let primaryTextInset: CGFloat = 35
+    static let nativeHeaderInset: CGFloat = 10
+    static let nativePrimaryHeaderInset: CGFloat = 33
     public static func rowHeight(_ density: OnePlusDensity) -> CGFloat { density == .regular ? 34 : 28 }
 }
 
 public extension View {
     func onePlusTableHeader() -> some View {
         onePlusText(.tableHeader).frame(height: 28).frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12).background(OnePlusColor.sidebar)
+            .padding(.horizontal, OnePlusTable.cellInset).background(OnePlusColor.sidebar)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }
     func onePlusTableRow(selected: Bool = false) -> some View { modifier(OnePlusTableRowModifier(selected: selected)) }
@@ -121,7 +125,7 @@ private struct OnePlusTableRowModifier: ViewModifier {
     @Environment(\.onePlusDensity) private var density
     @State private var hover = false
     func body(content: Content) -> some View {
-        content.onePlusText(.row).padding(.horizontal, 12).frame(height: OnePlusTable.rowHeight(density))
+        content.onePlusText(.row).padding(.horizontal, OnePlusTable.cellInset).frame(height: OnePlusTable.rowHeight(density))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(selected ? OnePlusColor.selection : hover ? OnePlusColor.raised : .clear)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
@@ -130,14 +134,21 @@ private struct OnePlusTableRowModifier: ViewModifier {
 }
 
 public struct OnePlusGridColumn: Identifiable, Sendable {
+    public enum Alignment: Sendable { case leading, center, trailing }
     public var id: String { title }
     public let title: String
     public let width: CGFloat
-    public let trailing: Bool
+    public let alignment: Alignment
+    public var trailing: Bool { alignment == .trailing }
     public init(_ title: String, width: CGFloat, trailing: Bool = false) {
         self.title = title
         self.width = width.isFinite ? max(0, width) : 0
-        self.trailing = trailing
+        self.alignment = trailing ? .trailing : .leading
+    }
+    public init(_ title: String, width: CGFloat, alignment: Alignment) {
+        self.title = title
+        self.width = width.isFinite ? max(0, width) : 0
+        self.alignment = alignment
     }
 }
 
@@ -156,9 +167,19 @@ public struct OnePlusGridTable: View {
         HStack(spacing: 0) {
             ForEach(columns.indices, id: \.self) { index in
                 Text(values.indices.contains(index) ? values[index] : "")
-                    .lineLimit(1).frame(width: columns[index].width, alignment: columns[index].trailing ? .trailing : .leading)
+                    .lineLimit(1).frame(width: columns[index].width, alignment: columns[index].swiftUIAlignment)
                     .help(values.indices.contains(index) ? values[index] : "")
             }
+        }
+    }
+}
+
+private extension OnePlusGridColumn {
+    var swiftUIAlignment: SwiftUI.Alignment {
+        switch alignment {
+        case .leading: .leading
+        case .center: .center
+        case .trailing: .trailing
         }
     }
 }
