@@ -164,21 +164,18 @@ nonisolated enum TailscalePeerCatalog {
             guard let path = paths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
                 throw CatalogError.unavailable
             }
-            let process = Process()
-            let output = Pipe()
-            process.executableURL = URL(fileURLWithPath: path)
-            process.arguments = ["status", "--json"]
             var environment = ProcessInfo.processInfo.environment
             environment["TERM"] = "dumb"
-            process.environment = environment
-            process.standardOutput = output
-            process.standardError = FileHandle.nullDevice
             do {
-                try process.run()
-                let data = output.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                guard process.terminationStatus == 0 else { throw CatalogError.unavailable }
-                return try parse(data)
+                let result = try await SSHProcessRunner.run(
+                    executableURL: URL(fileURLWithPath: path),
+                    arguments: ["status", "--json"],
+                    environment: environment,
+                    maximumOutputBytes: 4 * 1_024 * 1_024,
+                    timeout: 10
+                )
+                guard result.status == 0 else { throw CatalogError.unavailable }
+                return try parse(Data(result.standardOutput.utf8))
             } catch let error as CatalogError {
                 throw error
             } catch {
