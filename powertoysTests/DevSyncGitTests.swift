@@ -215,6 +215,24 @@ final class DevSyncGitTests: XCTestCase {
         }
     }
 
+    func testGitRunBoundsCommandOutput() async throws {
+        let repository = try await makeRepository(named: "bounded-output")
+        for index in 0..<20 {
+            try write("value", to: repository.appendingPathComponent("untracked-file-\(index).txt"))
+        }
+
+        do {
+            _ = try await DevGit.run(
+                ["ls-files", "--others", "--exclude-standard"],
+                in: repository,
+                maximumOutputBytes: 64
+            )
+            XCTFail("Expected oversized Git output to stop the process")
+        } catch let error as DevGitError {
+            XCTAssertEqual(error, .failed(exitCode: -1, stderr: "Git output exceeded 64 bytes."))
+        }
+    }
+
     private func makeRepository(named name: String) async throws -> URL {
         let repository = temporaryRoot.appendingPathComponent(name, isDirectory: true)
         try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
