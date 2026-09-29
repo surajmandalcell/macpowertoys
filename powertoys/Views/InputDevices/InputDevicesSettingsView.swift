@@ -21,8 +21,8 @@ struct InputDevicesSettingsView: View {
 
     private var settingsContent: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
-            InputDevicesScrollSettings(showsHeaders: showsHeader)
-            InputScrollDeviceBar()
+            if showsHeader { OnePlusSectionTitle("Scrolling") }
+            InputDevicesSettingsContent()
         }
         .padding(.horizontal, density.gutter)
         .padding(.top, contentTopInset)
@@ -53,28 +53,16 @@ struct InputScrollDeviceBar: View {
     }
 }
 
-struct InputDevicesScrollSettings: View {
-    var showsHeaders = true
-
+struct InputDevicesSettingsContent: View {
     @State private var manager = InputDevicesManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            if showsHeaders { OnePlusSectionTitle("Scroll control") }
             scrollControlCard
-            if showsHeaders { OnePlusSectionTitle("Profiles") }
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                    mouseProfile
-                    trackpadProfile
-                }
-                VStack(spacing: OnePlusMetrics.cardGap) {
-                    mouseProfile
-                    trackpadProfile
-                }
-            }
+            mouseProfile
+            trackpadProfile
+            InputScrollDeviceBar()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear { manager.refresh() }
     }
 

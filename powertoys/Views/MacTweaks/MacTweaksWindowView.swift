@@ -66,6 +66,25 @@ private struct MacTweaksModifiedEntry: Identifiable {
     var id: String { field.identity }
 }
 
+struct MacTweaksSettingsContent: View {
+    var body: some View {
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            OnePlusCard {
+                OnePlusCardHeader("Mac Tweaks", systemImage: "slider.horizontal.3")
+                OnePlusSettingRow(
+                    "System preferences",
+                    caption: "Manage Mic Lock, Dock, Finder, windows, and other macOS changes.",
+                    separator: false
+                ) {
+                    Button("Open Mac Tweaks") {
+                        ToolActionRouter.shared.open(toolID: "mac-tweaks")
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct MacTweaksWindowView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

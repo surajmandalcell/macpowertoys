@@ -115,17 +115,13 @@ struct InputDevicesWindowView: View {
     }
 
     private var scrollingPage: some View {
-        VStack(spacing: 0) {
+        OnePlusPage {
             OnePlusPageHeader(
                 title: "Scrolling",
                 subtitle: manager.interceptionActive ? "System-wide control is active" : "System-wide control is inactive"
             )
-            InputDevicesSettingsView(
-                showsHeader: false,
-                showsContainerScroll: true,
-                contentTopInset: OnePlusMetrics.contentTop,
-                density: .regular
-            )
+        } content: {
+            InputDevicesSettingsContent()
         }
     }
 
