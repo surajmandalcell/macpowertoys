@@ -41,7 +41,10 @@ struct InputDevicesWindowView: View {
         }
         .background(WindowAccessor(identifier: "input-devices"))
         .buttonStyle(OnePlusButtonStyle())
-        .onAppear { manager.refresh() }
+        .task {
+            await Task.yield()
+            manager.refresh()
+        }
         .onOpenToolPage("input-devices") { pageID in
             if let destination = InputDevicesPage(rawValue: pageID) {
                 page = destination
@@ -115,13 +118,20 @@ struct InputDevicesWindowView: View {
     }
 
     private var scrollingPage: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(
                 title: "Scrolling",
                 subtitle: manager.interceptionActive ? "System-wide control is active" : "System-wide control is inactive"
             )
         } content: {
-            InputDevicesSettingsContent()
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                ScrollView {
+                    InputDevicesSettingsContent(includesDeviceFooter: false)
+                }
+                .onePlusScrollIndicators()
+                InputScrollDeviceBar()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 

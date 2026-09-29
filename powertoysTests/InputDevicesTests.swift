@@ -95,6 +95,15 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(rows, ["Model", "Vendor", "Device ID", "Firmware", "Serial", "Connection", "Battery", "Buttons", "Resolution", "Polling", "Tracking", "Scroll speed"])
     }
 
+    func testKeyboardDetailsFormatSavedGlobalSettings() {
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: 2, standardFunctionKeys: true).keyRepeat, "Fast")
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: 4, standardFunctionKeys: false).keyRepeat, "Medium")
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: 7, standardFunctionKeys: nil).keyRepeat, "Slow")
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: true).keyRepeat, "System default")
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: true).functionKeys, "Standard F keys")
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: false).functionKeys, "Media keys")
+    }
+
     func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
         XCTAssertEqual(
             InputDeviceDescriptor.kind(name: "Apple Internal Keyboard / Trackpad", usagePage: 1, usage: 2),

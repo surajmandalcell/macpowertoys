@@ -2,27 +2,57 @@ import OnePlusUI
 import SwiftUI
 
 struct InputDevicesSettingsView: View {
-    var showsHeader = true
-    var showsContainerScroll = true
-    var contentTopInset: CGFloat = OnePlusMetrics.contentTop
-    var density: OnePlusDensity = .compact
+    private let showsHeader: Bool
+    private let showsContainerScroll: Bool
+    private let contentTopInset: CGFloat
+    private let density: OnePlusDensity
+    private let embedsInPage: Bool
+
+    init() {
+        showsHeader = false
+        showsContainerScroll = false
+        contentTopInset = 0
+        density = .regular
+        embedsInPage = true
+    }
+
+    init(
+        showsHeader: Bool,
+        showsContainerScroll: Bool,
+        contentTopInset: CGFloat = OnePlusMetrics.contentTop,
+        density: OnePlusDensity = .compact
+    ) {
+        self.showsHeader = showsHeader
+        self.showsContainerScroll = showsContainerScroll
+        self.contentTopInset = contentTopInset
+        self.density = density
+        embedsInPage = false
+    }
 
     @ViewBuilder
     var body: some View {
-        VStack(spacing: 0) {
-            if showsContainerScroll {
-                ScrollView { settingsContent }.onePlusScrollIndicators()
-            } else {
-                settingsContent
-            }
+        if embedsInPage {
+            InputDevicesSettingsContent()
+        } else {
+            panelContent
+                .onePlusDensity(density)
         }
-        .onePlusDensity(density)
     }
 
-    private var settingsContent: some View {
+    private var panelContent: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             if showsHeader { OnePlusSectionTitle("Scrolling") }
-            InputDevicesSettingsContent()
+            Group {
+                if showsContainerScroll {
+                    ScrollView {
+                        InputDevicesSettingsContent(includesDeviceFooter: false)
+                    }
+                    .onePlusScrollIndicators()
+                } else {
+                    InputDevicesSettingsContent(includesDeviceFooter: false)
+                }
+            }
+            InputScrollDeviceBar()
         }
         .padding(.horizontal, density.gutter)
         .padding(.top, contentTopInset)
@@ -55,15 +85,15 @@ struct InputScrollDeviceBar: View {
 
 struct InputDevicesSettingsContent: View {
     @State private var manager = InputDevicesManager.shared
+    var includesDeviceFooter = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             scrollControlCard
             mouseProfile
             trackpadProfile
-            InputScrollDeviceBar()
+            if includesDeviceFooter { InputScrollDeviceBar() }
         }
-        .onAppear { manager.refresh() }
     }
 
     private var scrollControlCard: some View {
