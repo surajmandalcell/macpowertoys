@@ -14,6 +14,13 @@ final class CompactAppletRedesignTests: XCTestCase {
         XCTAssertEqual(AwakeLayout.windowHeight, 500)
     }
 
+    func testColorProjectsWindowGrowsUntilItsMaximumHeight() {
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: false), 250)
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 1, isCreating: false), 294)
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: true), 310)
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 100, isCreating: false), 460)
+    }
+
     func testColorHistoryPresentationFiltersAndFormatsOffTheViewPath() throws {
         let projectID = UUID()
         let now = Date(timeIntervalSinceReferenceDate: 10_000)

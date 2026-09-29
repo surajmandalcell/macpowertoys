@@ -13,6 +13,12 @@ enum ColorPickerLayout {
         min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
             + CGFloat(max(0, min(count, 5) - 1)) * historyRowHeight)
     }
+
+    static func projectsHeight(projectCount: Int, isCreating: Bool) -> CGFloat {
+        min(maximumWindowHeight, OnePlusWindowCanvas.colorPicker.size.height
+            + CGFloat(max(0, projectCount)) * OnePlusMetrics.settingRow
+            + (isCreating ? OnePlusMetrics.controlHeight + 2 * OnePlusMetrics.cardPadding : 0))
+    }
 }
 
 nonisolated struct ColorPickerHistoryRequest: Hashable, Sendable {
@@ -99,9 +105,10 @@ struct ColorHistoryView: View {
     private var windowHeight: CGFloat {
         switch page {
         case .history: ColorPickerLayout.historyHeight(count: sampleRows.count)
-        case .projects:
-            min(ColorPickerLayout.maximumWindowHeight, OnePlusWindowCanvas.colorPicker.size.height
-                + CGFloat(min(service.projects.count, 4) + (isCreatingProject ? 1 : 0)) * OnePlusMetrics.settingRow)
+        case .projects: ColorPickerLayout.projectsHeight(
+            projectCount: service.projects.count,
+            isCreating: isCreatingProject
+        )
         case .settings: ColorPickerLayout.maximumWindowHeight
         }
     }
@@ -111,7 +118,7 @@ struct ColorHistoryView: View {
             VStack(spacing: 0) {
                 OnePlusAppletTitlebar(title: "Color Picker") {
                     Button("Pick Color") { service.pick() }
-                        .buttonStyle(OnePlusButtonStyle(.primary))
+                        .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
                         .disabled(service.isPicking)
                         .help("Pick a color for \(selectedProjectName)")
                         .accessibilityIdentifier("color-picker.pick")
@@ -198,20 +205,27 @@ struct ColorHistoryView: View {
                 OnePlusEmptyState(search.isEmpty ? "Pick a color for \(selectedProjectName)" : "No matching colors",
                                   systemImage: search.isEmpty ? "eyedropper" : "magnifyingglass")
             } else {
-                ScrollView {
-                    LazyVStack(spacing: OnePlusMetrics.actionSpacing) {
-                        ForEach(sampleRows) { row in
-                            ColorSampleRow(
-                                row: row,
-                                defaultFormat: service.defaultFormat,
-                                copy: service.copy,
-                                togglePin: service.togglePin,
-                                remove: service.remove
-                            )
+                OnePlusCard {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(sampleRows) { row in
+                                if row.id != sampleRows.first?.id {
+                                    OnePlusColor.lineSoft.frame(height: 1)
+                                }
+                                ColorSampleRow(
+                                    row: row,
+                                    defaultFormat: service.defaultFormat,
+                                    copy: service.copy,
+                                    togglePin: service.togglePin,
+                                    remove: service.remove
+                                )
+                            }
                         }
                     }
-                    .padding(.horizontal, OnePlusMetrics.appletGutter)
-                }.onePlusScrollIndicators()
+                    .onePlusScrollIndicators()
+                }
+                .frame(maxHeight: .infinity)
+                .padding(.horizontal, OnePlusMetrics.appletGutter)
             }
         }.padding(.top, OnePlusMetrics.contentTop)
     }
@@ -232,7 +246,7 @@ struct ColorHistoryView: View {
                 }
             }
             .onePlusScrollIndicators()
-            .frame(maxHeight: .infinity)
+            .frame(minHeight: OnePlusMetrics.settingRow, maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
@@ -264,7 +278,7 @@ struct ColorHistoryView: View {
             Button { selectProject(id) } label: {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Image(systemName: "folder")
-                    Text(name).lineLimit(1).help(name)
+                    Text(name).lineLimit(1)
                     OnePlusBadge(count)
                     Spacer(minLength: 0)
                     if selected { Image(systemName: "checkmark") }
@@ -276,7 +290,7 @@ struct ColorHistoryView: View {
             if let project {
                 Button { service.export(project) } label: { Image(systemName: "square.and.arrow.up") }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .disabled(count == 0).help("Export \(name) as CSS").accessibilityLabel("Export \(name) as CSS")
+                    .disabled(count == 0).accessibilityLabel("Export \(name) as CSS")
             }
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding)
@@ -313,7 +327,7 @@ struct ColorPickerSettingsView: View {
                 ShortcutPermissionNotice(action: .colorPicker)
             }
             OnePlusCard {
-                OnePlusCardHeader("Saved colors")
+                OnePlusCardHeader("Saved colors", systemImage: "paintpalette")
                 OnePlusSettingRow("Copy format") {
                     OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
                                   selection: $service.defaultFormat, accessibilityLabel: "Copy format")
@@ -347,26 +361,24 @@ private struct ColorSampleRow: View {
 
     var body: some View {
         let sample = row.sample
-        OnePlusCard {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
-                    .fill(Color(nsColor: sample.color))
-                    .frame(width: OnePlusMetrics.searchHeight, height: OnePlusMetrics.searchHeight)
-                    .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius).strokeBorder(OnePlusColor.line) }
-                    .accessibilityLabel(row.accessibilityValue)
-                HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                    Text(row.value).onePlusText(.mono)
-                        .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                    Spacer(minLength: 0)
-                    Text(row.timestamp).onePlusText(.caption).fixedSize()
-                }.frame(maxWidth: .infinity, alignment: .leading)
-                actions
-                    .opacity(hovering || focused || NSApp.isFullKeyboardAccessEnabled ? 1 : 0)
-            }
-            .padding(.horizontal, OnePlusMetrics.actionSpacing)
-            .frame(height: ColorPickerLayout.historyRowHeight)
-            .background(hovering || focused ? OnePlusColor.panelHover : OnePlusColor.panel)
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
+                .fill(Color(nsColor: sample.color))
+                .frame(width: OnePlusMetrics.searchHeight, height: OnePlusMetrics.searchHeight)
+                .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius).strokeBorder(OnePlusColor.line) }
+                .accessibilityLabel(row.accessibilityValue)
+            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
+                Text(row.value).onePlusText(.mono)
+                    .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                Spacer(minLength: 0)
+                Text(row.timestamp).onePlusText(.caption).fixedSize()
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            actions
+                .opacity(hovering || focused || NSApp.isFullKeyboardAccessEnabled ? 1 : 0)
         }
+        .padding(.horizontal, OnePlusMetrics.actionSpacing)
+        .frame(height: ColorPickerLayout.historyRowHeight)
+        .background(hovering || focused ? OnePlusColor.panelHover : OnePlusColor.panel)
         .contentShape(Rectangle()).focusable().focused($focused)
         .onHover { hovering = $0 }
         .onKeyPress(.return) { copy(sample, defaultFormat); return .handled }
