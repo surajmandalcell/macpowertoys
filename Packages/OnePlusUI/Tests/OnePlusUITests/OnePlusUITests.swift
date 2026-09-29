@@ -111,7 +111,7 @@ final class OnePlusUITests: XCTestCase {
             (OnePlusColor.track, 0x181818, 0xE4E4E4), (OnePlusColor.selection, 0x343434, 0xD4D4D4),
             (OnePlusColor.selectedControl, 0x424242, 0xFFFFFF), (OnePlusColor.line, 0x343434, 0xD1D1D1),
             (OnePlusColor.lineSoft, 0x2B2B2B, 0xE1E1E1), (OnePlusColor.ink, 0xEDEDED, 0x242424),
-            (OnePlusColor.secondary, 0xA3A3A3, 0x656565), (OnePlusColor.muted, 0x777777, 0x777777),
+            (OnePlusColor.secondary, 0xA3A3A3, 0x656565), (OnePlusColor.muted, 0x8A8A8A, 0x707070),
             (OnePlusColor.controlInk, 0xDEDEDE, 0x343434), (OnePlusColor.accent, 0xEE5B50, 0xD94F45),
             (OnePlusColor.primaryFill, 0xDDDDDD, 0x383838), (OnePlusColor.primaryInk, 0x252525, 0xFFFFFF),
             (OnePlusColor.ok, 0x7FA889, 0x3F7A4E), (OnePlusColor.warn, 0xF29A68, 0xC06A32),
