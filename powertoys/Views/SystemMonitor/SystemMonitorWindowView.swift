@@ -42,21 +42,6 @@ struct GPUCardIcon: View {
     }
 }
 
-struct SystemMonitorPlacementPicker: View {
-    let metric: SystemMonitorMenuMetric
-    @Binding var selection: SystemMonitorMenuPlacement
-
-    var body: some View {
-        TaskManagerSegments(
-            choices: SystemMonitorMenuPlacement.allCases.map { ($0, $0.title) },
-            selection: $selection
-        )
-        .frame(width: 204, height: UtilityLayout.workspaceActionHeight)
-        .help("Show \(metric.title) in one Task Manager item, a separate item, or neither")
-        .accessibilityIdentifier("system-monitor.\(metric.rawValue).menu-placement")
-    }
-}
-
 enum SystemMonitorPage: String, CaseIterable, Identifiable {
     case overview, processes, cpu, gpu, memory, network, disk, battery, sensors
     case remote, report, about, settings
@@ -74,7 +59,7 @@ enum SystemMonitorPage: String, CaseIterable, Identifiable {
         case .disk: "Disk"
         case .battery: "Battery"
         case .sensors: "Sensors"
-        case .remote: "Remote Stats"
+        case .remote: "Remote stats"
         case .report: "System Report"
         case .about: "About"
         case .settings: "Settings"
@@ -157,8 +142,9 @@ struct SystemMonitorWindowView: View {
 
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
     private var recentHistory: [SystemMonitorSample] {
-        Array(service.history.suffix(max(60, historyMinutes * 60)))
+        Array(service.history.suffix(historySampleCapacity))
     }
+    private var historySampleCapacity: Int { max(60, historyMinutes * 60) }
 
     var body: some View {
         OnePlusWindowRoot(canvas: .systemMonitor) {
@@ -283,20 +269,8 @@ struct SystemMonitorWindowView: View {
                     TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
                 }
             }
-        case .cpu:
-            metricHeader(.cpu)
-        case .gpu:
-            metricHeader(.gpu)
-        case .memory:
-            metricHeader(.memory)
-        case .network:
-            metricHeader(.network)
-        case .disk:
-            metricHeader(.disk)
-        case .battery:
-            metricHeader(.battery)
-        case .sensors:
-            metricHeader(.thermal)
+        case .cpu, .gpu, .memory, .network, .disk, .battery, .sensors:
+            TaskManagerHeader(page.title, subtitle: page.subtitle)
         case .remote:
             TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
                 Button {
@@ -310,23 +284,6 @@ struct SystemMonitorWindowView: View {
         default:
             TaskManagerHeader(page.title, subtitle: page.subtitle)
         }
-    }
-
-    private func metricHeader(_ metric: SystemMonitorMenuMetric) -> some View {
-        TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
-            menuPlacement(metric)
-        }
-    }
-
-    private func menuPlacement(_ metric: SystemMonitorMenuMetric) -> some View {
-        SystemMonitorPlacementPicker(metric: metric, selection: Binding(
-            get: {
-                guard let item = service.menuSettings.items.first(where: { $0.metric == metric }),
-                      service.menuSettings.enabled, item.enabled else { return .off }
-                return item.placement
-            },
-            set: { placement in service.updateMenuSettings { $0.setPlacement(placement, for: metric) } }
-        ))
     }
 
     @ViewBuilder
@@ -380,8 +337,15 @@ struct SystemMonitorWindowView: View {
         .thinScrollIndicators()
     }
 
+    private enum MetricFooter {
+        case none
+        case disk(Double?)
+        case battery(Int?)
+        case thermal(String?)
+    }
+
     private var overviewPage: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
                 metricCard(.cpu, value: percent(service.snapshot?.cpuUsage), detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) cores",
                            values: recentHistory.compactMap(\.cpuUsage), range: 0...100)
@@ -393,9 +357,12 @@ struct SystemMonitorWindowView: View {
                            detail: "↓ Download · ↑ \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")",
                            values: recentHistory.compactMap(\.networkDownload),
                            secondary: recentHistory.compactMap(\.networkUpload), range: networkRange)
-                metricCard(.disk, value: service.snapshot?.diskUsage.percent ?? "—", detail: "\(diskAvailable) available")
-                metricCard(.battery, value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—", detail: batteryDetail)
-                metricCard(.thermal, title: "Thermal", value: service.snapshot?.thermalState ?? "—", detail: "System thermal pressure")
+                metricCard(.disk, value: service.snapshot?.diskUsage.percent ?? "—", detail: "\(diskAvailable) available",
+                           footer: .disk(service.snapshot?.diskUsage))
+                metricCard(.battery, value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—", detail: batteryDetail,
+                           footer: .battery(service.snapshot?.batteryPercent))
+                metricCard(.thermal, title: "Thermal", value: service.snapshot?.thermalState ?? "—",
+                           detail: "System thermal pressure", footer: .thermal(service.snapshot?.thermalState))
                 metricCard(.cpu, title: "Load average", value: loadValue, detail: "1 minute · \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs",
                            values: recentHistory.compactMap { $0.loadAverage?.0 }, range: loadRange)
                     .help(loadExplanation)
@@ -423,7 +390,8 @@ struct SystemMonitorWindowView: View {
         values: [Double] = [],
         secondary: [Double] = [],
         range: ClosedRange<Double> = 0...100,
-        accent: Bool = false
+        accent: Bool = false,
+        footer: MetricFooter = .none
     ) -> some View {
         Button {
             pageID = switch metric {
@@ -445,6 +413,7 @@ struct SystemMonitorWindowView: View {
                             range: range,
                             unit: metric == .network ? "/s" : "%",
                             compact: true,
+                            sampleCapacity: historySampleCapacity,
                             primaryColor: accent ? TaskManagerTheme.accent : TaskManagerTheme.ink.opacity(0.76)
                         )
                             .frame(height: 33)
@@ -470,7 +439,8 @@ struct SystemMonitorWindowView: View {
                             .foregroundStyle(TaskManagerTheme.secondary)
                             .lineLimit(1)
                             .padding(.top, 4)
-                        Spacer(minLength: 28)
+                        Spacer(minLength: 8)
+                        metricFooter(footer)
                     }
                     .padding(.horizontal, 12)
                     .padding(.top, 11)
@@ -485,6 +455,36 @@ struct SystemMonitorWindowView: View {
         .accessibilityLabel("Open \(title ?? metric.title), \(value)")
     }
 
+    @ViewBuilder
+    private func metricFooter(_ footer: MetricFooter) -> some View {
+        switch footer {
+        case .none:
+            Spacer(minLength: 20)
+        case .disk(let usage):
+            OnePlusUsageBar(value: (usage ?? 0) / 100)
+                .accessibilityLabel(usage.map { "Disk, \(Int($0.rounded())) percent used" } ?? "Disk usage unavailable")
+        case .battery(let percent):
+            HStack(spacing: 3) {
+                ForEach(0..<10, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(index < (percent ?? 0) / 10 ? TaskManagerTheme.ink.opacity(0.76) : TaskManagerTheme.lineSoft)
+                }
+            }
+            .frame(height: 8)
+            .accessibilityLabel(percent.map { "Battery, \($0) percent" } ?? "Battery charge unavailable")
+        case .thermal(let state):
+            HStack(spacing: 3) {
+                ForEach(0..<4, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Self.thermalBand(state).map { index <= $0 } == true
+                            ? TaskManagerTheme.ink.opacity(0.76) : TaskManagerTheme.lineSoft)
+                }
+            }
+            .frame(height: 8)
+            .accessibilityLabel(state.map { "Thermal pressure, \($0)" } ?? "Thermal pressure unavailable")
+        }
+    }
+
     private var remoteOverview: some View {
         return VStack(alignment: .leading, spacing: 10) {
             sectionHeader("Remote instances", action: "Manage") { pageID = SystemMonitorPage.remote.rawValue }
@@ -497,7 +497,7 @@ struct SystemMonitorWindowView: View {
                                 .foregroundStyle(TaskManagerTheme.secondary)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("No remote hosts").font(.system(size: 11, weight: .medium))
-                                Text("Add a Linux, macOS, or Windows SSH host in Remote Stats.")
+                                Text("Add a Linux, macOS, or Windows SSH host in Remote stats.")
                                     .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                             }
                             Spacer()
@@ -508,6 +508,16 @@ struct SystemMonitorWindowView: View {
                     .frame(height: 58)
                 }
                 .buttonStyle(.plain).focusEffectDisabled()
+            } else if remoteProfiles.count == 1, let profile = remoteProfiles.first {
+                TaskManagerRemoteCard(
+                    profile: profile,
+                    reading: nil,
+                    state: "Offline",
+                    onTerminal: { SystemMonitorRemoteTerminal.open(profile) },
+                    primaryTitle: "Open App",
+                    primarySymbol: "arrow.right",
+                    onPrimary: { pageID = SystemMonitorPage.remote.rawValue }
+                )
             } else {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 10) {
@@ -535,12 +545,12 @@ struct SystemMonitorWindowView: View {
     private var memoryAllocation: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeader("Memory allocation", action: "Details") { pageID = SystemMonitorPage.memory.rawValue }
-            memoryAllocationPanel
+            memoryAllocationPanel()
                 .frame(height: 203)
         }
     }
 
-    private var memoryAllocationPanel: some View {
+    private func memoryAllocationPanel(header: String? = nil) -> some View {
         let used = service.snapshot?.memoryUsed ?? 0
         let total = max(service.snapshot?.memoryTotal ?? 1, 1)
         let wired = service.snapshot?.memoryDetails?.wired ?? 0
@@ -548,27 +558,30 @@ struct SystemMonitorWindowView: View {
         let applications = max(used - wired - compressed, 0)
         let available = max(total - used, 0)
         return TaskManagerPanel {
-            VStack(alignment: .leading, spacing: 10) {
-                GeometryReader { proxy in
-                    HStack(spacing: 2) {
-                        Rectangle().fill(TaskManagerTheme.ink.opacity(0.82))
-                            .frame(width: proxy.size.width * CGFloat(Double(applications) / Double(total)))
-                        Rectangle().fill(TaskManagerTheme.ink.opacity(0.58))
-                            .frame(width: proxy.size.width * CGFloat(Double(wired) / Double(total)))
-                        Rectangle().fill(TaskManagerTheme.ink.opacity(0.35))
-                            .frame(width: proxy.size.width * CGFloat(Double(compressed) / Double(total)))
-                        Rectangle().fill(TaskManagerTheme.lineSoft)
-                            .frame(width: proxy.size.width * CGFloat(Double(available) / Double(total)))
+            VStack(alignment: .leading, spacing: 0) {
+                if let header { OnePlusCardHeader(header) }
+                VStack(alignment: .leading, spacing: 10) {
+                    GeometryReader { proxy in
+                        HStack(spacing: 2) {
+                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.82))
+                                .frame(width: proxy.size.width * CGFloat(Double(applications) / Double(total)))
+                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.58))
+                                .frame(width: proxy.size.width * CGFloat(Double(wired) / Double(total)))
+                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.35))
+                                .frame(width: proxy.size.width * CGFloat(Double(compressed) / Double(total)))
+                            Rectangle().fill(TaskManagerTheme.lineSoft)
+                                .frame(width: proxy.size.width * CGFloat(Double(available) / Double(total)))
+                        }
                     }
+                    .frame(height: 10)
+                    allocationRow("Applications", value: Self.bytes(applications))
+                    allocationRow("Wired", value: Self.bytes(wired))
+                    allocationRow("Compressed", value: Self.bytes(compressed))
+                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                    allocationRow("Available", value: Self.bytes(available))
                 }
-                .frame(height: 10)
-                allocationRow("Applications", value: Self.bytes(applications))
-                allocationRow("Wired", value: Self.bytes(wired))
-                allocationRow("Compressed", value: Self.bytes(compressed))
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                allocationRow("Available", value: Self.bytes(available))
+                .padding(12)
             }
-            .padding(12)
         }
     }
 
@@ -581,8 +594,10 @@ struct SystemMonitorWindowView: View {
         secondary: [Double] = [],
         range: ClosedRange<Double>,
         upperScaleLabel: String? = nil,
+        middleScaleLabel: String? = nil,
         lowerScaleLabel: String? = nil,
-        seriesLabels: (String, String)? = nil,
+        seriesLabels: [String] = [],
+        stepped: Bool = false,
         stats: [(String, String)]
     ) -> some View {
         let displayed = unit.isEmpty ? TaskManagerMetricText.parts(value) : (value, unit)
@@ -610,7 +625,8 @@ struct SystemMonitorWindowView: View {
                             VStack(alignment: .trailing, spacing: 5) {
                                 Text(stats[index].0).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
                                 Text(stats[index].1)
-                                    .font(.system(size: 12, design: .monospaced))
+                                    .font(.system(size: 12))
+                                    .monospacedDigit()
                                     .foregroundStyle(index == stats.count - 1 && stats[index].1 == "Elevated" ? TaskManagerTheme.accent : TaskManagerTheme.ink)
                             }
                         }
@@ -618,24 +634,32 @@ struct SystemMonitorWindowView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
-                if let seriesLabels {
-                    HStack(spacing: 12) {
-                        chartLegend(seriesLabels.0, color: TaskManagerTheme.ink.opacity(0.76))
-                        chartLegend(seriesLabels.1, color: TaskManagerTheme.accent)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                }
                 TaskManagerHistoryChart(
                     values: values,
                     secondary: secondary,
                     range: range,
                     unit: unit,
+                    sampleCapacity: historySampleCapacity,
+                    stepped: stepped,
                     upperScaleLabel: upperScaleLabel,
+                    middleScaleLabel: middleScaleLabel,
                     lowerScaleLabel: lowerScaleLabel
                 )
                     .frame(height: 138)
                     .padding(.horizontal, 12)
+                if !seriesLabels.isEmpty {
+                    HStack(spacing: 12) {
+                        ForEach(seriesLabels.indices, id: \.self) { index in
+                            chartLegend(
+                                seriesLabels[index],
+                                color: index == 0 ? TaskManagerTheme.ink.opacity(0.76) : TaskManagerTheme.accent
+                            )
+                        }
+                        Spacer()
+                    }
+                    .padding(.leading, 74)
+                    .padding(.trailing, 12)
+                }
                 HStack {
                     Text("−\(historyMinutes) min")
                     Spacer()
@@ -643,7 +667,8 @@ struct SystemMonitorWindowView: View {
                 }
                 .font(.system(size: 8, design: .monospaced))
                 .foregroundStyle(TaskManagerTheme.muted)
-                .padding(.horizontal, 12)
+                .padding(.leading, 74)
+                .padding(.trailing, 12)
                 .padding(.bottom, 10)
             }
         }
@@ -655,14 +680,15 @@ struct SystemMonitorWindowView: View {
                 label: "CPU usage", value: service.snapshot?.cpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) logical cores",
                 values: recentHistory.compactMap(\.cpuUsage), range: 0...100,
-                upperScaleLabel: "100%", lowerScaleLabel: "0%",
+                upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
+                seriesLabels: ["Total usage"],
                 stats: [
                     ("User", service.snapshot?.cpuDetails.map { "\(Int($0.user.rounded()))%" } ?? "—"),
                     ("System", service.snapshot?.cpuDetails.map { "\(Int($0.system.rounded()))%" } ?? "—"),
                     ("Idle", service.snapshot?.cpuDetails.map { "\(Int($0.idle.rounded()))%" } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: 10) {
                 coreActivity
                 informationPanel("Load average", rows: [
                     ("1 minute", service.snapshot?.loadAverage.map { Self.decimal($0.0) } ?? "—"),
@@ -678,73 +704,63 @@ struct SystemMonitorWindowView: View {
     private var coreActivity: some View {
         let cores = service.snapshot?.cpuDetails?.cores ?? []
         return TaskManagerPanel(textured: true) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .center, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Core activity")
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(coreLayoutDescription)
-                            .font(.system(size: 8.5))
-                            .foregroundStyle(TaskManagerTheme.secondary)
-                    }
-                    Spacer(minLength: 8)
+            VStack(alignment: .leading, spacing: 0) {
+                OnePlusCardHeader("Core activity") {
+                    Text(coreLayoutDescription)
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(TaskManagerTheme.secondary)
+                }
+                VStack(alignment: .leading, spacing: 8) {
                     if TaskManagerHardwareSummary.coreLayout != nil {
                         HStack(spacing: 10) {
-                            coreLegend("Performance", color: TaskManagerTheme.accent)
+                            coreLegend("Performance", color: TaskManagerTheme.ink.opacity(0.76))
                             coreLegend("Efficiency", color: TaskManagerTheme.secondary)
                         }
                     }
-                }
-                if cores.isEmpty {
-                    Text("—")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(TaskManagerTheme.muted)
-                        .frame(maxWidth: .infinity, minHeight: 92)
-                } else {
-                    HStack(alignment: .bottom, spacing: 5) {
-                        ForEach(cores.indices, id: \.self) { index in
-                            if isFirstEfficiencyCore(index) {
-                                Rectangle()
-                                    .fill(TaskManagerTheme.line)
-                                    .frame(width: 1, height: 76)
-                                    .padding(.horizontal, 2)
-                            }
-                            VStack(spacing: 6) {
-                                Text("\(Int(cores[index].rounded()))%")
-                                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(TaskManagerTheme.ink)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                GeometryReader { proxy in
-                                    let fraction = CGFloat(min(max(cores[index] / 100, 0), 1))
-                                    ZStack(alignment: .bottom) {
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(TaskManagerTheme.lineSoft.opacity(0.7))
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(coreColor(index))
-                                            .frame(height: max(2, proxy.size.height * fraction))
-                                    }
+                    if cores.isEmpty {
+                        Text("—")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(TaskManagerTheme.muted)
+                            .frame(maxWidth: .infinity, minHeight: 92)
+                    } else {
+                        HStack(alignment: .bottom, spacing: 5) {
+                            ForEach(cores.indices, id: \.self) { index in
+                                if isFirstEfficiencyCore(index) {
+                                    Rectangle()
+                                        .fill(TaskManagerTheme.line)
+                                        .frame(width: 1, height: 76)
+                                        .padding(.horizontal, 2)
                                 }
-                                .frame(height: 54)
-                                Text(coreLabel(index))
-                                    .font(.system(size: 7.5, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(TaskManagerTheme.muted)
+                                VStack(spacing: 6) {
+                                    Text("\(Int(cores[index].rounded()))%")
+                                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(TaskManagerTheme.ink)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                    GeometryReader { proxy in
+                                        let fraction = CGFloat(min(max(cores[index] / 100, 0), 1))
+                                        ZStack(alignment: .bottom) {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(TaskManagerTheme.lineSoft.opacity(0.7))
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(coreColor(index))
+                                                .frame(height: max(2, proxy.size.height * fraction))
+                                        }
+                                    }
+                                    .frame(height: 54)
+                                    Text(coreLabel(index))
+                                        .font(.system(size: 7.5, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(TaskManagerTheme.muted)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("\(coreLabel(index)), \(Int(cores[index].rounded())) percent")
                             }
-                            .frame(maxWidth: .infinity)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("\(coreLabel(index)), \(Int(cores[index].rounded())) percent")
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 10)
-                    .background(TaskManagerTheme.window.opacity(0.82), in: RoundedRectangle(cornerRadius: 6))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(TaskManagerTheme.lineSoft)
-                    }
                 }
+                .padding(12)
             }
-            .padding(12)
         }
     }
 
@@ -761,7 +777,7 @@ struct SystemMonitorWindowView: View {
 
     private func coreColor(_ index: Int) -> Color {
         guard let layout = TaskManagerHardwareSummary.coreLayout,
-              index >= layout.performance else { return TaskManagerTheme.accent }
+              index >= layout.performance else { return TaskManagerTheme.ink.opacity(0.76) }
         return TaskManagerTheme.secondary
     }
 
@@ -775,17 +791,17 @@ struct SystemMonitorWindowView: View {
                 label: "GPU usage", value: service.snapshot?.gpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Integrated graphics",
                 values: recentHistory.compactMap(\.gpuUsage), range: 0...100,
-                upperScaleLabel: "100%", lowerScaleLabel: "0%",
+                upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
+                seriesLabels: ["Graphics utilization"],
                 stats: [("Memory", "Unified"), ("Thermal pressure", service.snapshot?.thermalState ?? "—")]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: 10) {
                 informationPanel("Graphics details", rows: [
                     ("Architecture", "Integrated"), ("Memory", "Unified"),
                     ("Utilization", percent(service.snapshot?.gpuUsage)),
                 ])
                 informationPanel("Engine activity", rows: [
                     ("Combined activity", percent(service.snapshot?.gpuUsage)),
-                    ("Per-engine counters", "Not exposed by macOS"),
                 ])
             }
         }
@@ -799,24 +815,20 @@ struct SystemMonitorWindowView: View {
                 values: recentHistory.compactMap { $0.memoryUsed.map(Double.init) },
                 range: 0...Double(max(service.snapshot?.memoryTotal ?? 1, 1)),
                 upperScaleLabel: service.snapshot?.memoryTotal.map(Self.bytes) ?? "—",
+                middleScaleLabel: service.snapshot?.memoryTotal.map { Self.bytes($0 / 2) } ?? "—",
                 lowerScaleLabel: "0 GB",
+                seriesLabels: ["Used memory"],
                 stats: [("Used", service.snapshot?.memoryUsage.percent ?? "—"), ("Available", memoryAvailable)]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text("Allocation").font(.system(size: 11, weight: .medium))
-                    memoryAllocationPanel.frame(height: 203)
-                }
-                VStack(alignment: .leading, spacing: 9) {
-                    Text("Virtual memory").font(.system(size: 11, weight: .medium))
-                    informationPanel("Memory details", rows: [
-                        ("Swap used", service.snapshot?.memoryDetails?.swapUsed.map(Self.bytes) ?? "Unavailable"),
+            LazyVGrid(columns: detailColumns, spacing: 10) {
+                memoryAllocationPanel(header: "Allocation")
+                informationPanel("Virtual memory", rows: [
+                        ("Swap used", service.snapshot?.memoryDetails?.swapUsed.map(Self.bytes) ?? "—"),
                         ("Compressed", service.snapshot?.memoryDetails.map { Self.bytes($0.compressed) } ?? "—"),
                         ("Cached files", service.snapshot?.memoryDetails.map { Self.bytes($0.cached) } ?? "—"),
                         ("Page-ins", service.snapshot?.memoryDetails.map { "\($0.pageIns.formatted()) pages" } ?? "—"),
                         ("Page-outs", service.snapshot?.memoryDetails.map { "\($0.pageOuts.formatted()) pages" } ?? "—"),
-                    ])
-                }
+                ])
             }
         }
     }
@@ -828,24 +840,24 @@ struct SystemMonitorWindowView: View {
                 detail: "All active non-loopback interfaces",
                 values: recentHistory.compactMap(\.networkDownload),
                 secondary: recentHistory.compactMap(\.networkUpload), range: networkRange,
-                upperScaleLabel: Self.rate(networkRange.upperBound), lowerScaleLabel: "0 KB/s",
-                seriesLabels: ("Download", "Upload"),
+                upperScaleLabel: Self.rate(networkRange.upperBound),
+                middleScaleLabel: Self.rate(networkRange.upperBound / 2), lowerScaleLabel: "0 KB/s",
+                seriesLabels: ["Download", "Upload"],
                 stats: [
                     ("Upload", service.snapshot?.networkUpload.map(Self.rate) ?? "—"),
                     ("Interface", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                 ]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: 10) {
                 informationPanel("Interface", rows: [
                     ("Name", service.snapshot?.networkDetails?.interfaceName ?? "—"),
-                    ("Local address", service.snapshot?.networkDetails?.localAddress ?? "Unavailable"),
+                    ("Local address", service.snapshot?.networkDetails?.localAddress ?? "—"),
                     ("Transferred down", service.snapshot?.networkDetails.map { Self.bytes($0.receivedTotal) } ?? "—"),
                     ("Transferred up", service.snapshot?.networkDetails.map { Self.bytes($0.sentTotal) } ?? "—"),
                 ])
                 informationPanel("Activity", rows: [
                     ("Download", service.snapshot?.networkDownload.map(Self.rate) ?? "—"),
                     ("Upload", service.snapshot?.networkUpload.map(Self.rate) ?? "—"),
-                    ("Process endpoints", "Available in Process Information"),
                 ])
             }
         }
@@ -885,14 +897,15 @@ struct SystemMonitorWindowView: View {
                 values: recentHistory.compactMap { $0.diskDetails?.readPerSecond },
                 secondary: recentHistory.compactMap { $0.diskDetails?.writePerSecond },
                 range: diskRateRange,
-                upperScaleLabel: Self.rate(diskRateRange.upperBound), lowerScaleLabel: "0 KB/s",
-                seriesLabels: ("Read", "Write"),
+                upperScaleLabel: Self.rate(diskRateRange.upperBound),
+                middleScaleLabel: Self.rate(diskRateRange.upperBound / 2), lowerScaleLabel: "0 KB/s",
+                seriesLabels: ["Read", "Write"],
                 stats: [
                     ("Write", service.snapshot?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
                     ("Read total", service.snapshot?.diskDetails.map { Self.bytes($0.readTotal) } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: 10) {
                 informationPanel("Volume", rows: [("Mount point", "/"), ("Used", service.snapshot?.diskUsed.map(Self.bytes) ?? "—"), ("Available", diskAvailable)])
                 informationPanel("Storage", rows: [
                     ("Capacity", service.snapshot?.diskTotal.map(Self.bytes) ?? "—"),
@@ -904,26 +917,34 @@ struct SystemMonitorWindowView: View {
         }
     }
 
+    @ViewBuilder
     private var batteryPage: some View {
-        VStack(spacing: 10) {
+        if service.snapshot?.unavailableMetrics.contains(.battery) == true {
+            TaskManagerPanel {
+                OnePlusEmptyState(
+                    "No internal battery",
+                    systemImage: "battery.slash",
+                    caption: "This Mac does not report an internal battery."
+                )
+            }
+        } else {
+            VStack(spacing: 10) {
             detailHero(
                 label: "Battery charge", value: service.snapshot?.batteryPercent.map(String.init) ?? "—", unit: "%",
                 detail: batteryDetail,
                 values: recentHistory.compactMap { $0.batteryPercent.map(Double.init) }, range: 0...100,
-                upperScaleLabel: "100%", lowerScaleLabel: "0%",
+                upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
+                seriesLabels: ["Battery charge"],
                 stats: [("Power source", powerSourceDetail), ("Status", batteryDetail)]
             )
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: 10) {
                 informationPanel("Battery details", rows: [
                     ("Charge", service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—"),
                     ("Power source", powerSourceDetail),
-                    ("Health", service.snapshot?.batteryDetails?.health ?? "Unavailable"),
-                    ("Cycle count", service.snapshot?.batteryDetails?.cycleCount.map(String.init) ?? "Unavailable"),
-                    ("Voltage", service.snapshot?.batteryDetails?.voltageMillivolts.map { "\($0) mV" } ?? "Unavailable"),
-                    ("Amperage", service.snapshot?.batteryDetails?.amperageMilliamps.map { "\($0) mA" } ?? "Unavailable"),
-                ])
+                ] + batteryDetailRows)
                 powerDrawPanel
             }
+        }
         }
     }
 
@@ -935,7 +956,7 @@ struct SystemMonitorWindowView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(TaskManagerTheme.secondary)
                 metricValue(
-                    service.snapshot.flatMap(Self.powerDraw).map { "\(Self.decimal($0)) W" } ?? "Unavailable",
+                    service.snapshot.flatMap(Self.powerDraw).map { "\(Self.decimal($0)) W" } ?? "—",
                     valueSize: 27,
                     unitSize: 12
                 )
@@ -947,7 +968,7 @@ struct SystemMonitorWindowView: View {
                 )
                 .frame(height: 82)
                 Spacer(minLength: 0)
-                Text("Calculated from battery voltage and current when macOS reports both values.")
+                Text(values.isEmpty ? "Power use is not reported for this battery." : "Based on live battery voltage and current.")
                     .font(.system(size: 8.5))
                     .foregroundStyle(TaskManagerTheme.muted)
             }
@@ -961,19 +982,23 @@ struct SystemMonitorWindowView: View {
                 label: "Thermal pressure", value: service.snapshot?.thermalState ?? "—",
                 detail: "System-reported thermal state",
                 values: recentHistory.compactMap { Self.thermalLevel($0.thermalState) }, range: 0...100,
-                upperScaleLabel: "Critical", lowerScaleLabel: "Nominal",
-                stats: [("State", service.snapshot?.thermalState ?? "—"), ("Temperature", "Hardware dependent")]
+                upperScaleLabel: "Critical", middleScaleLabel: "Fair", lowerScaleLabel: "Nominal",
+                seriesLabels: ["Thermal state"], stepped: true,
+                stats: [("State", service.snapshot?.thermalState ?? "—")]
             )
-            informationPanel("Temperature sensors", rows: [
-                ("System pressure", service.snapshot?.thermalState ?? "—"),
-                ("Per-sensor temperatures", "Unavailable through public macOS APIs"),
-            ])
             FanControlView(owner: "system-monitor-window")
         }
     }
 
+    private var detailColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10, alignment: .top),
+            GridItem(.flexible(), alignment: .top),
+        ]
+    }
+
     private var aboutPage: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
             TaskManagerPanel(textured: true) {
                 HStack(spacing: 20) {
                     Image("SystemMonitorLogo")
@@ -987,7 +1012,7 @@ struct SystemMonitorWindowView: View {
                 }
                 .padding(22)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible())], spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 10) {
                 aboutPanel("Main window", icon: "display", text: "Processes, compute, memory, storage, network, battery, and thermal activity in dedicated workspaces.")
                 aboutPanel("Menu bar", icon: "chart.bar.xaxis", text: "A compact panel with icon tabs, live metrics, remote instances, processes, and fan controls.")
             }
@@ -996,27 +1021,38 @@ struct SystemMonitorWindowView: View {
     }
 
     private func informationPanel(_ title: String, rows: [(String, String)]) -> some View {
-        TaskManagerPanel {
+        let hasMissingValue = rows.contains { $0.1 == "—" }
+        return TaskManagerPanel {
             VStack(spacing: 0) {
-                HStack { Text(title).font(.system(size: 10.5, weight: .medium)); Spacer() }
-                    .padding(.horizontal, 14).frame(height: 42)
-                rowDivider
+                OnePlusCardHeader(title)
                 ForEach(rows.indices, id: \.self) { index in
                     HStack(spacing: 12) {
                         Text(rows[index].0).foregroundStyle(TaskManagerTheme.secondary)
                         Spacer(minLength: 12)
                         Text(rows[index].1)
                             .foregroundStyle(TaskManagerTheme.ink)
+                            .monospacedDigit()
                             .multilineTextAlignment(.trailing)
                             .textSelection(.enabled)
                     }
                     .font(.system(size: 10))
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 34)
-                    if index < rows.count - 1 { rowDivider }
+                    .padding(.horizontal, 16)
+                    .frame(height: 30)
+                    .overlay(alignment: .bottom) {
+                        if index < rows.count - 1 { rowDivider }
+                    }
+                }
+                if hasMissingValue {
+                    Text("Some details are not reported for this Mac.")
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(TaskManagerTheme.muted)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                        .overlay(alignment: .top) { rowDivider }
                 }
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func aboutPanel(_ title: String, icon: String, text: String) -> some View {
@@ -1026,7 +1062,7 @@ struct SystemMonitorWindowView: View {
                 Text(title).font(.system(size: 11, weight: .medium))
                 Text(text).font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary).lineSpacing(4)
             }
-            .padding(18)
+            .padding(16)
             .frame(maxWidth: .infinity, minHeight: 144, alignment: .topLeading)
         }
     }
@@ -1036,8 +1072,7 @@ struct SystemMonitorWindowView: View {
             Text(title).font(.system(size: 11, weight: .medium))
             Spacer()
             Button(action, action: perform)
-                .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
-                .buttonStyle(.plain).focusEffectDisabled()
+                .buttonStyle(OnePlusButtonStyle(.link, size: .small))
         }
         .frame(minHeight: 17)
     }
@@ -1070,7 +1105,7 @@ struct SystemMonitorWindowView: View {
     private func detailStat(_ title: String, _ value: String) -> some View {
         VStack(alignment: .trailing, spacing: 5) {
             Text(title).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
-            Text(value).font(.system(size: 12, design: .monospaced))
+            Text(value).font(.system(size: 12)).monospacedDigit()
         }
         .padding(.leading, 24)
     }
@@ -1159,8 +1194,18 @@ struct SystemMonitorWindowView: View {
 
     private var powerSourceDetail: String {
         guard service.snapshot?.batteryPercent != nil,
-              let charging = service.snapshot?.batteryCharging else { return "Unavailable" }
+              let charging = service.snapshot?.batteryCharging else { return "—" }
         return charging ? "AC adapter" : "Battery"
+    }
+
+    private var batteryDetailRows: [(String, String)] {
+        guard let details = service.snapshot?.batteryDetails else { return [] }
+        var rows: [(String, String)] = []
+        if let health = details.health { rows.append(("Health", health)) }
+        if let cycleCount = details.cycleCount { rows.append(("Cycle count", String(cycleCount))) }
+        if let voltage = details.voltageMillivolts { rows.append(("Voltage", "\(voltage) mV")) }
+        if let amperage = details.amperageMilliamps { rows.append(("Amperage", "\(amperage) mA")) }
+        return rows
     }
 
     private func percent(_ value: Double?) -> String { value.map { "\(Int($0.rounded()))%" } ?? "—" }
@@ -1179,10 +1224,20 @@ struct SystemMonitorWindowView: View {
     }
     nonisolated private static func thermalLevel(_ state: String?) -> Double? {
         switch state {
-        case "Nominal": 20
-        case "Fair": 50
-        case "Serious": 75
+        case "Nominal": 0
+        case "Fair": 33
+        case "Serious": 66
         case "Critical": 100
+        default: nil
+        }
+    }
+
+    nonisolated private static func thermalBand(_ state: String?) -> Int? {
+        switch state {
+        case "Nominal": 0
+        case "Fair": 1
+        case "Serious": 2
+        case "Critical": 3
         default: nil
         }
     }
@@ -1195,15 +1250,26 @@ struct SystemMonitorWindowView: View {
 }
 
 struct SystemMonitorSettingsContent: View {
+    private enum Column {
+        static let drag: CGFloat = 28
+        static let metric: CGFloat = 112
+        static let placement: CGFloat = 112
+        static let style: CGFloat = 160
+        static let update: CGFloat = 110
+        static let format: CGFloat = 218
+        static let details: CGFloat = 28
+    }
+
     @State private var service = SystemMonitorService.shared
     @State private var expandedMetric: SystemMonitorMenuMetric?
     @AppStorage("systemMonitor.rememberTrayPage") private var rememberPanel = true
     @AppStorage("systemMonitor.historyMinutes") private var historyMinutes = 2
+    @Environment(\.onePlusDensity) private var density
 
     init() {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: density == .compact ? 10 : 16) {
             displaySection
             itemsSection
         }
@@ -1271,13 +1337,13 @@ struct SystemMonitorSettingsContent: View {
 
     private var itemsHeader: some View {
         HStack(spacing: 8) {
-            Text("").frame(width: 28)
-            Text("Metric").frame(width: 110, alignment: .leading)
-            Text("Placement").frame(width: 106, alignment: .leading)
-            Text("Style").frame(width: 104, alignment: .leading)
-            Text("Update").frame(width: 100, alignment: .leading)
-            Text("Format").frame(width: 162, alignment: .leading)
-            Text("").frame(width: 28)
+            Text("").frame(width: Column.drag)
+            Text("Metric").frame(width: Column.metric, alignment: .leading)
+            Text("Placement").frame(width: Column.placement, alignment: .leading)
+            Text("Style").frame(width: Column.style, alignment: .leading)
+            Text("Update").frame(width: Column.update, alignment: .leading)
+            Text("Format").frame(width: Column.format, alignment: .leading)
+            Text("").frame(width: Column.details)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onePlusTableHeader()
@@ -1286,22 +1352,22 @@ struct SystemMonitorSettingsContent: View {
     private func itemRow(_ item: SystemMonitorMenuItemConfiguration) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                reorderMenu(item.metric).frame(width: 28)
+                reorderMenu(item.metric).frame(width: Column.drag)
                 Label(item.metric.title, systemImage: item.symbol)
                     .onePlusText(.row)
-                    .frame(width: 110, alignment: .leading)
+                    .frame(width: Column.metric, alignment: .leading)
                     .lineLimit(1)
-                placementControl(item).frame(width: 106)
-                styleControl(item).frame(width: 104)
-                intervalControl(item).frame(width: 100)
-                formatControl(item).frame(width: 162)
+                placementControl(item).frame(width: Column.placement)
+                styleControl(item).frame(width: Column.style)
+                intervalControl(item).frame(width: Column.update)
+                formatControl(item).frame(width: Column.format)
                 Button {
                     expandedMetric = expandedMetric == item.metric ? nil : item.metric
                 } label: {
                     Image(systemName: expandedMetric == item.metric ? "chevron.up" : "ellipsis")
                 }
                 .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                .frame(width: 28)
+                .frame(width: Column.details)
                 .accessibilityLabel("\(item.metric.title) details")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1340,7 +1406,7 @@ struct SystemMonitorSettingsContent: View {
                     service.updateMenuSettings { $0.setPlacement(placement, for: item.metric) }
                 }
             ),
-            width: 106,
+            width: Column.placement,
             accessibilityLabel: "\(item.metric.title) menu bar placement"
         )
         .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).placement")
@@ -1350,7 +1416,7 @@ struct SystemMonitorSettingsContent: View {
         TaskManagerSelect(
             choices: SystemMonitorMenuItemStyle.allCases.map { ($0, $0.title) },
             selection: itemSetting(item, get: { $0.style }, set: { $0.style = $1 }),
-            width: 104,
+            width: Column.style,
             accessibilityLabel: "\(item.metric.title) style"
         )
         .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).style")
@@ -1361,7 +1427,7 @@ struct SystemMonitorSettingsContent: View {
             choices: item.metric.supportedIntervals(global: service.menuSettings.interval)
                 .map { ($0, $0.title) },
             selection: itemSetting(item, get: { $0.interval }, set: { $0.interval = $1 }),
-            width: 100,
+            width: Column.update,
             accessibilityLabel: "\(item.metric.title) update interval"
         )
         .accessibilityIdentifier("system-monitor.menu.item.\(item.metric.rawValue).interval")
@@ -1374,41 +1440,45 @@ struct SystemMonitorSettingsContent: View {
             TaskManagerSelect(
                 choices: SystemMonitorMemoryUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.memoryUnit }, set: { $0.memoryUnit = $1 }),
-                width: 162,
+                width: Column.format,
                 accessibilityLabel: "Memory format"
             )
         case .disk:
             TaskManagerSelect(
                 choices: SystemMonitorDiskUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.diskUnit }, set: { $0.diskUnit = $1 }),
-                width: 162,
+                width: Column.format,
                 accessibilityLabel: "Disk format"
             )
         case .network:
             TaskManagerSelect(
                 choices: SystemMonitorNetworkUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.networkUnit }, set: { $0.networkUnit = $1 }),
-                width: 162,
+                width: Column.format,
                 accessibilityLabel: "Network format"
             )
         case .battery:
             TaskManagerSelect(
                 choices: SystemMonitorBatteryDisplay.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.batteryDisplay }, set: { $0.batteryDisplay = $1 }),
-                width: 162,
+                width: Column.format,
                 accessibilityLabel: "Battery format"
             )
         case .thermal:
             TaskManagerSelect(
                 choices: SystemMonitorThermalDisplay.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.thermalDisplay }, set: { $0.thermalDisplay = $1 }),
-                width: 162,
+                width: Column.format,
                 accessibilityLabel: "Thermal format"
             )
         case .cpu, .gpu:
-            Text("Default")
-                .onePlusText(.control)
-                .frame(width: 162, alignment: .leading)
+            TaskManagerSelect(
+                choices: [("default", "Default")],
+                selection: .constant("default"),
+                width: Column.format,
+                accessibilityLabel: "\(item.metric.title) format"
+            )
+            .disabled(true)
         }
     }
 

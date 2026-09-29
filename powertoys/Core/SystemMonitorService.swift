@@ -461,7 +461,7 @@ nonisolated enum SystemMonitorBatteryProperties {
 
     private static func healthPercent(nominalCapacity: Int?, designCapacity: Int?) -> String? {
         guard let nominalCapacity, let designCapacity, designCapacity > 0 else { return nil }
-        return "\(Int((Double(nominalCapacity) / Double(designCapacity) * 100).rounded()))%"
+        return "\(Int(Double(nominalCapacity) / Double(designCapacity) * 100))%"
     }
 }
 
