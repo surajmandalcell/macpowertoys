@@ -63,7 +63,12 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             column.minWidth = index == 0 ? 160 : item.width
             column.maxWidth = index == 0 ? .greatestFiniteMagnitude : item.width
             column.resizingMask = index == 0 ? .autoresizingMask : []
-            column.headerCell = OnePlusTableHeaderCell(textCell: item.title)
+            column.headerCell = OnePlusTableHeaderCell(
+                textCell: item.title,
+                leadingInset: index == 0 ? OnePlusTable.nativePrimaryHeaderInset : OnePlusTable.nativeHeaderInset,
+                trailingInset: OnePlusTable.nativeHeaderInset,
+                alignment: item.alignment
+            )
             column.sortDescriptorPrototype = NSSortDescriptor(key: String(index), ascending: index != 2)
             table.addTableColumn(column)
         }
@@ -129,7 +134,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             text.stringValue = item.cells[index]
             text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: owner.density), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: owner.density))
             text.textColor = NSColor(index == 0 ? OnePlusColor.ink : OnePlusColor.secondary)
-            text.alignment = owner.columns[index].trailing ? .right : .left
+            text.alignment = owner.columns[index].nsTextAlignment
             cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
             return cell
         }
@@ -148,20 +153,20 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             text.lineBreakMode = .byTruncatingMiddle
             text.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(text); cell.textField = text
-            var inset: CGFloat = 12
+            var inset = OnePlusTable.cellInset
             if includesIcon {
                 let icon = NSImageView()
                 icon.contentTintColor = NSColor(OnePlusColor.secondary)
                 icon.translatesAutoresizingMaskIntoConstraints = false
                 icon.setAccessibilityElement(false)
                 cell.addSubview(icon); cell.imageView = icon
-                NSLayoutConstraint.activate([icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 12),
+                NSLayoutConstraint.activate([icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: OnePlusTable.cellInset),
                     icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor), icon.widthAnchor.constraint(equalToConstant: 15),
                     icon.heightAnchor.constraint(equalToConstant: 15)])
-                inset = 35
+                inset = OnePlusTable.primaryTextInset
             }
             NSLayoutConstraint.activate([text.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: inset),
-                text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12),
+                text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -OnePlusTable.cellInset),
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor)])
             return cell
         }
@@ -263,13 +268,27 @@ private final class StorageRow: NSTableRowView {
 }
 
 final class OnePlusTableHeaderCell: NSTableHeaderCell {
+    let leadingInset: CGFloat
+    let trailingInset: CGFloat
+    let columnAlignment: OnePlusGridColumn.Alignment
+    init(textCell string: String, leadingInset: CGFloat = OnePlusTable.nativeHeaderInset,
+         trailingInset: CGFloat = OnePlusTable.nativeHeaderInset,
+         alignment: OnePlusGridColumn.Alignment = .leading) {
+        self.leadingInset = leadingInset
+        self.trailingInset = trailingInset
+        self.columnAlignment = alignment
+        super.init(textCell: string)
+    }
+    @available(*, unavailable) required init(coder: NSCoder) { fatalError() }
     var label: NSAttributedString {
         NSAttributedString(string: stringValue.uppercased(), attributes: [
             .font: NSFont.systemFont(ofSize: 9, weight: .medium),
             .foregroundColor: NSColor(OnePlusColor.muted), .kern: 0.4
         ])
     }
-    override var cellSize: NSSize { NSSize(width: ceil(label.size().width) + 24, height: 28) }
+    override var cellSize: NSSize {
+        NSSize(width: ceil(label.size().width) + leadingInset + trailingInset, height: 28)
+    }
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
         NSColor(OnePlusColor.sidebar).setFill(); cellFrame.fill()
         drawInterior(withFrame: cellFrame, in: controlView)
@@ -278,11 +297,31 @@ final class OnePlusTableHeaderCell: NSTableHeaderCell {
     }
     override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
         let text = label
-        text.draw(in: NSRect(x: cellFrame.minX + 12, y: cellFrame.midY - text.size().height / 2,
-                            width: max(0, cellFrame.width - 24), height: text.size().height))
+        text.draw(in: labelRect(for: cellFrame))
     }
     override func highlight(_ flag: Bool, withFrame cellFrame: NSRect, in controlView: NSView) {
         draw(withFrame: cellFrame, in: controlView)
+    }
+    func labelRect(for cellFrame: NSRect) -> NSRect {
+        let size = label.size()
+        let available = max(0, cellFrame.width - leadingInset - trailingInset)
+        let x = switch columnAlignment {
+        case .leading: cellFrame.minX + leadingInset
+        case .center: cellFrame.minX + leadingInset + (available - size.width) / 2
+        case .trailing: cellFrame.maxX - trailingInset - size.width
+        }
+        return NSRect(x: x, y: cellFrame.midY - size.height / 2,
+                      width: min(size.width, available), height: size.height)
+    }
+}
+
+private extension OnePlusGridColumn {
+    var nsTextAlignment: NSTextAlignment {
+        switch alignment {
+        case .leading: .left
+        case .center: .center
+        case .trailing: .right
+        }
     }
 }
 

@@ -5,6 +5,40 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testHeaderLabelsAndCellTextShareEachAlignmentOrigin() throws {
+        let columns: [OnePlusGridColumn] = [
+            .init("Name", width: 180),
+            .init("State", width: 120, alignment: .center),
+            .init("Size", width: 100, alignment: .trailing)
+        ]
+        let host = NSHostingView(rootView: OnePlusNativeTable(
+            columns: columns,
+            rows: [.init(id: "1", cells: ["Workstation", "Ready", "42 MB"], symbol: "desktopcomputer")],
+            selection: .constant([]), sort: { _, _ in }, open: { _ in }, preview: { _ in },
+            remove: { _ in }, actions: { _ in [] }
+        ).frame(width: 480, height: 100))
+        let window = NSWindow(contentRect: NSRect(x: -2000, y: -2000, width: 480, height: 100),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        let table = try XCTUnwrap(findTable(in: host))
+        for index in columns.indices {
+            let column = table.tableColumns[index]
+            let header = try XCTUnwrap(column.headerCell as? OnePlusTableHeaderCell)
+            let cell = try XCTUnwrap(table.view(atColumn: index, row: 0, makeIfNecessary: true) as? NSTableCellView)
+            cell.layoutSubtreeIfNeeded()
+            let text = try XCTUnwrap(cell.textField)
+            let textFrame = text.convert(text.bounds, to: table)
+            let headerBounds = try XCTUnwrap(table.headerView).headerRect(ofColumn: index)
+            let headerFrame = header.labelRect(for: headerBounds)
+            switch columns[index].alignment {
+            case .leading: XCTAssertEqual(headerFrame.minX, textFrame.minX, accuracy: 0.5)
+            case .center: XCTAssertEqual(headerFrame.midX, textFrame.midX, accuracy: 0.5)
+            case .trailing: XCTAssertEqual(headerFrame.maxX, textFrame.maxX, accuracy: 0.5)
+            }
+        }
+    }
+
     func testNativeTableCellsHaveReuseIdentifiersWithoutRowTooltips() throws {
         let rows = [OnePlusTableItem(id: "1", cells: ["Workstation", "Apple"], symbol: "desktopcomputer")]
         let tableView = OnePlusNativeTable(
@@ -99,6 +133,11 @@ final class OnePlusTableTests: XCTestCase {
         XCTAssertTrue(table.headerView is OnePlusTableHeaderView)
         }
     }
+}
+
+@MainActor private func findTable(in view: NSView) -> NSTableView? {
+    if let table = view as? NSTableView { return table }
+    return view.subviews.lazy.compactMap { findTable(in: $0) }.first
 }
 
 @MainActor private final class TableRows: ObservableObject {
