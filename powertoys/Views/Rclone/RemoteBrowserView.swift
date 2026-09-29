@@ -3,13 +3,17 @@
 //  powertoys
 //
 
+import AppKit
 import SwiftUI
 import Combine
 import QuickLook
 import CoreTransferable
 import UniformTypeIdentifiers
+import OnePlusUI
 
 struct RemoteBrowserView: View {
+    private enum SortColumn { case name, size, modified }
+
     let remote: RcloneRemote
 
     @Environment(RcloneJobManager.self) private var manager
@@ -24,22 +28,46 @@ struct RemoteBrowserView: View {
     @State private var showsDropToast = false
     @State private var dropToastTask: Task<Void, Never>?
     @State private var isShowingCleanup = false
+    @State private var isShowingSettings = false
+    @State private var sortColumn = SortColumn.name
+    @State private var sortAscending = true
 
     private var pathComponents: [String] {
         path.isEmpty ? [] : path.split(separator: "/").map(String.init)
     }
 
+    private var visibleEntries: [RemoteEntry] {
+        entries.sorted { left, right in
+            let result: ComparisonResult = switch sortColumn {
+            case .name: left.name.localizedStandardCompare(right.name)
+            case .size: compare(left.size, right.size, tie: left.name.localizedStandardCompare(right.name))
+            case .modified: compare(
+                left.modTime ?? .distantPast,
+                right.modTime ?? .distantPast,
+                tie: left.name.localizedStandardCompare(right.name)
+            )
+            }
+            return sortAscending ? result == .orderedAscending : result == .orderedDescending
+        }
+    }
+
+    private func compare<T: Comparable>(_ left: T, _ right: T, tie: ComparisonResult) -> ComparisonResult {
+        if left < right { return .orderedAscending }
+        if left > right { return .orderedDescending }
+        return tie
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
+        OnePlusPage(scrolls: false) {
             header
-            QuietDivider()
+        } content: {
             contentArea
         }
-        .background(Color(nsColor: .windowBackgroundColor))
         .quickLookPreview($previewURL)
         .sheet(isPresented: $isShowingCleanup) {
             CleanupRemoteSheet(remote: remote, startPath: path)
         }
+        .sheet(isPresented: $isShowingSettings) { RemoteSettingsSheet(remote: remote) }
         .onReceive(NotificationCenter.default.publisher(for: .remoteCleanupCompleted)) { notification in
             guard notification.object as? String == remote.name else { return }
             Task { await load() }
@@ -55,36 +83,24 @@ struct RemoteBrowserView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(spacing: 10) {
-            breadcrumbs
-
-            Spacer(minLength: 12)
-
-            Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-
-            Button {
-                Task { await load() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .help("Refresh")
-            .disabled(isLoading)
-
-            CleanupHeaderButton { isShowingCleanup = true }
+        OnePlusPageHeader(title: remote.displayName, subtitle: remote.typeLabel) {
+            Button("Upload") { chooseUpload() }
+                .buttonStyle(OnePlusButtonStyle(.neutral))
+            Button("New Folder") {}
+            .buttonStyle(OnePlusButtonStyle(.neutral))
+            .disabled(true)
+            .help("Folder creation needs a Cloud Sync service action.")
+            Button { Task { await load() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
+                .buttonStyle(OnePlusButtonStyle(.ghost))
+                .disabled(isLoading)
+            Menu {
+                Button("Remote Settings…") { isShowingSettings = true }
+                Button("Clean Up by Ignore Rules…") { isShowingCleanup = true }
+            } label: { Image(systemName: "ellipsis") }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .help("More remote actions")
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .padding(.top, 12)
     }
 
     private var breadcrumbs: some View {
@@ -126,8 +142,8 @@ struct RemoteBrowserView: View {
             navigate(to: destination)
         } label: {
             label()
-                .font(.system(size: 13, weight: isCurrent ? .semibold : .regular))
-                .foregroundStyle(isCurrent ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .onePlusText(isCurrent ? .cardTitle : .row)
+                .foregroundStyle(isCurrent ? AnyShapeStyle(OnePlusColor.ink) : AnyShapeStyle(OnePlusColor.secondary))
                 .lineLimit(1)
                 .contentShape(Rectangle())
         }
@@ -138,14 +154,22 @@ struct RemoteBrowserView: View {
     // MARK: Content
 
     private var contentArea: some View {
-        ZStack {
+        OnePlusCard {
+            OnePlusCardHeader("Path") {
+                breadcrumbs
+                Spacer(minLength: OnePlusMetrics.spacing[2])
+                Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
+                    .onePlusText(.mono)
+                    .foregroundStyle(OnePlusColor.muted)
+            }
+            ZStack {
             if isLoading {
                 ProgressView()
                     .controlSize(.small)
             } else if let errorMessage {
                 errorState(errorMessage)
             } else if entries.isEmpty {
-                EmptyStateView(icon: "folder", message: "Empty folder")
+                OnePlusEmptyState("Empty folder", systemImage: "folder")
             } else {
                 entryList
             }
@@ -153,8 +177,10 @@ struct RemoteBrowserView: View {
             if isDropTargeted {
                 dropOverlay
             }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxHeight: .infinity)
         .dropDestination(for: URL.self) { (urls: [URL], _: CGPoint) in
             manager.createDroppedTransfers(urls: urls, remote: remote, directoryPath: path)
             showDropToast()
@@ -166,9 +192,16 @@ struct RemoteBrowserView: View {
     }
 
     private var entryList: some View {
-        ScrollView {
-            LazyVStack(spacing: 1) {
-                ForEach(entries) { entry in
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                sortButton("Name", column: .name).frame(maxWidth: .infinity, alignment: .leading)
+                sortButton("Size", column: .size).frame(width: 92, alignment: .trailing)
+                sortButton("Modified", column: .modified).frame(width: 116, alignment: .trailing)
+            }
+            .onePlusTableHeader()
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                ForEach(visibleEntries) { entry in
                     RemoteEntryRow(
                         entry: entry,
                         isSelected: selection == entry.id,
@@ -179,11 +212,9 @@ struct RemoteBrowserView: View {
                     )
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
+            }
+            .onePlusScrollIndicators()
         }
-        .thinScrollIndicators()
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(.space) {
@@ -195,59 +226,60 @@ struct RemoteBrowserView: View {
         }
     }
 
-    private func errorState(_ message: String) -> some View {
-        VStack(spacing: 16) {
-            EmptyStateView(icon: "exclamationmark.triangle", message: message)
-            Button {
-                Task { await load() }
-            } label: {
-                Label("Retry", systemImage: "arrow.clockwise")
-                    .font(.system(size: 13, weight: .medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.accentColor)
-                    )
-                    .foregroundStyle(.white)
+    private func sortButton(_ title: String, column: SortColumn) -> some View {
+        Button {
+            if sortColumn == column { sortAscending.toggle() }
+            else { sortColumn = column; sortAscending = true }
+        } label: {
+            HStack(spacing: OnePlusMetrics.spacing[1]) {
+                Text(title.uppercased())
+                if sortColumn == column {
+                    Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
+                        .accessibilityHidden(true)
+                }
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(sortColumn == column ? (sortAscending ? "Ascending" : "Descending") : "Not sorted")
+    }
+
+    private func errorState(_ message: String) -> some View {
+        OnePlusEmptyState(message, systemImage: "exclamationmark.triangle") {
+            Button("Retry") { Task { await load() } }
+                .buttonStyle(OnePlusButtonStyle(.primary))
         }
     }
 
     // MARK: Drop feedback
 
     private var dropOverlay: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color.accentColor.opacity(0.1))
+        RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius)
+            .fill(OnePlusColor.selection)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius)
+                    .strokeBorder(OnePlusColor.focus, style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
             )
             .overlay(
-                VStack(spacing: 8) {
+                VStack(spacing: OnePlusMetrics.spacing[3]) {
                     Image(systemName: "arrow.down.circle")
-                        .font(.system(size: 24))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(OnePlusColor.ink)
                     Text("Drop to upload to \(remote.name):\(path)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.accentColor)
+                        .onePlusText(.cardTitle)
                 }
             )
-            .padding(12)
+            .padding(OnePlusMetrics.spacing[4])
             .allowsHitTesting(false)
     }
 
     @ViewBuilder
     private var statusChips: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: OnePlusMetrics.spacing[2]) {
             if let fetchingPreviewName {
                 chip {
                     ProgressView()
                         .controlSize(.small)
                     Text("Fetching \(fetchingPreviewName)…")
-                        .font(.system(size: 11))
+                        .onePlusText(.caption)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -255,25 +287,25 @@ struct RemoteBrowserView: View {
             if showsDropToast {
                 chip {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(OnePlusColor.ok)
                     Text("Transfer queued. View it in Transfers.")
-                        .font(.system(size: 11))
+                        .onePlusText(.caption)
                 }
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
-        .padding(.bottom, 14)
+        .padding(.bottom, OnePlusMetrics.spacing[4])
         .allowsHitTesting(false)
     }
 
     private func chip<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: OnePlusMetrics.spacing[3]) {
             content()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(.regularMaterial, in: Capsule())
+        .padding(.horizontal, OnePlusMetrics.spacing[4])
+        .frame(height: OnePlusMetrics.controlHeight)
+        .background(OnePlusColor.raised, in: Capsule())
+        .overlay { Capsule().strokeBorder(OnePlusColor.line) }
     }
 
     // MARK: Actions
@@ -325,6 +357,17 @@ struct RemoteBrowserView: View {
         }
     }
 
+    private func chooseUpload() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.prompt = "Upload"
+        guard panel.runModal() == .OK else { return }
+        manager.createDroppedTransfers(urls: panel.urls, remote: remote, directoryPath: path)
+        showDropToast()
+    }
+
     private func load() async {
         isLoading = true
         errorMessage = nil
@@ -337,32 +380,6 @@ struct RemoteBrowserView: View {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not list folder."
         }
         isLoading = false
-    }
-}
-
-// MARK: - Cleanup Header Button
-
-private struct CleanupHeaderButton: View {
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "trash.slash")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isHovering ? Color.primary.opacity(0.06) : .clear)
-                )
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-        .onHover { isHovering = $0 }
-        .help("Clean up by ignore rules…")
     }
 }
 
@@ -396,12 +413,11 @@ private struct RemoteEntryRow: View {
         Button(action: onSelect) {
             HStack(spacing: 10) {
                 Image(systemName: entry.icon)
-                    .font(.system(size: 14))
-                    .foregroundStyle(entry.isDir ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
-                    .frame(width: 22)
+                    .foregroundStyle(OnePlusColor.secondary)
+                    .frame(width: OnePlusMetrics.navIcon)
 
                 Text(entry.name)
-                    .font(.system(size: 13))
+                    .onePlusText(.row)
                     .lineLimit(1)
                     .truncationMode(.middle)
 
@@ -413,45 +429,38 @@ private struct RemoteEntryRow: View {
 
                 if !entry.isDir {
                     Text(RcloneFormat.bytes(entry.size))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                        .onePlusText(.mono)
+                        .foregroundStyle(OnePlusColor.secondary)
+                        .frame(width: 92, alignment: .trailing)
                 }
 
                 Text(modTimeText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 70, alignment: .trailing)
+                    .onePlusText(.mono)
+                    .foregroundStyle(OnePlusColor.muted)
+                    .frame(width: 116, alignment: .trailing)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(rowBackground)
-        )
+        .onePlusTableRow(selected: isSelected)
         .simultaneousGesture(TapGesture(count: 2).onEnded { onOpen() })
         .onHover { isHovering = $0 }
-    }
-
-    private var rowBackground: Color {
-        if isSelected { return Color.accentColor.opacity(0.1) }
-        if isHovering { return Color.primary.opacity(0.06) }
-        return .clear
+        .contextMenu {
+            Button(entry.isDir ? "Open" : "Quick Look") { entry.isDir ? onOpen() : onQuickLook() }
+            Button("Copy Path") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(entry.path, forType: .string)
+            }
+        }
     }
 
     private var quickLookButton: some View {
         Button(action: onQuickLook) {
             Image(systemName: "eye")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-                .frame(width: 22, height: 22)
-                .contentShape(Rectangle())
+                .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         .focusEffectDisabled()
         .help("Quick Look")
     }

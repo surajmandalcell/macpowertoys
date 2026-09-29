@@ -1,24 +1,35 @@
 import AppKit
+import OnePlusUI
 import OSLog
 import SwiftUI
+import UniformTypeIdentifiers
 
-private enum LogsSource: String, CaseIterable, Identifiable {
-    case internalLogs = "Internal Logs"
-    case systemIssues = "System Issues"
+private enum LogsPage: String, CaseIterable, Identifiable {
+    case internalLogs = "internal"
+    case systemIssues = "system"
+    case settings
 
     var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .internalLogs: "Internal Logs"
+        case .systemIssues: "System Issues"
+        case .settings: "Settings"
+        }
+    }
     var icon: String {
         switch self {
         case .internalLogs: "app.badge.checkmark"
         case .systemIssues: "desktopcomputer.trianglebadge.exclamationmark"
+        case .settings: "gearshape"
         }
     }
 }
 
 enum SystemLogRange: TimeInterval, CaseIterable, Identifiable, Sendable {
-    case oneHour = 3600
-    case sixHours = 21600
-    case oneDay = 86400
+    case oneHour = 3_600
+    case sixHours = 21_600
+    case oneDay = 86_400
 
     var id: TimeInterval { rawValue }
     var title: String {
@@ -31,11 +42,7 @@ enum SystemLogRange: TimeInterval, CaseIterable, Identifiable, Sendable {
 }
 
 struct SystemLogLine: Identifiable, Sendable {
-    enum Level: String, Sendable {
-        case error = "E"
-        case fault = "F"
-    }
-
+    enum Level: String, Sendable { case error = "Error", fault = "Fault" }
     let id: UUID
     let timestamp: Date
     let level: Level
@@ -47,7 +54,6 @@ struct SystemLogLine: Identifiable, Sendable {
 @MainActor
 final class SystemLogReader {
     nonisolated static let maximumEntries = 500
-
     private(set) var entries: [SystemLogLine] = []
     private(set) var isLoading = false
     private(set) var errorMessage: String?
@@ -59,9 +65,7 @@ final class SystemLogReader {
         errorMessage = nil
         loadTask = Task { [weak self] in
             do {
-                let entries = try await Task.detached(priority: .utility) {
-                    try Self.readEntries(range: range)
-                }.value
+                let entries = try await Task.detached(priority: .utility) { try Self.readEntries(range: range) }.value
                 guard !Task.isCancelled else { return }
                 self?.entries = entries
             } catch is CancellationError {
@@ -84,27 +88,22 @@ final class SystemLogReader {
         let store = try OSLogStore(scope: .system)
         let now = Date()
         let cutoff = now.addingTimeInterval(-range.rawValue)
-        let predicate = NSPredicate(format: "messageType == error OR messageType == fault")
         let sequence = try store.getEntries(
             with: [.reverse],
             at: store.position(date: now),
-            matching: predicate
+            matching: NSPredicate(format: "messageType == error OR messageType == fault")
         )
         var result: [SystemLogLine] = []
         result.reserveCapacity(maximumEntries)
-
         for case let entry as OSLogEntryLog in sequence {
             try Task.checkCancellation()
             guard entry.date >= cutoff else { break }
-            let level: SystemLogLine.Level = entry.level == .fault ? .fault : .error
-            let detail = [entry.subsystem, entry.category]
-                .filter { !$0.isEmpty }
-                .joined(separator: "/")
+            let source = [entry.subsystem, entry.category].filter { !$0.isEmpty }.joined(separator: "/")
             result.append(SystemLogLine(
                 id: UUID(),
                 timestamp: entry.date,
-                level: level,
-                source: detail.isEmpty ? entry.process : "\(entry.process) · \(detail)",
+                level: entry.level == .fault ? .fault : .error,
+                source: source.isEmpty ? entry.process : "\(entry.process) · \(source)",
                 message: entry.composedMessage
             ))
             if result.count == maximumEntries { break }
@@ -113,449 +112,379 @@ final class SystemLogReader {
     }
 }
 
-struct LogsWindowView: View {
-    @State private var selectedSource = LogsSource.internalLogs
-    @State private var selectedLevels: Set<LogLevel> = Set(LogLevel.allCases)
-    @State private var systemRange = SystemLogRange.oneHour
-    @State private var systemLogs = SystemLogReader()
-    @State private var searchText = ""
-    @State private var showSettings = false
-    @AppStorage("logs.fontSize") private var logsFontSize = 11
-
-    private var filteredLogs: [LogEntryData] {
-        LogManager.shared.logs.filter { entry in
-            guard selectedLevels.contains(entry.level) else { return false }
-            return matchesSearch(source: entry.source, message: entry.message)
-        }
-    }
-
-    private var filteredSystemLogs: [SystemLogLine] {
-        systemLogs.entries.filter { matchesSearch(source: $0.source, message: $0.message) }
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-            content
-                .utilityContentTransition(value: selectedSource)
-        }
-        .ignoresSafeArea()
-        .background(WindowAccessor(identifier: "logs"))
-        .onChange(of: selectedSource) {
-            if selectedSource == .systemIssues && systemLogs.entries.isEmpty {
-                systemLogs.refresh(range: systemRange)
-            }
-        }
-        .onChange(of: systemRange) {
-            if selectedSource == .systemIssues { systemLogs.refresh(range: systemRange) }
-        }
-        .onDisappear { systemLogs.cancel() }
-        .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
-            guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("logs") == true else { return }
-            showSettings = true
-        }
-        .sheet(isPresented: $showSettings) {
-            LogsSettingsSheet()
-        }
-    }
-
-    private var sidebar: some View {
-        ZStack(alignment: .topLeading) {
-            sidebarBody
-            SidebarTitle(text: "Logs")
-        }
-    }
-
-    private var sidebarBody: some View {
-        let levelCounts = Dictionary(grouping: LogManager.shared.logs, by: \.level).mapValues(\.count)
-        return VStack(spacing: 0) {
-            SidebarSearchField(text: $searchText, placeholder: "Search logs...")
-                .padding(.horizontal, 12)
-                .padding(.top, UtilityLayout.workspaceContentTopInset)
-                .padding(.bottom, 12)
-
-            VStack(alignment: .leading, spacing: 4) {
-                SidebarSectionHeader(title: "Sources")
-                    .padding(.horizontal, 4)
-
-                ForEach(LogsSource.allCases) { source in
-                    SidebarRow(
-                        icon: source.icon,
-                        title: source.rawValue,
-                        isSelected: selectedSource == source
-                    ) {
-                        selectedSource = source
-                    }
-                    .accessibilityIdentifier("logs.source.\(source.id)")
-                }
-            }
-            .padding(.horizontal, 12)
-
-            if selectedSource == .internalLogs {
-                VStack(alignment: .leading, spacing: 4) {
-                    SidebarSectionHeader(title: "Internal Levels")
-                        .padding(.horizontal, 4)
-
-                    ForEach(LogLevel.allCases, id: \.self) { level in
-                        LogLevelFilterRow(
-                            level: level,
-                            isSelected: selectedLevels.contains(level),
-                            count: levelCounts[level, default: 0]
-                        ) {
-                            if selectedLevels.contains(level) {
-                                selectedLevels.remove(level)
-                            } else {
-                                selectedLevels.insert(level)
-                            }
-                        }
-                    }
-                }
-                .padding(.top, 12)
-                .padding(.horizontal, 12)
-            }
-
-            Spacer()
-
-            VStack(spacing: 4) {
-                SidebarActionRow(icon: "gearshape", title: "Settings") {
-                    showSettings = true
-                }
-                if selectedSource == .internalLogs {
-                    SidebarActionRow(icon: "trash", title: "Clear Internal Logs") {
-                        LogManager.shared.clearMemoryLogs()
-                    }
-                } else {
-                    SidebarActionRow(icon: "arrow.clockwise", title: "Refresh Issues") {
-                        systemLogs.refresh(range: systemRange)
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
-        }
-        .frame(width: UtilityLayout.compactSidebarWidth)
-        .background(VisualEffectBackground())
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch selectedSource {
-        case .internalLogs:
-            internalContent
-        case .systemIssues:
-            systemContent
-        }
-    }
-
-    private var internalContent: some View {
-        let entries = filteredLogs
-        return VStack(spacing: 0) {
-            contentHeader(title: "Internal Logs", detail: "\(entries.count) entries")
-            QuietDivider()
-            SelectableLogTextView(
-                lines: entries.reversed().map { RenderedLogLine($0) },
-                fontSize: CGFloat(logsFontSize),
-                emptyMessage: "No internal logs to display"
-            )
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private var systemContent: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("System Issues")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("macOS errors and faults · read on demand · up to \(SystemLogReader.maximumEntries)")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                if systemLogs.isLoading { ProgressView().controlSize(.small) }
-                Picker("Time Range", selection: $systemRange) {
-                    ForEach(SystemLogRange.allCases) { range in
-                        Text(range.title).tag(range)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 120)
-                Button("Refresh") { systemLogs.refresh(range: systemRange) }
-                    .controlSize(.small)
-                    .disabled(systemLogs.isLoading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-
-            QuietDivider()
-
-            if let error = systemLogs.errorMessage {
-                VStack(spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.secondary)
-                    Text("Unable to read system logs")
-                        .font(.system(size: 13, weight: .medium))
-                    Text(error)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .textSelection(.enabled)
-                    Button("Try Again") { systemLogs.refresh(range: systemRange) }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(24)
-            } else if systemLogs.isLoading && systemLogs.entries.isEmpty {
-                ProgressView("Reading system issues…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                SelectableLogTextView(
-                    lines: filteredSystemLogs.map { RenderedLogLine($0) },
-                    fontSize: CGFloat(logsFontSize),
-                    emptyMessage: "No system errors or faults in \(systemRange.title.lowercased())"
-                )
-            }
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private func contentHeader(title: String, detail: String) -> some View {
-        HStack {
-            Text(title).font(.system(size: 13, weight: .semibold))
-            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary)
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-    }
-
-    private func matchesSearch(source: String, message: String) -> Bool {
-        guard !searchText.isEmpty else { return true }
-        return source.localizedCaseInsensitiveContains(searchText)
-            || message.localizedCaseInsensitiveContains(searchText)
-    }
-}
-
-private struct LogsSettingsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Logs Settings")
-                    .font(.system(size: 15, weight: .semibold))
-                Spacer()
-                UtilityModalCloseButton { dismiss() }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-
-            QuietDivider()
-            LogsSettingsView()
-        }
-        .frame(width: 420, height: 240)
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-}
-
-struct LogsSettingsView: View {
-    @AppStorage("logs.fontSize") private var logsFontSize = 11
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("APPEARANCE").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Font size")
-                    Spacer()
-                    Picker("Font size", selection: $logsFontSize) {
-                        Text("Small").tag(10)
-                        Text("Medium").tag(11)
-                        Text("Default").tag(12)
-                        Text("Large").tag(14)
-                    }
-                    .labelsHidden()
-                    .frame(width: 140)
-                }
-                Text("System Issues are read from macOS only when requested and are never saved by MacPowerToys.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .font(.system(size: 12))
-            .controlSize(.small)
-            .utilitySectionCard()
-        }
-        .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
-        .settingsScrollContainer()
-    }
-}
-
-private struct RenderedLogLine {
-    let id: UUID
+nonisolated private struct LogsRow: Identifiable {
+    let id: String
     let timestamp: Date
     let level: String
+    let levelFilter: LogLevel
+    let symbol: String
     let source: String
     let message: String
-    let color: NSColor
 
     init(_ entry: LogEntryData) {
-        id = entry.id
+        id = entry.id.uuidString
         timestamp = entry.timestamp
-        level = entry.level.name.prefix(1).uppercased()
+        levelFilter = entry.level
+        switch entry.level {
+        case .error: (level, symbol) = ("Error", "xmark.circle.fill")
+        case .warning: (level, symbol) = ("Warning", "exclamationmark.triangle.fill")
+        case .info: (level, symbol) = ("Info", "info.circle.fill")
+        case .debug: (level, symbol) = ("Debug", "ant.fill")
+        }
         source = entry.source
         message = entry.message
-        color = switch entry.level {
-        case .error: NSColor.systemRed.withAlphaComponent(0.85)
-        case .warning: NSColor.systemOrange.withAlphaComponent(0.85)
-        case .info: .secondaryLabelColor
-        case .debug: .tertiaryLabelColor
-        }
     }
 
     init(_ entry: SystemLogLine) {
-        id = entry.id
+        id = entry.id.uuidString
         timestamp = entry.timestamp
         level = entry.level.rawValue
+        levelFilter = .error
+        symbol = entry.level == .fault ? "bolt.trianglebadge.exclamationmark.fill" : "xmark.circle.fill"
         source = entry.source
         message = entry.message
-        color = entry.level == .fault
-            ? NSColor.systemRed.withAlphaComponent(0.9)
-            : NSColor.systemOrange.withAlphaComponent(0.9)
+    }
+
+    var fileURL: URL? {
+        let expanded = NSString(string: source).expandingTildeInPath
+        return FileManager.default.fileExists(atPath: expanded) ? URL(fileURLWithPath: expanded) : nil
     }
 }
 
-private struct SelectableLogTextView: NSViewRepresentable {
-    let lines: [RenderedLogLine]
-    let fontSize: CGFloat
-    let emptyMessage: String
+struct LogsWindowView: View {
+    @State private var page = LogsPage.internalLogs
+    @State private var selectedLevels = Set(LogLevel.allCases)
+    @State private var systemRange = SystemLogRange.oneHour
+    @State private var systemLogs = SystemLogReader()
+    @State private var logManager = LogManager.shared
+    @State private var search = ""
+    @State private var searchFocus = 0
+    @State private var selection: Set<String> = []
+    @State private var sortOrder = [KeyPathComparator(\LogsRow.timestamp, order: .reverse)]
+    @State private var detailID: String?
+    @State private var confirmClear = false
+    @AppStorage("logs.fontSize") private var logsFontSize = 11
 
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }()
+    private static let spanFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
 
-    final class Coordinator {
-        var signature: Signature?
-    }
-
-    struct Signature: Equatable {
-        let lineIDs: [UUID]
-        let fontSize: CGFloat
-        let emptyMessage: String
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.configureThinScrollIndicators()
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
-
-        let textView = NSTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 8)
-        textView.isRichText = true
-        textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        scrollView.documentView = textView
-        return scrollView
-    }
-
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
-        let signature = Signature(lineIDs: lines.map(\.id), fontSize: fontSize, emptyMessage: emptyMessage)
-        guard signature != context.coordinator.signature else { return }
-        context.coordinator.signature = signature
-        textView.textStorage?.setAttributedString(attributedString())
-    }
-
-    private func attributedString() -> NSAttributedString {
-        let result = NSMutableAttributedString()
-        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        for (index, line) in lines.enumerated() {
-            if index > 0 { result.append(NSAttributedString(string: "\n")) }
-            let time = Self.timeFormatter.string(from: line.timestamp)
-            result.append(NSAttributedString(
-                string: "[\(time)] [\(line.level)] \(line.source): \(line.message)",
-                attributes: [.font: font, .foregroundColor: line.color]
-            ))
+    private var sourceRows: [LogsRow] {
+        switch page {
+        case .internalLogs, .settings: logManager.logs.map(LogsRow.init)
+        case .systemIssues: systemLogs.entries.map(LogsRow.init)
         }
-        if result.length == 0 {
-            result.append(NSAttributedString(
-                string: emptyMessage,
-                attributes: [.font: font, .foregroundColor: NSColor.tertiaryLabelColor]
-            ))
-        }
-        return result
     }
-}
-
-private struct SidebarActionRow: View {
-    let icon: String
-    let title: String
-    let action: () -> Void
+    private var visibleRows: [LogsRow] {
+        sourceRows
+            .filter {
+                selectedLevels.contains($0.levelFilter)
+                    && (search.isEmpty
+                        || $0.source.localizedCaseInsensitiveContains(search)
+                        || $0.message.localizedCaseInsensitiveContains(search))
+            }
+            .sorted(using: sortOrder)
+    }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 20, height: 20)
-                Text(title).font(.system(size: 13))
-                Spacer()
+        OnePlusWindowRoot(canvas: .logs) { sidebar } content: { content }
+            .background(WindowAccessor(identifier: "logs"))
+            .buttonStyle(OnePlusButtonStyle())
+            .onChange(of: page) { _, newPage in
+                selection.removeAll()
+                if newPage == .systemIssues && systemLogs.entries.isEmpty { systemLogs.refresh(range: systemRange) }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .contentShape(Rectangle())
+            .onChange(of: systemRange) { _, _ in
+                if page == .systemIssues { systemLogs.refresh(range: systemRange) }
+            }
+            .onDisappear { systemLogs.cancel() }
+            .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
+                guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("logs") == true else { return }
+                page = .settings
+            }
+            .onOpenToolPage("logs") { open(page: $0) }
+            .sheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
+                if let detailID, let row = row(for: detailID) {
+                    LogDetailSheet(row: row, fontSize: logsFontSize) { self.detailID = nil }
+                }
+            }
+            .confirmationDialog("Clear all internal logs?", isPresented: $confirmClear) {
+                Button("Clear Logs", role: .destructive) { logManager.clearMemoryLogs() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This clears the in-memory internal log list.")
+            }
+            .overlay(alignment: .topLeading) {
+                Button("") { searchFocus &+= 1 }
+                    .keyboardShortcut("f")
+                    .frame(width: 0, height: 0)
+                    .opacity(0)
+                    .accessibilityHidden(true)
+            }
+    }
+
+    private var sidebar: some View {
+        let counts = Dictionary(grouping: logManager.logs, by: \.level).mapValues(\.count)
+        return OnePlusSidebar(title: "Logs") {
+            OnePlusSearchField(
+                prompt: "Search logs",
+                text: $search,
+                width: nil,
+                focusTrigger: searchFocus,
+                accessibilityIdentifier: "logs.search",
+                height: OnePlusMetrics.searchHeight,
+                shortcutHint: "⌘F"
+            )
+        } navigation: {
+            OnePlusNavCaption("Sources")
+            OnePlusNavRow("Internal", systemImage: LogsPage.internalLogs.icon, selected: page == .internalLogs, count: logManager.logs.count) {
+                page = .internalLogs
+            }
+            .keyboardShortcut("1")
+            OnePlusNavRow("System issues", systemImage: LogsPage.systemIssues.icon, selected: page == .systemIssues, count: systemLogs.entries.count) {
+                page = .systemIssues
+            }
+            .keyboardShortcut("2")
+
+            OnePlusNavCaption("Levels")
+            ForEach(LogLevel.allCases, id: \.self) { level in
+                OnePlusNavRow(
+                    level.name,
+                    systemImage: selectedLevels.contains(level) ? level.icon : "circle",
+                    selected: false,
+                    count: counts[level, default: 0]
+                ) { toggle(level) }
+                .accessibilityValue(selectedLevels.contains(level) ? "Included" : "Excluded")
+            }
+        } bottom: {
+            OnePlusNavRow("Settings", systemImage: "gearshape", selected: page == .settings) { page = .settings }
+                .keyboardShortcut(",")
         }
-        .buttonStyle(UtilityInteractionButtonStyle())
-        .focusEffectDisabled()
+    }
+
+    @ViewBuilder private var content: some View {
+        switch page {
+        case .internalLogs, .systemIssues: logPage
+        case .settings: LogsSettingsView()
+        }
+    }
+
+    private var logPage: some View {
+        OnePlusPage(scrolls: false) {
+            OnePlusPageHeader(title: page.title, subtitle: subtitle) {
+                if page == .systemIssues {
+                    OnePlusSelect(
+                        choices: SystemLogRange.allCases.map { ($0, $0.title) },
+                        selection: $systemRange,
+                        width: OnePlusMetrics.controlColumn,
+                        accessibilityLabel: "System log time range"
+                    )
+                    Button { systemLogs.refresh(range: systemRange) } label: { Image(systemName: "arrow.clockwise") }
+                        .buttonStyle(OnePlusButtonStyle(.icon))
+                        .disabled(systemLogs.isLoading)
+                        .help("Refresh system issues")
+                        .accessibilityLabel("Refresh system issues")
+                }
+                Button("Copy") { copyRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
+                Button("Export") { exportRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
+                if page == .internalLogs {
+                    Button("Clear") { confirmClear = true }.buttonStyle(OnePlusButtonStyle(.destructive)).disabled(logManager.logs.isEmpty)
+                }
+            }
+        } content: {
+            if let error = systemLogs.errorMessage, page == .systemIssues {
+                OnePlusBanner(error, tone: .error) {
+                    Button("Try Again") { systemLogs.refresh(range: systemRange) }
+                }
+            }
+            if systemLogs.isLoading && page == .systemIssues && systemLogs.entries.isEmpty {
+                OnePlusCard { ProgressView("Reading system issues…").frame(maxWidth: .infinity).padding(OnePlusMetrics.spacing[8]) }
+            } else if visibleRows.isEmpty {
+                OnePlusCard {
+                    OnePlusEmptyState(
+                        page == .internalLogs ? "No internal logs" : "No system issues",
+                        systemImage: page == .internalLogs ? "doc.text" : "checkmark.circle",
+                        caption: search.isEmpty ? "No entries match the selected levels." : "Clear the search or include another level."
+                    )
+                }
+            } else {
+                OnePlusCard {
+                    Table(visibleRows, selection: $selection, sortOrder: $sortOrder) {
+                        TableColumn("Time", value: \LogsRow.timestamp) { row in
+                            Text(Self.timeFormatter.string(from: row.timestamp))
+                                .onePlusText(.mono)
+                                .textSelection(.enabled)
+                        }
+                        .width(min: 92, ideal: 104)
+                        TableColumn("Level", value: \LogsRow.level) { row in
+                            Label(row.level, systemImage: row.symbol)
+                                .foregroundStyle(levelColor(row))
+                                .textSelection(.enabled)
+                        }
+                        .width(min: 82, ideal: 92)
+                        TableColumn("Source", value: \LogsRow.source) { row in
+                            Text(row.source)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
+                                .help(row.source)
+                        }
+                        .width(min: 150, ideal: 180)
+                        TableColumn("Message", value: \LogsRow.message) { row in
+                            Text(row.message)
+                                .lineLimit(1)
+                                .textSelection(.enabled)
+                                .help(row.message)
+                        }
+                        .width(min: 280, ideal: 430)
+                    }
+                    .contextMenu(forSelectionType: String.self) { selected in
+                        logContextMenu(selected)
+                    } primaryAction: { selected in
+                        detailID = selected.first
+                    }
+                    .onePlusNativeTable()
+                }
+                .frame(maxHeight: .infinity)
+            }
+        }
+        .accessibilityIdentifier("logs.\(page.rawValue)")
+    }
+
+    private var subtitle: String {
+        guard let first = visibleRows.map(\.timestamp).min(), let last = visibleRows.map(\.timestamp).max() else {
+            return page == .systemIssues ? "0 entries · read on demand · up to \(SystemLogReader.maximumEntries)" : "0 entries"
+        }
+        return "\(visibleRows.count) entries · \(Self.spanFormatter.string(from: first)) – \(Self.spanFormatter.string(from: last))"
+    }
+
+    private func open(page pageID: String) {
+        guard let requested = LogsPage(rawValue: pageID) else { return }
+        page = requested
+    }
+
+    private func toggle(_ level: LogLevel) {
+        if selectedLevels.contains(level) { selectedLevels.remove(level) }
+        else { selectedLevels.insert(level) }
+    }
+
+    private func row(for id: String) -> LogsRow? { sourceRows.first { $0.id == id } }
+
+    private func openDetail(_ ids: Set<String>) { detailID = ids.first }
+
+    @ViewBuilder private func logContextMenu(_ ids: Set<String>) -> some View {
+        if let id = ids.first, let row = row(for: id) {
+            Button("Copy Row") { copy(rowText(row)) }
+            Button("Copy Message") { copy(row.message) }
+            Button("Show Details…") { detailID = row.id }
+            if let url = row.fileURL {
+                Button("Reveal Source") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            }
+        }
+    }
+
+    private func levelColor(_ row: LogsRow) -> Color {
+        if row.level == SystemLogLine.Level.fault.rawValue { return OnePlusColor.danger }
+        switch row.levelFilter {
+        case .error: return OnePlusColor.danger
+        case .warning: return OnePlusColor.warn
+        case .info: return OnePlusColor.secondary
+        case .debug: return OnePlusColor.muted
+        }
+    }
+
+    private func selectedOrVisibleRows() -> [LogsRow] {
+        let chosen = visibleRows.filter { selection.contains($0.id) }
+        return chosen.isEmpty ? visibleRows : chosen
+    }
+
+    private func rowText(_ row: LogsRow) -> String {
+        "[\(Self.timeFormatter.string(from: row.timestamp))] [\(row.level)] \(row.source): \(row.message)"
+    }
+
+    private func copyRows() { copy(selectedOrVisibleRows().map(rowText).joined(separator: "\n")) }
+
+    private func copy(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    private func exportRows() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = page == .internalLogs ? "MacPowerToys-Internal-Logs.txt" : "MacPowerToys-System-Issues.txt"
+        panel.allowedContentTypes = [.plainText]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try selectedOrVisibleRows().map(rowText).joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            LogManager.shared.error("Could not export logs: \(error.localizedDescription)", source: "LogsWindowView")
+        }
     }
 }
 
-private struct LogLevelFilterRow: View {
-    let level: LogLevel
-    let isSelected: Bool
-    let count: Int
-    let action: () -> Void
+private struct LogDetailSheet: View {
+    let row: LogsRow
+    let fontSize: Int
+    let close: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.6))
-                    .font(.system(size: 14))
-                Image(systemName: level.icon)
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 12))
-                Text(level.name).font(.system(size: 13))
-                Spacer()
-                Text("\(count)")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(Capsule())
+        OnePlusSheet("Log Entry", width: .large, close: close) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
+                OnePlusKeyValueRow("Time", value: row.timestamp.formatted(date: .abbreviated, time: .standard), monospaced: true)
+                OnePlusKeyValueRow("Level", value: row.level)
+                OnePlusKeyValueRow("Source", value: row.source, monospaced: true)
+                OnePlusColor.lineSoft.frame(height: 1)
+                Text(row.message)
+                    .font(.system(size: CGFloat(fontSize), design: .monospaced))
+                    .foregroundStyle(OnePlusColor.ink)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 4, alignment: .topLeading)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
+        } footer: {
+            Button("Copy Message") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(row.message, forType: .string)
+            }
+            .buttonStyle(OnePlusButtonStyle(.neutral))
+            Button("Done", action: close)
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(OnePlusButtonStyle(.primary))
         }
-        .buttonStyle(UtilityInteractionButtonStyle())
-        .focusEffectDisabled()
     }
 }
 
-#Preview {
-    LogsWindowView()
-        .frame(width: 900, height: 600)
+struct LogsSettingsView: View {
+    @AppStorage("logs.fontSize") private var fontSize = 11
+
+    var body: some View {
+        OnePlusPage {
+            OnePlusPageHeader(title: "Settings", subtitle: "Log display and retention")
+        } content: {
+            OnePlusSectionTitle("Logs")
+            OnePlusCard {
+                OnePlusSettingRow("Font size", caption: "Used for selectable log detail text.") {
+                    OnePlusSelect(
+                        choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],
+                        selection: $fontSize,
+                        accessibilityLabel: "Log font size"
+                    )
+                }
+                OnePlusSettingRow("Retention", caption: "Internal entries older than this are removed.", separator: false) {
+                    Text("2 days").onePlusText(.mono)
+                }
+            }
+            OnePlusBanner("System issues are read from macOS only when requested. MacPowerToys never saves them.")
+        }
+        .accessibilityIdentifier("logs.settings")
+    }
 }
+
+#Preview { LogsWindowView() }

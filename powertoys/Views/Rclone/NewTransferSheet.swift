@@ -5,6 +5,7 @@
 
 import SwiftUI
 import AppKit
+import OnePlusUI
 
 struct NewTransferSheet: View {
     @Environment(RcloneJobManager.self) private var manager
@@ -28,10 +29,7 @@ struct NewTransferSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            QuietDivider()
-
+        OnePlusSheet("New Transfer", width: .medium, close: { dismiss() }) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     operationSection
@@ -43,15 +41,18 @@ struct NewTransferSheet: View {
                         .foregroundStyle(.secondary)
                     excludesSection
                 }
-                .padding(20)
             }
-            .thinScrollIndicators()
-
-            QuietDivider()
-            footer
+            .onePlusScrollIndicators()
+            .frame(height: OnePlusMetrics.spacing[8] * 17)
+        } footer: {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+                .buttonStyle(OnePlusButtonStyle(.ghost))
+            Button("Start Transfer") { start() }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(OnePlusButtonStyle(.primary))
+                .disabled(!canStart)
         }
-        .frame(width: 560, height: 540)
-        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             guard !didInitialize else { return }
             operation = manager.settings.defaultOperation
@@ -62,22 +63,6 @@ struct NewTransferSheet: View {
             guard destination.kind == .local, destination.localPath.isEmpty else { return }
             applyDefaultDestination()
         }
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "arrow.left.arrow.right.circle.fill")
-                .font(.system(size: 18))
-                .foregroundStyle(.tint)
-            Text("New Transfer")
-                .font(.system(size: 15, weight: .semibold))
-            Spacer()
-            UtilityModalCloseButton { dismiss() }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
     }
 
     // MARK: Operation
@@ -157,49 +142,11 @@ struct NewTransferSheet: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 2)
 
-            TextEditor(text: $extraExcludesText)
-                .thinScrollIndicators()
-                .font(.system(size: 12, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .padding(6)
+            OnePlusTextEditor("Additional ignore patterns", text: $extraExcludesText)
                 .frame(height: 76)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.primary.opacity(0.06))
-                )
-                .overlay(alignment: .topLeading) {
-                    if extraExcludesText.isEmpty {
-                        Text("One glob per line, e.g. *.log")
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 10)
-                            .allowsHitTesting(false)
-                    }
-                }
+            Text("One glob per line. Used as an exclude rule for this transfer.")
+                .onePlusText(.caption)
         }
-    }
-
-    // MARK: Footer
-
-    private var footer: some View {
-        HStack {
-            Spacer()
-            Button("Cancel") { dismiss() }
-                .keyboardShortcut(.cancelAction)
-
-            Button {
-                start()
-            } label: {
-                Text("Start Transfer")
-                    .fontWeight(.semibold)
-            }
-            .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
-            .disabled(!canStart)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
 
     private func applyDefaultDestination() {
@@ -266,7 +213,8 @@ private struct EndpointCard: View {
     let chooseDirectoriesOnly: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        OnePlusCard {
+            VStack(alignment: .leading, spacing: 10) {
             HStack {
                 SectionLabel(title: title)
                 Spacer()
@@ -294,13 +242,9 @@ private struct EndpointCard: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
+            }
+            .padding(OnePlusMetrics.cardPadding)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.primary.opacity(0.03))
-        )
     }
 
     private var localSelector: some View {

@@ -1,8 +1,4 @@
-//
-//  RcloneSettingsPage.swift
-//  powertoys
-//
-
+import OnePlusUI
 import SwiftUI
 
 struct RcloneSettingsPage: View {
@@ -11,71 +7,39 @@ struct RcloneSettingsPage: View {
     @AppStorage("app.showTray") private var showTray = true
 
     var body: some View {
-        VStack(spacing: 0) {
+        Group {
             if showsHeader {
-                header
-                QuietDivider()
+                OnePlusPage {
+                    OnePlusPageHeader(title: "Settings", subtitle: "Cloud Sync engine and transfer preferences")
+                } content: { settingsContent }
+            } else {
+                VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) { settingsContent }
             }
-
-            VStack(alignment: .leading, spacing: UtilityLayout.sectionSpacing) {
-                generalSection
-                traySection
-                RcloneSettingsView()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .settingsPageInsets(horizontal: UtilityLayout.horizontalInset, top: 16, bottom: 20)
-            .settingsScrollContainer()
         }
-        .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
         }
+        .accessibilityIdentifier("rclone.settings")
     }
 
-    private var generalSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("GENERAL").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Start sync engine at launch")
-                    Spacer()
-                    Toggle("Start sync engine at launch", isOn: $startAtLaunch)
-                        .labelsHidden()
-                }
+    @ViewBuilder private var settingsContent: some View {
+        OnePlusSectionTitle("Sync engine")
+        OnePlusCard {
+            OnePlusSettingRow("Start at launch", caption: "Keep the sync engine ready after sign-in.") {
+                Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .font(.system(size: 12))
-            .controlSize(.small)
-            .utilitySectionCard()
-        }
-    }
-
-    private var traySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("TRAY").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Show MacPowerToys in the menu bar")
-                    Spacer()
-                    Toggle("Show MacPowerToys in the menu bar", isOn: $showTray)
-                        .labelsHidden()
-                }
+            OnePlusSettingRow("Show in menu bar", caption: "Show MacPowerToys transfer status in the menu bar.") {
+                Toggle("Show in menu bar", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .font(.system(size: 12))
-            .controlSize(.small)
-            .utilitySectionCard()
+            OnePlusSettingRow("Retry interrupted transfers", caption: "Queue unfinished transfers after the engine starts.", separator: false) {
+                Toggle("Retry interrupted transfers", isOn: .constant(true))
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
+                    .disabled(true)
+                    .help("Cloud Sync always protects and resumes interrupted transfers.")
+            }
         }
-    }
 
-    private var header: some View {
-        HStack {
-            Text("Settings")
-                .font(.system(size: 13, weight: .medium))
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .padding(.top, 12)
+        RcloneSettingsView()
     }
 }

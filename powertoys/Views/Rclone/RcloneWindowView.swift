@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import OnePlusUI
 
 enum RSyncContent: Hashable {
     case transfers
@@ -26,17 +27,13 @@ struct RcloneWindowView: View {
     var body: some View {
         @Bindable var manager = manager
 
-        HStack(spacing: 0) {
+        OnePlusWindowRoot(canvas: .rclone) {
             RcloneSidebarView(content: $content, showAddRemote: $showAddRemote)
-                .frame(width: UtilityLayout.dataSidebarWidth)
-
-            contentArea
-                .utilityContentTransition(value: content)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+        } content: {
+            contentArea.utilityContentTransition(value: content)
         }
         .environment(manager)
-        .ignoresSafeArea()
+        .buttonStyle(OnePlusButtonStyle())
         .background(WindowAccessor(identifier: "rclone"))
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("rclone") == true else { return }
@@ -80,6 +77,7 @@ struct RcloneWindowView: View {
         .onChange(of: manager.filter) {
             lastFilter = manager.filter.rawValue
         }
+        .onOpenToolPage("rclone") { open(page: $0) }
     }
 
     private func restoreUIState() {
@@ -91,6 +89,26 @@ struct RcloneWindowView: View {
         case "devSync": content = .devSync
         case "settings": content = .settings
         default: content = .transfers
+        }
+    }
+
+    private func open(page: String) {
+        if let filter = JobFilter.allCases.first(where: { $0.rawValue == page }) {
+            manager.filter = filter
+            content = .transfers
+            return
+        }
+        switch page {
+        case "activity": content = .activity
+        case "dev-sync": content = .devSync
+        case "settings": content = .settings
+        case "new-transfer": manager.isPresentingNewTransfer = true
+        default:
+            guard page.hasPrefix("remote/") else { return }
+            let name = String(page.dropFirst("remote/".count))
+            if let remote = manager.remotes.first(where: { $0.name == name }) {
+                content = .browse(remote)
+            }
         }
     }
 
@@ -113,5 +131,4 @@ struct RcloneWindowView: View {
 
 #Preview {
     RcloneWindowView()
-        .frame(width: 1100, height: 720)
 }
