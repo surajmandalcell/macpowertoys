@@ -128,11 +128,14 @@ public struct OnePlusMenuOpenApp: View {
 public struct OnePlusMenuTile<Content: View>: View {
     let span: Int
     let height: CGFloat
+    let textured: Bool
     let action: (() -> Void)?
     let content: Content
     @State private var hover = false
-    public init(span: Int = 1, height: CGFloat = 70, action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
-        self.span = span; self.height = height; self.action = action; self.content = content()
+    public init(span: Int = 1, height: CGFloat = 70, textured: Bool = true,
+                action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
+        self.span = span; self.height = height; self.textured = textured
+        self.action = action; self.content = content()
     }
     public var body: some View {
         Group {
@@ -144,7 +147,8 @@ public struct OnePlusMenuTile<Content: View>: View {
         content.padding(.horizontal, 8).padding(.vertical, height == 70 ? 7 : 6)
             .frame(width: OnePlusMenuMetrics.columnWidth(span: span), height: height, alignment: .topLeading)
             .background(hover && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
-            .onePlusGrain(opacity: 0.11).clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay { if textured { OnePlusDitherTexture(opacity: 0.11) } }
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
     }
 }
@@ -174,8 +178,11 @@ public struct OnePlusMenuSectionHeader: View {
     let title: String
     let actionTitle: String?
     let action: (() -> Void)?
-    public init(_ title: String, actionTitle: String? = nil, action: (() -> Void)? = nil) {
-        self.title = title; self.actionTitle = actionTitle; self.action = action
+    let compactAction: Bool
+    public init(_ title: String, actionTitle: String? = nil, compactAction: Bool = false,
+                action: (() -> Void)? = nil) {
+        self.title = title; self.actionTitle = actionTitle
+        self.compactAction = compactAction; self.action = action
     }
     public var body: some View {
         VStack(spacing: 7) {
@@ -183,7 +190,12 @@ public struct OnePlusMenuSectionHeader: View {
             HStack {
                 Text(title).font(.system(size: 9.5)).foregroundStyle(OnePlusColor.secondary).accessibilityAddTraits(.isHeader)
                 Spacer()
-                if let actionTitle, let action { Button(actionTitle, action: action).buttonStyle(OnePlusButtonStyle(.link, size: .small)) }
+                if let actionTitle, let action {
+                    Button(actionTitle, action: action)
+                        .buttonStyle(OnePlusButtonStyle(.link, size: .small,
+                                                        height: compactAction ? 13 : nil,
+                                                        horizontalPadding: compactAction ? 0 : 10))
+                }
             }.frame(minHeight: 13)
         }
     }
