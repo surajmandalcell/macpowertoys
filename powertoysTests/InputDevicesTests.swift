@@ -92,7 +92,7 @@ final class InputDevicesTests: XCTestCase {
         magic.batteryPercent = 84
         XCTAssertEqual(magic.connectionSummary, "USB · 84%")
         let rows = InputDeviceCard(device: receiver, profile: InputScrollProfile(), state: .active).rows.map(\.label)
-        XCTAssertEqual(rows, ["Model", "Vendor", "Device ID", "Firmware", "Serial", "Connection", "Battery", "Buttons", "Resolution", "Polling", "Tracking", "Scroll speed"])
+        XCTAssertEqual(rows, ["Vendor", "Device ID", "Connection", "Scroll speed"])
     }
 
     func testKeyboardDetailsFormatSavedGlobalSettings() {
@@ -157,8 +157,7 @@ final class InputDevicesTests: XCTestCase {
         )
     }
 
-    @MainActor
-    func testMouseAndTrackpadDeviceCardsShareOneHeight() {
+    func testDeviceCardsOmitUnavailableValues() {
         let richMouse = descriptor(
             name: "Logitech MX Master 3S Wireless Mouse",
             kind: .mouse,
@@ -173,10 +172,9 @@ final class InputDevicesTests: XCTestCase {
         )
         let sparseTrackpad = descriptor(name: "Trackpad", kind: .trackpad)
 
-        XCTAssertEqual(
-            cardHeight(InputDeviceCard(device: richMouse, profile: InputScrollProfile(), state: .active)),
-            cardHeight(InputDeviceCard(device: sparseTrackpad, profile: InputScrollProfile(), state: .disabled))
-        )
+        XCTAssertTrue(InputDeviceCard(device: richMouse, profile: InputScrollProfile(), state: .active).rows.contains { $0.label == "Polling" })
+        XCTAssertFalse(InputDeviceCard(device: sparseTrackpad, profile: InputScrollProfile(), state: .disabled).rows.contains { $0.label == "Battery" })
+        XCTAssertFalse(InputDeviceCard(device: sparseTrackpad, profile: InputScrollProfile(), state: .disabled).rows.contains { $0.label == "Firmware" })
     }
 
     @MainActor

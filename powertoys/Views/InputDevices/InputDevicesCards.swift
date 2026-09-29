@@ -31,7 +31,7 @@ enum InputControlState {
         switch self {
         case .disabled, .passthrough: .offline
         case .permissionNeeded: .warning
-        case .active: .success
+        case .active: .online
         }
     }
 }
@@ -75,7 +75,7 @@ struct InputDeviceCard: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     OnePlusKeyValueRow(
                         row.label,
-                        value: row.value ?? "Not reported",
+                        value: row.value,
                         monospaced: row.monospaced
                     )
                 }
@@ -87,44 +87,33 @@ struct InputDeviceCard: View {
 
     var rows: [Row] {
         guard let device else {
-            return [
-                Row(label: "Model", value: nil),
-                Row(label: "Vendor", value: nil),
-                Row(label: "Device ID", value: nil, monospaced: true),
-                Row(label: "Firmware", value: nil, monospaced: true),
-                Row(label: "Serial", value: nil, monospaced: true),
-                Row(label: "Connection", value: nil),
-                Row(label: "Battery", value: nil),
-                Row(label: "Buttons", value: nil),
-                Row(label: "Resolution", value: nil),
-                Row(label: "Polling", value: nil),
-                Row(label: "Tracking", value: nil),
-                Row(label: "Scroll speed", value: profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
-            ]
+            return []
         }
         return [
-            Row(label: "Model", value: device.modelNumber),
-            Row(label: "Vendor", value: device.vendorName),
+            device.modelNumber.map { Row(label: "Model", value: $0) },
+            device.vendorName.map { Row(label: "Vendor", value: $0) },
             Row(label: "Device ID", value: String(format: "%04X:%04X", device.vendorID, device.productID), monospaced: true),
-            Row(label: "Firmware", value: device.firmwareVersion, monospaced: true),
-            Row(label: "Serial", value: device.serialNumber.flatMap { $0.isEmpty ? nil : $0 }, monospaced: true),
-            Row(label: "Connection", value: device.connectionSummary.components(separatedBy: " · ").first),
-            Row(label: "Battery", value: device.batteryPercent.map { "\($0)%" }),
-            Row(label: "Buttons", value: device.buttonCount.flatMap { $0 > 0 ? $0.formatted() : nil }),
-            Row(label: "Resolution", value: device.pointerResolutionDPI.map {
-                $0.formatted(.number.precision(.fractionLength(0))) + " dpi"
-            }),
-            Row(label: "Polling", value: device.pollingRateHz.map {
-                $0.formatted(.number.precision(.fractionLength(0))) + " Hz"
-            }),
-            Row(label: "Tracking", value: device.systemTrackingSpeed?.formatted(.number.precision(.fractionLength(2)))),
+            device.firmwareVersion.map { Row(label: "Firmware", value: $0, monospaced: true) },
+            device.serialNumber.flatMap { $0.isEmpty ? nil : Row(label: "Serial", value: $0, monospaced: true) },
+            device.connectionSummary.components(separatedBy: " · ").first.map { Row(label: "Connection", value: $0) },
+            device.batteryPercent.map { Row(label: "Battery", value: "\($0)%") },
+            device.buttonCount.flatMap { $0 > 0 ? Row(label: "Buttons", value: $0.formatted()) : nil },
+            device.pointerResolutionDPI.map {
+                Row(label: "Resolution", value: $0.formatted(.number.precision(.fractionLength(0))) + " dpi")
+            },
+            device.pollingRateHz.map {
+                Row(label: "Polling", value: $0.formatted(.number.precision(.fractionLength(0))) + " Hz")
+            },
+            device.systemTrackingSpeed.map {
+                Row(label: "Tracking", value: $0.formatted(.number.precision(.fractionLength(2))))
+            },
             Row(label: "Scroll speed", value: profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
-        ]
+        ].compactMap { $0 }
     }
 
     struct Row {
         let label: String
-        let value: String?
+        let value: String
         var monospaced = false
     }
 
@@ -162,7 +151,6 @@ struct InputKeyboardCard: View {
             }
             VStack(spacing: 0) {
                 OnePlusKeyValueRow("Connection", value: "Managed by macOS")
-                OnePlusKeyValueRow("Battery", value: "Not reported")
                 OnePlusKeyValueRow("Key repeat", value: details.keyRepeat)
                 OnePlusKeyValueRow("Function keys", value: details.functionKeys)
             }
