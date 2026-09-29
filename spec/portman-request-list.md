@@ -11,19 +11,25 @@ fixes Forward's host form above its results, and fixes Settings search above
 its card stack. Server projections and installed-editor discovery run outside
 the main actor. Selection dropdowns use `OnePlusSelect`.
 
+Round 5 removes the regular-control override from the compact panel. Panel
+fields, selects, steppers, and buttons are 24pt. Switch rows use their control's
+width, captions live inside 56pt rows, Forward actions are both 64pt, and the
+Servers sort select is 96pt.
+
 Round 2 keeps the Servers composition. Sort by must show a menu affordance
 and match Clean up in height and baseline. Port and memory values stay mono.
-Forward and Settings keep 28pt form controls and aligned control columns.
+Forward and Settings use 24pt compact controls and aligned control columns.
 
 Round 2 verification: Debug and build-for-testing pass. Tests were compiled,
 not executed. Signed menu, form, and interaction checks remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Use compact controls and readable setting rows throughout the menu panel. | The panel inherits shared compact density. Switch rows release the 160pt field column, protected-app and cleanup captions use `OnePlusSettingRow`, and separators remain between rows. | Verify label fit and 24pt controls in every panel tab. |
 | Verify | Keep Portman controls fixed, scroll only row or card regions, and meet the 100ms page-switch gate. | Servers caches sorted rows, memory totals, cleanup suggestions, and sparklines off the main actor. Forward keeps its host form fixed. Settings keeps search fixed. Detail keeps its header fixed. | Remeasure page switches and scrolling in the signed build. |
-| Verify | Share one cards-only settings view with inherited density. | `PortmanSettingsView(search: "")` owns the setting cards. The menu host owns search, scrolling, compact density, and 28pt controls. The no-result state is a card. Debug and build-for-testing pass. | Foundation must remove its page wrapper; then verify regular embedded settings and compact menu search. |
-| Verify | Make Sort by read as a menu beside Clean up, with mono memory and port values. | Round 2 gives Sort by the same 24pt neutral style as Clean up and a chevron. The large memory value and detail port use mono type. Local link hover is neutral; the panel uses shared tint defaults. Debug compilation passes. Settings retain the 160pt column and 28pt controls. Forward retains its full-width host field and 84pt item action column. | Inspect all tabs, sort choices, and hover in the next signed capture. |
-| Verify | Keep the Servers composition; move its type, colors, and controls to tokens. Use the 356pt menu shell, Forward cards, and searchable Settings with 28pt controls and a 160pt column. | Debug build passes. Saved tabs, equal Link/Stop actions, scan cancellation, range selection, auth-failure-only password prompts, and idle scan policy remain in source. Open and refresh tasks now cancel. | Review all tabs, tunnels, SSH failures, and cleanup in the orchestrator's installed build. |
+| Verify | Share one cards-only settings view with inherited density. | `PortmanSettingsView(search: "")` owns the setting cards. The menu host owns search, scrolling, and 24pt compact density. The no-result state is a card. Debug and build-for-testing pass. | Foundation must remove its page wrapper; then verify regular embedded settings and compact menu search. |
+| Verify | Make Sort by read as a menu beside Clean up, with mono memory and port values. | Sort by uses a 96pt select at the same 24pt height as Clean up. The large memory value and detail port use mono type. Forward keeps a full-width host field with 64pt Scan and Add port actions. | Inspect all tabs, sort choices, and hover in the next signed capture. |
+| Verify | Keep the Servers composition; move its type, colors, and controls to tokens. Use the 356pt menu shell, Forward cards, and searchable Settings with 24pt controls. | Debug build passes. Saved tabs, equal Link/Stop actions, scan cancellation, range selection, auth-failure-only password prompts, and idle scan policy remain in source. Open and refresh tasks now cancel. | Review all tabs, tunnels, SSH failures, and cleanup in the orchestrator's installed build. |
 
 The owner requested a MacPowerToys tool based on the detailed WhatThePort
 showcase at `/Users/surajmandal/tmp/what-the-port-showcase/README.md`, adapted
