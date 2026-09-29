@@ -57,6 +57,8 @@ final class MacTweaksCatalogTests: XCTestCase {
         try store.apply([field], selections: [field.identity: 0])
         XCTAssertEqual(store.value(for: field) as? Bool, true)
         XCTAssertTrue(store.hasBackup(for: [field]))
+        XCTAssertEqual(store.storedOriginalChoices(for: [field])[field.identity], -1)
+        XCTAssertEqual(TweakPreferenceStore.readSelectedChoice(for: field), 0)
         try store.apply([field], selections: [field.identity: -1])
         XCTAssertNil(store.value(for: field))
         XCTAssertFalse(store.hasBackup(for: [field]), "Returning to the original value must clear recovery state")

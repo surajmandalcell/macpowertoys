@@ -63,6 +63,8 @@ private struct MacTweaksModifiedEntry: Identifiable {
     let category: MacTweaksCategory
     let item: TweakItem
     let field: TweakPreferenceField
+    let currentSelection: Int
+    let originalSelection: Int
     var id: String { field.identity }
 }
 
@@ -91,6 +93,9 @@ struct MacTweaksWindowView: View {
     @State private var search = ""
     @State private var selectedPage = "dock"
     @State private var preferenceRevision = 0
+    @State private var preferenceSelections: [String: Int] = [:]
+    @State private var modifiedIdentities: Set<String> = []
+    @State private var modifiedEntries: [MacTweaksModifiedEntry] = []
     @State private var notice: MacTweaksNotice?
     @State private var noticeTask: Task<Void, Never>?
     @State private var restartRequest: (name: String, bundleID: String)?
@@ -99,7 +104,7 @@ struct MacTweaksWindowView: View {
     @State private var micLock = MicLockService.shared
     @State private var meter = MicInputLevelMonitor()
     @State private var awake = AwakeService.shared
-    @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var opensAtLogin = false
     @State private var refreshRotation = 0.0
     @State private var audioRevive = AudioReviveService()
 
@@ -122,19 +127,6 @@ struct MacTweaksWindowView: View {
             }
         }
     }
-    private var modifiedEntries: [MacTweaksModifiedEntry] {
-        _ = preferenceRevision
-        return MacTweaksCategory.all.flatMap { category in
-            category.itemIDs.flatMap { id -> [MacTweaksModifiedEntry] in
-                let item = item(for: id)
-                return TweakPreferences.fields(for: id).compactMap { field in
-                    TweakPreferenceStore.shared.isModified(field)
-                        ? .init(category: category, item: item, field: field) : nil
-                }
-            }
-        }
-    }
-
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             OnePlusWindowRoot(canvas: .macTweaks) { sidebar } content: { workspace }
@@ -147,10 +139,10 @@ struct MacTweaksWindowView: View {
         .background(WindowAccessor(identifier: "mac-tweaks"))
         .buttonStyle(OnePlusButtonStyle())
         .transaction { if reduceMotion { $0.disablesAnimations = true } }
-        .onAppear {
+        .task {
+            await Task.yield()
             micLock.setWindowOpen(true)
             opensAtLogin = SMAppService.mainApp.status == .enabled
-            syncInputMonitoring()
         }
         .onDisappear {
             noticeTask?.cancel()
@@ -158,19 +150,21 @@ struct MacTweaksWindowView: View {
             meter.stop()
             micLock.setWindowOpen(false)
         }
-        .onChange(of: selectedPage) { _, _ in syncInputMonitoring() }
-        .onChange(of: micLock.currentUID) { _, _ in syncInputMonitoring() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             opensAtLogin = SMAppService.mainApp.status == .enabled
+            preferenceRevision &+= 1
             if selectedPage == "input" { meter.refreshPermission() }
         }
-        .task(id: selectedPage) {
+        .task(id: inputMonitoringID) {
+            await Task.yield()
+            syncInputMonitoring()
             guard selectedPage == "input", !isSearching else { return }
             while !Task.isCancelled {
                 micLock.refreshControls()
                 do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             }
         }
+        .task(id: preferenceRevision) { await reloadPreferenceState() }
         .onExitCommand { if !search.isEmpty { search = "" } }
         .onOpenToolPage("mac-tweaks") { pageID in
             let pageIDs = Set(MacTweaksCategory.all.map(\.id) + ["modified", "about"])
@@ -241,7 +235,7 @@ struct MacTweaksWindowView: View {
     }
 
     private var workspace: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: isSearching || selectedPage != "modified") {
             OnePlusPageHeader(title: pageTitle) {
                 if !isSearching && selectedPage == "modified" {
                     Button("Reset all", systemImage: "arrow.counterclockwise") {
@@ -487,24 +481,29 @@ struct MacTweaksWindowView: View {
                         Color.clear.frame(width: 28)
                     }
                     .onePlusTableHeader()
-                    ForEach(MacTweaksCategory.all) { category in
-                        let entries = modifiedEntries.filter { $0.category.id == category.id }
-                        if !entries.isEmpty {
-                            Rectangle().fill(MacTweaksPalette.line).frame(height: 1)
-                            Button { navigate(to: category.id) } label: {
-                                HStack(spacing: 8) {
-                                    MacTweaksGlyph(name: category.glyph).frame(width: 13, height: 13)
-                                    Text(category.title).onePlusText(.cardTitle)
-                                    Image(systemName: "chevron.right").onePlusText(.caption)
-                                    Spacer()
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(MacTweaksCategory.all) { category in
+                                let entries = modifiedEntries.filter { $0.category.id == category.id }
+                                if !entries.isEmpty {
+                                    Rectangle().fill(MacTweaksPalette.line).frame(height: 1)
+                                    Button { navigate(to: category.id) } label: {
+                                        HStack(spacing: 8) {
+                                            MacTweaksGlyph(name: category.glyph).frame(width: 13, height: 13)
+                                            Text(category.title).onePlusText(.cardTitle)
+                                            Image(systemName: "chevron.right").onePlusText(.caption)
+                                            Spacer()
+                                        }
+                                        .foregroundStyle(MacTweaksPalette.secondary)
+                                        .padding(.horizontal, OnePlusMetrics.cardPadding)
+                                        .frame(height: OnePlusMetrics.navRowHeight)
+                                    }.buttonStyle(OnePlusInteractionStyle())
+                                    ForEach(entries) { entry in modifiedRow(entry) }
                                 }
-                                .foregroundStyle(MacTweaksPalette.secondary)
-                                .padding(.horizontal, OnePlusMetrics.cardPadding)
-                                .frame(height: OnePlusMetrics.navRowHeight)
-                            }.buttonStyle(OnePlusInteractionStyle())
-                            ForEach(entries) { entry in modifiedRow(entry) }
+                            }
                         }
                     }
+                    .onePlusScrollIndicators()
                 }
             }
         }
@@ -514,9 +513,9 @@ struct MacTweaksWindowView: View {
         HStack(spacing: 8) {
             Text(entry.field.label).onePlusText(.row)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(MacTweaksPreferenceValue.label(for: TweakPreferenceStore.shared.selectedChoice(for: entry.field), field: entry.field))
+            Text(MacTweaksPreferenceValue.label(for: entry.currentSelection, field: entry.field))
                 .frame(width: 170, alignment: .leading)
-            Text(MacTweaksPreferenceValue.label(for: TweakPreferenceStore.shared.originalChoice(for: entry.field) ?? -2, field: entry.field))
+            Text(MacTweaksPreferenceValue.label(for: entry.originalSelection, field: entry.field))
                 .frame(width: 170, alignment: .leading)
             Button {
                 do {
@@ -614,6 +613,8 @@ struct MacTweaksWindowView: View {
             fields: TweakPreferences.fields(for: item.id),
             summary: item.summary,
             revision: preferenceRevision,
+            selections: preferenceSelections,
+            modifiedIdentities: modifiedIdentities,
             onChanged: preferenceChanged,
             onError: showError
         )
@@ -627,7 +628,8 @@ struct MacTweaksWindowView: View {
     private func shouldShow(_ item: TweakItem) -> Bool {
         if item.id == "mic-lock" || item.id == "helper.keep-awake" { return true }
         let fields = TweakPreferences.fields(for: item.id)
-        return TweakPreferences.supportsWrites(for: item.id) || TweakPreferenceStore.shared.hasBackup(for: fields)
+        return TweakPreferences.supportsWrites(for: item.id)
+            || fields.contains { modifiedIdentities.contains($0.identity) }
     }
 
     private func category(for item: TweakItem) -> MacTweaksCategory {
@@ -659,6 +661,35 @@ struct MacTweaksWindowView: View {
         showNotice(activationNotice(for: itemID))
     }
 
+    private func reloadPreferenceState() async {
+        let candidates = MacTweaksCategory.all.flatMap { category in
+            category.itemIDs.flatMap { id in
+                let item = item(for: id)
+                return TweakPreferences.fields(for: id).map { (category, item, $0) }
+            }
+        }
+        let fields = candidates.map(\.2)
+        let originals = TweakPreferenceStore.shared.storedOriginalChoices(for: fields)
+        let selections = await Task.detached(priority: .utility) {
+            Dictionary(uniqueKeysWithValues: fields.map {
+                ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0))
+            })
+        }.value
+        guard !Task.isCancelled else { return }
+        preferenceSelections = selections
+        modifiedIdentities = Set(originals.keys)
+        modifiedEntries = candidates.compactMap { category, item, field in
+            guard let original = originals[field.identity] else { return nil }
+            return MacTweaksModifiedEntry(
+                category: category,
+                item: item,
+                field: field,
+                currentSelection: selections[field.identity] ?? -1,
+                originalSelection: original
+            )
+        }
+    }
+
     private func activationNotice(for itemID: String) -> MacTweaksNotice {
         if itemID.hasPrefix("dock.") {
             return .init(message: "Saved. Restart Dock when you are ready.", actionTitle: "Restart Dock", targetBundleIdentifier: "com.apple.dock", targetName: "Dock")
@@ -683,9 +714,9 @@ struct MacTweaksWindowView: View {
         if !reduceMotion {
             withAnimation(.linear(duration: 0.45)) { refreshRotation += 360 }
         }
-        micLock.refresh()
-        let count = micLock.devices.count
-        showNotice(.init(message: count == 1 ? "1 input device refreshed." : "\(count) input devices refreshed."))
+        micLock.refresh { count in
+            showNotice(.init(message: count == 1 ? "1 input device refreshed." : "\(count) input devices refreshed."))
+        }
     }
 
     private func showNotice(_ newNotice: MacTweaksNotice) {
@@ -747,6 +778,10 @@ struct MacTweaksWindowView: View {
 
     private var currentMicrophoneName: String {
         micLock.devices.first(where: { $0.id == micLock.currentUID })?.name ?? "No input available"
+    }
+
+    private var inputMonitoringID: String {
+        "\(selectedPage)|\(isSearching)|\(micLock.currentUID ?? "")"
     }
 
     private func microphoneMenu(index: Int) -> some View {

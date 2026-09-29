@@ -2,7 +2,7 @@ import AppKit
 import CoreAudio
 import Foundation
 
-struct MicInputDevice: Identifiable, Equatable {
+nonisolated struct MicInputDevice: Identifiable, Equatable, Sendable {
     let id: String
     let name: String
     let audioID: AudioDeviceID
@@ -106,14 +106,26 @@ final class MicLockService {
         refresh()
     }
 
-    func refresh() {
-        devices = Self.availableInputs()
-        let activeID = Self.read(systemID, selector: kAudioHardwarePropertyDefaultInputDevice) as AudioDeviceID?
-        currentUID = devices.first(where: { $0.audioID == activeID })?.id
-        if isEnabled && SettingsManager.shared.isToolEnabled("mac-tweaks") {
-            enforceSelection()
+    func refresh(onComplete: ((Int) -> Void)? = nil) {
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            let snapshot = await Task.detached(priority: .utility) {
+                let devices = Self.availableInputs()
+                let activeID = Self.read(
+                    AudioObjectID(kAudioObjectSystemObject),
+                    selector: kAudioHardwarePropertyDefaultInputDevice
+                ) as AudioDeviceID?
+                return (devices, activeID)
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            devices = snapshot.0
+            currentUID = devices.first(where: { $0.audioID == snapshot.1 })?.id
+            if isEnabled && SettingsManager.shared.isToolEnabled("mac-tweaks") {
+                enforceSelection()
+            }
+            refreshControls()
+            onComplete?(devices.count)
         }
-        refreshControls()
     }
 
     func refreshControls() {
@@ -185,7 +197,7 @@ final class MicLockService {
             ?? devices.first(where: { !$0.isWireless })
     }
 
-    private static func availableInputs() -> [MicInputDevice] {
+    nonisolated private static func availableInputs() -> [MicInputDevice] {
         var deviceListAddress = address(kAudioHardwarePropertyDevices)
         var byteCount: UInt32 = 0
         guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &deviceListAddress, 0, nil, &byteCount) == noErr else { return [] }
@@ -218,7 +230,7 @@ final class MicLockService {
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
-    private static func address(
+    nonisolated private static func address(
         _ selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
         element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain
@@ -226,7 +238,7 @@ final class MicLockService {
         AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: element)
     }
 
-    private static func read<T: ExpressibleByIntegerLiteral>(
+    nonisolated private static func read<T: ExpressibleByIntegerLiteral>(
         _ id: AudioObjectID, selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
         element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain
@@ -242,7 +254,7 @@ final class MicLockService {
         return value
     }
 
-    private static func string(_ id: AudioObjectID, selector: AudioObjectPropertySelector) -> String? {
+    nonisolated private static func string(_ id: AudioObjectID, selector: AudioObjectPropertySelector) -> String? {
         var address = address(selector)
         var value: Unmanaged<CFString>?
         var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
