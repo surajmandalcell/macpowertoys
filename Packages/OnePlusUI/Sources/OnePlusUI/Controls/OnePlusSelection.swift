@@ -115,19 +115,24 @@ public struct OnePlusSegments<Value: Hashable>: View {
 public struct OnePlusMenuLabel: View {
     let title: String
     let width: CGFloat
+    let expanded: Bool
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isFocused) private var focused
     @Environment(\.isEnabled) private var enabled
     @State private var hover = false
-    public init(title: String, width: CGFloat) { self.title = title; self.width = width }
+    public init(title: String, width: CGFloat, expanded: Bool = false) {
+        self.title = title
+        self.width = width
+        self.expanded = expanded
+    }
     public var body: some View {
         HStack(spacing: 8) {
             Text(title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.down").font(.system(size: 10)).accessibilityHidden(true)
         }
         .onePlusText(.control).padding(.horizontal, 10).frame(width: width, height: controlHeight ?? density.controlHeight)
-        .background(enabled && (focused || hover) ? OnePlusColor.raisedHover : OnePlusColor.raised,
+        .background(enabled && (focused || hover || expanded) ? OnePlusColor.raisedHover : OnePlusColor.raised,
                     in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity).onHover { hover = $0 }
@@ -140,6 +145,10 @@ public struct OnePlusSelect<Value: Hashable>: View {
     @Binding private var selection: Value
     private let width: CGFloat
     private let label: String
+    @Environment(\.onePlusDensity) private var density
+    @FocusState private var focused: Bool
+    @State private var expanded = false
+    @State private var anchor = OnePlusPopupAnchorReference()
     public init(choices: [(Value, String)], selection: Binding<Value>, width: CGFloat = 160, accessibilityLabel: String) {
         self.choices = choices
         _selection = selection
@@ -147,19 +156,44 @@ public struct OnePlusSelect<Value: Hashable>: View {
         label = accessibilityLabel
     }
     public var body: some View {
-        Menu {
-            Picker(label, selection: $selection) {
-                ForEach(choices.indices, id: \.self) { index in Text(choices[index].1).tag(choices[index].0) }
-            }
-            if choices.isEmpty { Text("No options") }
+        Button {
+            toggle()
         } label: {
-            OnePlusMenuLabel(title: choices.first { $0.0 == selection }?.1 ?? "Select", width: width)
+            OnePlusMenuLabel(title: choices.first { $0.0 == selection }?.1 ?? "Select",
+                             width: width, expanded: expanded)
         }
-        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-        .onePlusNeutralControls()
+        .buttonStyle(.plain)
+        .fixedSize()
+        .focused($focused)
         .focusEffectDisabled()
+        .background { OnePlusPopupAnchor(reference: anchor) }
+        .onMoveCommand { direction in
+            if direction == .down, !expanded { toggle() }
+        }
         .accessibilityLabel(label)
         .accessibilityValue(choices.first { $0.0 == selection }?.1 ?? "No selection")
+        .accessibilityHint(expanded ? "Menu open" : "Opens menu")
+    }
+
+    private func toggle() {
+        let entries = popupEntries
+        OnePlusPopupPresenter.shared.toggle(anchor: anchor.view, entries: entries, density: density,
+                                            initialID: entries.first { $0.item?.isSelected == true }?.id) { reason in
+            expanded = false
+            if reason == .escape { focused = true }
+        }
+        expanded = OnePlusPopupPresenter.shared.isOpen(for: anchor.view)
+    }
+
+    private var popupEntries: [OnePlusPopupMenuEntry] {
+        guard !choices.isEmpty else {
+            return [.item(OnePlusPopupMenuItem("No options", isEnabled: false) {})]
+        }
+        return choices.map { choice in
+            .item(OnePlusPopupMenuItem(choice.1, isSelected: choice.0 == selection) {
+                selection = choice.0
+            })
+        }
     }
 }
 
