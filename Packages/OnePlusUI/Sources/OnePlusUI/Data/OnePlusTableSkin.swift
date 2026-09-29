@@ -30,7 +30,7 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
                 self.pending = nil
-                guard self.window != nil else { return }
+                guard self.window != nil, !self.bounds.isEmpty else { return }
                 if self.table == nil {
                     var ancestor = self.superview
                     while let view = ancestor, self.table == nil {
@@ -44,7 +44,11 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             DispatchQueue.main.async(execute: work)
         }
         private func findTable(in view: NSView) -> NSTableView? {
-            if let table = view as? NSTableView { return table }
+            if let table = view as? NSTableView {
+                let container = table.enclosingScrollView ?? table
+                let point = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
+                if container.convert(container.bounds, to: nil).contains(point) { return table }
+            }
             return view.subviews.lazy.compactMap { self.findTable(in: $0) }.first
         }
         private static func apply(to table: NSTableView, density: OnePlusDensity) {
