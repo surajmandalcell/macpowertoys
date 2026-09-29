@@ -39,7 +39,7 @@ struct SwitchSettingsContent: View {
                 }
             }
             OnePlusCard {
-                OnePlusCardHeader("Data locations", systemImage: "folder")
+                OnePlusCardHeader("Data locations")
                 dataLocationRow("Codex home", url: paths.defaultHome)
                 dataLocationRow("Codex account vault", url: paths.credentialStore)
                 dataLocationRow("Grok Build home", url: paths.grokHome)

@@ -239,7 +239,7 @@ struct SwitchWindowView: View {
             }
         } else {
             OnePlusPageHeader(title: page.rawValue, subtitle: page.subtitle) {
-                if page != .about {
+                if page == .backup {
                     Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.refresh() } }
                         .disabled(model.isWorking)
                 }
@@ -294,7 +294,7 @@ struct SwitchWindowView: View {
 
     @ViewBuilder private func accountActions(_ account: AccountRecord) -> some View {
         let isDefault = model.snapshot?.status.isDefault(account) == true
-        Button(isDefault ? "Using as default" : "Use as default", systemImage: "checkmark") {
+        Button(isDefault ? "Using as default" : "Use as default") {
             Task { await model.makeDefault(account.id) }
         }.buttonStyle(OnePlusButtonStyle(isDefault ? .neutral : .primary)).disabled(isDefault || model.isWorking)
         if account.identity.providerID == .codex {
@@ -510,7 +510,7 @@ struct SwitchWindowView: View {
     private var backupContent: some View {
         Group {
             OnePlusCard {
-                OnePlusCardHeader("Pending operations", systemImage: "archivebox")
+                OnePlusCardHeader("Pending operations")
                 if model.pendingRecovery.isEmpty {
                     OnePlusEmptyState("No interrupted operations", systemImage: "checkmark.circle",
                                       caption: "Recovery actions appear here when an account change needs attention.") {
@@ -527,7 +527,7 @@ struct SwitchWindowView: View {
             }
             if !model.linkedSettingsIssues.isEmpty {
                 OnePlusCard {
-                    OnePlusCardHeader("Linked settings", systemImage: "link")
+                    OnePlusCardHeader("Linked settings")
                     ForEach(model.linkedSettingsIssues) { issue in
                         OnePlusPathSettingRow("Linked setting", path: issue.localPath.path) {
                             Button("Review repair") { linkedIssueToRepair = issue }
@@ -568,7 +568,7 @@ struct SwitchWindowView: View {
                 Text("Keep CLI accounts together and switch identities.").onePlusText(.sectionTitle)
                 Text("Switch manages sign-in, imports, defaults, usage, and recovery through the shared Switch Core package. The standalone Switch app is optional.")
                     .onePlusText(.row).textSelection(.enabled)
-                OnePlusKeyValueRow("MacPowerToys", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+                OnePlusKeyValueRow("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
                 Text("Conversation browsing and cleanup are available in standalone Switch.").onePlusText(.caption)
             }.padding(OnePlusMetrics.cardPadding)
         }
