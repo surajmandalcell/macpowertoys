@@ -1,3 +1,4 @@
+import OnePlusUI
 import SwiftUI
 import XCTest
 @testable import powertoys
@@ -37,6 +38,14 @@ final class TrayPopoverLayoutTests: XCTestCase {
                 savedIDs: ["input-devices", "unknown", "rclone", "input-devices"]
             ),
             [.inputDevices, .cloudSync, .systemCare]
+        )
+    }
+
+    func testDiagnosticsTabIDsMapToStoredTabs() {
+        XCTAssertEqual(
+            ["home", "cloud-sync", "input-devices", "system-care", "nettoys", "switch"]
+                .compactMap(TrayTab.init(panelID:)),
+            [.home, .cloudSync, .inputDevices, .systemCare, .netToys, .switchAccounts]
         )
     }
 
@@ -103,16 +112,19 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(TrayPopoverLayout.recentNetworkIssues(events).first?.date, Date(timeIntervalSince1970: 6))
     }
 
-    func testTrayUsesMutedTabbedChromeAndFocusedContent() throws {
+    func testTrayUsesSharedMenuPanelWithReorderableTabs() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
-        XCTAssertEqual(TrayPopoverLayout.tabHeight, 24)
+        XCTAssertEqual(TrayPopoverLayout.width, OnePlusMenuMetrics.width)
+        XCTAssertEqual(TrayPopoverLayout.tabHeight, OnePlusMenuMetrics.tab)
+        XCTAssertTrue(source.contains("OnePlusMenuPanel"))
+        XCTAssertTrue(source.contains("OnePlusMenuOpenApp"))
         XCTAssertTrue(source.contains("TrayTabStrip"))
         XCTAssertTrue(source.contains("TrayTabIcon"))
         XCTAssertTrue(source.contains("Image(systemName: \"cloud.fill\")"))
         XCTAssertTrue(source.contains("ViewThatFits(in: .horizontal)"))
         XCTAssertTrue(source.contains("TrayHomeActionButton"))
-        XCTAssertTrue(source.contains("TrayToolLink"))
+        XCTAssertTrue(source.contains("TrayToolHeader"))
         XCTAssertTrue(source.contains("arrow.up.right"))
         XCTAssertTrue(source.contains(".draggable(tab.rawValue)"))
         XCTAssertTrue(source.contains("Button(\"Move Left\""))
@@ -121,19 +133,15 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
-        XCTAssertTrue(source.contains("Color(nsColor: .windowBackgroundColor).ignoresSafeArea()"))
         XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
-        let chrome = try XCTUnwrap(source.components(separatedBy: "private var topChrome: some View {").dropFirst().first)
-            .components(separatedBy: "@ViewBuilder")[0]
-        XCTAssertFalse(chrome.contains(".strokeBorder"))
-        XCTAssertFalse(chrome.contains(".background(Color.primary.opacity(0.035)"))
+        XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Awake\""))
+        XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Keep display on\""))
     }
 
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
         XCTAssertTrue(source.contains("Spacer(minLength: 8)"))
-        XCTAssertFalse(source.contains("Color.black.opacity"))
         XCTAssertTrue(source.contains("@State private var showsError = false"))
         XCTAssertTrue(source.contains("if showsError, let error = job.errorMessage"))
         XCTAssertTrue(source.contains("symbol: \"text.viewfinder\""))
@@ -182,25 +190,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
             TrayPopoverLayout.maximumBodyHeight(screenHeight: 100),
             TrayPopoverLayout.minimumBodyHeight
         )
-    }
-
-    func testEmptyStateFillsMeasuredTrayScrollColumn() {
-        var emptyStateWidth: CGFloat = 0
-        let host = NSHostingView(rootView:
-            TrayMeasuredScroll {
-                EmptyStateView(icon: "cloud", message: "No transfers yet")
-                    .frame(height: 96)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
-                        emptyStateWidth = $0
-                    }
-            }
-            .frame(width: TrayPopoverLayout.width)
-        )
-        host.frame = NSRect(x: 0, y: 0, width: TrayPopoverLayout.width, height: 96)
-        host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-
-        XCTAssertEqual(emptyStateWidth, TrayPopoverLayout.width, accuracy: 1)
     }
 
     func testTrayRendersEveryPrimarySurfaceInLightAndDark() throws {

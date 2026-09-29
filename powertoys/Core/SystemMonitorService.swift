@@ -634,28 +634,28 @@ nonisolated enum SystemMonitorMenuRenderer {
     private static func value(item: SystemMonitorMenuItemConfiguration, sample: SystemMonitorSample?) -> String {
         if sample?.unavailableMetrics.contains(item.metric) == true { return "Unavailable" }
         switch item.metric {
-        case .cpu: return sample?.cpuUsage.map(percent) ?? "..."
+        case .cpu: return sample?.cpuUsage.map(percent) ?? "—"
         case .memory:
             switch item.memoryUnit {
-            case .percentage: return sample?.memoryUsage.map(percent) ?? "..."
-            case .used: return sample?.memoryUsed.map(bytes) ?? "..."
+            case .percentage: return sample?.memoryUsage.map(percent) ?? "—"
+            case .used: return sample?.memoryUsed.map(bytes) ?? "—"
             case .available:
-                guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "..." }
+                guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "—" }
                 return bytes(max(total - used, 0))
             }
         case .gpu: return sample?.gpuUsage.map(percent) ?? "Unavailable"
         case .disk:
             switch item.diskUnit {
-            case .percentage: return sample?.diskUsage.map(percent) ?? "..."
-            case .used: return sample?.diskUsed.map(bytes) ?? "..."
+            case .percentage: return sample?.diskUsage.map(percent) ?? "—"
+            case .used: return sample?.diskUsed.map(bytes) ?? "—"
             case .available:
-                guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "..." }
+                guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "—" }
                 return bytes(max(total - used, 0))
             }
         case .network:
             let formatter = item.networkUnit == .bytes ? SystemMonitorDisplayFormat.byteRate : bitRate
-            let down = sample?.networkDownload.map(formatter) ?? "..."
-            let up = sample?.networkUpload.map(formatter) ?? "..."
+            let down = sample?.networkDownload.map(formatter) ?? "—"
+            let up = sample?.networkUpload.map(formatter) ?? "—"
             switch item.networkDirection {
             case .both: return "↓\(down) ↑\(up)"
             case .download: return "↓\(down)"
@@ -672,7 +672,7 @@ nonisolated enum SystemMonitorMenuRenderer {
                 return "\(percentage) · \(status)"
             }
         case .thermal:
-            guard let state = sample?.thermalState else { return "..." }
+            guard let state = sample?.thermalState else { return "—" }
             guard item.thermalDisplay == .compact else { return state }
             switch state {
             case "Nominal": return "OK"
@@ -1409,7 +1409,7 @@ final class SystemMonitorMenuController: NSObject {
         guard settings.enabled else { return }
         for item in settings.enabledItems where dueMetrics.contains(item.metric) {
             let value = SystemMonitorMenuRenderer.render(item: item, sample: sample).value
-            if !value.contains("...") || latestValues[item.metric] == nil {
+            if !value.contains("—") || latestValues[item.metric] == nil {
                 latestValues[item.metric] = value
             }
         }
@@ -1435,7 +1435,7 @@ final class SystemMonitorMenuController: NSObject {
     private func renderedItem(_ item: SystemMonitorMenuItemConfiguration) -> SystemMonitorRenderedItem {
         SystemMonitorRenderedItem(metric: item.metric, style: item.style,
                                   symbol: item.metric.symbols.contains(item.symbol) ? item.symbol : item.metric.symbol,
-                                  value: latestValues[item.metric] ?? "...")
+                                  value: latestValues[item.metric] ?? "—")
     }
 
     private func apply(_ state: SystemMonitorRenderedItem, to button: NSStatusBarButton) {
@@ -1503,8 +1503,9 @@ final class SystemMonitorMenuController: NSObject {
         })
         popover.contentSize = NSSize(
             width: TaskManagerMenuLayout.width,
-            height: TaskManagerMenuLayout.initialHomeHeight(
-                profileCount: SystemMonitorRemoteProfiles.load(defaults: defaults).count
+            height: TaskManagerMenuLayout.initialHeight(
+                profileCount: SystemMonitorRemoteProfiles.load(defaults: defaults).count,
+                defaults: defaults
             )
         )
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
