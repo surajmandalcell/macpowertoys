@@ -53,6 +53,8 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         table.usesAlternatingRowBackgroundColors = false
         table.style = .plain; table.rowHeight = OnePlusTable.rowHeight(density)
         table.intercellSpacing = .zero
+        table.gridStyleMask = .solidHorizontalGridLineMask
+        table.gridColor = NSColor(OnePlusColor.lineSoft)
         table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
         for (index, item) in columns.enumerated() {
