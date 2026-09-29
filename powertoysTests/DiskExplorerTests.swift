@@ -96,19 +96,34 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertEqual(final.root.allocatedBytes, try duBytes(root))
     }
 
-    func testScannerStopsAtEntryLimit() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-        for index in 0..<8 {
-            try Data("item".utf8).write(to: root.appendingPathComponent("item-\(index)"))
-        }
-        let session = DiskScanSession(maximumEntries: 3)
+    func testDirectoryFoldingKeeps64LargestFilesAndOneExactAggregate() throws {
+        let fixture = syntheticFoldedDirectory(fileCount: 10_000)
+        let files = fixture.directory.children.filter { $0.kind == .file }
+        let aggregate = try XCTUnwrap(fixture.directory.children.first { $0.kind == .aggregate })
 
-        XCTAssertThrowsError(try DiskExplorerScanner.scan(root, session: session)) { error in
-            XCTAssertEqual(error as? DiskExplorerScanError, .entryLimitExceeded(3))
-        }
-        XCTAssertEqual(session.entryCount, 3)
+        XCTAssertEqual(files.count, 64)
+        XCTAssertEqual(files.map(\.allocatedBytes).min(), 9_937)
+        XCTAssertEqual(files.map(\.allocatedBytes).max(), 10_000)
+        XCTAssertEqual(aggregate.name, "9936 smaller files")
+        XCTAssertEqual(aggregate.fileCount, 9_936)
+        XCTAssertEqual(aggregate.allocatedBytes, (1...9_936).reduce(Int64(0)) { $0 + Int64($1) })
+        XCTAssertEqual(aggregate.apparentBytes, aggregate.allocatedBytes * 3)
+        XCTAssertEqual(aggregate.modifiedAt, Date(timeIntervalSince1970: 20_000))
+        XCTAssertFalse(DiskRemoval.isAllowed(aggregate, under: fixture.directory.url))
+        XCTAssertEqual(fixture.largestFiles.count, 100)
+        XCTAssertEqual(fixture.largestFiles.first?.allocatedBytes, 10_000)
+        XCTAssertEqual(fixture.largestFiles.last?.allocatedBytes, 9_901)
+        XCTAssertFalse(files.contains { $0.allocatedBytes == 9_901 })
+    }
+
+    func testFoldedDirectoryTotalsEqualUnfoldedTotals() {
+        let fixture = syntheticFoldedDirectory(fileCount: 10_000)
+
+        XCTAssertEqual(fixture.directory.allocatedBytes, fixture.allocatedBytes)
+        XCTAssertEqual(fixture.directory.apparentBytes, fixture.apparentBytes)
+        XCTAssertEqual(fixture.directory.fileCount, 10_000)
+        XCTAssertEqual(fixture.directory.directoryCount, 1)
+        XCTAssertEqual(fixture.directory.modifiedAt, Date(timeIntervalSince1970: 20_000))
     }
 
     func testScannerMatchesDuAndDoesNotFollowLinks() throws {
@@ -176,6 +191,37 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertEqual(process.terminationStatus, 0)
         let text = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         return try XCTUnwrap(Int64(text.split(whereSeparator: \.isWhitespace).first ?? "")) * 512
+    }
+
+    private func syntheticFoldedDirectory(fileCount: Int) ->
+        (directory: DiskEntry, allocatedBytes: Int64, apparentBytes: Int64,
+         largestFiles: [DiskEntry]) {
+        let url = URL(fileURLWithPath: "/tmp/diskman-folding")
+        let directory = DiskEntry(url: url, kind: .directory, allocatedBytes: 0,
+                                  apparentBytes: 0, fileCount: 0, directoryCount: 1,
+                                  modifiedAt: .distantPast, device: 1, inode: 1)
+        var accumulator = DiskDirectoryAccumulator(parent: directory)
+        var allocatedBytes: Int64 = 0
+        var apparentBytes: Int64 = 0
+        for index in 0..<fileCount {
+            let allocated = Int64(index + 1)
+            let apparent = allocated * 3
+            allocatedBytes += allocated
+            apparentBytes += apparent
+            accumulator.add(DiskEntry(
+                url: url.appendingPathComponent("item-\(index)"),
+                kind: .file,
+                allocatedBytes: allocated,
+                apparentBytes: apparent,
+                fileCount: 1,
+                directoryCount: 0,
+                modifiedAt: Date(timeIntervalSince1970: TimeInterval(20_000 - index)),
+                device: 1,
+                inode: UInt64(index + 2)
+            ))
+        }
+        directory.replaceChildren(accumulator.children)
+        return (directory, allocatedBytes, apparentBytes, accumulator.largestCandidates)
     }
 }
 

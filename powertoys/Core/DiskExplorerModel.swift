@@ -31,6 +31,7 @@ nonisolated struct DiskVolume: Identifiable, Sendable {
 
 nonisolated enum DiskRemoval {
     static func isAllowed(_ entry: DiskEntry, under root: URL) -> Bool {
+        guard entry.kind != .aggregate else { return false }
         let path = entry.url.standardizedFileURL.path
         let rootPath = root.standardizedFileURL.path
         guard path != rootPath, path.hasPrefix(rootPath == "/" ? "/" : rootPath + "/") else {
@@ -208,6 +209,7 @@ final class DiskExplorerModel {
 
     func toggleMark(_ entry: DiskEntry) {
         guard let result, result.isComplete,
+              entry.kind != .aggregate,
               DiskRemoval.isAllowed(entry, under: result.root.url) else { return }
         if marks.removeValue(forKey: entry.id) != nil { return }
         guard !marks.keys.contains(where: { entry.id.hasPrefix($0 + "/") }) else { return }

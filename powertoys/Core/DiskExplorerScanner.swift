@@ -6,39 +6,177 @@ nonisolated enum DiskEntryKind: Sendable {
     case file
     case symbolicLink
     case other
+    case aggregate
 }
 
 nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
-    let url: URL
     let kind: DiskEntryKind
-    let allocatedBytes: Int64
-    let apparentBytes: Int64
-    let fileCount: Int
-    let directoryCount: Int
-    let modifiedAt: Date
-    let device: UInt64
-    let inode: UInt64
-    let children: [DiskEntry]
+    private let storedName: String
+    private weak var parent: DiskEntry?
+    private let rootURL: URL?
+    private let ownAllocatedBytes: Int64
+    private let ownApparentBytes: Int64
+    private let ownFileCount: UInt64
+    private let ownDirectoryCount: UInt64
+    private let ownModifiedSeconds: Int64
+    private var totalAllocatedBytes: Int64
+    private var totalApparentBytes: Int64
+    private var totalFileCount: UInt64
+    private var totalDirectoryCount: UInt64
+    private var newestModifiedSeconds: Int64
+    private let deviceID: UInt32
+    private let inodeID: UInt64
+    private var childStorage: [DiskEntry]
 
-    var id: String { url.path }
-    var name: String { url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent }
+    var url: URL {
+        if let parent { return parent.url.appendingPathComponent(storedName) }
+        return rootURL ?? URL(fileURLWithPath: storedName)
+    }
+
+    var id: String {
+        guard kind == .aggregate else { return url.path }
+        return parent.map { $0.id + "\0aggregate" } ?? "\0aggregate"
+    }
+
+    var name: String { storedName }
+    var allocatedBytes: Int64 { totalAllocatedBytes }
+    var apparentBytes: Int64 { totalApparentBytes }
+    var fileCount: Int { Int(totalFileCount) }
+    var directoryCount: Int { Int(totalDirectoryCount) }
+    var modifiedAt: Date { Date(timeIntervalSince1970: TimeInterval(newestModifiedSeconds)) }
+    var device: UInt64 { UInt64(deviceID) }
+    var inode: UInt64 { inodeID }
+    var children: [DiskEntry] { childStorage }
 
     init(url: URL, kind: DiskEntryKind, allocatedBytes: Int64, apparentBytes: Int64,
          fileCount: Int, directoryCount: Int, modifiedAt: Date, device: UInt64,
          inode: UInt64, children: [DiskEntry] = []) {
-        self.url = url
+        let standardized = url.standardizedFileURL
+        let component = standardized.lastPathComponent
+        storedName = component.isEmpty ? standardized.path : component
+        parent = nil
+        rootURL = standardized
         self.kind = kind
-        self.allocatedBytes = allocatedBytes
-        self.apparentBytes = apparentBytes
-        self.fileCount = fileCount
-        self.directoryCount = directoryCount
-        self.modifiedAt = modifiedAt
-        self.device = device
-        self.inode = inode
-        self.children = children
+        ownAllocatedBytes = allocatedBytes
+        ownApparentBytes = apparentBytes
+        ownFileCount = UInt64(fileCount)
+        ownDirectoryCount = UInt64(directoryCount)
+        ownModifiedSeconds = Self.seconds(modifiedAt)
+        totalAllocatedBytes = allocatedBytes
+        totalApparentBytes = apparentBytes
+        totalFileCount = UInt64(fileCount)
+        totalDirectoryCount = UInt64(directoryCount)
+        newestModifiedSeconds = Self.seconds(modifiedAt)
+        deviceID = UInt32(truncatingIfNeeded: device)
+        inodeID = inode
+        childStorage = children
+        children.forEach { $0.parent = self }
+    }
+
+    fileprivate init(name: String, kind: DiskEntryKind, parent: DiskEntry?, rootURL: URL? = nil,
+                     allocatedBytes: Int64, apparentBytes: Int64, fileCount: UInt64,
+                     directoryCount: UInt64, modifiedSeconds: Int64, device: UInt64,
+                     inode: UInt64, children: [DiskEntry] = []) {
+        storedName = name
+        self.parent = parent
+        self.rootURL = rootURL
+        self.kind = kind
+        ownAllocatedBytes = allocatedBytes
+        ownApparentBytes = apparentBytes
+        ownFileCount = fileCount
+        ownDirectoryCount = directoryCount
+        ownModifiedSeconds = modifiedSeconds
+        totalAllocatedBytes = allocatedBytes
+        totalApparentBytes = apparentBytes
+        totalFileCount = fileCount
+        totalDirectoryCount = directoryCount
+        newestModifiedSeconds = modifiedSeconds
+        deviceID = UInt32(truncatingIfNeeded: device)
+        inodeID = inode
+        childStorage = children
+        children.forEach { $0.parent = self }
+    }
+
+    fileprivate init(copying entry: DiskEntry, parent: DiskEntry?) {
+        storedName = entry.storedName
+        self.parent = parent
+        rootURL = entry.rootURL
+        kind = entry.kind
+        ownAllocatedBytes = entry.ownAllocatedBytes
+        ownApparentBytes = entry.ownApparentBytes
+        ownFileCount = entry.ownFileCount
+        ownDirectoryCount = entry.ownDirectoryCount
+        ownModifiedSeconds = entry.ownModifiedSeconds
+        totalAllocatedBytes = entry.totalAllocatedBytes
+        totalApparentBytes = entry.totalApparentBytes
+        totalFileCount = entry.totalFileCount
+        totalDirectoryCount = entry.totalDirectoryCount
+        newestModifiedSeconds = entry.newestModifiedSeconds
+        deviceID = entry.deviceID
+        inodeID = entry.inodeID
+        childStorage = []
     }
 
     func bytes(apparent: Bool) -> Int64 { apparent ? apparentBytes : allocatedBytes }
+
+    func replaceChildren(_ children: [DiskEntry]) {
+        let oldAllocated = totalAllocatedBytes
+        let oldApparent = totalApparentBytes
+        let oldFiles = totalFileCount
+        let oldDirectories = totalDirectoryCount
+        childStorage = children.sorted { left, right in
+            left.allocatedBytes == right.allocatedBytes ? left.name < right.name :
+                left.allocatedBytes > right.allocatedBytes
+        }
+        childStorage.forEach { $0.parent = self }
+        totalAllocatedBytes = ownAllocatedBytes + childStorage.reduce(0) { $0 + $1.totalAllocatedBytes }
+        totalApparentBytes = ownApparentBytes + childStorage.reduce(0) { $0 + $1.totalApparentBytes }
+        totalFileCount = ownFileCount + childStorage.reduce(0) { $0 + $1.totalFileCount }
+        totalDirectoryCount = ownDirectoryCount + childStorage.reduce(0) { $0 + $1.totalDirectoryCount }
+        newestModifiedSeconds = childStorage.reduce(ownModifiedSeconds) {
+            max($0, $1.newestModifiedSeconds)
+        }
+        var ancestor = parent
+        while let node = ancestor {
+            node.totalAllocatedBytes += totalAllocatedBytes - oldAllocated
+            node.totalApparentBytes += totalApparentBytes - oldApparent
+            if totalFileCount >= oldFiles {
+                node.totalFileCount += totalFileCount - oldFiles
+            } else {
+                node.totalFileCount -= oldFiles - totalFileCount
+            }
+            if totalDirectoryCount >= oldDirectories {
+                node.totalDirectoryCount += totalDirectoryCount - oldDirectories
+            } else {
+                node.totalDirectoryCount -= oldDirectories - totalDirectoryCount
+            }
+            node.newestModifiedSeconds = max(node.newestModifiedSeconds, newestModifiedSeconds)
+            ancestor = node.parent
+        }
+    }
+
+    fileprivate func sortChildren() {
+        childStorage.sort { left, right in
+            left.allocatedBytes == right.allocatedBytes ? left.name < right.name :
+                left.allocatedBytes > right.allocatedBytes
+        }
+    }
+
+    fileprivate func snapshot(parent: DiskEntry?, depth: Int) -> DiskEntry {
+        let copy = DiskEntry(copying: self, parent: parent)
+        if depth > 0 {
+            copy.childStorage = childStorage.map { $0.snapshot(parent: copy, depth: depth - 1) }
+        }
+        return copy
+    }
+
+    fileprivate func setSnapshotChildren(_ children: [DiskEntry]) {
+        childStorage = children
+    }
+
+    private static func seconds(_ date: Date) -> Int64 {
+        Int64(date.timeIntervalSince1970.rounded(.towardZero))
+    }
 }
 
 nonisolated struct DiskScanResult: Sendable {
@@ -50,93 +188,168 @@ nonisolated struct DiskScanResult: Sendable {
     let isComplete: Bool
 }
 
-nonisolated enum DiskExplorerScanError: LocalizedError, Equatable {
-    case entryLimitExceeded(Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .entryLimitExceeded(let limit):
-            "Diskman stopped after \(limit) items to keep memory stable. Choose a smaller folder."
-        }
-    }
-}
-
 nonisolated final class DiskScanSession: @unchecked Sendable {
     private let lock = NSLock()
-    let maximumEntries: Int
     private var stopped = false
-    private var exceededMaximumEntries = false
     private var scannedEntries = 0
     private var lastReport = Date.distantPast
     private let report: @Sendable (Int) -> Void
 
-    init(maximumEntries: Int = 250_000, report: @escaping @Sendable (Int) -> Void = { _ in }) {
-        self.maximumEntries = maximumEntries
+    init(report: @escaping @Sendable (Int) -> Void = { _ in }) {
         self.report = report
     }
 
     func cancel() { lock.withLock { stopped = true } }
     var isCancelled: Bool { lock.withLock { stopped } }
-    var didExceedMaximumEntries: Bool { lock.withLock { exceededMaximumEntries } }
     var entryCount: Int { lock.withLock { scannedEntries } }
 
     @discardableResult func counted() -> Bool {
         let count: Int? = lock.withLock {
             guard !stopped else { return nil }
-            guard scannedEntries < maximumEntries else {
-                exceededMaximumEntries = true
-                stopped = true
-                return nil
-            }
             scannedEntries += 1
             guard Date().timeIntervalSince(lastReport) > 0.2 else { return nil }
             lastReport = Date()
             return scannedEntries
         }
-        if let count { report(count); return true }
-        return false
+        guard let count else { return false }
+        report(count)
+        return true
+    }
+}
+
+nonisolated private struct DiskEntryHeap {
+    let limit: Int
+    private(set) var entries: [DiskEntry] = []
+
+    mutating func insert(_ entry: DiskEntry) -> (accepted: Bool, removed: DiskEntry?) {
+        guard limit > 0 else { return (false, nil) }
+        if entries.count < limit {
+            entries.append(entry)
+            siftUp(from: entries.count - 1)
+            return (true, nil)
+        }
+        guard Self.higherPriority(entry, than: entries[0]) else { return (false, nil) }
+        let removed = entries[0]
+        entries[0] = entry
+        siftDown(from: 0)
+        return (true, removed)
+    }
+
+    var sortedEntries: [DiskEntry] {
+        entries.sorted { left, right in
+            if left.allocatedBytes != right.allocatedBytes {
+                return left.allocatedBytes > right.allocatedBytes
+            }
+            if left.apparentBytes != right.apparentBytes {
+                return left.apparentBytes > right.apparentBytes
+            }
+            return left.name < right.name
+        }
+    }
+
+    private static func higherPriority(_ left: DiskEntry, than right: DiskEntry) -> Bool {
+        if left.allocatedBytes != right.allocatedBytes {
+            return left.allocatedBytes > right.allocatedBytes
+        }
+        if left.apparentBytes != right.apparentBytes {
+            return left.apparentBytes > right.apparentBytes
+        }
+        return left.name < right.name
+    }
+
+    private static func lowerPriority(_ left: DiskEntry, than right: DiskEntry) -> Bool {
+        higherPriority(right, than: left)
+    }
+
+    private mutating func siftUp(from start: Int) {
+        var child = start
+        while child > 0 {
+            let parent = (child - 1) / 2
+            guard Self.lowerPriority(entries[child], than: entries[parent]) else { return }
+            entries.swapAt(child, parent)
+            child = parent
+        }
+    }
+
+    private mutating func siftDown(from start: Int) {
+        var parent = start
+        while true {
+            let left = parent * 2 + 1
+            guard left < entries.count else { return }
+            let right = left + 1
+            let child = right < entries.count && Self.lowerPriority(entries[right], than: entries[left])
+                ? right : left
+            guard Self.lowerPriority(entries[child], than: entries[parent]) else { return }
+            entries.swapAt(parent, child)
+            parent = child
+        }
+    }
+}
+
+nonisolated struct DiskDirectoryAccumulator {
+    private let parent: DiskEntry
+    private var retainedFiles: DiskEntryHeap
+    private var largestFiles = DiskEntryHeap(limit: 100)
+    private var foldedAllocatedBytes: Int64 = 0
+    private var foldedApparentBytes: Int64 = 0
+    private var foldedFileCount: UInt64 = 0
+    private var foldedModifiedSeconds = Int64.min
+
+    init(parent: DiskEntry, fileLimit: Int = 64) {
+        self.parent = parent
+        retainedFiles = DiskEntryHeap(limit: fileLimit)
+    }
+
+    mutating func add(_ entry: DiskEntry) {
+        let retained = retainedFiles.insert(entry)
+        if retained.accepted {
+            if let removed = retained.removed { fold(removed) }
+        } else {
+            fold(entry)
+        }
+        if entry.kind == .file && entry.allocatedBytes > 0 {
+            _ = largestFiles.insert(entry)
+        }
+    }
+
+    var children: [DiskEntry] {
+        var result = retainedFiles.sortedEntries
+        guard foldedFileCount > 0 else { return result }
+        result.append(DiskEntry(
+            name: "\(foldedFileCount) smaller files",
+            kind: .aggregate,
+            parent: parent,
+            allocatedBytes: foldedAllocatedBytes,
+            apparentBytes: foldedApparentBytes,
+            fileCount: foldedFileCount,
+            directoryCount: 0,
+            modifiedSeconds: foldedModifiedSeconds,
+            device: parent.device,
+            inode: 0
+        ))
+        return result
+    }
+
+    var largestCandidates: [DiskEntry] { largestFiles.sortedEntries }
+
+    private mutating func fold(_ entry: DiskEntry) {
+        foldedAllocatedBytes += entry.allocatedBytes
+        foldedApparentBytes += entry.apparentBytes
+        foldedFileCount += UInt64(entry.fileCount)
+        foldedModifiedSeconds = max(
+            foldedModifiedSeconds,
+            Int64(entry.modifiedAt.timeIntervalSince1970.rounded(.towardZero))
+        )
     }
 }
 
 nonisolated enum DiskExplorerScanner {
+    private static let retainedFilesPerDirectory = 64
+    private static let largestFileLimit = 100
+
     private struct FileID: Hashable {
         let device: UInt64
         let inode: UInt64
-    }
-
-    private struct PreviewNode {
-        let url: URL
-        let kind: DiskEntryKind
-        let device: UInt64
-        let inode: UInt64
-        var allocatedBytes: Int64 = 0
-        var apparentBytes: Int64 = 0
-        var fileCount = 0
-        var directoryCount = 0
-        var modifiedAt: Date
-
-        init(_ url: URL, info: stat) {
-            self.url = url
-            kind = DiskExplorerScanner.kind(for: info)
-            device = UInt64(truncatingIfNeeded: info.st_dev)
-            inode = UInt64(truncatingIfNeeded: info.st_ino)
-            modifiedAt = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec))
-        }
-
-        mutating func include(_ entry: DiskEntry, allocated: Int64, apparent: Int64) {
-            allocatedBytes += allocated
-            apparentBytes += apparent
-            fileCount += entry.kind == .directory ? 0 : 1
-            directoryCount += entry.kind == .directory ? 1 : 0
-            modifiedAt = max(modifiedAt, entry.modifiedAt)
-        }
-
-        func snapshot(children: [DiskEntry] = []) -> DiskEntry {
-            DiskEntry(url: url, kind: kind, allocatedBytes: allocatedBytes,
-                      apparentBytes: apparentBytes, fileCount: fileCount,
-                      directoryCount: directoryCount, modifiedAt: modifiedAt,
-                      device: device, inode: inode, children: children)
-        }
     }
 
     private final class State: @unchecked Sendable {
@@ -144,35 +357,31 @@ nonisolated enum DiskExplorerScanner {
         let allowedDevices: Set<UInt64>
         let includeHidden: Bool
         let skipDataMount: Bool
-        let rootURL: URL
-        let rootInfo: stat
+        let root: DiskEntry
         let progress: @Sendable (DiskScanResult) -> Void
         private let lock = NSLock()
         private var hardLinks = Set<FileID>()
-        private(set) var unreadableCount = 0
-        private(set) var skippedVolumeCount = 0
-        private var topOrder: [String] = []
-        private var topNodes: [String: PreviewNode] = [:]
-        private var topEstimates: [String: (allocated: Int64, apparent: Int64)] = [:]
-        private var secondNodes: [String: [String: PreviewNode]] = [:]
-        private var completedTop: [String: DiskEntry] = [:]
-        private var largest: [DiskEntry] = []
+        private var unreadableCount = 0
+        private var skippedVolumeCount = 0
+        private var completedTop = Set<ObjectIdentifier>()
+        private var largest = DiskEntryHeap(limit: DiskExplorerScanner.largestFileLimit)
+        private var largestIDs = Set<ObjectIdentifier>()
         private var lastSnapshot = Date.distantPast
 
         init(session: DiskScanSession, allowedDevices: Set<UInt64>, includeHidden: Bool,
-             skipDataMount: Bool, rootURL: URL, rootInfo: stat,
+             skipDataMount: Bool, root: DiskEntry,
              progress: @escaping @Sendable (DiskScanResult) -> Void) {
             self.session = session
             self.allowedDevices = allowedDevices
             self.includeHidden = includeHidden
             self.skipDataMount = skipDataMount
-            self.rootURL = rootURL
-            self.rootInfo = rootInfo
+            self.root = root
             self.progress = progress
         }
 
         func countUnreadable() { lock.withLock { unreadableCount += 1 } }
         func countSkippedVolume() { lock.withLock { skippedVolumeCount += 1 } }
+
         func isFirstHardLink(_ info: stat) -> Bool {
             guard info.st_nlink > 1, info.st_mode & S_IFMT == S_IFREG else { return true }
             return lock.withLock {
@@ -183,94 +392,68 @@ nonisolated enum DiskExplorerScanner {
             }
         }
 
-        func registerTop(_ children: [(URL, stat)]) {
+        func update(_ directory: DiskEntry, directories: [DiskEntry],
+                    files: DiskDirectoryAccumulator) {
             lock.withLock {
-                topOrder = children.map { $0.0.path }
-                for (url, info) in children { topNodes[url.path] = PreviewNode(url, info: info) }
+                mergeLargest(files.largestCandidates)
+                directory.replaceChildren(directories + files.children)
             }
         }
 
-        func registerSecond(_ children: [(URL, stat)], under top: String) {
-            lock.withLock {
-                var nodes = secondNodes[top] ?? [:]
-                for (url, info) in children { nodes[url.path] = PreviewNode(url, info: info) }
-                secondNodes[top] = nodes
-            }
+        func directoryChildren(of directory: DiskEntry) -> [DiskEntry] {
+            lock.withLock { directory.children.filter { $0.kind == .directory } }
         }
 
-        func estimateTop(_ url: URL, info: stat, children: [(URL, stat)]) {
-            let sizes = children.reduce((allocated: max(0, Int64(info.st_blocks) * 512),
-                                         apparent: max(0, Int64(info.st_size)))) { total, child in
-                (total.allocated + max(0, Int64(child.1.st_blocks) * 512),
-                 total.apparent + max(0, Int64(child.1.st_size)))
-            }
-            lock.withLock { topEstimates[url.path] = sizes }
-        }
-
-        func record(_ entry: DiskEntry, ownAllocated: Int64, ownApparent: Int64,
-                    top: String, second: String?) {
-            lock.withLock {
-                topNodes[top]?.include(entry, allocated: ownAllocated, apparent: ownApparent)
-                if let second { secondNodes[top]?[second]?.include(entry, allocated: ownAllocated, apparent: ownApparent) }
-                if entry.kind == .file && entry.allocatedBytes > 0 &&
-                   (largest.count < 100 || entry.allocatedBytes > largest.last!.allocatedBytes) {
-                    let index = largest.firstIndex { $0.allocatedBytes < entry.allocatedBytes } ?? largest.count
-                    largest.insert(entry, at: index)
-                    if largest.count > 100 { largest.removeLast() }
-                }
-            }
+        func sortChildren(of directory: DiskEntry) {
+            lock.withLock { directory.sortChildren() }
         }
 
         func completed(_ entry: DiskEntry) {
-            let first = lock.withLock {
-                completedTop[entry.id] = entry
-                return completedTop.count == 1
-            }
-            publish(force: first)
+            _ = lock.withLock { completedTop.insert(ObjectIdentifier(entry)) }
+            publish(force: true)
         }
 
         func publish(force: Bool = false) {
-            let snapshot: DiskScanResult? = lock.withLock {
+            let result: DiskScanResult? = lock.withLock {
                 guard !session.isCancelled else { return nil }
                 let now = Date()
                 guard force || now.timeIntervalSince(lastSnapshot) >= 0.2 else { return nil }
                 lastSnapshot = now
-                let children = topOrder.compactMap { key -> DiskEntry? in
-                    if let complete = completedTop[key] { return complete }
-                    guard let node = topNodes[key] else { return nil }
-                    let second = (secondNodes[key] ?? [:]).values.map { $0.snapshot() }
-                        .sorted { $0.allocatedBytes > $1.allocatedBytes }
-                    let estimate = topEstimates[key]
-                    let partial = node.snapshot(children: second)
-                    return DiskEntry(url: partial.url, kind: partial.kind,
-                                     allocatedBytes: max(partial.allocatedBytes, estimate?.allocated ?? 0),
-                                     apparentBytes: max(partial.apparentBytes, estimate?.apparent ?? 0),
-                                     fileCount: partial.fileCount, directoryCount: partial.directoryCount,
-                                     modifiedAt: partial.modifiedAt, device: partial.device,
-                                     inode: partial.inode, children: partial.children)
-                }.sorted { $0.allocatedBytes > $1.allocatedBytes }
-                let root = DiskEntry(
-                    url: rootURL, kind: .directory,
-                    allocatedBytes: max(0, Int64(rootInfo.st_blocks) * 512) + children.reduce(0) { $0 + $1.allocatedBytes },
-                    apparentBytes: max(0, Int64(rootInfo.st_size)) + children.reduce(0) { $0 + $1.apparentBytes },
-                    fileCount: children.reduce(0) { $0 + $1.fileCount },
-                    directoryCount: 1 + children.reduce(0) { $0 + $1.directoryCount },
-                    modifiedAt: children.reduce(Date(timeIntervalSince1970: TimeInterval(rootInfo.st_mtimespec.tv_sec))) {
-                        max($0, $1.modifiedAt)
-                    },
-                    device: UInt64(truncatingIfNeeded: rootInfo.st_dev),
-                    inode: UInt64(truncatingIfNeeded: rootInfo.st_ino), children: children
+                let snapshotRoot = DiskEntry(copying: root, parent: nil)
+                snapshotRoot.setSnapshotChildren(root.children.map { child in
+                    if child.kind == .directory,
+                       !completedTop.contains(ObjectIdentifier(child)) {
+                        return child.snapshot(parent: snapshotRoot, depth: 1)
+                    }
+                    return child
+                })
+                return DiskScanResult(
+                    root: snapshotRoot,
+                    largestFiles: largest.sortedEntries,
+                    unreadableCount: unreadableCount,
+                    skippedVolumeCount: skippedVolumeCount,
+                    scannedAt: now,
+                    isComplete: false
                 )
-                return DiskScanResult(root: root, largestFiles: largest,
-                                      unreadableCount: unreadableCount,
-                                      skippedVolumeCount: skippedVolumeCount,
-                                      scannedAt: now, isComplete: false)
             }
-            if let snapshot { progress(snapshot) }
+            if let result { progress(result) }
         }
 
         var finish: (unreadable: Int, skipped: Int, largest: [DiskEntry]) {
-            lock.withLock { (unreadableCount, skippedVolumeCount, largest) }
+            lock.withLock { (unreadableCount, skippedVolumeCount, largest.sortedEntries) }
+        }
+
+        private func mergeLargest(_ candidates: [DiskEntry]) {
+            for candidate in candidates {
+                let id = ObjectIdentifier(candidate)
+                guard !largestIDs.contains(id) else { continue }
+                let result = largest.insert(candidate)
+                guard result.accepted else { continue }
+                largestIDs.insert(id)
+                if let removed = result.removed {
+                    largestIDs.remove(ObjectIdentifier(removed))
+                }
+            }
         }
     }
 
@@ -278,16 +461,18 @@ nonisolated enum DiskExplorerScanner {
                      session: DiskScanSession = DiskScanSession(),
                      progress: @escaping @Sendable (DiskScanResult) -> Void = { _ in }) throws -> DiskScanResult {
         let rootURL = url.standardizedFileURL
-        var info = stat()
+        var rootInfo = stat()
         guard rootURL.withUnsafeFileSystemRepresentation({ path in
-            path.map { lstat($0, &info) == 0 } ?? false
+            path.map { lstat($0, &rootInfo) == 0 } ?? false
         }) else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
-        guard info.st_mode & S_IFMT == S_IFDIR else {
+        guard rootInfo.st_mode & S_IFMT == S_IFDIR else {
             throw CocoaError(.fileReadUnsupportedScheme)
         }
 
+        let root = entry(name: rootURL.lastPathComponent.isEmpty ? rootURL.path : rootURL.lastPathComponent,
+                         parent: nil, rootURL: rootURL, info: rootInfo, countSize: true)
         let isStartupDisk = rootURL.path == "/"
-        var devices: Set<UInt64> = [UInt64(truncatingIfNeeded: info.st_dev)]
+        var devices: Set<UInt64> = [UInt64(truncatingIfNeeded: rootInfo.st_dev)]
         if isStartupDisk {
             var dataInfo = stat()
             if lstat("/System/Volumes/Data", &dataInfo) == 0 {
@@ -296,78 +481,73 @@ nonisolated enum DiskExplorerScanner {
         }
         let state = State(session: session, allowedDevices: devices,
                           includeHidden: includeHidden, skipDataMount: isStartupDisk,
-                          rootURL: rootURL, rootInfo: info, progress: progress)
-        let children = readChildren(at: rootURL, state: state)
-        state.registerTop(children)
+                          root: root, progress: progress)
+
+        let topDirectories = scanContents(of: root, state: state)
+        if session.isCancelled { throw CancellationError() }
         state.publish(force: true)
-        let firstLevel: [[(URL, stat)]?] = children.map { element in
-            let (child, childInfo) = element
-            let immediate = childInfo.st_mode & S_IFMT == S_IFDIR ? readChildren(at: child, state: state) : []
-            state.estimateTop(child, info: childInfo, children: immediate)
-            if childInfo.st_mode & S_IFMT == S_IFDIR { state.registerSecond(immediate, under: child.path) }
-            return childInfo.st_mode & S_IFMT == S_IFDIR ? immediate : nil
+
+        for directory in topDirectories {
+            _ = scanContents(of: directory, state: state)
+            if session.isCancelled { throw CancellationError() }
         }
         state.publish(force: true)
-        var scanned: [DiskEntry] = []
-        let resultLock = NSLock()
-        DispatchQueue.concurrentPerform(iterations: min(4, children.count)) { lane in
-            for index in stride(from: lane, to: children.count, by: min(4, children.count)) {
-                if state.session.isCancelled { return }
-                let (child, childInfo) = children[index]
-                if let node = walk(child, info: childInfo, state: state,
-                                   top: child.path, second: nil,
-                                   prefetchedChildren: firstLevel[index]) {
-                    resultLock.withLock { scanned.append(node) }
-                    state.completed(node)
+
+        let laneCount = min(4, topDirectories.count)
+        if laneCount > 0 {
+            DispatchQueue.concurrentPerform(iterations: laneCount) { lane in
+                for index in stride(from: lane, to: topDirectories.count, by: laneCount) {
+                    if state.session.isCancelled { return }
+                    scanDescendants(of: topDirectories[index], state: state)
+                    if state.session.isCancelled { return }
+                    state.completed(topDirectories[index])
                 }
             }
         }
-        if session.didExceedMaximumEntries {
-            throw DiskExplorerScanError.entryLimitExceeded(session.maximumEntries)
-        }
         if session.isCancelled { throw CancellationError() }
-        let root = entry(rootURL, info: info, children: scanned, state: state)
+        state.sortChildren(of: root)
         let counts = state.finish
-        return DiskScanResult(root: root, largestFiles: counts.largest, unreadableCount: counts.unreadable,
-                              skippedVolumeCount: counts.skipped, scannedAt: Date(), isComplete: true)
+        return DiskScanResult(root: root, largestFiles: counts.largest,
+                              unreadableCount: counts.unreadable,
+                              skippedVolumeCount: counts.skipped,
+                              scannedAt: Date(), isComplete: true)
     }
 
-    private static func walk(_ url: URL, info: stat, state: State,
-                             top: String, second: String?,
-                             prefetchedChildren: [(URL, stat)]? = nil) -> DiskEntry? {
-        guard !state.session.isCancelled else { return nil }
-        let shouldPublish = state.session.counted()
-        guard !state.session.isCancelled else { return nil }
-        let isDirectory = info.st_mode & S_IFMT == S_IFDIR
-        let childInfo = isDirectory ? (prefetchedChildren ?? readChildren(at: url, state: state)) : []
-        if second == nil && isDirectory { state.registerSecond(childInfo, under: top) }
-        let children = childInfo.compactMap { child, info in
-            walk(child, info: info, state: state, top: top, second: second ?? child.path)
+    private static func scanDescendants(of directory: DiskEntry, state: State) {
+        let children = state.directoryChildren(of: directory)
+        for child in children {
+            guard !state.session.isCancelled else { return }
+            _ = scanContents(of: child, state: state)
+            scanDescendants(of: child, state: state)
         }
-        let node = entry(url, info: info, children: children, state: state,
-                         top: top, second: second)
-        if shouldPublish { state.publish() }
-        return node
+        state.sortChildren(of: directory)
     }
 
-    private static func readChildren(at url: URL, state: State) -> [(URL, stat)] {
-        guard let directory = url.withUnsafeFileSystemRepresentation({ $0.flatMap(opendir) }) else {
+    private static func scanContents(of directory: DiskEntry, state: State) -> [DiskEntry] {
+        let directoryURL = directory.url
+        guard let handle = directoryURL.withUnsafeFileSystemRepresentation({ $0.flatMap(opendir) }) else {
             state.countUnreadable()
             return []
         }
-        defer { closedir(directory) }
-        var result: [(URL, stat)] = []
-        while let item = readdir(directory) {
+        defer { closedir(handle) }
+
+        var directories: [DiskEntry] = []
+        var files = DiskDirectoryAccumulator(parent: directory,
+                                             fileLimit: retainedFilesPerDirectory)
+        while let item = readdir(handle) {
             if state.session.isCancelled { break }
             let name = withUnsafePointer(to: &item.pointee.d_name) {
                 String(cString: UnsafeRawPointer($0).assumingMemoryBound(to: CChar.self))
             }
-            if name == "." || name == ".." || (!state.includeHidden && name.hasPrefix(".")) { continue }
-            let child = url.appendingPathComponent(name)
-            if state.skipDataMount && child.path == "/System/Volumes/Data" { continue }
+            if name == "." || name == ".." || (!state.includeHidden && name.hasPrefix(".")) {
+                continue
+            }
+            if state.skipDataMount && directoryURL.path == "/System/Volumes" && name == "Data" {
+                continue
+            }
             var info = stat()
-            let resultCode = name.withCString { fstatat(dirfd(directory), $0, &info, AT_SYMLINK_NOFOLLOW) }
-            guard resultCode == 0 else {
+            let result = name.withCString { fstatat(dirfd(handle), $0, &info, AT_SYMLINK_NOFOLLOW) }
+            guard result == 0 else {
                 state.countUnreadable()
                 continue
             }
@@ -375,9 +555,23 @@ nonisolated enum DiskExplorerScanner {
                 state.countSkippedVolume()
                 continue
             }
-            result.append((child, info))
+
+            let shouldPublish = state.session.counted()
+            guard !state.session.isCancelled else { break }
+            let node = entry(name: name, parent: directory, info: info,
+                             countSize: state.isFirstHardLink(info))
+            if node.kind == .directory {
+                directories.append(node)
+            } else {
+                files.add(node)
+            }
+            if shouldPublish {
+                state.update(directory, directories: directories, files: files)
+                state.publish()
+            }
         }
-        return result
+        state.update(directory, directories: directories, files: files)
+        return directories
     }
 
     private static func kind(for info: stat) -> DiskEntryKind {
@@ -389,40 +583,21 @@ nonisolated enum DiskExplorerScanner {
         }
     }
 
-    private static func entry(_ url: URL, info: stat, children: [DiskEntry],
-                              state: State, top: String? = nil, second: String? = nil) -> DiskEntry {
+    private static func entry(name: String, parent: DiskEntry?, rootURL: URL? = nil,
+                              info: stat, countSize: Bool) -> DiskEntry {
         let kind = kind(for: info)
-        let countSize = state.isFirstHardLink(info)
-        let ownAllocated = countSize ? max(0, Int64(info.st_blocks) * 512) : 0
-        let ownApparent = countSize ? max(0, Int64(info.st_size)) : 0
-        var allocated = ownAllocated
-        var apparent = ownApparent
-        var files = kind == .directory ? 0 : 1
-        var directories = kind == .directory ? 1 : 0
-        var modified = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec))
-        for child in children {
-            allocated += child.allocatedBytes
-            apparent += child.apparentBytes
-            files += child.fileCount
-            directories += child.directoryCount
-            modified = max(modified, child.modifiedAt)
-        }
-        let node = DiskEntry(
-            url: url,
+        return DiskEntry(
+            name: name,
             kind: kind,
-            allocatedBytes: allocated,
-            apparentBytes: apparent,
-            fileCount: files,
-            directoryCount: directories,
-            modifiedAt: modified,
+            parent: parent,
+            rootURL: rootURL,
+            allocatedBytes: countSize ? max(0, Int64(info.st_blocks) * 512) : 0,
+            apparentBytes: countSize ? max(0, Int64(info.st_size)) : 0,
+            fileCount: kind == .directory ? 0 : 1,
+            directoryCount: kind == .directory ? 1 : 0,
+            modifiedSeconds: Int64(info.st_mtimespec.tv_sec),
             device: UInt64(truncatingIfNeeded: info.st_dev),
-            inode: UInt64(truncatingIfNeeded: info.st_ino),
-            children: children.sorted { $0.allocatedBytes > $1.allocatedBytes }
+            inode: UInt64(truncatingIfNeeded: info.st_ino)
         )
-        if let top {
-            state.record(node, ownAllocated: ownAllocated, ownApparent: ownApparent,
-                         top: top, second: second)
-        }
-        return node
     }
 }
