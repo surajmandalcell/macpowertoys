@@ -54,8 +54,6 @@ private final class TaskManagerWindowVisibilityView: NSView {
             NSWindow.didResignKeyNotification,
             NSWindow.didMiniaturizeNotification,
             NSWindow.didDeminiaturizeNotification,
-            NSWindow.didOrderOnScreenNotification,
-            NSWindow.didOrderOffScreenNotification,
             NSWindow.didChangeOcclusionStateNotification,
         ] {
             center.addObserver(
