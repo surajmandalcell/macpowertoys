@@ -1,5 +1,26 @@
 # Diskman Troubleshooting
 
+## Large Scans Stop At 250,000 Entries
+
+- **Symptom:** Diskman stops normal home-folder and startup-disk scans after
+  250,000 entries, even when the scan can continue safely.
+- **Cause:** The scan tree kept one class and one full URL for every file. A
+  hard entry limit bounded that storage by truncating the scan.
+- **Invariant:** A scan never stops because of an entry count. Store one named
+  node for every directory and compute its URL from its parent. Keep only the
+  64 largest file nodes in each directory. Fold its other files into one
+  aggregate with exact allocated bytes, apparent bytes, count, and newest
+  modification date. Keep the global 100 largest files in a bounded heap,
+  including files folded out of their directory. Preserve progressive results,
+  cancellation, shallow estimates, volume boundaries, firmlinks, and hard-link
+  accounting.
+- **Check:** The in-memory 10,000-file fixture keeps 64 file nodes and one
+  9,936-file aggregate, with folded and unfolded totals equal. A read-only
+  `/Applications` scan completed 402,496 entries and matched `du` at
+  40,884,506,624 allocated bytes. Peak RSS fell from 262.95 MiB with the
+  pre-limit scanner to 76.72 MiB with the compact tree. The Debug app and
+  desktop test bundles compile without launching them.
+
 ## Shallow Estimates, Full-Height Charts, And Sidebar Eject
 
 - **Symptom:** The first chart showed zero-size folder skeletons, then a fixed
