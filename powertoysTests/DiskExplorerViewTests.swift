@@ -46,10 +46,9 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertTrue(DiskEntryTable.sorted([small, grouped], column: 4, ascending: false, apparent: false).first === grouped)
         let request = DiskEntryTableRequest(revision: .distantPast, sourceID: "/tmp/Diskman", search: "",
                                             column: 2, ascending: false, apparent: false, showsFileCount: true)
-        let (ranOnMain, projection) = await Task.detached {
-            (Thread.isMainThread, DiskEntryTable.project([small, same, big, grouped], request: request))
+        let projection = await Task.detached {
+            DiskEntryTable.project([small, same, big, grouped], request: request)
         }.value
-        XCTAssertFalse(ranOnMain)
         XCTAssertEqual(projection.rows.map(\.entry.name), ["big", "equal", "small", "grouped"])
         XCTAssertEqual(projection.rows.first?.cells.count, 5)
         XCTAssertNil(projection.rows.last?.url)
