@@ -17,7 +17,7 @@ final class DiskExplorerUITests: XCTestCase {
         )).firstMatch
         if firstDisk.waitForExistence(timeout: 10) {
             firstDisk.click()
-            XCTAssertTrue(window.staticTexts["Modify"].waitForExistence(timeout: 10))
+            XCTAssertTrue(window.staticTexts["Partition map"].waitForExistence(timeout: 10))
             attach(window.screenshot(), named: "Diskman Normal Modify")
         } else {
             XCTAssertFalse(window.buttons["Manage Disks"].exists)
@@ -32,18 +32,21 @@ final class DiskExplorerUITests: XCTestCase {
 
         let window = app.windows["Diskman"]
         XCTAssertTrue(window.waitForExistence(timeout: 30))
-        XCTAssertTrue(window.buttons["Rescan"].waitForExistence(timeout: 30))
+        window.buttons["Home Folder"].click()
+        let completed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND enabled == true"), object: window.buttons["Rescan"])
+        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 180), .completed)
 
         let tabs = window.descendants(matching: .any)["diskExplorer.resultTabs"]
-        tabs.descendants(matching: .any)["Largest Files"].click()
-        let mark = window.buttons.matching(identifier: "Mark for Removal").firstMatch
-        XCTAssertTrue(mark.waitForExistence(timeout: 10))
-        mark.click()
+        tabs.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Largest files")).firstMatch.click()
+        let actions = window.buttons["File actions"].firstMatch
+        XCTAssertTrue(actions.waitForExistence(timeout: 10))
+        actions.click()
+        app.menuItems["Mark for removal"].click()
 
         let review = window.buttons["Review 1"]
         XCTAssertTrue(review.waitForExistence(timeout: 5))
         review.click()
-        XCTAssertTrue(window.staticTexts["Review Items"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.staticTexts["Review items"].waitForExistence(timeout: 5))
         let reviewElements = window.descendants(matching: .any)
         let summary = reviewElements["diskman.reviewSummary"]
         XCTAssertTrue(summary.exists)
@@ -53,11 +56,11 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(reviewElements.matching(NSPredicate(
             format: "label CONTAINS %@ OR value CONTAINS %@", home, home
         )).firstMatch.exists)
-        XCTAssertTrue(window.buttons["Move to Trash"].exists)
-        XCTAssertTrue(window.buttons["Delete Permanently…"].exists)
+        XCTAssertTrue(window.buttons["Move to Trash..."].exists)
+        XCTAssertTrue(window.buttons["Delete Permanently..."].exists)
         attach(window.screenshot(), named: "Diskman Review Without Deletion")
         window.buttons["Cancel"].click()
-        XCTAssertFalse(window.staticTexts["Review Items"].exists)
+        XCTAssertFalse(window.staticTexts["Review items"].exists)
     }
 
     @MainActor func testModifyActionsAndMergeReviewWithoutWriting() throws {
@@ -81,35 +84,37 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertFalse(app.buttons["diskman.forceQuitAndEject"].isEnabled)
         attach(app.screenshot(), named: "Diskman Blocked Eject Preview")
         app.buttons["Cancel"].click()
-        let diskMapTitle = window.staticTexts["DISK MAP"]
+        let diskMapTitle = window.staticTexts["Partition map"]
         XCTAssertTrue(diskMapTitle.waitForExistence(timeout: 20))
         XCTAssertLessThan(diskRow.frame.maxX, diskMapTitle.frame.minX)
         window.buttons["diskman.partition.disk91s2"].click()
         XCTAssertTrue(window.buttons["diskman.lockDisk"].exists)
-        XCTAssertTrue(window.staticTexts["PARTITION & CAPACITY"].exists)
-        XCTAssertTrue(window.staticTexts["VOLUMES & FORMATS"].exists)
+        XCTAssertTrue(window.staticTexts["Partition and capacity"].exists)
+        XCTAssertTrue(window.staticTexts["Volumes and formats"].exists)
         XCTAssertFalse(window.buttons["diskman.action.Resize partition"].isEnabled)
         XCTAssertTrue(window.buttons["diskman.action.Delete partition"].isEnabled)
         XCTAssertFalse(window.buttons["diskman.action.Partition disk"].isEnabled)
         let merge = window.buttons["diskman.action.Merge with next"]
         XCTAssertTrue(merge.isEnabled)
-        let firstRow = ["Add partition", "Resize partition", "Merge with next"].map {
+        let firstRow = ["Resize partition", "Rename volume", "Verify"].map {
             window.buttons["diskman.action.\($0)"].frame
         }
         XCTAssertEqual(firstRow[0].minY, firstRow[1].minY, accuracy: 1)
         XCTAssertEqual(firstRow[1].minY, firstRow[2].minY, accuracy: 1)
-        XCTAssertEqual(firstRow[0].width, firstRow[2].width, accuracy: 1)
         attach(window.screenshot(), named: "Diskman Modify Actions")
         merge.click()
         app.buttons["diskman.reviewAction"].click()
-        XCTAssertTrue(app.staticTexts["Review disk operation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Staged review"].waitForExistence(timeout: 5))
         let consequence = app.descendants(matching: .any)["diskman.mergeConsequence"]
         XCTAssertTrue(consequence.waitForExistence(timeout: 5))
         XCTAssertTrue(consequence.label.contains("ExFAT merge erases both"), consequence.label)
         XCTAssertTrue(app.textFields["diskman.confirmDevice"].exists)
         XCTAssertFalse(app.buttons["diskman.executeAction"].isEnabled)
         attach(app.screenshot(), named: "Diskman Merge Review Preview")
-        app.buttons["Cancel"].click()
+        app.buttons["Discard"].click()
+        for _ in 0..<8 where !window.buttons["diskman.map.disk91s3"].isHittable {
+            window.scrollViews.firstMatch.swipeDown()
+        }
         window.buttons["diskman.map.disk91s3"].click()
         let selectedTarget = window.descendants(matching: .any)["diskman.selectedTarget"]
         XCTAssertTrue(selectedTarget.waitForExistence(timeout: 5))
@@ -137,36 +142,35 @@ final class DiskExplorerUITests: XCTestCase {
         let window = app.windows["Diskman"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         XCTAssertTrue(window.descendants(matching: .any)["diskExplorer.scan"].waitForExistence(timeout: 5))
-        let contents = window.buttons["diskExplorer.contents"]
-        XCTAssertTrue(contents.waitForExistence(timeout: 5))
-        contents.click()
-        XCTAssertTrue(window.textFields["Search Contents"].waitForExistence(timeout: 5))
-        contents.click()
-        XCTAssertFalse(window.textFields["Search Contents"].exists)
+        XCTAssertTrue(window.staticTexts["Choose a location"].exists)
+        window.buttons["Choose Folder"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Browse for folder..."].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].click()
+        window.buttons["Home Folder"].click()
 
         let tabs = window.descendants(matching: .any)["diskExplorer.resultTabs"]
         XCTAssertTrue(tabs.waitForExistence(timeout: 5))
-        tabs.descendants(matching: .any)["Largest Files"].click()
-        XCTAssertTrue(window.textFields["Filter largest files"].waitForExistence(timeout: 5))
+        tabs.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Largest files")).firstMatch.click()
+        XCTAssertTrue(window.searchFields["Search largest files"].waitForExistence(timeout: 15))
         attach(window.screenshot(), named: "Diskman Largest Files")
+        window.typeKey("f", modifierFlags: .command)
+        XCTAssertTrue(window.searchFields["Search Results"].waitForExistence(timeout: 5))
+        attach(window.screenshot(), named: "Diskman Results")
         tabs.descendants(matching: .any)["Visualization"].click()
-        XCTAssertTrue(contents.waitForExistence(timeout: 5))
+        window.descendants(matching: .any)["Treemap"].click()
         attach(window.screenshot(), named: "Diskman Visualization")
-
-        let statistics = window.buttons["diskExplorer.statistics"]
-        XCTAssertTrue(statistics.waitForExistence(timeout: 5))
-        statistics.click()
-        XCTAssertTrue(app.staticTexts["Measured So Far"].waitForExistence(timeout: 5)
-                      || app.staticTexts["Scan Statistics"].exists)
+        XCTAssertTrue(window.staticTexts["Space used"].exists)
+        XCTAssertTrue(window.staticTexts["Files scanned"].exists)
         attach(app.screenshot(), named: "Diskman Scan Statistics")
-        statistics.click()
 
         let treemap = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.treemap").firstMatch
         XCTAssertTrue(treemap.waitForExistence(timeout: 10))
         XCTAssertFalse(window.staticTexts["Point to a block to inspect it"].exists)
         let currentFolder = treemap.label
-        let tile = treemap.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
+        let folderTile = treemap.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Library,")).firstMatch
+        XCTAssertTrue(folderTile.waitForExistence(timeout: 15))
+        let tile = folderTile.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         tile.hover()
         let hoverDetail = window.descendants(matching: .any)["diskExplorer.hoverDetail"]
         XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
@@ -174,6 +178,8 @@ final class DiskExplorerUITests: XCTestCase {
                         hoverDetail.debugDescription)
         attach(window.screenshot(), named: "Diskman Treemap Hover")
         tile.click()
+        XCTAssertEqual(treemap.label, currentFolder)
+        tile.doubleClick()
         let drilledFolder = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label != %@", currentFolder), object: treemap)
         XCTAssertEqual(XCTWaiter.wait(for: [drilledFolder], timeout: 5), .completed)

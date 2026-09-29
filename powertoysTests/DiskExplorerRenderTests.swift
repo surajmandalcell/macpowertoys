@@ -22,7 +22,7 @@ final class DiskExplorerRenderTests: XCTestCase {
                                  apfsContainer: "disk13", isAPFSVolume: true)
             ]
         )
-        let size = NSSize(width: 880, height: 700)
+        let size = NSSize(width: 1224, height: 900)
         for scheme in [ColorScheme.dark, .light] {
             let host = NSHostingView(rootView:
                 DiskModifyView(previewDisks: [card], previewPartitionID: "disk10s2")
@@ -63,13 +63,16 @@ final class DiskExplorerRenderTests: XCTestCase {
                                            scannedAt: result.scannedAt, isComplete: true)
         let savedStyle = UserDefaults.standard.string(forKey: "diskExplorer.chartStyle")
         defer { UserDefaults.standard.set(savedStyle, forKey: "diskExplorer.chartStyle") }
-        let size = NSSize(width: 1_120, height: 760)
+        let size = NSSize(width: 1440, height: 900)
         for (tab, style, scheme) in [
             (DiskResultTab.visualization, DiskChartStyle.treemap, ColorScheme.dark),
             (.visualization, .treemap, .light),
             (.visualization, .sunburst, .dark),
             (.visualization, .sunburst, .light),
-            (.largestFiles, .treemap, .dark)
+            (.largestFiles, .treemap, .dark),
+            (.largestFiles, .treemap, .light),
+            (.results, .treemap, .dark),
+            (.results, .treemap, .light)
         ] {
             UserDefaults.standard.set(style.rawValue, forKey: "diskExplorer.chartStyle")
             let host = NSHostingView(rootView:
