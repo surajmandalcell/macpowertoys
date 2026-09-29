@@ -374,28 +374,42 @@ struct SwitchWindowView: View {
                     .buttonStyle(OnePlusButtonStyle(.icon)).help("Refresh usage").accessibilityLabel("Refresh usage")
                     .disabled(model.usageLoading.contains(account.id) || account.verification.state == .needsSignIn)
             }
-            if account.verification.state == .needsSignIn {
-                OnePlusBanner("Sign in again to view usage for this account.", tone: .warning) {
-                    Button("Sign in") { selectedProviderID = account.identity.providerID; showingAddAccount = true }
-                }.padding(OnePlusMetrics.cardPadding)
-            } else if let snapshot = model.usage[account.id] {
-                let buckets = usageBuckets(snapshot)
-                usageFacts(snapshot)
-                ForEach(buckets.indices, id: \.self) { index in
-                    usageBucket(buckets[index])
-                }
-                if buckets.isEmpty {
-                    Text("Rate limits unavailable").onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
-                }
-            } else {
-                OnePlusEmptyState(model.usageLoading.contains(account.id) ? "Checking account usage" : "Usage has not been checked",
-                                  systemImage: "chart.bar", caption: model.usageErrors[account.id]
-                                  ?? "Refresh usage without changing the default account.") {
-                    if model.usageLoading.contains(account.id) { ProgressView().controlSize(.small) }
-                    else { Button("Refresh usage") { Task { await model.loadUsage(account.id) } } }
+            VStack(alignment: .leading, spacing: 0) {
+                if account.verification.state == .needsSignIn {
+                    OnePlusBanner("Sign in again to view usage for this account.", tone: .warning) {
+                        Button("Sign in") { selectedProviderID = account.identity.providerID; showingAddAccount = true }
+                    }.padding(OnePlusMetrics.cardPadding)
+                } else if let snapshot = model.usage[account.id] {
+                    let buckets = usageBuckets(snapshot)
+                    usageFacts(snapshot)
+                    ForEach(buckets.indices, id: \.self) { index in
+                        usageBucket(buckets[index])
+                    }
+                    if buckets.isEmpty {
+                        Text("Rate limits unavailable").onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
+                    }
+                } else {
+                    OnePlusEmptyState(
+                        model.usageLoading.contains(account.id) ? "Checking account usage" : "Usage has not been checked",
+                        systemImage: "chart.bar",
+                        caption: usageEmptyCaption(account.id)
+                    ) {
+                        if model.usageLoading.contains(account.id) { ProgressView().controlSize(.small) }
+                        else { Button("Refresh usage") { Task { await model.loadUsage(account.id) } } }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity,
+                   minHeight: OnePlusMetrics.captionedSettingRow * 7,
+                   alignment: model.usage[account.id] == nil ? .center : .topLeading)
         }
+    }
+
+    private func usageEmptyCaption(_ accountID: UUID) -> String {
+        guard let error = model.usageErrors[accountID] else {
+            return "Refresh usage without changing the default account."
+        }
+        return "\(error) Select Refresh usage to try again."
     }
 
     private func usageFacts(_ snapshot: CodexAccountUsageSnapshot) -> some View {
