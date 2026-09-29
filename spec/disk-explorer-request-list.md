@@ -10,6 +10,12 @@ independent Swift and SwiftUI implementation in MacPowerToys.
 reference supplies content and storage chart texture. The surface worker
 does not install or launch the app; the redesign orchestrator owns that gate.
 
+Round 2 requires equal columns for the short Scanning and Disk access cards.
+The inspector share bar and more menu use the shared neutral control style.
+Completed charts group targets smaller than a control into Other; folded
+file aggregates remain explicit, non-drillable items. Live charts keep their
+path-based membership and measured proportions until the scan completes.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar, 27 pt centerline, and 24 pt gutter. | Diskman uses the shared window root, header, sidebar, cards, tabs, and settings rows. Debug builds with no Diskman warnings. | Inspect both appearances on the signed build. |
@@ -18,7 +24,7 @@ does not install or launch the app; the redesign orchestrator owns that gate.
 | Verify | Keep Largest files and Results in the same native table language. | Both use the additive OnePlusUI native table with sorting, multiple selection, keyboard actions, context menus, and drag-out. Removal enters review and a native confirmation. | Verify sorting, selection, menus, drag-out, and confirmations in both appearances. |
 | Verify | Keep disk write protections while changing Modify's layout. | Device header, partition map, partition rows, direct action groups, and staged review use OnePlusUI. Command checks still bind to media identity and enforce the write lock, EFI protection, and typed review. | Run hosted safety and review tests. Do not write to physical disks during redesign review. |
 | Verify | Provide first-run, scanning, completed, stopped, unreadable, and error states. | The stats update from scanner snapshots. Stable chart membership and count-based splits remain. Choose Folder is a 460 pt native sheet; unreadable rows link to Full Disk Access. | Capture each state and inspect all page deep links. |
-| Verify | Restyle Settings and About without losing preferences or guidance. | Shared cards retain chart, measure, apparent-size, hidden-file, enable, and disk-access controls. About includes the guide and keyboard shortcuts. | Inspect controls and saved settings in both appearances. |
+| Verify | Restyle Settings and About without losing preferences or guidance. | Shared cards retain chart, measure, apparent-size, hidden-file, enable, and disk-access controls. Scanning and Disk access now share equal columns with a 16 pt gap. About includes the guide and keyboard shortcuts. | Inspect the paired cards and saved settings in both appearances. |
 | Verify | Route home, largest-files, results, rings, choose-folder, settings, about, and device/bsd-name pages. | The window handles every page through `.onOpenToolPage`. The shared route parser still rejects the third device-path segment. | Foundation must accept nested device page IDs; then verify all links. |
 
 The desktop test build compiles the Diskman unit, render, and UI sources.
