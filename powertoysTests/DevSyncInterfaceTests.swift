@@ -38,6 +38,19 @@ final class DevSyncInterfaceTests: XCTestCase {
         XCTAssertNotNil(manager.capabilities[seed.pair.id])
     }
 
+    func testLoadIfNeededDoesNotReloadAnInitializedManager() async {
+        await manager.loadIfNeeded()
+
+        var offline = seed.status
+        offline.volumeOnline = false
+        offline.state = .volumeOffline
+        manager.apply(.status(offline))
+
+        await manager.loadIfNeeded()
+
+        XCTAssertEqual(manager.status(for: seed.pair.id).state, .volumeOffline)
+    }
+
     func testAttentionCountSumsConflictsAndBlockedProjects() async {
         await manager.load()
 

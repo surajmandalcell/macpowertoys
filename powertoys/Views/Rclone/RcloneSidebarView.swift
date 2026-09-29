@@ -22,7 +22,8 @@ struct RcloneSidebarView: View {
             .accessibilityIdentifier("rclone.new-transfer")
         } navigation: {
             OnePlusNavCaption("Transfers")
-            ForEach(Array(JobFilter.allCases.enumerated()), id: \.element.id) { index, filter in
+            ForEach(JobFilter.allCases) { filter in
+                let index = JobFilter.allCases.firstIndex(of: filter) ?? 0
                 OnePlusNavRow(
                     filter.displayName,
                     systemImage: filter.icon,
@@ -57,7 +58,8 @@ struct RcloneSidebarView: View {
                     .padding(.horizontal, OnePlusMetrics.navPadding)
                     .padding(.vertical, OnePlusMetrics.spacing[2])
             } else {
-                ForEach(Array(manager.remotes.enumerated()), id: \.element.id) { index, remote in
+                ForEach(manager.remotes) { remote in
+                    let index = manager.remotes.firstIndex(of: remote) ?? manager.remotes.count
                     RcloneRemoteNavRow(
                         remote: remote,
                         selected: content == .browse(remote),

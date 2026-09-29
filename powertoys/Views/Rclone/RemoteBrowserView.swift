@@ -23,8 +23,16 @@ nonisolated enum RemoteFolderName {
     }
 }
 
+nonisolated private struct RemoteDisplayEntry: Identifiable, Sendable {
+    let entry: RemoteEntry
+    let size: String
+    let modified: String
+
+    var id: String { entry.path }
+}
+
 struct RemoteBrowserView: View {
-    private enum SortColumn { case name, size, modified }
+    private enum SortColumn: Sendable { case name, size, modified }
 
     let remote: RcloneRemote
 
@@ -47,30 +55,11 @@ struct RemoteBrowserView: View {
     @State private var folderCreationError: String?
     @State private var sortColumn = SortColumn.name
     @State private var sortAscending = true
+    @State private var visibleEntries: [RemoteDisplayEntry] = []
+    @State private var sortTask: Task<Void, Never>?
 
     private var pathComponents: [String] {
         path.isEmpty ? [] : path.split(separator: "/").map(String.init)
-    }
-
-    private var visibleEntries: [RemoteEntry] {
-        entries.sorted { left, right in
-            let result: ComparisonResult = switch sortColumn {
-            case .name: left.name.localizedStandardCompare(right.name)
-            case .size: compare(left.size, right.size, tie: left.name.localizedStandardCompare(right.name))
-            case .modified: compare(
-                left.modTime ?? .distantPast,
-                right.modTime ?? .distantPast,
-                tie: left.name.localizedStandardCompare(right.name)
-            )
-            }
-            return sortAscending ? result == .orderedAscending : result == .orderedDescending
-        }
-    }
-
-    private func compare<T: Comparable>(_ left: T, _ right: T, tie: ComparisonResult) -> ComparisonResult {
-        if left < right { return .orderedAscending }
-        if left > right { return .orderedDescending }
-        return tie
     }
 
     var body: some View {
@@ -103,6 +92,12 @@ struct RemoteBrowserView: View {
             selection = nil
             errorMessage = nil
             folderCreationError = nil
+        }
+        .onChange(of: sortColumn) { rebuildVisibleEntries() }
+        .onChange(of: sortAscending) { rebuildVisibleEntries() }
+        .onDisappear {
+            sortTask?.cancel()
+            sortTask = nil
         }
     }
 
@@ -143,7 +138,7 @@ struct RemoteBrowserView: View {
                     }
                 }
 
-                ForEach(Array(pathComponents.indices), id: \.self) { index in
+                ForEach(pathComponents.indices, id: \.self) { index in
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.tertiary)
@@ -239,14 +234,14 @@ struct RemoteBrowserView: View {
             .onePlusTableHeader()
             ScrollView {
                 LazyVStack(spacing: 0) {
-                ForEach(visibleEntries) { entry in
+                ForEach(visibleEntries) { displayEntry in
                     RemoteEntryRow(
-                        entry: entry,
-                        isSelected: selection == entry.id,
-                        dragItem: dragItem(for: entry),
-                        onSelect: { selection = entry.id },
-                        onOpen: { open(entry) },
-                        onQuickLook: { quickLook(entry) }
+                        displayEntry: displayEntry,
+                        isSelected: selection == displayEntry.id,
+                        dragItem: dragItem(for: displayEntry.entry),
+                        onSelect: { selection = displayEntry.id },
+                        onOpen: { open(displayEntry.entry) },
+                        onQuickLook: { quickLook(displayEntry.entry) }
                     )
                 }
             }
@@ -428,20 +423,76 @@ struct RemoteBrowserView: View {
         errorMessage = nil
         do {
             entries = try await manager.listDirectory(remote: remote, path: path)
+            rebuildVisibleEntries()
         } catch is CancellationError {
             return
         } catch {
             entries = []
+            visibleEntries = []
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not list folder."
         }
         isLoading = false
+    }
+
+    private func rebuildVisibleEntries() {
+        sortTask?.cancel()
+        let entries = entries
+        let sortColumn = sortColumn
+        let sortAscending = sortAscending
+
+        sortTask = Task {
+            let displayEntries = await Task.detached(priority: .userInitiated) {
+                Self.prepare(entries, sortColumn: sortColumn, ascending: sortAscending)
+            }.value
+            guard !Task.isCancelled else { return }
+            visibleEntries = displayEntries
+        }
+    }
+
+    nonisolated private static func prepare(
+        _ entries: [RemoteEntry],
+        sortColumn: SortColumn,
+        ascending: Bool
+    ) -> [RemoteDisplayEntry] {
+        let sorted = entries.sorted { left, right in
+            let result: ComparisonResult = switch sortColumn {
+            case .name: left.name.localizedStandardCompare(right.name)
+            case .size: compare(left.size, right.size, tie: left.name.localizedStandardCompare(right.name))
+            case .modified: compare(
+                left.modTime ?? .distantPast,
+                right.modTime ?? .distantPast,
+                tie: left.name.localizedStandardCompare(right.name)
+            )
+            }
+            return ascending ? result == .orderedAscending : result == .orderedDescending
+        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        let now = Date()
+        return sorted.map {
+            RemoteDisplayEntry(
+                entry: $0,
+                size: $0.isDir ? "" : RcloneProjectionFormat.bytes($0.size),
+                modified: $0.modTime.map { formatter.localizedString(for: $0, relativeTo: now) } ?? "Not available"
+            )
+        }
+    }
+
+    nonisolated private static func compare<T: Comparable>(
+        _ left: T,
+        _ right: T,
+        tie: ComparisonResult
+    ) -> ComparisonResult {
+        if left < right { return .orderedAscending }
+        if left > right { return .orderedDescending }
+        return tie
     }
 }
 
 // MARK: - Entry Row
 
 private struct RemoteEntryRow: View {
-    let entry: RemoteEntry
+    let displayEntry: RemoteDisplayEntry
     let isSelected: Bool
     let dragItem: RemoteFileDragItem?
     let onSelect: () -> Void
@@ -450,11 +501,7 @@ private struct RemoteEntryRow: View {
 
     @State private var isHovering = false
 
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
+    private var entry: RemoteEntry { displayEntry.entry }
 
     var body: some View {
         if let dragItem {
@@ -483,13 +530,13 @@ private struct RemoteEntryRow: View {
                 }
 
                 if !entry.isDir {
-                    Text(RcloneFormat.bytes(entry.size))
+                    Text(displayEntry.size)
                         .onePlusText(.mono)
                         .foregroundStyle(OnePlusColor.secondary)
                         .frame(width: 92, alignment: .trailing)
                 }
 
-                Text(modTimeText)
+                Text(displayEntry.modified)
                     .onePlusText(.mono)
                     .foregroundStyle(OnePlusColor.muted)
                     .frame(width: 116, alignment: .trailing)
@@ -520,10 +567,6 @@ private struct RemoteEntryRow: View {
         .help("Quick Look")
     }
 
-    private var modTimeText: String {
-        guard let modTime = entry.modTime else { return "Not available" }
-        return Self.relativeFormatter.localizedString(for: modTime, relativeTo: Date())
-    }
 }
 
 // MARK: - Drag Out

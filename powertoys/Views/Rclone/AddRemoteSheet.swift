@@ -214,18 +214,12 @@ struct AddRemoteSheet: View {
                     .controlSize(.small)
                     .labelsHidden()
             } else if option.usesExclusivePicker {
-                Picker(option.label, selection: valueBinding(option)) {
-                    if !option.defaultValue.isEmpty,
-                       !option.examples.contains(where: { $0.value == option.defaultValue }) {
-                        Text(option.defaultValue).tag(option.defaultValue)
-                    }
-                    ForEach(option.examples, id: \.value) { example in
-                        Text(example.help.split(separator: "\n").first.map(String.init) ?? example.value)
-                            .tag(example.value)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: .infinity)
+                OnePlusSelect(
+                    choices: exclusiveChoices(for: option),
+                    selection: valueBinding(option),
+                    width: OnePlusMetrics.wideControlColumn,
+                    accessibilityLabel: option.label
+                )
             } else if option.isPassword {
                 SecureField(option.defaultValue, text: valueBinding(option))
                     .textFieldStyle(.roundedBorder)
@@ -272,13 +266,12 @@ struct AddRemoteSheet: View {
                     .controlSize(.small)
                     .labelsHidden()
             } else if prompt.option.usesExclusivePicker {
-                Picker(prompt.option.label, selection: $promptAnswer) {
-                    ForEach(prompt.option.examples, id: \.value) { example in
-                        Text(example.help.split(separator: "\n").first.map(String.init) ?? example.value)
-                            .tag(example.value)
-                    }
-                }
-                .labelsHidden()
+                OnePlusSelect(
+                    choices: exclusiveChoices(for: prompt.option),
+                    selection: $promptAnswer,
+                    width: OnePlusMetrics.wideControlColumn,
+                    accessibilityLabel: prompt.option.label
+                )
             } else if prompt.option.isPassword {
                 SecureField(prompt.option.defaultValue, text: $promptAnswer)
                     .textFieldStyle(.roundedBorder)
@@ -305,6 +298,15 @@ struct AddRemoteSheet: View {
             promptAnswer = prompt.option.defaultValue.isEmpty
                 ? (prompt.option.examples.first?.value ?? "")
                 : prompt.option.defaultValue
+        }
+    }
+
+    private func exclusiveChoices(for option: RcloneProviderOption) -> [(String, String)] {
+        let defaultChoice = option.defaultValue.isEmpty || option.examples.contains(where: { $0.value == option.defaultValue })
+            ? []
+            : [(option.defaultValue, option.defaultValue)]
+        return defaultChoice + option.examples.map {
+            ($0.value, $0.help.split(separator: "\n").first.map(String.init) ?? $0.value)
         }
     }
 

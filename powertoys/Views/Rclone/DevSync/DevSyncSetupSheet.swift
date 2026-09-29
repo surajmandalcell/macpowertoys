@@ -187,17 +187,18 @@ struct DevSyncSetupSheet: View {
     var body: some View {
         OnePlusSheet("Dev Sync Setup", width: .medium, close: { dismiss() }) {
             if let model {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        stepLabel(model)
-                        if let banner = model.errorBanner {
-                            DevSyncErrorBanner(message: banner) { model.errorBanner = nil }
-                        }
-                        DevSyncSetupStepContent(model: model)
+                VStack(alignment: .leading, spacing: 16) {
+                    stepLabel(model)
+                    if let banner = model.errorBanner {
+                        DevSyncErrorBanner(message: banner) { model.errorBanner = nil }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ScrollView {
+                        DevSyncSetupStepContent(model: model)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .onePlusScrollIndicators()
+                    .frame(maxHeight: .infinity)
                 }
-                .onePlusScrollIndicators()
                 .frame(height: OnePlusMetrics.spacing[8] * 16)
             }
         } footer: {
