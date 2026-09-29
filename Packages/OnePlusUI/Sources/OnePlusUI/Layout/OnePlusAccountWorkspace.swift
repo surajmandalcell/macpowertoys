@@ -77,10 +77,7 @@ public struct OnePlusRule: View {
 
 public extension View {
     func onePlusNativeTable() -> some View {
-        self.tableStyle(.inset(alternatesRowBackgrounds: false))
-            .environment(\.defaultMinListRowHeight, OnePlusTable.rowHeight(.regular))
-            .scrollContentBackground(.hidden).background(OnePlusColor.panel)
-            .onePlusText(.row).onePlusScrollIndicators()
+        modifier(OnePlusNativeTableSkin())
     }
 }
 

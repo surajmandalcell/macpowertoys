@@ -35,7 +35,7 @@ public enum OnePlusTextRole: String, CaseIterable, Sendable {
         case .cardTitle: return compact ? 11 : 12
         case .row, .control: return compact ? 10.5 : 12
         case .caption: return compact ? 9.5 : 10.5
-        case .tableHeader: return compact ? 8.5 : 9
+        case .tableHeader: return 9
         case .mono: return compact ? 9.5 : 11
         case .metric: return compact ? 21 : 27
         case .unit: return compact ? 10 : 12
