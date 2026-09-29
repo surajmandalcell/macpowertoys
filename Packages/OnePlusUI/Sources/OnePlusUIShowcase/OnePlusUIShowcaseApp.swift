@@ -51,8 +51,13 @@ private struct OnePlusUIShowcase: View {
     @State private var menuTab = "home"
     @State private var menuTabs = [OnePlusMenuTab("home", "Home", systemImage: "square.grid.2x2"),
                                    OnePlusMenuTab("cpu", "CPU", systemImage: "cpu"),
+                                   OnePlusMenuTab("gpu", "GPU", systemImage: "rectangle.3.group"),
                                    OnePlusMenuTab("memory", "Memory", systemImage: "memorychip"),
-                                   OnePlusMenuTab("network", "Network", systemImage: "network")]
+                                   OnePlusMenuTab("network", "Network", systemImage: "network"),
+                                   OnePlusMenuTab("disk", "Disk", systemImage: "internaldrive"),
+                                   OnePlusMenuTab("battery", "Battery", systemImage: "battery.100"),
+                                   OnePlusMenuTab("sensors", "Sensors", systemImage: "thermometer.medium"),
+                                   OnePlusMenuTab("processes", "Processes", systemImage: "list.bullet")]
     private let pages = ["Foundation", "Typography", "Buttons", "Inputs", "Data", "Settings", "Task Manager", "Menu panel", "Applets", "Feedback"]
     private let samples: [Double] = [16, 18, 15, 22, 19, 17, 24, 42, 33, 24, 22, 21, 28, 19, 24, 21, 20, 26, 24, 28]
     private var compact: Bool { page == "Task Manager" }
