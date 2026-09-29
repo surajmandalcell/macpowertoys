@@ -669,13 +669,17 @@ struct MacTweaksWindowView: View {
             }
         }
         let fields = candidates.map(\.2)
-        let originals = TweakPreferenceStore.shared.storedOriginalChoices(for: fields)
-        let selections = await Task.detached(priority: .utility) {
-            Dictionary(uniqueKeysWithValues: fields.map {
+        let snapshot = await Task.detached(priority: .utility) {
+            let store = TweakPreferenceStore()
+            let originals = store.storedOriginalChoices(for: fields)
+            let selections = Dictionary(uniqueKeysWithValues: fields.map {
                 ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0))
             })
+            return (originals, selections)
         }.value
         guard !Task.isCancelled else { return }
+        let originals = snapshot.0
+        let selections = snapshot.1
         preferenceSelections = selections
         modifiedIdentities = Set(originals.keys)
         modifiedEntries = candidates.compactMap { category, item, field in

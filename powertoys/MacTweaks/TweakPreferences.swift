@@ -1,12 +1,12 @@
 import CoreFoundation
 import Foundation
 
-struct TweakChoice: @unchecked Sendable {
+nonisolated struct TweakChoice: @unchecked Sendable {
     let label: String
     let value: Any
 }
 
-struct TweakPreferenceField: @unchecked Sendable {
+nonisolated struct TweakPreferenceField: @unchecked Sendable {
     let label: String
     let domain: String
     let key: String
@@ -144,7 +144,7 @@ enum TweakPreferenceError: LocalizedError {
     }
 }
 
-final class TweakPreferenceStore {
+nonisolated final class TweakPreferenceStore {
     static let shared = TweakPreferenceStore()
 
     private struct StoredValue: Codable, Equatable {
