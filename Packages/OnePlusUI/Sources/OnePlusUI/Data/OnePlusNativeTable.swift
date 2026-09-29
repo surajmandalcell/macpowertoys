@@ -115,7 +115,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             guard let index = Int(column.identifier.rawValue), item.cells.indices.contains(index) else { return nil }
             let cell = NSTableCellView()
             let text = NSTextField(labelWithString: item.cells[index])
-            text.font = index == 2 || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: .regular), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: .regular))
+            text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: .regular), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: .regular))
             text.textColor = NSColor(index == 0 ? OnePlusColor.ink : OnePlusColor.secondary)
             text.lineBreakMode = .byTruncatingMiddle; text.toolTip = item.cells[index]
             text.translatesAutoresizingMaskIntoConstraints = false
