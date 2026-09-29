@@ -33,7 +33,8 @@ private struct MainGeneralSettings: View {
     @State private var loginError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top), count: 2),
+                  alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             appearanceCard
             windowsCard
             launchCard
@@ -69,7 +70,7 @@ private struct MainGeneralSettings: View {
     private var windowsCard: some View {
         OnePlusCard {
             OnePlusCardHeader("Windows", systemImage: "macwindow")
-            OnePlusSettingRow("Close main window after opening a tool") {
+            OnePlusSettingRow("Close after opening a tool") {
                 Toggle("Close main window after opening a tool", isOn: $closeMainAfterOpen)
                     .labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
@@ -148,18 +149,20 @@ private struct MainAboutSettings: View {
                 metadataRow("Developer", value: "Suraj Mandal")
                 linkRow("Contact", title: "surajmandalcell@gmail.com", url: "mailto:surajmandalcell@gmail.com")
             }
-            OnePlusCard {
-                OnePlusCardHeader("Links", systemImage: "link")
-                linkRow("Repository", title: "GitHub", url: repository)
-                linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
-                linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE")
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                linkRow("Cloud Sync engine", title: "Powered by rclone", url: "https://rclone.org/")
-                Text("rclone is free and open-source software by Nick Craig-Wood and contributors.")
-                    .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
-                linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                OnePlusCard {
+                    OnePlusCardHeader("Links", systemImage: "link")
+                    linkRow("Repository", title: "GitHub", url: repository)
+                    linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
+                    linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE")
+                }.frame(maxWidth: .infinity)
+                OnePlusCard {
+                    OnePlusCardHeader("Acknowledgements", systemImage: "book")
+                    linkRow("Cloud Sync engine", title: "Powered by rclone", url: "https://rclone.org/")
+                    Text("rclone is free and open-source software by Nick Craig-Wood and contributors.")
+                        .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
+                    linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
+                }.frame(maxWidth: .infinity)
             }
         }
     }
@@ -173,7 +176,7 @@ private struct MainAboutSettings: View {
     private func linkRow(_ label: String, title: String, url: String) -> some View {
         OnePlusSettingRow(label, controlWidth: OnePlusCatalogMetrics.placementWidth) {
             if let destination = URL(string: url) {
-                Link(title, destination: destination).buttonStyle(OnePlusButtonStyle(.link, size: .small))
+                Link(title, destination: destination).buttonStyle(OnePlusButtonStyle(.link))
             }
         }
     }
