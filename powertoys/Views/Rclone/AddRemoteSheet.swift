@@ -129,7 +129,7 @@ struct AddRemoteSheet: View {
             .padding(20)
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     fieldTitle("CONNECTOR")
                     ProviderDropdown(
                         selection: $selectedProviderID,
@@ -539,7 +539,7 @@ private struct ProviderDropdown: View {
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
         .focusEffectDisabled()
-        .help(provider.displayName)
+        .accessibilityLabel(provider.displayName)
     }
 
     private var listHeight: CGFloat {

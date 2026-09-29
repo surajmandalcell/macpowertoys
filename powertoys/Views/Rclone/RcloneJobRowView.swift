@@ -149,7 +149,6 @@ struct TransferJobRow: View {
     private func iconButton(_ symbol: String, _ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol) }
             .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .help(label)
             .accessibilityLabel(label)
     }
 
@@ -161,7 +160,6 @@ struct TransferJobRow: View {
                 .rotationEffect(.degrees(job.isExpanded ? 90 : 0))
         }
         .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-        .help(job.isExpanded ? "Hide files" : "Show files")
         .accessibilityLabel(job.isExpanded ? "Hide files" : "Show files")
     }
 
@@ -236,7 +234,7 @@ private struct TransferFileProgressRow: View {
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
                     .fixedSize()
-                    .help("Ignore this file")
+                    .accessibilityLabel("Ignore this file")
             }
             .frame(minHeight: OnePlusTable.rowHeight(.regular))
             OnePlusColor.lineSoft.frame(height: 1)

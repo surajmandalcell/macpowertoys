@@ -82,7 +82,6 @@ struct DevSyncIconButton: View {
         .focusEffectDisabled()
         .utilityAnimation(value: isHovering)
         .onHover { isHovering = $0 }
-        .help(label)
         .accessibilityLabel(label)
     }
 }
