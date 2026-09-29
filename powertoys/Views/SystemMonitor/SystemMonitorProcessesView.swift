@@ -49,7 +49,7 @@ nonisolated enum SystemMonitorProcessSorting {
 }
 
 nonisolated enum SystemMonitorProcessHierarchy {
-    struct Row: Identifiable, Sendable {
+    struct Row: Equatable, Identifiable, Sendable {
         let process: SystemMonitorProcess
         let depth: Int
         let cpuText: String
@@ -360,7 +360,14 @@ struct SystemMonitorProcessesView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(visibleRows) { row in
-                            processRow(row)
+                            SystemMonitorProcessRow(
+                                row: row,
+                                selected: selectedID == row.id,
+                                inspect: { selectedID = $0.id },
+                                copyPath: copy,
+                                confirm: confirm
+                            )
+                            .equatable()
                         }
                         if !didLoad {
                             ProgressView().controlSize(.small)
@@ -393,61 +400,6 @@ struct SystemMonitorProcessesView: View {
             Color.clear.frame(width: 24)
         }
         .onePlusTableHeader()
-    }
-
-    private func processRow(_ row: SystemMonitorProcessHierarchy.Row) -> some View {
-        let process = row.process
-        return HStack(spacing: 8) {
-            Button { selectedID = process.id } label: {
-                HStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 13))
-                            .foregroundStyle(TaskManagerTheme.secondary)
-                            .frame(width: 18, height: 18)
-                        Text(process.name).lineLimit(1)
-                    }
-                    .padding(.leading, CGFloat(row.depth) * 16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(row.cpuText)
-                        .frame(width: 72, alignment: .trailing)
-                    Text(row.memoryText)
-                        .frame(width: 90, alignment: .trailing)
-                    Text(row.pidText).frame(width: 64, alignment: .trailing)
-                }
-                .font(.system(size: 10))
-                .monospacedDigit()
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .accessibilityLabel("Inspect \(process.name), PID \(process.pid)")
-            .accessibilityIdentifier("task-manager.process.row.\(process.pid)")
-
-            Menu {
-                Button("Inspect") { selectedID = process.id }
-                if process.executablePath != "Unavailable" && process.executablePath != "Protected process" {
-                    Button("Copy Executable Path") { copy(process.executablePath) }
-                }
-                Divider()
-                Button("Quit") { confirm(process, force: false) }
-                    .disabled(process.started == 0)
-                Button("Force Quit", role: .destructive) { confirm(process, force: true) }
-                    .disabled(process.started == 0)
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 11))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                    .frame(width: 24, height: 23)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .focusEffectDisabled()
-            .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
-        }
-        .onePlusTableRow(selected: selectedID == process.id)
     }
 
     private func header(_ column: ProcessSortColumn) -> some View {
@@ -544,6 +496,71 @@ struct SystemMonitorProcessesView: View {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
+}
+
+private struct SystemMonitorProcessRow: View, Equatable {
+    let row: SystemMonitorProcessHierarchy.Row
+    let selected: Bool
+    let inspect: (SystemMonitorProcess) -> Void
+    let copyPath: (String) -> Void
+    let confirm: (SystemMonitorProcess, Bool) -> Void
+
+    static func == (left: Self, right: Self) -> Bool {
+        left.row == right.row && left.selected == right.selected
+    }
+
+    var body: some View {
+        let process = row.process
+        HStack(spacing: 8) {
+            Button { inspect(process) } label: {
+                HStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 13))
+                            .foregroundStyle(TaskManagerTheme.secondary)
+                            .frame(width: 18, height: 18)
+                        Text(process.name).lineLimit(1)
+                    }
+                    .padding(.leading, CGFloat(row.depth) * 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(row.cpuText).frame(width: 72, alignment: .trailing)
+                    Text(row.memoryText).frame(width: 90, alignment: .trailing)
+                    Text(row.pidText).frame(width: 64, alignment: .trailing)
+                }
+                .font(.system(size: 10))
+                .monospacedDigit()
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .accessibilityLabel("Inspect \(process.name), PID \(process.pid)")
+            .accessibilityIdentifier("task-manager.process.row.\(process.pid)")
+
+            Menu {
+                Button("Inspect") { inspect(process) }
+                if process.executablePath != "Unavailable" && process.executablePath != "Protected process" {
+                    Button("Copy Executable Path") { copyPath(process.executablePath) }
+                }
+                Divider()
+                Button("Quit") { confirm(process, false) }
+                    .disabled(process.started == 0)
+                Button("Force Quit", role: .destructive) { confirm(process, true) }
+                    .disabled(process.started == 0)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 11))
+                    .foregroundStyle(TaskManagerTheme.secondary)
+                    .frame(width: 24, height: 23)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .focusEffectDisabled()
+            .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
+        }
+        .onePlusTableRow(selected: selected)
+    }
 }
 
 struct ProcessDetailSheet: View {
