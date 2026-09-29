@@ -6,6 +6,22 @@ import OnePlusUI
 
 @MainActor
 final class LauncherGridTests: XCTestCase {
+    func testBuiltInSummariesFitTwoCardLines() {
+        let width = (OnePlusWindowCanvas.main.size.width - OnePlusWindowCanvas.main.sidebarWidth
+            - 2 * OnePlusMetrics.gutter - 3 * OnePlusCatalogMetrics.gap) / 4
+            - 2 * OnePlusCatalogMetrics.cardInset
+        let font = NSFont.systemFont(ofSize: 12)
+        let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
+        for tool in ToolRegistry.builtInTools {
+            XCTAssertFalse(tool.summary.isEmpty, tool.id)
+            XCTAssertLessThanOrEqual(tool.summary.count, 60, tool.id)
+            let text = NSAttributedString(string: tool.summary, attributes: [.font: font])
+            let bounds = text.boundingRect(with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                                           options: [.usesLineFragmentOrigin, .usesFontLeading])
+            XCTAssertLessThanOrEqual(bounds.height, 2 * lineHeight, tool.id)
+        }
+    }
+
     func testFourCatalogCardsFitTheMainCanvas() {
         let contentWidth = OnePlusWindowCanvas.main.size.width
             - OnePlusWindowCanvas.main.sidebarWidth
