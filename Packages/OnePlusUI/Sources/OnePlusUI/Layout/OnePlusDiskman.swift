@@ -40,12 +40,14 @@ public struct OnePlusDeviceNavRow<Trailing: View>: View {
     let icon: String
     let selected: Bool
     let locked: Bool
+    let identifier: String
     let action: () -> Void
     let trailing: Trailing
     public init(_ title: String, subtitle: String, systemImage: String, selected: Bool,
-                locked: Bool, action: @escaping () -> Void, @ViewBuilder trailing: () -> Trailing) {
+                locked: Bool, accessibilityIdentifier: String = "", action: @escaping () -> Void, @ViewBuilder trailing: () -> Trailing) {
         self.title = title; self.subtitle = subtitle; icon = systemImage
         self.selected = selected; self.locked = locked; self.action = action; self.trailing = trailing()
+        identifier = accessibilityIdentifier
     }
     public var body: some View {
         HStack(spacing: 2) {
@@ -62,6 +64,7 @@ public struct OnePlusDeviceNavRow<Trailing: View>: View {
             }.buttonStyle(OnePlusInteractionStyle(selected: selected))
                 .accessibilityLabel("\(title), \(subtitle), \(locked ? "write locked" : "unlocked")")
                 .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier(identifier)
             trailing
         }.background(selected ? OnePlusColor.selection : .clear, in: RoundedRectangle(cornerRadius: 5))
     }
