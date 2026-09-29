@@ -256,7 +256,7 @@ struct SwitchWindowView: View {
             if account.identity.providerID == .codex {
                 accountUsage(account)
                 if let snapshot = model.usage[account.id], account.verification.state != .needsSignIn {
-                    SwitchActivityGrid(rows: snapshot.dailyUsage)
+                    SwitchActivityGrid(rows: snapshot.dailyUsage, updatedAt: snapshot.fetchedAt)
                 }
             }
         } else {
@@ -703,20 +703,46 @@ struct SwitchProviderIcon: View {
 
 private struct SwitchActivityGrid: View {
     let rows: [CodexDailyUsageSnapshot]
+    let updatedAt: Date
     @State private var selectedDate: Date?
     @State private var period: CodexTokenPeriod = .yearly
+    @State private var presentation = Presentation.empty
 
-    private struct Day { let date: Date; let tokens: Int64 }
-    private static let calendar: Calendar = {
+    nonisolated private struct Day: Sendable {
+        let date: Date
+        let tokens: Int64
+        let level: Int
+        let shortLabel: String
+        let accessibilityLabel: String
+        let tokenLabel: String
+    }
+
+    nonisolated private struct Presentation: Sendable {
+        let weeks: [[Day?]]
+        let totals: [String: String]
+
+        static let empty = Presentation(weeks: [], totals: [:])
+    }
+
+    nonisolated private struct Request: Hashable {
+        let period: String
+        let updatedAt: Date
+    }
+
+    nonisolated private static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar
     }()
 
-    private var weeks: [[Day?]] {
+    nonisolated private static func makePresentation(
+        rows: [CodexDailyUsageSnapshot],
+        dayCount: Int,
+        now: Date
+    ) -> Presentation {
         let calendar = Self.calendar
-        let today = calendar.startOfDay(for: .now)
-        let first = calendar.date(byAdding: .day, value: 1 - period.dayCount, to: today) ?? today
+        let today = calendar.startOfDay(for: now)
+        let first = calendar.date(byAdding: .day, value: 1 - dayCount, to: today) ?? today
         let start = calendar.date(byAdding: .day, value: 1 - calendar.component(.weekday, from: first), to: first) ?? first
         var tokens: [String: Int64] = [:]
         for row in rows {
@@ -725,20 +751,43 @@ private struct SwitchActivityGrid: View {
             let (sum, overflow) = tokens[key, default: 0].addingReportingOverflow(max(0, count))
             tokens[key] = overflow ? Int64.max : sum
         }
-        let count = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
-        return stride(from: 0, to: count, by: 7).map { week in
-            (0..<7).map { weekday in
-                guard let date = calendar.date(byAdding: .day, value: week + weekday, to: start), date <= today, date >= first else { return nil }
+        let maximum = max(Int64(1), tokens.values.max() ?? 1)
+        let dayCount = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
+        var weeks: [[Day?]] = []
+        for weekOffset in stride(from: 0, to: dayCount, by: 7) {
+            var week: [Day?] = []
+            for weekday in 0..<7 {
+                guard let date = calendar.date(
+                    byAdding: .day,
+                    value: weekOffset + weekday,
+                    to: start
+                ), date <= today, date >= first else {
+                    week.append(nil)
+                    continue
+                }
                 let parts = calendar.dateComponents([.year, .month, .day], from: date)
                 let key = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
-                return Day(date: date, tokens: tokens[key, default: 0])
+                let count = tokens[key, default: 0]
+                week.append(Day(
+                    date: date,
+                    tokens: count,
+                    level: 3 - min(3, Int(sqrt(Double(count) / Double(maximum)) * 3)),
+                    shortLabel: date.formatted(date: .abbreviated, time: .omitted),
+                    accessibilityLabel: date.formatted(date: .complete, time: .omitted),
+                    tokenLabel: "\(count.formatted()) tokens"
+                ))
             }
+            weeks.append(week)
         }
+        let totals = Dictionary(uniqueKeysWithValues: [
+            CodexTokenPeriod.today, .weekly, .monthly, .yearly
+        ].map { period in
+            (period.rawValue, period.tokens(in: rows, endingAt: now).formatted(.number.notation(.compactName)))
+        })
+        return Presentation(weeks: weeks, totals: totals)
     }
 
     var body: some View {
-        let weeks = weeks
-        let maximum = max(1, weeks.flatMap { $0 }.compactMap { $0?.tokens }.max() ?? 1)
         OnePlusCard {
             OnePlusCardHeader("Daily activity", systemImage: "calendar") {
                 OnePlusSegmented(choices: [(CodexTokenPeriod.weekly, "7 days"), (.monthly, "1 month"), (.yearly, "1 year")],
@@ -746,19 +795,18 @@ private struct SwitchActivityGrid: View {
             }
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: OnePlusMetrics.navRowGap) {
-                    ForEach(weeks.indices, id: \.self) { column in
+                    ForEach(presentation.weeks.indices, id: \.self) { column in
                         VStack(spacing: OnePlusMetrics.navRowGap) {
                             ForEach(0..<7) { row in
-                                if let day = weeks[column][row] {
+                                if let day = presentation.weeks[column][row] {
                                     Button { selectedDate = day.date } label: {
                                         RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius)
                                             .fill(day.tokens == 0 ? OnePlusColor.track : OnePlusColor.chartSeries[
-                                                3 - min(3, Int(sqrt(Double(day.tokens) / Double(maximum)) * 3))])
+                                                day.level])
                                             .frame(width: OnePlusMetrics.navPadding, height: OnePlusMetrics.navPadding)
                                     }.buttonStyle(OnePlusInteractionStyle(selected: selectedDate == day.date))
-                                        .help("\(day.date.formatted(date: .abbreviated, time: .omitted)): \(day.tokens.formatted()) tokens")
-                                        .accessibilityLabel(day.date.formatted(date: .complete, time: .omitted))
-                                        .accessibilityValue("\(day.tokens.formatted()) tokens")
+                                        .accessibilityLabel(day.accessibilityLabel)
+                                        .accessibilityValue(day.tokenLabel)
                                 } else {
                                     Color.clear.frame(width: OnePlusMetrics.navPadding, height: OnePlusMetrics.navPadding).accessibilityHidden(true)
                                 }
@@ -767,16 +815,27 @@ private struct SwitchActivityGrid: View {
                     }
                 }.padding(OnePlusMetrics.cardPadding)
             }.onePlusScrollIndicators()
-            if let selectedDate, let day = weeks.flatMap({ $0 }).compactMap({ $0 }).first(where: { $0.date == selectedDate }) {
-                Text("\(selectedDate.formatted(date: .abbreviated, time: .omitted)): \(day.tokens.formatted()) tokens")
+            if let selectedDate,
+               let day = presentation.weeks.flatMap({ $0 }).compactMap({ $0 }).first(where: { $0.date == selectedDate }) {
+                Text("\(day.shortLabel): \(day.tokenLabel)")
                     .onePlusText(.caption).padding(.horizontal, OnePlusMetrics.cardPadding)
             }
             HStack(spacing: 0) {
                 ForEach([CodexTokenPeriod.today, .weekly, .monthly, .yearly], id: \.rawValue) { period in
-                    OnePlusStatCell(period.label, value: period.tokens(in: rows, endingAt: .now).formatted(.number.notation(.compactName)))
+                    OnePlusStatCell(period.label, value: presentation.totals[period.rawValue] ?? "0")
                     if period != .yearly { OnePlusRule(vertical: true) }
                 }
             }.fixedSize(horizontal: false, vertical: true)
-        }.onChange(of: period) { selectedDate = nil }
+        }
+        .task(id: Request(period: period.rawValue, updatedAt: updatedAt)) {
+            selectedDate = nil
+            let rows = rows
+            let dayCount = period.dayCount
+            let result = await Task.detached(priority: .utility) {
+                Self.makePresentation(rows: rows, dayCount: dayCount, now: .now)
+            }.value
+            guard !Task.isCancelled else { return }
+            presentation = result
+        }
     }
 }
