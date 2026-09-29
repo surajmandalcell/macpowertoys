@@ -22,6 +22,7 @@ public struct OnePlusTableAction {
 
 /// A native selectable table with the OnePlus row and header geometry.
 public struct OnePlusNativeTable: NSViewRepresentable {
+    @Environment(\.onePlusDensity) private var density
     let columns: [OnePlusGridColumn]
     let rows: [OnePlusTableItem]
     @Binding var selection: Set<String>
@@ -50,23 +51,23 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         table.target = context.coordinator; table.doubleAction = #selector(Coordinator.openSelection)
         table.allowsMultipleSelection = true; table.allowsEmptySelection = true
         table.usesAlternatingRowBackgroundColors = false
-        table.style = .plain; table.rowHeight = OnePlusTable.rowHeight(.regular)
+        table.style = .plain; table.rowHeight = OnePlusTable.rowHeight(density)
         table.intercellSpacing = .zero
         table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        table.headerView = NSTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
+        table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
         for (index, item) in columns.enumerated() {
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(String(index)))
             column.title = item.title; column.width = item.width
             column.minWidth = index == 0 ? 160 : item.width
             column.maxWidth = index == 0 ? .greatestFiniteMagnitude : item.width
             column.resizingMask = index == 0 ? .autoresizingMask : []
-            column.headerCell = StorageHeaderCell(textCell: item.title.uppercased())
+            column.headerCell = OnePlusTableHeaderCell(textCell: item.title)
             column.sortDescriptorPrototype = NSSortDescriptor(key: String(index), ascending: index != 2)
             table.addTableColumn(column)
         }
         let action = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("actions"))
         action.width = 40; action.minWidth = 40; action.maxWidth = 40
-        action.headerCell = StorageHeaderCell(textCell: "")
+        action.headerCell = OnePlusTableHeaderCell(textCell: "")
         table.addTableColumn(action)
         table.setDraggingSourceOperationMask(.copy, forLocal: false)
         table.makeMenu = { [weak coordinator = context.coordinator] ids in coordinator?.menu(ids) }
@@ -83,6 +84,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         context.coordinator.updating = true
         defer { context.coordinator.updating = false }
         table.items = rows
+        table.rowHeight = OnePlusTable.rowHeight(density)
         table.backgroundColor = NSColor(OnePlusColor.panel)
         if changed || table.numberOfRows != rows.count { table.reloadData() }
         let selected = IndexSet(rows.indices.filter { selection.contains(rows[$0].id) })
@@ -115,7 +117,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             guard let index = Int(column.identifier.rawValue), item.cells.indices.contains(index) else { return nil }
             let cell = NSTableCellView()
             let text = NSTextField(labelWithString: item.cells[index])
-            text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: .regular), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: .regular))
+            text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: owner.density), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: owner.density))
             text.textColor = NSColor(index == 0 ? OnePlusColor.ink : OnePlusColor.secondary)
             text.lineBreakMode = .byTruncatingMiddle; text.toolTip = item.cells[index]
             text.translatesAutoresizingMaskIntoConstraints = false
@@ -226,15 +228,33 @@ private final class StorageRow: NSTableRowView {
     }
 }
 
-private final class StorageHeaderCell: NSTableHeaderCell {
+final class OnePlusTableHeaderCell: NSTableHeaderCell {
+    var label: NSAttributedString {
+        NSAttributedString(string: stringValue.uppercased(), attributes: [
+            .font: NSFont.systemFont(ofSize: 9, weight: .medium),
+            .foregroundColor: NSColor(OnePlusColor.muted), .kern: 0.4
+        ])
+    }
+    override var cellSize: NSSize { NSSize(width: ceil(label.size().width) + 24, height: 28) }
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
         NSColor(OnePlusColor.sidebar).setFill(); cellFrame.fill()
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: OnePlusTextRole.tableHeader.size(for: .regular), weight: .medium),
-            .foregroundColor: NSColor(OnePlusColor.muted), .kern: OnePlusTextRole.tableHeader.tracking
-        ]
-        let text = NSAttributedString(string: stringValue, attributes: attributes)
+        drawInterior(withFrame: cellFrame, in: controlView)
+        NSColor(OnePlusColor.lineSoft).setFill()
+        NSRect(x: cellFrame.minX, y: cellFrame.maxY - 1, width: cellFrame.width, height: 1).fill()
+    }
+    override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
+        let text = label
         text.draw(in: NSRect(x: cellFrame.minX + 12, y: cellFrame.midY - text.size().height / 2,
                             width: max(0, cellFrame.width - 24), height: text.size().height))
+    }
+    override func highlight(_ flag: Bool, withFrame cellFrame: NSRect, in controlView: NSView) {
+        draw(withFrame: cellFrame, in: controlView)
+    }
+}
+
+final class OnePlusTableHeaderView: NSTableHeaderView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor(OnePlusColor.sidebar).setFill(); bounds.fill()
+        super.draw(dirtyRect)
     }
 }
