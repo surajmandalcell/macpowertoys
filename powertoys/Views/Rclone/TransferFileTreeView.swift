@@ -38,15 +38,25 @@ struct TransferFileTreeView: View {
     @State private var destinationError: String?
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
+    @State private var patterns: [String] = []
+    @State private var projection = Projection.empty
 
-    private struct VisibleRow: Identifiable {
+    struct DisplayRow: Identifiable {
         let entry: RemoteEntry
         let depth: Int
+        let isIgnored: Bool
+        let size: String
+        let modified: String?
         var id: String { entry.path }
     }
 
-    private var currentPatterns: [String] {
-        RcloneDefaults.parsePatterns(patternsText)
+    struct Projection {
+        let treeRows: [DisplayRow]
+        let searchRows: [DisplayRow]
+        let pendingRows: [DisplayRow]
+        let uploadedRows: [DisplayRow]
+
+        static let empty = Projection(treeRows: [], searchRows: [], pendingRows: [], uploadedRows: [])
     }
 
     private var expandedStorageKey: String {
@@ -62,6 +72,7 @@ struct TransferFileTreeView: View {
         }
         .overlay(alignment: .bottom) { toastView }
         .task {
+            patterns = RcloneDefaults.parsePatterns(patternsText)
             restoreExpandedPaths()
             await loadRoots()
         }
@@ -73,15 +84,26 @@ struct TransferFileTreeView: View {
         .task(id: searchText) {
             guard !searchText.isEmpty else {
                 debouncedSearch = ""
+                rebuildProjection(search: "")
                 return
             }
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             debouncedSearch = searchText
+            rebuildProjection(search: searchText)
             ensureIndex()
         }
         .onDisappear { indexTask?.cancel() }
-        .onChange(of: expanded) { persistExpandedPaths() }
+        .onChange(of: expanded) {
+            persistExpandedPaths()
+            rebuildProjection()
+        }
+        .onChange(of: hideIgnored) { rebuildProjection() }
+        .onChange(of: patternsText) {
+            let parsed = RcloneDefaults.parsePatterns(patternsText)
+            patterns = parsed
+            rebuildProjection(patterns: parsed)
+        }
     }
 
     // MARK: Controls
@@ -108,7 +130,7 @@ struct TransferFileTreeView: View {
                     .font(.system(size: 11))
 
                 Spacer()
-                Text("\(currentPatterns.count) patterns active")
+                Text("\(patterns.count) patterns active")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Button {
@@ -175,10 +197,9 @@ struct TransferFileTreeView: View {
     }
 
     private var treeList: some View {
-        let patterns = currentPatterns
-        return ScrollView {
+        ScrollView {
             LazyVStack(spacing: 1) {
-                ForEach(visibleRows.filter { !hideIgnored || !isIgnored($0.entry, patterns: patterns) }) { row in
+                ForEach(projection.treeRows) { row in
                     FileTreeRowView(
                         entry: row.entry,
                         label: row.entry.name,
@@ -186,7 +207,9 @@ struct TransferFileTreeView: View {
                         showsDisclosure: true,
                         isExpanded: expanded.contains(row.entry.path),
                         isLoading: loadingPaths.contains(row.entry.path),
-                        isIgnored: isIgnored(row.entry, patterns: patterns),
+                        isIgnored: row.isIgnored,
+                        size: row.size,
+                        modified: row.modified,
                         onToggle: { toggleExpand(row.entry) },
                         onIgnore: { addIgnorePattern(for: row.entry) }
                     )
@@ -220,15 +243,13 @@ struct TransferFileTreeView: View {
                 }
             }
         } else {
-            let matches = filteredEntries
-            if matches.isEmpty {
+            if projection.searchRows.isEmpty {
                 centered {
                     Text("No matches")
                         .font(.system(size: 12))
                         .foregroundStyle(.tertiary)
                 }
             } else {
-                let patterns = currentPatterns
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         if indexTruncated {
@@ -239,32 +260,26 @@ struct TransferFileTreeView: View {
                                 .padding(.horizontal, 8)
                                 .padding(.bottom, 4)
                         }
-                        ForEach(matches) { entry in
+                        ForEach(projection.searchRows) { row in
                             FileTreeRowView(
-                                entry: entry,
-                                label: entry.path,
+                                entry: row.entry,
+                                label: row.entry.path,
                                 depth: 0,
                                 showsDisclosure: false,
                                 isExpanded: false,
                                 isLoading: false,
-                                isIgnored: isIgnored(entry, patterns: patterns),
+                                isIgnored: row.isIgnored,
+                                size: row.size,
+                                modified: row.modified,
                                 onToggle: {},
-                                onIgnore: { addIgnorePattern(for: entry) }
+                                onIgnore: { addIgnorePattern(for: row.entry) }
                             )
                         }
                     }
                     .padding(8)
                 }
                 .thinScrollIndicators()
-            }
         }
-    }
-
-    private var filteredEntries: [RemoteEntry] {
-        let patterns = currentPatterns
-        return (allEntries ?? []).filter {
-            $0.path.localizedCaseInsensitiveContains(debouncedSearch)
-                && (!hideIgnored || !isIgnored($0, patterns: patterns))
         }
     }
 
@@ -297,28 +312,32 @@ struct TransferFileTreeView: View {
                     QuietDivider()
                 }
                 HStack(spacing: 0) {
-                    statusColumn(title: "NOT UPLOADED", status: .pending, tint: .orange)
+                    statusColumn(title: "NOT UPLOADED", status: .pending, rows: projection.pendingRows, tint: .orange)
                     QuietDivider()
-                    statusColumn(title: "UPLOADED", status: .uploaded, tint: .green)
+                    statusColumn(title: "UPLOADED", status: .uploaded, rows: projection.uploadedRows, tint: .green)
                 }
             }
         }
     }
 
-    private func statusColumn(title: String, status: TransferFileStatus, tint: Color) -> some View {
-        let entries = statusEntries(status)
-        return VStack(spacing: 0) {
+    private func statusColumn(
+        title: String,
+        status: TransferFileStatus,
+        rows: [DisplayRow],
+        tint: Color
+    ) -> some View {
+        VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Circle().fill(tint).frame(width: 6, height: 6)
                 Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-                Text("\(entries.count)").font(.system(size: 10)).foregroundStyle(.tertiary).monospacedDigit()
+                Text("\(rows.count)").font(.system(size: 10)).foregroundStyle(.tertiary).monospacedDigit()
                 Spacer()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             QuietDivider()
 
-            if entries.isEmpty {
+            if rows.isEmpty {
                 Text(status == .uploaded ? "Nothing uploaded yet" : "Everything is uploaded")
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
@@ -326,34 +345,20 @@ struct TransferFileTreeView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
-                        if status == .uploaded {
-                            ForEach(uploadedTreeRows) { row in
-                                FileTreeRowView(
-                                    entry: row.entry,
-                                    label: row.entry.name,
-                                    depth: row.depth,
-                                    showsDisclosure: true,
-                                    isExpanded: expanded.contains(row.entry.path),
-                                    isLoading: loadingPaths.contains(row.entry.path),
-                                    isIgnored: isIgnored(row.entry, patterns: currentPatterns),
-                                    onToggle: { toggleExpand(row.entry) },
-                                    onIgnore: { addIgnorePattern(for: row.entry) }
-                                )
-                            }
-                        } else {
-                            ForEach(entries) { entry in
-                                FileTreeRowView(
-                                    entry: entry,
-                                    label: entry.path,
-                                    depth: 0,
-                                    showsDisclosure: false,
-                                    isExpanded: false,
-                                    isLoading: false,
-                                    isIgnored: isIgnored(entry, patterns: currentPatterns),
-                                    onToggle: {},
-                                    onIgnore: { addIgnorePattern(for: entry) }
-                                )
-                            }
+                        ForEach(rows) { row in
+                            FileTreeRowView(
+                                entry: row.entry,
+                                label: status == .uploaded ? row.entry.name : row.entry.path,
+                                depth: row.depth,
+                                showsDisclosure: status == .uploaded,
+                                isExpanded: status == .uploaded && expanded.contains(row.entry.path),
+                                isLoading: status == .uploaded && loadingPaths.contains(row.entry.path),
+                                isIgnored: row.isIgnored,
+                                size: row.size,
+                                modified: row.modified,
+                                onToggle: { if status == .uploaded { toggleExpand(row.entry) } },
+                                onIgnore: { addIgnorePattern(for: row.entry) }
+                            )
                         }
                     }
                     .padding(8)
@@ -362,21 +367,6 @@ struct TransferFileTreeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func statusEntries(_ status: TransferFileStatus) -> [RemoteEntry] {
-        let patterns = currentPatterns
-        return (allEntries ?? [])
-            .filter { !$0.isDir }
-            .filter { !hideIgnored || !isIgnored($0, patterns: patterns) }
-            .filter { debouncedSearch.isEmpty || $0.path.localizedCaseInsensitiveContains(debouncedSearch) }
-            .filter { TransferFileStatus.resolve(source: $0, destination: destinationEntries[$0.path]) == status }
-            .sorted { $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending }
-    }
-
-    private var uploadedTreeRows: [VisibleRow] {
-        let paths = Self.treePaths(for: statusEntries(.uploaded).map(\.path))
-        return visibleRows.filter { paths.contains($0.entry.path) }
     }
 
     static func treePaths(for filePaths: [String]) -> Set<String> {
@@ -413,18 +403,99 @@ struct TransferFileTreeView: View {
 
     // MARK: Tree state
 
-    private var visibleRows: [VisibleRow] {
-        var rows: [VisibleRow] = []
+    static func makeProjection(
+        roots: [RemoteEntry],
+        children: [String: [RemoteEntry]],
+        expanded: Set<String>,
+        allEntries: [RemoteEntry],
+        destinationEntries: [String: RemoteEntry],
+        patterns: [String],
+        hideIgnored: Bool,
+        search: String,
+        now: Date = Date()
+    ) -> Projection {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+
+        func row(_ entry: RemoteEntry, depth: Int) -> DisplayRow {
+            DisplayRow(
+                entry: entry,
+                depth: depth,
+                isIgnored: IgnoreMatcher.matches(
+                    path: entry.path,
+                    name: entry.name,
+                    isDir: entry.isDir,
+                    patterns: patterns
+                ),
+                size: entry.isDir ? "" : RcloneProjectionFormat.bytes(entry.size),
+                modified: entry.modTime.map { formatter.localizedString(for: $0, relativeTo: now) }
+            )
+        }
+
+        var visibleRows: [DisplayRow] = []
         func walk(_ entries: [RemoteEntry], depth: Int) {
             for entry in entries {
-                rows.append(VisibleRow(entry: entry, depth: depth))
-                if entry.isDir, expanded.contains(entry.path), let children = childrenCache[entry.path] {
-                    walk(children, depth: depth + 1)
+                visibleRows.append(row(entry, depth: depth))
+                if entry.isDir, expanded.contains(entry.path), let nested = children[entry.path] {
+                    walk(nested, depth: depth + 1)
                 }
             }
         }
         walk(roots, depth: 0)
-        return rows
+
+        let searchRows = search.isEmpty ? [] : allEntries
+            .filter {
+                $0.path.localizedCaseInsensitiveContains(search)
+                    && (!hideIgnored || !IgnoreMatcher.matches(
+                        path: $0.path,
+                        name: $0.name,
+                        isDir: $0.isDir,
+                        patterns: patterns
+                    ))
+            }
+            .map { row($0, depth: 0) }
+
+        let statusEntries = allEntries
+            .filter { !$0.isDir }
+            .filter {
+                !hideIgnored || !IgnoreMatcher.matches(
+                    path: $0.path,
+                    name: $0.name,
+                    isDir: false,
+                    patterns: patterns
+                )
+            }
+            .filter { search.isEmpty || $0.path.localizedCaseInsensitiveContains(search) }
+            .sorted { $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending }
+        var pendingRows: [DisplayRow] = []
+        var uploadedFiles: [String] = []
+        for entry in statusEntries {
+            switch TransferFileStatus.resolve(source: entry, destination: destinationEntries[entry.path]) {
+            case .pending: pendingRows.append(row(entry, depth: 0))
+            case .uploaded: uploadedFiles.append(entry.path)
+            }
+        }
+        let uploadedPaths = treePaths(for: uploadedFiles)
+
+        return Projection(
+            treeRows: visibleRows.filter { !hideIgnored || !$0.isIgnored },
+            searchRows: searchRows,
+            pendingRows: pendingRows,
+            uploadedRows: visibleRows.filter { uploadedPaths.contains($0.entry.path) }
+        )
+    }
+
+    private func rebuildProjection(patterns newPatterns: [String]? = nil, search newSearch: String? = nil) {
+        projection = Self.makeProjection(
+            roots: roots,
+            children: childrenCache,
+            expanded: expanded,
+            allEntries: allEntries ?? [],
+            destinationEntries: destinationEntries,
+            patterns: newPatterns ?? patterns,
+            hideIgnored: hideIgnored,
+            search: newSearch ?? debouncedSearch
+        )
     }
 
     private func toggleExpand(_ entry: RemoteEntry) {
@@ -443,6 +514,7 @@ struct TransferFileTreeView: View {
                         showToast("Could not open '\(entry.name)': \(error.localizedDescription)")
                     }
                     loadingPaths.remove(entry.path)
+                    rebuildProjection()
                 }
             }
         }
@@ -457,6 +529,7 @@ struct TransferFileTreeView: View {
             rootError = error.localizedDescription
         }
         isLoadingRoot = false
+        rebuildProjection()
     }
 
     private func ensureIndex() {
@@ -471,6 +544,7 @@ struct TransferFileTreeView: View {
                     entries = Array(entries.prefix(Self.indexLimit))
                 }
                 allEntries = entries
+                rebuildProjection()
             } catch is CancellationError {
             } catch {
                 indexError = error.localizedDescription
@@ -488,6 +562,7 @@ struct TransferFileTreeView: View {
         do {
             let entries = try await manager.listDirectory(fs: destinationFs, path: "", recurse: true)
             destinationEntries = Dictionary(uniqueKeysWithValues: entries.map { ($0.path, $0) })
+            rebuildProjection()
         } catch {
             destinationError = "Could not compare the destination: \(error.localizedDescription)"
         }
@@ -513,13 +588,9 @@ struct TransferFileTreeView: View {
 
     // MARK: Ignore patterns
 
-    private func isIgnored(_ entry: RemoteEntry, patterns: [String]) -> Bool {
-        IgnoreMatcher.matches(path: entry.path, name: entry.name, isDir: entry.isDir, patterns: patterns)
-    }
-
     private func addIgnorePattern(for entry: RemoteEntry) {
         let pattern = entry.isDir ? entry.path + "/**" : entry.path
-        if !currentPatterns.contains(pattern) {
+        if !patterns.contains(pattern) {
             patternsText = patternsText + "\n" + pattern
         }
         showToast("Added '\(pattern)' to ignore patterns. It applies to new and retried transfers.")
@@ -546,16 +617,12 @@ private struct FileTreeRowView: View {
     let isExpanded: Bool
     let isLoading: Bool
     let isIgnored: Bool
+    let size: String
+    let modified: String?
     let onToggle: () -> Void
     let onIgnore: () -> Void
 
     @State private var isHovering = false
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
-    }()
 
     var body: some View {
         HStack(spacing: 6) {
@@ -652,14 +719,14 @@ private struct FileTreeRowView: View {
 
     @ViewBuilder
     private var trailingMeta: some View {
-        if !entry.isDir {
-            Text(RcloneFormat.bytes(entry.size))
+        if !size.isEmpty {
+            Text(size)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
         }
-        if let modTime = entry.modTime {
-            Text(Self.relativeFormatter.localizedString(for: modTime, relativeTo: Date()))
+        if let modified {
+            Text(modified)
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }

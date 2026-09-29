@@ -19,7 +19,9 @@ struct CleanupRemoteSheet: View {
 
     @State private var phase: Phase = .scanning
     @State private var groups: [CleanupGroup] = []
+    @State private var allMatches: [RemoteEntry] = []
     @State private var checked: Set<String> = []
+    @State private var checkedBytes: Int64 = 0
     @State private var truncatedFrom: Int?
     @State private var scanTask: Task<Void, Never>?
 
@@ -44,15 +46,9 @@ struct CleanupRemoteSheet: View {
         startPath.isEmpty ? remote.pathPrefix : "\(remote.pathPrefix)\(startPath)"
     }
 
-    private var allMatches: [RemoteEntry] { groups.flatMap(\.items) }
-
     private var canClose: Bool {
         if case .deleting = phase { return false }
         return true
-    }
-
-    private var checkedBytes: Int64 {
-        allMatches.reduce(0) { $0 + (!$1.isDir && checked.contains($1.path) ? $1.size : 0) }
     }
 
     var body: some View {
@@ -276,6 +272,7 @@ struct CleanupRemoteSheet: View {
         } else {
             checked = Set(allMatches.map(\.path))
         }
+        refreshCheckedBytes()
     }
 
     private func toggleGroup(_ group: CleanupGroup) {
@@ -285,6 +282,7 @@ struct CleanupRemoteSheet: View {
         } else {
             checked.formUnion(paths)
         }
+        refreshCheckedBytes()
     }
 
     private func toggle(_ entry: RemoteEntry) {
@@ -292,6 +290,13 @@ struct CleanupRemoteSheet: View {
             checked.remove(entry.path)
         } else {
             checked.insert(entry.path)
+        }
+        refreshCheckedBytes()
+    }
+
+    private func refreshCheckedBytes() {
+        checkedBytes = allMatches.reduce(0) {
+            $0 + (!$1.isDir && checked.contains($1.path) ? $1.size : 0)
         }
     }
 
@@ -302,7 +307,9 @@ struct CleanupRemoteSheet: View {
         phase = .scanning
         truncatedFrom = nil
         groups = []
+        allMatches = []
         checked = []
+        checkedBytes = 0
         scanTask = Task {
             do {
                 let entries = try await manager.listDirectory(fs: remote.pathPrefix, path: startPath, recurse: true)
@@ -319,7 +326,9 @@ struct CleanupRemoteSheet: View {
                     phase = .empty
                 } else {
                     groups = Self.groupByParent(matches)
+                    allMatches = matches
                     checked = Set(matches.map(\.path))
+                    refreshCheckedBytes()
                     phase = .review
                 }
             } catch is CancellationError {
