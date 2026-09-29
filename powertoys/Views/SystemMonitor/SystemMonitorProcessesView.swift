@@ -145,7 +145,6 @@ struct SystemMonitorProcessesView: View {
             processTable
         }
         .foregroundStyle(TaskManagerTheme.ink)
-        .environment(\.colorScheme, .dark)
         .task { await sampleProcesses() }
         .task(id: selectedID) { await sampleEndpoints() }
         .sheet(isPresented: Binding(
@@ -242,8 +241,7 @@ struct SystemMonitorProcessesView: View {
             Color.clear.frame(width: 24)
         }
         .padding(.horizontal, 12)
-        .frame(height: 33)
-        .background(Color(red: 0.106, green: 0.106, blue: 0.106))
+        .onePlusTableHeader()
     }
 
     private func processRow(_ row: SystemMonitorProcessHierarchy.Row) -> some View {
@@ -260,7 +258,7 @@ struct SystemMonitorProcessesView: View {
                         Text(process.name).lineLimit(1)
                     }
                     .padding(.leading, CGFloat(row.depth) * 16)
-                    .frame(maxWidth: .infinity, minHeight: 33, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         hoveredProcessID == process.id ? Color.white.opacity(0.055) : .clear,
                         in: RoundedRectangle(cornerRadius: 4)
@@ -308,11 +306,9 @@ struct SystemMonitorProcessesView: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .focusEffectDisabled()
-            .environment(\.colorScheme, .dark)
             .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
         }
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
+        .onePlusTableRow(selected: selectedID == process.id)
     }
 
     private func header(_ column: ProcessSortColumn) -> some View {
@@ -474,7 +470,6 @@ struct ProcessDetailSheet: View {
         .frame(width: 450, height: 520)
         .background(TaskManagerTheme.window)
         .foregroundStyle(TaskManagerTheme.ink)
-        .environment(\.colorScheme, .dark)
     }
 
     private var identity: some View {

@@ -3,6 +3,7 @@ import OnePlusUI
 import SwiftUI
 
 struct SystemMonitorRemoteView: View {
+    let addRequest: Int
     @State private var profiles = SystemMonitorRemoteProfiles.load()
     @State private var poller = SystemMonitorRemotePoller()
     @State private var connectedID: String?
@@ -13,20 +14,24 @@ struct SystemMonitorRemoteView: View {
     @State private var refreshGeneration = 0
     @State private var editor: SystemMonitorRemoteProfile?
 
+    init(addRequest: Int = 0) {
+        self.addRequest = addRequest
+    }
+
     private var activeProfile: SystemMonitorRemoteProfile? {
         profiles.first { $0.id == connectedID }
     }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 remoteHeader
                 if profiles.isEmpty {
                     emptyState
                 } else {
                     LazyVGrid(
-                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
-                        spacing: 12
+                        columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())],
+                        spacing: 10
                     ) {
                         ForEach(profiles) { profile in remoteCard(profile) }
                     }
@@ -45,8 +50,10 @@ struct SystemMonitorRemoteView: View {
         }
         .thinScrollIndicators()
         .foregroundStyle(TaskManagerTheme.ink)
-        .environment(\.colorScheme, .dark)
         .task(id: taskID) { await poll() }
+        .onChange(of: addRequest) { _, _ in
+            editor = SystemMonitorRemoteProfile(name: "", host: "")
+        }
         .onDisappear { disconnect() }
         .sheet(item: $editor) { profile in
             TaskManagerRemoteEditor(
@@ -65,19 +72,12 @@ struct SystemMonitorRemoteView: View {
                 .font(.system(size: 9))
                 .foregroundStyle(TaskManagerTheme.secondary)
             Spacer()
-            Button {
-                editor = SystemMonitorRemoteProfile(name: "", host: "")
-            } label: {
-                Label("Add host", systemImage: "plus")
-            }
-            .taskManagerControl()
-            .accessibilityIdentifier("system-monitor.remote.add-host")
         }
     }
 
     private var emptyState: some View {
         TaskManagerPanel(textured: true) {
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 Image(systemName: "server.rack")
                     .font(.system(size: 25))
                     .foregroundStyle(TaskManagerTheme.secondary)
@@ -538,7 +538,6 @@ private struct TaskManagerRemoteEditor: View {
         .frame(width: 530)
         .background(TaskManagerTheme.window)
         .foregroundStyle(TaskManagerTheme.ink)
-        .environment(\.colorScheme, .dark)
     }
 
     private func editorRow<Content: View>(
@@ -571,12 +570,10 @@ private struct TaskManagerRemoteEditor: View {
 
 private extension View {
     func taskManagerRemoteButton(primary: Bool = false) -> some View {
-        taskManagerControl(
-            primary ? .primary : .standard,
-            minWidth: 88,
-            minHeight: 36,
-            horizontalPadding: 14
-        )
+        buttonStyle(OnePlusButtonStyle(primary ? .primary : .neutral,
+                                       size: .small,
+                                       minWidth: 88,
+                                       horizontalPadding: 8))
     }
 
     func taskManagerRemoteField() -> some View {

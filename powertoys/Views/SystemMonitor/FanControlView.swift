@@ -51,8 +51,8 @@ struct FanControlView: View {
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
             if compact { compactContent } else { expandedContent }
         }
-        .padding(.horizontal, compact ? 1 : 14)
-        .padding(.vertical, compact ? 0 : 14)
+        .padding(.horizontal, compact ? 1 : 0)
+        .padding(.vertical, 0)
         .background(compact ? Color.clear : TaskManagerTheme.card,
                     in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
         .overlay {
@@ -120,58 +120,49 @@ struct FanControlView: View {
         .padding(15)
         .foregroundStyle(TaskManagerTheme.ink)
         .background(TaskManagerTheme.card)
-        .environment(\.colorScheme, .dark)
     }
 
     private var expandedContent: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 9) {
-                Label("Fan", systemImage: "fanblades")
-                    .font(.system(size: 12, weight: .medium))
+        VStack(spacing: 0) {
+            OnePlusCardHeader("Fan", systemImage: "fanblades") {
+                Text("\(rpm) · \(utilization)")
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(TaskManagerTheme.secondary)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(rpm)
-                        .font(.system(size: 24, weight: .semibold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .utilityAnimation(value: rpm)
-                    Text(utilization + " of max")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .utilityAnimation(value: utilization)
-                }
-                Text(detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(service.errorMessage == nil ? TaskManagerTheme.secondary : TaskManagerTheme.accent)
             }
-            Spacer(minLength: 8)
-            if let load = service.snapshot?.utilization { speedMeter(load) }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 10) {
+            OnePlusSettingRow(
+                "Fan control",
+                caption: detail,
+                controlWidth: 160
+            ) {
+                Toggle("Fan control", isOn: fanControlBinding)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
+                    .disabled(service.isChanging)
+                    .accessibilityIdentifier("fan-control.enabled")
+            }
+            OnePlusSettingRow(
+                "Preset",
+                caption: service.selectedPreset?.rawValue ?? "No MacPowerToys preset",
+                controlWidth: 160,
+                separator: false
+            ) {
                 presetButtons
-                if !service.canControl && (service.isAvailable || service.snapshot == nil)
-                    && !(service.snapshot?.fans.contains { $0.mode?.hasPrefix("unknown") == true } ?? false) {
-                    Button("Enable fan control") { showsSetup = true }
-                        .taskManagerControl()
-                }
             }
         }
     }
 
-    private func speedMeter(_ load: Int) -> some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.primary.opacity(0.08))
-                Capsule().fill(TaskManagerTheme.ink.opacity(0.72))
-                    .frame(width: proxy.size.width * CGFloat(load) / 100)
-                    .utilityAnimation(value: load)
+    private var fanControlBinding: Binding<Bool> {
+        Binding(
+            get: { service.selectedPreset != nil && service.selectedPreset != .auto },
+            set: { enabled in
+                if enabled {
+                    if service.canControl { service.select(.cool) }
+                    else { showsSetup = true }
+                } else if service.canControl || service.canRestoreAutomatic {
+                    service.select(.auto)
+                }
             }
-        }
-        .frame(width: 170, height: 4)
-        .padding(.top, 32)
-        .accessibilityHidden(true)
+        )
     }
 
     private var fanIdentity: some View {
@@ -219,7 +210,7 @@ struct FanControlView: View {
                           preset == .max ? "Run fans at their hardware maximum" : "Return fan control to macOS")
             }
         }
-        .frame(width: compact ? 118 : nil)
+        .frame(width: compact ? 118 : 160)
         .padding(2)
         .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: compact ? 5 : 6))
         .overlay { RoundedRectangle(cornerRadius: compact ? 5 : 6)

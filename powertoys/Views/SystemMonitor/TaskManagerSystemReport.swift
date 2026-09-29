@@ -240,7 +240,6 @@ struct TaskManagerSystemReportView: View {
                 }
             }
         }
-        .environment(\.colorScheme, .dark)
         .task { await load() }
         .onChange(of: requestedAction) { _, action in
             guard let action else { return }
