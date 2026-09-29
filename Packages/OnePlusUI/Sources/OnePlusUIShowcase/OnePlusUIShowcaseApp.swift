@@ -22,7 +22,7 @@ private final class ShowcaseDelegate: NSObject, NSApplicationDelegate, NSWindowD
         let window = NSWindow(contentRect: NSRect(x: 80, y: 80, width: 1240, height: 840),
                               styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
-        window.title = "OnePlusUI"
+        window.title = ProcessInfo.processInfo.environment["ONEPLUS_SHOWCASE_TITLE"] ?? "OnePlusUI"
         window.identifier = NSUserInterfaceItemIdentifier("oneplus-ui-showcase")
         window.delegate = self
         window.isReleasedWhenClosed = false
@@ -49,6 +49,12 @@ private struct OnePlusUIShowcase: View {
     @State private var showSheet = false
     @State private var toast: String?
     @State private var menuTab = "home"
+    @State private var placement = "Combined"
+    @State private var preference = "Default (Off)"
+    @State private var tableSelection = Set<String>()
+    @State private var tableRows = (1...4).map { OnePlusTableItem(id: String($0), cells: ["Workstation \($0)", "Apple", "Completed"], symbol: "desktopcomputer") }
+    @State private var tableSortColumn = 0
+    @State private var tableAscending = true
     @State private var menuTabs = [OnePlusMenuTab("home", "Home", systemImage: "square.grid.2x2"),
                                    OnePlusMenuTab("cpu", "CPU", systemImage: "cpu"),
                                    OnePlusMenuTab("gpu", "GPU", systemImage: "rectangle.3.group"),
@@ -58,7 +64,7 @@ private struct OnePlusUIShowcase: View {
                                    OnePlusMenuTab("battery", "Battery", systemImage: "battery.100"),
                                    OnePlusMenuTab("sensors", "Sensors", systemImage: "thermometer.medium"),
                                    OnePlusMenuTab("processes", "Processes", systemImage: "list.bullet")]
-    private let pages = ["Foundation", "Typography", "Buttons", "Inputs", "Data", "Settings", "Task Manager", "Menu panel", "Applets", "Feedback"]
+    private let pages = ["Foundation", "Typography", "Buttons", "Inputs", "Popup menus", "Data", "Native tables", "Fixed regions", "Settings", "Task Manager", "Menu panel", "Applets", "Compact forms", "Feedback"]
     private let samples: [Double] = [16, 18, 15, 22, 19, 17, 24, 42, 33, 24, 22, 21, 28, 19, 24, 21, 20, 26, 24, 28]
     private var compact: Bool { page == "Task Manager" }
     private var canvas: OnePlusWindowCanvas {
@@ -81,22 +87,19 @@ private struct OnePlusUIShowcase: View {
                 OnePlusNavRow("Quit showcase", systemImage: "rectangle.portrait.and.arrow.right") { NSApp.terminate(nil) }
             }
         } content: {
-            OnePlusPage {
-                OnePlusPageHeader(title: compact ? "TASK MANAGER" : page,
-                                  subtitle: compact ? "Apple M4 Pro · 12 cores · 24 GB · Sample data" : "OnePlusUI v2 · macOS component reference",
-                                  titleStyle: compact ? .dotMatrix : .system) {
-                    Button(light ? "Dark appearance" : "Light appearance") { light.toggle() }
-                        .buttonStyle(OnePlusButtonStyle(.ghost))
-                        .accessibilityIdentifier("showcase.appearance")
-                    Button("Open sheet") { showSheet = true }.buttonStyle(OnePlusButtonStyle())
-                }
-            } tabs: {
-                OnePlusTabStrip(tabs: [OnePlusTab("Overview", "Overview", count: 12), OnePlusTab("Details", "Details", count: 4)],
-                                selection: $selectedTab) {
-                    OnePlusStatus("Sample data")
-                }
-            } content: { pageContent }
-            .overlay(alignment: .bottom) { if let toast { OnePlusToast(toast) } }
+            if page == "Fixed regions" {
+                PageRegionsShowcase(header: pageHeader)
+            } else {
+                OnePlusPage {
+                    pageHeader
+                } tabs: {
+                    OnePlusTabStrip(tabs: [OnePlusTab("Overview", "Overview", count: 12), OnePlusTab("Details", "Details", count: 4)],
+                                    selection: $selectedTab) {
+                        OnePlusStatus("Sample data")
+                    }
+                } content: { pageContent }
+                .overlay(alignment: .bottom) { if let toast { OnePlusToast(toast) } }
+            }
         }
         .onChange(of: light) { _, value in NSApp.appearance = NSAppearance(named: value ? .aqua : .darkAqua) }
         .sheet(isPresented: $showSheet) {
@@ -119,6 +122,17 @@ private struct OnePlusUIShowcase: View {
         }
     }
 
+    private var pageHeader: some View {
+        OnePlusPageHeader(title: compact ? "TASK MANAGER" : page,
+                          subtitle: compact ? "Apple M4 Pro · 12 cores · 24 GB · Sample data" : "OnePlusUI v2 · macOS component reference",
+                          titleStyle: compact ? .dotMatrix : .system) {
+            Button(light ? "Dark appearance" : "Light appearance") { light.toggle() }
+                .buttonStyle(OnePlusButtonStyle(.ghost))
+                .accessibilityIdentifier("showcase.appearance")
+            Button("Open sheet") { showSheet = true }.buttonStyle(OnePlusButtonStyle())
+        }
+    }
+
     @ViewBuilder private var pageContent: some View {
         if selectedTab == "Details" {
             OnePlusCard {
@@ -127,7 +141,8 @@ private struct OnePlusUIShowcase: View {
                     OnePlusKeyValueRow("Page", value: page)
                     OnePlusKeyValueRow("Density", value: compact ? "Compact" : "Regular")
                     OnePlusKeyValueRow("Canvas", value: "1240 × 840 pt", monospaced: true)
-                    OnePlusKeyValueRow("Title centerline", value: "27 pt", monospaced: true)
+                    OnePlusKeyValueRow("Traffic-light centerline", value: "27 pt", monospaced: true)
+                    OnePlusKeyValueRow("Page title top", value: "58 pt", monospaced: true)
                 }.padding(16)
             }
         } else {
@@ -136,11 +151,14 @@ private struct OnePlusUIShowcase: View {
             case "Typography": typography
             case "Buttons": buttons
             case "Inputs": inputs
+            case "Popup menus": PopupMenusShowcase()
             case "Data": data
+            case "Native tables": nativeTables
             case "Settings": settings
             case "Task Manager": taskManager
             case "Menu panel": menuPanel
             case "Applets": applets
+            case "Compact forms": CompactFormVariantsShowcase()
             default: feedback
             }
         }
@@ -171,7 +189,8 @@ private struct OnePlusUIShowcase: View {
             OnePlusCard {
                 OnePlusCardHeader("Geometry")
                 HStack(spacing: 24) {
-                    OnePlusKeyValueRow("Header", value: "54 pt", monospaced: true)
+                    OnePlusKeyValueRow("Empty title row", value: "54 pt", monospaced: true)
+                    OnePlusKeyValueRow("Page title top", value: "58 pt", monospaced: true)
                     OnePlusKeyValueRow("Card header", value: "40 pt", monospaced: true)
                     OnePlusKeyValueRow("Setting row", value: "44 pt", monospaced: true)
                 }.padding(16)
@@ -218,9 +237,20 @@ private struct OnePlusUIShowcase: View {
                 }
             }
             OnePlusCard {
-                OnePlusCardHeader("Small controls · 24 pt")
+                OnePlusCardHeader("Compact density · automatic 24 pt")
                 HStack(spacing: 12) {
-                    ForEach(OnePlusButtonStyle.Variant.allCases, id: \.rawValue) { variant in sampleButton(variant, size: .small) }
+                    ForEach(OnePlusButtonStyle.Variant.allCases, id: \.rawValue) { variant in sampleButton(variant) }
+                    Spacer()
+                }.padding(16).onePlusDensity(.compact)
+            }
+            OnePlusCard {
+                OnePlusCardHeader("Custom menu triggers")
+                HStack(spacing: 12) {
+                    OnePlusMenuButton("More", items: [.item(OnePlusPopupMenuItem("Show details") { announce("Details selected") })])
+                    OnePlusMenuButton("Export", variant: .neutral,
+                                      items: [.item(OnePlusPopupMenuItem("Export sample") { announce("Sample exported") })])
+                    OnePlusMenuButton("Presets", items: [.item(OnePlusPopupMenuItem("Default") { announce("Default selected") })])
+                    OnePlusMenuButton("Unavailable", items: []).disabled(true)
                     Spacer()
                 }.padding(16)
             }
@@ -237,7 +267,7 @@ private struct OnePlusUIShowcase: View {
             OnePlusBanner("All actions update the sample toast. Destructive actions affect sample data only.")
         }
     }
-    private func sampleButton(_ variant: OnePlusButtonStyle.Variant, size: OnePlusButtonStyle.Size = .regular) -> some View {
+    private func sampleButton(_ variant: OnePlusButtonStyle.Variant, size: OnePlusButtonStyle.Size? = nil) -> some View {
         Button { announce("\(variant.rawValue.capitalized) action completed") } label: {
             if variant == .icon { Image(systemName: "arrow.clockwise") }
             else { Text(variant == .destructive ? "Remove" : variant == .link ? "View all" : "Action") }
@@ -251,7 +281,8 @@ private struct OnePlusUIShowcase: View {
                     OnePlusCardHeader("Selection")
                     OnePlusSettingRow("Enabled") { Toggle("Enabled", isOn: $enabled).labelsHidden().toggleStyle(OnePlusSwitchStyle()) }
                     OnePlusSettingRow("Disabled") { Toggle("Disabled", isOn: .constant(false)).labelsHidden().toggleStyle(OnePlusSwitchStyle()).disabled(true) }
-                    OnePlusSettingRow("Mode") { OnePlusSegmented(choices: [("Off", "Off"), ("Auto", "Auto"), ("On", "On")], selection: $mode) }
+                    OnePlusSettingRow("Default state") { OnePlusSegmented(choices: ["Default (Off)", "On", "Off"].map { ($0, $0) }, selection: $preference) }
+                    OnePlusSettingRow("Placement") { OnePlusSegmented(choices: ["None", "Combined", "Separate"].map { ($0, $0) }, selection: $placement) }
                     OnePlusSettingRow("Popup") { OnePlusSelect(choices: [("Off", "Off"), ("Auto", "Auto"), ("On", "On")], selection: $mode, accessibilityLabel: "Mode") }
                     OnePlusSettingRow("Catalog view") {
                         OnePlusSegmented(iconChoices: [("Off", "Grid", "square.grid.2x2"), ("Auto", "List", "list.bullet")],
@@ -306,6 +337,45 @@ private struct OnePlusUIShowcase: View {
         }
     }
 
+    private var nativeTables: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(OnePlusDensity.allCases, id: \.self) { density in
+                HStack(alignment: .top, spacing: 16) {
+                    OnePlusCard {
+                        OnePlusCardHeader("Native table · \(density.rawValue)")
+                        OnePlusNativeTable(columns: [.init("Name", width: 170), .init("MAC vendor", width: 120), .init("Completed", width: 110)],
+                                           rows: tableRows, selection: $tableSelection,
+                                           sortColumn: tableSortColumn, ascending: tableAscending,
+                                           sort: { column, ascending in
+                                               tableSortColumn = column; tableAscending = ascending
+                                               tableRows.sort {
+                                                   let left = $0.cells[column] + $0.id
+                                                   let right = $1.cells[column] + $1.id
+                                                   return ascending ? left < right : left > right
+                                               }
+                                           }, open: { _ in announce("Opened sample") },
+                                           preview: { _ in announce("Preview sample") }, remove: { ids in
+                                               tableRows.removeAll { ids.contains($0.id) }
+                                               tableSelection.subtract(ids)
+                                           }, actions: { ids in [.init("Show names") {
+                                               announce(tableRows.filter { ids.contains($0.id) }.map { $0.cells[0] }.joined(separator: ", "))
+                                           }] })
+                            .frame(height: OnePlusTable.rowHeight(density) * 4 + 28)
+                    }
+                    OnePlusCard {
+                        OnePlusCardHeader("SwiftUI Table · \(density.rawValue)")
+                        Table(tableRows, selection: $tableSelection) {
+                            TableColumn("Name") { Text($0.cells[0]) }.width(min: 140, ideal: 170)
+                            TableColumn("MAC vendor") { Text($0.cells[1]) }.width(120)
+                            TableColumn("Completed") { Text($0.cells[2]) }.width(110)
+                        }.onePlusNativeTable().frame(height: OnePlusTable.rowHeight(density) * 4 + 28)
+                    }
+                }.onePlusDensity(density)
+            }
+            OnePlusBanner("Headers use 9 pt type. Regular rows are 34 pt; compact rows are 28 pt.")
+        }
+    }
+
     private var metricTiles: some View {
         HStack(spacing: 16) {
             OnePlusMetricTile("CPU", systemImage: "cpu", value: "27.4", unit: "%", caption: "12 cores", action: { announce("CPU selected") }) {
@@ -332,7 +402,7 @@ private struct OnePlusUIShowcase: View {
             OnePlusCard {
                 OnePlusCardHeader("Menu bar", systemImage: "menubar.rectangle")
                 OnePlusSettingRow("Show item") { Toggle("Show item", isOn: $checked).labelsHidden().toggleStyle(OnePlusSwitchStyle()) }
-                OnePlusSettingRow("Placement", controlWidth: 180, separator: false) { OnePlusSegmented(choices: [("Off", "Off"), ("Auto", "Group"), ("On", "Split")], selection: $mode) }
+                OnePlusSettingRow("Placement", controlWidth: 180, separator: false) { OnePlusSegmented(choices: ["None", "Combined", "Separate"].map { ($0, $0) }, selection: $placement) }
             }
             OnePlusBanner("These settings change the sample only.")
         }
@@ -411,7 +481,7 @@ private struct OnePlusUIShowcase: View {
             VStack(alignment: .leading, spacing: 16) {
                 OnePlusSectionTitle("Menu panel")
                 OnePlusKeyValueRow("Width", value: "356 pt")
-                OnePlusKeyValueRow("Top bar", value: "35 pt")
+                OnePlusKeyValueRow("Top bar", value: "\(Int(OnePlusMenuMetrics.topBar)) pt")
                 OnePlusKeyValueRow("Tabs", value: "26 pt")
                 OnePlusKeyValueRow("Grid gap", value: "5 pt")
                 OnePlusKeyValueRow("Columns", value: "3")
@@ -432,7 +502,6 @@ private struct OnePlusUIShowcase: View {
 
     private var applets: some View {
         VStack(alignment: .leading, spacing: 16) {
-            CompactFormVariantsShowcase()
             OnePlusSectionTitle("Applet titlebar · 40 pt · centerline 22 pt")
             OnePlusCard {
                 OnePlusAppletTitlebar(title: "Awake") {
@@ -443,8 +512,7 @@ private struct OnePlusUIShowcase: View {
                     OnePlusSegmented(choices: [("Off", "Off"), ("Auto", "Until"), ("On", "Indefinitely")], selection: $mode)
                     OnePlusStatus(enabled ? "Keeping your Mac awake" : "Sleep is allowed")
                     OnePlusSettingRow("Keep display on", separator: false) { Toggle("Display", isOn: $checked).labelsHidden().toggleStyle(OnePlusSwitchStyle()) }
-                    HStack { Spacer(); OnePlusFloatingSettingsButton(isActive: false) { showSheet = true } }
-                }.padding(16)
+                }.padding(16).onePlusFloatingSettings(isActive: false) { showSheet = true }
             }.frame(width: 560)
             OnePlusCard {
                 OnePlusAppletTitlebar(title: "Color Picker") {
@@ -498,11 +566,14 @@ private struct OnePlusUIShowcase: View {
         case "Typography": "textformat"
         case "Buttons": "cursorarrow.click"
         case "Inputs": "slider.horizontal.3"
+        case "Popup menus": "chevron.up.chevron.down"
         case "Data": "chart.xyaxis.line"
+        case "Native tables": "tablecells"
+        case "Fixed regions": "rectangle.topthird.inset.filled"
         case "Settings": "gearshape"
         case "Task Manager": "cpu"
         case "Menu panel": "menubar.rectangle"
-        case "Applets": "macwindow"
+        case "Applets", "Compact forms": "macwindow"
         default: "bubble.left"
         }
     }

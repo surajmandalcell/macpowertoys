@@ -64,7 +64,7 @@ Slots are optional; the page supplies the gutters and 16 pt content gap.
 OnePlusPage(scrolls: false) {
     OnePlusPageHeader(title: "Processes")
 } toolbar: {
-    OnePlusSearchField("Find a process", text: $query)
+    OnePlusSearchField(prompt: "Find a process", text: $query)
 } footer: {
     OnePlusStatus("\(rows.count) processes")
 } content: {
