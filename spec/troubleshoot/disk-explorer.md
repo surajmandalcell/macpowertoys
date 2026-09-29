@@ -221,6 +221,24 @@
   from partial results. The `/Applications` fixture produced its first nonempty
   snapshot in 0.01 seconds during a 4.95-second scan of 327,550 entries.
 
+## Nonfinite Chart Clip Geometry
+
+- **Symptom:** The 2026-09-29 08:26:48 crash report shows a NaN layer
+  position in SwiftUI mask layout while Diskman Home opens.
+- **Finding:** The report does not identify the originating view or input.
+  Diskman's old ring math could produce a negative outer radius in a tiny
+  canvas. Treemap layout accepted nonfinite bounds before clipping.
+- **Invariant:** Reject nonfinite or nonpositive chart bounds before drawing.
+  Validate inset rectangles, ring radii, angles, and label positions before
+  clipping or masking. Share and partition fractions must remain within
+  zero and one, including when the denominator is zero. Keep zero-byte live
+  skeletons, stable membership, and fixed live ring bands.
+- **Check:** `DiskExplorerViewTests` covers empty and zero-total trees in
+  both scan states and every measure. It also covers invalid bounds, tiny
+  ring radii, invalid arc paths, safe fractions, and partition widths.
+  Compile locally; execute on hosted CI and replay the signed Home route.
+  The report alone does not establish the original crash input.
+
 ## Shallow Rings And Crowded Results
 
 - **Symptom:** The chart competed with a permanent Contents pane, file counts

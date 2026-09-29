@@ -89,6 +89,77 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertEqual(before.outer, after.outer)
     }
 
+    func testEmptyAndZeroTotalChartsKeepFiniteGeometry() {
+        let empty = entry("/tmp/Empty", kind: .directory)
+        let zero = entry("/tmp/Zero", kind: .directory)
+        zero.replaceChildren([entry("/tmp/Zero/file", files: 0), entry("/tmp/Zero/folder", kind: .directory)])
+        let bounds = CGRect(x: 0, y: 0, width: 860, height: 500)
+        for root in [empty, zero] {
+            for complete in [false, true] {
+                for measure in DiskChartMeasure.allCases {
+                    let map = DiskTreemapView(directory: root, apparent: false, measure: measure, scanComplete: complete, select: { _ in })
+                    let tiles = map.tiles(in: bounds)
+                    XCTAssertEqual(tiles.count, root.children.count)
+                    XCTAssertTrue(tiles.allSatisfy { DiskChartGeometry.isDrawable($0.rect) && bounds.contains($0.rect) })
+                    let rings = DiskSunburstView.segments(for: root, apparent: false, measure: measure, radius: 200, scanComplete: complete)
+                    XCTAssertEqual(rings.count, root.children.count)
+                    for ring in rings {
+                        XCTAssertTrue(ring.start.isFinite && ring.end.isFinite && ring.end > ring.start)
+                        XCTAssertTrue(ring.inner.isFinite && ring.outer.isFinite && ring.inner >= 0 && ring.outer > ring.inner)
+                        let path = DiskRingShape(start: ring.start, end: ring.end, inner: ring.inner, outer: ring.outer).path(in: bounds)
+                        XCTAssertFalse(path.isEmpty)
+                        XCTAssertTrue(DiskChartGeometry.isDrawable(path.boundingRect))
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(DiskChartGeometry.fraction(0, of: 0), 0)
+        XCTAssertEqual(DiskChartGeometry.partitionWidth(bytes: 0, total: 0, available: 800), 0)
+        XCTAssertEqual(DiskChartGeometry.partitionWidth(bytes: 25, total: 100, available: 800), 200)
+    }
+
+    func testChartsRejectInvalidBoundsAndClampFractions() {
+        let root = entry("/tmp/Diskman", kind: .directory)
+        root.replaceChildren([entry("/tmp/Diskman/file", bytes: 100)])
+        let map = DiskTreemapView(directory: root, apparent: false, measure: .space, scanComplete: true, select: { _ in })
+        let shape = DiskRingShape(start: -.pi / 2, end: 3 * .pi / 2, inner: 60, outer: 198)
+        let bounds = CGRect(x: 0, y: 0, width: 500, height: 500)
+        let invalid: [CGFloat] = [.nan, .infinity, -.infinity, -1, 0]
+        for dimension in invalid {
+            for rect in [CGRect(x: 0, y: 0, width: dimension, height: 500),
+                         CGRect(x: 0, y: 0, width: 500, height: dimension)] {
+                XCTAssertTrue(map.tiles(in: rect).isEmpty)
+                XCTAssertTrue(shape.path(in: rect).isEmpty)
+            }
+            XCTAssertTrue(DiskSunburstView.segments(for: root, apparent: false, measure: .space, radius: dimension, scanComplete: false).isEmpty)
+            XCTAssertEqual(DiskChartGeometry.partitionWidth(bytes: 25, total: 100, available: dimension), 0)
+        }
+        for origin in [CGFloat.nan, .infinity, -.infinity, .greatestFiniteMagnitude] {
+            let rect = CGRect(x: origin, y: origin, width: .greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+            XCTAssertTrue(map.tiles(in: rect).isEmpty)
+            XCTAssertTrue(shape.path(in: rect).isEmpty)
+        }
+        XCTAssertTrue(DiskSunburstView.segments(for: root, apparent: false, measure: .space, radius: 1, scanComplete: true).isEmpty)
+        for ring in [DiskRingShape(start: .nan, end: 1, inner: 0, outer: 10),
+                     DiskRingShape(start: 0, end: .infinity, inner: 0, outer: 10),
+                     DiskRingShape(start: -.greatestFiniteMagnitude, end: .greatestFiniteMagnitude, inner: 0, outer: 10),
+                     DiskRingShape(start: 0, end: 1, inner: .nan, outer: 10),
+                     DiskRingShape(start: 0, end: 1, inner: -1, outer: 10),
+                     DiskRingShape(start: 0, end: 1, inner: 0, outer: .infinity),
+                     DiskRingShape(start: 0, end: 1, inner: 0, outer: -2),
+                     DiskRingShape(start: 1, end: 1, inner: 10, outer: 10)] {
+            XCTAssertTrue(ring.path(in: bounds).isEmpty)
+        }
+        for (value, total, expected) in [(0.0, 0.0, 0.0), (1, 0, 0), (1, -1, 0), (-1, 1, 0),
+                                       (.nan, 1, 0), (1, .nan, 0), (.infinity, 1, 0), (1, .infinity, 0),
+                                       (2, 1, 1), (0.25, 1, 0.25), (.greatestFiniteMagnitude, .leastNonzeroMagnitude, 1)] {
+            XCTAssertEqual(DiskChartGeometry.fraction(value, of: total), expected)
+        }
+        XCTAssertNil(DiskSunburstView.hitTest([], at: CGPoint(x: CGFloat.nan, y: 0), center: .zero))
+        let extreme = DiskChartTile(entry: nil, label: "Large", weight: .max, detail: "", color: .clear)
+        XCTAssertEqual(DiskTreemapView.layout([extreme, extreme], in: bounds).count, 2)
+    }
+
     func testBreadcrumbsAndKeyboardSelectionStayWithinTheScan() throws {
         let leaf = entry("/tmp/Diskman/Projects/App", kind: .directory)
         let sibling = entry("/tmp/Diskman/Projects-old", kind: .directory)

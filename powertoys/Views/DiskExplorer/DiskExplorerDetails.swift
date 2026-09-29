@@ -168,16 +168,17 @@ struct DiskSelectionInspector: View {
         }
     }
     private func identity(_ entry: DiskEntry) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+        let share = DiskChartGeometry.fraction(Double(entry.bytes(apparent: apparent)), of: Double(parent.bytes(apparent: apparent)))
+        return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             Label(entry.name, systemImage: DiskEntryPresentation.symbol(entry)).onePlusText(.sectionTitle).lineLimit(2).help(entry.name)
             Text(entry.url.path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(entry.url.path)
             DiskSizeLabel(bytes: entry.bytes(apparent: apparent)).padding(.top, OnePlusMetrics.actionSpacing)
             HStack {
                 Text("Of parent folder")
                 Spacer()
-                Text((Double(entry.bytes(apparent: apparent)) / Double(max(1, parent.bytes(apparent: apparent)))).formatted(.percent.precision(.fractionLength(1))))
+                Text(share.formatted(.percent.precision(.fractionLength(1))))
             }.onePlusText(.caption)
-            OnePlusUsageBar(value: Double(entry.bytes(apparent: apparent)) / Double(max(1, parent.bytes(apparent: apparent))))
+            OnePlusUsageBar(value: share)
         }
     }
     private func facts(_ entry: DiskEntry) -> some View {

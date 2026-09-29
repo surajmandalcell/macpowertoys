@@ -2,6 +2,25 @@ import AppKit
 import OnePlusUI
 import SwiftUI
 
+enum DiskChartGeometry {
+    static func fraction(_ value: Double, of total: Double) -> Double {
+        guard value.isFinite, total.isFinite, value > 0, total > 0 else { return 0 }
+        return min(value, total) / total
+    }
+
+    static func isDrawable(_ rect: CGRect) -> Bool {
+        rect.origin.x.isFinite && rect.origin.y.isFinite &&
+            rect.size.width.isFinite && rect.size.height.isFinite &&
+            rect.size.width > 0 && rect.size.height > 0 &&
+            rect.maxX.isFinite && rect.maxY.isFinite
+    }
+
+    static func partitionWidth(bytes: Int64, total: Int64, available: CGFloat) -> CGFloat {
+        guard available.isFinite, available > 0 else { return 0 }
+        return available * CGFloat(fraction(Double(bytes), of: Double(total)))
+    }
+}
+
 enum DiskChartStyle: String, CaseIterable, Identifiable {
     case treemap = "Treemap"
     case sunburst = "Rings"
@@ -130,10 +149,12 @@ struct DiskTreemapView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let layout = tiles(in: CGRect(origin: .zero, size: geometry.size))
-            ZStack {
-                ForEach(layout, id: \.id) { tile in tileView(tile) }
-            }
+            let bounds = CGRect(origin: .zero, size: geometry.size)
+            if DiskChartGeometry.isDrawable(bounds) {
+                let layout = tiles(in: bounds)
+                ZStack {
+                    ForEach(layout, id: \.id) { tile in tileView(tile) }
+                }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .animation(chartAnimation, value: layout.map(\.id))
                 .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
@@ -142,6 +163,7 @@ struct DiskTreemapView: View {
                 }
                 .onKeyPress(.space) { if let entry = layout.compactMap(\.entry).first(where: { $0.id == selectedEntryID && $0.kind != .aggregate }) { preview(entry) }; return .handled }
                 .onKeyPress(.return) { if let entry = layout.compactMap(\.entry).first(where: { $0.id == selectedEntryID && $0.kind != .aggregate }) { open(entry) }; return .handled }
+            }
         }
         .accessibilityElement(children: .contain).accessibilityLabel("Treemap of \(directory.name)")
         .accessibilityHint("Click to select. Double-click a folder to explore.")
@@ -149,56 +171,58 @@ struct DiskTreemapView: View {
         .onChange(of: directory.id) { _, _ in hoveredID = nil }
     }
 
-    private func tileView(_ tile: DiskChartTile) -> some View {
+    @ViewBuilder private func tileView(_ tile: DiskChartTile) -> some View {
         let rect = tile.rect.insetBy(dx: 1, dy: 1)
-        return Button {
-            focused = true
-            guard let entry = tile.entry else { return }
-            select(entry)
-            if NSApp.currentEvent?.clickCount == 2 && entry.kind != .aggregate { open(entry) }
-        } label: {
-            OnePlusStorageTile(color: tile.color, selected: selectedEntryID == tile.id, hovered: hoveredID == tile.id) {
-                if rect.width > OnePlusDiskmanMetrics.tileLabelWidth && rect.height > OnePlusDiskmanMetrics.tileLabelHeight {
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                        Text(tile.label).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
-                        Text(tile.detail).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
-                        if rect.height > OnePlusDiskmanMetrics.tileCountsHeight, let entry = tile.entry {
-                            Spacer(minLength: OnePlusMetrics.actionSpacing)
-                            Text("\(entry.fileCount.formatted()) files · \(max(0, entry.directoryCount - (entry.kind == .directory ? 1 : 0))) folders")
-                                .font(.system(size: OnePlusTextRole.caption.size(for: .regular)))
-                        }
-                    }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
+        if tile.rect.width > 2, tile.rect.height > 2, DiskChartGeometry.isDrawable(rect) {
+            Button {
+                focused = true
+                guard let entry = tile.entry else { return }
+                select(entry)
+                if NSApp.currentEvent?.clickCount == 2 && entry.kind != .aggregate { open(entry) }
+            } label: {
+                OnePlusStorageTile(color: tile.color, selected: selectedEntryID == tile.id, hovered: hoveredID == tile.id) {
+                    if rect.width > OnePlusDiskmanMetrics.tileLabelWidth && rect.height > OnePlusDiskmanMetrics.tileLabelHeight {
+                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                            Text(tile.label).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
+                            Text(tile.detail).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
+                            if rect.height > OnePlusDiskmanMetrics.tileCountsHeight, let entry = tile.entry {
+                                Spacer(minLength: OnePlusMetrics.actionSpacing)
+                                Text("\(entry.fileCount.formatted()) files · \(max(0, entry.directoryCount - (entry.kind == .directory ? 1 : 0))) folders")
+                                    .font(.system(size: OnePlusTextRole.caption.size(for: .regular)))
+                            }
+                        }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
+                    }
                 }
             }
+            .buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
+            .modifier(DiskChartFileActions(entry: tile.entry, actions: actions))
+            .accessibilityLabel("\(tile.label), \(tile.detail)")
+            .accessibilityAddTraits(selectedEntryID == tile.id ? .isSelected : [])
+            .help("\(tile.label) · \(tile.detail)")
+            .frame(width: rect.width, height: rect.height).clipped()
+            .position(x: rect.midX, y: rect.midY)
+            .onHover { inside in
+                if inside {
+                    hoveredID = tile.id; onHoverDetail("\(tile.label) · \(tile.detail)")
+                } else if hoveredID == tile.id {
+                    hoveredID = nil; onHoverDetail(nil)
+                }
+            }.animation(chartAnimation, value: rect)
         }
-        .buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
-        .modifier(DiskChartFileActions(entry: tile.entry, actions: actions))
-        .accessibilityLabel("\(tile.label), \(tile.detail)")
-        .accessibilityAddTraits(selectedEntryID == tile.id ? .isSelected : [])
-        .help("\(tile.label) · \(tile.detail)")
-        .frame(width: max(0, rect.width), height: max(0, rect.height)).clipped()
-        .position(x: rect.midX, y: rect.midY)
-        .onHover { inside in
-            if inside {
-                hoveredID = tile.id; onHoverDetail("\(tile.label) · \(tile.detail)")
-            } else if hoveredID == tile.id {
-                hoveredID = nil; onHoverDetail(nil)
-            }
-        }.animation(chartAnimation, value: rect)
     }
 
     static func layout(_ tiles: [DiskChartTile], in rect: CGRect, depth: Int = 0) -> [DiskChartTile] {
-        guard !tiles.isEmpty, rect.width > 0, rect.height > 0 else { return [] }
-        let total = tiles.reduce(Int64(0)) { $0 + $1.weight }
-        guard total > 0 else { return [] }
+        guard !tiles.isEmpty, DiskChartGeometry.isDrawable(rect) else { return [] }
+        let total = tiles.reduce(0.0) { $0 + Double(max(0, $1.weight)) }
+        guard total.isFinite, total > 0 else { return [] }
         if tiles.count == 1 {
             var tile = tiles[0]
             tile.rect = rect
             return [tile]
         }
         let split = tiles.count / 2
-        let firstTotal = tiles[..<split].reduce(Int64(0)) { $0 + $1.weight }
-        let fraction = CGFloat(Double(firstTotal) / Double(total))
+        let firstTotal = tiles[..<split].reduce(0.0) { $0 + Double(max(0, $1.weight)) }
+        let fraction = CGFloat(DiskChartGeometry.fraction(firstTotal, of: total))
         if depth.isMultiple(of: 2) {
             let first = CGRect(x: rect.minX, y: rect.minY, width: rect.width * fraction, height: rect.height)
             let second = CGRect(x: first.maxX, y: rect.minY, width: rect.maxX - first.maxX, height: rect.height)
@@ -228,7 +252,7 @@ struct DiskRingSegment {
     }
 }
 
-private struct DiskRingShape: Shape {
+struct DiskRingShape: Shape {
     var start: Double
     var end: Double
     var inner: CGFloat
@@ -245,7 +269,12 @@ private struct DiskRingShape: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
+        guard DiskChartGeometry.isDrawable(rect), start.isFinite, end.isFinite,
+              (end - start).isFinite, end > start,
+              inner.isFinite, outer.isFinite, inner >= 0, outer > inner else { return Path() }
         let center = CGPoint(x: rect.midX, y: rect.midY)
+        guard DiskChartGeometry.isDrawable(CGRect(x: center.x - outer, y: center.y - outer,
+                                                   width: outer * 2, height: outer * 2)) else { return Path() }
         var path = Path()
         path.addArc(center: center, radius: outer,
                     startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
@@ -274,12 +303,13 @@ struct DiskSunburstView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let plotHeight = geometry.size.height
-            let radius = max(0, min(geometry.size.width, plotHeight) / 2 - 10)
-            let segments = Self.segments(for: directory, apparent: apparent, measure: measure,
-                                         radius: radius, scanComplete: scanComplete)
-            let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
-            ZStack {
+            if DiskChartGeometry.isDrawable(CGRect(origin: .zero, size: geometry.size)) {
+                let plotHeight = geometry.size.height
+                let radius = max(0, min(geometry.size.width, plotHeight) / 2 - 10)
+                let segments = Self.segments(for: directory, apparent: apparent, measure: measure,
+                                             radius: radius, scanComplete: scanComplete)
+                let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
+                ZStack {
                     ForEach(segments, id: \.id) { segment in segmentView(segment) }
                         .animation(chartAnimation, value: segments.map(\.id))
                     VStack(spacing: OnePlusMetrics.spacing[1]) {
@@ -320,6 +350,7 @@ struct DiskSunburstView: View {
                 .accessibilityValue(segments.first { $0.id == hoveredID }.map { "\($0.label), \($0.detail)" } ?? "\(directory.children.count) items")
                 .accessibilityHint("Click to select. Double-click a folder to explore.")
                 .accessibilityIdentifier("diskExplorer.rings")
+            }
         }
         .onChange(of: directory.id) { _, _ in hoveredID = nil }
     }
@@ -356,7 +387,10 @@ struct DiskSunburstView: View {
         // Fit the text square inside the wedge, including its inner edge.
         let side = max(0, min(halfBand, halfArc) * sqrt(2) - inset * 2)
         return GeometryReader { geometry in
-            if side > OnePlusDiskmanMetrics.tileLabelWidth {
+            let rect = CGRect(x: geometry.size.width / 2 + cos(angle) * radius - side / 2,
+                              y: geometry.size.height / 2 + sin(angle) * radius - side / 2,
+                              width: side, height: side)
+            if side > OnePlusDiskmanMetrics.tileLabelWidth, DiskChartGeometry.isDrawable(rect) {
                 VStack(spacing: OnePlusMetrics.spacing[0]) {
                     Text(segment.label).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
                     Text(segment.detail).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
@@ -367,8 +401,7 @@ struct DiskSunburstView: View {
                     }
                 }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
                     .frame(width: side, height: side).clipped()
-                    .position(x: geometry.size.width / 2 + cos(angle) * radius,
-                              y: geometry.size.height / 2 + sin(angle) * radius)
+                    .position(x: rect.midX, y: rect.midY)
             }
         }.allowsHitTesting(false).accessibilityHidden(true)
     }
@@ -376,6 +409,7 @@ struct DiskSunburstView: View {
     static func hitTest(_ segments: [DiskRingSegment], at point: CGPoint, center: CGPoint) -> DiskRingSegment? {
         let dx = point.x - center.x
         let dy = point.y - center.y
+        guard dx.isFinite, dy.isFinite else { return nil }
         var angle = atan2(dy, dx)
         if angle < -.pi / 2 { angle += 2 * .pi }
         return segments.reversed().first { $0.contains(angle: angle, radius: hypot(dx, dy)) }
@@ -384,29 +418,32 @@ struct DiskSunburstView: View {
     static func segments(for root: DiskEntry, apparent: Bool,
                          measure: DiskChartMeasure, radius: CGFloat,
                          scanComplete: Bool) -> [DiskRingSegment] {
+        guard radius.isFinite, radius > 0, (radius * 2).isFinite else { return [] }
         var result: [DiskRingSegment] = []
         let levels = !scanComplete || root.children.contains { $0.children.contains { !$0.children.isEmpty } } ? 3 :
             root.children.contains { !$0.children.isEmpty } ? 2 : 1
         let band = CGFloat(0.68) / CGFloat(levels)
         func add(_ parent: DiskEntry, start: Double, end: Double, depth: Int, colorIndex: Int) {
-            guard depth < 3 else { return }
-            let total = parent.children.reduce(Int64(0)) { $0 + max(1, measure.weight($1, apparent: apparent)) }
-            guard total > 0 else { return }
+            guard depth < 3, start.isFinite, end.isFinite, end > start else { return }
+            let total = parent.children.reduce(0.0) { $0 + Double(max(1, measure.weight($1, apparent: apparent))) }
+            guard total.isFinite, total > 0 else { return }
             var angle = start
             let limit = depth == 0 ? 24 : 12
             let selection = measure.displayedChildren(in: parent, apparent: apparent,
                                                       limit: limit, scanComplete: scanComplete)
             let inner = radius * (0.30 + CGFloat(depth) * band)
             let outer = radius * (0.30 + CGFloat(depth + 1) * band) - 2
+            guard inner.isFinite, outer.isFinite, inner >= 0, outer > inner else { return }
             let smallIDs = Set(selection.shown.filter { child in
                 scanComplete && child.kind != .aggregate &&
-                    (end - start) * Double(max(1, measure.weight(child, apparent: apparent))) / Double(total) *
+                    (end - start) * DiskChartGeometry.fraction(Double(max(1, measure.weight(child, apparent: apparent))), of: total) *
                     Double((inner + outer) / 2) < Double(OnePlusMetrics.controlHeight)
             }.map(\.id))
             let children = selection.shown.filter { !smallIDs.contains($0.id) }
             let hidden = selection.hidden + selection.shown.filter { smallIDs.contains($0.id) }
             for (index, child) in children.enumerated() {
-                let next = angle + (end - start) * Double(max(1, measure.weight(child, apparent: apparent))) / Double(total)
+                let next = min(end, angle + (end - start) * DiskChartGeometry.fraction(Double(max(1, measure.weight(child, apparent: apparent))), of: total))
+                guard next.isFinite, next > angle else { continue }
                 let tint = DiskChartPalette.color(for: child, index: depth == 0 ? index : colorIndex,
                                                   measure: measure, depth: depth)
                 result.append(DiskRingSegment(id: child.id, entry: child, label: DiskEntryPresentation.name(child),
@@ -418,7 +455,7 @@ struct DiskSunburstView: View {
                     colorIndex: depth == 0 ? index : colorIndex)
                 angle = next
             }
-            if !hidden.isEmpty {
+            if !hidden.isEmpty, end > angle {
                 let remaining = hidden.reduce(Int64(0)) {
                     $0 + measure.weight($1, apparent: apparent)
                 }
