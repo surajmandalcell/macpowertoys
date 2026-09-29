@@ -8,11 +8,14 @@ import OnePlusUI
 
 struct ToolSettingsContent: View {
     let toolID: String
+    let changed: (() -> Void)?
     @State private var isReady: Bool
+    @State private var preferenceObserver: ToolSettingsPreferenceObserver?
     @AppStorage("systemCare.defaultMode") private var systemCareMode = SystemCareMode.quick.rawValue
 
-    init(toolID: String) {
+    init(toolID: String, changed: (() -> Void)? = nil) {
         self.toolID = toolID
+        self.changed = changed
         _isReady = State(initialValue: !Self.defersInitialLoad(for: toolID))
     }
 
@@ -34,6 +37,18 @@ struct ToolSettingsContent: View {
         }
         .buttonStyle(OnePlusButtonStyle())
         .toggleStyle(OnePlusSwitchStyle())
+        .onAppear {
+            guard let changed else { return }
+            let keys = Set(SettingsRegistry.entries.filter {
+                $0.toolID == toolID || (toolID == "rclone" && $0.key == "app.showTray")
+            }.map(\.key))
+            preferenceObserver?.stop()
+            preferenceObserver = ToolSettingsPreferenceObserver(keys: keys, changed: changed)
+        }
+        .onDisappear {
+            preferenceObserver?.stop()
+            preferenceObserver = nil
+        }
         .task(id: toolID) {
             guard Self.defersInitialLoad(for: toolID) else { return }
             await Task.yield()
