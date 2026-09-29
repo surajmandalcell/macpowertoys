@@ -1,26 +1,15 @@
 import AppKit
 import Darwin
+import OnePlusUI
 import QuickLook
 import SwiftUI
 
-private enum DiskExplorerPage: Hashable {
-    case explore
-    case modify
-    case settings
-    case about
-}
-
-private enum DiskEntrySort: String, CaseIterable, Identifiable {
-    case size = "Size"
-    case files = "Files"
-    case name = "Name"
-    case modified = "Modified"
-    var id: String { rawValue }
-}
+private enum DiskExplorerPage: Hashable { case explore, modify, settings, about }
 
 enum DiskResultTab: String, CaseIterable, Identifiable {
     case visualization = "Visualization"
-    case largestFiles = "Largest Files"
+    case largestFiles = "Largest files"
+    case results = "Results"
     var id: String { rawValue }
 }
 
@@ -29,40 +18,48 @@ struct DiskExplorerWindowView: View {
     @State private var diskManagement: DiskManagementModel
     private let scansOnAppear: Bool
     @State private var page = DiskExplorerPage.explore
-    @State private var search = ""
-    @State private var sort = DiskEntrySort.size
     @State private var resultTab = DiskResultTab.visualization
-    @State private var showsContents = false
-    @State private var showsStatistics = false
-    @State private var showsUnreadableInfo = false
+    @State private var search = ""
+    @State private var searchFocus = 0
+    @State private var selection: Set<String> = []
+    @State private var selectedID: String?
+    @State private var history: [String] = []
+    @State private var historyIndex = -1
     @State private var hoveredDetail: String?
-    @State private var largestSearch = ""
-    @State private var selectedFile: DiskEntry?
     @State private var previewURL: URL?
     @State private var showingReview = false
+    @State private var showingFolder = false
+    @State private var pendingDevice: String?
+    @State private var inventoryTask: Task<Void, Never>?
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
     @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var chart: DiskChartStyle { DiskChartStyle(rawValue: chartStyle) ?? .treemap }
     private var measure: DiskChartMeasure { DiskChartMeasure(rawValue: chartMeasure) ?? .space }
-
-    @MainActor init() {
-        self.init(model: DiskExplorerModel())
+    private var sourceName: String {
+        guard let url = model.sourceURL else { return "Diskman" }
+        if url == FileManager.default.homeDirectoryForCurrentUser { return "Home Folder" }
+        return model.volumes.first { $0.url == url }?.name ?? url.lastPathComponent
+    }
+    private var inspected: DiskEntry? {
+        guard let current = model.current else { return nil }
+        if let selectedID, let entry = DiskEntryPresentation.find(selectedID, in: current), entry.kind != .aggregate { return entry }
+        return current
+    }
+    private var inspectedParent: DiskEntry? {
+        guard let entry = inspected, let root = model.result?.root else { return model.current }
+        return DiskEntryPresentation.find(entry.url.deletingLastPathComponent().path, in: root) ?? root
     }
 
-    @MainActor init(model: DiskExplorerModel, scansOnAppear: Bool = true,
-                    initialTab: DiskResultTab = .visualization) {
+    @MainActor init() { self.init(model: DiskExplorerModel()) }
+    @MainActor init(model: DiskExplorerModel, scansOnAppear: Bool = true, initialTab: DiskResultTab = .visualization) {
         _model = State(initialValue: model)
         #if DEBUG
-        if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1" {
-            _diskManagement = State(initialValue: DiskManagementModel(
-                disks: [Self.modifyPreviewDisk], selectedPartitionID: "disk91s2", isPreview: true))
-        } else {
-            _diskManagement = State(initialValue: DiskManagementModel())
-        }
+        _diskManagement = State(initialValue: ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1"
+            ? DiskManagementModel(disks: [Self.modifyPreviewDisk], selectedPartitionID: "disk91s2", isPreview: true)
+            : DiskManagementModel())
         #else
         _diskManagement = State(initialValue: DiskManagementModel())
         #endif
@@ -71,892 +68,423 @@ struct DiskExplorerWindowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar.frame(width: UtilityLayout.dataSidebarWidth)
-            content
-                .utilityContentTransition(value: page)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if page == .explore { statusInset }
-                }
-                .background(Color(nsColor: .windowBackgroundColor))
-        }
-        .ignoresSafeArea()
-        .background(WindowAccessor(identifier: "disk-explorer"))
-        .onAppear {
-            model.refreshVolumes()
-            if scansOnAppear && !diskManagement.isPreview {
-                Task { await diskManagement.refresh() }
+        OnePlusWindowRoot(canvas: .diskExplorer) { sidebar } content: { content }
+            .background(WindowAccessor(identifier: "disk-explorer"))
+            .background { shortcuts }
+            .onAppear {
+                model.refreshVolumes()
+                if scansOnAppear && !diskManagement.isPreview { refreshInventory() }
+                if scansOnAppear, let source = model.sourceURL, model.result == nil { startScan(source) }
             }
-            if scansOnAppear {
-                model.start(model.sourceURL ?? FileManager.default.homeDirectoryForCurrentUser,
-                            includeHidden: includeHidden)
+            .onDisappear {
+                model.leave(); inventoryTask?.cancel(); inventoryTask = nil
+                selectedID = nil; selection = []; history = []; previewURL = nil
             }
-        }
-        .onDisappear { model.leave() }
-        .onChange(of: page) { _, next in
-            if next != .explore { model.cancel() }
-            if next == .modify && !diskManagement.isPreview {
-                Task { await diskManagement.refresh() }
+            .onChange(of: page) { _, next in if next != .explore { model.cancel() } }
+            .onChange(of: includeHidden) { _, _ in
+                if page == .explore, let source = model.sourceURL { startScan(source) }
             }
-        }
-        .onChange(of: includeHidden) { _, newValue in
-            if page == .explore, let source = model.sourceURL {
-                model.start(source, includeHidden: newValue)
-            }
-        }
-        .onChange(of: chartStyle) { _, _ in hoveredDetail = nil }
-        .onChange(of: resultTab) { _, _ in hoveredDetail = nil }
-        .quickLookPreview($previewURL)
-        .popover(item: $selectedFile) { file in
-            fileInspector(file).frame(width: 440)
-        }
-        .sheet(isPresented: $showingReview) {
-            DiskExplorerReviewSheet(model: model, includeHidden: includeHidden)
-        }
-        .sheet(item: $diskManagement.blockedEject) { blocked in
-            blockedEjectSheet(blocked)
-        }
+            .onChange(of: model.current?.id) { _, _ in selectedID = nil; selection = []; hoveredDetail = nil }
+            .onChange(of: resultTab) { _, _ in selection = []; search = ""; hoveredDetail = nil }
+            .onChange(of: chartStyle) { _, _ in hoveredDetail = nil }
+            .onChange(of: diskManagement.disks.map(\.id)) { _, _ in selectPendingDevice() }
+            .quickLookPreview($previewURL)
+            .sheet(isPresented: $showingFolder) { folderSheet }
+            .sheet(isPresented: $showingReview) { DiskExplorerReviewSheet(model: model, includeHidden: includeHidden) }
+            .sheet(item: $diskManagement.blockedEject) { DiskBlockedEjectSheet(model: diskManagement, blocked: $0) }
+            .onOpenToolPage("disk-explorer", perform: openPage)
     }
 
     private var sidebar: some View {
-        ZStack(alignment: .topLeading) {
-            VisualEffectBackground(material: .sidebar)
-            SidebarTitle(text: "Diskman")
-            VStack(alignment: .leading, spacing: 5) {
-                Text("ANALYZE").utilitySectionHeader().padding(.leading, 8)
-                SidebarRow(icon: "house", title: "Home Folder",
-                           isSelected: page == .explore && model.sourceURL == FileManager.default.homeDirectoryForCurrentUser) {
-                    startScan(FileManager.default.homeDirectoryForCurrentUser)
-                }
-                SidebarRow(icon: "folder.badge.plus", title: "Choose Folder…", isSelected: false) {
-                    chooseFolder()
-                }
-                ForEach(model.volumes) { volume in
-                    SidebarRow(
-                        icon: volume.url.path == "/" ? "internaldrive" : "externaldrive",
-                        title: volume.name,
-                        isSelected: page == .explore && model.sourceURL == volume.url
-                    ) {
-                        startScan(volume.url)
-                    }
-                    .help(volume.url.path)
-                }
-                Text("MODIFY").utilitySectionHeader().padding(.leading, 8).padding(.top, 15)
-                ForEach(diskManagement.disks) { disk in
-                    modifyDiskRow(disk)
-                }
-                if page == .modify && diskManagement.disks.isEmpty {
-                    Text(diskManagement.isBusy ? "Reading disks…" : "No physical disks")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                        .padding(.leading, 36).padding(.vertical, 6)
-                }
-                Spacer()
-                QuietDivider().padding(.vertical, 5)
-                SidebarRow(icon: "gearshape", title: "Settings", isSelected: page == .settings) {
-                    page = .settings
-                }
-                SidebarRow(icon: "info.circle", title: "About", isSelected: page == .about) {
-                    page = .about
-                }
+        OnePlusSidebar(title: "Diskman") {
+            OnePlusNavCaption("Analyze")
+            OnePlusNavRow("Home Folder", systemImage: "house", selected: page == .explore && model.sourceURL == FileManager.default.homeDirectoryForCurrentUser) {
+                startScan(FileManager.default.homeDirectoryForCurrentUser)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, UtilityLayout.workspaceContentTopInset)
-            .padding(.bottom, 12)
+            .contextMenu {
+                Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([FileManager.default.homeDirectoryForCurrentUser]) }
+                Button("Copy Path") { DiskEntryPresentation.copy([FileManager.default.homeDirectoryForCurrentUser.path]) }
+            }
+            ForEach(model.volumes) { volume in
+                OnePlusNavRow(volume.name, systemImage: volume.url.path == "/" ? "internaldrive" : "externaldrive",
+                              selected: page == .explore && model.sourceURL == volume.url) { startScan(volume.url) }
+                    .contextMenu {
+                        Button("Analyze") { startScan(volume.url) }
+                        Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([volume.url]) }
+                        Button("Copy Path") { DiskEntryPresentation.copy([volume.url.path]) }
+                    }
+            }
+            OnePlusNavRow("Choose Folder", systemImage: "folder.badge.plus") { showingFolder = true }
+            OnePlusNavCaption("Devices").padding(.top, OnePlusMetrics.cardGap)
+            ForEach(diskManagement.disks) { disk in deviceRow(disk) }
+            if diskManagement.disks.isEmpty {
+                Text(diskManagement.isBusy ? "Reading devices..." : "No physical devices")
+                    .onePlusText(.caption).padding(OnePlusMetrics.navPadding)
+            }
+        } bottom: {
+            OnePlusNavRow("Settings", systemImage: "gearshape", selected: page == .settings) { page = .settings }
+            OnePlusNavRow("About", systemImage: "info.circle", selected: page == .about) { page = .about }
         }
     }
 
-    private func modifyDiskRow(_ disk: ManagedDisk) -> some View {
+    private func deviceRow(_ disk: ManagedDisk) -> some View {
         let locked = diskManagement.isLocked(disk)
-        return HStack(spacing: 2) {
-            Button {
-                withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
-                    diskManagement.select(disk)
-                    page = .modify
-                }
-            } label: {
-                HStack(spacing: 9) {
-                    Image(systemName: disk.bus == "Secure Digital" ? "sdcard" : "externaldrive")
-                        .font(.system(size: 15)).frame(width: 20)
-                        .foregroundStyle(diskManagement.selectedDiskID == disk.id && page == .modify ?
-                                         Color.accentColor : Color.secondary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(disk.name).lineLimit(1)
-                        Text("\(disk.id) · \(ByteCountFormatter.string(fromByteCount: disk.size, countStyle: .file))")
-                            .font(.system(size: 10)).foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 0)
-                    if locked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10)).foregroundStyle(.secondary)
-                    }
-                }
-                .font(.system(size: 11, weight: .medium))
-                .padding(.leading, 8).frame(minHeight: 42)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))
-            .focusEffectDisabled()
-            .accessibilityLabel("\(disk.name), /dev/\(disk.id), \(locked ? "locked" : "unlocked")")
-            .accessibilityAddTraits(diskManagement.selectedDiskID == disk.id && page == .modify ? .isSelected : [])
-            .accessibilityIdentifier("diskman.disk.\(disk.id)")
-            Button {
-                diskManagement.select(disk)
-                page = .modify
-                #if DEBUG
-                if diskManagement.isPreview {
-                    diskManagement.blockedEject = BlockedDiskEject(
-                        disk: disk,
-                        blockers: [DiskEjectBlocker(pid: 12345, name: "Example Editor",
-                                                    started: 1, userID: geteuid())],
-                        reason: "The disk is in use."
-                    )
-                } else {
-                    Task { await diskManagement.eject(disk) }
-                }
-                #else
-                Task { await diskManagement.eject(disk) }
-                #endif
-            } label: {
-                Image(systemName: "eject")
-                    .font(.system(size: 11, weight: .medium))
-                    .frame(width: 27, height: 30)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-            .focusEffectDisabled()
-            .disabled(locked || !disk.manageable || diskManagement.isBusy)
-            .help(locked ? "Unlock this disk before ejecting" : "Eject /dev/\(disk.id)")
-            .accessibilityLabel("Eject \(disk.name)")
-            .accessibilityIdentifier("diskman.eject.\(disk.id)")
+        return OnePlusDeviceNavRow(disk.name, subtitle: "\(disk.id) · \(disk.size.diskSize)",
+                                  systemImage: disk.bus == "Secure Digital" ? "sdcard" : "externaldrive",
+                                  selected: page == .modify && diskManagement.selectedDiskID == disk.id,
+                                  locked: locked, accessibilityIdentifier: "diskman.disk.\(disk.id)",
+                                  action: { diskManagement.select(disk); page = .modify }) {
+            Button { eject(disk) } label: { Image(systemName: "eject") }
+                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                .disabled(locked || !disk.manageable || diskManagement.isBusy)
+                .help(locked ? "Unlock this disk before ejecting" : "Eject \(disk.name)")
+                .accessibilityLabel("Eject \(disk.name)").accessibilityIdentifier("diskman.eject.\(disk.id)")
         }
-        .background(diskManagement.selectedDiskID == disk.id && page == .modify ?
-                    Color.accentColor.opacity(0.1) : .clear,
-                    in: RoundedRectangle(cornerRadius: 8))
         .contextMenu {
             Button(locked ? "Unlock Disk" : "Lock Disk", systemImage: locked ? "lock.open" : "lock.fill") {
                 diskManagement.setLocked(!locked, for: disk)
-            }
-            .disabled(diskManagement.isBusy || diskManagement.isPreview)
+            }.disabled(diskManagement.isBusy || diskManagement.isPreview)
+            Button("Eject", systemImage: "eject") { eject(disk) }
+                .disabled(locked || !disk.manageable || diskManagement.isBusy)
         }
-    }
-
-    private func blockedEjectSheet(_ blocked: BlockedDiskEject) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label("Disk is in use", systemImage: "externaldrive.badge.xmark")
-                .font(.system(size: 17, weight: .semibold))
-            Text("These processes have files open on \(blocked.disk.name). Save your work before closing them.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(blocked.blockers) { blocker in
-                        HStack {
-                            Text(blocker.name)
-                            Spacer()
-                            Text("PID \(blocker.pid)").foregroundStyle(.secondary)
-                        }
-                        .font(.system(size: 12))
-                    }
-                }
-            }
-            .thinScrollIndicators()
-            .frame(maxHeight: 180)
-            Text(blocked.reason).font(.system(size: 11)).foregroundStyle(.secondary)
-                .textSelection(.enabled)
-            HStack {
-                Spacer()
-                Button("Cancel") { diskManagement.blockedEject = nil }
-                Button("Close and Eject") {
-                    diskManagement.blockedEject = nil
-                    Task { await diskManagement.eject(blocked.disk, closing: blocked.blockers) }
-                }
-                .disabled(diskManagement.isPreview || !blocked.blockers.allSatisfy(\.canQuit))
-                .accessibilityIdentifier("diskman.quitAndEject")
-                Button("Force Quit and Eject") {
-                    diskManagement.blockedEject = nil
-                    Task { await diskManagement.eject(blocked.disk, closing: blocked.blockers, force: true) }
-                }
-                .tint(.red)
-                .disabled(diskManagement.isPreview || !blocked.blockers.allSatisfy(\.canQuit))
-                .accessibilityIdentifier("diskman.forceQuitAndEject")
-            }
-            if blocked.blockers.contains(where: { !$0.canQuit }) {
-                Text("A protected or other-user process must be closed outside Diskman.")
-                    .font(.system(size: 11)).foregroundStyle(.orange)
-            }
-        }
-        .padding(20)
-        .frame(width: 420)
     }
 
     @ViewBuilder private var content: some View {
         switch page {
         case .explore: explorerPage
-        case .modify:
-            DiskModifyView(model: diskManagement)
+        case .modify: DiskModifyView(model: diskManagement)
         case .settings:
-            WorkspacePage("Settings") {
-                DiskExplorerSettingsView(unreadableCount: model.result?.unreadableCount)
-            }
-        case .about:
-            ToolAboutView(toolId: "disk-explorer", showsSettings: false)
+            OnePlusPage { OnePlusPageHeader(title: "Settings", subtitle: "Diskman display and scan preferences") }
+                content: { DiskExplorerSettingsView(unreadableCount: model.result?.unreadableCount) }
+        case .about: DiskmanAboutPage()
         }
+    }
+
+    private var explorerPage: some View {
+        OnePlusPage(scrolls: false) {
+            VStack(spacing: 0) {
+                OnePlusDiskmanHeader(sourceName, path: model.sourceURL?.path ?? "Choose a volume or folder to analyze") { headerActions }
+                stats.padding(.horizontal, OnePlusMetrics.gutter).padding(.top, OnePlusMetrics.contentTop)
+                    .padding(.bottom, OnePlusMetrics.cardGap)
+            }
+        } tabs: {
+            OnePlusTabStrip(tabs: [.init(.visualization, "Visualization"),
+                                  .init(.largestFiles, "Largest files", count: model.result?.largestFiles.count ?? 0),
+                                  .init(.results, "Results")], selection: $resultTab) { tabTools }
+                .accessibilityIdentifier("diskExplorer.resultTabs")
+        } content: {
+            if let current = model.current {
+                if resultTab == .visualization { visualization(current) }
+                else { results(current) }
+            } else { emptyState.frame(maxHeight: .infinity) }
+            if let error = model.errorMessage {
+                OnePlusBanner(error, tone: .error) { Button("Try again") { rescan() } }
+            } else if model.isRemoving {
+                OnePlusBanner("Removing selected items...") { ProgressView().controlSize(.small) }
+            } else if model.result?.isComplete == false && !model.isScanning {
+                OnePlusBanner("Scan stopped. These results are partial. Rescan before removing files.", tone: .warning)
+            } else if let message = model.operationMessage {
+                OnePlusBanner(message)
+            }
+            if let count = model.result?.unreadableCount, count > 0 { unreadableNotice(count) }
+        }
+    }
+
+    private var headerActions: some View {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            if model.isScanning {
+                Button("Stop", systemImage: "stop.fill") { model.cancel() }.buttonStyle(OnePlusButtonStyle())
+            } else {
+                Button("Rescan", systemImage: "arrow.clockwise", action: rescan)
+                    .buttonStyle(OnePlusButtonStyle(.primary)).keyboardShortcut("r")
+                    .disabled(model.sourceURL == nil || model.isRemoving)
+            }
+            Menu {
+                Button("Reveal in Finder") { if let url = model.sourceURL { NSWorkspace.shared.activateFileViewerSelecting([url]) } }
+                    .disabled(model.sourceURL == nil)
+                Button("Copy Path") { if let url = model.sourceURL { DiskEntryPresentation.copy([url.path]) } }
+                    .disabled(model.sourceURL == nil)
+                Button("Choose Folder...") { showingFolder = true }
+                Divider()
+                Button("Review \(model.markedEntries.count) items") { showingReview = true }.disabled(model.marks.isEmpty)
+            } label: { Image(systemName: "ellipsis").frame(width: OnePlusMetrics.controlHeight, height: OnePlusMetrics.controlHeight) }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .focusEffectDisabled().help("More actions").accessibilityLabel("More actions")
+                .accessibilityIdentifier("diskExplorer.scan")
+        }
+    }
+
+    private var stats: some View {
+        let root = model.result?.root
+        return OnePlusCard {
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                    if let root { DiskSizeLabel(bytes: root.allocatedBytes, accent: true) }
+                    else { Text("-").onePlusText(.metric) }
+                    Text("Space used").onePlusText(.caption)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
+                statDivider
+                stat("Files scanned", value: root?.fileCount.formatted() ?? "-")
+                statDivider
+                stat("Folders", value: root.map { max(0, $0.directoryCount - 1).formatted() } ?? "-")
+                statDivider
+                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        if model.isScanning { ProgressView().controlSize(.small) }
+                        Text(model.isScanning ? "Scanning..." : model.result?.isComplete == false ? "Cancelled" :
+                             model.result.map { DiskEntryPresentation.date.string(from: $0.scannedAt) } ?? "Not scanned")
+                            .onePlusText(.cardTitle)
+                    }
+                    Text(model.isScanning ? "\(model.scannedEntries.formatted()) items checked" : "Last scan")
+                        .onePlusText(.caption).lineLimit(1)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
+            }.frame(height: OnePlusDiskmanMetrics.statsHeight)
+        }
+    }
+    private var statDivider: some View { OnePlusColor.line.frame(width: 1).padding(.vertical, OnePlusMetrics.cardPadding) }
+    private func stat(_ title: String, value: String, accent: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            Text(value).font(.system(size: OnePlusTextRole.metric.size(for: .regular), weight: .semibold))
+                .foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.ink).monospacedDigit().lineLimit(1)
+            Text(title).onePlusText(.caption)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
+    }
+    private var tabTools: some View {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSegmented(choices: DiskChartStyle.allCases.map { ($0.rawValue, $0.rawValue) }, selection: $chartStyle,
+                             accessibilityLabel: "Visualization").fixedSize()
+            OnePlusSelect(choices: DiskEntryPresentation.measures, selection: measureBinding, accessibilityLabel: "Measure")
+        }
+    }
+    private var measureBinding: Binding<String> {
+        Binding(get: { measure == .space && apparentSize ? "Apparent size" : measure.title }, set: { value in
+            apparentSize = value == "Apparent size"
+            chartMeasure = value == "File count" ? DiskChartMeasure.files.rawValue : value == "Recent changes" ? DiskChartMeasure.age.rawValue : DiskChartMeasure.space.rawValue
+        })
+    }
+
+    private func visualization(_ current: DiskEntry) -> some View {
+        HStack(spacing: OnePlusMetrics.cardGap) {
+            OnePlusCard {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    breadcrumbs(current)
+                    Spacer(minLength: OnePlusMetrics.actionSpacing)
+                    Text("\(current.children.filter { $0.kind == .directory }.count) folders").onePlusText(.caption)
+                }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.cardHeader)
+                OnePlusColor.lineSoft.frame(height: 1)
+                chartView(current).padding(OnePlusMetrics.actionSpacing).frame(maxWidth: .infinity, maxHeight: .infinity)
+                if measure == .age { ageLegend }
+                HStack {
+                    Text(hoveredDetail ?? (measure == .files ? "Area represents file count" : apparentSize ? "Area represents apparent size" : "Area represents space used"))
+                        .lineLimit(1).help(hoveredDetail ?? "")
+                        .accessibilityIdentifier("diskExplorer.hoverDetail").accessibilityValue(hoveredDetail ?? "")
+                    Spacer(minLength: OnePlusMetrics.actionSpacing)
+                    Text("Double-click to explore").fixedSize()
+                }.onePlusText(.caption).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
+            }
+            DiskSelectionInspector(entry: inspected, parent: inspectedParent ?? current, apparent: apparentSize,
+                                   select: select, explore: navigate, copy: { DiskEntryPresentation.copy([$0.url.path]) },
+                                   open: open, preview: preview, actions: fileActions,
+                                   availableBytes: model.volumes.first { $0.url == inspected?.url }?.available)
+                .frame(width: OnePlusDiskmanMetrics.inspectorWidth)
+        }.frame(maxHeight: .infinity)
+    }
+    private var ageLegend: some View {
+        HStack(spacing: OnePlusMetrics.cardGap) {
+            ForEach([1, 6, 0, 3], id: \.self) { index in
+                Label { Text(index == 1 ? "7 days" : index == 6 ? "30 days" : index == 0 ? "1 year" : "Older") } icon: {
+                    Circle().fill(DiskChartPalette.color(index)).frame(width: OnePlusMetrics.actionSpacing, height: OnePlusMetrics.actionSpacing)
+                }.onePlusText(.caption)
+            }
+        }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
+    }
+    @ViewBuilder private func chartView(_ current: DiskEntry) -> some View {
+        if current.children.isEmpty {
+            OnePlusEmptyState(model.isScanning ? "Reading this folder..." : "No measured items", systemImage: "folder")
+        } else if chart == .treemap {
+            DiskTreemapView(directory: current, apparent: apparentSize, measure: measure,
+                            scanComplete: model.result?.isComplete == true, select: select,
+                            onHoverDetail: { hoveredDetail = $0 }, selectedEntryID: selectedID,
+                            open: open, preview: preview, actions: fileActions)
+        } else {
+            DiskSunburstView(directory: current, apparent: apparentSize, measure: measure,
+                             scanComplete: model.result?.isComplete == true, select: select,
+                             onHoverDetail: { hoveredDetail = $0 }, selectedEntryID: selectedID,
+                             open: open, preview: preview, actions: fileActions)
+        }
+    }
+    private func results(_ current: DiskEntry) -> some View {
+        OnePlusCard {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                OnePlusSearchField(prompt: resultTab == .largestFiles ? "Search largest files" : "Search Results", text: $search,
+                                   focusTrigger: searchFocus, shortcutHint: "⌘F")
+                Spacer()
+                Text(model.result?.isComplete == true ? "Completed scan" : "Measured so far").onePlusText(.caption)
+                Button("Review \(model.markedEntries.count)") { showingReview = true }
+                    .buttonStyle(OnePlusButtonStyle()).disabled(model.marks.isEmpty || model.isRemoving)
+            }.padding(OnePlusMetrics.cardPadding)
+            if resultTab == .results {
+                breadcrumbs(current).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
+            }
+            DiskEntryTable(entries: resultTab == .largestFiles ? model.result?.largestFiles ?? [] : current.children,
+                           search: search, apparent: apparentSize, selection: $selection, open: open,
+                           preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results)
+                .id(resultTab)
+                .frame(maxHeight: .infinity)
+        }.frame(maxHeight: .infinity)
+    }
+    private func breadcrumbs(_ current: DiskEntry) -> some View {
+        let nodes = model.result.map { DiskEntryPresentation.breadcrumbs(to: current, root: $0.root) } ?? []
+        return ScrollView(.horizontal) {
+            HStack(spacing: OnePlusMetrics.spacing[1]) {
+                ForEach(nodes) { entry in
+                    Button { navigate(entry) } label: { Label(entry.name, systemImage: "folder") }
+                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small)).help(entry.url.path)
+                        .modifier(DiskChartFileActions(entry: entry, actions: fileActions))
+                    if entry.id != nodes.last?.id { Image(systemName: "chevron.right").onePlusText(.caption) }
+                }
+            }
+        }.thinScrollIndicators()
+    }
+    private var emptyState: some View {
+        OnePlusCard {
+            OnePlusEmptyState(model.isScanning ? "Reading the first folders..." : "Choose a location", systemImage: "internaldrive",
+                              caption: "Analyze a volume or folder to see where its space goes.") {
+                if model.isScanning { ProgressView().controlSize(.small) }
+                else { Button("Choose Folder") { showingFolder = true } }
+            }.frame(maxHeight: .infinity)
+        }
+    }
+    private func unreadableNotice(_ count: Int) -> some View {
+        OnePlusCard {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Image(systemName: "lock").foregroundStyle(OnePlusColor.warn)
+                Text("\(count.formatted()) items could not be read.").onePlusText(.row)
+                Text("Grant Full Disk Access to complete the scan.").onePlusText(.caption)
+                Spacer()
+                Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }.buttonStyle(OnePlusButtonStyle(.link))
+            }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.settingRow)
+        }.accessibilityIdentifier("diskExplorer.unreadableInfo")
+    }
+    private var folderSheet: some View {
+        DiskChooseFolderSheet(volumes: model.volumes, result: model.result, choose: { url in
+            showingFolder = false; startScan(url)
+        }, browse: {
+            showingFolder = false
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true; panel.canChooseFiles = false
+            panel.allowsMultipleSelection = false; panel.prompt = "Scan"
+            panel.begin { response in if response == .OK, let url = panel.url { startScan(url) } }
+        })
+    }
+
+    private func select(_ entry: DiskEntry) { selectedID = entry.id }
+    private func open(_ entry: DiskEntry) {
+        guard entry.kind != .aggregate else { return }
+        if entry.kind == .directory { navigate(entry) } else { NSWorkspace.shared.open(entry.url) }
+    }
+    private func preview(_ entry: DiskEntry) { if entry.kind != .aggregate { previewURL = entry.url } }
+    private func navigate(_ entry: DiskEntry) {
+        guard entry.kind == .directory, entry.id != model.current?.id else { return }
+        if history.isEmpty, let current = model.current { history = [current.id]; historyIndex = 0 }
+        history = Array(history.prefix(historyIndex + 1)); history.append(entry.id); historyIndex = history.count - 1
+        model.navigate(to: entry)
+    }
+    private func traverse(_ delta: Int) {
+        let next = historyIndex + delta
+        guard history.indices.contains(next), let root = model.result?.root,
+              let entry = DiskEntryPresentation.find(history[next], in: root) else { return }
+        historyIndex = next; model.navigate(to: entry)
+    }
+    private func fileActions(_ entries: [DiskEntry]) -> [OnePlusTableAction] {
+        let files = entries.filter { $0.kind != .aggregate }
+        guard !files.isEmpty, files.count == entries.count else { return [] }
+        let allMarked = files.allSatisfy { model.marks[$0.id] != nil }
+        return [
+            .init("Open") { files.forEach(open) },
+            .init("Open With...") { DiskEntryPresentation.openWith(files.map(\.url)) },
+            .init("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting(files.map(\.url)) },
+            .init("Quick Look") { preview(files[0]) },
+            .init("Copy Path") { DiskEntryPresentation.copy(files.map { $0.url.path }) },
+            .init(allMarked ? "Unmark" : "Mark for removal", enabled: canRemove(files)) {
+                files.forEach { if allMarked || model.marks[$0.id] == nil { model.toggleMark($0) } }
+            },
+            .init("Move to Trash...", enabled: canRemove(files)) { stageRemoval(files) }
+        ]
+    }
+    private func canRemove(_ entries: [DiskEntry]) -> Bool {
+        guard let result = model.result, result.isComplete, !model.isRemoving else { return false }
+        return !entries.isEmpty && entries.allSatisfy { DiskRemoval.isAllowed($0, under: result.root.url) }
+    }
+    private func stageRemoval(_ entries: [DiskEntry]) {
+        guard canRemove(entries) else { return }
+        entries.forEach { if model.marks[$0.id] == nil { model.toggleMark($0) } }; showingReview = true
+    }
+    private func startScan(_ url: URL) {
+        page = .explore; resultTab = .visualization; selection = []; selectedID = nil
+        history = []; historyIndex = -1; search = ""; model.start(url, includeHidden: includeHidden)
+    }
+    private func rescan() { if let source = model.sourceURL { startScan(source) } }
+    private func refreshInventory() {
+        inventoryTask?.cancel(); inventoryTask = Task { await diskManagement.refresh(); selectPendingDevice() }
+    }
+    private func eject(_ disk: ManagedDisk) {
+        diskManagement.select(disk); page = .modify
+        #if DEBUG
+        if diskManagement.isPreview {
+            diskManagement.blockedEject = BlockedDiskEject(disk: disk, blockers: [
+                DiskEjectBlocker(pid: 12345, name: "Example Editor", started: 1, userID: geteuid())
+            ], reason: "The disk is in use."); return
+        }
+        #endif
+        Task { await diskManagement.eject(disk) }
+    }
+    private func openPage(_ id: String) {
+        switch id {
+        case "home": startScan(FileManager.default.homeDirectoryForCurrentUser)
+        case "largest-files": page = .explore; resultTab = .largestFiles
+        case "results": page = .explore; resultTab = .results
+        case "rings": page = .explore; resultTab = .visualization; chartStyle = DiskChartStyle.sunburst.rawValue
+        case "choose-folder": showingFolder = true
+        case "settings": page = .settings
+        case "about": page = .about
+        default:
+            if id.hasPrefix("device/") { pendingDevice = String(id.dropFirst("device/".count)); page = .modify; selectPendingDevice() }
+        }
+    }
+    private func selectPendingDevice() {
+        guard let pendingDevice, let disk = diskManagement.disks.first(where: { $0.id == pendingDevice }) else { return }
+        diskManagement.select(disk); self.pendingDevice = nil
+    }
+    private var shortcuts: some View {
+        Group {
+            Button("Back") { traverse(-1) }.keyboardShortcut("[").disabled(page != .explore || historyIndex <= 0)
+            Button("Forward") { traverse(1) }.keyboardShortcut("]").disabled(page != .explore || historyIndex + 1 >= history.count)
+            Button("Search Results") { page = .explore; resultTab = .results; searchFocus += 1 }.keyboardShortcut("f")
+            Button("Diskman Settings") { page = .settings }.keyboardShortcut(",")
+            ForEach(0..<9, id: \.self) { index in
+                Button("Navigate \(index + 1)") { sidebarShortcut(index) }.keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+            }
+        }.hidden()
+    }
+    private func sidebarShortcut(_ index: Int) {
+        if index == 0 { startScan(FileManager.default.homeDirectoryForCurrentUser); return }
+        if model.volumes.indices.contains(index - 1) { startScan(model.volumes[index - 1].url); return }
+        let deviceIndex = index - model.volumes.count - 2
+        if deviceIndex == -1 { showingFolder = true }
+        else if diskManagement.disks.indices.contains(deviceIndex) { diskManagement.select(diskManagement.disks[deviceIndex]); page = .modify }
+        else if deviceIndex == diskManagement.disks.count { page = .settings }
+        else if deviceIndex == diskManagement.disks.count + 1 { page = .about }
     }
 
     #if DEBUG
     private static let modifyPreviewDisk = ManagedDisk(
-        id: "disk91", name: "Preview SD card", size: 15_634_268_160,
-        bus: "Secure Digital", scheme: "GUID_partition_scheme", devicePath: "hosted-preview",
-        writable: true, manageable: true, mediaRegistryID: 1, partitions: [
-            ManagedPartition(id: "disk91s1", name: "EFI", content: "EFI", size: 209_715_200,
-                             mountPoint: nil, uuid: nil),
-            ManagedPartition(id: "disk91s2", name: "FIRST", content: "Microsoft Basic Data",
-                             size: 4_000_000_000, mountPoint: nil, uuid: "first", fileSystem: "ExFAT"),
-            ManagedPartition(id: "disk91s3", name: "SECOND", content: "Microsoft Basic Data",
-                             size: 11_422_455_808, mountPoint: nil, uuid: "second", fileSystem: "ExFAT")
-        ]
-    )
+        id: "disk91", name: "Preview SD card", size: 15_634_268_160, bus: "Secure Digital",
+        scheme: "GUID_partition_scheme", devicePath: "hosted-preview", writable: true, manageable: true, mediaRegistryID: 1,
+        partitions: [ManagedPartition(id: "disk91s1", name: "EFI", content: "EFI", size: 209_715_200, mountPoint: nil, uuid: nil),
+            ManagedPartition(id: "disk91s2", name: "FIRST", content: "Microsoft Basic Data", size: 4_000_000_000,
+                             mountPoint: nil, uuid: "first", fileSystem: "ExFAT"),
+            ManagedPartition(id: "disk91s3", name: "SECOND", content: "Microsoft Basic Data", size: 11_422_455_808,
+                             mountPoint: nil, uuid: "second", fileSystem: "ExFAT")])
     #endif
-
-    private var explorerPage: some View {
-        WorkspacePage(
-            "Diskman",
-            subtitle: model.sourceURL?.path ?? "Choose a volume or folder",
-            fillsAvailableHeight: true,
-            actions: {
-                Menu("Scan", systemImage: "internaldrive") {
-                    Button("Home Folder") {
-                        startScan(FileManager.default.homeDirectoryForCurrentUser)
-                    }
-                    ForEach(model.volumes) { volume in
-                        Button(volume.name) { startScan(volume.url) }
-                    }
-                    Divider()
-                    Button("Choose Folder…") { chooseFolder() }
-                }
-                .accessibilityIdentifier("diskExplorer.scan")
-                if model.isScanning {
-                    Button("Stop", systemImage: "stop.fill") { model.cancel() }
-                } else if let source = model.sourceURL {
-                    Button("Rescan", systemImage: "arrow.clockwise") {
-                        model.start(source, includeHidden: includeHidden)
-                    }
-                }
-                if model.result != nil {
-                    Button("Scan Statistics", systemImage: "info.circle") {
-                        showsStatistics.toggle()
-                    }
-                    .labelStyle(.iconOnly)
-                    .accessibilityIdentifier("diskExplorer.statistics")
-                    .help("Scan statistics")
-                    .popover(isPresented: $showsStatistics) {
-                        scanStatistics.frame(width: 260).padding(16)
-                    }
-                }
-                Button("Review \(model.markedEntries.count)", systemImage: "tray.full") {
-                    showingReview = true
-                }
-                .disabled(model.markedEntries.isEmpty || model.isRemoving)
-            }
-        ) {
-            if let current = model.current, let snapshot = model.result {
-                exploredContent(current, snapshot: snapshot)
-            } else if model.isScanning {
-                VStack(spacing: 10) {
-                    ProgressView().controlSize(.small)
-                    Text("Reading the first folders…")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                    .frame(maxWidth: .infinity, minHeight: 480)
-            } else {
-                ContentUnavailableView("Choose a Disk", systemImage: "internaldrive",
-                                       description: Text("Select a volume or folder to see where its space goes."))
-                    .frame(maxWidth: .infinity, minHeight: 480)
-            }
-        }
-    }
-
-    private func exploredContent(_ current: DiskEntry, snapshot: DiskScanResult) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Picker("Results", selection: $resultTab) {
-                    ForEach(DiskResultTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .fixedSize()
-                .accessibilityIdentifier("diskExplorer.resultTabs")
-                Spacer()
-                if resultTab == .visualization {
-                    Text("VIEW").font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    if snapshot.unreadableCount > 0 {
-                        Button {
-                            showsUnreadableInfo.toggle()
-                        } label: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(Color.yellow.opacity(0.7))
-                                .frame(width: 24, height: 24)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .focusEffectDisabled()
-                        .accessibilityLabel("\(snapshot.unreadableCount.formatted()) items could not be read")
-                        .accessibilityIdentifier("diskExplorer.unreadableInfo")
-                        .help("\(snapshot.unreadableCount.formatted()) items could not be read")
-                        .popover(isPresented: $showsUnreadableInfo) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("\(snapshot.unreadableCount.formatted()) items could not be read")
-                                    .font(.system(size: 13, weight: .semibold))
-                                Text("Their sizes are missing from this scan. macOS may require Full Disk Access.")
-                                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                                Button("Full Disk Access Settings") { openFullDiskAccessSettings() }
-                            }
-                            .padding(14).frame(width: 260)
-                        }
-                    }
-                    Picker("View", selection: $chartStyle) {
-                        ForEach(DiskChartStyle.allCases) { style in
-                            Label(style.rawValue, systemImage: style.symbol).tag(style.rawValue)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    Picker("Measure", selection: $chartMeasure) {
-                        ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
-                    }
-                    .fixedSize()
-                    Button {
-                        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
-                            showsContents.toggle()
-                        }
-                    } label: {
-                        Image(systemName: "sidebar.right")
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(showsContents ? .accentColor : nil)
-                    .accessibilityLabel(showsContents ? "Hide Contents" : "Show Contents")
-                    .accessibilityIdentifier("diskExplorer.contents")
-                    .help(showsContents ? "Hide Contents" : "Show Contents")
-                } else {
-                    TextField("Filter largest files", text: $largestSearch)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 230)
-                }
-            }
-            HStack(spacing: 8) {
-                breadcrumbs(for: current, root: snapshot.root)
-                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(-1)
-                if let hoveredDetail, resultTab == .visualization {
-                    Text(hoveredDetail)
-                        .font(.system(size: 11, weight: .medium))
-                        .lineLimit(1).truncationMode(.middle)
-                        .frame(width: 260, alignment: .trailing)
-                        .accessibilityLabel(hoveredDetail)
-                        .help(hoveredDetail)
-                        .accessibilityIdentifier("diskExplorer.hoverDetail")
-                }
-                if !snapshot.isComplete {
-                    Text(model.isScanning ? "LIVE · MEASURED SO FAR" : "PARTIAL SCAN")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.orange)
-                        .fixedSize()
-                }
-            }
-            if resultTab == .visualization {
-                HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        chartView(current)
-                            .id(current.id)
-                            .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.96)))
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if showsContents {
-                        VStack(spacing: 0) {
-                            HStack(spacing: 8) {
-                                TextField("Search Contents", text: $search)
-                                    .textFieldStyle(.roundedBorder)
-                                Picker("Sort", selection: $sort) {
-                                    ForEach(DiskEntrySort.allCases) { value in
-                                        Text(value.rawValue).tag(value)
-                                    }
-                                }
-                                .labelsHidden()
-                                .frame(width: 90)
-                            }
-                            .padding(8)
-                            entriesView(current)
-                        }
-                        .frame(width: 290)
-                        .frame(maxHeight: .infinity)
-                        .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
-                    }
-                }
-                .frame(maxHeight: .infinity)
-            } else {
-                largestFiles(snapshot.largestFiles)
-                    .frame(maxHeight: .infinity)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: current.id) { _, _ in search = ""; selectedFile = nil; hoveredDetail = nil }
-    }
-
-    private var scanStatistics: some View {
-        let current = model.current
-        let snapshot = model.result
-        return VStack(alignment: .leading, spacing: 12) {
-            Text(snapshot?.isComplete == true ? "Scan Statistics" : "Measured So Far")
-                .font(.system(size: 13, weight: .semibold))
-            metric("Used here", current?.bytes(apparent: apparentSize).diskSize ?? "—")
-            HStack(spacing: 18) {
-                metric("Files", current?.fileCount.formatted() ?? "—")
-                metric("Folders", max((current?.directoryCount ?? 1) - 1, 0).formatted())
-            }
-            if let volume = model.volumes.first(where: { $0.url == model.sourceURL }),
-               let available = volume.available {
-                metric("Free on disk", available.diskSize)
-            }
-            if let snapshot, snapshot.unreadableCount > 0 {
-                Text("\(snapshot.unreadableCount.formatted()) unreadable items")
-                    .font(.system(size: 11)).foregroundStyle(.orange)
-            }
-        }
-    }
-
-    private func metric(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.system(size: 10)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 16, weight: .medium)).monospacedDigit()
-        }
-    }
-
-    private func breadcrumbs(for current: DiskEntry, root: DiskEntry) -> some View {
-        var nodes = [root]
-        var node = root
-        let path = current.id
-        while node.id != path,
-              let next = node.children.first(where: {
-                  $0.kind == .directory && path.hasPrefix($0.id + "/") || $0.id == path
-              }) {
-            nodes.append(next)
-            node = next
-        }
-        return ScrollView(.horizontal) {
-            HStack(spacing: 4) {
-                ForEach(nodes) { entry in
-                    Button(entry.name) {
-                        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
-                            model.navigate(to: entry)
-                        }
-                    }
-                        .buttonStyle(.borderless)
-                        .focusEffectDisabled()
-                    if entry.id != nodes.last?.id {
-                        Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
-                    }
-                }
-            }
-        }
-        .thinScrollIndicators()
-    }
-
-    @ViewBuilder private func chartView(_ directory: DiskEntry) -> some View {
-        VStack(spacing: 0) {
-            Group {
-                if directory.children.isEmpty && model.isScanning {
-                    VStack(spacing: 9) {
-                        ProgressView().controlSize(.small)
-                        Text("Scanning this folder…")
-                            .font(.system(size: 11)).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if directory.children.isEmpty {
-                    ContentUnavailableView("No Measured Items", systemImage: "square.dashed")
-                } else if chart == .treemap {
-                    DiskTreemapView(directory: directory, apparent: apparentSize, measure: measure,
-                                    scanComplete: model.result?.isComplete == true, select: inspect,
-                                    onHoverDetail: { hoveredDetail = $0 })
-                } else {
-                    DiskSunburstView(directory: directory, apparent: apparentSize, measure: measure,
-                                     scanComplete: model.result?.isComplete == true, select: inspect,
-                                     onHoverDetail: { hoveredDetail = $0 })
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if measure == .age {
-                HStack(spacing: 14) {
-                    ageKey("7 days", color: DiskChartPalette.color(1))
-                    ageKey("30 days", color: DiskChartPalette.color(6))
-                    ageKey("1 year", color: DiskChartPalette.color(0))
-                    ageKey("Older", color: DiskChartPalette.color(3))
-                }
-                .padding(.horizontal, 12).padding(.bottom, 8)
-            }
-        }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.65))
-        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.07)) }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private func ageKey(_ title: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Circle().fill(color).frame(width: 7, height: 7)
-            Text(title)
-        }
-        .font(.system(size: 10))
-        .foregroundStyle(.secondary)
-    }
-
-    private func entriesView(_ directory: DiskEntry) -> some View {
-        let matches = orderedEntries(in: directory)
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Contents").font(.system(size: 12, weight: .medium))
-                Spacer()
-                Text(matches.count.formatted()).font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 10).padding(.vertical, 9)
-            QuietDivider()
-            ScrollView {
-                LazyVStack(spacing: 1) {
-                    ForEach(matches) { entry in entryRow(entry) }
-                }
-                .padding(5)
-            }
-            .thinScrollIndicators()
-        }
-        .background(Color.primary.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private func orderedEntries(in directory: DiskEntry) -> [DiskEntry] {
-        let entries = search.isEmpty ? directory.children : directory.children.filter {
-            $0.name.localizedStandardContains(search)
-        }
-        switch sort {
-        case .size: return entries.sorted { $0.bytes(apparent: apparentSize) > $1.bytes(apparent: apparentSize) }
-        case .files: return entries.sorted { $0.fileCount > $1.fileCount }
-        case .name: return entries.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        case .modified: return entries.sorted { $0.modifiedAt > $1.modifiedAt }
-        }
-    }
-
-    private func entryRow(_ entry: DiskEntry) -> some View {
-        HStack(spacing: 3) {
-            Button { inspect(entry) } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: entry.kind == .directory ? "folder.fill" :
-                          entry.kind == .symbolicLink ? "link" : "doc")
-                        .frame(width: 17).foregroundStyle(.secondary)
-                    Text(entry.name).lineLimit(1).truncationMode(.middle)
-                    Spacer(minLength: 4)
-                    Text(entry.bytes(apparent: apparentSize).diskSize)
-                        .monospacedDigit().foregroundStyle(.secondary).fixedSize()
-                }
-                .font(.system(size: 11))
-                .padding(.horizontal, 5).frame(minHeight: 28)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-            .focusEffectDisabled()
-            .contextMenu {
-                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([entry.url]) }
-                if entry.kind == .file { Button("Quick Look") { previewURL = entry.url } }
-                Button("Copy Path") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(entry.url.path, forType: .string)
-                }
-                if model.result?.isComplete == true,
-                   let root = model.result?.root.url, DiskRemoval.isAllowed(entry, under: root) {
-                    Button(model.marks[entry.id] == nil ? "Mark for Removal" : "Unmark") {
-                        model.toggleMark(entry)
-                    }
-                }
-            }
-            if model.result?.isComplete == true,
-               let root = model.result?.root.url, DiskRemoval.isAllowed(entry, under: root) {
-                Button { model.toggleMark(entry) } label: {
-                    Image(systemName: model.marks[entry.id] == nil ? "plus.circle" : "checkmark.circle.fill")
-                        .frame(width: 26, height: 28)
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .contentShape(Rectangle())
-                .accessibilityLabel(model.marks[entry.id] == nil ? "Mark \(entry.name) for removal" : "Unmark \(entry.name)")
-                .help("Review before removing")
-            }
-        }
-    }
-
-    private func inspect(_ entry: DiskEntry) {
-        if entry.kind == .directory {
-            withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
-                model.navigate(to: entry)
-            }
-        } else {
-            selectedFile = entry
-        }
-    }
-
-    private func fileInspector(_ file: DiskEntry) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "doc.text").foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(file.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                Text(file.url.path).font(.system(size: 11)).foregroundStyle(.secondary)
-                    .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-            }
-            Spacer()
-            Button("Quick Look") { previewURL = file.url }
-            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([file.url]) }
-        }
-        .controlSize(.small)
-        .padding(12)
-        .background(Color.primary.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private func largestFiles(_ files: [DiskEntry]) -> some View {
-        let matches = largestSearch.isEmpty ? files : files.filter {
-            $0.url.path.localizedStandardContains(largestSearch)
-        }
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(model.isScanning ? "Largest files measured so far" : "Largest files")
-                    .font(.system(size: 12, weight: .medium))
-                Spacer()
-                Text("\(matches.count) of \(files.count)")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 10)
-            QuietDivider()
-            if matches.isEmpty {
-                ContentUnavailableView(model.isScanning ? "Finding Large Files" : "No Matching Files",
-                                       systemImage: "doc.text.magnifyingglass")
-                    .frame(maxWidth: .infinity, minHeight: 300)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                    ForEach(matches.indices, id: \.self) { index in
-                        let entry = matches[index]
-                        HStack(spacing: 10) {
-                            Text("\(index + 1)").monospacedDigit()
-                                .foregroundStyle(.tertiary).frame(width: 28, alignment: .trailing)
-                            Button { selectedFile = entry } label: {
-                                HStack(spacing: 9) {
-                                    Image(systemName: "doc.fill").foregroundStyle(.secondary)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(entry.name).lineLimit(1).truncationMode(.middle)
-                                            .foregroundStyle(.primary)
-                                        Text(entry.url.deletingLastPathComponent().path)
-                                            .font(.system(size: 10)).foregroundStyle(.secondary)
-                                            .lineLimit(1).truncationMode(.middle)
-                                    }
-                                    Spacer(minLength: 8)
-                                    Text(entry.allocatedBytes.diskSize)
-                                        .monospacedDigit().foregroundStyle(.secondary).fixedSize()
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 42)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-                            .accessibilityLabel("Inspect \(entry.name)")
-                            Button("Show in Finder", systemImage: "arrow.up.right.square") {
-                                NSWorkspace.shared.activateFileViewerSelecting([entry.url])
-                            }
-                            .labelStyle(.iconOnly).buttonStyle(.plain)
-                            .focusEffectDisabled()
-                            .help("Show in Finder")
-                            if model.result?.isComplete == true,
-                               let root = model.result?.root.url,
-                               DiskRemoval.isAllowed(entry, under: root) {
-                                Button(model.marks[entry.id] == nil ? "Mark for Removal" : "Unmark", systemImage: model.marks[entry.id] == nil ?
-                                       "plus.circle" : "checkmark.circle.fill") {
-                                    model.toggleMark(entry)
-                                }
-                                .labelStyle(.iconOnly).buttonStyle(.plain)
-                                .focusEffectDisabled()
-                                .help(model.marks[entry.id] == nil ? "Mark for Removal" : "Unmark")
-                            }
-                        }
-                        .font(.system(size: 11))
-                        .padding(.horizontal, 10)
-                        QuietDivider()
-                    }
-                    }
-                }
-                .thinScrollIndicators()
-            }
-        }
-        .background(Color.primary.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var statusInset: some View {
-        VStack(spacing: 0) {
-            QuietDivider()
-            HStack(spacing: 8) {
-                if model.isScanning || model.isRemoving { ProgressView().controlSize(.small) }
-                else { Image(systemName: "circle.fill").font(.system(size: 6)).foregroundStyle(.tertiary) }
-                Text(model.errorMessage ?? model.operationMessage ??
-                     (model.isRemoving ? "Removing selected items…" :
-                      model.isScanning ? "Scanning · \(model.scannedEntries.formatted()) items checked; chart updates live" :
-                      model.result?.isComplete == false ? "Scan stopped. Results are partial; scan again before removal." :
-                      "Ready to analyze"))
-                    .font(.system(size: 11)).lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 36)
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Scan"
-        if panel.runModal() == .OK, let url = panel.url {
-            startScan(url)
-        }
-    }
-
-    private func startScan(_ url: URL) {
-        page = .explore
-        resultTab = .visualization
-        selectedFile = nil
-        showsStatistics = false
-        model.start(url, includeHidden: includeHidden)
-    }
-
-    private func openFullDiskAccessSettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") else { return }
-        NSWorkspace.shared.open(url)
-    }
-}
-
-struct DiskExplorerSettingsView: View {
-    var unreadableCount: Int? = nil
-    @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
-    @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
-    @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
-    @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("DISPLAY").utilitySectionHeader()
-            VStack(alignment: .leading, spacing: 12) {
-                Picker("Visualization", selection: $chartStyle) {
-                    ForEach(DiskChartStyle.allCases) { style in Text(style.rawValue).tag(style.rawValue) }
-                }
-                Picker("Measure", selection: $chartMeasure) {
-                    ForEach(DiskChartMeasure.allCases) { value in Text(value.rawValue).tag(value.rawValue) }
-                }
-                Toggle("Show apparent file size", isOn: $apparentSize)
-                Toggle("Include hidden files in scans", isOn: $includeHidden)
-            }
-            .utilitySectionCard()
-            Text("DISK ACCESS").utilitySectionHeader()
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(unreadableCount.map { $0 > 0 ? "Needs Attention" : "No blocked folders found" } ?? "Not checked")
-                        .font(.system(size: 12, weight: .medium))
-                    Text("A scan reports folders that macOS did not let this app read.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Open Full Disk Access Settings") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-                .controlSize(.small)
-            }
-            .utilitySectionCard()
-            Spacer()
-        }
-        .settingsPageInsets(horizontal: 24, top: 12, bottom: 24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-}
-
-private struct DiskExplorerReviewSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let model: DiskExplorerModel
-    let includeHidden: Bool
-    @State private var confirmPermanent = false
-
-    private var markedCountDescription: String {
-        let count = model.markedEntries.count
-        return count == 1 ? "1 item" : "\(count) items"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Review Items").font(.system(size: 17, weight: .medium))
-            Text("\(markedCountDescription) · \(model.markedBytes.diskSize)")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-                .accessibilityLabel("\(markedCountDescription) selected, \(model.markedBytes.diskSize)")
-                .accessibilityIdentifier("diskman.reviewSummary")
-            QuietDivider()
-            List {
-                ForEach(model.markedEntries) { entry in
-                    HStack {
-                        Image(systemName: entry.kind == .directory ? "folder" : "doc")
-                        VStack(alignment: .leading) {
-                            Text(entry.name).lineLimit(1)
-                            Text(entry.url.path).font(.system(size: 11)).foregroundStyle(.secondary)
-                                .lineLimit(2).truncationMode(.middle)
-                                .textSelection(.enabled).help(entry.url.path)
-                        }
-                        Spacer()
-                        Text(entry.allocatedBytes.diskSize).monospacedDigit()
-                        Button("Remove from Review", systemImage: "minus.circle") {
-                            model.toggleMark(entry)
-                        }
-                        .labelStyle(.iconOnly)
-                        .help("Remove from review")
-                    }
-                }
-            }
-            .listStyle(.plain)
-            .thinScrollIndicators()
-            HStack {
-                Button("Cancel") { dismiss() }
-                Spacer()
-                Button("Delete Permanently…", role: .destructive) { confirmPermanent = true }
-                    .disabled(model.markedEntries.isEmpty)
-                Button("Move to Trash") {
-                    model.removeMarked(permanently: false, includeHidden: includeHidden)
-                    dismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.markedEntries.isEmpty)
-            }
-        }
-        .padding(20)
-        .frame(width: 620, height: 480)
-        .confirmationDialog(
-            "Permanently delete \(markedCountDescription)?",
-            isPresented: $confirmPermanent
-        ) {
-            Button("Delete Permanently", role: .destructive) {
-                model.removeMarked(permanently: true, includeHidden: includeHidden)
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This cannot be undone. \(model.markedBytes.diskSize) is selected.")
-        }
-    }
-}
-
-private extension Int64 {
-    var diskSize: String { ByteCountFormatter.string(fromByteCount: self, countStyle: .file) }
 }
