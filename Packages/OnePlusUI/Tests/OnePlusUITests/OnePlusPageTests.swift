@@ -5,6 +5,37 @@ import XCTest
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testAppletBodyAndFixedRegionsUseSixteenPointGaps() throws {
+        for showsTabs in [false, true] {
+            let host = NSHostingView(rootView: OnePlusPage(scrolls: false, layout: .applet) {
+                OnePlusAppletTitlebar(title: "Applet") { EmptyView() }
+            } tabs: {
+                if showsTabs {
+                    OnePlusTabStrip(tabs: [.init("history", "History")], selection: .constant("history"), layout: .applet)
+                }
+            } toolbar: {
+                PageRegionProbe("toolbar").frame(height: 28)
+            } footer: {
+                PageRegionProbe("footer").frame(height: 24)
+            } content: {
+                PageRegionProbe("rows")
+            })
+            host.frame = CGRect(x: 0, y: 0, width: 420, height: 460)
+            host.layoutSubtreeIfNeeded()
+            func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+            func rect(_ name: String) throws -> CGRect {
+                let view = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == name })
+                return view.convert(view.bounds, to: host)
+            }
+            let toolbar = try rect("toolbar"), rows = try rect("rows"), footer = try rect("footer")
+            XCTAssertEqual(toolbar.minY, showsTabs ? 92 : 56, accuracy: 0.5)
+            XCTAssertEqual(rows.minY - toolbar.maxY, 16, accuracy: 0.5)
+            XCTAssertEqual(footer.minY - rows.maxY, 16, accuracy: 0.5)
+            XCTAssertEqual(rows.minX, 16, accuracy: 0.5)
+            XCTAssertEqual(rows.maxX, 404, accuracy: 0.5)
+        }
+    }
+
     func testFixedRegionsKeepTheirGeometryWhileRowsScroll() throws {
         let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
             PageRegionProbe("header").frame(height: 50)
