@@ -87,17 +87,14 @@ final class ToolActionRouter {
             return
         }
         if resolved == "ruler" {
-            Self.launchRuler(
-                dismissMainWindow: dismissMainWindow,
-                openRuler: { execute(ToolActionRequest(action: .rulerOpen)) }
-            )
+            execute(ToolActionRequest(action: .rulerOpen))
             NSApp.activate(ignoringOtherApps: true)
             return
         }
 
         if resolved == "portman" {
-            dismissMainWindow()
             PortmanMenuController.shared.show()
+            dismissMainWindowAfterToolOpen()
             return
         }
 
@@ -110,12 +107,13 @@ final class ToolActionRouter {
                 return
             }
             presentSingleWindow(id: resolved, using: openWindowAction)
-            if resolved != "main" { dismissMainWindow() }
+            if resolved != "main" { dismissMainWindowAfterToolOpen() }
             NSApp.activate(ignoringOtherApps: true)
         } else if MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) {
             Task {
                 do {
                     try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved)
+                    dismissMainWindowAfterToolOpen()
                 } catch {
                     LogManager.shared.error(
                         "Failed to launch marketplace tool \(resolved): \(error)",
@@ -154,10 +152,7 @@ final class ToolActionRouter {
         }
 
         if request.action.opensWindow {
-            if let openWindowAction {
-                presentSingleWindow(id: request.action.toolID, using: openWindowAction)
-            }
-            NSApp.activate(ignoringOtherApps: true)
+            open(toolID: request.action.toolID)
         }
 
         NotificationCenter.default.post(
@@ -165,6 +160,7 @@ final class ToolActionRouter {
             object: request.action,
             userInfo: request.parameters
         )
+        if request.action == .rulerOpen { dismissMainWindowAfterToolOpen() }
     }
 
     private func presentSingleWindow(id: String, using openWindow: OpenWindowAction) {
@@ -178,15 +174,17 @@ final class ToolActionRouter {
         openWindow(id: id)
     }
 
-    private func dismissMainWindow() {
-        NSApp.windows.first(where: {
-            Self.windowIdentifier($0.identifier?.rawValue, matches: "main")
-        })?.close()
+    private func dismissMainWindowAfterToolOpen() {
+        Self.finishToolOpen {
+            NSApp.windows.first(where: {
+                Self.windowIdentifier($0.identifier?.rawValue, matches: "main")
+            })?.close()
+        }
     }
 
-    static func launchRuler(dismissMainWindow: () -> Void, openRuler: () -> Void) {
+    static func finishToolOpen(defaults: UserDefaults = .standard, dismissMainWindow: () -> Void) {
+        guard defaults.bool(forKey: "app.closeMainWindowAfterOpeningTool") else { return }
         dismissMainWindow()
-        openRuler()
     }
 
     nonisolated static func windowIdentifier(_ identifier: String?, matches toolID: String) -> Bool {
