@@ -14,18 +14,26 @@ final class NetToysScannerLayoutTests: XCTestCase {
             address: try XCTUnwrap(IPv4Address("192.0.2.1")), isReachable: false,
             responseMilliseconds: nil, hostname: "router", macAddress: nil, vendor: nil, openPorts: []
         )
-        let printer = NetToysScanResult(
+        var printer = NetToysScanResult(
             address: try XCTUnwrap(IPv4Address("192.0.2.2")), isReachable: true,
-            responseMilliseconds: 2, hostname: "printer", macAddress: nil, vendor: nil, openPorts: [80]
+            responseMilliseconds: 2, hostname: "printer", macAddress: nil, vendor: nil, openPorts: []
         )
         let server = NetToysScanResult(
             address: try XCTUnwrap(IPv4Address("192.0.2.3")), isReachable: true,
             responseMilliseconds: 1, hostname: "server", macAddress: nil, vendor: nil, openPorts: [22]
         )
-        let run = NetToysScanRun(target: "192.0.2.0/24", ports: [22, 80], duration: 1,
-                                 results: [server, down, printer])
-        let model = NetToysScannerViewModel(archive: NetToysScanArchive(runs: [run]), defaults: defaults)
+        let model = NetToysScannerViewModel(archive: NetToysScanArchive(), defaults: defaults)
 
+        model.applyScanUpdate(down)
+        XCTAssertEqual(model.visibleResults.map(\.id), [down.id])
+        XCTAssertEqual(model.aliveResultCount, 0)
+        model.applyScanUpdate(printer)
+        XCTAssertEqual(model.visibleResults.map(\.id), [down.id, printer.id])
+        XCTAssertEqual(model.aliveResultCount, 1)
+        XCTAssertEqual(model.openPortResultCount, 0)
+        printer.openPorts = [80]
+        model.applyScanUpdate(printer)
+        model.applyScanUpdate(server)
         XCTAssertEqual(model.visibleResults.map(\.id), [down.id, printer.id, server.id])
         XCTAssertEqual(model.aliveResultCount, 2)
         XCTAssertEqual(model.openPortResultCount, 2)
@@ -59,7 +67,7 @@ final class NetToysScannerLayoutTests: XCTestCase {
             interfaceName: "en0", address: "192.168.1.23", netmask: "255.255.255.0"
         ))
 
-        model.updateActiveNetwork(home)
+        XCTAssertEqual(model.targetInputForScan(activeNetwork: home), "192.168.1.0/24")
 
         XCTAssertEqual(model.targetInput, "192.168.1.0/24")
         model.targetInput = "10.0.0.8"
