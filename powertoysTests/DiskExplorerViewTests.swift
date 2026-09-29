@@ -34,7 +34,7 @@ final class DiskExplorerViewTests: XCTestCase {
         }
     }
 
-    func testTableSortsBytesRatherThanFormattedSizeAndKeepsTiesStable() {
+    func testTableSortsAndFormatsOutsideTheMainThread() async {
         let small = entry("/tmp/Diskman/small", bytes: 900_000)
         let big = entry("/tmp/Diskman/big", bytes: 10_000_000)
         let same = entry("/tmp/Diskman/equal", bytes: 10_000_000)
@@ -44,6 +44,26 @@ final class DiskExplorerViewTests: XCTestCase {
                        ["small", "big", "equal"])
         let grouped = entry("/tmp/Diskman/grouped", kind: .aggregate, files: 20)
         XCTAssertTrue(DiskEntryTable.sorted([small, grouped], column: 4, ascending: false, apparent: false).first === grouped)
+        let request = DiskEntryTableRequest(revision: .distantPast, sourceID: "/tmp/Diskman", search: "",
+                                            column: 2, ascending: false, apparent: false, showsFileCount: true)
+        let (ranOnMain, projection) = await Task.detached {
+            (Thread.isMainThread, DiskEntryTable.project([small, same, big, grouped], request: request))
+        }.value
+        XCTAssertFalse(ranOnMain)
+        XCTAssertEqual(projection.rows.map(\.entry.name), ["big", "equal", "small", "grouped"])
+        XCTAssertEqual(projection.rows.first?.cells.count, 5)
+        XCTAssertNil(projection.rows.last?.url)
+        XCTAssertTrue(projection.entriesByID[big.id] === big)
+    }
+
+    func testDiskLockPresentationUsesCachedState() {
+        let disk = ManagedDisk(id: "disk12", name: "Test card", size: 1_000_000, bus: "USB", scheme: "GPT",
+                               devicePath: "test", writable: true, manageable: true, mediaRegistryID: 9, partitions: [])
+        let model = DiskManagementModel()
+        model.updateDisks([disk])
+        XCTAssertTrue(model.isLocked(disk))
+        model.updateDisks([disk], lockStates: [disk.identity: false])
+        XCTAssertFalse(model.isLocked(disk))
     }
 
     func testCompletedChartsFoldTinyTargetsWithoutChangingLiveMembership() throws {

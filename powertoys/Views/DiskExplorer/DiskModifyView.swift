@@ -71,7 +71,9 @@ struct DiskModifyView: View {
     var body: some View {
         ScrollViewReader { proxy in
             OnePlusPage {
-                OnePlusDiskmanHeader(disk?.name ?? "Devices", path: disk.map { "\($0.id) · \($0.size.diskSize) · \($0.scheme)" } ?? "Physical disks and partitions") { headerActions }
+                OnePlusPageHeader(title: disk?.name ?? "Devices",
+                                  subtitle: disk.map { "\($0.id) · \($0.size.diskSize) · \($0.scheme)" } ?? "Physical disks and partitions",
+                                  subtitleRole: .mono) { headerActions }
             } content: {
                 if let disk {
                     if model.isPreview { OnePlusBanner("Preview data. Disk operations are disabled.") }
@@ -207,12 +209,12 @@ struct DiskModifyView: View {
         HStack(spacing: OnePlusMetrics.cardGap) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 if child { Image(systemName: "arrow.turn.down.right").foregroundStyle(OnePlusColor.muted).accessibilityHidden(true) }
-                Text(name).help(name)
+                Text(name)
             }.frame(maxWidth: .infinity, alignment: .leading)
-            Text(format).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading).help(format)
+            Text(format).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
             Text(size).frame(width: OnePlusMetrics.controlColumn / 2, alignment: .trailing)
             Text(used).frame(width: OnePlusMetrics.controlColumn / 2, alignment: .trailing)
-            Text(mount).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading).help(mount)
+            Text(mount).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
             Text(protection).frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
         }.lineLimit(1).truncationMode(.middle)
     }
