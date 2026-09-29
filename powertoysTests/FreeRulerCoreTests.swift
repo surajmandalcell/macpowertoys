@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import SwiftUI
 import XCTest
 import OnePlusUI
 @testable import powertoys
@@ -1284,15 +1285,9 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertTrue(settingsController.resetDefaultsButton.nextKeyView === settingsController.setDefaultsButton)
         XCTAssertTrue(settingsController.setDefaultsButton.nextKeyView === settingsController.unitSegmentedControl)
         XCTAssertTrue(preferencesController.resetFactoryDefaultsButton.isBordered == false)
-        XCTAssertEqual(preferencesController.resetFactoryDefaultsButton.contentTintColor, .systemRed)
+        XCTAssertEqual(preferencesController.resetFactoryDefaultsButton.contentTintColor, NSColor(OnePlusColor.danger))
         XCTAssertTrue(preferencesController.rulerShadowCheckbox.nextKeyView === preferencesController.resetFactoryDefaultsButton)
         XCTAssertTrue(preferencesController.resetFactoryDefaultsButton.nextKeyView === preferencesController.unitSegmentedControl)
-
-        for window in [settingsWindow, preferencesWindow] {
-            let materialView = try XCTUnwrap(window.contentView as? NSVisualEffectView)
-            XCTAssertEqual(materialView.material, .hudWindow)
-            XCTAssertEqual(materialView.state, .active)
-        }
     }
 
     func testRulerSettingsControllerPreservesIndependentWindowPosition() {

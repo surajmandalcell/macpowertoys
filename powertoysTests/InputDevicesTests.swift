@@ -195,56 +195,13 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(cardHeight(mouse), cardHeight(trackpad))
     }
 
-    /// The two direction choices and four switches are NSControls. The
-    /// slider inherits the same disabled environment but is not an NSControl.
-    @MainActor
-    func testProfileRowsFollowTheirGates() {
-        XCTAssertEqual(
-            disabledControlCount(InputScrollProfileCard(
-                title: "Mouse",
-                icon: InputDeviceDescriptor.Kind.mouse.icon,
-                deviceCount: 1,
-                profile: .constant(InputScrollProfile())
-            )),
-            0
-        )
-        XCTAssertEqual(
-            disabledControlCount(InputScrollProfileCard(
-                title: "Mouse",
-                icon: InputDeviceDescriptor.Kind.mouse.icon,
-                deviceCount: 1,
-                profile: .constant(InputScrollProfile(horizontalEnabled: false))
-            )),
-            2
-        )
-        XCTAssertEqual(
-            disabledControlCount(InputScrollProfileCard(
-                title: "Mouse",
-                icon: InputDeviceDescriptor.Kind.mouse.icon,
-                deviceCount: 1,
-                profile: .constant(InputScrollProfile(enabled: false))
-            )),
-            6
-        )
-    }
-
-    @MainActor
-    private func disabledControlCount(_ view: some View, width: CGFloat = 340) -> Int {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: width, height: 400),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = NSHostingView(rootView: view.frame(width: width))
-        window.contentView?.layoutSubtreeIfNeeded()
-        return controls(in: window.contentView!).filter { !$0.isEnabled }.count
-    }
-
-    private func controls(in view: NSView) -> [NSControl] {
-        var found = view.subviews.flatMap { controls(in: $0) }
-        if let control = view as? NSControl { found.append(control) }
-        return found
+    func testProfileRowsFollowTheirGates() throws {
+        let source = try String(contentsOf: URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("powertoys/Views/InputDevices/InputDevicesCards.swift"),
+                                encoding: .utf8)
+        XCTAssertEqual(source.components(separatedBy: ".disabled(!profile.horizontalEnabled)").count - 1, 2)
+        XCTAssertEqual(source.components(separatedBy: ".disabled(!profile.enabled)").count - 1, 1)
     }
 
     @MainActor

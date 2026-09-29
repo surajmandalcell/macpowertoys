@@ -96,14 +96,15 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertNil(sample.projectID)
     }
 
-    func testHistoryUsesNativeSmallContentSearch() throws {
+    func testHistoryUsesNativeCompactContentSearch() throws {
         let hostingView = NSHostingView(rootView: ColorHistoryView())
         hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 300)
         hostingView.layoutSubtreeIfNeeded()
 
         let searchField = try XCTUnwrap(searchField(in: hostingView))
-        XCTAssertEqual(searchField.controlSize, .small)
+        XCTAssertEqual(searchField.controlSize, .regular)
         XCTAssertLessThanOrEqual(searchField.frame.height, OnePlusMetrics.controlHeight)
+        XCTAssertEqual(searchField.accessibilityIdentifier(), "color-picker.search")
     }
 
     private func makeService(

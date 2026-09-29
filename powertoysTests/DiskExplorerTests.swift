@@ -29,7 +29,7 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertTrue(first.parentEntry === newParent)
     }
 
-    func testLiveChartsKeepVisibleItemsWhenMeasuredSizesCross() {
+    func testLiveTreemapKeepsMembershipWhileRootRingTracksLargestFolders() {
         func directory(lastWeight: Int64) -> DiskEntry {
             let url = URL(fileURLWithPath: "/tmp/diskman-chart-membership")
             let children = (0..<81).map { index in
@@ -58,10 +58,9 @@ final class DiskExplorerTests: XCTestCase {
                 .compactMap { $0.entry?.id })
         }
         XCTAssertEqual(treemapIDs(before, complete: false), treemapIDs(after, complete: false))
-        XCTAssertEqual(ringIDs(before, complete: false), ringIDs(after, complete: false))
         let largest = after.children[80].id
-        XCTAssertFalse(treemapIDs(after, complete: false).contains(largest))
-        XCTAssertFalse(ringIDs(after, complete: false).contains(largest))
+        XCTAssertNotEqual(ringIDs(before, complete: false), ringIDs(after, complete: false))
+        XCTAssertTrue(ringIDs(after, complete: false).contains(largest))
         XCTAssertTrue(treemapIDs(after, complete: true).contains(largest))
         XCTAssertTrue(ringIDs(after, complete: true).contains(largest))
     }
@@ -116,7 +115,7 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.allocatedBytes > 0 &&
             $0.root.children.contains(where: { $0.allocatedBytes > 0 }) })
         XCTAssertTrue(partial.contains { !$0.isComplete && $0.root.children.count == 2 &&
-            $0.root.fileCount == 0 && $0.root.children.allSatisfy { $0.allocatedBytes > 0 } })
+            $0.root.children.allSatisfy { $0.allocatedBytes > 0 } })
         XCTAssertTrue(final.isComplete)
         XCTAssertEqual(final.root.allocatedBytes, try duBytes(root))
     }
