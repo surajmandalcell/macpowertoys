@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 enum AppTheme: String, CaseIterable, Identifiable {
     case automatic = "Automatic"
@@ -104,7 +105,7 @@ struct UtilityTabPill: View {
 // MARK: - General
 
 private struct GeneralSettingsTab: View {
-    @AppStorage("appTheme") private var selectedTheme: String = AppTheme.automatic.rawValue
+    @AppStorage(AppAppearance.storageKey) private var selectedAppearance = AppAppearance.dark
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainWindowAfterOpeningTool = false
     @State private var showSyncConflictDialog = false
 
@@ -164,16 +165,9 @@ private struct GeneralSettingsTab: View {
             Text("APPEARANCE")
                 .utilitySectionHeader()
 
-            Picker("Theme", selection: $selectedTheme) {
-                ForEach(AppTheme.allCases) { theme in
-                    Text(theme.rawValue).tag(theme.rawValue)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .onChange(of: selectedTheme) { _, newValue in
-                applyTheme(AppTheme(rawValue: newValue) ?? .automatic)
-            }
+            OnePlusSegmented(choices: AppAppearance.allCases.map { ($0, $0.title) },
+                             selection: $selectedAppearance, accessibilityLabel: "Appearance")
+            .onChange(of: selectedAppearance) { _, value in value.apply() }
             .utilitySectionCard()
         }
     }
@@ -213,13 +207,6 @@ private struct GeneralSettingsTab: View {
         )
     }
 
-    private func applyTheme(_ theme: AppTheme) {
-        switch theme {
-        case .automatic: NSApp.appearance = nil
-        case .light: NSApp.appearance = NSAppearance(named: .aqua)
-        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
-        }
-    }
 }
 
 // MARK: - About

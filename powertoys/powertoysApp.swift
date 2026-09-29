@@ -6,12 +6,14 @@
 import SwiftUI
 import SwiftData
 import AppIntents
+import OnePlusUI
 
 @main
 struct MacPowerToysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
     @AppStorage("app.showTray") private var showTray = true
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
 
     private var trayBinding: Binding<Bool> {
         Binding(
@@ -46,6 +48,7 @@ struct MacPowerToysApp: App {
 
     @MainActor
     private func configureApplication() {
+        appearance.apply()
         appDelegate.configureApplication {
             DeepLinkHandler.shared.setOpenWindowAction(openWindow)
             if AppRuntime.isUITesting {
@@ -54,6 +57,7 @@ struct MacPowerToysApp: App {
             }
             guard !AppRuntime.isRunningTests else { return }
             await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
+            appearance.apply()
             DeepLinkHandler.shared.handleCLIArguments()
         }
     }
@@ -64,10 +68,12 @@ struct MacPowerToysApp: App {
         Window("MacPowerToys", id: "main") {
             MainWindowView()
                 .utilityMotionPolicy()
+                .environment(\.toolWindowID, "main")
+                .onePlusFixedCanvas(.main)
         }
         .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: UtilityLayout.launcherWindowSize.width, height: UtilityLayout.launcherWindowSize.height)
+        .defaultSize(OnePlusWindowCanvas.main.size)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
         .defaultLaunchBehavior(.suppressed)
@@ -89,9 +95,11 @@ struct MacPowerToysApp: App {
         Window("Cloud Sync", id: "rclone") {
             RcloneWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.rclone)
         }
         .modelContainer(modelContainer)
-        .defaultSize(width: 1000, height: 720)
+        .defaultSize(OnePlusWindowCanvas.rclone.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["rclone"]))
         .restorationBehavior(.disabled)
@@ -99,9 +107,11 @@ struct MacPowerToysApp: App {
         Window("Logs", id: "logs") {
             LogsWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.logs)
         }
         .modelContainer(modelContainer)
-        .defaultSize(width: 900, height: 600)
+        .defaultSize(OnePlusWindowCanvas.logs.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["logs"]))
         .restorationBehavior(.disabled)
@@ -110,8 +120,9 @@ struct MacPowerToysApp: App {
             AwakeView()
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "awake"))
+                .onePlusFixedCanvas(.awake)
         }
-        .defaultSize(width: AwakeLayout.windowWidth, height: AwakeLayout.windowHeight)
+        .defaultSize(OnePlusWindowCanvas.awake.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["awake"]))
@@ -121,9 +132,10 @@ struct MacPowerToysApp: App {
             ColorHistoryView()
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "color-picker"))
+                .onePlusFixedCanvas(.colorPicker)
         }
         .defaultSize(
-            width: ColorPickerLayout.windowWidth,
+            width: OnePlusWindowCanvas.colorPicker.size.width,
             height: ColorPickerLayout.historyBaseHeight + UtilityLayout.compactTitlebarHeight
         )
         .windowResizability(.contentSize)
@@ -135,9 +147,10 @@ struct MacPowerToysApp: App {
             TextExtractorView()
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "text-extractor"))
+                .onePlusFixedCanvas(.textExtractor)
         }
         .defaultSize(
-            width: TextExtractorLayout.windowWidth,
+            width: OnePlusWindowCanvas.textExtractor.size.width,
             height: TextExtractorLayout.historyBaseHeight + UtilityLayout.compactTitlebarHeight
         )
         .windowResizability(.contentSize)
@@ -148,8 +161,10 @@ struct MacPowerToysApp: App {
         Window("Input Devices", id: "input-devices") {
             InputDevicesWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.inputDevices)
         }
-        .defaultSize(width: 980, height: 700)
+        .defaultSize(OnePlusWindowCanvas.inputDevices.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["input-devices"]))
         .restorationBehavior(.disabled)
@@ -157,8 +172,10 @@ struct MacPowerToysApp: App {
         Window("System Care", id: "system-care") {
             SystemCareWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.systemCare)
         }
-        .defaultSize(width: 1180, height: 780)
+        .defaultSize(OnePlusWindowCanvas.systemCare.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["system-care"]))
         .restorationBehavior(.disabled)
@@ -166,8 +183,10 @@ struct MacPowerToysApp: App {
         Window("Diskman", id: "disk-explorer") {
             DiskExplorerWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.diskExplorer)
         }
-        .defaultSize(width: 1240, height: 800)
+        .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["disk-explorer"]))
         .restorationBehavior(.disabled)
@@ -175,11 +194,9 @@ struct MacPowerToysApp: App {
         Window("Task Manager", id: "system-monitor") {
             SystemMonitorWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.systemMonitor)
         }
-        .defaultSize(
-            width: TaskManagerTheme.windowContentSize.width,
-            height: TaskManagerTheme.windowContentSize.height
-        )
+        .defaultSize(OnePlusWindowCanvas.systemMonitor.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["system-monitor"]))
@@ -188,11 +205,10 @@ struct MacPowerToysApp: App {
         Window("NetToys", id: "nettoys") {
             NetToysWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.netToys)
         }
-        .defaultSize(
-            width: UtilityLayout.netToysDefaultContentSize.width,
-            height: UtilityLayout.netToysDefaultContentSize.height
-        )
+        .defaultSize(OnePlusWindowCanvas.netToys.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["nettoys"]))
         .restorationBehavior(.disabled)
@@ -200,8 +216,10 @@ struct MacPowerToysApp: App {
         Window("Switch", id: "switch") {
             SwitchWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.switchAccounts)
         }
-        .defaultSize(width: 1_120, height: 740)
+        .defaultSize(OnePlusWindowCanvas.switchAccounts.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["switch"]))
         .restorationBehavior(.disabled)
@@ -209,8 +227,10 @@ struct MacPowerToysApp: App {
         Window("Mac Tweaks", id: "mac-tweaks") {
             MacTweaksWindowView()
                 .utilityMotionPolicy()
+                .onePlusFixedCanvas(.macTweaks)
         }
-        .defaultSize(width: MacTweaksLayout.contentSize.width, height: MacTweaksLayout.contentSize.height)
+        .defaultSize(OnePlusWindowCanvas.macTweaks.size)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: Set(["mac-tweaks"]))
         .restorationBehavior(.disabled)
