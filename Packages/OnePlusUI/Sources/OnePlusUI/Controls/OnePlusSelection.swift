@@ -157,7 +157,7 @@ public struct OnePlusSelect<Value: Hashable>: View {
         }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
         .onePlusNeutralControls()
-        .focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
+        .focusEffectDisabled()
         .accessibilityLabel(label)
         .accessibilityValue(choices.first { $0.0 == selection }?.1 ?? "No selection")
     }

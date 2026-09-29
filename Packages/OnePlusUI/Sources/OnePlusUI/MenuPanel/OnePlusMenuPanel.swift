@@ -53,6 +53,7 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
             .onePlusDensity(.compact)
             .onePlusNeutralControls()
+            .focusEffectDisabled()
     }
 }
 
@@ -89,6 +90,7 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
                         .frame(width: 26, height: 26)
                 }
                 .buttonStyle(OnePlusInteractionStyle(selected: selection == tab.id))
+                .focusEffectDisabled()
                 .help(tab.title).accessibilityLabel(tab.title).accessibilityAddTraits(selection == tab.id ? .isSelected : [])
                 .modifier(OnePlusOptionalIdentifier(value: tab.accessibilityIdentifier))
                 .contextMenu {
