@@ -75,7 +75,9 @@ public struct OnePlusSettingRow<Control: View>: View {
                 .opacity(reset == nil ? 0 : 1).disabled(reset == nil).accessibilityHidden(reset == nil)
             control.frame(minWidth: controlWidth, maxWidth: max(controlWidth, OnePlusMetrics.wideControlColumn), alignment: .trailing)
         }
-        .padding(.horizontal, 16).frame(height: caption == nil ? 44 : 56)
+        .padding(.horizontal, 16)
+        .frame(height: caption == nil ? OnePlusMetrics.settingRow : OnePlusMetrics.captionedSettingRow)
+        // Keep the separator inside the row's declared pitch.
         .overlay(alignment: .bottom) { if separator { OnePlusColor.lineSoft.frame(height: 1) } }
     }
 }
