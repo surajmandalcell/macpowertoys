@@ -158,7 +158,11 @@ final class RcloneDaemon {
             proc.standardOutput = Pipe()
             errPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
+                guard !data.isEmpty else {
+                    handle.readabilityHandler = nil
+                    return
+                }
+                guard let text = String(data: data, encoding: .utf8) else { return }
                 let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty else { return }
                 Task { @MainActor in

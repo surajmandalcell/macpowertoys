@@ -266,7 +266,11 @@ actor MarketplaceInstaller {
             try await withCheckedThrowingContinuation { continuation in
                 pipe.fileHandleForReading.readabilityHandler = { handle in
                     let chunk = handle.availableData
-                    if !chunk.isEmpty, state.append(chunk), process.isRunning {
+                    guard !chunk.isEmpty else {
+                        handle.readabilityHandler = nil
+                        return
+                    }
+                    if state.append(chunk), process.isRunning {
                         process.terminate()
                     }
                 }
