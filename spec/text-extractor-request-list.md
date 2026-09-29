@@ -3,6 +3,12 @@
 Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 
+## OnePlusUI redesign, 2026-09-29
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Use the 480pt applet with 270 to 462pt height, persistent shortcut menu and Extract Text, history preview/source/time/copy, and replacing Settings with shortcut and language rows. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `history` and `settings`. | Review both appearances, capture states, and recognition controls in the orchestrator's installed build. |
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Done | Remove the 10–30 second cold extraction delay and eliminate the lagging second selection cursor. | Live signed verification found that the old blank-image warmup still left the first extraction at 25.2 seconds. A fresh Accurate + automatic-language + barcode Vision request then reproduced the real cold load at 31.048 seconds. `954081d` now runs that configured request against representative generated text at app launch, retains and awaits the one warmup task, and prewarms ScreenCaptureKit only after permission already exists. The exact signed installed build contains no `.mlmodel`, `.mlmodelc`, or `.mlpackage`, produced real history entries, and settled near 49 MB RSS after warmup. The event-redrawn second crosshair is replaced by one compositor-driven AppKit cursor. | None. |

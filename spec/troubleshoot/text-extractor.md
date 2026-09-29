@@ -1,5 +1,14 @@
 # Text Extractor Troubleshooting
 
+## OnePlusUI History And Settings, 2026-09-29
+
+- **Invariant:** The 480pt applet opens `history` and `settings` page links.
+  The shortcut menu and Extract Text action stay in the titlebar. Settings
+  replaces the history body. Native history details open in a sheet.
+  Language edits save immediately; the removed Apply button is not needed.
+- **Check:** The Debug build passes. Installed capture, permission, error,
+  keyboard, and appearance checks remain with the orchestrator.
+
 ## Icon Identity
 
 - **Symptom:** The current capture-card icon did not satisfy the owner.

@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import XCTest
+import OnePlusUI
 @testable import powertoys
 
 @MainActor
@@ -102,7 +103,7 @@ final class ColorPickerTests: XCTestCase {
 
         let searchField = try XCTUnwrap(searchField(in: hostingView))
         XCTAssertEqual(searchField.controlSize, .small)
-        XCTAssertLessThanOrEqual(searchField.frame.height, UtilityLayout.workspaceActionHeight)
+        XCTAssertLessThanOrEqual(searchField.frame.height, OnePlusMetrics.controlHeight)
     }
 
     private func makeService(

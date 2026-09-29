@@ -3,6 +3,12 @@
 Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 
+## OnePlusUI redesign, 2026-09-29
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Use the 420pt applet with 250 to 460pt height, three native lights, persistent Pick Color, 16pt gutters, underline tabs, equal-height search and format controls, history actions, project export, and replacing Settings. | Debug build passes. DESIGN.md v14 supersedes the older material, gutters, and two-light rules below. Routes are `history`, `projects`, and `settings`. | Review both appearances, copying, projects, and export in the orchestrator's installed build. |
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Use the new Color Picker eyedropper icon. | `ColorPickerLogo` is a 512px RGBA asset with a violet sample, coral/cyan accents, and one eyedropper. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |

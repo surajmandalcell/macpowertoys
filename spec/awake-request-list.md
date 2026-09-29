@@ -2,6 +2,12 @@
 
 Reviewed against current source and Git history on 2026-08-31.
 
+## OnePlusUI redesign, 2026-09-29
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Use the 560 x 500 OnePlusUI applet, persistent display switch, status card, segmented modes, quick times, process attachment, and a replacing Settings page. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `home` and `settings`. | Review both appearances and controls in the orchestrator's installed build. |
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Done | Call the inactive Awake state `Off` and let all four tray modes use the available width. | User-facing mode copy maps the persisted `.passive` value to `Off`; the signed `a5ad439` Awake window showed `Off`. The segmented tray picker uses regular control size and fills its container. Focused tests cover the exact Off, Indefinite, 30-minute, 1-hour, and custom-duration mappings. | None. Live popover sizing and feedback remain in the dedicated tray row. |
