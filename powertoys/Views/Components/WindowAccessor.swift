@@ -1,8 +1,7 @@
 import AppKit
-import OnePlusUI
 import SwiftUI
 
-/// Restores position only. The scene's OnePlusFixedWindowChrome owns size and chrome.
+/// Restores saved placement. SwiftUI owns the canvas size.
 struct WindowAccessor: NSViewRepresentable {
     let windowIdentifier: String
     init(identifier: String) { windowIdentifier = identifier }
@@ -27,16 +26,11 @@ private final class WindowAccessorView: NSView {
         guard let window, restoredWindow !== window else { return }
         restoredWindow = window
         window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
-        let canvas = OnePlusWindowCanvas.tool(windowIdentifier)
-        let currentSize = window.contentView?.bounds.size ?? window.contentLayoutRect.size
-        let size = canvas.map {
-            CGSize(width: $0.size.width, height: $0.heightRange == nil ? $0.size.height : currentSize.height)
-        } ?? currentSize
-        WindowStateManager.shared.restoreState(for: window)
-        let restoredTopLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
-        window.setContentSize(size)
-        window.setFrameTopLeftPoint(restoredTopLeft)
-        window.isMovableByWindowBackground = false
-        window.appearance = nil
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window, self.window === window else { return }
+            WindowStateManager.shared.restoreState(for: window)
+            if window.isMovableByWindowBackground { window.isMovableByWindowBackground = false }
+            if window.appearance != nil { window.appearance = nil }
+        }
     }
 }

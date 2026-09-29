@@ -15,12 +15,14 @@ public extension EnvironmentValues {
 public struct OnePlusFixedWindowChrome: NSViewRepresentable {
     private let contentSize: NSSize
     private let centerline: CGFloat
+    private let sizing: OnePlusChromeSizing
     private let onZoomTrailingX: (CGFloat) -> Void
 
     public init(contentSize: NSSize, centerline: CGFloat = OnePlusMetrics.centerline,
                 onZoomTrailingX: @escaping (CGFloat) -> Void = { _ in }) {
         self.contentSize = contentSize
         self.centerline = centerline
+        self.sizing = .native
         self.onZoomTrailingX = onZoomTrailingX
     }
 
@@ -28,14 +30,22 @@ public struct OnePlusFixedWindowChrome: NSViewRepresentable {
         self.init(contentSize: contentSize, centerline: 16 + trafficLightVerticalOffset)
     }
 
+    init(canvas: OnePlusWindowCanvas, onZoomTrailingX: @escaping (CGFloat) -> Void) {
+        contentSize = canvas.size
+        centerline = canvas.centerline
+        sizing = canvas.heightRange == nil ? .swiftUI : .swiftUIHeight
+        self.onZoomTrailingX = onZoomTrailingX
+    }
+
     public func makeNSView(context: Context) -> NSView {
-        OnePlusChromeView(size: contentSize, centerline: centerline, report: onZoomTrailingX)
+        OnePlusChromeView(size: contentSize, centerline: centerline, sizing: sizing, report: onZoomTrailingX)
     }
 
     public func updateNSView(_ nsView: NSView, context: Context) {
         guard let view = nsView as? OnePlusChromeView else { return }
         view.size = contentSize
         view.centerline = centerline
+        view.sizing = sizing
         view.report = onZoomTrailingX
         view.apply()
     }
@@ -45,19 +55,26 @@ public struct OnePlusFixedWindowChrome: NSViewRepresentable {
     }
 }
 
+enum OnePlusChromeSizing { case native, swiftUI, swiftUIHeight }
+
 final class OnePlusChromeView: NSView {
     var size: NSSize
     var centerline: CGFloat
+    var sizing: OnePlusChromeSizing
     var report: (CGFloat) -> Void
     private weak var observedWindow: NSWindow?
     private var applying = false
+    private var pendingPass: DispatchWorkItem?
+    private var observationGeneration = 0
+    private(set) var appliedPassCount = 0
     private var lastTrailingX: CGFloat?
     private var appearanceObservation: NSKeyValueObservation?
     private var buttonObservations: [NSKeyValueObservation] = []
 
-    init(size: NSSize, centerline: CGFloat, report: @escaping (CGFloat) -> Void) {
+    init(size: NSSize, centerline: CGFloat, sizing: OnePlusChromeSizing = .native, report: @escaping (CGFloat) -> Void) {
         self.size = size
         self.centerline = centerline
+        self.sizing = sizing
         self.report = report
         super.init(frame: .zero)
     }
@@ -65,7 +82,10 @@ final class OnePlusChromeView: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
 
-    deinit { NotificationCenter.default.removeObserver(self) }
+    isolated deinit {
+        pendingPass?.cancel()
+        NotificationCenter.default.removeObserver(self)
+    }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func viewDidMoveToWindow() {
@@ -111,6 +131,9 @@ final class OnePlusChromeView: NSView {
     @objc private func windowClosed(_ notification: Notification) { stopObserving() }
 
     func stopObserving() {
+        pendingPass?.cancel()
+        pendingPass = nil
+        observationGeneration += 1
         NotificationCenter.default.removeObserver(self)
         appearanceObservation = nil
         buttonObservations.removeAll()
@@ -119,34 +142,51 @@ final class OnePlusChromeView: NSView {
     }
 
     func apply() {
-        guard !applying, let window = observedWindow, size.width > 0, size.height > 0 else { return }
+        // AppKit and SwiftUI both call us from layout. Never change their inputs there.
+        guard !applying, pendingPass == nil, observedWindow != nil else { return }
+        let generation = observationGeneration
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, generation == self.observationGeneration else { return }
+            self.pendingPass = nil
+            self.applyDeferred()
+        }
+        pendingPass = work
+        DispatchQueue.main.async(execute: work)
+    }
+
+    private func applyDeferred() {
+        guard let window = observedWindow, size.width > 0, size.height > 0 else { return }
         applying = true
+        appliedPassCount += 1
         defer { applying = false }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
-        window.styleMask.insert(.fullSizeContentView)
-        window.styleMask.remove(.resizable)
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.tabbingMode = .disallowed
-        window.isRestorable = false
-        window.collectionBehavior.remove([.fullScreenPrimary, .fullScreenAuxiliary])
-        window.collectionBehavior.insert(.fullScreenNone)
-        window.contentMinSize = size
-        window.contentMaxSize = size
-        if let current = window.contentView?.bounds.size,
+        let style = window.styleMask.union(.fullSizeContentView).subtracting(.resizable)
+        if window.styleMask != style { window.styleMask = style }
+        if window.titleVisibility != .hidden { window.titleVisibility = .hidden }
+        if !window.titlebarAppearsTransparent { window.titlebarAppearsTransparent = true }
+        if window.tabbingMode != .disallowed { window.tabbingMode = .disallowed }
+        if window.isRestorable { window.isRestorable = false }
+        let behavior = window.collectionBehavior.subtracting([.fullScreenPrimary, .fullScreenAuxiliary]).union(.fullScreenNone)
+        if window.collectionBehavior != behavior { window.collectionBehavior = behavior }
+        let minimum = NSSize(width: size.width, height: sizing == .swiftUIHeight ? window.contentMinSize.height : size.height)
+        let maximum = NSSize(width: size.width, height: sizing == .swiftUIHeight ? window.contentMaxSize.height : size.height)
+        if window.contentMinSize != minimum { window.contentMinSize = minimum }
+        if window.contentMaxSize != maximum { window.contentMaxSize = maximum }
+        if sizing == .native, let current = window.contentView?.bounds.size,
            abs(current.width - size.width) > 0.5 || abs(current.height - size.height) > 0.5 {
             let top = window.frame.maxY
             window.setContentSize(size)
             window.setFrameTopLeftPoint(NSPoint(x: window.frame.minX, y: top))
         }
-        window.isOpaque = true
-        window.backgroundColor = NSColor(OnePlusColor.window)
+        if !window.isOpaque { window.isOpaque = true }
+        let background = NSColor(OnePlusColor.window)
+        if window.backgroundColor != background { window.backgroundColor = background }
         for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             guard let button = window.standardWindowButton(type), let parent = button.superview else { continue }
-            button.isHidden = false
-            if type == .zoomButton { button.isEnabled = false }
+            if button.isHidden { button.isHidden = false }
+            if type == .zoomButton, button.isEnabled { button.isEnabled = false }
             let parentRect = parent.convert(parent.bounds, to: nil)
             let target = window.frame.height - centerline
             let localY = parent.isFlipped ? parentRect.maxY - target : target - parentRect.minY
@@ -158,10 +198,7 @@ final class OnePlusChromeView: NSView {
                 let trailing = button.convert(button.bounds, to: nil).maxX
                 if lastTrailingX != trailing {
                     lastTrailingX = trailing
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self, observedWindow != nil else { return }
-                        report(trailing)
-                    }
+                    report(trailing)
                 }
             }
         }
@@ -183,10 +220,8 @@ private struct OnePlusFixedCanvasModifier: ViewModifier {
         content
             .frame(width: canvas.size.width, height: canvas.heightRange == nil ? canvas.size.height : nil)
             .background {
-                GeometryReader { proxy in
-                    OnePlusFixedWindowChrome(contentSize: proxy.size, centerline: canvas.centerline) {
-                        zoomTrailingX = $0
-                    }
+                OnePlusFixedWindowChrome(canvas: canvas) {
+                    zoomTrailingX = $0
                 }
             }
             .environment(\.onePlusZoomTrailingX, zoomTrailingX)
