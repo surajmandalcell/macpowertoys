@@ -96,7 +96,7 @@ struct PortmanPanelView: View {
                     if let selectedPort { localDetail(selectedPort) }
                     else { localOverview }
                 case .forward: forwardingPage
-                case .settings: PortmanSettingsView()
+                case .settings: PortmanSettingsPanelContent()
                 }
             }
             .id(page)
@@ -1274,9 +1274,22 @@ private struct PortmanPasswordSheet: View {
     }
 }
 
-struct PortmanSettingsView: View {
+private struct PortmanSettingsPanelContent: View {
     @State private var search = ""
     @State private var focusSearch = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            OnePlusSearchField(prompt: "Search settings", text: $search, width: nil,
+                               focusTrigger: focusSearch, accessibilityIdentifier: "portman.settings.search")
+                .background { Button("Search settings") { focusSearch += 1 }.keyboardShortcut("f").hidden() }
+            PortmanSettingsView(search: search)
+        }
+    }
+}
+
+struct PortmanSettingsView: View {
+    var search = ""
     @State private var pendingAutomaticCleanup = false
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
     @AppStorage("portman.scanUpperPort") private var upperPort = 9999
@@ -1311,11 +1324,10 @@ struct PortmanSettingsView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            OnePlusSearchField(prompt: "Search settings", text: $search, width: nil,
-                               focusTrigger: focusSearch, accessibilityIdentifier: "portman.settings.search")
-                .background { Button("Search settings") { focusSearch += 1 }.keyboardShortcut("f").hidden() }
             if !generalVisible && !portsVisible && !cleanupVisible && !integrationsVisible {
-                OnePlusEmptyState("No matching settings", systemImage: "magnifyingglass")
+                OnePlusCard {
+                    OnePlusEmptyState("No matching settings", systemImage: "magnifyingglass")
+                }
             }
             if generalVisible {
                 OnePlusCard {
@@ -1336,9 +1348,6 @@ struct PortmanSettingsView: View {
             if cleanupVisible { cleanupSettings }
             if integrationsVisible { integrationSettings }
         }
-        .onePlusDensity(.compact)
-        .environment(\.onePlusControlHeight, OnePlusMetrics.controlHeight)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
         .confirmationDialog("Stop eligible servers automatically?", isPresented: $pendingAutomaticCleanup) {
             Button("Enable Automatic", role: .destructive) {
                 cleanupMode = PortmanCleanupMode.automatic.rawValue
