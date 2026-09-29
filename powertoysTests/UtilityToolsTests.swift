@@ -310,7 +310,7 @@ final class UtilityToolsTests: XCTestCase {
     func testToolDetailsTopAlignSparseSettingsContent() throws {
         XCTAssertTrue(
             try toolAboutViewSource().contains(
-                ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)"
+                ".frame(maxWidth: .infinity, alignment: .topLeading)"
             )
         )
     }
@@ -328,9 +328,9 @@ final class UtilityToolsTests: XCTestCase {
 
     func testHeavyToolSettingsReturnToLoadingWhenSelectionChanges() throws {
         let source = try toolAboutViewSource()
-        let settings = try XCTUnwrap(source.range(of: "ToolSettingsContent(toolID: tool.id)"))
+        let settings = try XCTUnwrap(source.range(of: "ToolSettingsContent(toolID: tool.id, changed: changed)"))
         let frame = try XCTUnwrap(source.range(
-            of: ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)",
+            of: ".frame(maxWidth: .infinity, alignment: .topLeading)",
             range: settings.upperBound..<source.endIndex
         ))
 

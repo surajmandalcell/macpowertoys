@@ -13,25 +13,22 @@ struct ToolAboutView: View {
 
     var body: some View {
         if let tool = ToolRegistry.tool(for: toolId) {
-            if !showsSettings || tab == .guide {
-                OnePlusPage {
-                    header(tool)
-                } tabs: {
-                    if showsSettings { tabs(tool) }
-                } content: {
+            OnePlusPage {
+                header(tool)
+            } tabs: {
+                if showsSettings { tabs(tool) }
+            } content: {
+                if !showsSettings || tab == .guide {
                     ForEach(tool.manual) { section in manualCard(section) }
-                }
-            } else if tool.id == "ruler" {
-                OnePlusPage { header(tool) } tabs: { tabs(tool) } content: { rulerSettings }
-            } else {
-                VStack(spacing: 0) {
-                    header(tool)
-                    tabs(tool)
-                    ToolSettingsContent(toolID: tool.id)
+                } else if tool.id == "ruler" {
+                    rulerSettings
+                } else {
+                    ToolSettingsContent(toolID: tool.id, changed: changed)
                         .id(tool.id)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
+            .clipped()
         } else {
             OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
                               caption: "This tool is no longer installed.")
@@ -45,7 +42,7 @@ struct ToolAboutView: View {
             if showsSettings { MainToolEnableSwitch(tool: tool) }
             if showsModalCloseButton {
                 Button { dismiss() } label: { Image(systemName: "xmark") }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .buttonStyle(OnePlusButtonStyle(.icon))
                     .help("Close").accessibilityLabel("Close")
             } else if showsSettings {
                 MainOpenToolButton(toolID: tool.id)
@@ -112,7 +109,6 @@ private struct MainMenuBarPlacement: View {
             Text("Menu bar").onePlusText(.caption)
             OnePlusSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
                              selection: $mode, accessibilityLabel: "Menu bar placement")
-                .frame(width: OnePlusCatalogMetrics.placementWidth)
                 .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
         }
         .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh(); changed() }
