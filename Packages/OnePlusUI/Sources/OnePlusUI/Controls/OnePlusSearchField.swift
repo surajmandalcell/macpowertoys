@@ -79,14 +79,15 @@ private struct OnePlusNativeSearch: NSViewRepresentable {
     }
 }
 
-private final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
-    let field = NSSearchField()
+final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
+    let field: NSSearchField = OnePlusNativeSearchField()
     let hint = NSTextField(labelWithString: "")
     var changed: (String) -> Void = { _ in }
     var focusTrigger = 0
     private var focused = false
     private var hovered = false
     private var hoverArea: NSTrackingArea?
+    private let textLayout = NSLayoutManager()
     override var isFlipped: Bool { true }
 
     override init(frame: NSRect) {
@@ -112,7 +113,11 @@ private final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     override func layout() {
         super.layout()
         let hintWidth: CGFloat = hint.isHidden ? 0 : 28
-        field.frame = NSRect(x: 8, y: (bounds.height - 22) / 2, width: max(0, bounds.width - 16 - hintWidth), height: 22)
+        // Borderless NSSearchField draws its line at the top of its frame.
+        // Fit that frame to the line so native text, placeholder, and editor agree.
+        let lineHeight = field.font.map { textLayout.defaultLineHeight(for: $0) } ?? 15
+        field.frame = NSRect(x: 8, y: (bounds.height - lineHeight) / 2,
+                             width: max(0, bounds.width - 16 - hintWidth), height: lineHeight)
         hint.frame = NSRect(x: bounds.width - 32, y: (bounds.height - 14) / 2, width: 26, height: 14)
     }
     override func mouseDown(with event: NSEvent) {
@@ -150,6 +155,22 @@ private final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
         field.stringValue = ""
         changed("")
         return true
+    }
+}
+
+private final class OnePlusNativeSearchField: NSSearchField {
+    override class var cellClass: AnyClass? {
+        get { OnePlusSearchCell.self }
+        set {}
+    }
+}
+
+private final class OnePlusSearchCell: NSSearchFieldCell {
+    override func edit(withFrame rect: NSRect, in view: NSView, editor: NSText, delegate: Any?, event: NSEvent?) {
+        super.edit(withFrame: searchTextRect(forBounds: rect), in: view, editor: editor, delegate: delegate, event: event)
+    }
+    override func select(withFrame rect: NSRect, in view: NSView, editor: NSText, delegate: Any?, start: Int, length: Int) {
+        super.select(withFrame: searchTextRect(forBounds: rect), in: view, editor: editor, delegate: delegate, start: start, length: length)
     }
 }
 
