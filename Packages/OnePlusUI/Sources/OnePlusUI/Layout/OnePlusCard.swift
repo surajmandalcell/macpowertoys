@@ -73,7 +73,7 @@ public struct OnePlusSettingRow<Control: View>: View {
                 .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                 .help("Reset \(label)").accessibilityLabel("Reset \(label)")
                 .opacity(reset == nil ? 0 : 1).disabled(reset == nil).accessibilityHidden(reset == nil)
-            control.frame(width: controlWidth, alignment: .trailing)
+            control.frame(minWidth: controlWidth, maxWidth: max(controlWidth, OnePlusMetrics.wideControlColumn), alignment: .trailing)
         }
         .padding(.horizontal, 16).frame(height: caption == nil ? 44 : 56)
         .overlay(alignment: .bottom) { if separator { OnePlusColor.lineSoft.frame(height: 1) } }
