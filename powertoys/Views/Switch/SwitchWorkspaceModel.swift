@@ -81,19 +81,11 @@ final class SwitchWorkspaceModel {
     var errorMessage: String?
     var selectedAccountID: UUID?
 
-    private let manager: AccountManager?
+    @ObservationIgnored private var manager: AccountManager?
     let paths: ManagerPaths
-    private let startupError: String?
 
     init(paths: ManagerPaths = .environment()) {
         self.paths = paths
-        do {
-            manager = try AccountManager(paths: paths)
-            startupError = nil
-        } catch {
-            manager = nil
-            startupError = error.localizedDescription
-        }
     }
 
     var accounts: [AccountRecord] { snapshot?.status.accounts ?? [] }
@@ -124,10 +116,7 @@ final class SwitchWorkspaceModel {
     }
 
     func load() async {
-        guard let manager else {
-            errorMessage = startupError ?? "Switch could not open its account store."
-            return
-        }
+        guard let manager = await prepareManager() else { return }
         await perform {
             let refreshed = try await manager.refreshAccounts()
             self.apply(refreshed)
@@ -354,6 +343,25 @@ final class SwitchWorkspaceModel {
 
     private func shellQuote(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    private func prepareManager() async -> AccountManager? {
+        if let manager { return manager }
+        guard !isWorking else { return nil }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            let paths = paths
+            let manager = try await Task.detached(priority: .userInitiated) {
+                try AccountManager(paths: paths)
+            }.value
+            self.manager = manager
+            return manager
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
     }
 
     private func perform(_ action: () async throws -> Void) async {
