@@ -34,6 +34,18 @@ final class SettingsRegistryTests: XCTestCase {
         }
     }
 
+    func testRegisteredScalarDisplaysKeepNumbersAndBooleansDistinct() throws {
+        try withDefaults { defaults in
+            let transfers = try XCTUnwrap(SettingsRegistry.entries.first { $0.id == "rclone.transfers" })
+            let showTray = try XCTUnwrap(SettingsRegistry.entries.first { $0.id == "app.showTray" })
+            defaults.set(NSNumber(value: 1), forKey: transfers.key)
+            defaults.set(NSNumber(value: true), forKey: showTray.key)
+
+            XCTAssertEqual(transfers.currentDisplay(defaults: defaults), "1")
+            XCTAssertEqual(showTray.currentDisplay(defaults: defaults), "Enabled")
+        }
+    }
+
     func testJSONStringComparisonIgnoresWhitespaceAndObjectOrder() {
         withDefaults { defaults in
             defaults.set(#"{ "items": [1, 2], "enabled": true }"#, forKey: "json")

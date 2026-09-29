@@ -902,8 +902,11 @@ private extension SettingsRegistry {
     }
 
     static func defaultFormat(_ value: Any) -> String {
+        if let number = value as? NSNumber {
+            if CFGetTypeID(number) == CFBooleanGetTypeID() { return enabledFormat(number.boolValue) }
+            return numberFormat(number)
+        }
         if let boolean = value as? Bool { return enabledFormat(boolean) }
-        if let number = value as? NSNumber { return numberFormat(number) }
         if let array = value as? [String] { return array.isEmpty ? "None" : array.joined(separator: ", ") }
         return String(describing: value)
     }
@@ -918,12 +921,11 @@ private extension SettingsRegistry {
 
     static func numberFormat(_ value: Any) -> String {
         guard let number = value as? NSNumber else { return String(describing: value) }
-        let double = number.doubleValue
-        return double.rounded() == double ? String(Int(double)) : String(format: "%g", double)
+        return number.stringValue
     }
 
     static func numberFormat(_ value: Double) -> String {
-        value.rounded() == value ? String(Int(value)) : String(format: "%g", value)
+        NSNumber(value: value).stringValue
     }
 
     static func lineListFormat(_ value: Any) -> String {
