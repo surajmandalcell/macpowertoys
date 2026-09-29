@@ -53,6 +53,10 @@ Page titles start at `OnePlusMetrics.contentTop` (58 pt from the visible
 window top). The workspace title row stays empty. Header actions center on
 the title's first line. `contentGap` is the separate 16 pt body gap; use it
 for padding between page regions. Applet titlebars keep their 22 pt centerline.
+Applets never use `contentTop`. Their first body element starts `contentGap`
+below the 40 pt titlebar or tab strip. Use `OnePlusPage(layout: .applet)` to
+get that gap and the 16 pt side gutters. Fixed toolbars and footers also use
+`contentGap`, in both applets and workspaces.
 
 ## Table and list pages
 
@@ -79,6 +83,12 @@ OnePlusPage(scrolls: false) {
 Place an inspector beside the table inside `content`; only the table rows
 scroll. For settings cards, keep the default `scrolls: true`. Embedded
 settings supply only cards and inherit this page's single scroll container.
+
+Menu panels also own their scrolling. Pass natural-height content to
+`OnePlusMenuPanel`; do not wrap it in a screen-height scroll view. The shell
+measures each active tab, shrinks for short content, and caps long content at
+90 percent of the visible screen. Apply `.onePlusScrollIndicators()` to any
+separate row scroll region; it keeps overlay style after native replacement.
 
 ## Component catalog
 
