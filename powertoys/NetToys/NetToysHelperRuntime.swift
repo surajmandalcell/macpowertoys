@@ -98,6 +98,13 @@ actor NetToysHelperRuntime {
     }
 
     private func tick(_ configuration: NetToysConfiguration) async {
+        let activeAnchorIDs = Set(configuration.anchors.map(\.id))
+        recoveryFailures = recoveryFailures.filter { activeAnchorIDs.contains($0.key) }
+        nextRecovery = nextRecovery.filter { activeAnchorIDs.contains($0.key) }
+        routeMonitors = routeMonitors.filter { activeAnchorIDs.contains($0.key) }
+        nextTailscaleAttempt = nextTailscaleAttempt.filter { activeAnchorIDs.contains($0.key) }
+        preparedAnchorPolicies.formIntersection(activeAnchorIDs)
+
         var statuses: [SSHAnchorStatus] = []
         for anchor in configuration.anchors {
             statuses.append(
