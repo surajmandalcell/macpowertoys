@@ -1,11 +1,12 @@
 import SwiftUI
 
 public struct OnePlusDotTitle: View {
+    public static let lineHeight: CGFloat = 20
     private let text: String
     private let height: CGFloat
     private let dotRatio: CGFloat
     @Environment(\.displayScale) private var displayScale
-    public init(_ text: String, height: CGFloat = 20, dotRatio: CGFloat = 0.74) {
+    public init(_ text: String, height: CGFloat = Self.lineHeight, dotRatio: CGFloat = 0.74) {
         self.text = text; self.height = height; self.dotRatio = dotRatio
     }
     public var body: some View {

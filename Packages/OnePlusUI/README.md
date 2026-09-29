@@ -49,6 +49,11 @@ The shared modifier subtracts its measured inset once, including nested roots.
 Chrome keeps all three native traffic lights visible and disables zoom and
 full screen. It measures the zoom button for the title's 14 pt gap.
 
+Page titles start at `OnePlusMetrics.contentTop` (58 pt from the visible
+window top). The workspace title row stays empty. Header actions center on
+the title's first line. `contentGap` is the separate 16 pt body gap; use it
+for padding between page regions. Applet titlebars keep their 22 pt centerline.
+
 ## Component catalog
 
 | API | Use |
@@ -73,7 +78,7 @@ full screen. It measures the zoom button for the title's 14 pt gap.
 | `OnePlusNavCaption` | Label a navigation section in its fixed slot. |
 | `OnePlusNavBadge` | Display a text-only navigation count. |
 | `OnePlusPageHeader` | Supply title, subtitle, `.system` or `.dotMatrix`, and actions. |
-| `OnePlusToolPageHeader` | Align a 40 pt tool icon, title, subtitle, and actions on the window centerline. |
+| `OnePlusToolPageHeader` | Place a 40 pt tool icon beside the title at the shared 58 pt content top. |
 | `OnePlusCatalogMetrics` | Read fixed catalog card, list, icon, and action geometry. |
 | `OnePlusTab` / `OnePlusTabStrip` | Bind selection to underline tabs with counts and trailing tools. |
 | `OnePlusPage` | Keep header and tabs fixed while content scrolls inside shared gutters. |

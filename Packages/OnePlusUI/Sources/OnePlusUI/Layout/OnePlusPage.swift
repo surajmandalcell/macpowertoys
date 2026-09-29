@@ -1,32 +1,42 @@
 import SwiftUI
 
-public enum OnePlusTitleStyle: Sendable { case system, dotMatrix }
+public enum OnePlusTitleStyle: Sendable {
+    case system, dotMatrix
+
+    public func lineHeight(for density: OnePlusDensity) -> CGFloat {
+        self == .dotMatrix ? OnePlusDotTitle.lineHeight : OnePlusTextRole.pageTitle.size(for: density) * 1.2
+    }
+}
 
 public struct OnePlusPageHeader<Actions: View>: View {
     private let title: String
     private let subtitle: String?
     private let titleStyle: OnePlusTitleStyle
+    private let subtitleRole: OnePlusTextRole
     private let actions: Actions
     @Environment(\.onePlusDensity) private var density
     public init(title: String, subtitle: String? = nil, titleStyle: OnePlusTitleStyle = .system,
+                subtitleRole: OnePlusTextRole = .subtitle,
                 @ViewBuilder actions: () -> Actions) {
         self.title = title; self.subtitle = subtitle; self.titleStyle = titleStyle; self.actions = actions()
+        self.subtitleRole = subtitleRole
     }
     public var body: some View {
-        let titleHeight = titleStyle == .dotMatrix ? CGFloat(20) : OnePlusTextRole.pageTitle.size(for: density) * 1.2
+        let titleHeight = titleStyle.lineHeight(for: density)
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Group {
                     if titleStyle == .dotMatrix { OnePlusDotTitle(title) }
                     else { Text(title).onePlusText(.pageTitle).lineLimit(1).help(title) }
                 }.frame(height: titleHeight).accessibilityAddTraits(.isHeader)
-                if let subtitle { Text(subtitle).onePlusText(.subtitle).lineLimit(1).help(subtitle) }
-            }.padding(.top, OnePlusMetrics.top(of: titleHeight))
+                if let subtitle { Text(subtitle).onePlusText(subtitleRole).lineLimit(1).help(subtitle) }
+            }
             Spacer(minLength: 0)
-            HStack(spacing: 8) { actions }.frame(height: 54).fixedSize(horizontal: true, vertical: false)
+            HStack(spacing: 8) { actions }.frame(height: titleHeight).fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, density.gutter)
-        .frame(height: subtitle == nil ? 54 : 68, alignment: .top)
+        .padding(.top, OnePlusMetrics.contentTop)
+        .padding(.bottom, OnePlusMetrics.pageHeaderBottom)
         .background(OnePlusWindowDragArea())
     }
 }
@@ -111,7 +121,7 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
     private var bodyContent: some View {
         VStack(alignment: .leading, spacing: 16) { content }
             .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter)
-            .padding(.top, OnePlusMetrics.contentTop)
+            .padding(.top, OnePlusMetrics.contentGap)
             .padding(.bottom, layout == .applet ? 0 : OnePlusMetrics.gutter)
             .frame(maxWidth: .infinity, alignment: .leading)
     }

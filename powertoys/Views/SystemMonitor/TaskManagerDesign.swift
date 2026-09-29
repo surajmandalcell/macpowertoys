@@ -17,7 +17,7 @@ enum TaskManagerTheme {
     static let accent = OnePlusTheme.accent
     static let windowContentSize = OnePlusWindowCanvas.systemMonitor.size
     static let contentInset = OnePlusMetrics.taskManagerGutter
-    static let pageTopInset = OnePlusMetrics.contentTop
+    static let pageTopInset = OnePlusMetrics.contentGap
     static let panelRadius = OnePlusMetrics.panelRadius
     static let controlRadius = OnePlusMetrics.controlRadius
 }

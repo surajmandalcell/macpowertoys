@@ -24,13 +24,7 @@ public struct OnePlusDiskmanHeader<Actions: View>: View {
         self.title = title; self.path = path; self.actions = actions()
     }
     public var body: some View {
-        OnePlusPageHeader(title: title) { actions }
-            .frame(height: 68, alignment: .top)
-            .overlay(alignment: .bottomLeading) {
-                Text(path).onePlusText(.mono).lineLimit(1).truncationMode(.middle).help(path)
-                    .padding(.horizontal, OnePlusMetrics.gutter).padding(.bottom, 6)
-                    .allowsHitTesting(false)
-            }
+        OnePlusPageHeader(title: title, subtitle: path, subtitleRole: .mono) { actions }
     }
 }
 
