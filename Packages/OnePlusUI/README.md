@@ -49,6 +49,12 @@ The shared modifier subtracts its measured inset once, including nested roots.
 Chrome keeps all three native traffic lights visible and disables zoom and
 full screen. It measures the zoom button for the title's 14 pt gap.
 
+Read `@Environment(\.onePlusIsVisible)` before publishing live data to a view.
+Fixed canvases supply it automatically. It becomes false when the host window
+is occluded, minimized, ordered off screen, or closed, without polling. Apply
+`.onePlusLiveUpdates()` to a custom native host that does not use a fixed
+canvas. Samplers may keep collecting while their views stop observing.
+
 Page titles start at `OnePlusMetrics.contentTop` (58 pt from the visible
 window top). The workspace title row stays empty. Header actions center on
 the title's first line. `contentGap` is the separate 16 pt body gap; use it
@@ -103,6 +109,7 @@ separate row scroll region; it keeps overlay style after native replacement.
 | `OnePlusMotion.animation(reduceMotion:duration:)` | Get an animation, or `nil` under Reduce Motion. |
 | `OnePlusFixedWindowChrome` | Apply native fixed-window policy; its measured zoom callback is optional. |
 | `OnePlusWindowRoot` | Compose `canvas`, `sidebar`, and `content` once per window. |
+| `onePlusIsVisible` / `.onePlusLiveUpdates()` | Suspend view observation while its native window or panel is not visible. |
 | `OnePlusWindowTexture` | Draw the fixed root ribbon; normally supplied by the root. |
 | `OnePlusTextureAsset` | Access the four cached reference PNGs through `.image`. |
 | `.onePlusGrain(opacity:)` | Add static corner grain before clipping to the final card shape. |
