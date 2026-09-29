@@ -4,6 +4,20 @@ import XCTest
 
 @MainActor
 final class DiskExplorerViewTests: XCTestCase {
+    func testVolumeSidebarLoadsOffMainAndDiscardsCancelledRefresh() async {
+        let model = DiskExplorerModel()
+        let volume = DiskVolume(url: URL(fileURLWithPath: "/"), name: "Startup Disk", capacity: 100, available: 50)
+        await model.refreshVolumes {
+            XCTAssertFalse(Thread.isMainThread)
+            return [volume]
+        }
+        XCTAssertEqual(model.volumes.map(\.name), ["Startup Disk"])
+        let task = Task { await model.refreshVolumes { [] } }
+        task.cancel()
+        await task.value
+        XCTAssertEqual(model.volumes.map(\.name), ["Startup Disk"])
+    }
+
     func testFoldedFilesStayVisibleAndCannotBeRemoved() throws {
         let root = entry("/tmp/Diskman", kind: .directory)
         let aggregate = entry("/tmp/Diskman/folded", kind: .aggregate, bytes: 1, files: 9936)

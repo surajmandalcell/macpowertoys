@@ -72,10 +72,10 @@ struct DiskExplorerWindowView: View {
             .background(WindowAccessor(identifier: "disk-explorer"))
             .background { shortcuts }
             .onAppear {
-                model.refreshVolumes()
                 if scansOnAppear && !diskManagement.isPreview { refreshInventory() }
-                if scansOnAppear, let source = model.sourceURL, model.result == nil { startScan(source) }
+                if scansOnAppear, let source = model.sourceURL, model.result == nil, !model.isScanning { startScan(source) }
             }
+            .task { if scansOnAppear { await model.refreshVolumes() } }
             .onDisappear {
                 model.leave(); inventoryTask?.cancel(); inventoryTask = nil
                 selectedID = nil; selection = []; history = []; previewURL = nil
