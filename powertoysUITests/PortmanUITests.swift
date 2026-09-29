@@ -141,7 +141,7 @@ final class PortmanUITests: XCTestCase {
                       "Return did not add the manual remote port")
 
         settings.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).click()
-        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.searchFields["portman.settings.search"].waitForExistence(timeout: 5))
         attach(app.screenshot(), named: "Portman Settings")
         let editor = app.descendants(matching: .any)["portman.settings.editor"]
         XCTAssertTrue(editor.isHittable, "The editor selector is not clickable")
@@ -154,8 +154,9 @@ final class PortmanUITests: XCTestCase {
         search.click()
         search.typeText("scan")
         XCTAssertGreaterThan(search.frame.width, 300, "Settings search did not fill the content width")
-        XCTAssertTrue(app.staticTexts["Scan ports"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Keyboard shortcut"].exists)
+        XCTAssertTrue(app.staticTexts["First port"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Last port"].exists)
+        XCTAssertFalse(app.staticTexts["Shortcut"].exists)
         attach(app.screenshot(), named: "Portman Settings search")
         let interval = app.descendants(matching: .any)["portman.settings.interval"]
         guard interval.isHittable else {
@@ -176,12 +177,10 @@ final class PortmanUITests: XCTestCase {
             XCTFail("The cleanup mode selector is not clickable.\n\(app.debugDescription)")
             return
         }
-        cleanup.click()
-        app.menuItems["Off"].click()
-        XCTAssertEqual(cleanup.value as? String, "Off",
-                      "Choosing a cleanup mode did not update the setting")
-        cleanup.click()
-        app.menuItems["Ask"].click()
+        let off = cleanup.buttons["Off"]
+        off.click()
+        XCTAssertTrue(off.isSelected, "Choosing a cleanup mode did not update the setting")
+        cleanup.buttons["Ask"].click()
         search.click()
         search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4))
         search.typeText("idle")
