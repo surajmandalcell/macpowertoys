@@ -19,10 +19,7 @@ struct MarketplaceSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             sourcesCard
-            toolsCard("Installed tools", entries: installed,
-                      empty: "Tools you install from your sources appear here.")
-            toolsCard("Available tools", entries: available,
-                      empty: "Add a catalog source to find more tools.")
+            toolCards
             if let toolError { OnePlusBanner(toolError, tone: .error).textSelection(.enabled) }
         }
         .task {
@@ -40,6 +37,20 @@ struct MarketplaceSettingsView: View {
             Text(removalTarget == nil
                  ? "This quits the tool and removes its installed app and local data."
                  : "Remove the source only to keep its apps. Removing associated apps also quits them and deletes their local data.")
+        }
+    }
+
+    private var toolCards: some View {
+        let layout = installed.isEmpty && available.isEmpty
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: OnePlusMetrics.cardGap))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: OnePlusMetrics.cardGap))
+        return layout {
+            toolsCard("Installed tools", entries: installed,
+                      empty: "Tools you install from your sources appear here.")
+                .frame(maxWidth: .infinity)
+            toolsCard("Available tools", entries: available,
+                      empty: "Add a catalog source to find more tools.")
+                .frame(maxWidth: .infinity)
         }
     }
 
