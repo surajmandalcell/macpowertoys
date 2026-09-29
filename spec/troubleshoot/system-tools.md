@@ -259,6 +259,22 @@
   first scan cannot change the new table. Add a comment and confirm it appears
   in the table and CSV, text, XML, SQL, and saved-result exports.
 
+### NetToys Scanner Active Target At Start
+
+- **Symptom:** The Scanner header and target field show the current subnet, but
+  a completed scan reports zero live hosts and its archive names an older
+  subnet.
+- **Cause:** The page refreshed its automatic target on an asynchronous task.
+  Scan could start first and capture the saved target, then the page replaced
+  the visible field with the current subnet while the old subnet was scanning.
+- **Invariant:** When the target follows the active network, resolve that
+  network again when Scan starts and use the same CIDR for target resolution,
+  the visible field, and the saved run. Explicit user targets remain unchanged.
+- **Check:** Start with a saved automatic target from another subnet and feed a
+  new active network at scan time. Confirm the selected and saved target use
+  the new CIDR. Feed down and live streamed rows into the presentation cache
+  and confirm its visible rows, live count, and open-port count update.
+
 ## SSH Anchor Tailscale Fallback
 
 - **Symptom:** An SSH Anchor stops working away from its local network, or

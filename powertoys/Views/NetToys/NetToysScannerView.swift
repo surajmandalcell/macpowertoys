@@ -228,6 +228,12 @@ final class NetToysScannerViewModel {
         useActiveNetwork(network.cidr)
     }
 
+    func targetInputForScan(activeNetwork: LocalIPv4Network?) -> String {
+        guard targetFollowsActiveNetwork, let activeNetwork else { return targetInput }
+        useActiveNetwork(activeNetwork.cidr)
+        return activeNetwork.cidr
+    }
+
     private static func isSingleCIDR(_ value: String) -> Bool {
         let parts = value.split(separator: "/", omittingEmptySubsequences: false)
         return parts.count == 2
@@ -360,9 +366,7 @@ final class NetToysScannerViewModel {
                 try probe.validate()
                 defaultPorts = Array(Set(defaultPorts + [probe.port])).sorted()
             }
-            let sourceTarget = override == nil
-                ? targetInput
-                : override?.map(\.description).joined(separator: ", ") ?? ""
+            let followsActiveNetwork = override == nil && targetFollowsActiveNetwork
             errorMessage = nil
             completed = 0
             total = override?.count ?? 0
@@ -373,10 +377,20 @@ final class NetToysScannerViewModel {
             scanTask = Task { [weak self] in
                 guard let self else { return }
                 do {
+                    let sourceTarget: String
+                    if let override {
+                        sourceTarget = override.map(\.description).joined(separator: ", ")
+                    } else {
+                        let activeNetwork = followsActiveNetwork
+                            ? await Task.detached(priority: .utility) { LocalIPv4Network.active() }.value
+                            : nil
+                        guard scanIdentifier == identifier else { return }
+                        sourceTarget = targetInputForScan(activeNetwork: activeNetwork)
+                    }
                     let targets = if let override {
                         override.map { NetToysScanTarget(address: $0, ports: defaultPorts) }
                     } else {
-                        try await NetToysTargetResolver.resolve(targetInput, defaultPorts: defaultPorts)
+                        try await NetToysTargetResolver.resolve(sourceTarget, defaultPorts: defaultPorts)
                     }
                     guard !targets.isEmpty else {
                         throw NetToysTargetInput.ParseError.invalid(sourceTarget)
