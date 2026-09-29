@@ -250,13 +250,19 @@ struct DiskChooseFolderSheet: View {
     }
 }
 
+/// Cards only. The host supplies the page, scrolling, gutters, and density.
 struct DiskExplorerSettingsView: View {
-    var unreadableCount: Int? = nil
+    let unreadableCount: Int?
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
     @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
     @State private var settings = SettingsManager.shared
+
+    init(unreadableCount: Int? = nil) {
+        self.unreadableCount = unreadableCount
+    }
+
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
