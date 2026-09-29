@@ -1497,7 +1497,7 @@ final class SystemMonitorMenuController: NSObject {
         }
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: SystemMonitorMenuPopoverView { [weak self] height in
-            guard let self, self.popover.isShown,
+            guard let self,
                   abs(self.popover.contentSize.height - height) > 0.5 else { return }
             self.popover.contentSize = NSSize(width: TaskManagerMenuLayout.width, height: height)
         })
