@@ -1,5 +1,10 @@
 # Mac Tweaks request list
 
+## Settings embedding contract, 2026-09-29
+
+- [x] Expose `MacTweaksSettingsContent()` as one 16pt card stack with no page, scroll view, outer padding, page header, spacer, or maximum-height frame.
+- [~] Update the foundation-owned tool dispatcher to embed the content directly in the main window, then inspect the signed dark and light tool pages.
+
 ## Round 2 screenshot corrections, 2026-09-29
 
 - [x] Remove corner grain from settings and preview cards. Use regular button sizing and the 180pt control column for cards that contain three-way controls.

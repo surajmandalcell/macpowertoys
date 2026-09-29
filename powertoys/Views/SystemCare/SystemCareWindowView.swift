@@ -13,6 +13,41 @@ struct SystemCareByteMetric: Equatable {
     }
 }
 
+struct SystemCareSettingsCards: View {
+    @Binding var mode: SystemCareMode
+
+    var body: some View {
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            OnePlusCard {
+                OnePlusCardHeader("Cleanup", systemImage: "sparkles")
+                OnePlusSettingRow(
+                    "Default mode",
+                    caption: "Guided mode lets you choose categories. Analysis Only cannot remove items.",
+                    separator: false
+                ) {
+                    OnePlusSelect(
+                        choices: SystemCareMode.allCases.map { ($0, $0.rawValue) },
+                        selection: $mode,
+                        accessibilityLabel: "Default cleanup mode"
+                    )
+                }
+            }
+            OnePlusCard {
+                OnePlusCardHeader("Safety", systemImage: "lock.shield")
+                OnePlusSettingRow("Native cleanup", caption: "Moves reviewed items to macOS Trash.", separator: false) {
+                    OnePlusStatus("Recoverable", state: .success)
+                }
+                OnePlusSettingRow("Symbolic links", caption: "Never followed while size is calculated.", separator: false) {
+                    OnePlusStatus("Protected", state: .success)
+                }
+                OnePlusSettingRow("Mole privileges", caption: "Requests appear only in a visible Terminal.", separator: false) {
+                    OnePlusStatus("Visible", state: .success)
+                }
+            }
+        }
+    }
+}
+
 private enum SystemCarePage: String, CaseIterable, Identifiable {
     case overview
     case storage
@@ -644,38 +679,13 @@ struct SystemCareWindowView: View {
         OnePlusPage {
             OnePlusPageHeader(title: "Settings", subtitle: "Cleanup defaults and safety")
         } content: {
-            OnePlusCard {
-                OnePlusCardHeader("Cleanup", systemImage: "sparkles")
-                OnePlusSettingRow(
-                    "Default mode",
-                    caption: "Guided mode lets you choose categories. Analysis Only cannot remove items.",
-                    separator: false
-                ) {
-                    OnePlusSelect(
-                        choices: SystemCareMode.allCases.map { ($0, $0.rawValue) },
-                        selection: Binding(
-                            get: { cleanupMode },
-                            set: {
-                                cleanupMode = $0
-                                UserDefaults.standard.set($0.rawValue, forKey: "systemCare.defaultMode")
-                            }
-                        ),
-                        accessibilityLabel: "Default cleanup mode"
-                    )
+            SystemCareSettingsCards(mode: Binding(
+                get: { cleanupMode },
+                set: {
+                    cleanupMode = $0
+                    UserDefaults.standard.set($0.rawValue, forKey: "systemCare.defaultMode")
                 }
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Safety", systemImage: "lock.shield")
-                OnePlusSettingRow("Native cleanup", caption: "Moves reviewed items to macOS Trash.", separator: false) {
-                    OnePlusStatus("Recoverable", state: .success)
-                }
-                OnePlusSettingRow("Symbolic links", caption: "Never followed while size is calculated.", separator: false) {
-                    OnePlusStatus("Protected", state: .success)
-                }
-                OnePlusSettingRow("Mole privileges", caption: "Requests appear only in a visible Terminal.", separator: false) {
-                    OnePlusStatus("Visible", state: .success)
-                }
-            }
+            ))
         }
     }
 
