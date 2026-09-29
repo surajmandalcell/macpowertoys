@@ -47,25 +47,26 @@ final class SystemMonitorTests: XCTestCase {
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
 
         var preferredHeight: CGFloat = 0
+        let screenCap = (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         let host = NSHostingView(rootView: SystemMonitorTrayView(remoteProfiles: Self.renderRemoteProfiles) {
             preferredHeight = $0
         }
             .defaultAppStorage(defaults)
-            .frame(width: TaskManagerMenuLayout.width, height: TaskManagerMenuLayout.maximumHeight))
+            .frame(width: TaskManagerMenuLayout.width, height: screenCap))
         host.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         XCTAssertGreaterThan(preferredHeight, 300)
         XCTAssertLessThanOrEqual(
             preferredHeight,
-            TaskManagerMenuLayout.maximumHeight,
-            "Home must show all summary cards inside the dedicated popup"
+            screenCap,
+            "Home must stay inside the shared visible-screen cap"
         )
     }
 
     func testTaskManagerMenuHeightMatchesEachPageAndHostCount() {
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 0), 334)
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 2), 503)
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 4), 536)
+        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 4), 733)
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .cpu, profileCount: 0), 392)
         XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .processes, profileCount: 0), 407)
     }
@@ -496,7 +497,7 @@ final class SystemMonitorTests: XCTestCase {
             host.frame = NSRect(
                 x: 0, y: 0,
                 width: TaskManagerMenuLayout.width,
-                height: TaskManagerMenuLayout.maximumHeight
+                height: (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
             )
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(1.2))

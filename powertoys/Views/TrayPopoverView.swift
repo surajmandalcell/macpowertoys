@@ -1202,11 +1202,10 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
 
 enum TaskManagerMenuLayout {
     static let width = OnePlusMenuMetrics.width
-    static let maximumHeight: CGFloat = 536
     static let minimumHeight: CGFloat = 220
 
     static func initialHomeHeight(profileCount: Int) -> CGFloat {
-        min(profileCount == 0 ? 334 : 388 + CGFloat(profileCount - 1) * 115, maximumHeight)
+        profileCount == 0 ? 334 : 388 + CGFloat(profileCount - 1) * 115
     }
 
     static func preferredHeight(for page: SystemMonitorTrayPage, profileCount: Int) -> CGFloat {
@@ -1303,7 +1302,7 @@ struct SystemMonitorTrayView: View {
     private var history: [SystemMonitorSample] { Array(service.history.suffix(120)) }
 
     var body: some View {
-        OnePlusMenuPanel(maximumHeight: TaskManagerMenuLayout.maximumHeight) {
+        OnePlusMenuPanel {
             OnePlusMenuTabStrip(
                 tabs: SystemMonitorTrayPage.allCases.map {
                     OnePlusMenuTab($0, $0.title, systemImage: $0.symbol)
@@ -1329,7 +1328,7 @@ struct SystemMonitorTrayView: View {
         })
         .onPreferenceChange(TaskManagerMenuMeasuredHeightKey.self) { height in
             guard height > 0 else { return }
-            onPreferredHeight(min(height, TaskManagerMenuLayout.maximumHeight))
+            onPreferredHeight(height)
         }
         .onAppear {
             if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
