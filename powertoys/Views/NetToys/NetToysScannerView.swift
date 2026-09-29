@@ -47,11 +47,6 @@ extension NetToysScanResult {
     nonisolated var responseTitle: String { responseMilliseconds.map { String(format: "%.1f", $0) } ?? "" }
     nonisolated var hostnameTitle: String { hostname ?? "" }
     nonisolated var macTitle: String { macAddress ?? (isReachable ? "macOS restricted" : "") }
-    nonisolated var macHelp: String {
-        macAddress == nil && isReachable
-            ? "Enable MAC Access in NetToys Settings, then rescan this neighboring device."
-            : ""
-    }
     nonisolated var vendorTitle: String { vendor ?? "" }
     nonisolated var portsTitle: String { openPorts.map(String.init).joined(separator: ", ") }
     nonisolated var filteredPortsTitle: String { filteredPorts?.map(String.init).joined(separator: ", ") ?? "" }
@@ -94,12 +89,21 @@ final class NetToysScannerViewModel {
     var portInput = "22, 80, 443" {
         didSet { defaults.set(portInput, forKey: Self.portKey) }
     }
-    var results: [NetToysScanResult] = []
+    private(set) var results: [NetToysScanResult] = []
+    private(set) var visibleResults: [NetToysScanResult] = []
+    private(set) var aliveResultCount = 0
+    private(set) var openPortResultCount = 0
     var filter = NetToysResultFilter.all {
-        didSet { defaults.set(filter.rawValue, forKey: Self.filterKey) }
+        didSet {
+            defaults.set(filter.rawValue, forKey: Self.filterKey)
+            refreshVisibleResults()
+        }
     }
     var searchText = "" {
-        didSet { defaults.set(searchText, forKey: Self.searchKey) }
+        didSet {
+            defaults.set(searchText, forKey: Self.searchKey)
+            refreshVisibleResults()
+        }
     }
     var completed = 0
     var total = 0
@@ -131,6 +135,7 @@ final class NetToysScannerViewModel {
     var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)] {
         didSet {
             defaults.set(try? JSONEncoder().encode(sortOrder.compactMap(Self.savedSort)), forKey: Self.sortKey)
+            refreshVisibleResults()
         }
     }
 
@@ -287,8 +292,11 @@ final class NetToysScannerViewModel {
         defaults.set(try JSONEncoder().encode(openers), forKey: Self.openersKey)
     }
 
-    var visibleResults: [NetToysScanResult] {
-        results.filter { result in
+    private func refreshVisibleResults() {
+        aliveResultCount = results.lazy.filter(\.isReachable).count
+        openPortResultCount = results.lazy.filter { !$0.openPorts.isEmpty }.count
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        visibleResults = results.filter { result in
             let includes: Bool
             switch filter {
             case .all: includes = true
@@ -296,7 +304,6 @@ final class NetToysScannerViewModel {
             case .openPorts: includes = !result.openPorts.isEmpty
             }
             guard includes else { return false }
-            let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !query.isEmpty else { return true }
             return ([
                 result.address.description, result.hostnameTitle, result.macTitle, result.vendorTitle,
@@ -304,7 +311,7 @@ final class NetToysScannerViewModel {
                 result.netBIOSTitle, result.customTextTitle, result.commentTitle
             ])
                 .contains { $0.localizedCaseInsensitiveContains(query) }
-        }
+        }.sorted(using: sortOrder)
     }
 
     func start(targets override: [IPv4Address]? = nil) {
@@ -534,6 +541,7 @@ final class NetToysScannerViewModel {
     func removeResults(ids: Set<String>) {
         results.removeAll { ids.contains($0.id) }
         rebuildResultIndices()
+        refreshVisibleResults()
     }
 
     func toggleFavoriteTarget() {
@@ -574,6 +582,7 @@ final class NetToysScannerViewModel {
         if let index = resultIndices[address] {
             results[index].comment = annotation.comment.isEmpty ? nil : annotation.comment
         }
+        refreshVisibleResults()
         do {
             try NetToysScannerStore.saveAnnotations(annotations)
         } catch {
@@ -592,6 +601,7 @@ final class NetToysScannerViewModel {
             resultIndices[update.id] = results.endIndex
             results.append(update)
         }
+        refreshVisibleResults()
     }
 
     private func replaceResults(_ values: [NetToysScanResult]) {
@@ -602,6 +612,7 @@ final class NetToysScannerViewModel {
                 results[index].comment = comment
             }
         }
+        refreshVisibleResults()
     }
 
     private func rebuildResultIndices() {
@@ -651,10 +662,6 @@ struct NetToysScannerView: View {
     private var macAccessEnabled: Bool {
         _ = neighborService.revision
         return neighborService.isEnabled
-    }
-
-    private var sortedResults: [NetToysScanResult] {
-        model.visibleResults.sorted(using: model.sortOrder)
     }
 
     private var selectedRows: [NetToysScanResult] {
@@ -793,11 +800,12 @@ struct NetToysScannerView: View {
     }
 
     private var resultControls: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
+        let selected = selectedRows
+        return HStack(spacing: OnePlusMetrics.actionSpacing) {
             OnePlusSegmented(choices: [
                 (.all, "All \(model.results.count)"),
-                (.alive, "Alive \(model.results.filter(\.isReachable).count)"),
-                (.openPorts, "Open Ports \(model.results.filter { !$0.openPorts.isEmpty }.count)")
+                (.alive, "Alive \(model.aliveResultCount)"),
+                (.openPorts, "Open Ports \(model.openPortResultCount)")
             ], selection: $model.filter, accessibilityLabel: "Results")
                 .fixedSize()
             OnePlusSearchField(prompt: "Find address, host, MAC, or port", text: $model.searchText,
@@ -819,11 +827,11 @@ struct NetToysScannerView: View {
                 Button("Scan Statistics…") { showStatistics = true }
                     .disabled(model.results.isEmpty)
                 Button("Add SSH Anchor") {
-                    if let result = selectedRows.first { openSSHAnchor(result) }
+                    if let result = selected.first { openSSHAnchor(result) }
                 }
-                .disabled(selectedRows.count != 1)
+                .disabled(selected.count != 1)
                 Divider()
-                Button("Copy Selected Details") { copyDetails(selectedRows) }
+                Button("Copy Selected Details") { copyDetails(selected) }
                     .disabled(model.selection.isEmpty)
                 Button("Delete Selected", role: .destructive) {
                     pendingRemoval = model.selection
@@ -834,31 +842,31 @@ struct NetToysScannerView: View {
 
             Button("Copy IP") {
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(selectedRows.map { $0.address.description }.joined(separator: "\n"), forType: .string)
+                NSPasteboard.general.setString(selected.map { $0.address.description }.joined(separator: "\n"), forType: .string)
             }
             .disabled(model.selection.isEmpty)
 
             Button("Rescan") {
-                model.start(targets: selectedRows.map(\.address))
+                model.start(targets: selected.map(\.address))
             }
             .disabled(model.selection.isEmpty || model.isScanning)
 
             OnePlusActionMenu("Export", width: OnePlusMetrics.controlColumn / 2) {
                 ForEach(NetToysExportFormat.allCases) { format in
                     Button(format.rawValue) {
-                        model.export(format, rows: selectedRows.isEmpty ? sortedResults : selectedRows)
+                        model.export(format, rows: selected.isEmpty ? model.visibleResults : selected)
                     }
                 }
                 Divider()
                 Menu("Append to Existing File") {
                     ForEach(NetToysExportFormat.allCases.filter(\.canAppend)) { format in
                         Button(format.rawValue) {
-                            model.append(format, rows: selectedRows.isEmpty ? sortedResults : selectedRows)
+                            model.append(format, rows: selected.isEmpty ? model.visibleResults : selected)
                         }
                     }
                 }
             }
-            .disabled(sortedResults.isEmpty || model.isExporting)
+            .disabled(model.visibleResults.isEmpty || model.isExporting)
             if model.isExporting {
                 ProgressView()
                     .controlSize(.small)
@@ -869,7 +877,7 @@ struct NetToysScannerView: View {
 
     private var resultsTable: some View {
         Table(
-            sortedResults,
+            model.visibleResults,
             selection: $model.selection,
             sortOrder: $model.sortOrder,
             columnCustomization: $columnCustomization
@@ -877,7 +885,7 @@ struct NetToysScannerView: View {
             TableColumn("IP Address", value: \.sortAddress) { result in
                 Text(result.address.description)
                     .onePlusText(.mono)
-                    .lineLimit(1).help(result.address.description)
+                    .lineLimit(1)
                     .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
             }
             .width(128)
@@ -887,7 +895,6 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Status", value: \NetToysScanResult.statusTitle) { result in
                     OnePlusStatus(result.statusTitle, state: result.isReachable ? .online : .offline)
-                        .help(result.statusTitle)
                 }
                 .width(80)
                 .customizationID("nettoys.status")
@@ -895,7 +902,7 @@ struct NetToysScannerView: View {
                 TableColumn("Response", value: \NetToysScanResult.responseTitle) { result in
                     Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
                         .onePlusText(.mono)
-                        .lineLimit(1).help(result.responseTitle.isEmpty ? "No response" : "\(result.responseTitle) ms")
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(96)
@@ -903,7 +910,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("TTL", value: \NetToysScanResult.ttlTitle) { result in
                     Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
-                        .lineLimit(1).help(result.ttlTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 44, ideal: 48)
@@ -913,7 +920,7 @@ struct NetToysScannerView: View {
                 TableColumn("Loss", value: \NetToysScanResult.packetLossTitle) { result in
                     Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
                         .monospacedDigit()
-                        .lineLimit(1).help(result.packetLossTitle.isEmpty ? "" : "\(result.packetLossTitle)%")
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 58, ideal: 66)
@@ -924,7 +931,7 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Hostname", value: \NetToysScanResult.hostnameTitle) { result in
                     Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
-                        .lineLimit(1).help(result.hostnameTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(216)
@@ -934,7 +941,6 @@ struct NetToysScannerView: View {
                     Text(result.macTitle.isEmpty ? "—" : result.macTitle)
                         .onePlusText(.mono)
                         .lineLimit(1)
-                        .help(result.macHelp)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(160)
@@ -942,7 +948,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("MAC Vendor", value: \NetToysScanResult.vendorTitle) { result in
                     Text(result.vendorTitle.isEmpty ? "—" : result.vendorTitle)
-                        .lineLimit(1).help(result.vendorTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(208)
@@ -950,7 +956,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("NetBIOS Info", value: \NetToysScanResult.netBIOSTitle) { result in
                     Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
-                        .lineLimit(1).help(result.netBIOSTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 90, ideal: 120)
@@ -961,7 +967,7 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Open Ports", value: \NetToysScanResult.portsTitle) { result in
                     Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
-                        .lineLimit(1).help(result.portsTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(160)
@@ -969,7 +975,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("Filtered", value: \NetToysScanResult.filteredPortsTitle) { result in
                     Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
-                        .lineLimit(1).help(result.filteredPortsTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 80, ideal: 100)
@@ -978,7 +984,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("HTTP Server", value: \NetToysScanResult.httpServerTitle) { result in
                     Text(result.httpServerTitle.isEmpty ? "—" : result.httpServerTitle)
-                        .lineLimit(1).help(result.httpServerTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 110, ideal: 150)
@@ -987,7 +993,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("HTTP Proxy", value: \NetToysScanResult.httpProxyTitle) { result in
                     Text(result.httpProxyTitle.isEmpty ? "—" : result.httpProxyTitle)
-                        .lineLimit(1).help(result.httpProxyTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 100, ideal: 140)
@@ -996,7 +1002,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("Custom Text", value: \NetToysScanResult.customTextTitle) { result in
                     Text(result.customTextTitle.isEmpty ? "—" : result.customTextTitle)
-                        .lineLimit(1).help(result.customTextTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 110, ideal: 160)
@@ -1005,7 +1011,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("Comments", value: \NetToysScanResult.commentTitle) { result in
                     Text(result.commentTitle.isEmpty ? "—" : result.commentTitle)
-                        .lineLimit(1).help(result.commentTitle)
+                        .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
                 .width(min: 100, ideal: 150)
@@ -1060,7 +1066,7 @@ struct NetToysScannerView: View {
         }
         .onePlusNativeTable()
         .overlay {
-            if sortedResults.isEmpty && !model.isScanning {
+            if model.visibleResults.isEmpty && !model.isScanning {
                 OnePlusEmptyState(model.results.isEmpty ? "Ready to scan" : "No matching hosts",
                                   systemImage: "network", caption: model.results.isEmpty
                                   ? "Enter targets and ports, then press Return to scan."
@@ -1078,15 +1084,15 @@ struct NetToysScannerView: View {
                 Text("\(model.completed) of \(model.total)")
                     .monospacedDigit()
                 Text("·")
-                Text("\(sortedResults.count) shown")
+                Text("\(model.visibleResults.count) shown")
                 Text("·")
-                Text("\(model.results.filter(\.isReachable).count) alive")
+                Text("\(model.aliveResultCount) alive")
             } else {
-                Text("\(sortedResults.count) shown")
+                Text("\(model.visibleResults.count) shown")
                 Text("·")
-                Text("\(model.results.filter(\.isReachable).count) alive")
+                Text("\(model.aliveResultCount) alive")
                 Text("·")
-                Text("\(model.results.filter { !$0.openPorts.isEmpty }.count) with open ports")
+                Text("\(model.openPortResultCount) with open ports")
             }
             Spacer()
             if let duration = model.lastDuration {
@@ -1145,7 +1151,7 @@ struct NetToysScannerView: View {
     }
 
     private func select(offset: Int, where predicate: (NetToysScanResult) -> Bool) {
-        let matches = sortedResults.filter(predicate)
+        let matches = model.visibleResults.filter(predicate)
         guard !matches.isEmpty else { return }
         let current = model.selection.first.flatMap { id in matches.firstIndex { $0.id == id } }
         let index = current.map { ($0 + offset + matches.count) % matches.count }

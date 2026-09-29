@@ -6,6 +6,44 @@ import XCTest
 
 @MainActor
 final class NetToysScannerLayoutTests: XCTestCase {
+    func testScannerCachesFilteredAndSortedRows() throws {
+        let suite = "NetToysScannerLayoutTests.cache.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let down = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.1")), isReachable: false,
+            responseMilliseconds: nil, hostname: "router", macAddress: nil, vendor: nil, openPorts: []
+        )
+        let printer = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.2")), isReachable: true,
+            responseMilliseconds: 2, hostname: "printer", macAddress: nil, vendor: nil, openPorts: [80]
+        )
+        let server = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.3")), isReachable: true,
+            responseMilliseconds: 1, hostname: "server", macAddress: nil, vendor: nil, openPorts: [22]
+        )
+        let run = NetToysScanRun(target: "192.0.2.0/24", ports: [22, 80], duration: 1,
+                                 results: [server, down, printer])
+        let model = NetToysScannerViewModel(archive: NetToysScanArchive(runs: [run]), defaults: defaults)
+
+        XCTAssertEqual(model.visibleResults.map(\.id), [down.id, printer.id, server.id])
+        XCTAssertEqual(model.aliveResultCount, 2)
+        XCTAssertEqual(model.openPortResultCount, 2)
+        model.filter = .alive
+        model.searchText = "server"
+        XCTAssertEqual(model.visibleResults.map(\.id), [server.id])
+        model.searchText = ""
+        model.sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress, order: .reverse)]
+        XCTAssertEqual(model.visibleResults.map(\.id), [server.id, printer.id])
+        model.applyScanUpdate(NetToysScanResult(
+            address: server.address, isReachable: false, responseMilliseconds: nil,
+            hostname: server.hostname, macAddress: nil, vendor: nil, openPorts: []
+        ))
+        XCTAssertEqual(model.visibleResults.map(\.id), [printer.id])
+        XCTAssertEqual(model.aliveResultCount, 1)
+        XCTAssertEqual(model.openPortResultCount, 1)
+    }
+
     func testDefaultScannerColumnsStayInsideFixedViewport() async throws {
         let suite = "NetToysScannerLayoutTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
