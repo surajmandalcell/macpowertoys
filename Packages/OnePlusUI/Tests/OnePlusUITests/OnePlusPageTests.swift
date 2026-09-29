@@ -5,6 +5,44 @@ import XCTest
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testFixedRegionsKeepTheirGeometryWhileRowsScroll() throws {
+        let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
+            PageRegionProbe("header").frame(height: 50)
+        } tabs: {
+            PageRegionProbe("tabs").frame(height: 36)
+        } toolbar: {
+            PageRegionProbe("toolbar").frame(height: 28)
+        } footer: {
+            PageRegionProbe("footer").frame(height: 22)
+        } content: {
+            ScrollView { Color.clear.frame(height: 3000) }
+                .onePlusScrollIndicators().overlay { PageRegionProbe("rows") }
+        })
+        func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+        for height in [CGFloat(500), 700] {
+            host.frame = CGRect(x: 0, y: 0, width: 600, height: height)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+            let views = descendants(host)
+            func rect(_ name: String) throws -> CGRect {
+                let view = try XCTUnwrap(views.first { $0.identifier?.rawValue == name })
+                return view.convert(view.bounds, to: host)
+            }
+            let before = try ["header", "tabs", "toolbar", "footer", "rows"].map(rect)
+            XCTAssertEqual(before[2].minY, 102, accuracy: 0.5)
+            XCTAssertEqual(before[4].minY, 146, accuracy: 0.5)
+            XCTAssertEqual(before[4].maxY, height - 62, accuracy: 0.5)
+            XCTAssertEqual(before[3].maxY, height - 24, accuracy: 0.5)
+            XCTAssertEqual(before[4].width, 600 - 48, accuracy: 0.5)
+            let scroll = try XCTUnwrap(views.compactMap { $0 as? NSScrollView }.first)
+            scroll.contentView.scroll(to: CGPoint(x: 0, y: 800))
+            scroll.reflectScrolledClipView(scroll.contentView)
+            host.layoutSubtreeIfNeeded()
+            XCTAssertGreaterThan(scroll.contentView.bounds.minY, 0)
+            XCTAssertEqual(try ["header", "tabs", "toolbar", "footer", "rows"].map(rect), before)
+        }
+    }
+
     func testTitleLineStartsBelowTheEmptyWindowTitleRow() {
         XCTAssertEqual(OnePlusMetrics.contentTop, 58)
         XCTAssertEqual(OnePlusMetrics.contentGap, 16)
@@ -37,4 +75,15 @@ final class OnePlusPageTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(catalog.fittingSize.height, 58 + 40 + OnePlusMetrics.pageHeaderBottom)
         }
     }
+}
+
+private struct PageRegionProbe: NSViewRepresentable {
+    let name: String
+    init(_ name: String) { self.name = name }
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.identifier = NSUserInterfaceItemIdentifier(name)
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
