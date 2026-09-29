@@ -54,7 +54,7 @@ struct MainToolCard: View {
                 MainToolEnableSwitch(tool: tool, showsCaption: true)
                     .focused($focusedPart, equals: "enable")
                 Spacer(minLength: OnePlusCatalogMetrics.smallGap)
-                MainOpenToolButton(toolID: tool.id, showsArrow: true)
+                MainOpenToolButton(toolID: tool.id, toolName: tool.name, showsArrow: true)
                     .focused($focusedPart, equals: "open")
             }.padding(OnePlusCatalogMetrics.cardInset)
         }
@@ -99,7 +99,7 @@ struct MainToolListRow: View {
                 .focused($focusedPart, equals: "favorite")
             MainToolEnableSwitch(tool: tool, showsCaption: true)
                 .focused($focusedPart, equals: "enable")
-            MainOpenToolButton(toolID: tool.id, showsArrow: true)
+            MainOpenToolButton(toolID: tool.id, toolName: tool.name, showsArrow: true)
                 .focused($focusedPart, equals: "open")
         }
         .padding(.horizontal, OnePlusCatalogMetrics.cardInset)

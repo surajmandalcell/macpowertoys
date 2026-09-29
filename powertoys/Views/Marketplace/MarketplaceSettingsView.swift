@@ -121,6 +121,7 @@ struct MarketplaceSettingsView: View {
     }
 
     private func toolRow(_ entry: MarketplaceEntry) -> some View {
+        let versionText = version(entry)
         HStack(spacing: OnePlusCatalogMetrics.gap) {
             MarketplaceToolIcon(entry: entry)
             VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
@@ -129,7 +130,7 @@ struct MarketplaceSettingsView: View {
                     Text(status(entry)).onePlusText(.caption)
                 }
                 Text(entry.summary).onePlusText(.row).foregroundStyle(OnePlusColor.secondary).lineLimit(2).help(entry.summary)
-                Text(version(entry)).onePlusText(.caption).lineLimit(1).help(version(entry))
+                Text(versionText).onePlusText(.caption).lineLimit(1).help(versionText)
             }.frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 if busyID == entry.id { ProgressView().controlSize(.small).accessibilityLabel("Updating \(entry.name)") }
@@ -147,7 +148,7 @@ struct MarketplaceSettingsView: View {
                 .buttonStyle(OnePlusButtonStyle(.neutral)).disabled(busy)
         }
         if entry.receipt != nil {
-            MainOpenToolButton(toolID: entry.id).disabled(busy)
+            MainOpenToolButton(toolID: entry.id, toolName: entry.name).disabled(busy)
             Button("Uninstall") { uninstallTarget = entry }
                 .buttonStyle(OnePlusButtonStyle(.neutral)).disabled(busy)
         }
