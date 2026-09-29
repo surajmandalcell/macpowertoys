@@ -44,6 +44,6 @@ and running path. A build or test result alone does not finish the task.
 
 When a UI task calls for live interaction, use native app-scoped computer
 control on that exact installed build to exercise each changed control and
-state. Keep the owner's foreground app untouched; follow
-`~/.codex/rules/browser-ui.md` and `spec/troubleshoot/verification.md` when an
-interaction cannot be checked without taking focus.
+state. Keep the owner's foreground app untouched; follow the `gui-automation`
+skill and `spec/troubleshoot/verification.md` when an interaction cannot be
+checked without taking focus.
