@@ -145,7 +145,7 @@ struct TextExtractorView: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
-        .padding(.top, OnePlusMetrics.contentTop)
+        .padding(.top, OnePlusMetrics.contentGap)
     }
 
     @ViewBuilder private var statusBanner: some View {

@@ -38,7 +38,7 @@ struct ColorSample: Codable, Identifiable, Equatable, Sendable {
         abs(alpha - other.alpha) < tolerance
     }
 
-    func string(_ format: ColorCopyFormat) -> String {
+    nonisolated func string(_ format: ColorCopyFormat) -> String {
         let r = Int((red * 255).rounded())
         let g = Int((green * 255).rounded())
         let b = Int((blue * 255).rounded())
@@ -57,7 +57,7 @@ struct ColorSample: Codable, Identifiable, Equatable, Sendable {
         }
     }
 
-    private var hslComponents: (h: Double, s: Double, l: Double) {
+    nonisolated private var hslComponents: (h: Double, s: Double, l: Double) {
         let maximum = max(red, green, blue)
         let minimum = min(red, green, blue)
         let lightness = (maximum + minimum) / 2
@@ -71,7 +71,7 @@ struct ColorSample: Codable, Identifiable, Equatable, Sendable {
         return (hue * 60, saturation, lightness)
     }
 
-    private func decimal(_ value: Double) -> String {
+    nonisolated private func decimal(_ value: Double) -> String {
         value.formatted(.number.locale(Locale(identifier: "en_US_POSIX")).precision(.fractionLength(0...3)))
     }
 }
