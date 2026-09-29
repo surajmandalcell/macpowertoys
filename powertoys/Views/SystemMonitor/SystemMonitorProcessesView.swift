@@ -167,6 +167,7 @@ struct SystemMonitorOverviewProcessesView: View {
     @State private var rows: [SystemMonitorProcessHierarchy.Row] = []
 
     var body: some View {
+        let lastRowID = rows.last?.id
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Top processes").font(.system(size: 11, weight: .medium))
@@ -210,7 +211,7 @@ struct SystemMonitorOverviewProcessesView: View {
                         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
                         .focusEffectDisabled()
                         .onePlusTableRow()
-                        if row.id != rows.last?.id {
+                        if row.id != lastRowID {
                             Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         }
                     }
@@ -360,14 +361,15 @@ struct SystemMonitorProcessesView: View {
     }
 
     private var processTable: some View {
-        TaskManagerPanel {
+        let lastRowID = visibleRows.last?.id
+        return TaskManagerPanel {
             VStack(spacing: 0) {
                 tableHeader
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(visibleRows) { row in
                             processRow(row)
-                            if row.id != visibleRows.last?.id {
+                            if row.id != lastRowID {
                                 Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                             }
                         }
