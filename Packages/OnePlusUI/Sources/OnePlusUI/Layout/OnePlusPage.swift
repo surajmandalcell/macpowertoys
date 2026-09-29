@@ -130,8 +130,14 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
                     .padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if scrolls { ScrollView { bodyContent }.onePlusScrollIndicators() }
-            else { bodyContent.frame(maxHeight: .infinity, alignment: .topLeading) }
+            if scrolls {
+                ScrollView { bodyContent }
+                    .onePlusScrollIndicators()
+                    .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)
+            } else {
+                bodyContent.frame(maxHeight: .infinity, alignment: .topLeading)
+                    .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)
+            }
             if let footer {
                 footer.frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
@@ -141,12 +147,12 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
     }
     private var gutter: CGFloat { layout == .applet ? OnePlusMetrics.appletGutter : density.gutter }
     private var bottomInset: CGFloat { layout == .applet ? 0 : OnePlusMetrics.gutter }
+    private var scrollBottomInset: CGFloat { footer == nil ? bottomInset : 0 }
     private var bodyContent: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) { content }
             .frame(maxWidth: .infinity, maxHeight: scrolls ? nil : .infinity, alignment: .topLeading)
             .padding(.horizontal, gutter)
             .padding(.top, OnePlusMetrics.contentGap)
-            .padding(.bottom, footer == nil ? bottomInset : 0)
     }
 }
 
