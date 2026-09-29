@@ -11,6 +11,18 @@ import CoreTransferable
 import UniformTypeIdentifiers
 import OnePlusUI
 
+nonisolated enum RemoteFolderName {
+    static func error(for value: String) -> String? {
+        let name = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return "Enter a folder name." }
+        guard name != ".", name != ".." else { return "Use a name other than . or .." }
+        guard name.rangeOfCharacter(from: CharacterSet(charactersIn: "/\\").union(.controlCharacters)) == nil else {
+            return "Use a name without slashes or control characters."
+        }
+        return nil
+    }
+}
+
 struct RemoteBrowserView: View {
     private enum SortColumn { case name, size, modified }
 
@@ -29,6 +41,10 @@ struct RemoteBrowserView: View {
     @State private var dropToastTask: Task<Void, Never>?
     @State private var isShowingCleanup = false
     @State private var isShowingSettings = false
+    @State private var isShowingNewFolder = false
+    @State private var newFolderName = ""
+    @State private var isCreatingFolder = false
+    @State private var folderCreationError: String?
     @State private var sortColumn = SortColumn.name
     @State private var sortAscending = true
 
@@ -68,6 +84,15 @@ struct RemoteBrowserView: View {
             CleanupRemoteSheet(remote: remote, startPath: path)
         }
         .sheet(isPresented: $isShowingSettings) { RemoteSettingsSheet(remote: remote) }
+        .alert("New Folder", isPresented: $isShowingNewFolder) {
+            TextField("Folder name", text: $newFolderName)
+            Button("Cancel", role: .cancel) { newFolderName = "" }
+            Button("Create Folder") { createFolder() }
+                .keyboardShortcut(.defaultAction)
+                .disabled(RemoteFolderName.error(for: newFolderName) != nil)
+        } message: {
+            Text(RemoteFolderName.error(for: newFolderName) ?? "Create this folder in \(remote.name):\(path).")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .remoteCleanupCompleted)) { notification in
             guard notification.object as? String == remote.name else { return }
             Task { await load() }
@@ -77,6 +102,7 @@ struct RemoteBrowserView: View {
             path = ""
             selection = nil
             errorMessage = nil
+            folderCreationError = nil
         }
     }
 
@@ -86,10 +112,13 @@ struct RemoteBrowserView: View {
         OnePlusPageHeader(title: remote.displayName, subtitle: remote.typeLabel) {
             Button("Upload") { chooseUpload() }
                 .buttonStyle(OnePlusButtonStyle(.neutral))
-            Button("New Folder") {}
+            Button("New Folder") {
+                newFolderName = ""
+                folderCreationError = nil
+                isShowingNewFolder = true
+            }
             .buttonStyle(OnePlusButtonStyle(.neutral))
-            .disabled(true)
-            .help("Folder creation needs a Cloud Sync service action.")
+            .disabled(isCreatingFolder)
             Button { Task { await load() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
                 .buttonStyle(OnePlusButtonStyle(.ghost))
                 .disabled(isLoading)
@@ -154,33 +183,42 @@ struct RemoteBrowserView: View {
     // MARK: Content
 
     private var contentArea: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Path") {
-                breadcrumbs
-                Spacer(minLength: OnePlusMetrics.spacing[2])
-                Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
-                    .onePlusText(.mono)
-                    .foregroundStyle(OnePlusColor.muted)
-            }
-            ZStack {
-            if isLoading {
-                ProgressView()
-                    .controlSize(.small)
-            } else if let errorMessage {
-                errorState(errorMessage)
-            } else if entries.isEmpty {
-                OnePlusEmptyState("Empty folder", systemImage: "folder")
-            } else {
-                entryList
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            if let folderCreationError {
+                OnePlusBanner(folderCreationError, tone: .error) {
+                    Button("Dismiss") { self.folderCreationError = nil }
+                }
             }
 
-            if isDropTargeted {
-                dropOverlay
+            OnePlusCard {
+                OnePlusCardHeader("Path") {
+                    breadcrumbs
+                    Spacer(minLength: OnePlusMetrics.spacing[2])
+                    Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
+                        .onePlusText(.mono)
+                        .foregroundStyle(OnePlusColor.muted)
+                }
+                ZStack {
+                    if isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if let errorMessage {
+                        errorState(errorMessage)
+                    } else if entries.isEmpty {
+                        OnePlusEmptyState("Empty folder", systemImage: "folder")
+                    } else {
+                        entryList
+                    }
+
+                    if isDropTargeted {
+                        dropOverlay
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxHeight: .infinity)
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .dropDestination(for: URL.self) { (urls: [URL], _: CGPoint) in
             manager.createDroppedTransfers(urls: urls, remote: remote, directoryPath: path)
             showDropToast()
@@ -246,7 +284,7 @@ struct RemoteBrowserView: View {
     private func errorState(_ message: String) -> some View {
         OnePlusEmptyState(message, systemImage: "exclamationmark.triangle") {
             Button("Retry") { Task { await load() } }
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusButtonStyle(.neutral))
         }
     }
 
@@ -366,6 +404,23 @@ struct RemoteBrowserView: View {
         guard panel.runModal() == .OK else { return }
         manager.createDroppedTransfers(urls: panel.urls, remote: remote, directoryPath: path)
         showDropToast()
+    }
+
+    private func createFolder() {
+        let name = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard RemoteFolderName.error(for: name) == nil else { return }
+        let destination = path.isEmpty ? name : "\(path)/\(name)"
+        isCreatingFolder = true
+        folderCreationError = nil
+        Task {
+            defer { isCreatingFolder = false }
+            do {
+                try await manager.createDirectory(remote: remote, path: destination)
+                await load()
+            } catch {
+                folderCreationError = "Unable to create \"\(name)\". \(error.localizedDescription)"
+            }
+        }
     }
 
     private func load() async {

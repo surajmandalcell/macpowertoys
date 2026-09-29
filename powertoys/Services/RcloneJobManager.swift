@@ -423,6 +423,11 @@ final class RcloneJobManager {
         return try await client.listDirectory(fs: fs, remote: path, recurse: recurse)
     }
 
+    func createDirectory(remote: RcloneRemote, path: String) async throws {
+        guard let client else { throw RcloneRCError.notReachable }
+        try await client.createDirectory(fs: remote.pathPrefix, remote: path)
+    }
+
     func websiteName(for fs: String) -> String? {
         websiteRemote(for: fs)?.websiteName
     }

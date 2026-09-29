@@ -253,6 +253,10 @@ actor RcloneRCClient {
         }
     }
 
+    func createDirectory(fs: String, remote: String) async throws {
+        _ = try await post("operations/mkdir", body: ["fs": fs, "remote": remote], timeout: 120)
+    }
+
     func folderID(fs: String, remote: String) async throws -> String {
         let json = try await post("operations/stat", body: ["fs": fs, "remote": remote])
         guard let item = json["item"] as? [String: Any],
