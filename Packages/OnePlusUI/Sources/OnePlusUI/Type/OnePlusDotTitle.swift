@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct OnePlusDotTitle: View {
-    public static let lineHeight: CGFloat = 20
+    public nonisolated static let lineHeight: CGFloat = 20
     private let text: String
     private let height: CGFloat
     private let dotRatio: CGFloat
