@@ -38,6 +38,11 @@ nonisolated func portmanMemoryString(_ bytes: Int64) -> String {
     bytes == 0 ? "0 KB" : ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
 }
 
+nonisolated func portmanServerName(project: String?, processName: String) -> String {
+    guard let project, !project.isEmpty, project != "/" else { return processName }
+    return project
+}
+
 nonisolated func portmanOverviewPresentation(
     ports: [PortmanLocalPort], history: [String: [PortmanSample]],
     metadata: [String: PortmanMetadata], lastConnectionAt: [String: Date],
@@ -236,6 +241,10 @@ struct PortmanPanelView: View {
                 OnePlusMenuTab(.settings, "Settings", systemImage: "gearshape", accessibilityIdentifier: "portman.page.Settings")
             ], selection: Binding(get: { page }, set: navigate))
         } actions: {
+            OnePlusMenuOpenApp {
+                ToolActionRouter.shared.open(toolID: "main", page: "tool/portman")
+            }
+            .accessibilityIdentifier("portman.open-app")
             Button {
                 refreshTask?.cancel()
                 refreshTask = Task { await service.refreshLocal() }
@@ -447,7 +456,7 @@ struct PortmanPanelView: View {
             HStack {
                 Spacer()
                 Text(cleanupMode ? "Clean up" : focusedSegment.map {
-                    "\(service.metadata[$0.port.id]?.project ?? $0.port.command) :\($0.port.port)"
+                    "\(portmanServerName(project: service.metadata[$0.port.id]?.project, processName: $0.port.command)) :\($0.port.port)"
                 } ?? "Servers")
                     .onePlusText(.sectionTitle)
                     .lineLimit(1)
@@ -575,9 +584,11 @@ struct PortmanPanelView: View {
                         .foregroundStyle(portColor(port))
                         .frame(width: 52, alignment: .leading)
                         VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                            Text(service.metadata[port.id]?.branch ?? service.metadata[port.id]?.project ?? port.command)
+                            Text(service.metadata[port.id]?.branch
+                                 ?? portmanServerName(project: service.metadata[port.id]?.project,
+                                                      processName: port.command))
                                 .onePlusText(.cardTitle).lineLimit(1)
-                            Text("\(service.metadata[port.id]?.project ?? port.command) · up \(port.uptime)")
+                            Text("\(portmanServerName(project: service.metadata[port.id]?.project, processName: port.command)) · up \(port.uptime)")
                                 .onePlusText(.caption)
                                 .lineLimit(1)
                         }
@@ -733,7 +744,8 @@ struct PortmanPanelView: View {
                     .focusEffectDisabled()
                     .onePlusText(.caption)
                 Spacer()
-                Text(service.metadata[port.id]?.project ?? port.command)
+                Text(portmanServerName(project: service.metadata[port.id]?.project,
+                                       processName: port.command))
                     .onePlusText(.sectionTitle).lineLimit(1)
                 Spacer()
                 Button { openLocal(port.port) } label: {
@@ -1077,7 +1089,7 @@ struct PortmanPanelView: View {
                 }
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     OnePlusTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
-                        .accessibilityLabel("Remote port to add").disabled(host.isEmpty)
+                        .accessibilityLabel("Remote port to add")
                     Button("Add port", action: addManualPort).disabled(host.isEmpty)
                         .buttonStyle(OnePlusButtonStyle(.neutral, size: .small, minWidth: forwardActionWidth))
                 }
@@ -1714,9 +1726,12 @@ final class PortmanMenuController: NSObject {
             for _ in 0..<200 {
                 guard !Task.isCancelled, let button = self.item?.button, !self.popover.isShown else { return }
                 if button.window != nil && button.bounds.width > 0 {
+                    self.popover.appearance = NSApp.appearance
                     self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
+                    self.popover.contentViewController?.view.appearance = NSApp.appearance
                     self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: OnePlusMenuMetrics.width)
                     self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+                    self.popover.contentViewController?.view.window?.appearance = NSApp.appearance
                     NSApp.activate(ignoringOtherApps: true)
                     self.popover.contentViewController?.view.window?.makeKey()
                     if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }

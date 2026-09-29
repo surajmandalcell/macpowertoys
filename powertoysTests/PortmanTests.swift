@@ -104,6 +104,12 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(presentation.scanRangeText, "3000–9999")
     }
 
+    func testServerNameFallsBackFromTheRootFolderToTheProcess() {
+        XCTAssertEqual(portmanServerName(project: "macpowertoys", processName: "node"), "macpowertoys")
+        XCTAssertEqual(portmanServerName(project: "/", processName: "node"), "node")
+        XCTAssertEqual(portmanServerName(project: nil, processName: "python3"), "python3")
+    }
+
     func testRemotePortsAndTunnelStayOnLoopback() throws {
         let output = """
         LISTEN 0 4096 127.0.0.1:3000 0.0.0.0:*
