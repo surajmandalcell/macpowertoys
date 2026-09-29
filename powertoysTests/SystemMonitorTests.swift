@@ -192,7 +192,24 @@ final class SystemMonitorTests: XCTestCase {
 
     func testNativeProcessSampleIncludesCurrentProcess() async {
         let processes = await SystemMonitorProcessSampler().sample()
-        XCTAssertTrue(processes.contains { $0.pid == getpid() && !$0.name.isEmpty })
+        XCTAssertTrue(processes.contains { $0.pid == getpid() && !$0.name.isEmpty && $0.cpuPercent != nil })
+    }
+
+    func testSmartBatteryPropertiesReadRegistryValues() {
+        let details = SystemMonitorBatteryProperties.details(from: [
+            "CycleCount": NSNumber(value: 92),
+            "Voltage": NSNumber(value: 12_123),
+            "Amperage": NSNumber(value: -840),
+            "BatteryData": [
+                "NominalChargeCapacity": NSNumber(value: 7_689),
+                "DesignCapacity": NSNumber(value: 8_579),
+            ],
+        ])
+
+        XCTAssertEqual(details.cycleCount, 92)
+        XCTAssertEqual(details.health, "90%")
+        XCTAssertEqual(details.voltageMillivolts, 12_123)
+        XCTAssertEqual(details.amperageMilliamps, -840)
     }
 
     func testSelectedProcessCountersRefreshAcrossSamples() async throws {
