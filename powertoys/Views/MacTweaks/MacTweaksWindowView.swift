@@ -95,6 +95,7 @@ struct MacTweaksWindowView: View {
     @State private var preferenceRevision = 0
     @State private var preferenceSelections: [String: Int] = [:]
     @State private var modifiedIdentities: Set<String> = []
+    @State private var backedUpIdentities: Set<String> = []
     @State private var modifiedEntries: [MacTweaksModifiedEntry] = []
     @State private var notice: MacTweaksNotice?
     @State private var noticeTask: Task<Void, Never>?
@@ -183,7 +184,7 @@ struct MacTweaksWindowView: View {
             Button("Reset all", role: .destructive) { resetAllModified() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Mac Tweaks restores only values it changed. Unrelated settings stay untouched.")
+            Text("Mac Tweaks restores backed-up values. Other listed values return to their system defaults.")
         }
         .confirmationDialog("Restart Mac audio?", isPresented: $showsReviveConfirmation) {
             Button("Revive Audio") { reviveAudio() }
@@ -299,9 +300,12 @@ struct MacTweaksWindowView: View {
                 }
             }
             HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
-                MacTweaksPanel("Input priority", glyph: .input) {
+                MacTweaksPanel("Input priority", glyph: .priority) {
                     ForEach(0..<4, id: \.self) { index in
-                        MacTweaksInlineRow(index == 0 ? "Primary" : "Fallback \(index)") {
+                        MacTweaksInlineRow(
+                            index == 0 ? "Primary" : "Fallback \(index)",
+                            controlWidth: OnePlusMetrics.wideControlColumn
+                        ) {
                             microphoneMenu(index: index)
                         }
                         if index < 3 { MacTweaksRowDivider() }
@@ -323,7 +327,7 @@ struct MacTweaksWindowView: View {
                     .padding(.top, OnePlusMetrics.spacing[2])
                     .padding(.trailing, OnePlusMetrics.spacing[4])
                 }
-                MacTweaksPanel("Current input", glyph: .input) {
+                MacTweaksPanel("Current input", glyph: .microphone) {
                     MacTweaksInlineRow("Microphone") {
                         Text(currentMicrophoneName).lineLimit(1)
                             .onePlusText(.control)
@@ -360,7 +364,7 @@ struct MacTweaksWindowView: View {
                     }
                 }
             }
-            preferencePanel("Keyboard", glyph: .input, itemIDs: ["input.press-hold"])
+            preferencePanel("Keyboard", glyph: .keyboard, itemIDs: ["input.press-hold"])
         }
     }
 
@@ -387,7 +391,7 @@ struct MacTweaksWindowView: View {
                 }
                 MacTweaksRowDivider()
                 MacTweaksInlineRow("Status") {
-                    Text(awake.statusText).onePlusText(.mono)
+                    Text(awakeStatusText).onePlusText(.mono)
                         .foregroundStyle(awake.assertionError == nil ? MacTweaksPalette.secondary : MacTweaksPalette.accent)
                         .lineLimit(1)
                 }
@@ -469,7 +473,7 @@ struct MacTweaksWindowView: View {
                 OnePlusEmptyState(
                     "No modified settings",
                     systemImage: "checkmark.circle",
-                    caption: "Settings changed with Mac Tweaks will appear here."
+                    caption: "Settings that differ from their defaults appear here."
                 )
                 .frame(maxWidth: .infinity, minHeight: 390)
             } else {
@@ -519,7 +523,14 @@ struct MacTweaksWindowView: View {
                 .frame(width: 170, alignment: .leading)
             Button {
                 do {
-                    try TweakPreferenceStore.shared.restore([entry.field])
+                    if backedUpIdentities.contains(entry.field.identity) {
+                        try TweakPreferenceStore.shared.restore([entry.field])
+                    } else {
+                        try TweakPreferenceStore.shared.apply(
+                            [entry.field],
+                            selections: [entry.field.identity: -1]
+                        )
+                    }
                     preferenceRevision += 1
                     showNotice(restoredNotice(for: entry))
                     if modifiedEntries.count == 1 { selectedPage = entry.category.id }
@@ -540,7 +551,7 @@ struct MacTweaksWindowView: View {
 
     private var aboutPage: some View {
         VStack(alignment: .leading, spacing: 16) {
-            MacTweaksPanel("Mac Tweaks", glyph: .apps) {
+            OnePlusCard {
                 HStack(spacing: 20) {
                     Image("MacTweaksLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 68, height: 68)
                     VStack(alignment: .leading, spacing: 6) {
@@ -550,7 +561,7 @@ struct MacTweaksWindowView: View {
                     }
                     Spacer()
                 }
-                .padding(OnePlusMetrics.gutter)
+                .padding(OnePlusMetrics.cardPadding)
                 MacTweaksRowDivider()
                 aboutRow("Version", value: appVersion)
                 MacTweaksRowDivider()
@@ -559,7 +570,7 @@ struct MacTweaksWindowView: View {
                 aboutRow("System access", value: "Requested only when selected")
             }
             .frame(width: 620)
-            MacTweaksPanel("Keyboard", glyph: .input) {
+            MacTweaksPanel("Keyboard", glyph: .keyboard) {
                 aboutRow("Search", value: "⌘ K")
                 MacTweaksRowDivider()
                 aboutRow("Clear search or close a menu", value: "Esc")
@@ -615,6 +626,7 @@ struct MacTweaksWindowView: View {
             revision: preferenceRevision,
             selections: preferenceSelections,
             modifiedIdentities: modifiedIdentities,
+            backedUpIdentities: backedUpIdentities,
             onChanged: preferenceChanged,
             onError: showError
         )
@@ -681,15 +693,19 @@ struct MacTweaksWindowView: View {
         let originals = snapshot.0
         let selections = snapshot.1
         preferenceSelections = selections
-        modifiedIdentities = Set(originals.keys)
+        backedUpIdentities = Set(originals.keys)
+        modifiedIdentities = Set(candidates.compactMap { _, _, field in
+            field.differsFromDefault(selections[field.identity] ?? -1) ? field.identity : nil
+        })
         modifiedEntries = candidates.compactMap { category, item, field in
-            guard let original = originals[field.identity] else { return nil }
+            let current = selections[field.identity] ?? -1
+            guard field.differsFromDefault(current) else { return nil }
             return MacTweaksModifiedEntry(
                 category: category,
                 item: item,
                 field: field,
-                currentSelection: selections[field.identity] ?? -1,
-                originalSelection: original
+                currentSelection: current,
+                originalSelection: originals[field.identity] ?? -1
             )
         }
     }
@@ -759,9 +775,14 @@ struct MacTweaksWindowView: View {
     }
 
     private func resetAllModified() {
-        let fields = modifiedEntries.map(\.field)
+        let backedUp = modifiedEntries.map(\.field).filter { backedUpIdentities.contains($0.identity) }
+        let external = modifiedEntries.map(\.field).filter { !backedUpIdentities.contains($0.identity) }
         do {
-            try TweakPreferenceStore.shared.restore(fields)
+            try TweakPreferenceStore.shared.restore(backedUp)
+            try TweakPreferenceStore.shared.apply(
+                external,
+                selections: Dictionary(uniqueKeysWithValues: external.map { ($0.identity, -1) })
+            )
             preferenceRevision += 1
             selectedPage = "dock"
             showNotice(.init(message: "All Mac Tweaks changes were restored. Restart affected apps or sign out when convenient."))
@@ -825,15 +846,16 @@ struct MacTweaksWindowView: View {
 
     @ViewBuilder
     private var inputLevelControl: some View {
+        HStack(spacing: OnePlusMetrics.spacing[3]) {
+            MacTweaksLevelMeter(level: meter.permission == .authorized ? meter.level : 0)
+                .frame(width: 146, height: 9)
         if meter.permission == .authorized {
-            HStack(spacing: 8) {
-                MacTweaksLevelMeter(level: meter.level).frame(width: 146, height: 9)
                 MacTweaksBorderedButton(meter.level > 0 ? "Live" : "Test") { meter.start() }
-            }
         } else if meter.permission == .notDetermined {
             MacTweaksBorderedButton("Test") { Task { await meter.requestAndStart() } }
         } else {
             MacTweaksBorderedButton("Microphone Settings") { meter.openMicrophoneSettings() }
+        }
         }
     }
 
@@ -870,6 +892,16 @@ struct MacTweaksWindowView: View {
         case .indefinite: "Indefinitely"
         case .thirtyMinutes: "30 minutes"
         case .oneHour: "1 hour"
+        case .custom: awake.statusText
+        }
+    }
+
+    private var awakeStatusText: String {
+        switch AwakeQuickMode(configuration: awake.configuration) {
+        case .off: "Inactive"
+        case .indefinite: "Awake indefinitely"
+        case .thirtyMinutes: "Awake for 30 minutes"
+        case .oneHour: "Awake for 1 hour"
         case .custom: awake.statusText
         }
     }
@@ -926,10 +958,19 @@ private struct MacTweaksStandalonePanel<Content: View>: View {
 
 private struct MacTweaksInlineRow<Control: View>: View {
     let title: String
+    let controlWidth: CGFloat
     let control: Control
-    init(_ title: String, @ViewBuilder control: () -> Control) { self.title = title; self.control = control() }
+    init(
+        _ title: String,
+        controlWidth: CGFloat = OnePlusMetrics.controlColumn,
+        @ViewBuilder control: () -> Control
+    ) {
+        self.title = title
+        self.controlWidth = controlWidth
+        self.control = control()
+    }
     var body: some View {
-        OnePlusSettingRow(title, separator: false) { control }
+        OnePlusSettingRow(title, controlWidth: controlWidth, separator: false) { control }
     }
 }
 
