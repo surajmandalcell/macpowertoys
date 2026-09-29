@@ -3,6 +3,16 @@ import XCTest
 
 @MainActor
 final class MainCatalogTests: XCTestCase {
+    func testModifiedPairsShortGroupsWithoutReorderingLongGroups() {
+        XCTAssertTrue(MainModifiedView.groupRows([]).isEmpty)
+        XCTAssertEqual(MainModifiedView.groupRows([
+            ("app", 1), ("rclone", 3), ("ruler", 5), ("awake", 1), ("logs", 2), ("nettoys", 1)
+        ]), [["app", "rclone"], ["ruler"], ["awake", "logs"], ["nettoys"]])
+        XCTAssertEqual(MainModifiedView.groupRows([
+            ("app", 1), ("ruler", 5), ("awake", 1)
+        ]), [["app"], ["ruler"], ["awake"]])
+    }
+
     func testSearchMatchesEveryFieldAndRequiresEveryTerm() {
         let tool = CatalogTool(id: "notes", name: "Résumé Notes", description: "Copy useful passages",
                                category: .text, searchKeywords: ["clipboard"])

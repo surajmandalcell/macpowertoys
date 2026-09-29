@@ -129,12 +129,12 @@ struct MarketplaceSettingsView: View {
     @ViewBuilder private func actions(_ entry: MarketplaceEntry) -> some View {
         if entry.status == .available || entry.status == .updateAvailable {
             Button(entry.status == .available ? "Install" : "Update") { install(entry) }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small)).disabled(busy)
+                .buttonStyle(OnePlusButtonStyle(.neutral)).disabled(busy)
         }
         if entry.receipt != nil {
             MainOpenToolButton(toolID: entry.id).disabled(busy)
             Button("Uninstall") { uninstallTarget = entry }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small)).disabled(busy)
+                .buttonStyle(OnePlusButtonStyle(.neutral)).disabled(busy)
         }
     }
 
