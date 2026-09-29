@@ -22,6 +22,26 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertFalse(sidebar.contains("private var hasChanges: Bool"))
     }
 
+    func testMainCatalogPreparesRowsOutsideBodyEvaluation() throws {
+        let catalog = try sourceFile("powertoys/Views/AllToolsGridView.swift")
+        let catalogBody = try XCTUnwrap(catalog.range(of: "var body: some View"))
+        let catalogHelpers = try XCTUnwrap(catalog.range(of: "private var tabTools"))
+        let body = catalog[catalogBody.lowerBound..<catalogHelpers.lowerBound]
+        XCTAssertFalse(body.contains(".filter"))
+        XCTAssertFalse(body.contains("MainCatalog.sorted"))
+        XCTAssertTrue(catalog.contains("@State private var visibleTools"))
+        XCTAssertTrue(catalog.contains("private func refreshCatalog()"))
+
+        let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")
+        let sidebarBody = try XCTUnwrap(sidebar.range(of: "var body: some View"))
+        let sidebarRefresh = try XCTUnwrap(sidebar.range(of: "private func refreshVisibleTools()"))
+        XCTAssertFalse(sidebar[sidebarBody.lowerBound..<sidebarRefresh.lowerBound].contains(".filter"))
+
+        let home = try sourceFile("powertoys/Views/HomeView.swift")
+        XCTAssertFalse(home.contains("ForEach(Array(ToolRegistry.allTools"))
+        XCTAssertTrue(home.contains("ForEach(shortcutTools.indices"))
+    }
+
     func testModifiedPairsShortGroupsWithoutReorderingLongGroups() {
         XCTAssertTrue(MainModifiedView.groupRows([]).isEmpty)
         XCTAssertEqual(MainModifiedView.groupRows([

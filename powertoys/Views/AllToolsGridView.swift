@@ -14,6 +14,11 @@ struct AllToolsGridView: View {
     @FocusState private var focusedCard: String?
     @State private var typedPrefix = ""
     @State private var lastTypedAt = Date.distantPast
+    @State private var favoriteIDs: Set<String> = []
+    @State private var visibleTools: [any Tool] = []
+    @State private var toolCount = 0
+    @State private var enabledCount = 0
+    @State private var favoriteCount = 0
 
     init(selectedTool: Binding<String?>, query: String = "",
          filter: Binding<MainCatalogFilter> = .constant(.all),
@@ -22,24 +27,14 @@ struct AllToolsGridView: View {
         self.changed = changed
     }
 
-    private var favorites: Set<String> { MainCatalog.favorites(from: storedFavorites) }
-    private var tools: [any Tool] { ToolRegistry.allTools }
-    private var visibleTools: [any Tool] {
-        MainCatalog.sorted(tools.filter {
-            MainCatalog.matches($0, query: query) && (filter == .all
-                || filter == .enabled && settings.isToolEnabled($0.id)
-                || filter == .favorites && favorites.contains($0.id))
-        }, by: sort)
-    }
-
     var body: some View {
         OnePlusPage {
             OnePlusPageHeader(title: "All tools", subtitle: "Your Mac, a little more capable.")
         } tabs: {
             OnePlusTabStrip(tabs: [
-                OnePlusTab(.all, "All tools", count: tools.count),
-                OnePlusTab(.enabled, "Enabled", count: tools.filter { settings.isToolEnabled($0.id) }.count),
-                OnePlusTab(.favorites, "Favorites", count: tools.filter { favorites.contains($0.id) }.count)
+                OnePlusTab(.all, "All tools", count: toolCount),
+                OnePlusTab(.enabled, "Enabled", count: enabledCount),
+                OnePlusTab(.favorites, "Favorites", count: favoriteCount)
             ], selection: $filter) { tabTools }
         } content: {
             if visibleTools.isEmpty { emptyState }
@@ -48,14 +43,26 @@ struct AllToolsGridView: View {
         }
         .accessibilityIdentifier("main.all-tools")
         .onChange(of: focusedCard) { _, id in if let id { focusedToolID = id } }
-        .onChange(of: storedFavorites) { changed() }
-        .onChange(of: sort) { changed() }
+        .onChange(of: query) { _, _ in refreshCatalog() }
+        .onChange(of: filter) { _, _ in refreshCatalog() }
+        .onChange(of: settings.disabledToolIDs) { _, _ in refreshCatalog() }
+        .onChange(of: storedFavorites) { _, value in
+            let updated = MainCatalog.favorites(from: value)
+            if updated != favoriteIDs { favoriteIDs = updated; refreshCatalog() }
+            changed()
+        }
+        .onChange(of: sort) { refreshCatalog(); changed() }
         .onChange(of: viewMode) { changed() }
+        .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshCatalog() }
+        .onAppear {
+            favoriteIDs = MainCatalog.favorites(from: storedFavorites)
+            refreshCatalog()
+        }
     }
 
     private var tabTools: some View {
         HStack(spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSelect(choices: MainCatalogSort.allCases.map { ($0, $0.title) },
+            OnePlusSelect(choices: MainCatalogSort.choices,
                           selection: $sort, accessibilityLabel: "Sort tools")
             OnePlusSegmented(iconChoices: [(.grid, "Grid", "square.grid.2x2"), (.list, "List", "list.bullet")],
                              selection: $viewMode, accessibilityLabel: "Tool view")
@@ -97,10 +104,12 @@ struct AllToolsGridView: View {
     }
 
     private func favoriteBinding(_ id: String) -> Binding<Bool> {
-        Binding(get: { favorites.contains(id) }, set: { value in
-            var updated = favorites
+        Binding(get: { favoriteIDs.contains(id) }, set: { value in
+            var updated = favoriteIDs
             if value { updated.insert(id) } else { updated.remove(id) }
+            favoriteIDs = updated
             storedFavorites = MainCatalog.storing(favorites: updated)
+            refreshCatalog()
         })
     }
 
@@ -126,5 +135,17 @@ struct AllToolsGridView: View {
         focusedCard = visibleTools.first {
             $0.name.range(of: typedPrefix, options: [.anchored, .caseInsensitive, .diacriticInsensitive]) != nil
         }?.id ?? focusedCard
+    }
+
+    private func refreshCatalog() {
+        let tools = ToolRegistry.allTools
+        toolCount = tools.count
+        enabledCount = tools.lazy.filter { settings.isToolEnabled($0.id) }.count
+        favoriteCount = tools.lazy.filter { favoriteIDs.contains($0.id) }.count
+        visibleTools = MainCatalog.sorted(tools.filter {
+            MainCatalog.matches($0, query: query) && (filter == .all
+                || filter == .enabled && settings.isToolEnabled($0.id)
+                || filter == .favorites && favoriteIDs.contains($0.id))
+        }, by: sort)
     }
 }

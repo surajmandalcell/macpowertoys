@@ -8,6 +8,7 @@ struct HomeView: View {
     @State private var settingsTab = MainSettingsTab.general
     @State private var focusedToolID: String?
     @State private var modifiedRevision = 0
+    @State private var shortcutTools: [any Tool] = []
 
     var body: some View {
         OnePlusWindowRoot(canvas: .main) {
@@ -40,6 +41,10 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             modifiedRevision += 1
         }
+        .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in
+            refreshShortcutTools()
+        }
+        .onAppear(perform: refreshShortcutTools)
     }
 
     @ViewBuilder private var content: some View {
@@ -62,8 +67,8 @@ struct HomeView: View {
     private var keyboardActions: some View {
         Group {
             Button("All tools") { openPage("all-tools") }.keyboardShortcut("1")
-            ForEach(Array(ToolRegistry.allTools.prefix(8).indices), id: \.self) { index in
-                Button(ToolRegistry.allTools[index].name) { openPage(ToolRegistry.allTools[index].id) }
+            ForEach(shortcutTools.indices, id: \.self) { index in
+                Button(shortcutTools[index].name) { openPage(shortcutTools[index].id) }
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 2))))
             }
             MainOpenToolButton(toolID: selectedLaunchToolID, title: "Open selected tool")
@@ -85,5 +90,9 @@ struct HomeView: View {
         case .modified: selectedTool = "modified"
         case .tool(let id): selectedTool = id
         }
+    }
+
+    private func refreshShortcutTools() {
+        shortcutTools = Array(ToolRegistry.allTools.prefix(8))
     }
 }
