@@ -51,8 +51,13 @@ final class OnePlusTableTests: XCTestCase {
             model.rows = (1...count).reversed().map {
                 OnePlusTableItem(id: String($0), cells: ["Workstation \($0)", "Apple", "Completed"], symbol: "doc")
             }
-            host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            let deadline = Date(timeIntervalSinceNow: 1)
+            repeat {
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+                if let table = find(host), table.numberOfRows == count,
+                   table.headerView is OnePlusTableHeaderView { break }
+            } while Date() < deadline
             let table = try XCTUnwrap(find(host))
             XCTAssertEqual(table.numberOfRows, count)
             XCTAssertNotEqual(table.style, .plain, "Do not change SwiftUI's native style during row updates")
