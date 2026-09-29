@@ -34,14 +34,35 @@ private struct OnePlusMenuHeightKey: PreferenceKey {
 public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
     let tabs: Tabs
     let actions: Actions
-    let content: Body
+    let content: () -> Body
     let maximumHeight: CGFloat?
-    @State private var contentHeight: CGFloat?
     public init(maximumHeight: CGFloat? = nil, @ViewBuilder tabs: () -> Tabs,
-                @ViewBuilder actions: () -> Actions, @ViewBuilder content: () -> Body) {
-        self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content()
+                @ViewBuilder actions: () -> Actions, @ViewBuilder content: @escaping () -> Body) {
+        self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content
     }
     public var body: some View {
+        OnePlusMenuPanelShell(maximumHeight: maximumHeight, tabs: tabs, actions: actions, content: content)
+            .onePlusLiveUpdates()
+    }
+}
+
+struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
+    let maximumHeight: CGFloat?
+    let tabs: Tabs
+    let actions: Actions
+    let content: () -> Body
+    @Environment(\.onePlusIsVisible) private var isVisible
+    @State private var contentHeight: CGFloat?
+
+    init(maximumHeight: CGFloat?, tabs: Tabs, actions: Actions,
+         content: @escaping () -> Body) {
+        self.maximumHeight = maximumHeight
+        self.tabs = tabs
+        self.actions = actions
+        self.content = content
+    }
+
+    var body: some View {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
         let defaultHeight = screenHeight.isFinite ? max(0, screenHeight) * OnePlusMenuMetrics.heightFraction : 720
         let requestedHeight = maximumHeight.flatMap { $0.isFinite ? max(0, $0) : nil } ?? defaultHeight
@@ -54,11 +75,13 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
                 HStack(spacing: 2) { actions }.fixedSize()
             }.padding(.horizontal, 8).padding(.top, OnePlusMenuMetrics.topBarTop).padding(.bottom, OnePlusMenuMetrics.topBarBottom)
             ScrollView {
-                VStack(alignment: .leading, spacing: 5) { content }
-                    .frame(width: 338).padding(.horizontal, 8).padding(.top, 3).padding(.bottom, 8)
-                    .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
+                if isVisible {
+                    VStack(alignment: .leading, spacing: 5) { content() }
+                        .frame(width: 338).padding(.horizontal, 8).padding(.top, 3).padding(.bottom, 8)
+                        .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
+                }
             }
-            .onePlusScrollIndicators().frame(height: min(contentHeight ?? bodyCap, bodyCap))
+            .onePlusScrollIndicators().frame(height: isVisible ? min(contentHeight ?? bodyCap, bodyCap) : 0)
             .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0.isFinite, $0 > 0 { contentHeight = $0 } }
         }.padding(1).frame(width: 356).background(OnePlusColor.sidebar)
             .clipShape(RoundedRectangle(cornerRadius: 11))

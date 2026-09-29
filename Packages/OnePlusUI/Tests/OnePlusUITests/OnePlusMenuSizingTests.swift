@@ -21,17 +21,34 @@ final class OnePlusMenuSizingTests: XCTestCase {
 
     func testExplicitMaximumCannotExceedTheVisibleScreenCap() {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
-        let host = NSHostingView(rootView: OnePlusMenuPanel(maximumHeight: screenHeight * 2) {
-            OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")], selection: .constant("home"))
-        } actions: {
-            OnePlusMenuOpenApp {}
-        } content: {
-            Color.clear.frame(height: screenHeight * 3)
-        })
+        let host = NSHostingView(rootView: OnePlusMenuPanelShell(
+            maximumHeight: screenHeight * 2,
+            tabs: OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")],
+                                      selection: .constant("home")),
+            actions: OnePlusMenuOpenApp {},
+            content: { Color.clear.frame(height: screenHeight * 3) }
+        ).environment(\.onePlusIsVisible, true))
         host.frame.size = NSSize(width: 356, height: 600)
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
         XCTAssertEqual(host.fittingSize.height, screenHeight * 0.9, accuracy: 0.5)
+    }
+
+    func testClosedPanelDoesNotConstructItsContent() {
+        let counter = MenuContentCounter()
+        let hidden = NSHostingView(rootView: OnePlusMenuPanelShell(
+            maximumHeight: 600, tabs: EmptyView(), actions: EmptyView(),
+            content: { counter.content() }
+        ).environment(\.onePlusIsVisible, false))
+        hidden.layoutSubtreeIfNeeded()
+        XCTAssertEqual(counter.buildCount, 0)
+
+        let visible = NSHostingView(rootView: OnePlusMenuPanelShell(
+            maximumHeight: 600, tabs: EmptyView(), actions: EmptyView(),
+            content: { counter.content() }
+        ).environment(\.onePlusIsVisible, true))
+        visible.layoutSubtreeIfNeeded()
+        XCTAssertGreaterThan(counter.buildCount, 0)
     }
 }
 
@@ -43,12 +60,20 @@ private final class MenuSizingModel: ObservableObject {
 private struct MenuSizingContent: View {
     @ObservedObject var model: MenuSizingModel
     var body: some View {
-        OnePlusMenuPanel(maximumHeight: 600) {
-            OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")], selection: .constant("home"))
-        } actions: {
-            OnePlusMenuOpenApp {}
-        } content: {
-            Color.clear.frame(height: model.height)
-        }
+        OnePlusMenuPanelShell(
+            maximumHeight: 600,
+            tabs: OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")],
+                                      selection: .constant("home")),
+            actions: OnePlusMenuOpenApp {},
+            content: { Color.clear.frame(height: model.height) }
+        ).environment(\.onePlusIsVisible, true)
+    }
+}
+
+@MainActor private final class MenuContentCounter {
+    var buildCount = 0
+    func content() -> some View {
+        buildCount += 1
+        return Color.clear.frame(height: 80)
     }
 }
