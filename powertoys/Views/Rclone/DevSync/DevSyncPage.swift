@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 enum DevSyncFormat {
     private static let relativeFormatter: RelativeDateTimeFormatter = {
@@ -32,8 +33,7 @@ struct DevSyncSectionHeader: View {
     let title: String
 
     var body: some View {
-        Text(title.uppercased())
-            .utilitySectionHeader()
+        OnePlusSectionTitle(title)
     }
 }
 
@@ -136,7 +136,6 @@ struct DevSyncPage: View {
                 emptyState
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
         .utilityAnimation(value: manager.isShowingPairSettings)
         .sheet(isPresented: $manager.isPresentingSetup) {
             DevSyncSetupSheet()
@@ -145,24 +144,20 @@ struct DevSyncPage: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            EmptyStateView(icon: "externaldrive.badge.plus", message: "No Dev Sync pair yet")
-            Button {
-                manager.isPresentingSetup = true
-            } label: {
-                Label("Set Up Dev Sync", systemImage: "plus.circle.fill")
-                    .font(.system(size: 13, weight: .medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.accentColor))
-                    .foregroundStyle(.white)
+        OnePlusPage {
+            OnePlusPageHeader(title: "Dev Sync", subtitle: "Review every change before files move")
+        } content: {
+            OnePlusCard {
+                OnePlusEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", caption: "Pair an internal development folder with an external drive.") {
+                    Button {
+                        manager.isPresentingSetup = true
+                    } label: {
+                        Label("Set Up Dev Sync", systemImage: "plus")
+                    }
+                    .buttonStyle(OnePlusButtonStyle(.primary))
+                }
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -186,8 +181,10 @@ private struct DevSyncPairPage: View {
     }
 
     var body: some View {
-        WorkspacePage(pair.displayName, subtitle: subtitle) {
-            DevSyncPairActions(pair: pair, manager: manager, isConfirmingRemoval: $isConfirmingRemoval)
+        OnePlusPage {
+            OnePlusPageHeader(title: pair.displayName, subtitle: subtitle) {
+                DevSyncPairActions(pair: pair, manager: manager, isConfirmingRemoval: $isConfirmingRemoval)
+            }
         } content: {
             if let banner = manager.errorBanner {
                 DevSyncErrorBanner(message: banner) { manager.errorBanner = nil }
@@ -242,22 +239,24 @@ private struct DevSyncPairPage: View {
     }
 
     private var safetyCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            DevSyncValueRow(label: "Safety store", value: RcloneFormat.bytes(status.safetyStoreBytes))
-            HStack {
-                Text(manager.safetyStoreURL(for: pair).path)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 8)
-                Button("Open Safety Store") {
-                    manager.reveal(manager.safetyStoreURL(for: pair))
+        OnePlusCard {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
+                DevSyncValueRow(label: "Safety store", value: RcloneFormat.bytes(status.safetyStoreBytes))
+                HStack {
+                    Text(manager.safetyStoreURL(for: pair).path)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 8)
+                    Button("Open Safety Store") {
+                        manager.reveal(manager.safetyStoreURL(for: pair))
+                    }
+                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
                 }
-                .controlSize(.small)
             }
+            .padding(OnePlusMetrics.cardPadding)
         }
-        .utilitySectionCard()
     }
 }
 
@@ -288,7 +287,7 @@ private struct DevSyncPairActions: View {
         Button("Sync Now") {
             Task { await manager.syncNow(pairID: pair.id) }
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(OnePlusButtonStyle(.primary))
         .disabled(!status.volumeOnline)
 
         Button(isPaused ? "Resume" : "Pause") {
@@ -333,7 +332,8 @@ private struct DevSyncStatusCard: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        OnePlusCard {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                 DevSyncValueRow(
                     label: "Drive",
@@ -383,8 +383,9 @@ private struct DevSyncStatusCard: View {
                     .foregroundStyle(.orange)
                     .textSelection(.enabled)
             }
+            }
+            .padding(OnePlusMetrics.cardPadding)
         }
-        .utilitySectionCard()
         .utilityAnimation(value: status)
     }
 }

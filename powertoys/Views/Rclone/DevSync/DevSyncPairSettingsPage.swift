@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 struct DevSyncRulesSection: View {
     @Binding var configuration: DevSyncConfiguration
@@ -206,9 +207,11 @@ struct DevSyncPairSettingsPage: View {
     @State private var isConfirmingRemoval = false
 
     var body: some View {
-        WorkspacePage("\(pair.displayName) Settings", subtitle: pair.mode.displayName) {
-            Button("Done") { manager.isShowingPairSettings = false }
-                .buttonStyle(.borderedProminent)
+        OnePlusPage {
+            OnePlusPageHeader(title: "\(pair.displayName) Settings", subtitle: pair.mode.displayName) {
+                Button("Done") { manager.isShowingPairSettings = false }
+                    .buttonStyle(OnePlusButtonStyle(.primary))
+            }
         } content: {
             if let configuration {
                 let binding = Binding(
@@ -238,8 +241,9 @@ struct DevSyncPairSettingsPage: View {
     }
 
     private var modeCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            DevSyncSectionHeader(title: "Mode")
+        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
+            OnePlusSectionTitle("Mode")
+            OnePlusCard {
             VStack(alignment: .leading, spacing: 6) {
                 DevSyncValueRow(label: "Mode", value: pair.mode.displayName)
                 Text(pair.mode.summary)
@@ -249,7 +253,8 @@ struct DevSyncPairSettingsPage: View {
                 DevSyncValueRow(label: "Internal root", value: pair.internalRoot.path)
                 DevSyncValueRow(label: "External root", value: pair.externalRoot.path)
             }
-            .utilitySectionCard()
+                .padding(OnePlusMetrics.cardPadding)
+            }
         }
     }
 
@@ -270,9 +275,8 @@ struct DevSyncPairSettingsPage: View {
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            DevSyncSectionHeader(title: title)
-            content()
-                .utilitySectionCard()
+            OnePlusSectionTitle(title)
+            OnePlusCard { content().padding(OnePlusMetrics.cardPadding) }
         }
     }
 }

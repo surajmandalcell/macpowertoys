@@ -5,6 +5,7 @@
 
 import AppKit
 import SwiftUI
+import OnePlusUI
 
 enum DevSetupStep: Int, CaseIterable, Identifiable {
     case roots
@@ -184,10 +185,7 @@ struct DevSyncSetupSheet: View {
     @State private var model: DevSyncSetupModel?
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            QuietDivider()
-
+        OnePlusSheet("Dev Sync Setup", width: .medium, close: { dismiss() }) {
             if let model {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -197,32 +195,36 @@ struct DevSyncSetupSheet: View {
                         }
                         DevSyncSetupStepContent(model: model)
                     }
-                    .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .thinScrollIndicators()
-
-                QuietDivider()
-                footer(model)
+                .onePlusScrollIndicators()
+                .frame(height: OnePlusMetrics.spacing[8] * 16)
+            }
+        } footer: {
+            if let model {
+                Button("Back") { model.back() }
+                    .buttonStyle(OnePlusButtonStyle(.ghost))
+                    .disabled(model.step == .roots || model.isWorking)
+                Button("Cancel") { dismiss() }
+                    .buttonStyle(OnePlusButtonStyle(.ghost))
+                    .keyboardShortcut(.cancelAction)
+                Button(model.primaryActionTitle) {
+                    Task {
+                        let created = await model.advance()
+                        guard created != nil else { return }
+                        await manager.load()
+                        dismiss()
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(OnePlusButtonStyle(.primary))
+                .disabled(!model.canContinue)
             }
         }
-        .frame(width: 560, height: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             guard model == nil else { return }
             model = DevSyncSetupModel(engine: manager.engine)
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("Set Up Dev Sync")
-                .font(.system(size: 13, weight: .medium))
-            Spacer()
-            UtilityModalCloseButton { dismiss() }
-        }
-        .padding(.horizontal, 20)
-        .frame(height: 40)
     }
 
     private func stepLabel(_ model: DevSyncSetupModel) -> some View {
@@ -236,31 +238,6 @@ struct DevSyncSetupSheet: View {
         }
     }
 
-    private func footer(_ model: DevSyncSetupModel) -> some View {
-        HStack(spacing: 8) {
-            Button("Back") { model.back() }
-                .disabled(model.step == .roots || model.isWorking)
-            Spacer()
-            Button("Cancel") { dismiss() }
-                .keyboardShortcut(.cancelAction)
-            Button {
-                Task {
-                    let created = await model.advance()
-                    guard created != nil else { return }
-                    await manager.load()
-                    dismiss()
-                }
-            } label: {
-                Text(model.primaryActionTitle)
-                    .fontWeight(.semibold)
-            }
-            .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
-            .disabled(!model.canContinue)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-    }
 }
 
 // MARK: - Step content

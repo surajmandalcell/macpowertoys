@@ -1,4 +1,5 @@
 import SwiftUI
+import OnePlusUI
 
 struct AddRemoteSheet: View {
     @Environment(RcloneJobManager.self) private var manager
@@ -64,10 +65,7 @@ struct AddRemoteSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            QuietDivider()
-
+        OnePlusSheet("Add Remote", width: .medium, close: close) {
             Group {
                 switch manager.authState {
                 case .idle:
@@ -82,14 +80,22 @@ struct AddRemoteSheet: View {
                     failedView(message: message)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 18, maxHeight: .infinity)
             .utilityAnimation(value: manager.authState)
-
-            QuietDivider()
-            footer
+        } footer: {
+            if case .idle = manager.authState, let provider = selectedProvider {
+                Button(connectButtonTitle) {
+                    let supplied = parameters.filter { !$0.value.isEmpty }
+                    manager.beginAddRemote(named: name, provider: provider, parameters: supplied)
+                }
+                .buttonStyle(OnePlusButtonStyle(.primary))
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canConnect)
+            }
+            Button(closeButtonTitle, action: close)
+                .buttonStyle(OnePlusButtonStyle(.ghost))
+                .keyboardShortcut(.cancelAction)
         }
-        .frame(width: 520, height: 620)
-        .background(Color(nsColor: .windowBackgroundColor))
         .task {
             await manager.loadProviders()
             if selectedProviderID.isEmpty {
@@ -109,29 +115,6 @@ struct AddRemoteSheet: View {
         .onChange(of: selectedAuthenticationMode) {
             applyAuthenticationMode()
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: selectedProvider.map { RcloneRemote(name: "", type: $0.name).icon } ?? "cloud")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(.tint)
-                .frame(width: 36, height: 36)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.1)))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Add Cloud Connector")
-                    .font(.system(size: 15, weight: .semibold))
-                Text("Powered by rclone. OAuth providers open your browser and store credentials locally.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer()
-            UtilityModalCloseButton(action: close)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
     }
 
     @ViewBuilder
@@ -377,25 +360,6 @@ struct AddRemoteSheet: View {
                 .padding(.top, 4)
         }
         .padding(20)
-    }
-
-    private var footer: some View {
-        HStack {
-            if case .idle = manager.authState, let provider = selectedProvider {
-                Button(connectButtonTitle) {
-                    let supplied = parameters.filter { !$0.value.isEmpty }
-                    manager.beginAddRemote(named: name, provider: provider, parameters: supplied)
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(!canConnect)
-            }
-            Spacer()
-            Button(closeButtonTitle, action: close)
-                .keyboardShortcut(.cancelAction)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
 
     private var closeButtonTitle: String {

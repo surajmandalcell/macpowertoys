@@ -1,185 +1,151 @@
-//
-//  ActivityView.swift
-//  powertoys
-//
-
-import SwiftUI
+import AppKit
+import OnePlusUI
 import SwiftData
+import SwiftUI
 
 struct ActivityView: View {
     @Query(sort: \TransferRecord.createdAt, order: .reverse) private var records: [TransferRecord]
-
-    private static let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f
-    }()
-
-    private var dayGroups: [(day: Date, records: [TransferRecord])] {
-        Dictionary(grouping: records) { Calendar.current.startOfDay(for: $0.createdAt) }
-            .sorted { $0.key > $1.key }
-            .map { (day: $0.key, records: $0.value) }
-    }
-
-    private var totalBytes: Int64 {
-        records.reduce(0) { $0 + $1.bytes }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            QuietDivider()
-
-            if records.isEmpty {
-                emptyState
-            } else {
-                ledger
-            }
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("Activity")
-                .font(.system(size: 13, weight: .medium))
-
-            Spacer()
-
-            if !records.isEmpty {
-                Text("\(records.count) transfer\(records.count == 1 ? "" : "s") · \(RcloneFormat.bytes(totalBytes)) moved")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .padding(.top, 12)
-    }
-
-    // MARK: Ledger
-
-    private var ledger: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 2) {
-                ForEach(dayGroups, id: \.day) { group in
-                    dayHeader(group.day)
-                    ForEach(group.records) { record in
-                        ActivityRow(record: record)
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
-        }
-        .thinScrollIndicators()
-    }
-
-    private func dayHeader(_ day: Date) -> some View {
-        Text(dayLabel(day).uppercased())
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.secondary)
-            .padding(.leading, 8)
-            .padding(.top, 16)
-            .padding(.bottom, 4)
-    }
-
-    private func dayLabel(_ day: Date) -> String {
-        if Calendar.current.isDateInToday(day) { return "Today" }
-        if Calendar.current.isDateInYesterday(day) { return "Yesterday" }
-        return Self.dayFormatter.string(from: day)
-    }
-
-    // MARK: Empty state
-
-    private var emptyState: some View {
-        VStack {
-            Spacer()
-            EmptyStateView(icon: "clock.arrow.circlepath", message: "No activity yet")
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Activity Row
-
-private struct ActivityRow: View {
-    let record: TransferRecord
-
-    @State private var isHovering = false
-    @State private var isHoveringInfo = false
-    @State private var showInfo = false
+    @State private var search = ""
+    @State private var searchFocus = 0
+    @State private var selection: Set<String> = []
+    @State private var sortColumn = 0
+    @State private var ascending = false
+    @State private var details: TransferDetails?
+    @State private var showDetails = false
 
     private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .none
-        f.timeStyle = .short
-        return f
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
     }()
 
-    private var caption: String {
-        [
-            Self.timeFormatter.string(from: record.createdAt),
-            RcloneFormat.bytes(record.bytes),
-            "\(record.filesTransferred) file\(record.filesTransferred == 1 ? "" : "s")",
-            RcloneFormat.duration(record.duration)
-        ].joined(separator: " · ")
+    private var visibleRecords: [TransferRecord] {
+        records
+            .filter {
+                search.isEmpty
+                    || $0.sourceDisplay.localizedCaseInsensitiveContains(search)
+                    || $0.destinationDisplay.localizedCaseInsensitiveContains(search)
+                    || $0.operation.displayName.localizedCaseInsensitiveContains(search)
+                    || $0.state.displayName.localizedCaseInsensitiveContains(search)
+            }
+            .sorted { left, right in
+                let result: ComparisonResult = switch sortColumn {
+                case 1: left.operation.displayName.localizedStandardCompare(right.operation.displayName)
+                case 2: left.sourceDisplay.localizedStandardCompare(right.sourceDisplay)
+                case 3: left.destinationDisplay.localizedStandardCompare(right.destinationDisplay)
+                case 4: left.bytes == right.bytes ? .orderedSame : left.bytes < right.bytes ? .orderedAscending : .orderedDescending
+                case 5: compare(left.duration ?? 0, right.duration ?? 0)
+                case 6: left.state.displayName.localizedStandardCompare(right.state.displayName)
+                default: left.createdAt.compare(right.createdAt)
+                }
+                return ascending ? result == .orderedAscending : result == .orderedDescending
+            }
+    }
+
+    private func compare<T: Comparable>(_ left: T, _ right: T) -> ComparisonResult {
+        if left < right { return .orderedAscending }
+        if left > right { return .orderedDescending }
+        return .orderedSame
+    }
+
+    private var rows: [OnePlusTableItem] {
+        visibleRecords.map {
+            OnePlusTableItem(
+                id: $0.id.uuidString,
+                cells: [
+                    Self.timeFormatter.string(from: $0.createdAt),
+                    $0.operation.displayName,
+                    $0.sourceDisplay,
+                    $0.destinationDisplay,
+                    RcloneFormat.bytes($0.bytes),
+                    RcloneFormat.duration($0.duration),
+                    $0.state.displayName
+                ],
+                symbol: $0.state.icon
+            )
+        }
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: record.state.icon)
-                .font(.system(size: 13))
-                .foregroundStyle(record.state.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(record.operation.displayName) · \(record.sourceDisplay) → \(record.destinationDisplay)")
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
-                Text(caption)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+        OnePlusPage(scrolls: false) {
+            OnePlusPageHeader(
+                title: "Activity",
+                subtitle: "\(records.count) transfers · \(RcloneFormat.bytes(records.reduce(0) { $0 + $1.bytes })) moved"
+            ) {
+                OnePlusSearchField(
+                    prompt: "Search activity",
+                    text: $search,
+                    width: OnePlusMetrics.wideControlColumn,
+                    focusTrigger: searchFocus,
+                    shortcutHint: "⌘F"
+                )
             }
-
-            Spacer(minLength: 8)
-
-            Button {
-                showInfo = true
-            } label: {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(isHoveringInfo ? 0.06 : 0))
+        } content: {
+            if records.isEmpty {
+                OnePlusCard {
+                    OnePlusEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
+                }
+            } else {
+                OnePlusCard {
+                    OnePlusNativeTable(
+                        columns: [
+                            OnePlusGridColumn("Time", width: 116),
+                            OnePlusGridColumn("Operation", width: 86),
+                            OnePlusGridColumn("Source", width: 170),
+                            OnePlusGridColumn("Destination", width: 170),
+                            OnePlusGridColumn("Size", width: 82, trailing: true),
+                            OnePlusGridColumn("Duration", width: 74, trailing: true),
+                            OnePlusGridColumn("Result", width: 82)
+                        ],
+                        rows: rows,
+                        selection: $selection,
+                        sortColumn: sortColumn,
+                        ascending: ascending,
+                        sort: { sortColumn = $0; ascending = $1 },
+                        open: showDetails,
+                        preview: showDetails,
+                        remove: { _ in },
+                        actions: actions
                     )
-                    .contentShape(Rectangle())
+                }
+                .frame(maxHeight: .infinity)
             }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .animation(.easeInOut(duration: 0.15), value: isHoveringInfo)
-            .onHover { isHoveringInfo = $0 }
-            .help("Details")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
-        )
-        .onHover { isHovering = $0 }
-        .sheet(isPresented: $showInfo) {
-            TransferInfoSheet(details: TransferDetails(record: record))
+        .sheet(isPresented: $showDetails) {
+            if let details { TransferInfoSheet(details: details) }
         }
+        .background { Button("") { searchFocus &+= 1 }.keyboardShortcut("f").hidden() }
+        .accessibilityIdentifier("rclone.activity")
+    }
+
+    private func record(for id: String) -> TransferRecord? {
+        records.first { $0.id.uuidString == id }
+    }
+
+    private func showDetails(_ ids: Set<String>) {
+        guard let id = ids.first, let record = record(for: id) else { return }
+        details = TransferDetails(record: record)
+        showDetails = true
+    }
+
+    private func actions(_ ids: Set<String>) -> [OnePlusTableAction] {
+        guard let id = ids.first, let record = record(for: id) else { return [] }
+        return [
+            OnePlusTableAction("Transfer Info…") {
+                details = TransferDetails(record: record)
+                showDetails = true
+            },
+            OnePlusTableAction("Copy Row") {
+                copy("\(record.operation.displayName) · \(record.sourceDisplay) → \(record.destinationDisplay) · \(record.state.displayName)")
+            },
+            OnePlusTableAction("Copy Source") { copy(record.sourceDisplay) },
+            OnePlusTableAction("Copy Destination") { copy(record.destinationDisplay) }
+        ]
+    }
+
+    private func copy(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 }

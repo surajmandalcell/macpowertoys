@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 struct TransferInfoSheet: View {
     private let job: TransferJob?
@@ -59,10 +60,8 @@ struct TransferInfoSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            tabBar
-            QuietDivider()
+        OnePlusSheet("Transfer Info", width: .large, close: { dismiss() }) {
+            OnePlusTabStrip(tabs: infoTabs, selection: $selectedTab)
             Group {
                 switch visibleTab {
                 case .overview:
@@ -79,57 +78,21 @@ struct TransferInfoSheet: View {
                 }
             }
             .utilityContentTransition(value: visibleTab)
+            .frame(minHeight: OnePlusMetrics.spacing[8] * 18)
+        } footer: {
+            Button("Done") { dismiss() }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(OnePlusButtonStyle(.primary))
         }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .frame(width: 640, height: 620)
     }
 
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("Transfer Details")
-                .font(.system(size: 15, weight: .semibold))
-
-            Spacer()
-            UtilityModalCloseButton { dismiss() }
+    private var infoTabs: [OnePlusTab<InfoTab>] {
+        var tabs = [OnePlusTab<InfoTab>(.overview, "Overview"), OnePlusTab<InfoTab>(.files, "Files")]
+        if job != nil {
+            tabs.append(OnePlusTab<InfoTab>(.changes, "Changes"))
+            tabs.append(OnePlusTab<InfoTab>(.settings, "Settings"))
         }
-        .padding(.horizontal, Self.gutter)
-        .padding(.vertical, 16)
-    }
-
-    private var tabBar: some View {
-        HStack(spacing: 6) {
-            tabButton("Overview", .overview)
-            tabButton("Files", .files)
-            if job != nil {
-                tabButton("Changes", .changes)
-                tabButton("Settings", .settings)
-            }
-            Spacer()
-        }
-        .padding(.leading, Self.gutter)
-        .padding(.trailing, Self.gutter)
-        .padding(.bottom, 12)
-    }
-
-    private func tabButton(_ title: String, _ tab: InfoTab) -> some View {
-        Button {
-            selectedTab = tab
-        } label: {
-            Text(title)
-                .font(.system(size: 12, weight: visibleTab == tab ? .medium : .regular))
-                .foregroundStyle(visibleTab == tab ? .primary : .secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(visibleTab == tab ? Color.primary.opacity(0.06) : .clear)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
+        return tabs
     }
 
     // MARK: Overview

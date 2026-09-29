@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 extension Notification.Name {
     static let remoteCleanupCompleted = Notification.Name("remoteCleanupCompleted")
@@ -55,53 +56,31 @@ struct CleanupRemoteSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            QuietDivider()
+        OnePlusSheet("Clean Up by Ignore Rules", width: .medium, close: close) {
+            Text(scope)
+                .onePlusText(.mono)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(scope)
             content
                 .utilityContentTransition(value: phase)
+                .frame(minHeight: OnePlusMetrics.spacing[8] * 15)
+        } footer: {
             if phase == .review {
-                QuietDivider()
-                footer
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .buttonStyle(OnePlusButtonStyle(.ghost))
+                Button(checked.count == 1 ? "Delete 1 Item" : "Delete \(checked.count) Items") {
+                    deleteSelected()
+                }
+                .buttonStyle(OnePlusButtonStyle(.destructive))
+                .keyboardShortcut(.defaultAction)
+                .disabled(checked.isEmpty)
             }
         }
-        .frame(width: 560, height: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
         .utilityAnimation(value: phase == .review)
         .onAppear(perform: startScan)
         .onDisappear { scanTask?.cancel() }
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "trash.slash")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 26, height: 26)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.accentColor.opacity(0.1))
-                )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Clean Up by Ignore Rules")
-                    .font(.system(size: 15, weight: .semibold))
-                Text(scope)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-
-            Spacer()
-
-            UtilityModalCloseButton(action: close)
-                .disabled(!canClose)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
     }
 
     // MARK: Content
@@ -272,25 +251,8 @@ struct CleanupRemoteSheet: View {
         .padding(.vertical, 3)
     }
 
-    // MARK: Footer
-
-    private var footer: some View {
-        HStack {
-            Spacer()
-            Button("Cancel") { dismiss() }
-                .keyboardShortcut(.cancelAction)
-            Button(checked.count == 1 ? "Delete 1 Item" : "Delete \(checked.count) Items") {
-                deleteSelected()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            .disabled(checked.isEmpty)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-    }
-
     private func close() {
+        guard canClose else { return }
         scanTask?.cancel()
         dismiss()
     }

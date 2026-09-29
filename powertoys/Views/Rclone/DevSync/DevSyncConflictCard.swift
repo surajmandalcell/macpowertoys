@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 nonisolated struct DevConflictDiffLine: Identifiable, Equatable, Sendable {
     enum Kind: Sendable {
@@ -105,7 +106,8 @@ struct DevSyncConflictCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        OnePlusCard {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
             headerLine
             metadataGrid
             safetyCopies
@@ -115,13 +117,10 @@ struct DevSyncConflictCard: View {
             }
 
             actionRow
+            }
+            .padding(OnePlusMetrics.cardPadding)
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.03)))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.accentColor.opacity(isFocused ? 0.6 : 0), lineWidth: 1)
-        )
+        .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius).strokeBorder(isFocused ? OnePlusColor.focus : .clear) }
         .utilityAnimation(value: isFocused)
         .task(id: conflict.id) {
             diff = await DevConflictDiff.load(

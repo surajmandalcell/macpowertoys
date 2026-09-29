@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 struct DevSyncProjectRow: View {
     let pair: DevSyncPair
@@ -21,7 +22,8 @@ struct DevSyncProjectRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        OnePlusCard {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
             identityLine
             metricsLine
 
@@ -34,12 +36,9 @@ struct DevSyncProjectRow: View {
             if project.state == .missing {
                 missingDecisions
             }
+            }
+            .padding(OnePlusMetrics.cardPadding)
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.primary.opacity(isHovering ? 0.06 : 0.03))
-        )
         .utilityAnimation(value: isHovering)
         .utilityAnimation(value: project.state)
         .onHover { isHovering = $0 }
