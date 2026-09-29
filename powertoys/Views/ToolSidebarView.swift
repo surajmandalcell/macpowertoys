@@ -7,6 +7,7 @@ struct ToolSidebarView: View {
     var modifiedRevision: Int
     @State private var settings = SettingsManager.shared
     @State private var hasChanges = false
+    @State private var visibleTools: [any Tool] = []
 
     var body: some View {
         OnePlusSidebar(title: "MacPowerToys") {
@@ -16,7 +17,7 @@ struct ToolSidebarView: View {
                 selectedTool = "all-tools"
             }
             OnePlusNavCaption("Your tools")
-            ForEach(ToolRegistry.allTools.filter { MainCatalog.matches($0, query: searchText) }, id: \.id) { tool in
+            ForEach(visibleTools, id: \.id) { tool in
                 OnePlusNavRow(tool.name, systemImage: tool.icon, selected: selectedTool == tool.id,
                               muted: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
                     .accessibilityIdentifier("main.sidebar.\(tool.id)")
@@ -40,5 +41,11 @@ struct ToolSidebarView: View {
         .onChange(of: modifiedRevision, initial: true) { _, _ in
             hasChanges = SettingsRegistry.hasChanges()
         }
+        .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }
+        .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshVisibleTools() }
+    }
+
+    private func refreshVisibleTools() {
+        visibleTools = ToolRegistry.allTools.filter { MainCatalog.matches($0, query: searchText) }
     }
 }

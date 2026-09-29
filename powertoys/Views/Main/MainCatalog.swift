@@ -3,6 +3,7 @@ import Foundation
 enum MainCatalogFilter: String { case all, enabled, favorites }
 enum MainCatalogSort: String, CaseIterable {
     case defaultOrder, name, category
+    static let choices = allCases.map { ($0, $0.title) }
     var title: String {
         switch self {
         case .defaultOrder: "Default order"
