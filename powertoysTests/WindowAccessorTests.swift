@@ -49,22 +49,9 @@ final class WindowAccessorTests: XCTestCase {
             "text-extractor": NSSize(width: 480, height: 270),
         ]
         for (identifier, size) in expected {
-            XCTAssertEqual(try XCTUnwrap(UtilityLayout.minimumContentSize(for: identifier)), size, identifier)
+            XCTAssertEqual(try XCTUnwrap(OnePlusWindowCanvas.tool(identifier)?.size), size, identifier)
         }
-        XCTAssertNil(UtilityLayout.minimumContentSize(for: "unknown"))
-    }
-
-    func testLauncherContentPaneFitsFourToolCardsInOneRow() {
-        let layout = UtilityLayout.self
-        let contentWidth = layout.launcherContentSize.width - layout.compactSidebarWidth
-        let columns = CGFloat(layout.launcherColumnCount)
-        let required = columns * layout.launcherCardMinimumWidth
-            + (columns - 1) * layout.launcherGridSpacing
-            + 2 * layout.launcherContentInset
-        XCTAssertEqual(contentWidth, 1024)
-        XCTAssertEqual(required, 976)
-        XCTAssertGreaterThanOrEqual(contentWidth, required)
-        XCTAssertLessThan(contentWidth, required + layout.launcherGridSpacing + layout.launcherCardMinimumWidth)
+        XCTAssertNil(OnePlusWindowCanvas.tool("unknown"))
     }
 
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
@@ -76,18 +63,6 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(restored.size, NSSize(width: 1240, height: 840))
         XCTAssertEqual(restored.minX, 40)
         XCTAssertEqual(restored.maxY, saved.maxY)
-    }
-
-    func testWorkspaceDensityUsesFoundationMetrics() {
-        XCTAssertEqual(UtilityLayout.compactSidebarWidth, 216)
-        XCTAssertEqual(UtilityLayout.dataSidebarWidth, 216)
-        XCTAssertEqual(UtilityLayout.sidebarRowHeight, 32)
-        XCTAssertEqual(UtilityLayout.workspaceTitlebarHeight, 54)
-        XCTAssertEqual(UtilityLayout.workspaceContentTopInset, 54)
-        XCTAssertEqual(UtilityLayout.workspaceTitleLeadingInset, 84)
-        XCTAssertEqual(UtilityLayout.workspaceActionHeight, 28)
-        XCTAssertEqual(UtilityLayout.separatorOpacity, 1)
-        XCTAssertEqual(UtilityLayout.increasedContrastSeparatorOpacity, 1)
     }
 
     func testNativeSearchWrapperKeepsEditingAndSharedType() throws {
@@ -107,7 +82,7 @@ final class WindowAccessorTests: XCTestCase {
 
     func testSingleStepStepperDoesNotRepeatWhileMouseIsHeld() throws {
         var value = 800
-        let host = NSHostingView(rootView: SingleStepStepper(
+        let host = NSHostingView(rootView: OnePlusStepperField(
             "TCP timeout: 800 ms", value: Binding(get: { value }, set: { value = $0 }),
             in: 100...5_000, step: 100
         ))
@@ -130,13 +105,6 @@ final class WindowAccessorTests: XCTestCase {
     func testUtilityMotionStopsWhenReduceMotionIsEnabled() {
         XCTAssertNotNil(UtilityMotion.animation(reduceMotion: false))
         XCTAssertNil(UtilityMotion.animation(reduceMotion: true))
-    }
-
-    func testUtilityInteractionButtonStates() {
-        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: true, isHovering: false, isPressed: false), 0)
-        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: true, isHovering: true, isPressed: false), 0.06)
-        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: true, isHovering: true, isPressed: true), 0.1)
-        XCTAssertEqual(UtilityInteractionButtonStyle.highlightOpacity(isEnabled: false, isHovering: true, isPressed: true), 0)
     }
 
     private func firstView<T: NSView>(of type: T.Type, in view: NSView) -> T? {

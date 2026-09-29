@@ -1,5 +1,6 @@
 import AIManagerCore
 import AppKit
+import OnePlusUI
 import SwiftUI
 import XCTest
 @testable import powertoys
@@ -152,8 +153,8 @@ final class SwitchWorkspaceTests: XCTestCase {
         XCTAssertEqual(model.snapshot?.status.sharedRoot,
                        root.appending(path: "default-home", directoryHint: .isDirectory))
         XCTAssertEqual(ToolRegistry.tool(for: "switch")?.logoAsset, "SwitchLogo")
-        XCTAssertEqual(UtilityLayout.minimumContentSize(for: "switch"),
-                       NSSize(width: 880, height: 600))
+        XCTAssertEqual(OnePlusWindowCanvas.tool("switch")?.size,
+                       NSSize(width: 1240, height: 840))
     }
 
     func testTrayUsageChoicesRespectDefaultsAndOverrides() throws {
