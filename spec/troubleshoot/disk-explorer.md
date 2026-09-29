@@ -52,18 +52,27 @@
 - **Cause:** Entry identity and path access both walked the parent chain during
   SwiftUI updates. Tables rebuilt sorted rows and AppKit row values during
   render. Charts sorted and laid out every segment again, then installed four
-  animations on each ring segment.
+  animations on each ring segment. The first cache still prepared a missed
+  chart layout in a main-actor view task. Every partial scan snapshot also
+  invalidated the visible model, including while its window was hidden.
 - **Invariant:** Store one compact 64-bit identity when each node is created;
   do not restore a full URL on each compact-tree node. Derive a URL only for a
   file action. Cache table projections by scan revision, page, query, and sort.
   Cache chart layouts by scan revision, chart tab, measure, folder, completion
-  state, and rounded plot size. Build inspector facts outside render. Keep a
-  stable table identity and no per-segment ring animations.
+  state, and rounded plot size. Prepare missed treemap and ring layouts in a
+  detached task from one immutable scan snapshot. Build inspector facts outside
+  render. Keep a stable table identity and no per-segment ring animations.
+  Coalesce live presentation to at most four updates per second. While the
+  shared window-visibility value is false, retain only the latest snapshot and
+  do not change observable chart or table state; present it after the window
+  becomes visible again.
 - **Check:** The 97-node Debug harness completed 9,700 stored-ID reads in
   1.18 ms and the same parent-derived URL reads in 1,378.90 ms. Focused checks
-  cover compact identity and chart cache separation. Debug and
-  build-for-testing compile without launching the app. Repeat the signed Time
-  Profiler page-switch trace before closing the 100 ms speed gate.
+  cover compact identity, chart cache separation, detached chart preparation,
+  and the quarter-second presentation gate. Debug and build-for-testing compile
+  without launching the app. Repeat the signed Time Profiler page-switch trace
+  with Diskman visible, occluded, and minimized before closing the 100 ms speed
+  gate.
 
 ## Live Rings Collapse Into Other
 
