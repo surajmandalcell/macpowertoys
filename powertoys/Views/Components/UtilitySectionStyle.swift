@@ -3,8 +3,8 @@ import OnePlusUI
 import SwiftUI
 
 enum UtilityLayout {
-    static let horizontalInset: CGFloat = 20
-    static let compactSidebarWidth: CGFloat = 220
+    static let horizontalInset = OnePlusMetrics.gutter
+    static let compactSidebarWidth = OnePlusWindowCanvas.main.sidebarWidth
     static let launcherCardMinimumWidth: CGFloat = 220
     static let launcherGridSpacing: CGFloat = 16
     static let launcherContentInset: CGFloat = 24
@@ -13,14 +13,8 @@ enum UtilityLayout {
         repeating: GridItem(.flexible(), spacing: launcherGridSpacing),
         count: launcherColumnCount
     )
-    static let launcherContentSize = NSSize(width: 1_200, height: 720)
-    static var launcherWindowSize: NSSize {
-        guard let screenSize = NSScreen.main?.visibleFrame.size else { return launcherContentSize }
-        return NSSize(
-            width: min(launcherContentSize.width, screenSize.width),
-            height: min(launcherContentSize.height, screenSize.height)
-        )
-    }
+    static let launcherContentSize = OnePlusWindowCanvas.main.size
+    static let launcherWindowSize = OnePlusWindowCanvas.main.size
 
     static func launcherGridColumns(for width: CGFloat) -> [GridItem] {
         let available = width - 2 * launcherContentInset + launcherGridSpacing
@@ -28,15 +22,15 @@ enum UtilityLayout {
         let count = min(launcherColumnCount, max(1, Int(available / columnWidth)))
         return Array(repeating: GridItem(.flexible(), spacing: launcherGridSpacing), count: count)
     }
-    static let dataSidebarWidth: CGFloat = 240
+    static let dataSidebarWidth = OnePlusWindowCanvas.rclone.sidebarWidth
     static let workspaceMinimumContentWidth: CGFloat = 640
     static let workspaceMinimumHeight: CGFloat = 600
-    static let netToysMinimumContentSize = NSSize(width: 1_100, height: 700)
-    static let netToysDefaultContentSize = NSSize(width: 1_280, height: 800)
-    static let sidebarRowHeight: CGFloat = 28
-    static let workspaceTitlebarHeight: CGFloat = 40
-    static let workspaceContentTopInset: CGFloat = 44
-    static let workspaceActionHeight: CGFloat = 24
+    static let netToysMinimumContentSize = OnePlusWindowCanvas.netToys.size
+    static let netToysDefaultContentSize = OnePlusWindowCanvas.netToys.size
+    static let sidebarRowHeight = OnePlusMetrics.navRowHeight
+    static let workspaceTitlebarHeight = OnePlusMetrics.titleRow
+    static let workspaceContentTopInset = OnePlusMetrics.titleRow
+    static let workspaceActionHeight = OnePlusMetrics.controlHeight
     static let workspaceTitleLeadingInset: CGFloat = 84
     static let workspaceTrafficLightVerticalOffset = OnePlusMetrics.trafficLightVerticalOffset
     static let compactTitlebarHeight: CGFloat = 40
@@ -44,7 +38,7 @@ enum UtilityLayout {
     static let compactTitlebarControlHeight: CGFloat = 24
     static let compactTitlebarControlRadius: CGFloat = 6
     static let compactTitlebarTrafficLightVerticalOffset: CGFloat = 6
-    static let compactTitlebarTrafficLightInset: CGFloat = 60
+    static let compactTitlebarTrafficLightInset = OnePlusMetrics.titleLeadingInset
     static let headerVerticalInset: CGFloat = 10
     static let contentTopInset: CGFloat = 16
     static let contentBottomInset: CGFloat = 20
@@ -55,43 +49,25 @@ enum UtilityLayout {
         styleMask: .titled
     ).height
     static let sectionSpacing: CGFloat = 16
-    static let cardPadding: CGFloat = 14
-    static let cardRadius: CGFloat = 10
-    static let separatorOpacity: Double = 0.22
-    static let increasedContrastSeparatorOpacity: Double = 0.44
+    static let cardPadding = OnePlusMetrics.cardPadding
+    static let cardRadius = OnePlusMetrics.panelRadius
+    static let separatorOpacity: Double = 1
+    static let increasedContrastSeparatorOpacity: Double = 1
 
     static func minimumContentSize(for identifier: String) -> NSSize? {
-        let sidebarWidth: CGFloat
-        switch identifier {
-        case "main":
-            return launcherWindowSize
-        case "nettoys":
-            return netToysMinimumContentSize
-        case "system-monitor":
-            return TaskManagerTheme.windowContentSize
-        case "rclone", "system-care", "disk-explorer", "switch":
-            sidebarWidth = dataSidebarWidth
-        case "logs", "input-devices", "mac-tweaks":
-            sidebarWidth = compactSidebarWidth
-        default:
-            return nil
-        }
-        return NSSize(
-            width: sidebarWidth + workspaceMinimumContentWidth,
-            height: workspaceMinimumHeight
-        )
+        OnePlusWindowCanvas.tool(identifier)?.size
     }
 }
 
 enum UtilityMotion {
-    static let standardDuration = 0.16
-    static let interactionDuration = 0.12
+    static let standardDuration = OnePlusMotion.content
+    static let interactionDuration = OnePlusMotion.hover
 
     static func animation(
         reduceMotion: Bool,
         duration: Double = standardDuration
     ) -> Animation? {
-        reduceMotion ? nil : .easeInOut(duration: duration)
+        OnePlusMotion.animation(reduceMotion: reduceMotion, duration: duration)
     }
 }
 
@@ -99,12 +75,7 @@ struct QuietDivider: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        Divider()
-            .opacity(
-                contrast == .increased
-                    ? UtilityLayout.increasedContrastSeparatorOpacity
-                    : UtilityLayout.separatorOpacity
-            )
+        OnePlusColor.lineSoft.frame(height: 1).accessibilityHidden(true)
     }
 }
 
@@ -123,50 +94,13 @@ struct UtilityInteractionButtonStyle: ButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View {
-        Body(
-            label: configuration.label,
-            isPressed: configuration.isPressed,
-            cornerRadius: cornerRadius
-        )
+        OnePlusInteractionStyle(radius: cornerRadius).makeBody(configuration: configuration)
     }
 
-    private struct Body<Label: View>: View {
-        @Environment(\.isEnabled) private var isEnabled
-        @Environment(\.isFocused) private var isFocused
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
-        @State private var isHovering = false
-
-        let label: Label
-        let isPressed: Bool
-        let cornerRadius: CGFloat
-
-        var body: some View {
-            label
-                .background(
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(Color.primary.opacity(highlightOpacity))
-                )
-                .animation(
-                    UtilityMotion.animation(
-                        reduceMotion: reduceMotion,
-                        duration: UtilityMotion.interactionDuration
-                    ),
-                    value: highlightOpacity
-                )
-                .onHover { isHovering = isEnabled && $0 }
-        }
-
-        private var highlightOpacity: Double {
-            UtilityInteractionButtonStyle.highlightOpacity(
-                isEnabled: isEnabled,
-                isHovering: isHovering || isFocused,
-                isPressed: isPressed
-            )
-        }
-    }
 }
 
-class UtilityMaterialView: NSVisualEffectView {
+class UtilityMaterialView: NSView {
+    override var wantsUpdateLayer: Bool { true }
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         configureMaterial()
@@ -178,9 +112,16 @@ class UtilityMaterialView: NSVisualEffectView {
     }
 
     private func configureMaterial() {
-        material = .hudWindow
-        blendingMode = .behindWindow
-        state = .active
+        wantsLayer = true
+        updateLayer()
+    }
+
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = NSColor(OnePlusColor.sidebar).cgColor }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance(); needsDisplay = true
     }
 }
 
@@ -201,7 +142,9 @@ final class UtilitySectionCardView: NSView {
 
     override func updateLayer() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.05).cgColor
+            layer?.backgroundColor = NSColor(OnePlusColor.panel).cgColor
+            layer?.borderColor = NSColor(OnePlusColor.line).cgColor
+            layer?.borderWidth = 1
             layer?.cornerRadius = UtilityLayout.cardRadius
         }
     }
@@ -214,31 +157,24 @@ final class UtilitySectionCardView: NSView {
 
 extension View {
     func utilityActionLabel() -> some View {
-        padding(.horizontal, 14)
-            .frame(minHeight: 36)
+        padding(.horizontal, OnePlusMetrics.controlHorizontalPadding)
+            .frame(minHeight: OnePlusMetrics.controlHeight)
     }
 
     func utilitySectionHeader() -> some View {
-        font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.secondary)
+        onePlusText(.captionUpper)
     }
 
     func utilitySectionCard() -> some View {
-        padding(UtilityLayout.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: UtilityLayout.cardRadius))
+        OnePlusCard { self.padding(OnePlusMetrics.cardPadding) }
     }
 
     func utilityWindowBackground() -> some View {
-        background {
-            VisualEffectBackground(material: .hudWindow)
-                .ignoresSafeArea()
-        }
+        background(OnePlusColor.window.ignoresSafeArea())
     }
 
     func thinScrollIndicators() -> some View {
-        background(ThinScrollIndicatorConfigurator())
+        onePlusScrollIndicators()
     }
 
     func utilityAnimation<Value: Equatable>(
@@ -261,7 +197,7 @@ private struct UtilityMotionPolicyModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.focusEffectDisabled().transaction { transaction in
+        content.focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled).transaction { transaction in
             guard reduceMotion else { return }
             transaction.animation = nil
             transaction.disablesAnimations = true
@@ -298,223 +234,8 @@ private struct UtilityContentTransitionModifier<Value: Hashable>: ViewModifier {
 
 extension NSScrollView {
     func configureThinScrollIndicators() {
-        if hasVerticalScroller, !(verticalScroller is ThinOverlayScroller) {
-            verticalScroller = ThinOverlayScroller()
-        }
-        if hasHorizontalScroller, !(horizontalScroller is ThinOverlayScroller) {
-            horizontalScroller = ThinOverlayScroller()
-        }
-        scrollerStyle = .overlay
-        autohidesScrollers = true
-        verticalScroller?.controlSize = .mini
-        horizontalScroller?.controlSize = .mini
-        (verticalScroller as? ThinOverlayScroller)?.observeScrolling(in: self)
-        (horizontalScroller as? ThinOverlayScroller)?.observeScrolling(in: self)
+        configureOnePlusScrollIndicators()
     }
 }
 
-final class ThinOverlayScroller: NSScroller {
-    private weak var observedClipView: NSClipView?
-    private var trackingArea: NSTrackingArea?
-    private var hideTask: DispatchWorkItem?
-    private var isPointerInside = false
-
-    override class var isCompatibleWithOverlayScrollers: Bool { true }
-
-    static func knobThickness(increasedContrast: Bool) -> CGFloat {
-        increasedContrast ? 6 : 4
-    }
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        alphaValue = 0
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        alphaValue = 0
-    }
-
-    deinit {
-        hideTask?.cancel()
-        if let observedClipView {
-            NotificationCenter.default.removeObserver(
-                self,
-                name: NSView.boundsDidChangeNotification,
-                object: observedClipView
-            )
-        }
-    }
-
-    func observeScrolling(in scrollView: NSScrollView) {
-        let clipView = scrollView.contentView
-        guard observedClipView !== clipView else { return }
-        if let observedClipView {
-            NotificationCenter.default.removeObserver(
-                self,
-                name: NSView.boundsDidChangeNotification,
-                object: observedClipView
-            )
-        }
-        observedClipView = clipView
-        clipView.postsBoundsChangedNotifications = true
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(scrollPositionDidChange),
-            name: NSView.boundsDidChangeNotification,
-            object: clipView
-        )
-    }
-
-    override func updateTrackingAreas() {
-        if let trackingArea { removeTrackingArea(trackingArea) }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
-            owner: self
-        )
-        addTrackingArea(area)
-        trackingArea = area
-        super.updateTrackingAreas()
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        isPointerInside = true
-        showThumb()
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        isPointerInside = false
-        scheduleHide()
-    }
-
-    override func drawKnob() {
-        let knob = rect(for: .knob)
-        guard !knob.isEmpty else { return }
-
-        let increasedContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
-        let thickness = Self.knobThickness(increasedContrast: increasedContrast)
-        let isVertical = bounds.height > bounds.width
-        let thinKnob = isVertical
-            ? NSRect(x: knob.midX - thickness / 2, y: knob.minY, width: thickness, height: knob.height)
-            : NSRect(x: knob.minX, y: knob.midY - thickness / 2, width: knob.width, height: thickness)
-
-        (increasedContrast ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor).setFill()
-        NSBezierPath(
-            roundedRect: thinKnob,
-            xRadius: thickness / 2,
-            yRadius: thickness / 2
-        ).fill()
-    }
-
-    override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
-
-    @objc private func scrollPositionDidChange() {
-        showThumb()
-        scheduleHide()
-    }
-
-    private func showThumb() {
-        hideTask?.cancel()
-        alphaValue = 1
-    }
-
-    private func scheduleHide() {
-        hideTask?.cancel()
-        let task = DispatchWorkItem { [weak self] in
-            guard let self, !isPointerInside else { return }
-            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-                alphaValue = 0
-            } else {
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = UtilityMotion.standardDuration
-                    self.animator().alphaValue = 0
-                }
-            }
-        }
-        hideTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9, execute: task)
-    }
-}
-
-private struct ThinScrollIndicatorConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        ThinScrollIndicatorView()
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? ThinScrollIndicatorView)?.configureScrollIndicators()
-    }
-}
-
-private final class ThinScrollIndicatorView: NSView {
-    private weak var configuredScrollView: NSScrollView?
-
-    override func viewDidMoveToSuperview() {
-        super.viewDidMoveToSuperview()
-        configureScrollIndicators()
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        configureScrollIndicators()
-    }
-
-    override func layout() {
-        super.layout()
-        configureScrollIndicators()
-    }
-
-    func configureScrollIndicators() {
-        if configureScrollIndicatorsNow() { return }
-
-        DispatchQueue.main.async { [weak self] in
-            self?.configureScrollIndicatorsNow()
-        }
-    }
-
-    @discardableResult
-    private func configureScrollIndicatorsNow() -> Bool {
-        if let configuredScrollView, configuredScrollView.window != nil {
-            configuredScrollView.configureThinScrollIndicators()
-            return true
-        }
-        guard window != nil, !bounds.isEmpty else { return false }
-
-        // SwiftUI hosts a background beside its scroll view, not inside it. An
-        // ancestor scroll view is the page, never the target, so skip it even
-        // when the target has not been created yet.
-        let targetPoint = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: nil)
-        var ancestor = superview
-        while let view = ancestor {
-            if let scrollView = view.firstDescendantScrollView(containing: targetPoint, excludingAncestorsOf: self) {
-                configuredScrollView = scrollView
-                scrollView.configureThinScrollIndicators()
-                return true
-            }
-            ancestor = view.superview
-        }
-        if let scrollView = enclosingScrollView {
-            configuredScrollView = scrollView
-            scrollView.configureThinScrollIndicators()
-            return true
-        }
-        return false
-    }
-}
-
-private extension NSView {
-    func firstDescendantScrollView(containing point: NSPoint, excludingAncestorsOf excluded: NSView) -> NSScrollView? {
-        for view in subviews {
-            if let scrollView = view as? NSScrollView,
-               !excluded.isDescendant(of: scrollView),
-               scrollView.convert(scrollView.bounds, to: nil).contains(point) {
-                return scrollView
-            }
-            if let scrollView = view.firstDescendantScrollView(containing: point, excludingAncestorsOf: excluded) {
-                return scrollView
-            }
-        }
-        return nil
-    }
-}
+typealias ThinOverlayScroller = OnePlusOverlayScroller

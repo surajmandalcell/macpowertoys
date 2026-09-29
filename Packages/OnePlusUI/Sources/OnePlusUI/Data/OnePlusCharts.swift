@@ -21,6 +21,7 @@ public struct OnePlusAreaChart: View {
 }
 
 private struct OnePlusPlot: View {
+    @Environment(\.colorScheme) private var colorScheme
     let values: [Double]
     let range: ClosedRange<Double>
     let color: Color
@@ -41,10 +42,18 @@ private struct OnePlusPlot: View {
                     cg.saveGState()
                     cg.addPath(paths.area.applying(transform).cgPath)
                     cg.clip()
-                    cg.setFillColorSpace(CGColorSpace(patternBaseSpace: nil)!)
-                    var alpha: CGFloat = 0.4
-                    cg.setFillPattern(OnePlusChartPattern.pattern, colorComponents: &alpha)
+                    cg.beginTransparencyLayer(auxiliaryInfo: nil)
+                    cg.setFillColorSpace(CGColorSpace(patternBaseSpace: CGColorSpaceCreateDeviceRGB())!)
+                    let gray: CGFloat = colorScheme == .dark ? 1 : 0
+                    var components: [CGFloat] = [gray, gray, gray, 1]
+                    cg.setFillPattern(OnePlusChartPattern.pattern, colorComponents: &components)
                     cg.fill(CGRect(origin: .zero, size: size))
+                    cg.setBlendMode(.destinationIn)
+                    let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                              colors: [CGColor(gray: 0, alpha: 0.63), CGColor(gray: 0, alpha: 0.06)] as CFArray,
+                                              locations: [0, 1])!
+                    cg.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+                    cg.endTransparencyLayer()
                     cg.restoreGState()
                 }
             }

@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 
 struct ToolSettingsContent: View {
     let toolID: String
@@ -25,10 +26,13 @@ struct ToolSettingsContent: View {
             } else {
                 ProgressView("Loading settings…")
                     .controlSize(.small)
+                    .onePlusText(.caption)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityIdentifier("tool.\(toolID).settings-loading")
             }
         }
+        .buttonStyle(OnePlusButtonStyle())
+        .toggleStyle(OnePlusSwitchStyle())
         .task(id: toolID) {
             guard Self.defersInitialLoad(for: toolID) else { return }
             await Task.yield()
@@ -59,8 +63,7 @@ struct ToolSettingsContent: View {
         case "mac-tweaks":
             VStack(alignment: .leading, spacing: 12) {
                 Text("Mic Lock and other small Mac settings live in the Mac Tweaks window.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.row)
                 Button("Open Mac Tweaks") { ToolActionRouter.shared.open(toolID: "mac-tweaks") }
                     .controlSize(.small)
                 Spacer()
@@ -85,8 +88,7 @@ private struct SwitchLauncherSettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("ACCOUNTS").utilitySectionHeader()
             Text("Manage accounts, usage, and recovery in the Switch applet. The standalone Switch app is optional and shares the same accounts.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .onePlusText(.row)
                 .utilitySectionCard()
             Spacer()
         }
@@ -102,8 +104,7 @@ struct RulerLauncherSettingsView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Ruler settings stay in the native panels used by the Ruler window.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.row)
 
                 HStack(spacing: 8) {
                     Button("Open Ruler Settings") {

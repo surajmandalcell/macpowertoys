@@ -1,98 +1,40 @@
+import OnePlusUI
 import SwiftUI
 
 struct CompactTitlebar<Title: View, Actions: View>: View {
     let clearsTrafficLights: Bool
     let title: Title
     let actions: Actions
-
-    init(
-        clearsTrafficLights: Bool = true,
-        @ViewBuilder title: () -> Title,
-        @ViewBuilder actions: () -> Actions
-    ) {
-        self.clearsTrafficLights = clearsTrafficLights
-        self.title = title()
-        self.actions = actions()
+    init(clearsTrafficLights: Bool = true, @ViewBuilder title: () -> Title, @ViewBuilder actions: () -> Actions) {
+        self.clearsTrafficLights = clearsTrafficLights; self.title = title(); self.actions = actions()
     }
-
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            title.frame(height: UtilityLayout.compactTitlebarControlHeight)
-            Spacer(minLength: 12)
-            actions.frame(height: UtilityLayout.compactTitlebarControlHeight)
-        }
-        .padding(.leading, clearsTrafficLights ? UtilityLayout.compactTitlebarTrafficLightInset : UtilityLayout.horizontalInset)
-        .padding(.trailing, UtilityLayout.horizontalInset)
-        .frame(height: UtilityLayout.compactTitlebarControlHeight)
-        .padding(.top, UtilityLayout.compactTitlebarTopInset)
-        .frame(height: UtilityLayout.compactTitlebarHeight)
+        OnePlusAppletTitlebar(clearsTrafficLights: clearsTrafficLights, title: { title }, actions: { actions })
     }
 }
 
 struct CompactTitlebarTitle: View {
     let title: String
-
-    var body: some View {
-        Text(title)
-            .font(.system(size: 13, weight: .medium))
-            .lineLimit(1)
-    }
+    var body: some View { Text(title).onePlusText(.sidebarTitle).lineLimit(1) }
 }
 
 struct CompactTitlebarButton: View {
     let title: String
     var isPrimary = false
     let action: () -> Void
-
     var body: some View {
-        Button(action: action) {
-            CompactTitlebarControlLabel(isPrimary: isPrimary) {
-                Text(title)
-            }
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
+        Button(title, action: action).buttonStyle(OnePlusButtonStyle(isPrimary ? .primary : .ghost, size: .small))
     }
 }
 
 struct CompactTitlebarControlLabel<Content: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isPrimary: Bool
-    let foregroundStyle: AnyShapeStyle
+    let foregroundStyle: AnyShapeStyle?
     let content: Content
-    @State private var isHovering = false
-
-    init(
-        isPrimary: Bool = false,
-        foregroundStyle: AnyShapeStyle? = nil,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.isPrimary = isPrimary
-        self.foregroundStyle = foregroundStyle
-            ?? (isPrimary ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-        self.content = content()
+    init(isPrimary: Bool = false, foregroundStyle: AnyShapeStyle? = nil, @ViewBuilder content: () -> Content) {
+        self.isPrimary = isPrimary; self.foregroundStyle = foregroundStyle; self.content = content()
     }
-
     var body: some View {
-        content
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(foregroundStyle)
-            .padding(.horizontal, 9)
-            .frame(height: UtilityLayout.compactTitlebarControlHeight)
-            .background(
-                isPrimary
-                    ? Color.accentColor
-                    : isHovering ? Color.primary.opacity(0.06) : .clear
-            )
-            .clipShape(RoundedRectangle(cornerRadius: UtilityLayout.compactTitlebarControlRadius))
-            .contentShape(Rectangle())
-            .animation(
-                UtilityMotion.animation(
-                    reduceMotion: reduceMotion,
-                    duration: UtilityMotion.interactionDuration
-                ),
-                value: isHovering
-            )
-            .onHover { isHovering = $0 }
+        OnePlusControlLabel(variant: isPrimary ? .primary : .ghost, size: .small) { content }
     }
 }

@@ -1,81 +1,32 @@
-//
-//  CenteredModal.swift
-//  powertoys
-//
-
+import OnePlusUI
 import SwiftUI
 
 struct UtilityModalCloseButton: View {
     let action: () -> Void
-
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 16))
-                .foregroundStyle(.secondary)
-                .frame(width: 24, height: 24)
-        }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))
-        .focusEffectDisabled()
-        .contentShape(Rectangle())
-        .help("Close")
-        .accessibilityLabel("Close")
+        Button(action: action) { Image(systemName: "xmark") }
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .help("Close").accessibilityLabel("Close")
     }
 }
 
 struct CenteredModal<Content: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isPresented: Bool
     let title: String
     let width: CGFloat
     let height: CGFloat
-    @ViewBuilder let content: () -> Content
-
-    init(
-        isPresented: Binding<Bool>,
-        title: String,
-        width: CGFloat = 700,
-        height: CGFloat = 550,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self._isPresented = isPresented
-        self.title = title
-        self.width = width
-        self.height = height
-        self.content = content
+    let content: () -> Content
+    init(isPresented: Binding<Bool>, title: String, width: CGFloat = 700, height: CGFloat = 550,
+         @ViewBuilder content: @escaping () -> Content) {
+        _isPresented = isPresented; self.title = title; self.width = width; self.height = height; self.content = content
     }
-
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.3)
-                .ignoresSafeArea()
-                .onTapGesture { dismiss() }
-                .transition(.opacity)
-
-            VStack(spacing: 0) {
-                HStack {
-                    Text(title)
-                        .font(.system(size: 15, weight: .semibold))
-                    Spacer()
-                    UtilityModalCloseButton(action: dismiss)
+        Color.clear.allowsHitTesting(false)
+            .sheet(isPresented: $isPresented) {
+                OnePlusSheet(title, width: width <= 420 ? .small : width <= 560 ? .medium : .large,
+                             close: { isPresented = false }) {
+                    content().frame(height: max(0, height - 81))
                 }
-                .padding(16)
-
-                QuietDivider()
-
-                content()
             }
-            .frame(width: width, height: height)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
-            .transition(.opacity)
-        }
-    }
-
-    private func dismiss() {
-        withAnimation(UtilityMotion.animation(reduceMotion: reduceMotion)) {
-            isPresented = false
-        }
     }
 }

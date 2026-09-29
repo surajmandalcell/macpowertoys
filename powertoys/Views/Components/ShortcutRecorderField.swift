@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import SwiftUI
+import OnePlusUI
 
 struct ShortcutRecorderField: View {
     let action: GlobalShortcutAction
@@ -13,17 +14,11 @@ struct ShortcutRecorderField: View {
             isRecording ? stopRecording() : startRecording()
         } label: {
             Text(isRecording ? "Type shortcut…" : shortcuts.shortcut(for: action).display)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundStyle(isRecording ? .secondary : .primary)
-                .padding(.horizontal, 10)
+                .onePlusText(.mono)
                 .frame(minWidth: 96)
-                .frame(height: 28)
-                .background(isRecording ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .buttonStyle(OnePlusButtonStyle())
+        .environment(\.onePlusControlState, isRecording ? .focus : .rest)
         .help(isRecording ? "Press the new keys, or Escape to cancel" : "Click, then press the new shortcut")
         .accessibilityLabel("Record keyboard shortcut")
         .onDisappear { stopRecording() }
@@ -103,16 +98,8 @@ struct ShortcutPermissionNotice: View {
 
     var body: some View {
         if shortcuts.needsAccessibilityPermission(for: action) {
-            HStack(spacing: 8) {
-                Text("macOS reserves this screenshot shortcut. Accessibility access lets MacPowerToys override it.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                Spacer()
+            OnePlusBanner("macOS reserves this screenshot shortcut. Accessibility access lets MacPowerToys override it.", tone: .warning) {
                 Button("Allow Access…") { shortcuts.requestAccessibilityPermission() }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .focusEffectDisabled()
             }
             .padding(.top, 8)
         }

@@ -63,6 +63,7 @@ private struct OnePlusNativeSearch: NSViewRepresentable {
         view.field.setAccessibilityLabel(prompt)
         view.field.setAccessibilityIdentifier(identifier)
         view.field.isEnabled = enabled
+        view.field.focusRingType = NSApp.isFullKeyboardAccessEnabled ? .exterior : .none
         view.field.font = .systemFont(ofSize: fontSize)
         if view.field.stringValue != text { view.field.stringValue = text }
         view.hint.stringValue = hint ?? ""
@@ -84,6 +85,8 @@ private final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     var changed: (String) -> Void = { _ in }
     var focusTrigger = 0
     private var focused = false
+    private var hovered = false
+    private var hoverArea: NSTrackingArea?
     override var isFlipped: Bool { true }
 
     override init(frame: NSRect) {
@@ -116,9 +119,17 @@ private final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
         guard field.isEnabled else { return }
         window?.makeFirstResponder(field)
     }
+    override func updateTrackingAreas() {
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect], owner: self)
+        addTrackingArea(area); hoverArea = area
+        super.updateTrackingAreas()
+    }
+    override func mouseEntered(with event: NSEvent) { hovered = true; needsDisplay = true }
+    override func mouseExited(with event: NSEvent) { hovered = false; needsDisplay = true }
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
-        NSColor(focused ? OnePlusColor.fieldFocus : OnePlusColor.field).setFill()
+        NSColor(focused ? OnePlusColor.fieldFocus : hovered && field.isEnabled ? OnePlusColor.raised : OnePlusColor.field).setFill()
         path.fill()
         NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).setStroke()
         path.lineWidth = 1
