@@ -119,7 +119,7 @@ struct NewTransferSheet: View {
                     .foregroundStyle(.tertiary)
             } else {
                 ScrollView(.horizontal) {
-                    HStack(spacing: 6) {
+                    LazyHStack(spacing: 6) {
                         ForEach(manager.settings.ignorePatterns, id: \.self) { pattern in
                             Text(pattern)
                                 .font(.system(size: 11, design: .monospaced))
