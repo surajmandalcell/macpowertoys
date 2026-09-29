@@ -25,11 +25,16 @@ struct RcloneTransferListView: View {
             }
 
             if jobs.isEmpty {
-                OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption) {
-                    Button("New Transfer") { manager.isPresentingNewTransfer = true }
-                        .buttonStyle(OnePlusButtonStyle(.neutral))
+                if RcloneTransferPresentation.showsNewTransferAction(for: manager.filter) {
+                    OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption) {
+                        Button("New Transfer") { manager.isPresentingNewTransfer = true }
+                            .buttonStyle(OnePlusButtonStyle(.neutral))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: OnePlusMetrics.spacing[3]) {
@@ -44,9 +49,41 @@ struct RcloneTransferListView: View {
     }
 
     private var emptyCaption: String {
-        manager.filter == .all || manager.filter == .active
-            ? "Create a transfer between a local folder and a remote."
-            : "Completed transfers stay here until you clear them."
+        RcloneTransferPresentation.emptyCaption(for: manager.filter)
+    }
+}
+
+enum RcloneTransferPresentation {
+    static func subtitle(
+        for filter: JobFilter,
+        activeCount: Int,
+        filteredCount: Int,
+        aggregateSpeed: Double
+    ) -> String {
+        switch filter {
+        case .all, .active:
+            let active = "\(activeCount) active"
+            return aggregateSpeed > 0 ? "\(active) · \(RcloneFormat.speed(aggregateSpeed))" : active
+        case .completed:
+            return "\(filteredCount) completed"
+        case .failed:
+            return "\(filteredCount) failed"
+        }
+    }
+
+    static func emptyCaption(for filter: JobFilter) -> String {
+        switch filter {
+        case .all, .active:
+            return "Create a transfer between a local folder and a remote."
+        case .completed:
+            return "Completed transfers stay here until you clear them."
+        case .failed:
+            return "Failed and cancelled transfers stay here until you clear them."
+        }
+    }
+
+    static func showsNewTransferAction(for filter: JobFilter) -> Bool {
+        filter == .all || filter == .active
     }
 }
 
@@ -63,8 +100,12 @@ private struct RcloneTransferHeader: View {
     }
 
     private var subtitle: String {
-        let active = "\(manager.activeJobs.count) active"
-        return manager.aggregateSpeed > 0 ? "\(active) · \(RcloneFormat.speed(manager.aggregateSpeed))" : active
+        RcloneTransferPresentation.subtitle(
+            for: manager.filter,
+            activeCount: manager.activeJobs.count,
+            filteredCount: manager.filteredJobs.count,
+            aggregateSpeed: manager.aggregateSpeed
+        )
     }
 
     var body: some View {

@@ -43,7 +43,8 @@ struct RcloneSidebarView: View {
             .keyboardShortcut("5")
             OnePlusNavRow(
                 "Dev Sync",
-                systemImage: "externaldrive.badge.plus",
+                systemImage: "",
+                image: Image(systemName: "externaldrive.badge.plus"),
                 selected: content == .devSync,
                 count: devSyncManager.attentionCount == 0 ? nil : devSyncManager.attentionCount
             ) {
@@ -91,6 +92,7 @@ struct RcloneSidebarView: View {
                 .help("Add remote")
                 .accessibilityLabel("Add remote")
         }
+        .padding(.trailing, OnePlusMetrics.navPadding)
     }
 
 }
@@ -118,7 +120,13 @@ private struct RcloneRemoteNavRow: View {
     @State private var confirmRemoval = false
 
     var body: some View {
-        OnePlusNavRow(remote.displayName, systemImage: remote.icon, selected: selected, action: action)
+        OnePlusNavRow(
+            remote.displayName,
+            systemImage: "",
+            image: Image(systemName: remote.icon),
+            selected: selected,
+            action: action
+        )
         .overlay(alignment: .trailing) {
             Text(remote.typeLabel)
                 .onePlusText(.mono)

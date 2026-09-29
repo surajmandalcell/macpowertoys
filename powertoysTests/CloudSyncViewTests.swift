@@ -28,4 +28,40 @@ final class CloudSyncViewTests: XCTestCase {
             XCTAssertEqual(RcloneProjectionFormat.duration(duration), RcloneFormat.duration(duration))
         }
     }
+
+    func testTransferPageCopyMatchesEachFilter() {
+        XCTAssertEqual(
+            RcloneTransferPresentation.subtitle(
+                for: .all,
+                activeCount: 2,
+                filteredCount: 8,
+                aggregateSpeed: 14_200_000
+            ),
+            "2 active · 14.2 MB/s"
+        )
+        XCTAssertEqual(
+            RcloneTransferPresentation.subtitle(
+                for: .completed,
+                activeCount: 0,
+                filteredCount: 3,
+                aggregateSpeed: 0
+            ),
+            "3 completed"
+        )
+        XCTAssertEqual(
+            RcloneTransferPresentation.subtitle(
+                for: .failed,
+                activeCount: 0,
+                filteredCount: 2,
+                aggregateSpeed: 0
+            ),
+            "2 failed"
+        )
+        XCTAssertTrue(RcloneTransferPresentation.showsNewTransferAction(for: .active))
+        XCTAssertFalse(RcloneTransferPresentation.showsNewTransferAction(for: .completed))
+        XCTAssertEqual(
+            RcloneTransferPresentation.emptyCaption(for: .failed),
+            "Failed and cancelled transfers stay here until you clear them."
+        )
+    }
 }
