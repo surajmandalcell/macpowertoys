@@ -59,7 +59,11 @@ public struct OnePlusMenuTab<Value: Hashable>: Identifiable {
     public let id: Value
     public let title: String
     public let systemImage: String
-    public init(_ id: Value, _ title: String, systemImage: String) { self.id = id; self.title = title; self.systemImage = systemImage }
+    public let accessibilityIdentifier: String?
+    public init(_ id: Value, _ title: String, systemImage: String, accessibilityIdentifier: String? = nil) {
+        self.id = id; self.title = title; self.systemImage = systemImage
+        self.accessibilityIdentifier = accessibilityIdentifier
+    }
 }
 
 public struct OnePlusMenuTabStrip<Value: Hashable>: View {
@@ -85,6 +89,7 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
                 }
                 .buttonStyle(OnePlusInteractionStyle(selected: selection == tab.id))
                 .help(tab.title).accessibilityLabel(tab.title).accessibilityAddTraits(selection == tab.id ? .isSelected : [])
+                .modifier(OnePlusOptionalIdentifier(value: tab.accessibilityIdentifier))
                 .contextMenu {
                     if let onMove {
                         Button("Move left") {
@@ -100,6 +105,14 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
         .onMoveCommand { direction in
             if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection, direction: direction == .left ? -1 : 1) { selection = next }
         }
+    }
+}
+
+private struct OnePlusOptionalIdentifier: ViewModifier {
+    let value: String?
+    @ViewBuilder func body(content: Content) -> some View {
+        if let value { content.accessibilityIdentifier(value) }
+        else { content }
     }
 }
 

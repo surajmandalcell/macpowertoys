@@ -45,12 +45,15 @@ public struct OnePlusTab<Value: Hashable>: Identifiable {
 }
 
 public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
+    public enum Layout { case workspace, applet }
     private let tabs: [OnePlusTab<Value>]
+    private let layout: Layout
     @Binding private var selection: Value
     private let tools: Tools
     @Environment(\.onePlusDensity) private var density
-    public init(tabs: [OnePlusTab<Value>], selection: Binding<Value>, @ViewBuilder tools: () -> Tools) {
-        self.tabs = tabs; _selection = selection; self.tools = tools()
+    public init(tabs: [OnePlusTab<Value>], selection: Binding<Value>, layout: Layout = .workspace,
+                @ViewBuilder tools: () -> Tools) {
+        self.tabs = tabs; _selection = selection; self.layout = layout; self.tools = tools()
     }
     public var body: some View {
         HStack(spacing: 22) {
@@ -68,7 +71,7 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
             Spacer(minLength: 8)
             tools
         }
-        .padding(.horizontal, density.gutter).frame(height: 36)
+        .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter).frame(height: 36)
         .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1).offset(y: 1) }
         .onMoveCommand { direction in
             if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection,
@@ -79,8 +82,8 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
 }
 
 public extension OnePlusTabStrip where Tools == EmptyView {
-    init(tabs: [OnePlusTab<Value>], selection: Binding<Value>) {
-        self.init(tabs: tabs, selection: selection, tools: { EmptyView() })
+    init(tabs: [OnePlusTab<Value>], selection: Binding<Value>, layout: Layout = .workspace) {
+        self.init(tabs: tabs, selection: selection, layout: layout, tools: { EmptyView() })
     }
 }
 

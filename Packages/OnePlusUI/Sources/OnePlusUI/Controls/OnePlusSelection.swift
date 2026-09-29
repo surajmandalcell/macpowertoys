@@ -31,6 +31,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     @Binding private var selection: Value
     private let label: String
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -67,7 +68,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                         }
                     }.onePlusText(.control, selected: selection == choice.0)
                         .lineLimit(1).padding(.horizontal, 8)
-                        .frame(maxWidth: .infinity).frame(height: density.controlHeight - 4)
+                        .frame(maxWidth: .infinity).frame(height: (controlHeight ?? density.controlHeight) - 4)
                         .background(selection == choice.0 ? OnePlusColor.selectedControl : .clear,
                                     in: RoundedRectangle(cornerRadius: 3))
                 }
@@ -76,7 +77,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                 .help(choice.1)
             }
         }
-        .padding(2).frame(height: density.controlHeight)
+        .padding(2).frame(height: controlHeight ?? density.controlHeight)
         .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
         .animation(OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.selection), value: selection)
@@ -107,6 +108,7 @@ public struct OnePlusMenuLabel: View {
     let title: String
     let width: CGFloat
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isFocused) private var focused
     @Environment(\.isEnabled) private var enabled
     @State private var hover = false
@@ -116,7 +118,7 @@ public struct OnePlusMenuLabel: View {
             Text(title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.down").font(.system(size: 10)).accessibilityHidden(true)
         }
-        .onePlusText(.control).padding(.horizontal, 10).frame(width: width, height: density.controlHeight)
+        .onePlusText(.control).padding(.horizontal, 10).frame(width: width, height: controlHeight ?? density.controlHeight)
         .background(enabled && (focused || hover) ? OnePlusColor.raisedHover : OnePlusColor.raised,
                     in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }

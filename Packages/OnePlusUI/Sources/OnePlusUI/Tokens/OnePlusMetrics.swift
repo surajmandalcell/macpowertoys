@@ -1,5 +1,17 @@
 import SwiftUI
 
+private struct OnePlusControlHeightKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+public extension EnvironmentValues {
+    /// Keep compact panel type while using full-height form controls.
+    var onePlusControlHeight: CGFloat? {
+        get { self[OnePlusControlHeightKey.self] }
+        set { self[OnePlusControlHeightKey.self] = newValue }
+    }
+}
+
 public enum OnePlusMetrics {
     public static let titleRow: CGFloat = 54
     public static let centerline: CGFloat = 27

@@ -7,6 +7,7 @@ public struct OnePlusTextField: View {
     private let error: String?
     private let onSubmit: () -> Void
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
     @FocusState private var focused: Bool
     @State private var hover = false
@@ -18,7 +19,7 @@ public struct OnePlusTextField: View {
         VStack(alignment: .leading, spacing: 4) {
             TextField(title, text: $text)
                 .textFieldStyle(.plain).onePlusText(.control).focused($focused)
-                .padding(.horizontal, 8).frame(height: density.controlHeight)
+                .padding(.horizontal, 8).frame(height: controlHeight ?? density.controlHeight)
                 .background(focused || (enabled && hover) ? OnePlusColor.fieldFocus : OnePlusColor.field,
                             in: RoundedRectangle(cornerRadius: 6))
                 .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
@@ -40,6 +41,7 @@ public struct OnePlusStepperField: View {
     @State private var error: String?
     @FocusState private var focused: Bool
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
 
     public init(_ title: String, value: Binding<Int>, in range: ClosedRange<Int>, step: Int = 1, unit: String? = nil) {
@@ -59,7 +61,7 @@ public struct OnePlusStepperField: View {
                 OnePlusNativeStepper(title: title, value: $value, range: range, step: step, enabled: enabled)
                     .frame(width: 17).clipped()
             }
-            .frame(height: density.controlHeight)
+            .frame(height: controlHeight ?? density.controlHeight)
             .background(focused ? OnePlusColor.fieldFocus : OnePlusColor.field, in: RoundedRectangle(cornerRadius: 6))
             .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
             if let error { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }

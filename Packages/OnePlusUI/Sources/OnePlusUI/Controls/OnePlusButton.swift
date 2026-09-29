@@ -54,6 +54,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.isFocused) private var focused
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.onePlusControlState) private var sample
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
@@ -63,7 +64,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     private var isPressed: Bool { enabled && (pressed || sample == .pressed) }
     private var isHovering: Bool { enabled && (hovering || sample == .hover) }
     private var isFocused: Bool { enabled && (focused || sample == .focus) }
-    private var height: CGFloat { style.height ?? (style.size == .small ? 24 : density.controlHeight) }
+    private var height: CGFloat { style.height ?? (style.size == .small ? 24 : controlHeight ?? density.controlHeight) }
     private var radius: CGFloat { style.variant == .icon || style.size == .small ? 5 : 6 }
 
     var body: some View {
