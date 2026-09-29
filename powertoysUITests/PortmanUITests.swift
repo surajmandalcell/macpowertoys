@@ -193,6 +193,11 @@ final class PortmanUITests: XCTestCase {
         idle.click()
         app.typeKey("a", modifierFlags: .command)
         app.typeText("99\n")
+        XCTAssertTrue(app.staticTexts["Enter a whole number from 1 to 72."].exists)
+        servers.click()
+        settings.click()
+        search.click()
+        search.typeText("idle")
         XCTAssertEqual(Double((idle.value as? String) ?? ""), 6,
                        "Out-of-range cleanup input replaced the saved value")
         idle.click()
