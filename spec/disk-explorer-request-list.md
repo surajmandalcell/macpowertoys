@@ -27,12 +27,15 @@ state off the main actor and discard it if the window task is cancelled.
 | Verify | Keep disk write protections while changing Modify's layout. | Device header, partition map, partition rows, direct action groups, and staged review use OnePlusUI. Command checks still bind to media identity and enforce the write lock, EFI protection, and typed review. | Run hosted safety and review tests. Do not write to physical disks during redesign review. |
 | Verify | Provide first-run, scanning, completed, stopped, unreadable, and error states. | The stats update from scanner snapshots. Stable chart membership and count-based splits remain. Choose Folder is a 460 pt native sheet; unreadable rows link to Full Disk Access. | Capture each state and inspect all page deep links. |
 | Verify | Restyle Settings and About without losing preferences or guidance. | Shared cards retain chart, measure, apparent-size, hidden-file, enable, and disk-access controls. Scanning and Disk access now share equal columns with a 16 pt gap. About includes the guide and keyboard shortcuts. | Inspect the paired cards and saved settings in both appearances. |
-| Verify | Route home, largest-files, results, rings, choose-folder, settings, about, and device/bsd-name pages. | The window handles every page through `.onOpenToolPage`. The shared route parser still rejects the third device-path segment. | Foundation must accept nested device page IDs; then verify all links. |
+| Verify | Use neutral inspector and more-menu controls. | The share bar uses the shared neutral fill. The native menu uses the shared icon label. | Capture rest, hover, and open-menu states in both appearances. |
+| Verify | Keep completed charts readable on a large home folder. | Tiny final targets fold into Other with their measured totals. Folded scanner aggregates stay explicit. Live ring bands stay fixed. Keyboard selection uses the visible layout, and grouped ring IDs cannot collide with real paths. Compiled regressions cover grouping, totals, hover hits, and live band widths. | Execute hosted checks and inspect completed treemap/rings, selection, and hover in both appearances. |
+| Verify | Route home, largest-files, results, rings, choose-folder, settings, about, and device/bsd-name pages. | The window handles every page through `.onOpenToolPage`; the shared parser now accepts nested device paths. Volume metadata loads off the main actor, and appearance does not restart a scan started by a pending page link. | Capture the first home page in dark and light and measure opening time; verify all links. |
 
-The desktop test build compiles the Diskman unit, render, and UI sources.
-Its current blocker is an unrelated missing OnePlusUI import in
-`ScrollIndicatorTests.swift`. Signed visual review and hosted execution
-remain open; compilation does not prove interaction or appearance.
+The round 2 desktop test build compiles both bundles, including Diskman unit,
+render, and UI sources. Three attempts stopped in other agents' active edits;
+the fourth passed. The render fixture covers a completed 133-folder home tree
+and 100 largest files. Signed visual review and hosted execution remain open;
+compilation does not prove interaction, opening time, or appearance.
 
 
 | Status | Request | Evidence | Remaining work |
