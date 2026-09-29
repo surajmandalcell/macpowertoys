@@ -11,9 +11,9 @@ final class OnePlusPageTests: XCTestCase {
         } tabs: {
             PageRegionProbe("tabs").frame(height: 36)
         } toolbar: {
-            PageRegionProbe("toolbar").frame(height: 28)
+            PageRegionProbe("toolbar").frame(width: 100, height: 28)
         } footer: {
-            PageRegionProbe("footer").frame(height: 22)
+            PageRegionProbe("footer").frame(width: 100, height: 22)
         } content: {
             ScrollView { Color.clear.frame(height: 3000) }
                 .onePlusScrollIndicators().overlay { PageRegionProbe("rows") }
@@ -30,6 +30,8 @@ final class OnePlusPageTests: XCTestCase {
             }
             let before = try ["header", "tabs", "toolbar", "footer", "rows"].map(rect)
             XCTAssertEqual(before[2].minY, 102, accuracy: 0.5)
+            XCTAssertEqual(before[2].minX, 24, accuracy: 0.5)
+            XCTAssertEqual(before[3].minX, 24, accuracy: 0.5)
             XCTAssertEqual(before[4].minY, 146, accuracy: 0.5)
             XCTAssertEqual(before[4].maxY, height - 62, accuracy: 0.5)
             XCTAssertEqual(before[3].maxY, height - 24, accuracy: 0.5)

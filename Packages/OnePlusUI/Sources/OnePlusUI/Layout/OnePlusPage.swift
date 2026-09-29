@@ -121,13 +121,15 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
             header.fixedSize(horizontal: false, vertical: true)
             tabs.fixedSize(horizontal: false, vertical: true)
             if let toolbar {
-                toolbar.padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
+                toolbar.frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if scrolls { ScrollView { bodyContent }.onePlusScrollIndicators() }
             else { bodyContent.frame(maxHeight: .infinity, alignment: .topLeading) }
             if let footer {
-                footer.padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
+                footer.frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
                     .padding(.bottom, bottomInset).fixedSize(horizontal: false, vertical: true)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
