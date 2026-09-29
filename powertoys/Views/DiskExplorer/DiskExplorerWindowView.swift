@@ -6,6 +6,16 @@ import SwiftUI
 
 private enum DiskExplorerPage: Hashable { case explore, modify, settings, about }
 
+private struct DiskExplorerLiveUpdateObserver: View {
+    @Environment(\.onePlusIsVisible) private var isVisible
+    @Binding var isActive: Bool
+
+    var body: some View {
+        Color.clear.frame(width: 0, height: 0)
+            .onChange(of: isVisible, initial: true) { _, next in isActive = next }
+    }
+}
+
 enum DiskResultTab: String, CaseIterable, Identifiable {
     case visualization = "Visualization"
     case largestFiles = "Largest files"
@@ -33,6 +43,7 @@ struct DiskExplorerWindowView: View {
     @State private var showingFolder = false
     @State private var pendingDevice: String?
     @State private var inventoryTask: Task<Void, Never>?
+    @State private var presentsLiveUpdates = false
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
     @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
@@ -71,7 +82,9 @@ struct DiskExplorerWindowView: View {
     }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .diskExplorer) { sidebar } content: { content }
+        OnePlusWindowRoot(canvas: .diskExplorer) { sidebar } content: {
+            content.background(DiskExplorerLiveUpdateObserver(isActive: $presentsLiveUpdates))
+        }
             .background(WindowAccessor(identifier: "disk-explorer"))
             .background { shortcuts }
             .onAppear {
@@ -83,7 +96,13 @@ struct DiskExplorerWindowView: View {
                 model.leave(); inventoryTask?.cancel(); inventoryTask = nil
                 selectedID = nil; selection = []; history = []; previewURL = nil
             }
-            .onChange(of: page) { _, next in if next != .explore { model.cancel() } }
+            .onChange(of: page) { _, next in
+                if next != .explore { model.cancel() }
+                model.setPresentationActive(presentsLiveUpdates && next == .explore)
+            }
+            .onChange(of: presentsLiveUpdates, initial: true) { _, active in
+                model.setPresentationActive(active && page == .explore)
+            }
             .onChange(of: includeHidden) { _, _ in
                 if page == .explore, let source = model.sourceURL { startScan(source) }
             }

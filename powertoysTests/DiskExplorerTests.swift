@@ -70,7 +70,7 @@ final class DiskExplorerTests: XCTestCase {
         func tiles(_ weights: [Int64]) -> [DiskChartTile] {
             weights.enumerated().map { index, weight in
                 DiskChartTile(entry: nil, label: String(index), weight: weight,
-                              detail: "", color: .blue)
+                              detail: "", style: .storage(0))
             }
         }
         let frame = CGRect(x: 0, y: 0, width: 400, height: 200)

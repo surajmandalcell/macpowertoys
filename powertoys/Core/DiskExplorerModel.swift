@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Darwin
+import Observation
 
 nonisolated struct DiskVolume: Identifiable, Sendable {
     let url: URL
@@ -27,6 +28,19 @@ nonisolated struct DiskVolume: Identifiable, Sendable {
             )
         }.sorted { $0.url.path == "/" || ($1.url.path != "/" && $0.name < $1.name) }
     }
+}
+
+nonisolated struct DiskLiveUpdateGate: Sendable {
+    static let interval: TimeInterval = 0.25
+    private(set) var lastPresentation = -TimeInterval.infinity
+
+    func delay(at uptime: TimeInterval) -> TimeInterval {
+        guard uptime.isFinite else { return Self.interval }
+        return max(0, Self.interval - (uptime - lastPresentation))
+    }
+
+    mutating func didPresent(at uptime: TimeInterval) { lastPresentation = uptime }
+    mutating func reset() { lastPresentation = -.infinity }
 }
 
 nonisolated enum DiskRemoval {
@@ -118,6 +132,12 @@ final class DiskExplorerModel {
     private var scanTask: Task<Void, Never>?
     private var generation = 0
     private(set) var marks: [String: DiskEntry] = [:]
+    @ObservationIgnored private var liveUpdateGate = DiskLiveUpdateGate()
+    @ObservationIgnored private var liveUpdateTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingResult: DiskScanResult?
+    @ObservationIgnored private var pendingEntryCount = 0
+    @ObservationIgnored private var pendingScanFinished = false
+    @ObservationIgnored private var presentsLiveUpdates = true
 
     init(preview: DiskScanResult? = nil) {
         result = preview
@@ -146,30 +166,29 @@ final class DiskExplorerModel {
         errorMessage = nil
         operationMessage = nil
         marks = [:]
-        let session = DiskScanSession { [weak self] count in
-            Task { @MainActor [weak self] in
-                guard self?.generation == scanGeneration, self?.isScanning == true else { return }
-                self?.scannedEntries = count
-            }
-        }
+        liveUpdateGate.reset()
+        pendingResult = nil
+        pendingEntryCount = 0
+        pendingScanFinished = false
+        liveUpdateTask?.cancel()
+        liveUpdateTask = nil
+        let session = DiskScanSession()
         scanSession = session
         scanTask = Task { [weak self] in
             do {
                 let snapshot = try await Task.detached(priority: .userInitiated) {
                     try DiskExplorerScanner.scan(url, includeHidden: includeHidden, session: session) { [weak self] partial in
                         Task { @MainActor [weak self] in
-                            guard let self, self.generation == scanGeneration, self.isScanning,
-                                  self.result?.isComplete != true,
-                                  partial.scannedAt >= (self.result?.scannedAt ?? .distantPast) else { return }
-                            self.apply(partial)
+                            self?.queueLiveUpdate(partial, entryCount: session.entryCount,
+                                                  finished: false, generation: scanGeneration)
                         }
                     }
                 }.value
                 guard let self, self.generation == scanGeneration, self.isScanning else { return }
-                self.apply(snapshot)
-                self.isScanning = false
                 self.scanSession = nil
                 self.scanTask = nil
+                self.queueLiveUpdate(snapshot, entryCount: session.entryCount,
+                                     finished: true, generation: scanGeneration)
             } catch is CancellationError {
                 guard let self, self.generation == scanGeneration else { return }
                 self.isScanning = false
@@ -186,12 +205,73 @@ final class DiskExplorerModel {
     func cancel() {
         scanSession?.cancel()
         scanTask?.cancel()
+        liveUpdateTask?.cancel()
         scanSession = nil
         scanTask = nil
+        liveUpdateTask = nil
+        pendingResult = nil
+        pendingEntryCount = 0
+        pendingScanFinished = false
         isScanning = false
     }
 
     func leave() { cancel(); result = nil; current = nil; marks = [:] }
+
+    func setPresentationActive(_ active: Bool) {
+        guard presentsLiveUpdates != active else { return }
+        presentsLiveUpdates = active
+        if active {
+            scheduleLiveUpdate()
+        } else {
+            liveUpdateTask?.cancel()
+            liveUpdateTask = nil
+        }
+    }
+
+    private func queueLiveUpdate(_ snapshot: DiskScanResult, entryCount: Int,
+                                 finished: Bool, generation scanGeneration: Int) {
+        guard generation == scanGeneration, isScanning, result?.isComplete != true else { return }
+        let latest = pendingResult?.scannedAt ?? result?.scannedAt ?? .distantPast
+        guard snapshot.scannedAt >= latest else { return }
+        pendingResult = snapshot
+        pendingEntryCount = max(pendingEntryCount, entryCount)
+        pendingScanFinished = pendingScanFinished || finished
+        scheduleLiveUpdate()
+    }
+
+    private func scheduleLiveUpdate() {
+        guard presentsLiveUpdates, pendingResult != nil, liveUpdateTask == nil else { return }
+        let uptime = ProcessInfo.processInfo.systemUptime
+        let delay = liveUpdateGate.delay(at: uptime)
+        guard delay > 0 else {
+            presentLiveUpdate(at: uptime)
+            return
+        }
+        liveUpdateTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+            guard let self else { return }
+            self.liveUpdateTask = nil
+            guard self.presentsLiveUpdates else { return }
+            self.presentLiveUpdate(at: ProcessInfo.processInfo.systemUptime)
+        }
+    }
+
+    private func presentLiveUpdate(at uptime: TimeInterval) {
+        guard let snapshot = pendingResult else { return }
+        let entryCount = pendingEntryCount
+        let finished = pendingScanFinished
+        pendingResult = nil
+        pendingEntryCount = 0
+        pendingScanFinished = false
+        liveUpdateGate.didPresent(at: uptime)
+        apply(snapshot)
+        scannedEntries = entryCount
+        if finished {
+            isScanning = false
+            scanSession = nil
+            scanTask = nil
+        }
+    }
 
     private func apply(_ snapshot: DiskScanResult) {
         let route = current.flatMap { current in
