@@ -39,6 +39,15 @@ final class PortmanTests: XCTestCase {
         XCTAssertNil(PortmanGitHubLookup.repository(from: "https://github.com/owner/repo.git?token=secret"))
     }
 
+    func testGitHubLinkCacheIsBounded() async {
+        let lookup = PortmanGitHubLookup()
+        for index in 0..<70 {
+            _ = await lookup.lookup(root: "/missing/portman-cache", branch: "branch-\(index)")
+        }
+        let count = await lookup.cachedResultCount
+        XCTAssertEqual(count, 64)
+    }
+
     func testEditorChoiceUsesOnlyKnownAppsAndPrefersSelectedApp() {
         let available = PortmanEditor.choices.map(\.id)
         XCTAssertEqual(PortmanEditor.bundleIDs(for: "com.microsoft.VSCode").first,
