@@ -85,23 +85,27 @@ struct InputScrollDeviceBar: View {
 
 struct InputDevicesSettingsContent: View {
     @State private var manager = InputDevicesManager.shared
+    @Environment(\.onePlusDensity) private var density
     var includesDeviceFooter = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             scrollControlCard
-            mouseProfile
-            trackpadProfile
+            if density == .regular {
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    mouseProfile
+                    trackpadProfile
+                }
+            } else {
+                mouseProfile
+                trackpadProfile
+            }
             if includesDeviceFooter { InputScrollDeviceBar() }
         }
     }
 
     private var scrollControlCard: some View {
         OnePlusCard {
-            OnePlusCardHeader("System-wide control", systemImage: "cursorarrow.motionlines") {
-                OnePlusStatus(manager.interceptionActive ? "Active" : "Inactive",
-                              state: manager.interceptionActive ? .success : .offline)
-            }
             OnePlusSettingRow(
                 "Adjust scrolling system wide",
                 caption: "Use the mouse and trackpad profiles outside MacPowerToys.",

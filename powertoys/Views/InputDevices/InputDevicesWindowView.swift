@@ -100,7 +100,10 @@ struct InputDevicesWindowView: View {
             }
         } content: {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 250), spacing: OnePlusMetrics.cardGap, alignment: .top)],
+                columns: Array(
+                    repeating: GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top),
+                    count: 2
+                ),
                 alignment: .leading,
                 spacing: OnePlusMetrics.cardGap
             ) {
@@ -137,12 +140,12 @@ struct InputDevicesWindowView: View {
 
     private var aboutPage: some View {
         OnePlusPage {
-            OnePlusPageHeader(title: "About", subtitle: "Input Devices")
+            OnePlusPageHeader(title: "About", subtitle: appVersion)
         } content: {
             OnePlusCard {
                 OnePlusCardHeader("Input Devices", systemImage: "computermouse")
                 OnePlusSettingRow("Profiles", caption: "Mouse and trackpad settings stay independent.") {
-                    OnePlusStatus("Saved locally", state: .success)
+                    OnePlusStatus("Saved locally")
                 }
                 OnePlusSettingRow(
                     "System control",
@@ -150,10 +153,16 @@ struct InputDevicesWindowView: View {
                     separator: false
                 ) {
                     OnePlusStatus(manager.permissionGranted ? "Allowed" : "Permission needed",
-                                  state: manager.permissionGranted ? .success : .warning)
+                                  state: manager.permissionGranted ? .online : .warning)
                 }
             }
         }
+    }
+
+    private var appVersion: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return "Version \(short) (\(build))"
     }
 
     private func profile(for kind: InputDeviceDescriptor.Kind) -> InputScrollProfile {
