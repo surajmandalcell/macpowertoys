@@ -79,7 +79,10 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(eject.isEnabled)
         eject.click()
         XCTAssertTrue(app.staticTexts["Disk is in use"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Example Editor"].exists)
+        let blocker = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "Example Editor", "PID 12345"
+        )).firstMatch
+        XCTAssertTrue(blocker.exists)
         XCTAssertFalse(app.buttons["diskman.quitAndEject"].isEnabled)
         XCTAssertFalse(app.buttons["diskman.forceQuitAndEject"].isEnabled)
         attach(app.screenshot(), named: "Diskman Blocked Eject Preview")
