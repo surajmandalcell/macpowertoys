@@ -3,14 +3,19 @@ import XCTest
 
 final class ToolActionRouterTests: XCTestCase {
     @MainActor
-    func testRulerClosesMainWindowBeforePostingOpenAction() {
-        var events: [String] = []
-        ToolActionRouter.launchRuler(
-            dismissMainWindow: { events.append("dismiss") },
-            openRuler: { events.append("open") }
-        )
-
-        XCTAssertEqual(events, ["dismiss", "open"])
+    func testToolOpenClosesMainOnlyWhenEnabled() throws {
+        let suite = "ToolActionRouterTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var closeCount = 0
+        ToolActionRouter.finishToolOpen(defaults: defaults) { closeCount += 1 }
+        XCTAssertEqual(closeCount, 0, "Missing preferences keep the main window open.")
+        defaults.set(true, forKey: "app.closeMainWindowAfterOpeningTool")
+        ToolActionRouter.finishToolOpen(defaults: defaults) { closeCount += 1 }
+        XCTAssertEqual(closeCount, 1)
+        defaults.set(false, forKey: "app.closeMainWindowAfterOpeningTool")
+        ToolActionRouter.finishToolOpen(defaults: defaults) { closeCount += 1 }
+        XCTAssertEqual(closeCount, 1)
     }
 
     func testParsesActionAndPercentDecodedParameters() throws {
