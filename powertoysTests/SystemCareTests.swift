@@ -13,6 +13,19 @@ final class SystemCareTests: XCTestCase {
         XCTAssertEqual(kilobyte.unit, "KB")
     }
 
+    func testPresentationRowsKeepUnavailableApplicationMetadataExplicit() {
+        let application = InstalledApplication(
+            name: "Missing App",
+            url: URL(fileURLWithPath: "/path/that/does/not/exist/Missing.app")
+        )
+
+        let row = SystemCarePresentationRows.applications([application])[0]
+
+        XCTAssertEqual(row.application, application)
+        XCTAssertEqual(row.size, "Unknown")
+        XCTAssertEqual(row.lastUsed, "Unknown")
+    }
+
     func testCleanupCandidateMustBeAChildOfItsAllowedRoot() {
         let root = URL(fileURLWithPath: "/Users/example/Library/Caches", isDirectory: true)
         let safe = CleanupCandidate(
