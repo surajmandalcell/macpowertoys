@@ -12,6 +12,10 @@ Round 3 keeps the tab strip, search, format selector, and project controls
 fixed. Only history rows and project rows scroll. Row strings, timestamps,
 search results, and project counts are prepared off the main actor.
 
+Round 5 puts history rows inside one card with 1pt separators. Projects grow
+from 250pt with their rows and editor, up to 460pt, where rows start scrolling.
+The titlebar action is 24pt and all Settings card headers use symbols.
+
 Round 2 requires full-width Settings cards inside 16pt body gutters,
 neutral copy controls, and a protected floating settings area on every page.
 
@@ -20,6 +24,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Show complete project rows and use native list anatomy for history. | `projectsHeight` includes each project row and the 60pt project editor before the 460pt cap. History uses one card with stable row ids and `lineSoft` separators. | Verify the minimum and maximum window heights in the signed build. |
 | Verify | Keep Color Picker controls fixed and scroll only the rows. | History scrolls below fixed tabs, search, and format controls. Projects scrolls only its rows below the fixed card header and new-project field. Row presentation is cached by the current history request. | Verify smooth scrolling and page switches within 100ms in the signed build. |
 | Verify | Embed one cards-only settings view without nested scrolling or gutters. | `ColorPickerSettingsView()` owns only its shortcut and saved-colors cards. The applet supplies OnePlusPage with 16pt gutters. Permission and clear-history paths remain in the shared cards. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |
 | Verify | Keep the floating settings button clear of History, Projects, and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify all three pages and their scroll limits in the next signed capture. |
