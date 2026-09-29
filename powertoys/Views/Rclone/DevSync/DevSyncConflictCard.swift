@@ -209,7 +209,7 @@ struct DevSyncConflictCard: View {
     }
 
     private var diffView: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        LazyVStack(alignment: .leading, spacing: 1) {
             ForEach(diff) { line in
                 Text("\(line.prefix) \(line.text)")
                     .font(.system(size: 11, design: .monospaced))

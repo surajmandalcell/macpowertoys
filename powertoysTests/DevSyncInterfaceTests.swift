@@ -242,6 +242,19 @@ final class DevSyncInterfaceTests: XCTestCase {
         XCTAssertFalse(model.isIncluded(item, in: .internalOnly))
         XCTAssertTrue(model.draft.excludedProjectPaths.contains(item.relativePath))
         XCTAssertFalse(DevSetupGroup.allCases.contains { $0.displayName.localizedCaseInsensitiveContains("candidate") }, "the setup sheet never lists candidates")
+
+        var included = item
+        included.relativePath = "work/other"
+        XCTAssertEqual(
+            DevSyncSetupModel.mirrorCount(
+                in: [
+                    DevSetupProjectGroup(group: .internalOnly, items: [item, included]),
+                    DevSetupProjectGroup(group: .externalOnly, items: [included])
+                ],
+                excludedPaths: [item.relativePath]
+            ),
+            1
+        )
     }
 
     func testSetupActivityPresetReplacesTiming() {

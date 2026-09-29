@@ -647,7 +647,7 @@ private struct FileTreeRowView: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
-                .help("Add to ignore patterns")
+                .accessibilityLabel("Add to ignore patterns")
             }
 
             trailingMeta

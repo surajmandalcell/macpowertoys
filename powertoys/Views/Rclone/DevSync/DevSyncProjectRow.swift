@@ -141,7 +141,6 @@ struct DevSyncProjectRow: View {
         .buttonStyle(.plain)
         .focusEffectDisabled()
         .contentShape(Rectangle())
-        .help("Resolve destination drift")
         .accessibilityLabel("Resolve destination drift")
         .popover(isPresented: $isShowingDrift, arrowEdge: .bottom) {
             driftPopover
@@ -216,7 +215,6 @@ struct DevSyncProjectRow: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .focusEffectDisabled()
-        .help("More project actions")
         .accessibilityLabel("More actions for \(project.displayName)")
     }
 

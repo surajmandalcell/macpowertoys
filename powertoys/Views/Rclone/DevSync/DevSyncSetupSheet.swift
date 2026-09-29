@@ -44,6 +44,7 @@ final class DevSyncSetupModel {
     var probe: DevSetupProbe?
     var groups: [DevSetupProjectGroup] = []
     var preview: DevSetupPreview?
+    private(set) var previewMirrorCount = 0
     private(set) var isWorking = false
     var errorBanner: String?
 
@@ -128,16 +129,35 @@ final class DevSyncSetupModel {
         let scanDraft = draft
         let scanned = await engine.preview(draft: scanDraft)
         if step == .projects, !scanned.groups.isEmpty { groups = scanned.groups }
-        preview = scanned
-        previewDraft = scanDraft
+        storePreview(scanned, for: scanDraft)
     }
 
     func buildPreview() async {
         if preview != nil, previewDraft == draft { return }
         isWorking = true
-        preview = await engine.preview(draft: draft)
-        previewDraft = draft
+        let currentDraft = draft
+        let scanned = await engine.preview(draft: currentDraft)
+        storePreview(scanned, for: currentDraft)
         isWorking = false
+    }
+
+    private func storePreview(_ value: DevSetupPreview, for draft: DevSetupDraft) {
+        preview = value
+        previewDraft = draft
+        previewMirrorCount = Self.mirrorCount(
+            in: value.groups,
+            excludedPaths: draft.excludedProjectPaths
+        )
+    }
+
+    nonisolated static func mirrorCount(
+        in groups: [DevSetupProjectGroup],
+        excludedPaths: Set<String>
+    ) -> Int {
+        groups.reduce(0) { count, group in
+            guard group.group == .internalOnly else { return count }
+            return count + group.items.count { !excludedPaths.contains($0.relativePath) }
+        }
     }
 
     func back() {
@@ -403,7 +423,7 @@ private struct DevSyncSetupProjectsStep: View {
     @Bindable var model: DevSyncSetupModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        LazyVStack(alignment: .leading, spacing: 16) {
             Text("Everything under the internal root syncs. Git repositories sync as units; every other file and folder syncs as one unit. Only the skip list is left out: caches, dependency checkouts, build outputs, and tmp folders. Git-tracked content inside those still syncs. Nested repositories and packages sync as part of the folder or repository that contains them.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -414,7 +434,7 @@ private struct DevSyncSetupProjectsStep: View {
                     .foregroundStyle(.secondary)
             }
             ForEach(model.groups) { group in
-                VStack(alignment: .leading, spacing: 8) {
+                LazyVStack(alignment: .leading, spacing: 8) {
                     DevSyncSectionHeader(title: group.group.displayName)
                     ForEach(group.items) { item in
                         DevSyncSetupProjectItemRow(model: model, group: group.group, item: item)
@@ -509,10 +529,9 @@ private struct DevSyncSetupPreviewStep: View {
 
     private func summaryCard(_ preview: DevSetupPreview) -> some View {
         let summary = preview.summary
-        let mirrorCount = preview.groups.filter { $0.group == .internalOnly }.flatMap(\.items).filter { model.isIncluded($0, in: .internalOnly) }.count
         return VStack(alignment: .leading, spacing: 6) {
             DevSyncSectionHeader(title: "Planned changes")
-            DevSyncValueRow(label: "Projects to mirror", value: "\(mirrorCount)")
+            DevSyncValueRow(label: "Projects to mirror", value: "\(model.previewMirrorCount)")
             DevSyncValueRow(label: "Copy internal to external", value: "\(summary.copyToExternalCount) · \(RcloneFormat.bytes(summary.copyToExternalBytes))")
             DevSyncValueRow(label: "Copy external to internal", value: "\(summary.copyToInternalCount) · \(RcloneFormat.bytes(summary.copyToInternalBytes))")
             DevSyncValueRow(label: "Managed links", value: "\(summary.managedLinksToCreate)")

@@ -564,7 +564,7 @@ private struct RemoteEntryRow: View {
         }
         .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         .focusEffectDisabled()
-        .help("Quick Look")
+        .accessibilityLabel("Quick Look")
     }
 
 }
