@@ -27,9 +27,20 @@ nonisolated struct SystemCareCleanupRow: Identifiable, Equatable, Sendable {
 
 nonisolated struct SystemCareApplicationRow: Identifiable, Equatable, Sendable {
     let application: InstalledApplication
+    var size: String?
+    var lastUsed: String?
+    var id: String { application.id }
+}
+
+nonisolated struct SystemCareApplicationMetadata: Sendable {
+    let id: String
     let size: String
     let lastUsed: String
-    var id: String { application.id }
+    let iconData: Data?
+}
+
+private enum SystemCareApplicationLayout {
+    static let metadataColumn = OnePlusMetrics.controlColumn * 0.75
 }
 
 nonisolated enum SystemCarePresentationRows {
@@ -47,22 +58,50 @@ nonisolated enum SystemCarePresentationRows {
         }
     }
 
-    static func applications(_ applications: [InstalledApplication]) -> [SystemCareApplicationRow] {
+    static func application(_ application: InstalledApplication) -> SystemCareApplicationMetadata {
         let formatter = byteFormatter()
         let dateStyle = Date.FormatStyle(date: .abbreviated, time: .omitted)
-        return applications.map { application in
-            let values = try? application.url.resourceValues(forKeys: [
-                .totalFileAllocatedSizeKey,
-                .fileAllocatedSizeKey,
-                .contentAccessDateKey
-            ])
-            let bytes = values?.totalFileAllocatedSize ?? values?.fileAllocatedSize
-            return SystemCareApplicationRow(
-                application: application,
-                size: bytes.map { formatter.string(fromByteCount: Int64($0)) } ?? "Unknown",
-                lastUsed: values?.contentAccessDate.map { dateStyle.format($0) } ?? "Unknown"
-            )
+        let values = try? application.url.resourceValues(forKeys: [.contentAccessDateKey])
+        let size = allocatedSize(of: application.url).map {
+            formatter.string(fromByteCount: $0)
+        } ?? "Unavailable"
+        return SystemCareApplicationMetadata(
+            id: application.id,
+            size: size,
+            lastUsed: values?.contentAccessDate.map { dateStyle.format($0) } ?? "Not available",
+            iconData: NSWorkspace.shared.icon(forFile: application.url.path).tiffRepresentation
+        )
+    }
+
+    static func allocatedSize(of root: URL) -> Int64? {
+        let keys: [URLResourceKey] = [
+            .isRegularFileKey,
+            .isSymbolicLinkKey,
+            .totalFileAllocatedSizeKey,
+            .fileAllocatedSizeKey
+        ]
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: keys,
+            options: [],
+            errorHandler: { _, _ in true }
+        ) else { return nil }
+        var total: Int64 = 0
+        var foundFile = false
+        for case let url as URL in enumerator {
+            guard !Task.isCancelled else { return nil }
+            guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
+            if values.isSymbolicLink == true {
+                enumerator.skipDescendants()
+                continue
+            }
+            guard values.isRegularFile == true else { continue }
+            let bytes = Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? 0)
+            let (sum, overflow) = total.addingReportingOverflow(bytes)
+            total = overflow ? Int64.max : sum
+            foundFile = true
         }
+        return foundFile && total > 0 ? total : nil
     }
 
     private static func byteFormatter() -> ByteCountFormatter {
@@ -93,14 +132,14 @@ struct SystemCareSettingsCards: View {
             }
             OnePlusCard {
                 OnePlusCardHeader("Safety", systemImage: "lock.shield")
-                OnePlusSettingRow("Native cleanup", caption: "Moves reviewed items to macOS Trash.", separator: false) {
-                    OnePlusStatus("Recoverable", state: .success)
+                OnePlusSettingRow("Native cleanup", caption: "Moves reviewed items to macOS Trash.") {
+                    OnePlusStatus("Recoverable")
                 }
-                OnePlusSettingRow("Symbolic links", caption: "Never followed while size is calculated.", separator: false) {
-                    OnePlusStatus("Protected", state: .success)
+                OnePlusSettingRow("Symbolic links", caption: "Never followed while size is calculated.") {
+                    OnePlusStatus("Protected")
                 }
                 OnePlusSettingRow("Mole privileges", caption: "Requests appear only in a visible Terminal.", separator: false) {
-                    OnePlusStatus("Visible", state: .success)
+                    OnePlusStatus("Visible")
                 }
             }
         }
@@ -156,6 +195,7 @@ struct SystemCareWindowView: View {
     @State private var storageRows: [SystemCareStorageRow] = []
     @State private var cleanupRows: [SystemCareCleanupRow] = []
     @State private var applicationRows: [SystemCareApplicationRow] = []
+    @State private var applicationIcons: [String: NSImage] = [:]
     @State private var appSearch = ""
     @State private var appSearchFocus = 0
     @State private var selectedApplication: InstalledApplication?
@@ -201,12 +241,7 @@ struct SystemCareWindowView: View {
             cleanupRows = rows
         }
         .task(id: manager.applications) {
-            let applications = manager.applications
-            let rows = await Task.detached(priority: .utility) {
-                SystemCarePresentationRows.applications(applications)
-            }.value
-            guard !Task.isCancelled else { return }
-            applicationRows = rows
+            await loadApplications(manager.applications)
         }
         .onDisappear { manager.cancel() }
         .onOpenToolPage("system-care") { pageID in
@@ -304,15 +339,15 @@ struct SystemCareWindowView: View {
                 OnePlusMetricTile(
                     "Storage used",
                     systemImage: "internaldrive",
-                    value: manager.storageURL == nil ? "Not scanned" : manager.storageTotal.formattedByteCount,
-                    caption: manager.storageURL?.lastPathComponent ?? "Choose a folder",
+                    value: manager.storageURL == nil ? "—" : manager.storageTotal.formattedByteCount,
+                    caption: manager.storageURL?.lastPathComponent ?? "Choose a folder to scan",
                     action: { page = .storage }
                 )
                 OnePlusMetricTile(
                     "Reclaimable",
                     systemImage: "sparkles",
-                    value: reclaimableMetric.value,
-                    unit: reclaimableMetric.unit,
+                    value: manager.hasCleanupScan ? reclaimableMetric.value : "—",
+                    unit: manager.hasCleanupScan ? reclaimableMetric.unit : "",
                     caption: manager.hasCleanupScan ? "Latest saved scan" : "Run a cleanup scan",
                     action: { page = .cleanup }
                 )
@@ -326,9 +361,9 @@ struct SystemCareWindowView: View {
                 OnePlusMetricTile(
                     "Last cleanup",
                     systemImage: "trash",
-                    value: cleanupMetric.value,
-                    unit: cleanupMetric.unit,
-                    caption: manager.lastRecoveredBytes == 0 ? "No cleanup this session" : "Moved to Trash",
+                    value: manager.lastRecoveredBytes == 0 ? "—" : cleanupMetric.value,
+                    unit: manager.lastRecoveredBytes == 0 ? "" : cleanupMetric.unit,
+                    caption: manager.lastRecoveredBytes == 0 ? "Review cleanup history" : "Moved to Trash",
                     action: { page = .history }
                 )
             }
@@ -349,7 +384,7 @@ struct SystemCareWindowView: View {
             }
             OnePlusSettingRow("Mole", separator: false) {
                 OnePlusStatus(manager.moleVersion.map { "Version \($0)" } ?? "Not installed",
-                              state: manager.molePath == nil ? .offline : .success)
+                              state: manager.molePath == nil ? .offline : .online)
             }
         }
     }
@@ -388,7 +423,7 @@ struct SystemCareWindowView: View {
                     Button("Choose Folder…") { chooseStorageFolder() }
                         .buttonStyle(OnePlusButtonStyle(.neutral))
                 }
-                .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.wideControlColumn)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 storageBreadcrumbCard
                 storageSummaryCard
@@ -508,12 +543,17 @@ struct SystemCareWindowView: View {
                     selection: $cleanupMode,
                     accessibilityLabel: "Cleanup mode"
                 )
-                Button(manager.hasCleanupScan ? "Rescan" : "Scan") {
-                    manager.scanCleanup(categories: effectiveCategories)
+                if manager.hasCleanupScan {
+                    Button("Rescan") { manager.scanCleanup(categories: effectiveCategories) }
+                        .buttonStyle(OnePlusButtonStyle(.neutral))
+                        .disabled(manager.isWorking)
+                        .accessibilityIdentifier("system-care.cleanup.scan")
+                } else {
+                    Button("Scan") { manager.scanCleanup(categories: effectiveCategories) }
+                        .buttonStyle(OnePlusButtonStyle(.primary))
+                        .disabled(manager.isWorking)
+                        .accessibilityIdentifier("system-care.cleanup.scan")
                 }
-                .buttonStyle(OnePlusButtonStyle(.neutral))
-                .disabled(manager.isWorking)
-                .accessibilityIdentifier("system-care.cleanup.scan")
             }
         } content: {
             if cleanupMode == .guided { cleanupCategoriesCard }
@@ -644,27 +684,30 @@ struct SystemCareWindowView: View {
             OnePlusCardHeader("Installed applications", systemImage: "app.dashed") {
                 Text(filteredApplicationRows.count.formatted()).onePlusText(.caption)
             }
-            HStack {
+            HStack(spacing: OnePlusMetrics.spacing[3]) {
                 Text("Application").frame(maxWidth: .infinity, alignment: .leading)
-                Text("Size").frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
-                Text("Last used").frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
+                Text("Size").frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .trailing)
+                Text("Last used").frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .leading)
             }
+            .padding(.horizontal, OnePlusMetrics.spacing[1])
             .onePlusTableHeader()
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredApplicationRows) { row in
                         let application = row.application
                         Button { selectedApplication = application } label: {
-                            HStack {
-                                Image(systemName: "app")
-                                    .frame(width: OnePlusMetrics.controlHeight)
-                                    .accessibilityHidden(true)
+                            HStack(spacing: OnePlusMetrics.spacing[3]) {
+                                applicationIcon(application)
+                                    .frame(width: OnePlusMetrics.spacing[7], height: OnePlusMetrics.spacing[7])
                                 Text(application.name).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
-                                Text(row.size)
-                                    .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
-                                Text(row.lastUsed)
-                                    .frame(width: OnePlusMetrics.controlColumn, alignment: .leading)
+                                Text(row.size ?? "—")
+                                    .onePlusText(row.size == nil ? .caption : .mono)
+                                    .frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .trailing)
+                                Text(row.lastUsed ?? "—")
+                                    .onePlusText(row.lastUsed == nil ? .caption : .row)
+                                    .frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .leading)
                             }
+                            .padding(.horizontal, OnePlusMetrics.spacing[1])
                             .onePlusTableRow(selected: selectedApplication == application)
                         }
                         .buttonStyle(OnePlusInteractionStyle(selected: selectedApplication == application))
@@ -682,11 +725,11 @@ struct SystemCareWindowView: View {
     }
 
     private var applicationDetail: some View {
-        OnePlusCard {
+        OnePlusPanel {
             if let application = selectedApplication {
-                OnePlusCardHeader(application.name, systemImage: "app")
+                OnePlusCardHeader(application.name)
                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[4]) {
-                    Image(systemName: "app")
+                    applicationIcon(application)
                         .frame(width: OnePlusMetrics.spacing[9] * 2, height: OnePlusMetrics.spacing[9] * 2)
                     Text(application.url.path).onePlusText(.mono).textSelection(.enabled)
                     Button("Review Leftovers", systemImage: "doc.text.magnifyingglass") {
@@ -701,16 +744,16 @@ struct SystemCareWindowView: View {
                         .onePlusText(.caption)
                 }
                 .padding(OnePlusMetrics.cardPadding)
+                Spacer(minLength: 0)
             } else {
                 OnePlusEmptyState(
                     "Select an application",
                     systemImage: "app.dashed",
                     caption: "Review size, recent use, and removal options."
                 )
-                .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.wideControlColumn)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var molePage: some View {
@@ -721,6 +764,14 @@ struct SystemCareWindowView: View {
                 }
                 .buttonStyle(OnePlusButtonStyle(.neutral))
             }
+        } footer: {
+            HStack {
+                Button("Manage Whitelist…") { manager.openMoleWhitelist() }
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
+                    .disabled(manager.molePath == nil)
+                Link("Official Mole Project", destination: URL(string: "https://github.com/tw93/Mole")!)
+                    .buttonStyle(OnePlusButtonStyle(.link))
+            }
         } content: {
             OnePlusBanner(
                 manager.moleVersion.map { "Mole \($0) is installed." } ?? "Mole is not installed. Preview and run actions stay disabled.",
@@ -728,39 +779,26 @@ struct SystemCareWindowView: View {
             )
             OnePlusCard {
                 OnePlusCardHeader("Maintenance commands", systemImage: "terminal")
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(MoleOperation.allCases) { operation in
-                            HStack(spacing: OnePlusMetrics.spacing[4]) {
-                                Image(systemName: operation.icon)
-                                    .foregroundStyle(OnePlusColor.secondary)
-                                    .frame(width: OnePlusMetrics.controlHeight)
-                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
-                                    Text(operation.title).onePlusText(.row)
-                                    Text(operation.detail).onePlusText(.caption)
-                                }
-                                Spacer()
-                                Button("Preview") { manager.openMole(operation, dryRun: true) }
-                                    .buttonStyle(OnePlusButtonStyle(.ghost))
-                                Button("Open in Terminal…") { manager.openMole(operation, dryRun: false) }
-                                    .buttonStyle(OnePlusButtonStyle(.neutral))
-                            }
-                            .padding(.horizontal, OnePlusMetrics.cardPadding)
-                            .frame(height: OnePlusMetrics.captionedSettingRow)
-                            .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
-                            .disabled(manager.molePath == nil)
+                ForEach(MoleOperation.allCases) { operation in
+                    HStack(spacing: OnePlusMetrics.spacing[3]) {
+                        Image(systemName: operation.icon)
+                            .foregroundStyle(OnePlusColor.secondary)
+                            .frame(width: OnePlusMetrics.spacing[7], alignment: .leading)
+                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
+                            Text(operation.title).onePlusText(.row)
+                            Text(operation.detail).onePlusText(.caption)
                         }
+                        Spacer()
+                        Button("Preview") { manager.openMole(operation, dryRun: true) }
+                            .buttonStyle(OnePlusButtonStyle(.ghost))
+                        Button("Open in Terminal…") { manager.openMole(operation, dryRun: false) }
+                            .buttonStyle(OnePlusButtonStyle(.neutral))
                     }
-                }
-                .onePlusScrollIndicators()
-            }
-            .frame(maxHeight: .infinity, alignment: .top)
-            HStack {
-                Button("Manage Whitelist…") { manager.openMoleWhitelist() }
-                    .buttonStyle(OnePlusButtonStyle(.neutral))
+                    .padding(.horizontal, OnePlusMetrics.cardPadding)
+                    .frame(height: OnePlusMetrics.captionedSettingRow)
+                    .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
                     .disabled(manager.molePath == nil)
-                Link("Official Mole Project", destination: URL(string: "https://github.com/tw93/Mole")!)
-                    .buttonStyle(OnePlusButtonStyle(.link))
+                }
             }
         }
     }
@@ -778,7 +816,10 @@ struct SystemCareWindowView: View {
                 if manager.history.isEmpty {
                     OnePlusEmptyState(
                         manager.molePath == nil ? "Mole is not installed" : "No Mole history",
-                        systemImage: "clock.arrow.circlepath"
+                        systemImage: "clock.arrow.circlepath",
+                        caption: manager.molePath == nil
+                            ? "Install Mole to record maintenance operations."
+                            : "Run a Mole maintenance command to create history."
                     )
                     .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.wideControlColumn)
                 } else {
@@ -821,16 +862,16 @@ struct SystemCareWindowView: View {
 
     private var aboutPage: some View {
         OnePlusPage {
-            OnePlusPageHeader(title: "About", subtitle: "System Care")
+            OnePlusPageHeader(title: "About", subtitle: appVersion)
         } content: {
             OnePlusCard {
                 OnePlusCardHeader("System Care", systemImage: "sparkles")
                 OnePlusSettingRow("Native cleanup", caption: "Review and move rebuildable data to Trash.") {
-                    OnePlusStatus("Included", state: .success)
+                    OnePlusStatus("Included")
                 }
                 OnePlusSettingRow("Mole", caption: "Optional advanced maintenance engine.", separator: false) {
                     OnePlusStatus(manager.moleVersion.map { "Version \($0)" } ?? "Not installed",
-                                  state: manager.molePath == nil ? .offline : .success)
+                                  state: manager.molePath == nil ? .offline : .online)
                 }
             }
         }
@@ -876,6 +917,68 @@ struct SystemCareWindowView: View {
         appSearch.isEmpty ? applicationRows : applicationRows.filter {
             $0.application.name.localizedCaseInsensitiveContains(appSearch)
         }
+    }
+
+    @ViewBuilder
+    private func applicationIcon(_ application: InstalledApplication) -> some View {
+        if let icon = applicationIcons[application.id] {
+            Image(nsImage: icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: "app")
+                .foregroundStyle(OnePlusColor.secondary)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func loadApplications(_ applications: [InstalledApplication]) async {
+        let cachedRows = Dictionary(uniqueKeysWithValues: applicationRows.map { ($0.id, $0) })
+        applicationRows = applications.map { application in
+            let cached = cachedRows[application.id]
+            return SystemCareApplicationRow(
+                application: application,
+                size: cached?.size,
+                lastUsed: cached?.lastUsed
+            )
+        }
+        let pending = applications.filter { cachedRows[$0.id]?.size == nil }
+        guard !pending.isEmpty else { return }
+
+        await withTaskGroup(of: SystemCareApplicationMetadata.self) { group in
+            var next = pending.makeIterator()
+            for _ in 0..<min(4, pending.count) {
+                guard let application = next.next() else { break }
+                group.addTask(priority: .utility) {
+                    SystemCarePresentationRows.application(application)
+                }
+            }
+            while let metadata = await group.next() {
+                guard !Task.isCancelled else {
+                    group.cancelAll()
+                    return
+                }
+                if let index = applicationRows.firstIndex(where: { $0.id == metadata.id }) {
+                    applicationRows[index].size = metadata.size
+                    applicationRows[index].lastUsed = metadata.lastUsed
+                }
+                if let data = metadata.iconData, let icon = NSImage(data: data) {
+                    applicationIcons[metadata.id] = icon
+                }
+                if let application = next.next() {
+                    group.addTask(priority: .utility) {
+                        SystemCarePresentationRows.application(application)
+                    }
+                }
+            }
+        }
+    }
+
+    private var appVersion: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return "Version \(short) (\(build))"
     }
 
     private func open(_ destination: SystemCarePage) {
