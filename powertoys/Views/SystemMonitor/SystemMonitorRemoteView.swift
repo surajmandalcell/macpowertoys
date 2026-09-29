@@ -132,7 +132,8 @@ struct SystemMonitorRemoteView: View {
     }
 
     private var connectionSettings: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        let lastProfileID = profiles.last?.id
+        return VStack(alignment: .leading, spacing: 9) {
             Text("Connection settings")
                 .font(.system(size: 11, weight: .medium))
             TaskManagerPanel {
@@ -162,7 +163,7 @@ struct SystemMonitorRemoteView: View {
                         }
                         .padding(.horizontal, 14)
                         .frame(minHeight: 53)
-                        if profile.id != profiles.last?.id {
+                        if profile.id != lastProfileID {
                             Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         }
                     }
