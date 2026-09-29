@@ -16,7 +16,7 @@ public enum OnePlusCatalogMetrics {
     public static let listNameWidth: CGFloat = 180
 }
 
-/// The catalog header keeps the title and actions on the window centerline.
+/// The catalog title starts at the shared content top line.
 public struct OnePlusToolPageHeader<Icon: View, Actions: View>: View {
     private let title: String
     private let subtitle: String
@@ -32,21 +32,20 @@ public struct OnePlusToolPageHeader<Icon: View, Actions: View>: View {
     public var body: some View {
         HStack(alignment: .top, spacing: OnePlusCatalogMetrics.gap) {
             icon.frame(width: OnePlusCatalogMetrics.iconSize, height: OnePlusCatalogMetrics.iconSize)
-                .padding(.top, OnePlusMetrics.top(of: OnePlusCatalogMetrics.iconSize))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
                 Text(title).onePlusText(.pageTitle).lineLimit(1).help(title)
-                    .frame(height: OnePlusTextRole.pageTitle.size(for: density) * 1.2)
+                    .frame(height: OnePlusTitleStyle.system.lineHeight(for: density))
                     .accessibilityAddTraits(.isHeader)
                 Text(subtitle).onePlusText(.subtitle).lineLimit(1).help(subtitle)
             }
-            .padding(.top, OnePlusMetrics.top(of: OnePlusTextRole.pageTitle.size(for: density) * 1.2))
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: OnePlusMetrics.actionSpacing) { actions }
-                .frame(height: OnePlusMetrics.titleRow).fixedSize(horizontal: true, vertical: false)
+                .frame(height: OnePlusTitleStyle.system.lineHeight(for: density)).fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, density.gutter)
-        .frame(height: 68, alignment: .top)
+        .padding(.top, OnePlusMetrics.contentTop)
+        .padding(.bottom, OnePlusMetrics.pageHeaderBottom)
         .background(OnePlusWindowDragArea())
     }
 }
