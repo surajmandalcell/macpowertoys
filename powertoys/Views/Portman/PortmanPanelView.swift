@@ -217,6 +217,13 @@ struct PortmanPanelView: View {
         "\(selectedPortID ?? "")|\(sessionLinksEnabled)|\(publicGitHubLinksEnabled)"
     }
 
+    private let forwardActionWidth: CGFloat = 64
+
+    private var forwardLeadingWidth: CGFloat {
+        OnePlusMenuMetrics.bodyWidth - 2 * OnePlusMetrics.cardPadding
+            - OnePlusMetrics.actionSpacing - forwardActionWidth
+    }
+
     var body: some View {
         panelDialogs
     }
@@ -252,7 +259,6 @@ struct PortmanPanelView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
             PortmanMenuController.shared.setHeight($0)
         }
-        .environment(\.onePlusControlHeight, OnePlusMetrics.controlHeight)
     }
 
     private var panelWithLifecycle: some View {
@@ -506,10 +512,9 @@ struct PortmanPanelView: View {
                             OnePlusSelect(
                                 choices: PortmanServerSort.allCases.map { ($0.rawValue, $0.label) },
                                 selection: $serverSort,
-                                width: 76,
+                                width: 96,
                                 accessibilityLabel: "Sort by"
                             )
-                            .environment(\.onePlusControlHeight, OnePlusMetrics.compactControlHeight)
                             .accessibilityIdentifier("portman.sort")
                             Button(overviewPresentation.suggestedCleanupIDs.isEmpty
                                    ? "Clean up"
@@ -1039,6 +1044,7 @@ struct PortmanPanelView: View {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     if aliases.isEmpty {
                         Text("No saved hosts").onePlusText(.caption)
+                            .frame(width: forwardLeadingWidth, alignment: .leading)
                     } else {
                         OnePlusSelect(
                             choices: [("", "Hosts")] + aliases.map { ($0, $0) },
@@ -1046,13 +1052,16 @@ struct PortmanPanelView: View {
                                 get: { aliases.contains(host) ? host : "" },
                                 set: { if !$0.isEmpty { host = $0 } }
                             ),
-                            width: 180,
+                            width: forwardLeadingWidth,
                             accessibilityLabel: "Choose an SSH host"
                         )
                     }
-                    Spacer(minLength: 0)
                     Button("Scan", action: scanRemote)
-                        .buttonStyle(OnePlusButtonStyle(selectedRemotePorts.isEmpty ? .primary : .neutral))
+                        .buttonStyle(OnePlusButtonStyle(
+                            selectedRemotePorts.isEmpty ? .primary : .neutral,
+                            size: .small,
+                            minWidth: forwardActionWidth
+                        ))
                         .disabled(host.isEmpty || service.isLoadingRemote)
                 }
                 if service.isLoadingRemote {
@@ -1070,7 +1079,7 @@ struct PortmanPanelView: View {
                     OnePlusTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
                         .accessibilityLabel("Remote port to add").disabled(host.isEmpty)
                     Button("Add port", action: addManualPort).disabled(host.isEmpty)
-                        .buttonStyle(OnePlusButtonStyle())
+                        .buttonStyle(OnePlusButtonStyle(.neutral, size: .small, minWidth: forwardActionWidth))
                 }
             }.padding(OnePlusMetrics.cardPadding)
         }
@@ -1160,7 +1169,7 @@ struct PortmanPanelView: View {
                             .rotationEffect(.degrees(expandedRemotePort == port ? 90 : 0))
                             .foregroundStyle(OnePlusColor.secondary)
                     }
-                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.controlHeight)
+                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.compactControlHeight)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(OnePlusInteractionStyle())
@@ -1429,7 +1438,7 @@ private struct PortmanSettingsPanelContent: View {
                 PortmanSettingsView(search: search)
             }
             .onePlusScrollIndicators()
-            .frame(height: max(160, maxHeight - OnePlusMetrics.controlHeight - OnePlusMetrics.cardGap))
+            .frame(height: max(160, maxHeight - OnePlusMetrics.compactControlHeight - OnePlusMetrics.cardGap))
         }
     }
 }
@@ -1468,6 +1477,13 @@ struct PortmanSettingsView: View {
     }
     private var integrationsVisible: Bool {
         shows("Integrations", "Link coding sessions", "Find public GitHub links")
+    }
+    private var cleanupCaption: String {
+        switch PortmanCleanupMode(rawValue: cleanupMode) {
+        case .automatic: "Stops eligible servers automatically."
+        case .off: "Manual cleanup stays available in Servers."
+        default: "Highlights eligible servers in Servers."
+        }
     }
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
@@ -1513,7 +1529,7 @@ struct PortmanSettingsView: View {
         OnePlusCard {
             OnePlusCardHeader("Ports & processes")
             if shows("Ports & processes", "Include other listening processes") {
-                OnePlusSettingRow("All listeners", help: "Include other listening processes") {
+                OnePlusSettingRow("All listeners", help: "Include other listening processes", controlWidth: 29) {
                     Toggle("Include other listening processes", isOn: $showAllListeners)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
@@ -1534,11 +1550,14 @@ struct PortmanSettingsView: View {
                 }
             }
             if shows("Ports & processes", "Extra protected process names") {
-                OnePlusSettingRow("Protected names", help: "Extra protected process names, comma-separated", separator: false) {
+                OnePlusSettingRow(
+                    "Protected apps",
+                    caption: "Databases, Docker, and SSH stay protected.",
+                    help: "Extra protected process names, comma-separated",
+                    separator: false
+                ) {
                     OnePlusTextField("Process names", text: $protectedCommands)
                 }
-                Text("Databases, Docker, and SSH are always protected.")
-                    .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
             }
         }
     }
@@ -1547,7 +1566,7 @@ struct PortmanSettingsView: View {
         OnePlusCard {
             OnePlusCardHeader("Clean up")
             if shows("Clean up", "Cleanup mode") {
-                OnePlusSettingRow("Mode") {
+                OnePlusSettingRow("Mode", caption: cleanupCaption) {
                     OnePlusSegmented(choices: [("off", "Off"), ("ask", "Ask"), ("automatic", "Auto")],
                                      selection: Binding(get: { cleanupMode }, set: { value in
                         if value == PortmanCleanupMode.automatic.rawValue && cleanupMode != value {
@@ -1556,15 +1575,9 @@ struct PortmanSettingsView: View {
                     }), accessibilityLabel: "Cleanup mode")
                     .accessibilityIdentifier("portman.settings.cleanupMode")
                 }
-                Text(cleanupMode == PortmanCleanupMode.automatic.rawValue
-                     ? "Automatic stops eligible servers. Protected and high-usage servers stay excluded."
-                     : cleanupMode == PortmanCleanupMode.off.rawValue
-                     ? "Manual cleanup remains available in Servers."
-                     : "Ask highlights eligible servers in Servers.")
-                    .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
             }
             if shows("Clean up", "Include deleted folders") {
-                OnePlusSettingRow("Deleted folders") {
+                OnePlusSettingRow("Deleted folders", controlWidth: 29) {
                     Toggle("Include deleted folders", isOn: $includeDeletedFolders)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
@@ -1591,13 +1604,22 @@ struct PortmanSettingsView: View {
         OnePlusCard {
             OnePlusCardHeader("Integrations")
             if shows("Integrations", "Link coding sessions") {
-                OnePlusSettingRow("Coding sessions", help: "Copy a resume command for a matching Claude Code or Codex session.") {
+                OnePlusSettingRow(
+                    "Coding sessions",
+                    help: "Copy a resume command for a matching Claude Code or Codex session.",
+                    controlWidth: 29
+                ) {
                     Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
             }
             if shows("Integrations", "Find public GitHub links") {
-                OnePlusSettingRow("GitHub links", help: "Find public pull requests and previews. Private repositories are excluded.", separator: false) {
+                OnePlusSettingRow(
+                    "GitHub links",
+                    help: "Find public pull requests and previews. Private repositories are excluded.",
+                    controlWidth: 29,
+                    separator: false
+                ) {
                     Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
