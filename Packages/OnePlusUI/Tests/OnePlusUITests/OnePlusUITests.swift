@@ -211,6 +211,13 @@ final class OnePlusUITests: XCTestCase {
         XCTAssertEqual(host.fittingSize.width, 300)
     }
 
+    func testHealthyStatusUsesNeutralInkUnlessSuccessIsExplicit() {
+        XCTAssertEqual(OnePlusStatus("Connected").state, .neutral)
+        XCTAssertEqual(OnePlusStatus("Healthy").color, OnePlusColor.secondary)
+        XCTAssertEqual(OnePlusStatus("Online", state: .online).color, OnePlusColor.secondary)
+        XCTAssertEqual(OnePlusStatus("Complete", state: .success).color, OnePlusColor.ok)
+    }
+
     func testMenuGridMatchesMeasuredReference() {
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(), 109.333333333, accuracy: 0.000001)
         XCTAssertEqual(OnePlusMenuMetrics.columnWidth(span: 2), 223.666666667, accuracy: 0.000001)
