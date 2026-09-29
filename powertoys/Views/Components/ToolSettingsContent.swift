@@ -86,7 +86,7 @@ struct ToolSettingsContent: View {
         case "input-devices":
             InputDevicesSettingsView()
         case "system-monitor":
-            OnePlusPage(header: { EmptyView() }) { SystemMonitorMenuSettingsView(showsContainerScroll: false) }
+            OnePlusPage(header: { EmptyView() }) { SystemMonitorSettingsContent() }
         case "system-care":
             OnePlusPage(header: { EmptyView() }) {
                 SystemCareSettingsContent(mode: Binding(
