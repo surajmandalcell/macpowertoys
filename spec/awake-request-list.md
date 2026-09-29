@@ -4,8 +4,12 @@ Reviewed against current source and Git history on 2026-08-31.
 
 ## OnePlusUI redesign, 2026-09-29
 
+Round 2 requires a protected floating settings area and a readable 12pt
+status row. Window height uses the shared fixed-canvas correction.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Render the Awake status in readable row type. | Round 2 uses OnePlusStatus with the regular 12pt row role and a neutral dot. Debug compilation passes. | Review active and inactive states in the next signed capture. |
 | Verify | Use the 560 x 500 OnePlusUI applet, persistent display switch, status card, segmented modes, quick times, process attachment, and a replacing Settings page. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `home` and `settings`. | Review both appearances and controls in the orchestrator's installed build. |
 
 | Status | Request | Evidence | Remaining work |

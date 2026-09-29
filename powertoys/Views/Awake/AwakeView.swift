@@ -97,7 +97,7 @@ struct AwakeSettingsView: View {
     private var status: some View {
         OnePlusCard {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline)
+                OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
                     .monospacedDigit()
                 Spacer(minLength: OnePlusMetrics.actionSpacing)
                 Button("Turn Off") { service.setMode(.passive) }
