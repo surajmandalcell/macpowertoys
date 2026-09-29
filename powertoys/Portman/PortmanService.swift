@@ -921,7 +921,11 @@ final class PortmanService {
         process.standardError = errors
         errors.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { errorBuffer.append(data) }
+            guard !data.isEmpty else {
+                handle.readabilityHandler = nil
+                return
+            }
+            errorBuffer.append(data)
         }
         process.terminationHandler = { [weak self] terminated in
             errors.fileHandleForReading.readabilityHandler = nil
