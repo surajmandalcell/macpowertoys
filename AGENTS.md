@@ -4,16 +4,19 @@ SwiftUI macOS utility app with pluggable tools.
 
 ## Rules
 @spec/troubleshoot/troubleshoot.md
-@.codex/rules/vorssaint-utils-reference.md
-@.codex/rules/window-experience.md
+@.agents/rules/vorssaint-utils-reference.md
+@.agents/rules/window-experience.md
 @spec/ruler-request-list.md
 @spec/color-picker-request-list.md
 @spec/system-tools-request-list.md
 @DESIGN.md
-@.claude/rules/code-style.md
-@.claude/rules/architecture.md
-@.claude/rules/design-tokens.md
-@.claude/rules/release.md
+@.agents/rules/code-style.md
+@.agents/rules/architecture.md
+@.agents/rules/design-tokens.md
+@.agents/rules/release.md
+
+Every agent reads the same rules. Shared rule files live only in
+`.agents/rules/`. Never add agent-specific rule folders.
 
 The troubleshooting index is the highest-priority repo-local rule. Read it
 before other repo guidance, then read every topic it routes for the task before
