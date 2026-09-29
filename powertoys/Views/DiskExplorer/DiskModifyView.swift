@@ -134,29 +134,34 @@ struct DiskModifyView: View {
             }
             VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                 GeometryReader { geometry in
-                    HStack(spacing: OnePlusMetrics.spacing[0]) {
-                        ForEach(physical.indices, id: \.self) { index in
-                            let item = physical[index]
-                            let width = max(0, geometry.size.width - CGFloat(physical.count) * OnePlusMetrics.spacing[0]) * CGFloat(item.size) / CGFloat(max(1, disk.size))
-                            Button { model.selectedPartitionID = item.id } label: {
-                                OnePlusStorageTile(color: DiskChartPalette.color(index), selected: model.selectedPartitionID == item.id,
-                                                   hovered: hoveredPartitionID == item.id, partition: true) {
-                                    if width > OnePlusDiskmanMetrics.tileLabelWidth {
-                                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
-                                            Text(item.name).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
-                                            Text(item.size.diskSize).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
-                                        }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
-                                    }
+                    if DiskChartGeometry.isDrawable(CGRect(origin: .zero, size: geometry.size)) {
+                        HStack(spacing: OnePlusMetrics.spacing[0]) {
+                            ForEach(physical.indices, id: \.self) { index in
+                                let item = physical[index]
+                                let width = DiskChartGeometry.partitionWidth(bytes: item.size, total: disk.size,
+                                    available: geometry.size.width - CGFloat(physical.count) * OnePlusMetrics.spacing[0])
+                                if width > 0 {
+                                    Button { model.selectedPartitionID = item.id } label: {
+                                        OnePlusStorageTile(color: DiskChartPalette.color(index), selected: model.selectedPartitionID == item.id,
+                                                           hovered: hoveredPartitionID == item.id, partition: true) {
+                                            if width > OnePlusDiskmanMetrics.tileLabelWidth {
+                                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
+                                                    Text(item.name).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
+                                                    Text(item.size.diskSize).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
+                                                }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
+                                            }
+                                        }
+                                    }.buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled).frame(width: width)
+                                        .onHover { hoveredPartitionID = $0 ? item.id : nil }
+                                        .help("\(item.name) · \(item.size.diskSize)").accessibilityLabel("\(item.name), \(item.size.diskSize)")
+                                        .accessibilityIdentifier("diskman.map.\(item.id)")
+                                        .accessibilityAddTraits(model.selectedPartitionID == item.id ? .isSelected : [])
+                                        .contextMenu { Button("Select partition") { model.selectedPartitionID = item.id } }
                                 }
-                            }.buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled).frame(width: width)
-                                .onHover { hoveredPartitionID = $0 ? item.id : nil }
-                                .help("\(item.name) · \(item.size.diskSize)").accessibilityLabel("\(item.name), \(item.size.diskSize)")
-                                .accessibilityIdentifier("diskman.map.\(item.id)")
-                                .accessibilityAddTraits(model.selectedPartitionID == item.id ? .isSelected : [])
-                                .contextMenu { Button("Select partition") { model.selectedPartitionID = item.id } }
-                        }
-                        if disk.unallocatedBytes > 0 {
-                            OnePlusColor.track.frame(maxWidth: .infinity).help("Unallocated: \(disk.unallocatedBytes.diskSize)")
+                            }
+                            if disk.unallocatedBytes > 0 {
+                                OnePlusColor.track.frame(maxWidth: .infinity).help("Unallocated: \(disk.unallocatedBytes.diskSize)")
+                            }
                         }
                     }
                 }.frame(height: OnePlusDiskmanMetrics.partitionHeight)
