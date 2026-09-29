@@ -71,6 +71,7 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .environment(\.toolWindowID, "main")
                 .onePlusFixedCanvas(.main)
+                .onNativeToolPageURL("main")
         }
         .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
@@ -97,6 +98,7 @@ struct MacPowerToysApp: App {
             RcloneWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.rclone)
+                .onNativeToolPageURL("rclone")
         }
         .modelContainer(modelContainer)
         .defaultSize(OnePlusWindowCanvas.rclone.size)
@@ -109,6 +111,7 @@ struct MacPowerToysApp: App {
             LogsWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.logs)
+                .onNativeToolPageURL("logs")
         }
         .modelContainer(modelContainer)
         .defaultSize(OnePlusWindowCanvas.logs.size)
@@ -122,6 +125,7 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "awake"))
                 .onePlusFixedCanvas(.awake)
+                .onNativeToolPageURL("awake")
         }
         .defaultSize(OnePlusWindowCanvas.awake.size)
         .windowResizability(.contentSize)
@@ -134,6 +138,7 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "color-picker"))
                 .onePlusFixedCanvas(.colorPicker)
+                .onNativeToolPageURL("color-picker")
         }
         .defaultSize(
             width: OnePlusWindowCanvas.colorPicker.size.width,
@@ -149,6 +154,7 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "text-extractor"))
                 .onePlusFixedCanvas(.textExtractor)
+                .onNativeToolPageURL("text-extractor")
         }
         .defaultSize(
             width: OnePlusWindowCanvas.textExtractor.size.width,
@@ -163,6 +169,7 @@ struct MacPowerToysApp: App {
             InputDevicesWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.inputDevices)
+                .onNativeToolPageURL("input-devices")
         }
         .defaultSize(OnePlusWindowCanvas.inputDevices.size)
         .windowResizability(.contentSize)
@@ -174,6 +181,7 @@ struct MacPowerToysApp: App {
             SystemCareWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.systemCare)
+                .onNativeToolPageURL("system-care")
         }
         .defaultSize(OnePlusWindowCanvas.systemCare.size)
         .windowResizability(.contentSize)
@@ -185,6 +193,7 @@ struct MacPowerToysApp: App {
             DiskExplorerWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.diskExplorer)
+                .onNativeToolPageURL("disk-explorer")
         }
         .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
         .windowResizability(.contentSize)
@@ -196,6 +205,7 @@ struct MacPowerToysApp: App {
             SystemMonitorWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.systemMonitor)
+                .onNativeToolPageURL("system-monitor")
         }
         .defaultSize(OnePlusWindowCanvas.systemMonitor.size)
         .windowResizability(.contentSize)
@@ -207,6 +217,7 @@ struct MacPowerToysApp: App {
             NetToysWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.netToys)
+                .onNativeToolPageURL("nettoys")
         }
         .defaultSize(OnePlusWindowCanvas.netToys.size)
         .windowResizability(.contentSize)
@@ -218,6 +229,7 @@ struct MacPowerToysApp: App {
             SwitchWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.switchAccounts)
+                .onNativeToolPageURL("switch")
         }
         .defaultSize(OnePlusWindowCanvas.switchAccounts.size)
         .windowResizability(.contentSize)
@@ -229,6 +241,7 @@ struct MacPowerToysApp: App {
             MacTweaksWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.macTweaks)
+                .onNativeToolPageURL("mac-tweaks")
         }
         .defaultSize(OnePlusWindowCanvas.macTweaks.size)
         .windowResizability(.contentSize)

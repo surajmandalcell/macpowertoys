@@ -16,11 +16,63 @@ struct ToolPageRouterTests {
 
     @Test func rejectsMalformedRoutes() throws {
         for value in ["https://open/main", "powertoys://open", "powertoys://open/main/",
-                      "powertoys://open/main//cpu", "powertoys://open/main/cpu/extra",
-                      "powertoys://open/main/bad%20page", "powertoys://user@open/main",
+                      "powertoys://open/main//cpu", "powertoys://open/Main/cpu",
+                      "powertoys://open/bad%20tool/page", "powertoys://user@open/main",
                       "powertoys://open:123/main", "powertoys://open/main#page"] {
             #expect(OpenToolRoute.parse(try #require(URL(string: value))) == nil)
         }
+    }
+
+    @Test func parsesCaseSensitiveMultiSegmentPages() throws {
+        let routes = [
+            ("switch/account/01234567-89AB-CDEF-0123-456789ABCDEF", "switch", "account/01234567-89AB-CDEF-0123-456789ABCDEF"),
+            ("disk-explorer/device/disk4s2", "disk-explorer", "device/disk4s2"),
+            ("main/tool/color-picker", "main", "tool/color-picker"),
+            ("rclone/remote/My%20Drive", "rclone", "remote/My Drive"),
+            ("rclone/remote/Caf%C3%A9%20%26%20Work", "rclone", "remote/Café & Work"),
+            ("rclone/remote/Literal%252FName", "rclone", "remote/Literal%2FName"),
+            ("main/one/Two/three/Four", "main", "one/Two/three/Four"),
+        ]
+        for scheme in ["macpowertoys", "powertoys"] {
+            for (path, tool, page) in routes {
+                #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/\(path)")))
+                    == OpenToolRoute(tool: tool, page: page))
+            }
+        }
+    }
+
+    @Test func rejectsInvalidDecodedSegmentsAndLongValues() throws {
+        for path in ["main/.", "main/..", "main/%2E", "main/%2e%2e", "main/tool/../awake",
+                     "main/tool//awake", "main/tool/awake/", "rclone/remote/%2F", "rclone/remote/a%5Cb",
+                     "rclone/remote/%00", "rclone/remote/%0A", "rclone/remote/%FF"] {
+            #expect(OpenToolRoute.parse(try #require(URL(string: "powertoys://open/\(path)"))) == nil)
+        }
+        let maximumPage = Array(repeating: String(repeating: "x", count: 254), count: 8).joined(separator: "/") + "/12345678"
+        for path in [String(repeating: "a", count: 80), "main/" + maximumPage,
+                     "rclone/remote/" + String(repeating: "a", count: 255),
+                     "rclone/remote/" + String(repeating: "é", count: 127)] {
+            #expect(OpenToolRoute.parse(try #require(URL(string: "powertoys://open/\(path)"))) != nil)
+        }
+        for path in [String(repeating: "a", count: 81), "main/" + maximumPage + "9",
+                     "rclone/remote/" + String(repeating: "a", count: 256),
+                     "rclone/remote/" + String(repeating: "é", count: 128),
+                     "main/" + String(repeating: "a/", count: 4_096)] {
+            #expect(OpenToolRoute.parse(try #require(URL(string: "powertoys://open/\(path)"))) == nil)
+        }
+    }
+
+    @MainActor @Test func nativeSceneRoutesKeepPendingPagesWithoutReopening() throws {
+        let router = ToolPageRouter()
+        let url = try #require(URL(string: "macpowertoys://open/rclone/remote/My%20Drive"))
+        router.handleNativeURL(url, tool: "main")
+        #expect(router.take(tool: "rclone") == nil)
+        router.handleNativeURL(url, tool: "rclone")
+        #expect(router.take(tool: "rclone")?.page == "remote/My Drive")
+        #expect(router.take(tool: "rclone") == nil)
+        router.handleNativeURL(try #require(URL(string: "powertoys://open/rclone")), tool: "rclone")
+        #expect(router.take(tool: "rclone") == nil)
+        router.handleNativeURL(try #require(URL(string: "powertoys://open/nettoys/scan?targets=localhost")), tool: "nettoys")
+        #expect(router.take(tool: "nettoys") == nil, "The app delegate owns scan-prefill URLs.")
     }
 
     @Test func diagnosticsStayUnderDiagnosticsHost() throws {
