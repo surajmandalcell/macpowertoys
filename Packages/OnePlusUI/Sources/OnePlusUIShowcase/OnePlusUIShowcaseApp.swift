@@ -432,6 +432,7 @@ private struct OnePlusUIShowcase: View {
 
     private var applets: some View {
         VStack(alignment: .leading, spacing: 16) {
+            CompactFormVariantsShowcase()
             OnePlusSectionTitle("Applet titlebar · 40 pt · centerline 22 pt")
             OnePlusCard {
                 OnePlusAppletTitlebar(title: "Awake") {
