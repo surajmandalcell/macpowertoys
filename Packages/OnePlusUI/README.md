@@ -54,6 +54,32 @@ window top). The workspace title row stays empty. Header actions center on
 the title's first line. `contentGap` is the separate 16 pt body gap; use it
 for padding between page regions. Applet titlebars keep their 22 pt centerline.
 
+## Table and list pages
+
+Use `scrolls: false` when the content already owns scrolling. Header, tabs,
+toolbar, and footer stay fixed. The content fills the remaining height.
+Slots are optional; the page supplies the gutters and 16 pt content gap.
+
+```swift
+OnePlusPage(scrolls: false) {
+    OnePlusPageHeader(title: "Processes")
+} toolbar: {
+    OnePlusSearchField("Find a process", text: $query)
+} footer: {
+    OnePlusStatus("\(rows.count) processes")
+} content: {
+    Table(rows) {
+        TableColumn("Name", value: \.name)
+        TableColumn("PID", value: \.pid)
+    }
+    .onePlusNativeTable()
+}
+```
+
+Place an inspector beside the table inside `content`; only the table rows
+scroll. For settings cards, keep the default `scrolls: true`. Embedded
+settings supply only cards and inherit this page's single scroll container.
+
 ## Component catalog
 
 | API | Use |
@@ -81,7 +107,7 @@ for padding between page regions. Applet titlebars keep their 22 pt centerline.
 | `OnePlusToolPageHeader` | Place a 40 pt tool icon beside the title at the shared 58 pt content top. |
 | `OnePlusCatalogMetrics` | Read fixed catalog card, list, icon, and action geometry. |
 | `OnePlusTab` / `OnePlusTabStrip` | Bind selection to underline tabs with counts and trailing tools. |
-| `OnePlusPage` | Keep header and tabs fixed while content scrolls inside shared gutters. |
+| `OnePlusPage` | Keep header, tabs, toolbar, and footer fixed; use `scrolls: false` for a table that fills the remaining height. |
 | `OnePlusCard` | Group natural-height content with a shared fill, line, and radius. |
 | `OnePlusPanel` | Use the compatible card that fills available height. |
 | `OnePlusCardHeader` | Add a 40 pt title row with an optional icon and accessory. |

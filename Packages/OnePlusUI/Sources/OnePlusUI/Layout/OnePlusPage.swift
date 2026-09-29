@@ -102,34 +102,52 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
     private let header: Header
     private let tabs: Tabs
     private let content: Content
+    private let toolbar: AnyView?
+    private let footer: AnyView?
     private let scrolls: Bool
     private let layout: Layout
     @Environment(\.onePlusDensity) private var density
-    public init(scrolls: Bool = true, layout: Layout = .workspace, @ViewBuilder header: () -> Header,
-                @ViewBuilder tabs: () -> Tabs, @ViewBuilder content: () -> Content) {
+    public init<Toolbar: View, Footer: View>(scrolls: Bool = true, layout: Layout = .workspace,
+                @ViewBuilder header: () -> Header, @ViewBuilder tabs: () -> Tabs,
+                @ViewBuilder toolbar: () -> Toolbar = { EmptyView() },
+                @ViewBuilder footer: () -> Footer = { EmptyView() }, @ViewBuilder content: () -> Content) {
         self.scrolls = scrolls; self.layout = layout
         self.header = header(); self.tabs = tabs(); self.content = content()
+        self.toolbar = Toolbar.self == EmptyView.self ? nil : AnyView(toolbar())
+        self.footer = Footer.self == EmptyView.self ? nil : AnyView(footer())
     }
     public var body: some View {
         VStack(spacing: 0) {
-            header
-            tabs
+            header.fixedSize(horizontal: false, vertical: true)
+            tabs.fixedSize(horizontal: false, vertical: true)
+            if let toolbar {
+                toolbar.padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if scrolls { ScrollView { bodyContent }.onePlusScrollIndicators() }
             else { bodyContent.frame(maxHeight: .infinity, alignment: .topLeading) }
+            if let footer {
+                footer.padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
+                    .padding(.bottom, bottomInset).fixedSize(horizontal: false, vertical: true)
+            }
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
+    private var gutter: CGFloat { layout == .applet ? OnePlusMetrics.appletGutter : density.gutter }
+    private var bottomInset: CGFloat { layout == .applet ? 0 : OnePlusMetrics.gutter }
     private var bodyContent: some View {
-        VStack(alignment: .leading, spacing: 16) { content }
-            .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter)
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) { content }
+            .frame(maxWidth: .infinity, maxHeight: scrolls ? nil : .infinity, alignment: .topLeading)
+            .padding(.horizontal, gutter)
             .padding(.top, OnePlusMetrics.contentGap)
-            .padding(.bottom, layout == .applet ? 0 : OnePlusMetrics.gutter)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, footer == nil ? bottomInset : 0)
     }
 }
 
 public extension OnePlusPage where Tabs == EmptyView {
-    init(scrolls: Bool = true, layout: Layout = .workspace,
-         @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
-        self.init(scrolls: scrolls, layout: layout, header: header, tabs: { EmptyView() }, content: content)
+    init<Toolbar: View, Footer: View>(scrolls: Bool = true, layout: Layout = .workspace,
+         @ViewBuilder header: () -> Header, @ViewBuilder toolbar: () -> Toolbar = { EmptyView() },
+         @ViewBuilder footer: () -> Footer = { EmptyView() }, @ViewBuilder content: () -> Content) {
+        self.init(scrolls: scrolls, layout: layout, header: header, tabs: { EmptyView() },
+                  toolbar: toolbar, footer: footer, content: content)
     }
 }
