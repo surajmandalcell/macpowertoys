@@ -1,101 +1,10 @@
 # Design Tokens (MUST FOLLOW)
 
-All spacing, colors, radii, and typography values are standardized. Do not deviate.
+All colors, type sizes, spacing, radii, geometry, window sizes, and motion
+values live in one place: the `DESIGN.md` front matter, implemented by the
+`OnePlusUI` package tokens. Do not restate them here or in code.
 
-## Spacing
-
-### Sidebar Layout
-- Title: `.padding(.leading, 84)`, `.padding(.top, 8)`
-- Search field container: `.padding(.top, 44)`, `.padding(.bottom, 12)`, `.padding(.horizontal, 12)`
-- Search field inner: `.padding(8)`
-
-### Content Area
-- Top padding: `.padding(.top, 44)` - leaves one 4pt gap below the 40pt strip
-- Content and search bar start at the same vertical position
-
-### Launcher Window
-- Fixed 1200 x 720 content; 220pt sidebar; 980pt content pane
-- Grid: adaptive 220pt minimum columns, 16pt gaps, 24pt horizontal and bottom
-  padding, which yields exactly four cards in each row
-- Sidebars carry no version string and no online/offline status indicator
-
-### Workspace Density
-- Simple sidebar: 220pt; data sidebar: 240pt
-- Launcher, Logs, Input Devices, and System Monitor use 220pt; Cloud Sync and
-  System Care use 240pt
-- Sidebar row: 28pt minimum, 16pt icon, 8pt horizontal inset and gap
-- Workspace page strip: 40pt with 13pt title and optional 11pt subtitle
-- Workspace actions: native small controls in one centered 24pt row
-- Content action buttons: 36pt minimum label height and equal 14pt horizontal
-  label insets; keep title-bar controls in the compact 24pt row
-- Workspace body: 12pt top inset; never add a second 32pt top gap
-- Structural dividers: 0.22 opacity, or 0.44 with Increased Contrast; keep
-  command-menu and context-menu separators native
-
-### Compact Tool Chrome
-- Titlebar: 40pt high, no bottom border or separator
-- Complete row: one 4pt top inset; never pad row items separately
-- Title and action container: equal 24pt frames; never rely on intrinsic height
-- Title and 24pt actions: centered 22pt below the window top
-- Close and minimize: shifted 6pt down to that centerline
-- Zoom: hidden; title begins at 60pt to reclaim its space
-- Titlebar buttons and menus only: 24pt high with a 6pt radius
-- Compact applet windows are fixed-size
-- Floating settings button: 24pt circle, 8pt from bottom-right window edges;
-  fixed-size applet windows restore saved position only, never saved size
-
-## Colors
-
-### Hover States
-- **Standard hover**: `Color.primary.opacity(0.06)` - use this ALWAYS
-- NEVER use: 0.05, 0.08, 0.12 for hover backgrounds
-
-### Selection States
-- Light selection: `Color.accentColor.opacity(0.1)`
-- Strong selection: `Color.accentColor.opacity(0.2)`
-- Sidebar selection: native emphasized/unemphasized selected-content colors;
-  labels and SF Symbols use the native selected-content foreground; branded
-  artwork keeps its original colors
-- Only use 0.1 or 0.2 outside the native sidebar and solid tray-tab exceptions
-
-### Settings Alignment
-- Settings containers default to leading alignment
-- Full-width settings rows place the label leading and control trailing
-- Grid forms use one shared leading control column
-- Center only explicit empty states and deliberate hero compositions
-
-### Backgrounds
-- Content area: `Color(nsColor: .windowBackgroundColor)`
-- Sidebar: `NSVisualEffectView` with `.sidebar` material
-
-### Text/Foreground States
-- Subdued primary text: `Color.primary.opacity(0.75)`
-- Selected state secondary: `Color.white.opacity(0.7)`
-- Preview/secondary content: `Color.secondary.opacity(0.6)`
-
-## Corner Radius Scale
-
-Use only these values:
-- **4pt**: Small buttons, toggles
-- **6pt**: Text fields, search inputs, compact titlebar controls
-- **8pt**: List rows, message bubbles
-- **12pt**: Cards, panels, large containers
-
-## Typography
-
-### Sidebar
-- Title: `.system(size: 13, weight: .medium)`
-- Row text: `.system(size: 13)`
-- Section headers: `.system(size: 10, weight: .medium)`, `.foregroundStyle(.secondary)`
-
-### Content
-- Body text: `.system(size: 13)`
-- Captions: `.system(size: 11)`
-- Code: `.system(size: 12, design: .monospaced)`
-
-## App-Specific Aesthetics
-
-Some values deviate from strict tokens for visual refinement:
-- Tool grid cards: `0.03` base opacity for subtle depth
-- Content area padding may vary per-window for alignment
-- Logs/detail views: `0.05` backgrounds where softer contrast preferred
+- Use OnePlusUI tokens and components. Never write raw colors, opacities, font
+  sizes, radii, or paddings in app views.
+- A value missing from the scale is a design change: add it to `DESIGN.md` and
+  OnePlusUI first, then use it.
