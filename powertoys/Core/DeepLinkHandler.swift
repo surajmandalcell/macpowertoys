@@ -168,19 +168,19 @@ final class DeepLinkHandler {
     }
 
     private func processURL(_ url: URL) {
+        if let panel = DiagnosticsPanel.parse(url) { panel.open(); return }
         if ToolActionRouter.shared.execute(url: url) { return }
 
         switch url.host {
         case "open":
-            let pathComponents = url.pathComponents.filter { $0 != "/" }
-            if let toolId = pathComponents.first {
-                if toolId == "nettoys", let prefill = NetToysScanPrefill.parse(url) {
-                    pendingNetToysPrefill = prefill
-                    openTool(id: toolId)
+            if let route = OpenToolRoute.parse(url) {
+                let toolId = route.tool
+                let prefill = toolId == "nettoys" ? NetToysScanPrefill.parse(url) : nil
+                if let prefill { pendingNetToysPrefill = prefill }
+                ToolActionRouter.shared.open(toolID: toolId, page: route.page)
+                if let prefill {
                     NotificationCenter.default.post(name: .netToysPrefill, object: prefill)
-                    return
                 }
-                openTool(id: toolId)
             }
 
         default:

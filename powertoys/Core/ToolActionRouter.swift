@@ -71,6 +71,15 @@ final class ToolActionRouter {
         "home": "main"
     ]
 
+    func open(toolID: String, page: String?) {
+        guard let page else { open(toolID: toolID); return }
+        let resolved = Self.resolvedWindowID(toolID)
+        guard resolved == "main" || (SettingsManager.shared.isToolEnabled(resolved)
+            && ToolRegistry.builtInTools.contains(where: { $0.id == resolved })) else { return }
+        open(toolID: resolved)
+        ToolPageRouter.shared.post(tool: resolved, page: page)
+    }
+
     func open(toolID: String) {
         let resolved = Self.resolvedWindowID(toolID)
         guard resolved == "main" || SettingsManager.shared.isToolEnabled(resolved) else {

@@ -1,0 +1,125 @@
+import AppKit
+import SwiftUI
+
+nonisolated struct OpenToolRoute: Equatable, Sendable {
+    let tool: String
+    let page: String?
+
+    static func parse(_ url: URL) -> Self? {
+        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "open",
+              url.user == nil, url.password == nil, url.port == nil, url.fragment == nil else { return nil }
+        let parts = url.path.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
+        guard (1...2).contains(parts.count), parts.allSatisfy({ part in
+            !part.isEmpty && part.count <= 80 && part.utf8.allSatisfy {
+                (97...122).contains($0) || (48...57).contains($0) || $0 == 45
+            }
+        }) else { return nil }
+        let values = parts.map(String.init)
+        return Self(tool: values[0], page: values.count == 2 ? values[1] : nil)
+    }
+}
+
+nonisolated struct ToolPageRequest: Equatable, Sendable {
+    let tool: String
+    let page: String
+}
+
+extension Notification.Name {
+    static let openToolPage = Notification.Name("openToolPage")
+}
+
+@MainActor
+final class ToolPageRouter {
+    static let shared = ToolPageRouter()
+    private var pending: [String: ToolPageRequest] = [:]
+
+    func post(tool: String, page: String) {
+        let request = ToolPageRequest(tool: tool, page: page)
+        pending[tool] = request
+        NotificationCenter.default.post(name: .openToolPage, object: request,
+                                        userInfo: ["tool": tool, "page": page])
+    }
+
+    func take(tool: String, matching page: String? = nil) -> ToolPageRequest? {
+        guard let request = pending[tool], page == nil || page == request.page else { return nil }
+        pending[tool] = nil
+        return request
+    }
+}
+
+private struct OpenToolPageModifier: ViewModifier {
+    let tool: String
+    let page: String?
+    let action: (String) -> Void
+
+    private func deliver() {
+        if let request = ToolPageRouter.shared.take(tool: tool, matching: page) { action(request.page) }
+    }
+
+    func body(content: Content) -> some View {
+        content.onAppear(perform: deliver)
+            .onReceive(NotificationCenter.default.publisher(for: .openToolPage)) { notification in
+                guard (notification.object as? ToolPageRequest)?.tool == tool else { return }
+                deliver()
+            }
+    }
+}
+
+extension View {
+    func onOpenToolPage(_ tool: String, matching page: String? = nil,
+                        perform action: @escaping (String) -> Void) -> some View {
+        modifier(OpenToolPageModifier(tool: tool, page: page, action: action))
+    }
+}
+
+private struct ToolWindowIDKey: EnvironmentKey { static let defaultValue = "" }
+extension EnvironmentValues {
+    var toolWindowID: String {
+        get { self[ToolWindowIDKey.self] }
+        set { self[ToolWindowIDKey.self] = newValue }
+    }
+}
+
+enum DiagnosticsPanel: String, CaseIterable {
+    case main, systemMonitor = "system-monitor", portman
+
+    nonisolated static func parse(_ url: URL) -> Self? {
+        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "diagnostics",
+              url.user == nil, url.password == nil, url.port == nil,
+              url.query == nil, url.fragment == nil else { return nil }
+        let parts = url.path.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 3, parts[0].isEmpty, parts[1] == "open-panel" else { return nil }
+        return Self(rawValue: String(parts[2]))
+    }
+
+    @MainActor
+    @discardableResult func open() -> Bool {
+        func buttons(in view: NSView) -> [NSStatusBarButton] {
+            if let button = view as? NSStatusBarButton { return [button] }
+            return view.subviews.flatMap { buttons(in: $0) }
+        }
+        let candidates = NSApp.windows.flatMap { $0.contentView.map(buttons(in:)) ?? [] }
+        let button = candidates.first { button in
+            switch self {
+            case .systemMonitor: button.accessibilityIdentifier() == "SystemMonitorMenuBarItem"
+            case .portman: button.accessibilityIdentifier() == "portman.statusItem"
+            case .main:
+                // The main item is owned by SwiftUI, so its label is an accessibility child.
+                Self.isMainLabel(button) || (button.accessibilityChildren()?.contains(where: Self.isMainLabel) ?? false)
+            }
+        }
+        guard let button else {
+            LogManager.shared.warning("Panel status item is unavailable: \(rawValue)", source: "DeepLinkHandler")
+            return false
+        }
+        button.performClick(nil)
+        return true
+    }
+
+    @MainActor private static func isMainLabel(_ value: Any) -> Bool {
+        guard let element = value as? any NSAccessibilityProtocol else { return false }
+        return element.accessibilityIdentifier() == "MenuBarIcon"
+            || element.accessibilityLabel() == "MacPowerToys"
+            || (element.accessibilityChildren()?.contains(where: isMainLabel) ?? false)
+    }
+}
