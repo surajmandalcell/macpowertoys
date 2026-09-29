@@ -50,22 +50,44 @@ nonisolated struct DiskScanResult: Sendable {
     let isComplete: Bool
 }
 
+nonisolated enum DiskExplorerScanError: LocalizedError, Equatable {
+    case entryLimitExceeded(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .entryLimitExceeded(let limit):
+            "Diskman stopped after \(limit) items to keep memory stable. Choose a smaller folder."
+        }
+    }
+}
+
 nonisolated final class DiskScanSession: @unchecked Sendable {
     private let lock = NSLock()
+    let maximumEntries: Int
     private var stopped = false
+    private var exceededMaximumEntries = false
     private var scannedEntries = 0
     private var lastReport = Date.distantPast
     private let report: @Sendable (Int) -> Void
 
-    init(report: @escaping @Sendable (Int) -> Void = { _ in }) {
+    init(maximumEntries: Int = 250_000, report: @escaping @Sendable (Int) -> Void = { _ in }) {
+        self.maximumEntries = maximumEntries
         self.report = report
     }
 
     func cancel() { lock.withLock { stopped = true } }
     var isCancelled: Bool { lock.withLock { stopped } }
+    var didExceedMaximumEntries: Bool { lock.withLock { exceededMaximumEntries } }
+    var entryCount: Int { lock.withLock { scannedEntries } }
 
     @discardableResult func counted() -> Bool {
         let count: Int? = lock.withLock {
+            guard !stopped else { return nil }
+            guard scannedEntries < maximumEntries else {
+                exceededMaximumEntries = true
+                stopped = true
+                return nil
+            }
             scannedEntries += 1
             guard Date().timeIntervalSince(lastReport) > 0.2 else { return nil }
             lastReport = Date()
@@ -300,6 +322,9 @@ nonisolated enum DiskExplorerScanner {
                 }
             }
         }
+        if session.didExceedMaximumEntries {
+            throw DiskExplorerScanError.entryLimitExceeded(session.maximumEntries)
+        }
         if session.isCancelled { throw CancellationError() }
         let root = entry(rootURL, info: info, children: scanned, state: state)
         let counts = state.finish
@@ -311,6 +336,8 @@ nonisolated enum DiskExplorerScanner {
                              top: String, second: String?,
                              prefetchedChildren: [(URL, stat)]? = nil) -> DiskEntry? {
         guard !state.session.isCancelled else { return nil }
+        let shouldPublish = state.session.counted()
+        guard !state.session.isCancelled else { return nil }
         let isDirectory = info.st_mode & S_IFMT == S_IFDIR
         let childInfo = isDirectory ? (prefetchedChildren ?? readChildren(at: url, state: state)) : []
         if second == nil && isDirectory { state.registerSecond(childInfo, under: top) }
@@ -319,7 +346,7 @@ nonisolated enum DiskExplorerScanner {
         }
         let node = entry(url, info: info, children: children, state: state,
                          top: top, second: second)
-        if state.session.counted() { state.publish() }
+        if shouldPublish { state.publish() }
         return node
     }
 
