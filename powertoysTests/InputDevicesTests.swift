@@ -92,7 +92,7 @@ final class InputDevicesTests: XCTestCase {
         magic.batteryPercent = 84
         XCTAssertEqual(magic.connectionSummary, "USB · 84%")
         let rows = InputDeviceCard(device: receiver, profile: InputScrollProfile(), state: .active).rows.map(\.label)
-        XCTAssertEqual(rows, ["Model", "Vendor", "Device ID", "Firmware", "Serial", "Connection", "Buttons", "Resolution", "Polling", "Tracking", "Scroll speed"])
+        XCTAssertEqual(rows, ["Model", "Vendor", "Device ID", "Firmware", "Serial", "Connection", "Battery", "Buttons", "Resolution", "Polling", "Tracking", "Scroll speed"])
     }
 
     func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
@@ -188,8 +188,8 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(cardHeight(mouse), cardHeight(trackpad))
     }
 
-    /// The four gated switches are NSControls. The slider inherits the same
-    /// disabled environment but SwiftUI does not back it with an NSControl.
+    /// The two direction choices and four switches are NSControls. The
+    /// slider inherits the same disabled environment but is not an NSControl.
     @MainActor
     func testProfileRowsFollowTheirGates() {
         XCTAssertEqual(
@@ -217,7 +217,7 @@ final class InputDevicesTests: XCTestCase {
                 deviceCount: 1,
                 profile: .constant(InputScrollProfile(enabled: false))
             )),
-            5
+            6
         )
     }
 

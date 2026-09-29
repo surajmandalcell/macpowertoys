@@ -1,20 +1,39 @@
+import OnePlusUI
 import SwiftUI
 
 enum MacTweaksPalette {
-    static let window = Color(red: 0.086, green: 0.086, blue: 0.086)
-    static let sidebar = Color(red: 0.114, green: 0.114, blue: 0.114)
-    static let panel = Color(red: 0.125, green: 0.125, blue: 0.125)
-    static let panelRaised = Color(red: 0.145, green: 0.145, blue: 0.145)
-    static let line = Color(red: 0.20, green: 0.20, blue: 0.20)
-    static let text = Color(red: 0.91, green: 0.91, blue: 0.91)
-    static let secondary = Color(red: 0.64, green: 0.64, blue: 0.64)
-    static let muted = Color(red: 0.47, green: 0.47, blue: 0.47)
-    static let accent = Color(red: 0.93, green: 0.36, blue: 0.31)
+    static let window = OnePlusColor.window
+    static let sidebar = OnePlusColor.sidebar
+    static let panel = OnePlusColor.panel
+    static let panelRaised = OnePlusColor.raised
+    static let line = OnePlusColor.line
+    static let text = OnePlusColor.ink
+    static let secondary = OnePlusColor.secondary
+    static let muted = OnePlusColor.muted
+    static let accent = OnePlusColor.accent
 }
 
 enum MacTweaksGlyphName: Hashable {
     case input, dock, finder, windows, screenshots, apps, power, menubar
     case motion, animation, layers
+}
+
+extension MacTweaksGlyphName {
+    var systemImage: String {
+        switch self {
+        case .dock: "dock.rectangle"
+        case .input: "slider.horizontal.3"
+        case .finder: "folder"
+        case .windows: "macwindow.on.rectangle"
+        case .screenshots: "camera.viewfinder"
+        case .apps: "square.grid.2x2"
+        case .power: "bolt"
+        case .menubar: "menubar.rectangle"
+        case .motion: "gauge.with.dots.needle.33percent"
+        case .animation: "sparkles.rectangle.stack"
+        case .layers: "square.3.layers.3d"
+        }
+    }
 }
 
 struct MacTweaksGlyph: View {

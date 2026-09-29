@@ -1,5 +1,12 @@
 # Mac Tweaks request list
 
+## OnePlusUI normalization, 2026-09-29
+
+- [x] Normalize Mac Tweaks to the fixed 1120 x 826 OnePlusUI canvas. Use the 200pt sidebar, 54pt title row, page header, cards, 40pt card headers, 44pt setting rows, 160pt control column, and shared search and selection controls.
+- [x] Keep every active tweak, exact-value restore, Modified page, per-row reset, and hover-only preview. Add page routes for Input, Dock, Finder, Windows, Screenshots, Apps, Power, Menu bar, Modified, and About.
+- [x] Move Revive Audio into an owned service. Drain at most 16 KiB of standard error while it runs. Cancel it when the window closes. Stop it after 60 seconds.
+- [~] Inspect every page in dark and light on the exact installed build. Verify search, reset, Mic Lock, preview hover, protected audio restart, and process cancellation.
+
 ## Exact reference geometry and film quality, 2026-09-27
 
 - [x] Match the supplied reference at a static 1120 × 826 points. Fill the complete rounded native window so no transparent titlebar-height strip remains below the UI.

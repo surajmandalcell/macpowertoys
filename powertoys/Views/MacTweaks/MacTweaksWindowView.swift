@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import OnePlusUI
 import ServiceManagement
 import SwiftUI
 
@@ -10,10 +11,10 @@ enum MacTweaksLayout {
         height: windowSize.height - UtilityLayout.hiddenTitlebarBottomSurplus
     )
     static let sidebarWidth: CGFloat = 200
-    static let titlebarHeight: CGFloat = 64
-    static let contentInset: CGFloat = 28
-    static let panelGap: CGFloat = 16
-    static let trafficLightVerticalOffset: CGFloat = 16
+    static let titlebarHeight = OnePlusMetrics.titleRow
+    static let contentInset = OnePlusMetrics.gutter
+    static let panelGap = OnePlusMetrics.cardGap
+    static let trafficLightVerticalOffset = OnePlusMetrics.trafficLightVerticalOffset
 }
 
 private struct MacTweaksCategory: Identifiable {
@@ -23,6 +24,20 @@ private struct MacTweaksCategory: Identifiable {
     let glyph: MacTweaksGlyphName
     let itemIDs: [String]
     let preview: MacTweaksPreviewKind
+
+    var systemImage: String {
+        switch id {
+        case "input": "slider.horizontal.3"
+        case "dock": "dock.rectangle"
+        case "finder": "folder"
+        case "windows": "macwindow.on.rectangle"
+        case "screenshots": "camera.viewfinder"
+        case "apps": "square.grid.2x2"
+        case "power": "bolt"
+        case "menu-bar": "menubar.rectangle"
+        default: "slider.horizontal.3"
+        }
+    }
 
     static let all: [Self] = [
         .init(id: "input", title: "Input", group: "Everyday", glyph: .input,
@@ -39,7 +54,7 @@ private struct MacTweaksCategory: Identifiable {
               itemIDs: ["terminal.pointer-focus", "music.half-stars", "apps.automatic-termination"], preview: .apps),
         .init(id: "power", title: "Power", group: "System", glyph: .power,
               itemIDs: ["helper.keep-awake"], preview: .power),
-        .init(id: "menubar", title: "Menu bar", group: "System", glyph: .menubar,
+        .init(id: "menu-bar", title: "Menu bar", group: "System", glyph: .menubar,
               itemIDs: ["menubar.spacing"], preview: .menubar)
     ]
 }
@@ -53,7 +68,6 @@ private struct MacTweaksModifiedEntry: Identifiable {
 
 struct MacTweaksWindowView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @FocusState private var searchFocused: Bool
 
     @State private var search = ""
     @State private var selectedPage = "dock"
@@ -68,6 +82,7 @@ struct MacTweaksWindowView: View {
     @State private var awake = AwakeService.shared
     @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
     @State private var refreshRotation = 0.0
+    @State private var audioRevive = AudioReviveService()
 
     private var trimmedSearch: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isSearching: Bool { !trimmedSearch.isEmpty }
@@ -103,29 +118,15 @@ struct MacTweaksWindowView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            HStack(spacing: 0) {
-                sidebar
-                workspace
-            }
+            OnePlusWindowRoot(canvas: .macTweaks) { sidebar } content: { workspace }
             if let notice {
                 noticeView(notice)
-                    .padding(.trailing, 24)
-                    .padding(.bottom, 22)
+                    .padding(OnePlusMetrics.gutter)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            Button("") { searchFocused = true }
-                .keyboardShortcut("k", modifiers: .command)
-                .frame(width: 0, height: 0)
-                .opacity(0)
-                .accessibilityHidden(true)
         }
-        .frame(width: MacTweaksLayout.contentSize.width, height: MacTweaksLayout.contentSize.height)
-        .background(MacTweaksPalette.window)
-        .clipShape(RoundedRectangle(cornerRadius: 13))
-        .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color(white: 0.235), lineWidth: 1))
-        .ignoresSafeArea()
         .background(WindowAccessor(identifier: "mac-tweaks"))
-        .environment(\.colorScheme, .dark)
+        .buttonStyle(OnePlusButtonStyle())
         .transaction { if reduceMotion { $0.disablesAnimations = true } }
         .onAppear {
             micLock.setWindowOpen(true)
@@ -134,6 +135,7 @@ struct MacTweaksWindowView: View {
         }
         .onDisappear {
             noticeTask?.cancel()
+            audioRevive.cancel()
             meter.stop()
             micLock.setWindowOpen(false)
         }
@@ -150,8 +152,10 @@ struct MacTweaksWindowView: View {
                 do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             }
         }
-        .onExitCommand {
-            if !search.isEmpty { search = "" } else { searchFocused = false }
+        .onExitCommand { if !search.isEmpty { search = "" } }
+        .onOpenToolPage("mac-tweaks") { pageID in
+            let pageIDs = Set(MacTweaksCategory.all.map(\.id) + ["modified", "about"])
+            if pageIDs.contains(pageID) { navigate(to: pageID) }
         }
         .confirmationDialog(
             "Restart \(restartRequest?.name ?? "app") now?",
@@ -177,71 +181,39 @@ struct MacTweaksWindowView: View {
     }
 
     private var sidebar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                Button { navigate(to: "about") } label: {
-                    Text("Mac Tweaks")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(Color(white: 0.894))
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .accessibilityLabel("About Mac Tweaks")
-                .accessibilityIdentifier("mac-tweaks.about")
-                Spacer()
+        OnePlusSidebar(title: "Mac Tweaks") {
+            OnePlusSidebarSearch("Search tweaks", text: $search)
+        } navigation: {
+            OnePlusNavCaption("Everyday")
+            sidebarGroup("Everyday")
+            OnePlusNavCaption("System")
+            sidebarGroup("System")
+        } bottom: {
+            OnePlusNavRow(
+                "Modified",
+                systemImage: "arrow.counterclockwise",
+                selected: !isSearching && selectedPage == "modified",
+                count: modifiedEntries.count,
+                muted: modifiedEntries.isEmpty
+            ) {
+                if !modifiedEntries.isEmpty { navigate(to: "modified") }
             }
-            .padding(.leading, 84)
-            .frame(height: MacTweaksLayout.titlebarHeight)
-
-            MacTweaksSearchField(text: $search, isFocused: $searchFocused)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 20)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    sidebarGroup("Everyday")
-                    sidebarGroup("System").padding(.top, 24)
-                }
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .thinScrollIndicators()
-
-            VStack(spacing: 2) {
-                MacTweaksBottomSidebarButton(
-                    title: "Modified", symbol: "arrow.counterclockwise",
-                    selected: !isSearching && selectedPage == "modified",
-                    enabled: !modifiedEntries.isEmpty
-                ) { navigate(to: "modified") }
-                MacTweaksBottomSidebarButton(
-                    title: "About", symbol: "info.circle",
-                    selected: !isSearching && selectedPage == "about", enabled: true
-                ) { navigate(to: "about") }
-            }
-            .padding(.horizontal, 10)
-            .padding(.top, 18)
-            .padding(.bottom, 16)
-            .overlay(alignment: .top) {
-                Rectangle().fill(MacTweaksPalette.line).frame(height: 1)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 10)
-            }
+            OnePlusNavRow(
+                "About",
+                systemImage: "info.circle",
+                selected: !isSearching && selectedPage == "about"
+            ) { navigate(to: "about") }
         }
-        .frame(width: MacTweaksLayout.sidebarWidth)
-        .background(MacTweaksPalette.sidebar)
-        .overlay(alignment: .trailing) { Rectangle().fill(MacTweaksPalette.line).frame(width: 1) }
     }
 
     private func sidebarGroup(_ name: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(name.uppercased())
-                .font(.system(size: 9.5, weight: .medium))
-                .tracking(1)
-                .foregroundStyle(Color(white: 0.505))
-                .padding(.leading, 10)
-                .padding(.bottom, 6)
+        Group {
             ForEach(MacTweaksCategory.all.filter { $0.group == name }) { category in
-                MacTweaksSidebarButton(category: category, selected: !isSearching && selectedPage == category.id) {
+                OnePlusNavRow(
+                    category.title,
+                    systemImage: category.systemImage,
+                    selected: !isSearching && selectedPage == category.id
+                ) {
                     navigate(to: category.id)
                 }
                 .accessibilityIdentifier("mac-tweaks.category.\(category.title)")
@@ -250,40 +222,24 @@ struct MacTweaksWindowView: View {
     }
 
     private var workspace: some View {
-        ZStack(alignment: .topTrailing) {
-            MacTweaksPalette.window
-            MacTweaksHeaderDither()
-                .frame(width: 330, height: 104)
-                .offset(x: -92)
-            VStack(spacing: 0) {
-                HStack {
-                    Text(pageTitle)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(MacTweaksPalette.text)
-                    Spacer()
-                    if !isSearching && selectedPage == "modified" {
-                        MacTweaksBorderedButton("Reset all", symbol: "arrow.counterclockwise") {
-                            showsResetAllConfirmation = true
-                        }
-                        .disabled(modifiedEntries.isEmpty)
+        OnePlusPage {
+            OnePlusPageHeader(title: pageTitle) {
+                if !isSearching && selectedPage == "modified" {
+                    Button("Reset all", systemImage: "arrow.counterclockwise") {
+                        showsResetAllConfirmation = true
                     }
+                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                    .disabled(modifiedEntries.isEmpty)
                 }
-                .padding(.horizontal, MacTweaksLayout.contentInset)
-                .frame(height: MacTweaksLayout.titlebarHeight)
-
-                ScrollView {
-                    Group {
-                        if isSearching { searchPage }
-                        else if selectedPage == "modified" { modifiedPage }
-                        else if selectedPage == "about" { aboutPage }
-                        else { categoryPage }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(.horizontal, MacTweaksLayout.contentInset)
-                    .padding(.bottom, MacTweaksLayout.contentInset)
-                }
-                .thinScrollIndicators()
             }
+        } content: {
+            Group {
+                if isSearching { searchPage }
+                else if selectedPage == "modified" { modifiedPage }
+                else if selectedPage == "about" { aboutPage }
+                else { categoryPage }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
 
@@ -324,7 +280,7 @@ struct MacTweaksWindowView: View {
             MacTweaksStandalonePanel {
                 MacTweaksInlineRow("Mic Lock") {
                     Toggle("Mic Lock", isOn: Binding(get: { micLock.isEnabled }, set: micLock.setEnabled))
-                        .labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Mic Lock")
                         .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
                 }
@@ -341,23 +297,23 @@ struct MacTweaksWindowView: View {
                 .overlay(alignment: .topTrailing) {
                     Button { refreshMicrophones() } label: {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 11, weight: .medium))
+                            .onePlusText(.caption)
                             .rotationEffect(.degrees(refreshRotation))
-                            .frame(width: 26, height: 26)
+                            .frame(width: OnePlusMetrics.controlHeight, height: OnePlusMetrics.controlHeight)
                     }
-                    .buttonStyle(MacTweaksHoverButtonStyle(cornerRadius: 5))
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                     .foregroundStyle(MacTweaksPalette.secondary)
                     .disabled(!micLock.isEnabled)
                     .help("Refresh devices")
                     .accessibilityLabel("Refresh devices")
                     .accessibilityIdentifier("mac-tweaks.mic-lock.refresh")
-                    .padding(.top, 7)
-                    .padding(.trailing, 10)
+                    .padding(.top, OnePlusMetrics.spacing[2])
+                    .padding(.trailing, OnePlusMetrics.spacing[4])
                 }
                 MacTweaksPanel("Current input", glyph: .input) {
                     MacTweaksInlineRow("Microphone") {
                         Text(currentMicrophoneName).lineLimit(1)
-                            .font(.system(size: 11)).foregroundStyle(MacTweaksPalette.secondary)
+                            .onePlusText(.control)
                     }
                     if micLock.volume != nil {
                         MacTweaksRowDivider()
@@ -367,7 +323,7 @@ struct MacTweaksWindowView: View {
                         MacTweaksRowDivider()
                         MacTweaksInlineRow("Mute microphone") {
                             Toggle("Mute microphone", isOn: Binding(get: { micLock.muted ?? false }, set: micLock.setMuted))
-                                .labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                                .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                                 .accessibilityLabel("Mute microphone")
                         }
                     }
@@ -380,13 +336,14 @@ struct MacTweaksWindowView: View {
                 MacTweaksStandalonePanel {
                     MacTweaksInlineRow("Open at login") {
                         Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: setOpenAtLogin))
-                            .labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                            .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                             .accessibilityLabel("Open at login")
                     }
                 }
                 MacTweaksStandalonePanel {
                     MacTweaksInlineRow("Audio service") {
                         MacTweaksBorderedButton("Revive Audio", symbol: "lock") { showsReviveConfirmation = true }
+                            .disabled(audioRevive.isRunning)
                     }
                 }
             }
@@ -404,7 +361,7 @@ struct MacTweaksWindowView: View {
                             SettingsManager.shared.setToolEnabled(true, for: "awake")
                             awake.setMode(enabled ? .indefinite : .passive)
                         }
-                    )).labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Keep this Mac awake")
                 }
                 MacTweaksRowDivider()
@@ -412,12 +369,12 @@ struct MacTweaksWindowView: View {
                 MacTweaksRowDivider()
                 MacTweaksInlineRow("Keep display on") {
                     Toggle("Keep display on", isOn: Binding(get: { awake.configuration.keepDisplayOn }, set: awake.setKeepDisplayOn))
-                        .labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Keep display on")
                 }
                 MacTweaksRowDivider()
                 MacTweaksInlineRow("Status") {
-                    Text(awake.statusText).font(.system(size: 11).monospacedDigit())
+                    Text(awake.statusText).onePlusText(.mono)
                         .foregroundStyle(awake.assertionError == nil ? MacTweaksPalette.secondary : MacTweaksPalette.accent)
                         .lineLimit(1)
                 }
@@ -449,12 +406,13 @@ struct MacTweaksWindowView: View {
             : [GridItem(.flexible(), spacing: 16), GridItem(.flexible())]
         return Group {
             if results.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 28, weight: .light)).foregroundStyle(MacTweaksPalette.muted)
-                    Text("No matching settings").font(.system(size: 16, weight: .semibold)).foregroundStyle(MacTweaksPalette.text)
-                    Text("Try a setting, category, or related word.").font(.system(size: 12)).foregroundStyle(MacTweaksPalette.secondary)
-                    MacTweaksBorderedButton("Clear search") { search = "" }.padding(.top, 8)
+                OnePlusEmptyState(
+                    "No matching settings",
+                    systemImage: "magnifyingglass",
+                    caption: "Try a setting, category, or related word."
+                ) {
+                    Button("Clear search") { search = "" }
+                        .buttonStyle(OnePlusButtonStyle(.neutral))
                 }
                 .frame(maxWidth: .infinity, minHeight: 410)
             } else {
@@ -472,7 +430,7 @@ struct MacTweaksWindowView: View {
             if item.id == "mic-lock" {
                 MacTweaksInlineRow("Enabled") {
                     Toggle("Mic Lock", isOn: Binding(get: { micLock.isEnabled }, set: micLock.setEnabled))
-                        .labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Mic Lock")
                 }
             } else if item.id == "helper.keep-awake" {
@@ -480,7 +438,7 @@ struct MacTweaksWindowView: View {
                     Toggle("Keep this Mac awake", isOn: Binding(
                         get: { awake.configuration.mode != .passive },
                         set: { awake.setMode($0 ? .indefinite : .passive) }
-                    )).labelsHidden().toggleStyle(MacTweaksToggleStyle())
+                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Keep this Mac awake")
                 }
             } else {
@@ -495,11 +453,11 @@ struct MacTweaksWindowView: View {
     private var modifiedPage: some View {
         Group {
             if modifiedEntries.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle").font(.system(size: 28, weight: .light)).foregroundStyle(MacTweaksPalette.muted)
-                    Text("No modified settings").font(.system(size: 16, weight: .semibold)).foregroundStyle(MacTweaksPalette.text)
-                    Text("Settings changed with Mac Tweaks will appear here.").font(.system(size: 12)).foregroundStyle(MacTweaksPalette.secondary)
-                }
+                OnePlusEmptyState(
+                    "No modified settings",
+                    systemImage: "checkmark.circle",
+                    caption: "Settings changed with Mac Tweaks will appear here."
+                )
                 .frame(maxWidth: .infinity, minHeight: 390)
             } else {
                 MacTweaksPanel("Modified settings", glyph: .apps) {
@@ -509,8 +467,7 @@ struct MacTweaksWindowView: View {
                         Text("Original").frame(width: 170, alignment: .leading)
                         Color.clear.frame(width: 28)
                     }
-                    .font(.system(size: 10, weight: .medium)).foregroundStyle(MacTweaksPalette.muted)
-                    .padding(.horizontal, 16).frame(height: 34)
+                    .onePlusTableHeader()
                     ForEach(MacTweaksCategory.all) { category in
                         let entries = modifiedEntries.filter { $0.category.id == category.id }
                         if !entries.isEmpty {
@@ -518,13 +475,14 @@ struct MacTweaksWindowView: View {
                             Button { navigate(to: category.id) } label: {
                                 HStack(spacing: 8) {
                                     MacTweaksGlyph(name: category.glyph).frame(width: 13, height: 13)
-                                    Text(category.title).font(.system(size: 11, weight: .semibold))
-                                    Image(systemName: "chevron.right").font(.system(size: 8, weight: .semibold))
+                                    Text(category.title).onePlusText(.cardTitle)
+                                    Image(systemName: "chevron.right").onePlusText(.caption)
                                     Spacer()
                                 }
                                 .foregroundStyle(MacTweaksPalette.secondary)
-                                .padding(.horizontal, 16).frame(height: 32)
-                            }.buttonStyle(MacTweaksHoverButtonStyle(cornerRadius: 0))
+                                .padding(.horizontal, OnePlusMetrics.cardPadding)
+                                .frame(height: OnePlusMetrics.navRowHeight)
+                            }.buttonStyle(OnePlusInteractionStyle())
                             ForEach(entries) { entry in modifiedRow(entry) }
                         }
                     }
@@ -535,7 +493,7 @@ struct MacTweaksWindowView: View {
 
     private func modifiedRow(_ entry: MacTweaksModifiedEntry) -> some View {
         HStack(spacing: 8) {
-            Text(entry.field.label).font(.system(size: 12)).foregroundStyle(MacTweaksPalette.text.opacity(0.9))
+            Text(entry.field.label).onePlusText(.row)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(MacTweaksPreferenceValue.label(for: TweakPreferenceStore.shared.selectedChoice(for: entry.field), field: entry.field))
                 .frame(width: 170, alignment: .leading)
@@ -549,14 +507,17 @@ struct MacTweaksWindowView: View {
                     if modifiedEntries.count == 1 { selectedPage = entry.category.id }
                 } catch { showError(error.localizedDescription) }
             } label: {
-                Image(systemName: "arrow.counterclockwise").font(.system(size: 10)).frame(width: 26, height: 24)
+                Image(systemName: "arrow.counterclockwise")
             }
-            .buttonStyle(MacTweaksHoverButtonStyle())
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
             .accessibilityLabel("Reset \(entry.field.label)")
         }
-        .font(.system(size: 11)).foregroundStyle(MacTweaksPalette.secondary)
-        .padding(.horizontal, 16).frame(height: 44)
-        .overlay(alignment: .top) { Rectangle().fill(MacTweaksPalette.line).frame(height: 1).padding(.leading, 16) }
+        .onePlusText(.control)
+        .padding(.horizontal, OnePlusMetrics.cardPadding)
+        .frame(height: OnePlusMetrics.settingRow)
+        .overlay(alignment: .top) {
+            OnePlusColor.lineSoft.frame(height: 1).padding(.leading, OnePlusMetrics.cardPadding)
+        }
     }
 
     private var aboutPage: some View {
@@ -565,13 +526,13 @@ struct MacTweaksWindowView: View {
                 HStack(spacing: 20) {
                     Image("MacTweaksLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 68, height: 68)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Mac Tweaks").font(.system(size: 24, weight: .medium)).foregroundStyle(MacTweaksPalette.text)
-                        Text("Small controls for the way you use your Mac.").font(.system(size: 12)).foregroundStyle(MacTweaksPalette.secondary)
-                        Text("Part of MacPowerToys").font(.system(size: 11)).foregroundStyle(MacTweaksPalette.muted)
+                        Text("Mac Tweaks").onePlusText(.pageTitle)
+                        Text("Small controls for the way you use your Mac.").onePlusText(.row)
+                        Text("Part of MacPowerToys").onePlusText(.caption)
                     }
                     Spacer()
                 }
-                .padding(24)
+                .padding(OnePlusMetrics.gutter)
                 MacTweaksRowDivider()
                 aboutRow("Version", value: appVersion)
                 MacTweaksRowDivider()
@@ -597,12 +558,9 @@ struct MacTweaksWindowView: View {
     }
 
     private func aboutRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label).foregroundStyle(MacTweaksPalette.secondary)
-            Spacer()
-            Text(value).foregroundStyle(MacTweaksPalette.muted)
+        OnePlusSettingRow(label, separator: false) {
+            Text(value).onePlusText(.control)
         }
-        .font(.system(size: 12)).padding(.horizontal, 16).frame(height: 44)
     }
 
     private func preferencePreviewPanel(
@@ -663,7 +621,7 @@ struct MacTweaksWindowView: View {
         case "windows": "Window behavior"
         case "screenshots": "Capture preferences"
         case "apps": "Application behavior"
-        case "menubar": "Menu bar preferences"
+        case "menu-bar": "Menu bar preferences"
         default: category.title
         }
     }
@@ -674,7 +632,6 @@ struct MacTweaksWindowView: View {
 
     private func navigate(to page: String) {
         search = ""
-        searchFocused = false
         selectedPage = page
     }
 
@@ -722,26 +679,19 @@ struct MacTweaksWindowView: View {
     }
 
     private func noticeView(_ notice: MacTweaksNotice) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: notice.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .foregroundStyle(notice.isError ? MacTweaksPalette.accent : Color(white: 0.72))
-            Text(notice.message).font(.system(size: 11)).lineLimit(2)
+        OnePlusBanner(notice.message, tone: notice.isError ? .error : .information) {
             if let title = notice.actionTitle,
                let bundleID = notice.targetBundleIdentifier,
                let name = notice.targetName {
                 Button(title) { restartRequest = (name, bundleID) }
-                    .buttonStyle(.plain).font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(MacTweaksPalette.text)
+                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
             }
             Button { self.notice = nil } label: {
-                Image(systemName: "xmark").font(.system(size: 9)).frame(width: 20, height: 20)
-            }.buttonStyle(MacTweaksHoverButtonStyle()).accessibilityLabel("Dismiss")
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .accessibilityLabel("Dismiss")
         }
-        .foregroundStyle(MacTweaksPalette.secondary)
-        .padding(.horizontal, 12).frame(minHeight: 40)
-        .background(Color(red: 0.17, green: 0.17, blue: 0.17), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.14), lineWidth: 1))
-        .shadow(color: .black.opacity(0.38), radius: 16, y: 8)
         .accessibilityElement(children: .contain)
     }
 
@@ -782,29 +732,20 @@ struct MacTweaksWindowView: View {
 
     private func microphoneMenu(index: Int) -> some View {
         let saved = micLock.savedInputs[index]
-        return Menu {
-            Button("None") { micLock.setSavedInput(nil, at: index) }
-            if let saved, !micLock.devices.contains(where: { $0.id == saved.uid }) {
-                Button("\(saved.name) (Unavailable)") {}.disabled(true)
-                Divider()
-            }
-            ForEach(micLock.devices) { device in
-                Button(device.name) { micLock.setSavedInput(device.id, at: index) }
-            }
-        } label: {
-            HStack {
-                Text(saved?.name ?? "None").lineLimit(1)
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 8))
-            }
-            .font(.system(size: 11)).foregroundStyle(MacTweaksPalette.secondary)
-            .padding(.horizontal, 10).frame(width: 218, height: 28)
-            .background(MacTweaksPalette.panelRaised, in: RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(MacTweaksPalette.line, lineWidth: 1))
+        var choices = [("", "None")]
+        if let saved, !micLock.devices.contains(where: { $0.id == saved.uid }) {
+            choices.append((saved.uid, "\(saved.name) (Unavailable)"))
         }
-        .menuStyle(.borderlessButton).fixedSize()
+        choices.append(contentsOf: micLock.devices.map { ($0.id, $0.name) })
+        return OnePlusSelect(
+            choices: choices,
+            selection: Binding(
+                get: { saved?.uid ?? "" },
+                set: { micLock.setSavedInput($0.isEmpty ? nil : $0, at: index) }
+            ),
+            accessibilityLabel: index == 0 ? "Primary microphone" : "Fallback \(index) microphone"
+        )
         .disabled(!micLock.isEnabled)
-        .accessibilityLabel(index == 0 ? "Primary microphone" : "Fallback \(index) microphone")
     }
 
     private var inputVolumeControl: some View {
@@ -815,7 +756,7 @@ struct MacTweaksWindowView: View {
             ), in: 0...1)
             .controlSize(.mini).frame(width: 138).disabled(micLock.volume == nil || micLock.muted == true)
             Text("\(Int((micLock.volume ?? 0) * 100))%")
-                .font(.system(size: 9).monospacedDigit()).foregroundStyle(MacTweaksPalette.secondary).frame(width: 30, alignment: .trailing)
+                .onePlusText(.mono)
         }
     }
 
@@ -835,24 +776,29 @@ struct MacTweaksWindowView: View {
 
     private var awakeDurationMenu: some View {
         let mode = AwakeQuickMode(configuration: awake.configuration)
-        return Menu {
-            Button("Off") { awake.setMode(.passive) }
-            Button("Indefinitely") { awake.setMode(.indefinite) }
-            Divider()
-            Button("30 minutes") { awake.setMode(.timed, duration: 1_800) }
-            Button("1 hour") { awake.setMode(.timed, duration: 3_600) }
-            Button("2 hours") { awake.setMode(.timed, duration: 7_200) }
-        } label: {
-            HStack {
-                Text(awakeDurationLabel(mode)).lineLimit(1)
-                Spacer()
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 8))
-            }
-            .font(.system(size: 11)).foregroundStyle(MacTweaksPalette.secondary)
-            .padding(.horizontal, 10).frame(width: 160, height: 28)
-            .background(MacTweaksPalette.panelRaised, in: RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(MacTweaksPalette.line, lineWidth: 1))
-        }.menuStyle(.borderlessButton).fixedSize()
+        var choices: [(AwakeQuickMode, String)] = [
+            (.off, "Off"),
+            (.indefinite, "Indefinitely"),
+            (.thirtyMinutes, "30 minutes"),
+            (.oneHour, "1 hour")
+        ]
+        if mode == .custom { choices.append((.custom, awakeDurationLabel(mode))) }
+        return OnePlusSelect(
+            choices: choices,
+            selection: Binding(
+                get: { mode },
+                set: {
+                    switch $0 {
+                    case .off: awake.setMode(.passive)
+                    case .indefinite: awake.setMode(.indefinite)
+                    case .thirtyMinutes: awake.setMode(.timed, duration: 1_800)
+                    case .oneHour: awake.setMode(.timed, duration: 3_600)
+                    case .custom: break
+                    }
+                }
+            ),
+            accessibilityLabel: "Awake duration"
+        )
     }
 
     private func awakeDurationLabel(_ mode: AwakeQuickMode) -> String {
@@ -887,30 +833,10 @@ struct MacTweaksWindowView: View {
 
     private func reviveAudio() {
         showNotice(.init(message: "Restarting the Mac audio service…"))
-        Task.detached {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            process.arguments = ["-e", "do shell script \"/usr/bin/killall coreaudiod\" with administrator privileges"]
-            let errorPipe = Pipe()
-            process.standardError = errorPipe
-            let result: String
-            let succeeded: Bool
-            do {
-                try process.run()
-                process.waitUntilExit()
-                let detail = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                succeeded = process.terminationStatus == 0
-                result = succeeded ? "Audio restarted. Devices refreshed." :
-                    (detail.isEmpty ? "Audio restart was cancelled." : detail)
-            } catch {
-                succeeded = false
-                result = "Could not restart audio: \(error.localizedDescription)"
-            }
-            await MainActor.run {
-                micLock.refresh()
-                if succeeded { showNotice(.init(message: result)) } else { showError(result) }
-            }
+        audioRevive.restart { result in
+            micLock.refresh()
+            if result.succeeded { showNotice(.init(message: result.message)) }
+            else { showError(result.message) }
         }
     }
 
@@ -927,122 +853,11 @@ struct MacTweaksWindowView: View {
     }
 }
 
-private struct MacTweaksSidebarButton: View {
-    let category: MacTweaksCategory
-    let selected: Bool
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        let normal = Color(white: 0.714)
-        let active = Color(white: 0.94)
-        Button(action: action) {
-            HStack(spacing: 9) {
-                MacTweaksGlyph(name: category.glyph, color: selected ? active : normal)
-                    .frame(width: 15, height: 15)
-                Text(category.title).font(.system(size: 12, weight: .regular))
-                Spacer()
-            }
-            .foregroundStyle(selected ? active : normal)
-            .padding(.horizontal, 10).frame(height: 34).contentShape(Rectangle())
-            .background(selected ? Color.white.opacity(0.105) : hovering ? Color.white.opacity(0.045) : .clear, in: RoundedRectangle(cornerRadius: 5))
-        }
-        .buttonStyle(.plain).focusEffectDisabled().onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: hovering)
-        .accessibilityLabel(category.title).accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-private struct MacTweaksBottomSidebarButton: View {
-    let title: String
-    let symbol: String
-    let selected: Bool
-    let enabled: Bool
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        let normal = Color(white: 0.714)
-        let active = Color(white: 0.94)
-        Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: symbol).font(.system(size: 11)).frame(width: 15)
-                Text(title).font(.system(size: 12))
-                Spacer()
-            }
-            .foregroundStyle(enabled ? (selected ? active : normal) : Color(white: 0.396))
-            .padding(.horizontal, 10).frame(height: 34).contentShape(Rectangle())
-            .background(selected ? Color.white.opacity(0.105) : hovering && enabled ? Color.white.opacity(0.045) : .clear, in: RoundedRectangle(cornerRadius: 5))
-        }
-        .buttonStyle(.plain).disabled(!enabled).focusEffectDisabled().onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: hovering)
-    }
-}
-
-private struct MacTweaksSearchField: View {
-    @Binding var text: String
-    let isFocused: FocusState<Bool>.Binding
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Button { isFocused.wrappedValue = true } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 10))
-                    .foregroundStyle(MacTweaksPalette.muted)
-                    .frame(width: 12, height: 24)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHidden(true)
-            TextField("Search", text: $text)
-                .textFieldStyle(.plain).font(.system(size: 12)).foregroundStyle(MacTweaksPalette.text)
-                .focused(isFocused)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel("Search all tweaks")
-            if text.isEmpty {
-                Button { isFocused.wrappedValue = true } label: {
-                    Text("⌘ K")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(MacTweaksPalette.muted)
-                        .frame(height: 24)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHidden(true)
-            } else {
-                Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundStyle(MacTweaksPalette.muted)
-                }.buttonStyle(.plain).accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity)
-        .frame(height: 34)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(white: isFocused.wrappedValue ? 0.169 : 0.145))
-                Button { isFocused.wrappedValue = true } label: {
-                    Color.clear.contentShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-                .accessibilityHidden(true)
-            }
-        }
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(white: 0.22), lineWidth: 1))
-        .animation(.easeOut(duration: 0.09), value: isFocused.wrappedValue)
-        .accessibilityIdentifier("mac-tweaks.search")
-    }
-}
-
 private struct MacTweaksStandalonePanel<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        content
-            .background { ZStack { MacTweaksPalette.panel; MacTweaksDither(strength: 0.14) } }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(MacTweaksPalette.line, lineWidth: 1))
-            .shadow(color: .black.opacity(0.13), radius: 3, y: 1)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+        OnePlusCard(textured: true) { content }
     }
 }
 
@@ -1051,12 +866,7 @@ private struct MacTweaksInlineRow<Control: View>: View {
     let control: Control
     init(_ title: String, @ViewBuilder control: () -> Control) { self.title = title; self.control = control() }
     var body: some View {
-        HStack(spacing: 12) {
-            Text(title).font(.system(size: 12)).foregroundStyle(MacTweaksPalette.text.opacity(0.9)).lineLimit(1)
-            Spacer(minLength: 8)
-            control
-        }
-        .padding(.horizontal, 16).frame(height: 44)
+        OnePlusSettingRow(title, separator: false) { control }
     }
 }
 
@@ -1069,15 +879,10 @@ private struct MacTweaksBorderedButton: View {
     }
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let symbol { Image(systemName: symbol).font(.system(size: 9)) }
-                Text(title).font(.system(size: 11))
-            }
-            .foregroundStyle(MacTweaksPalette.secondary)
-            .padding(.horizontal, 10).frame(height: 28)
-            .background(Color.white.opacity(0.025), in: RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(MacTweaksPalette.line, lineWidth: 1))
-        }.buttonStyle(MacTweaksHoverButtonStyle())
+            if let symbol { Label(title, systemImage: symbol) }
+            else { Text(title) }
+        }
+        .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
     }
 }
 
@@ -1086,8 +891,8 @@ private struct MacTweaksLevelMeter: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(0..<20, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Float(index) / 20 < level ? Color(white: 0.72) : Color.white.opacity(0.10))
+                RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius)
+                    .fill(Float(index) / 20 < level ? OnePlusColor.chartLine : OnePlusColor.track)
             }
         }
         .accessibilityElement(children: .ignore)
