@@ -10,6 +10,7 @@ nonisolated enum DiskEntryKind: Sendable {
 }
 
 nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
+    let id: String
     let kind: DiskEntryKind
     private let storedName: String
     private weak var parent: DiskEntry?
@@ -33,11 +34,6 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         return rootURL ?? URL(fileURLWithPath: storedName)
     }
 
-    var id: String {
-        guard kind == .aggregate else { return url.path }
-        return parent.map { $0.id + "\0aggregate" } ?? "\0aggregate"
-    }
-
     var name: String { storedName }
     var allocatedBytes: Int64 { totalAllocatedBytes }
     var apparentBytes: Int64 { totalApparentBytes }
@@ -47,6 +43,7 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
     var device: UInt64 { UInt64(deviceID) }
     var inode: UInt64 { inodeID }
     var children: [DiskEntry] { childStorage }
+    var parentEntry: DiskEntry? { parent }
 
     init(url: URL, kind: DiskEntryKind, allocatedBytes: Int64, apparentBytes: Int64,
          fileCount: Int, directoryCount: Int, modifiedAt: Date, device: UInt64,
@@ -57,6 +54,8 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         parent = nil
         rootURL = standardized
         self.kind = kind
+        id = Self.makeID(name: standardized.path, parent: nil, kind: kind,
+                         device: device, inode: inode)
         ownAllocatedBytes = allocatedBytes
         ownApparentBytes = apparentBytes
         ownFileCount = UInt64(fileCount)
@@ -81,6 +80,8 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         self.parent = parent
         self.rootURL = rootURL
         self.kind = kind
+        id = Self.makeID(name: kind == .aggregate ? "\0aggregate" : name,
+                         parent: parent, kind: kind, device: device, inode: inode)
         ownAllocatedBytes = allocatedBytes
         ownApparentBytes = apparentBytes
         ownFileCount = fileCount
@@ -101,6 +102,7 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         storedName = entry.storedName
         self.parent = parent
         rootURL = entry.rootURL
+        id = entry.id
         kind = entry.kind
         ownAllocatedBytes = entry.ownAllocatedBytes
         ownApparentBytes = entry.ownApparentBytes
@@ -118,6 +120,26 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
     }
 
     func bytes(apparent: Bool) -> Int64 { apparent ? apparentBytes : allocatedBytes }
+
+    func identityRoute(from rootID: String) -> [String]? {
+        var route: [String] = []
+        var node: DiskEntry? = self
+        while let current = node {
+            route.append(current.id)
+            if current.id == rootID { return route.reversed() }
+            node = current.parent
+        }
+        return nil
+    }
+
+    func isDescendant(of ancestor: DiskEntry) -> Bool {
+        var node = parent
+        while let current = node {
+            if current.id == ancestor.id { return true }
+            node = current.parent
+        }
+        return false
+    }
 
     func replaceChildren(_ children: [DiskEntry]) {
         let oldAllocated = totalAllocatedBytes
@@ -176,6 +198,28 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
 
     private static func seconds(_ date: Date) -> Int64 {
         Int64(date.timeIntervalSince1970.rounded(.towardZero))
+    }
+
+    private static func makeID(name: String, parent: DiskEntry?, kind: DiskEntryKind,
+                               device: UInt64, inode: UInt64) -> String {
+        var hash: UInt64 = 0xcbf29ce484222325
+        func mix(_ byte: UInt8) {
+            hash ^= UInt64(byte)
+            hash &*= 0x100000001b3
+        }
+        for byte in parent?.id.utf8 ?? "".utf8 { mix(byte) }
+        for shift in stride(from: 0, to: 64, by: 8) { mix(UInt8(truncatingIfNeeded: device >> shift)) }
+        for shift in stride(from: 0, to: 64, by: 8) { mix(UInt8(truncatingIfNeeded: inode >> shift)) }
+        for byte in name.utf8 { mix(byte) }
+        let kindByte: UInt8 = switch kind {
+        case .directory: 1
+        case .file: 2
+        case .symbolicLink: 3
+        case .other: 4
+        case .aggregate: 5
+        }
+        mix(kindByte)
+        return String(hash, radix: 16)
     }
 }
 

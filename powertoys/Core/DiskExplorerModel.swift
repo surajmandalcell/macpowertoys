@@ -194,14 +194,14 @@ final class DiskExplorerModel {
     func leave() { cancel(); result = nil; current = nil; marks = [:] }
 
     private func apply(_ snapshot: DiskScanResult) {
-        let path = current?.id
+        let route = current.flatMap { current in
+            result.flatMap { current.identityRoute(from: $0.root.id) }
+        } ?? []
         result = snapshot
         var node = snapshot.root
-        if let path {
-            while node.id != path,
-                  let next = node.children.first(where: { path == $0.id || path.hasPrefix($0.id + "/") }) {
-                node = next
-            }
+        for id in route.dropFirst() {
+            guard let next = node.children.first(where: { $0.id == id }) else { break }
+            node = next
         }
         current = node
     }
@@ -216,8 +216,8 @@ final class DiskExplorerModel {
               entry.kind != .aggregate,
               DiskRemoval.isAllowed(entry, under: result.root.url) else { return }
         if marks.removeValue(forKey: entry.id) != nil { return }
-        guard !marks.keys.contains(where: { entry.id.hasPrefix($0 + "/") }) else { return }
-        marks = marks.filter { !$0.key.hasPrefix(entry.id + "/") }
+        guard !marks.values.contains(where: { entry.isDescendant(of: $0) }) else { return }
+        marks = marks.filter { !$0.value.isDescendant(of: entry) }
         marks[entry.id] = entry
     }
 
