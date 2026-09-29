@@ -24,11 +24,11 @@ struct ToolAboutView: View {
                     rulerSettings
                 } else {
                     ToolSettingsContent(toolID: tool.id, changed: changed)
-                        .id(tool.id)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
             .clipped()
+            .onChange(of: toolId) { _, _ in tab = .settings }
         } else {
             OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
                               caption: "This tool is no longer installed.")
