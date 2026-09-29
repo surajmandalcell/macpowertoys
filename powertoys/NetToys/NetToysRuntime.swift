@@ -200,7 +200,7 @@ nonisolated enum TailscalePeerCatalog {
                     exceeded = exceeded || chunk.count > remaining
                     if exceeded, process.isRunning { process.terminate() }
                 }
-                return (data, exceeded)
+                return (data: data, exceeded: exceeded)
             }
 
             do {
