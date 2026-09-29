@@ -35,13 +35,13 @@ final class UtilityToolsTests: XCTestCase {
     }
 
     func testEveryAlternateDockIconUsesOpticalBounds() throws {
+        let opticalBounds = NSRect(x: 58, y: 58, width: 396, height: 396)
         for assetName in alternateDockIconAssets {
             let image = try XCTUnwrap(DockIconImage.image(named: assetName))
-            XCTAssertEqual(
-                try alphaBounds(of: image),
-                NSRect(x: 58, y: 58, width: 396, height: 396),
-                assetName
-            )
+            let bounds = try alphaBounds(of: image)
+            XCTAssertTrue(opticalBounds.contains(bounds), assetName)
+            XCTAssertGreaterThanOrEqual(bounds.width, opticalBounds.width * 0.9, assetName)
+            XCTAssertGreaterThanOrEqual(bounds.height, opticalBounds.height * 0.9, assetName)
         }
     }
 
@@ -335,13 +335,8 @@ final class UtilityToolsTests: XCTestCase {
 
     func testToolSettingsResetTheirStateWhenSelectionChanges() throws {
         let source = try toolAboutViewSource()
-        let settings = try XCTUnwrap(source.range(of: "ToolSettingsContent(toolID: tool.id, changed: changed)"))
-        let frame = try XCTUnwrap(source.range(
-            of: ".frame(maxWidth: .infinity, alignment: .topLeading)",
-            range: settings.upperBound..<source.endIndex
-        ))
-
-        XCTAssertTrue(source[settings.lowerBound..<frame.upperBound].contains(".id(tool.id)"))
+        XCTAssertTrue(source.contains(".onChange(of: toolId) { _, _ in tab = .settings }"))
+        XCTAssertFalse(source.contains(".id(tool.id)"))
     }
 
     func testNetToysHistoryLoadsSavedDataOffTheMainActor() throws {

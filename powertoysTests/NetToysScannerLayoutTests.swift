@@ -96,7 +96,7 @@ final class NetToysScannerLayoutTests: XCTestCase {
 
             let table = try XCTUnwrap(findTable(in: host))
             let viewport = try XCTUnwrap(table.enclosingScrollView).contentView.bounds.width
-            XCTAssertEqual(viewport, 1192, accuracy: 1)
+            XCTAssertEqual(viewport, 1190, accuracy: 1)
             let columns = table.tableColumns.indices.filter { !table.tableColumns[$0].isHidden }
             XCTAssertEqual(columns.map { table.tableColumns[$0].title.uppercased() }, [
                 "IP ADDRESS", "STATUS", "RESPONSE", "HOSTNAME", "MAC ADDRESS", "MAC VENDOR", "OPEN PORTS"

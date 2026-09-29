@@ -82,10 +82,10 @@ final class UtilityModelTests: XCTestCase {
 
         let cleanup = try sourceFile("Views/Rclone/CleanupRemoteSheet.swift")
         XCTAssertTrue(cleanup.contains(
-            "VStack(alignment: .leading, spacing: 2) {\n                Text(\"Clean Up by Ignore Rules\")"
+            "OnePlusSheet(\"Clean Up by Ignore Rules\", width: .medium, close: close)"
         ))
         XCTAssertTrue(cleanup.contains(
-            ".font(.system(size: 15, weight: .semibold))\n                Text(scope)"
+            "Text(scope)\n                .onePlusText(.mono)\n                .lineLimit(1)\n                .truncationMode(.middle)\n                .help(scope)"
         ))
     }
 
