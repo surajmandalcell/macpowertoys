@@ -5,8 +5,12 @@ direct user correction or verified result changes a status.
 
 ## OnePlusUI redesign, 2026-09-29
 
+Round 2 requires neutral shortcut hints, equal 16pt Settings gutters,
+and a protected floating settings area on both pages.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Scroller gutter removal belongs to shared fix B. | Rebuild and inspect both appearances after the shared scroller fix. |
 | Verify | Use the 480pt applet with 270 to 462pt height, persistent shortcut menu and Extract Text, history preview/source/time/copy, and replacing Settings with shortcut and language rows. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `history` and `settings`. | Review both appearances, capture states, and recognition controls in the orchestrator's installed build. |
 
 | Status | Request | Evidence | Remaining work |
