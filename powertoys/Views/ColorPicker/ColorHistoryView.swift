@@ -191,7 +191,7 @@ struct ColorHistoryView: View {
     }
 
     private var history: some View {
-        VStack(spacing: OnePlusMetrics.contentTop) {
+        VStack(spacing: OnePlusMetrics.contentGap) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 OnePlusSearchField(prompt: "Search colors", text: $search, width: nil,
                                    focusTrigger: focusSearch, accessibilityIdentifier: "color-picker.search")
@@ -227,7 +227,7 @@ struct ColorHistoryView: View {
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, OnePlusMetrics.appletGutter)
             }
-        }.padding(.top, OnePlusMetrics.contentTop)
+        }.padding(.top, OnePlusMetrics.contentGap)
     }
 
     private var projects: some View {
@@ -250,7 +250,7 @@ struct ColorHistoryView: View {
         }
         .frame(maxHeight: .infinity)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
-        .padding(.top, OnePlusMetrics.contentTop)
+        .padding(.top, OnePlusMetrics.contentGap)
     }
 
     private var newProjectField: some View {

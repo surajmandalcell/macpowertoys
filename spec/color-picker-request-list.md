@@ -16,6 +16,11 @@ Round 5 puts history rows inside one card with 1pt separators. Projects grow
 from 250pt with their rows and editor, up to 460pt, where rows start scrolling.
 The titlebar action is 24pt and all Settings card headers use symbols.
 
+Round 6 uses 16pt after the tab strip and between the fixed History toolbar
+and its rows. Projects keep content-sized 250 to 460pt window heights. Pure
+color formatting is nonisolated, so cached row preparation stays off the main
+actor without concurrency warnings.
+
 Round 2 requires full-width Settings cards inside 16pt body gutters,
 neutral copy controls, and a protected floating settings area on every page.
 

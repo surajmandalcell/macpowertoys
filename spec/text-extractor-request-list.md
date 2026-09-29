@@ -15,6 +15,10 @@ Round 5 uses one history card with 1pt separators and centers timestamps with
 row actions. Destructive history clearing now lives in Settings with a native
 confirmation. The titlebar Extract Text action is 24pt.
 
+Round 6 starts History 16pt below the titlebar. Pure timestamp and URL helpers
+are nonisolated, so cached row preparation stays off the main actor without
+concurrency warnings.
+
 Round 2 requires neutral shortcut hints, equal 16pt Settings gutters,
 and a protected floating settings area on both pages.
 

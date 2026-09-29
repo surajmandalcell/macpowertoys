@@ -15,6 +15,9 @@ Round 5 keeps the titlebar display switch as the only display control in the
 applet. Quick times use one 8pt-spaced row, minute labels include a space, and
 every settings card header uses a 13pt symbol.
 
+Round 6 starts Home 16pt below the titlebar. Applet content no longer uses the
+58pt workspace-title offset.
+
 Round 2 requires a protected floating settings area and a readable 12pt
 status row. Window height uses the shared fixed-canvas correction.
 

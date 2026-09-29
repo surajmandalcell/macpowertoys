@@ -39,14 +39,6 @@ struct TextExtractorSettings: Codable, Equatable, Sendable {
 }
 
 struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
-    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.unitsStyle = .abbreviated
-        formatter.dateTimeStyle = .numeric
-        return formatter
-    }()
-
     let id: UUID
     let text: String
     let createdAt: Date
@@ -61,7 +53,7 @@ struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
         text.count > 180 || text.filter(\.isNewline).count > 3
     }
 
-    var openableURL: URL? {
+    nonisolated var openableURL: URL? {
         guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
               ["http", "https"].contains(url.scheme?.lowercased()),
               url.host != nil
@@ -69,9 +61,13 @@ struct TextExtraction: Codable, Equatable, Identifiable, Sendable {
         return url
     }
 
-    func relativeTimestamp(at now: Date = Date()) -> String {
+    nonisolated func relativeTimestamp(at now: Date = Date()) -> String {
         guard abs(createdAt.timeIntervalSince(now)) >= 60 else { return "Just now" }
-        return Self.relativeDateFormatter.localizedString(for: createdAt, relativeTo: now)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.unitsStyle = .abbreviated
+        formatter.dateTimeStyle = .numeric
+        return formatter.localizedString(for: createdAt, relativeTo: now)
     }
 }
 
