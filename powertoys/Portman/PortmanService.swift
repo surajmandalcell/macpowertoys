@@ -181,6 +181,31 @@ nonisolated struct PortmanTunnel: Identifiable, Sendable {
     var state: State
 }
 
+nonisolated final class PortmanTunnelErrorBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private let limit: Int
+    private var data = Data()
+
+    init(limit: Int = 2_048) {
+        self.limit = limit
+    }
+
+    func append(_ chunk: Data) {
+        lock.lock()
+        if data.count < limit {
+            data.append(contentsOf: chunk.prefix(limit - data.count))
+        }
+        lock.unlock()
+    }
+
+    func message() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        return String(decoding: data, as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 nonisolated struct PortmanRemotePort: Sendable {
     let port: UInt16
     var processName: String?
@@ -892,16 +917,18 @@ final class PortmanService {
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         let errors = Pipe()
+        let errorBuffer = PortmanTunnelErrorBuffer()
         process.standardError = errors
+        errors.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty { errorBuffer.append(data) }
+        }
         process.terminationHandler = { [weak self] terminated in
+            errors.fileHandleForReading.readabilityHandler = nil
             let status = terminated.terminationStatus
-            // Report the exit before stderr draining, which can wait for an inherited writer.
-            Task { @MainActor [weak self] in self?.tunnelEnded(id: id, status: status, message: "") }
-            let data = errors.fileHandleForReading.readDataToEndOfFile()
-            let message = String(decoding: data.prefix(2048), as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !message.isEmpty {
-                Task { @MainActor [weak self] in self?.tunnelEnded(id: id, status: status, message: message) }
+            let message = errorBuffer.message()
+            Task { @MainActor [weak self] in
+                self?.tunnelEnded(id: id, status: status, message: message)
             }
         }
         do {
@@ -939,6 +966,7 @@ final class PortmanService {
             forwardingError = nil
             return true
         } catch {
+            errors.fileHandleForReading.readabilityHandler = nil
             delivery?.cancel()
             channel?.cleanup()
             forwardingError = "Could not start forwarding: \(error.localizedDescription)"

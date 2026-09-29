@@ -150,6 +150,13 @@ final class PortmanTests: XCTestCase {
                                                         anchor: nil, visible: visible, extendRange: true), [3003])
     }
 
+    func testTunnelErrorBufferDrainsButRetainsOnlyItsLimit() {
+        let buffer = PortmanTunnelErrorBuffer(limit: 8)
+        buffer.append(Data("first-".utf8))
+        buffer.append(Data("second".utf8))
+        XCTAssertEqual(buffer.message(), "first-se")
+    }
+
     @MainActor
     func testSSHForwardCarriesTrafficThroughLoopback() async throws {
         let rclone = try XCTUnwrap(Self.rclonePath, "Homebrew rclone is required for hosted Portman tests.")
