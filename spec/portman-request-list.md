@@ -21,6 +21,10 @@ falls back to the process name when a server works from `/`, adds the required
 Open App action, and keeps Forward's two 64pt action columns aligned. The manual
 port field remains readable before a host is entered.
 
+Round 6 removes screen-derived minimum heights from Forward results, Settings
+cards, and server detail. These regions report their natural content height;
+the shared menu shell alone applies the 90 percent screen cap.
+
 Round 2 keeps the Servers composition. Sort by must show a menu affordance
 and match Clean up in height and baseline. Port and memory values stay mono.
 Forward and Settings use 24pt compact controls and aligned control columns.
