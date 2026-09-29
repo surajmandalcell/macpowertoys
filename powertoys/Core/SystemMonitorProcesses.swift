@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-nonisolated struct SystemMonitorProcess: Identifiable, Sendable {
+nonisolated struct SystemMonitorProcess: Equatable, Identifiable, Sendable {
     let pid: Int32
     let started: UInt64
     let name: String
