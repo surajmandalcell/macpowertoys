@@ -148,6 +148,7 @@ struct DiskTreemapView: View {
     var actions: ([DiskEntry]) -> [OnePlusTableAction] = { _ in [] }
     @State private var hoveredID: String?
     @State private var displayedLayout: [DiskChartTile] = []
+    @State private var displayedTileIDs: [String] = []
     @FocusState private var focused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
@@ -210,16 +211,18 @@ struct DiskTreemapView: View {
                     ForEach(layout, id: \.id) { tile in tileView(tile) }
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
-                .animation(chartAnimation, value: layout.map(\.id))
+                .animation(chartAnimation, value: displayedTileIDs)
                 .task(id: key) {
                     if let cached = cache.treemap(for: key) {
                         displayedLayout = cached
+                        displayedTileIDs = cached.map(\.id)
                         return
                     }
                     let next = tiles(in: bounds)
                     guard !Task.isCancelled else { return }
                     cache.store(next, for: key)
                     displayedLayout = next
+                    displayedTileIDs = next.map(\.id)
                 }
                 .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
                 .onMoveCommand { direction in
@@ -364,6 +367,7 @@ struct DiskSunburstView: View {
     var actions: ([DiskEntry]) -> [OnePlusTableAction] = { _ in [] }
     @State private var hoveredID: String?
     @State private var displayedSegments: [DiskRingSegment] = []
+    @State private var displayedSegmentIDs: [String] = []
     @FocusState private var focused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
@@ -382,7 +386,7 @@ struct DiskSunburstView: View {
                 let center = CGPoint(x: geometry.size.width / 2, y: plotHeight / 2)
                 ZStack {
                     ForEach(segments, id: \.id) { segment in segmentView(segment) }
-                        .animation(chartAnimation, value: segments.map(\.id))
+                        .animation(chartAnimation, value: displayedSegmentIDs)
                     VStack(spacing: OnePlusMetrics.spacing[1]) {
                         Text(directory.name)
                             .onePlusText(.cardTitle)
@@ -398,6 +402,7 @@ struct DiskSunburstView: View {
                 .task(id: key) {
                     if let cached = cache.rings(for: key) {
                         displayedSegments = cached
+                        displayedSegmentIDs = cached.map(\.id)
                         return
                     }
                     let next = Self.segments(for: directory, apparent: apparent, measure: measure,
@@ -405,6 +410,7 @@ struct DiskSunburstView: View {
                     guard !Task.isCancelled else { return }
                     cache.store(next, for: key)
                     displayedSegments = next
+                    displayedSegmentIDs = next.map(\.id)
                 }
                 .onContinuousHover { phase in
                     let next: DiskRingSegment?
