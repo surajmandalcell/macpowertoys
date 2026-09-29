@@ -1,5 +1,20 @@
 # UI Chrome Troubleshooting
 
+## Applet And Portman Screenshot Review, 2026-09-29
+
+- **Symptom:** Round 1 applet captures show gears crossing card borders,
+  a faint Awake status, and unequal Settings gutters. Portman's Sort by
+  action looks like text beside the bordered Clean up button.
+- **Invariant:** All applet pages reserve the shared floating-settings area.
+  Settings cards fill the width between 16pt gutters. Overlay scrollers must
+  not consume an extra side gutter. Awake uses the regular row role for its
+  status. Routine copy and shortcut controls use shared neutral colors.
+  Portman's sort menu has the same small neutral geometry as Clean up and
+  a chevron. Memory and port values use mono type.
+- **Check:** Capture all seven applet pages in both appearances. Scroll long
+  bodies to the end and check the gear area. Inspect Portman's footer, sort
+  menu, Forward forms, and 160pt Settings control column in the signed build.
+
 ## OnePlusUI Compact Applets And Portman, 2026-09-29
 
 - **Invariant:** DESIGN.md v14 replaces the older applet material, two-light,

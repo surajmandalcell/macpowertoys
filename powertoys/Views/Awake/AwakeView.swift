@@ -25,9 +25,9 @@ struct AwakeView: View {
                     AwakeSettingsView(showsDisplayToggle: settings, showsStatus: !settings)
                         .padding(.horizontal, OnePlusMetrics.appletGutter)
                         .padding(.top, OnePlusMetrics.contentTop)
-                        .padding(.bottom, OnePlusMetrics.settingRow)
                 }
                 .onePlusScrollIndicators()
+                .onePlusFloatingSettingsInset()
                 .overlay(alignment: .bottomTrailing) {
                     OnePlusFloatingSettingsButton(isActive: settings) { settings.toggle() }
                         .keyboardShortcut(",")

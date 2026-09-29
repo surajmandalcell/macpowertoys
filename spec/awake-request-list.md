@@ -9,6 +9,7 @@ status row. Window height uses the shared fixed-canvas correction.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep the floating settings button clear of both page bodies. | Round 2 applies the shared 52pt body inset before the gear overlay. The old inner 44pt padding is removed. The gear keeps its 8pt edge inset and Command-comma action. | Verify scrolling, window size, and both pages in the next signed capture. |
 | Verify | Render the Awake status in readable row type. | Round 2 uses OnePlusStatus with the regular 12pt row role and a neutral dot. Debug compilation passes. | Review active and inactive states in the next signed capture. |
 | Verify | Use the 560 x 500 OnePlusUI applet, persistent display switch, status card, segmented modes, quick times, process attachment, and a replacing Settings page. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `home` and `settings`. | Review both appearances and controls in the orchestrator's installed build. |
 

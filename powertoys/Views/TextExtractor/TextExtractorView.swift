@@ -32,6 +32,7 @@ struct TextExtractorView: View {
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
+                .onePlusFloatingSettingsInset()
                 .overlay(alignment: .bottomTrailing) {
                     OnePlusFloatingSettingsButton(isActive: page == .settings, help: page == .settings ? "Back to History" : "Recognition Settings") {
                         page = page == .settings ? .history : .settings
@@ -99,7 +100,6 @@ struct TextExtractorView: View {
             }
             .padding(.horizontal, OnePlusMetrics.appletGutter)
             .padding(.top, OnePlusMetrics.contentTop)
-            .padding(.bottom, OnePlusMetrics.settingRow)
         }.onePlusScrollIndicators()
     }
 
@@ -156,7 +156,6 @@ struct TextExtractorSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusMetrics.appletGutter)
             .padding(.top, OnePlusMetrics.contentTop)
-            .padding(.bottom, OnePlusMetrics.settingRow)
         }
         .onePlusScrollIndicators()
         .onAppear { languages = service.settings.preferredLanguages.joined(separator: ", ") }

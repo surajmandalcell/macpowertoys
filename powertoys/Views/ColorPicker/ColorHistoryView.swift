@@ -64,6 +64,7 @@ struct ColorHistoryView: View {
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
+                .onePlusFloatingSettingsInset()
                 .overlay(alignment: .bottomTrailing) {
                     OnePlusFloatingSettingsButton(isActive: page == .settings, help: page == .settings ? "Back to History" : "Settings") {
                         page = page == .settings ? .history : .settings
@@ -119,7 +120,6 @@ struct ColorHistoryView: View {
                         ForEach(samples) { ColorSampleRow(sample: $0) }
                     }
                     .padding(.horizontal, OnePlusMetrics.appletGutter)
-                    .padding(.bottom, OnePlusMetrics.settingRow)
                 }.onePlusScrollIndicators()
             }
         }.padding(.top, OnePlusMetrics.contentTop)
@@ -144,7 +144,6 @@ struct ColorHistoryView: View {
             }
             .padding(.horizontal, OnePlusMetrics.appletGutter)
             .padding(.top, OnePlusMetrics.contentTop)
-            .padding(.bottom, OnePlusMetrics.settingRow)
         }.onePlusScrollIndicators()
     }
 
@@ -239,7 +238,6 @@ struct ColorPickerSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusMetrics.appletGutter)
             .padding(.top, OnePlusMetrics.contentTop)
-            .padding(.bottom, OnePlusMetrics.settingRow)
         }
         .onePlusScrollIndicators()
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
