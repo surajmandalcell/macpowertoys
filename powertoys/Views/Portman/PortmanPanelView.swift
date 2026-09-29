@@ -259,7 +259,7 @@ struct PortmanPanelView: View {
                     if let selectedPort { localDetail(selectedPort) }
                     else { localOverview }
                 case .forward: forwardingPage
-                case .settings: PortmanSettingsPanelContent(maxHeight: panelContentHeight)
+                case .settings: PortmanSettingsPanelContent()
                 }
             }
             .id(page)
@@ -988,7 +988,7 @@ struct PortmanPanelView: View {
             }
             }
             .onePlusScrollIndicators()
-            .frame(height: max(180, panelContentHeight - 40))
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -1043,7 +1043,7 @@ struct PortmanPanelView: View {
                 }
             }
             .onePlusScrollIndicators()
-            .frame(height: max(120, panelContentHeight - 205))
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -1437,7 +1437,6 @@ private struct PortmanPasswordSheet: View {
 }
 
 private struct PortmanSettingsPanelContent: View {
-    let maxHeight: CGFloat
     @State private var search = ""
     @State private var focusSearch = 0
 
@@ -1450,7 +1449,7 @@ private struct PortmanSettingsPanelContent: View {
                 PortmanSettingsView(search: search)
             }
             .onePlusScrollIndicators()
-            .frame(height: max(160, maxHeight - OnePlusMetrics.compactControlHeight - OnePlusMetrics.cardGap))
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
