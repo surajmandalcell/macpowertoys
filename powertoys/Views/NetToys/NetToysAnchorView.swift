@@ -466,11 +466,10 @@ struct NetToysAnchorView: View {
                 subtitle: "Keep SSH aliases attached to local devices"
             ) {
                 helperStatus
-                Toggle("Enable SSH Anchor", isOn: Binding(
+                Toggle("Monitor anchors", isOn: Binding(
                     get: { model.configuration.sshAnchorEnabled },
                     set: { model.setFeatureEnabled($0) }
                 ))
-                .labelsHidden()
                 .toggleStyle(OnePlusSwitchStyle()).fixedSize()
                 .help("Enable SSH Anchor monitoring")
                 Button {
@@ -536,7 +535,6 @@ struct NetToysAnchorView: View {
     private var helperStatus: some View {
         OnePlusStatus(model.helperIsHealthy ? "Helper Active" : "Helper Inactive",
                       state: model.helperIsHealthy ? .online : .offline)
-            .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
     }
 
     private var helperCard: some View {
@@ -565,113 +563,107 @@ struct NetToysAnchorView: View {
     private var addAnchorSection: some View {
         OnePlusCard {
             OnePlusCardHeader("Add anchor", systemImage: "link.badge.plus")
-            Grid(alignment: .leading, horizontalSpacing: OnePlusMetrics.navIconGap, verticalSpacing: OnePlusMetrics.cardPadding) {
-                GridRow(alignment: .center) {
-                    rowLabel("SSH host")
-                    HStack(spacing: OnePlusMetrics.navIconGap) {
-                        OnePlusSelect(choices: [("", model.entries.isEmpty ? "No SSH hosts" : "Select SSH host")]
-                                      + model.entries.map { ($0.aliases[0], $0.aliases.joined(separator: ",")) },
-                                      selection: $model.selectedAlias, width: OnePlusMetrics.wideControlColumn,
-                                      accessibilityLabel: "SSH host")
-
-                        Button {
-                            model.inspectSelectedDevice()
-                        } label: {
-                            HStack(spacing: OnePlusMetrics.spacing[2]) {
-                                if model.isInspecting {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
-                                } else {
-                                    Image(systemName: "magnifyingglass")
-                                        .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
-                                }
-                                Text("Inspect Device")
+            anchorSettingRow("SSH host", caption: selectedHostDescription, captionRole: .mono) {
+                HStack(spacing: OnePlusMetrics.navIconGap) {
+                    OnePlusSelect(choices: [("", model.entries.isEmpty ? "No SSH hosts" : "Select SSH host")]
+                                  + model.entries.map { ($0.aliases[0], $0.aliases.joined(separator: ",")) },
+                                  selection: $model.selectedAlias, width: OnePlusMetrics.wideControlColumn,
+                                  accessibilityLabel: "SSH host")
+                    Button {
+                        model.inspectSelectedDevice()
+                    } label: {
+                        HStack(spacing: OnePlusMetrics.spacing[2]) {
+                            if model.isInspecting {
+                                ProgressView().controlSize(.small)
+                                    .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
+                            } else {
+                                Image(systemName: "magnifyingglass")
+                                    .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
                             }
+                            Text("Inspect Device")
                         }
-                        .frame(minWidth: OnePlusMetrics.controlColumn)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .disabled(model.selectedEntry == nil || model.isInspecting)
-
-                        Spacer(minLength: OnePlusMetrics.navIconGap)
-
-                        Text(selectedHostDescription)
-                            .onePlusText(.mono)
-                            .lineLimit(1)
-                            .help(selectedHostDescription)
-                            .frame(width: OnePlusMetrics.controlColumn * 2, alignment: .trailing)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .disabled(model.selectedEntry == nil || model.isInspecting)
+                    Spacer(minLength: 0)
                 }
-
-                GridRow(alignment: .center) {
-                    rowLabel("Automatic")
-                    HStack(spacing: OnePlusMetrics.navIconGap) {
-                        Text("Detect this device, enable monitoring, and repair its IP when the connection changes.")
-                            .onePlusText(.caption)
-                            .lineLimit(1)
-                        Spacer()
-                        Button {
-                            model.enableAutomaticAnchor()
-                        } label: {
-                            HStack(spacing: OnePlusMetrics.spacing[2]) {
-                                if model.isInspecting {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
-                                } else {
-                                    Image(systemName: "bolt.fill")
-                                        .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
-                                }
-                                Text("Enable Automatically")
+            }
+            anchorSettingRow(
+                "Automatic",
+                caption: "Detect this device, enable monitoring, and repair its IP when the connection changes."
+            ) {
+                HStack {
+                    Spacer(minLength: 0)
+                    Button {
+                        model.enableAutomaticAnchor()
+                    } label: {
+                        HStack(spacing: OnePlusMetrics.spacing[2]) {
+                            if model.isInspecting {
+                                ProgressView().controlSize(.small)
+                                    .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
+                            } else {
+                                Image(systemName: "bolt.fill")
+                                    .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
                             }
+                            Text("Enable Automatically")
                         }
-                        .buttonStyle(OnePlusButtonStyle(.primary))
+                    }
+                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .fixedSize(horizontal: true, vertical: false)
+                    .disabled(model.selectedEntry == nil || model.isInspecting)
+                }
+            }
+            anchorSettingRow("Identity") {
+                HStack {
+                    OnePlusSegmented(choices: SSHAnchorIdentityMode.allCases.map { ($0, $0.rawValue) },
+                                     selection: $model.identityMode, accessibilityLabel: "Device identity")
+                        .fixedSize()
+                    Spacer(minLength: 0)
+                }
+            }
+            anchorSettingRow(
+                "Device",
+                caption: model.identityMode == .stable
+                    ? "Match this device by its fixed hardware MAC address."
+                    : "Match loosely by hostname and learned MAC addresses.",
+                separator: false
+            ) {
+                HStack(spacing: OnePlusMetrics.spacing[5]) {
+                    OnePlusTextField("MAC address", text: $model.deviceMAC)
+                    OnePlusTextField("Hostname", text: $model.deviceHostname)
+                        .disabled(model.identityMode == .stable)
+                    Button("Add Anchor") { model.addAnchor() }
+                        .buttonStyle(OnePlusButtonStyle())
                         .fixedSize(horizontal: true, vertical: false)
-                        .disabled(model.selectedEntry == nil || model.isInspecting)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(model.selectedEntry == nil)
                 }
+            }
+        }
+    }
 
-                GridRow(alignment: .center) {
-                    rowLabel("Identity")
-                    HStack {
-                        OnePlusSegmented(choices: SSHAnchorIdentityMode.allCases.map { ($0, $0.rawValue) },
-                                         selection: $model.identityMode, accessibilityLabel: "Device identity").fixedSize()
-
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                GridRow(alignment: .center) {
-                    rowLabel("Device")
-                    HStack(spacing: OnePlusMetrics.navIconGap) {
-                        OnePlusTextField("MAC address", text: $model.deviceMAC)
-                        OnePlusTextField("Hostname", text: $model.deviceHostname)
-                            .disabled(model.identityMode == .stable)
-
-                        Button("Add Anchor") { model.addAnchor() }
-                            .buttonStyle(OnePlusButtonStyle())
-                            .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .disabled(model.selectedEntry == nil)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                GridRow {
-                    Color.clear.frame(width: OnePlusMetrics.controlColumn / 2, height: 1)
-                    Text(model.identityMode == .stable
-                        ? "Match this device by its fixed hardware MAC address."
-                        : "Match loosely by hostname and learned MAC addresses.")
-                        .onePlusText(.caption)
-                        .lineLimit(1)
-                        .frame(height: OnePlusMetrics.controlHeight, alignment: .leading)
+    private func anchorSettingRow<Content: View>(
+        _ title: String,
+        caption: String? = nil,
+        captionRole: OnePlusTextRole = .caption,
+        separator: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: OnePlusMetrics.navIconGap) {
+            Text(title).onePlusText(.row)
+                .frame(width: OnePlusMetrics.controlColumn / 2, alignment: .leading)
+            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
+                content().frame(maxWidth: .infinity, alignment: .leading)
+                if let caption {
+                    Text(caption).onePlusText(captionRole)
+                        .lineLimit(1).truncationMode(.middle)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(OnePlusMetrics.cardPadding)
+        }
+        .padding(.horizontal, OnePlusMetrics.cardPadding)
+        .frame(height: caption == nil ? OnePlusMetrics.settingRow : OnePlusMetrics.captionedSettingRow)
+        .overlay(alignment: .bottom) {
+            if separator { OnePlusRule() }
         }
     }
 
@@ -701,10 +693,9 @@ struct NetToysAnchorView: View {
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(maxHeight: .infinity)
+                .frame(height: CGFloat(min(5, anchors.count)) * OnePlusMetrics.captionedSettingRow)
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func anchorRow(_ anchor: SSHAnchorConfiguration) -> some View {
@@ -786,7 +777,8 @@ struct NetToysAnchorView: View {
             .buttonStyle(OnePlusButtonStyle(.icon))
             .accessibilityLabel("Remove \(aliasLabel)")
         }
-        .padding(OnePlusMetrics.cardPadding)
+        .padding(.horizontal, OnePlusMetrics.cardPadding)
+        .frame(height: OnePlusMetrics.captionedSettingRow)
         .contextMenu {
             Button("Set up key access") { model.setUpKeyAccess(for: anchor.id) }
             Button("Remove Anchor", role: .destructive) { pendingRemoval = anchor.id }
@@ -846,12 +838,6 @@ struct NetToysAnchorView: View {
               let anchor = model.configuration.anchors.first(where: { $0.id == id })
         else { return "SSH host" }
         return model.aliasLabel(for: anchor)
-    }
-
-    private func rowLabel(_ title: String) -> some View {
-        Text(title)
-            .onePlusText(.row)
-            .frame(width: OnePlusMetrics.controlColumn / 2, alignment: .leading)
     }
 
     private func statusSymbol(_ state: SSHAnchorRuntimeState?) -> String {
