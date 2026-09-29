@@ -96,11 +96,16 @@ open class OnePlusNativeStepperField: NSTextField {
     private let stepper = NSStepper()
 
     open override var stringValue: String {
-        didSet { stepper.doubleValue = doubleValue }
+        didSet { stepper.doubleValue = boundedValue(doubleValue) }
     }
 
     open override var doubleValue: Double {
-        didSet { stepper.doubleValue = doubleValue }
+        get { boundedValue(super.doubleValue) }
+        set {
+            let value = boundedValue(newValue)
+            super.doubleValue = value
+            stepper.doubleValue = value
+        }
     }
 
     open override var isEnabled: Bool {
@@ -141,11 +146,27 @@ open class OnePlusNativeStepperField: NSTextField {
         stepper.sizeToFit()
         stepper.frame.origin = NSPoint(x: bounds.maxX - stepper.frame.width - 2,
                                       y: bounds.midY - stepper.frame.height / 2)
-        stepper.minValue = (formatter as? NumberFormatter)?.minimum?.doubleValue ?? 0
-        stepper.maxValue = (formatter as? NumberFormatter)?.maximum?.doubleValue ?? 4000
-        stepper.doubleValue = doubleValue
+        let range = finiteRange
+        stepper.minValue = range.lowerBound
+        stepper.maxValue = range.upperBound
+        stepper.doubleValue = boundedValue(doubleValue)
         stepper.isEnabled = isEnabled
         stepper.setAccessibilityLabel(accessibilityLabel() ?? "Value")
+    }
+
+    private var finiteRange: ClosedRange<Double> {
+        let formatter = formatter as? NumberFormatter
+        let minimum = formatter?.minimum?.doubleValue ?? 0
+        let maximum = formatter?.maximum?.doubleValue ?? 4000
+        let lower = minimum.isFinite ? minimum : 0
+        let upper = maximum.isFinite ? max(lower, maximum) : max(lower, 4000)
+        return lower...upper
+    }
+
+    private func boundedValue(_ value: Double) -> Double {
+        let range = finiteRange
+        guard value.isFinite else { return range.lowerBound }
+        return min(max(value, range.lowerBound), range.upperBound)
     }
 
     @objc private func step(_ sender: NSStepper) {
