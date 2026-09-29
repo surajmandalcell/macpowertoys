@@ -76,13 +76,14 @@ private struct OnePlusTextModifier: ViewModifier {
     @Environment(\.onePlusDensity) private var density
     let role: OnePlusTextRole
     let selected: Bool
+    let color: Color?
 
     func body(content: Content) -> some View {
         content
             .font(.system(size: role.size(for: density), weight: role.weight,
                           design: role == .mono ? .monospaced : .default))
             .tracking(role.tracking)
-            .foregroundStyle(selected ? OnePlusColor.ink : role.color)
+            .foregroundStyle(color ?? (selected ? OnePlusColor.ink : role.color))
             .textCase(role == .captionUpper || role == .tableHeader ? .uppercase : nil)
             .monospacedDigit()
     }
@@ -90,7 +91,7 @@ private struct OnePlusTextModifier: ViewModifier {
 
 public extension View {
     func onePlusDensity(_ density: OnePlusDensity) -> some View { environment(\.onePlusDensity, density) }
-    func onePlusText(_ role: OnePlusTextRole, selected: Bool = false) -> some View {
-        modifier(OnePlusTextModifier(role: role, selected: selected))
+    func onePlusText(_ role: OnePlusTextRole, selected: Bool = false, color: Color? = nil) -> some View {
+        modifier(OnePlusTextModifier(role: role, selected: selected, color: color))
     }
 }
