@@ -3,6 +3,25 @@ import XCTest
 
 @MainActor
 final class MainCatalogTests: XCTestCase {
+    func testMainNavigationKeepsModifiedStateAndToolPagesStable() throws {
+        let home = try sourceFile("powertoys/Views/HomeView.swift")
+        let selectionStart = try XCTUnwrap(home.range(of: ".onChange(of: selectedTool)"))
+        let defaultsStart = try XCTUnwrap(home.range(
+            of: ".onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)"
+        ))
+        XCTAssertFalse(home[selectionStart.lowerBound..<defaultsStart.lowerBound].contains("modifiedRevision += 1"))
+        XCTAssertTrue(home[defaultsStart.lowerBound...].contains("modifiedRevision += 1"))
+        XCTAssertFalse(home.contains(".id(toolID)"))
+
+        let tool = try sourceFile("powertoys/Views/ToolAboutView.swift")
+        XCTAssertFalse(tool.contains(".id(tool.id)"))
+        XCTAssertTrue(tool.contains(".onChange(of: toolId) { _, _ in tab = .settings }"))
+
+        let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")
+        XCTAssertTrue(sidebar.contains("@State private var hasChanges = false"))
+        XCTAssertFalse(sidebar.contains("private var hasChanges: Bool"))
+    }
+
     func testModifiedPairsShortGroupsWithoutReorderingLongGroups() {
         XCTAssertTrue(MainModifiedView.groupRows([]).isEmpty)
         XCTAssertEqual(MainModifiedView.groupRows([
@@ -57,6 +76,11 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertNil(MainPageRoute.resolve("tool/removed", toolIDs: ids))
         XCTAssertNil(MainPageRoute.resolve("tool/logs/history", toolIDs: ids))
     }
+}
+
+private func sourceFile(_ path: String) throws -> String {
+    let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+    return try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
 }
 
 private struct CatalogTool: Tool {

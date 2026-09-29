@@ -6,6 +6,7 @@ struct ToolSidebarView: View {
     @Binding var searchText: String
     var modifiedRevision: Int
     @State private var settings = SettingsManager.shared
+    @State private var hasChanges = false
 
     var body: some View {
         OnePlusSidebar(title: "MacPowerToys") {
@@ -36,11 +37,8 @@ struct ToolSidebarView: View {
             }
             OnePlusNavRow("Exit", systemImage: "rectangle.portrait.and.arrow.right") { NSApp.terminate(nil) }
         }
-    }
-
-    private var hasChanges: Bool {
-        _ = modifiedRevision
-        _ = settings.disabledToolIDs
-        return SettingsRegistry.hasChanges()
+        .onChange(of: modifiedRevision, initial: true) { _, _ in
+            hasChanges = SettingsRegistry.hasChanges()
+        }
     }
 }

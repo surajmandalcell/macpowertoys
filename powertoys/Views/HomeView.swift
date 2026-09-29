@@ -36,11 +36,8 @@ struct HomeView: View {
         .onChange(of: selectedTool) { _, value in
             if value != "all-tools" { query = "" }
             focusedToolID = nil
-            modifiedRevision += 1
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
-            guard let window = note.object as? NSWindow,
-                  ToolActionRouter.windowIdentifier(window.identifier?.rawValue, matches: "main") else { return }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             modifiedRevision += 1
         }
     }
@@ -55,7 +52,7 @@ struct HomeView: View {
         case "modified":
             MainModifiedView { modifiedRevision += 1 }
         case let toolID?:
-            ToolAboutView(toolId: toolID, changed: { modifiedRevision += 1 }).id(toolID)
+            ToolAboutView(toolId: toolID, changed: { modifiedRevision += 1 })
         default:
             OnePlusEmptyState("Select a tool", systemImage: "wrench.adjustable",
                               caption: "Choose a tool from the sidebar.")
