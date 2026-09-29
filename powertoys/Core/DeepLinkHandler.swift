@@ -84,6 +84,17 @@ final class DeepLinkHandler {
             return
         }
 
+        switch DiagnosticsRoute.parse(url) {
+        case .appearance(let appearance):
+            UserDefaults.standard.set(appearance.rawValue, forKey: AppAppearance.storageKey)
+            appearance.apply()
+            return
+        case .closePanels:
+            DiagnosticsMenuPanels.shared.close()
+            return
+        default: break
+        }
+
         guard openWindowAction != nil else {
             if pendingLinks.count == Self.maximumPendingLinkCount { pendingLinks.removeFirst() }
             pendingLinks.append(url)

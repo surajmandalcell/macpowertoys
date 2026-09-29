@@ -80,16 +80,12 @@ extension EnvironmentValues {
     }
 }
 
-enum DiagnosticsPanel: String, CaseIterable {
+nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
     case main, systemMonitor = "system-monitor", portman
 
     nonisolated static func parse(_ url: URL) -> Self? {
-        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "diagnostics",
-              url.user == nil, url.password == nil, url.port == nil,
-              url.query == nil, url.fragment == nil else { return nil }
-        let parts = url.path.split(separator: "/", omittingEmptySubsequences: false)
-        guard parts.count == 3, parts[0].isEmpty, parts[1] == "open-panel" else { return nil }
-        return Self(rawValue: String(parts[2]))
+        guard case .openPanel(let panel) = DiagnosticsRoute.parse(url) else { return nil }
+        return panel
     }
 
     @MainActor

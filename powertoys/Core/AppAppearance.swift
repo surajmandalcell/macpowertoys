@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-enum AppAppearance: String, CaseIterable, Identifiable {
+nonisolated enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
     case dark, light, automatic
     static let storageKey = "app.appearance"
     var id: String { rawValue }
@@ -9,10 +9,11 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     @MainActor
     func apply() {
-        NSApp.appearance = switch self {
+        let appearance: NSAppearance? = switch self {
         case .dark: NSAppearance(named: .darkAqua)
         case .light: NSAppearance(named: .aqua)
         case .automatic: nil
         }
+        if NSApp.appearance != appearance { NSApp.appearance = appearance }
     }
 }

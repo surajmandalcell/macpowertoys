@@ -43,4 +43,22 @@ struct ToolPageRouterTests {
         #expect(router.take(tool: "main") == nil)
         #expect(router.take(tool: "system-monitor")?.page == "cpu")
     }
+
+    @Test func parsesCaptureDiagnosticsOnlyUnderDiagnosticsHost() throws {
+        for scheme in ["macpowertoys", "powertoys"] {
+            for appearance in AppAppearance.allCases {
+                #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/appearance/\(appearance.rawValue)")))
+                    == .appearance(appearance))
+            }
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-panels"))) == .closePanels)
+        }
+        for value in ["https://diagnostics/close-panels", "powertoys://open/close-panels",
+                      "powertoys://open/appearance/dark", "powertoys://diagnostics/appearance/unknown",
+                      "powertoys://diagnostics/appearance/Dark", "powertoys://diagnostics/appearance/dark/extra",
+                      "powertoys://diagnostics/close-panels/", "powertoys://diagnostics/close-panels?extra=1",
+                      "powertoys://diagnostics/appearance/light#extra", "powertoys://user@diagnostics/close-panels",
+                      "powertoys://diagnostics:123/appearance/automatic"] {
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: value))) == nil)
+        }
+    }
 }
