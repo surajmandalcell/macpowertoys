@@ -1,1155 +1,515 @@
 ---
-version: 13
+version: 14
 name: MacPowerToys
-description: Design language for MacPowerToys and its child tools
+description: Design language for MacPowerToys and its child tools (OnePlusUI, 2026-09-29)
+appearance: { default: dark, options: [dark, light, automatic] }
 colors:
-  hover: "Color.primary.opacity(0.06)"          # the ONLY hover background
-  hover-strong: "Color.primary.opacity(0.1)"    # filled buttons only
-  pressed: "Color.primary.opacity(0.1)"
-  pressed-strong: "Color.primary.opacity(0.18)" # filled buttons only
-  on-accent: "opaque black or white, chosen for >=4.5:1 contrast"
-  disabled-opacity: 0.38
-  selection-light: "Color.accentColor.opacity(0.1)"
-  sidebar-selection: "native selected-content background; emphasized while key, unemphasized while inactive"
-  selection-strong: "Color.accentColor"
-  selection-strong-text: "opaque black or white, chosen for >=4.5:1 contrast"
-  card: "Color.primary.opacity(0.03)"           # grids, subtle depth
-  card-detail: "Color.primary.opacity(0.05)"    # detail/log views, softer contrast
-  separator: "native separator at 0.22 opacity; 0.44 with increased contrast"
-  content-background: "Color(nsColor: .windowBackgroundColor)"
-  text-subdued: "Color.primary.opacity(0.75)"
-  text-preview: "Color.secondary.opacity(0.6)"
-  icon-ink: "#23272E"
-  icon-paper: "#F7F5F0"
-  icon-midnight-ground: "#1C1D22"
-  icon-midnight-echo: "#5B5D66"
-  icon-midnight-glyph: "#F4F4F5"
-  icon-midnight-detail: "#25262B"
-  icon-porcelain-ground: "#E7E7EA"
-  icon-porcelain-echo: "#A6A8AF"
-  icon-porcelain-glyph: "#25262B"
-  icon-porcelain-detail: "#F4F4F5"
-  icon-ruler: "#F04E23"
-  icon-awake: "#F5B71E"
-  icon-color-picker: "#23272E"
-  icon-text-extractor: "#2155B0"
-  icon-input-devices: "#1C1D22"
-  icon-system-care: "#17181B"
-  icon-system-monitor: "#002B26"
+  window: { dark: "#161616", light: "#F5F5F5" }
+  sidebar: { dark: "#1D1D1D", light: "#E7E7E7" }
+  panel: { dark: "#202020", light: "#FAFAFA" }
+  panel-hover: { dark: "#262626", light: "#FFFFFF" }
+  raised: { dark: "#292929", light: "#FFFFFF" }
+  raised-hover: { dark: "#303030", light: "#F0F0F0" }
+  pressed: { dark: "#252525", light: "#E4E4E4" }
+  field: { dark: "#252525", light: "#F2F2F2" }
+  field-focus: { dark: "#2B2B2B", light: "#EAEAEA" }
+  track: { dark: "#181818", light: "#E4E4E4" }
+  selection: { dark: "#343434", light: "#D4D4D4" }
+  selected-control: { dark: "#424242", light: "#FFFFFF" }
+  line: { dark: "#343434", light: "#D1D1D1" }
+  line-soft: { dark: "#2B2B2B", light: "#E1E1E1" }
+  ink: { dark: "#EDEDED", light: "#242424" }
+  secondary: { dark: "#A3A3A3", light: "#656565" }
+  muted: { dark: "#777777", light: "#777777" }
+  control-ink: { dark: "#DEDEDE", light: "#343434" }
+  accent: { dark: "#EE5B50", light: "#D94F45" }
+  primary-fill: { dark: "#DDDDDD", light: "#383838" }
+  primary-ink: { dark: "#252525", light: "#FFFFFF" }
+  ok: { dark: "#7FA889", light: "#3F7A4E" }
+  warn: { dark: "#F29A68", light: "#C06A32" }
+  danger: { dark: "#E99B91", light: "#B8463B" }
+  danger-fill: { dark: "#382624", light: "#FBE9E7" }
+  danger-line: { dark: "#6D4541", light: "#E3B3AD" }
 typography:
-  launcher-detail-title: { size: 17, weight: medium, relative-to: headline }
-  title: { size: 13, weight: medium, relative-to: body }
-  body: { size: 13, weight: regular, relative-to: body }
-  row: { size: 13, weight: regular, relative-to: body }
-  control: { size: 12, weight: regular, relative-to: callout }
-  tab: { size: 12, weight: medium, relative-to: callout }
-  compact-action: { size: 11, weight: medium, relative-to: caption }
-  badge: { size: 11, weight: medium, relative-to: caption }
-  caption: { size: 11, weight: regular, relative-to: caption }
-  section-header: { size: 10, weight: medium, relative-to: caption2, transform: uppercase, color: secondary }
-  code: { size: 12, design: monospaced, relative-to: callout }
-  micro: { size: 10, weight: regular, relative-to: caption2 }
-rounded:
-  control: 4        # toggles, small buttons
-  field: 6          # text fields, icon buttons, pills, chips
-  titlebar-control: 6 # compact titlebar buttons only
-  row: 8            # list rows, message bubbles, tray tabs
-  section-card: 10  # compact applet section cards
-  card: 12          # launcher, workspace, and operational cards
-spacing:
-  gutter: 20        # one shared left edge for titles, tabs, headers, cards
-  color-picker-body-gutter: 12
-  card-padding: 14  # inner padding of section cards
-  section-gap: 16
-  section-label-gap: 8
-  sidebar-title-leading: 84   # 12pt minimum after the zoom traffic light
-  compact-title-leading: 60   # reclaims the hidden zoom position
-  compact-titlebar-top: 4     # applied once to the complete row
-  content-top: 44   # one 4pt gap below the 40pt top strip
-  header-top: 0     # window-top strips hug the top (10pt vertical inset)
-  floating-control-edge: 8
-  tray-group-inset: 4
-  tray-group-top: 20
-  tray-group-body-gap: 6
-  tray-body-top: 10
-  tray-body-bottom: 14
-  tray-footer-top: 8
-  tray-footer-bottom: 10
+  regular: { sidebar-title: 12.5, nav: 12.5, caption-upper: 9, page-title: 24, subtitle: 12.5, tab: 12, section-title: 13, card-title: 12, row: 12, control: 12, caption: 10.5, table-header: 9, mono: 11, metric: 27, unit: 12 }
+  compact: { sidebar-title: 12.5, nav: 11.5, caption-upper: 9, page-title: 20, subtitle: 10.5, tab: 11, section-title: 12, card-title: 11, row: 10.5, control: 10.5, caption: 9.5, table-header: 8.5, mono: 9.5, metric: 21, unit: 10 }
+rounded: { segment: 3, nav-row: 5, icon-button: 5, control: 6, menu-tile: 6, card: 8, window: 13 }
+spacing: { scale: [2, 4, 6, 8, 10, 12, 16, 20, 24, 28], gutter: 24, task-manager-gutter: 20, card-gap: 16, card-padding: 16, content-top: 16 }
+geometry:
+  title-row: 54
+  centerline: 27
+  applet-titlebar: 40
+  applet-centerline: 22
+  sidebar-title-gap-after-zoom: 14
+  search: { height: 32, inset-x: 12, below: 14 }
+  nav-row: { regular: 32, compact: 29, gap: 2, container-inset: 10, padding: 10, icon: 15, icon-gap: 10 }
+  card-header: 40
+  setting-row: 44
+  control: { height: 28, compact-height: 24, column: 160, wide-column: 180 }
+  tab-strip: { height: 36, gap: 22, underline: 2 }
 windows:
-  launcher: { default-content-width: 1200, default-content-height: 720, sidebar-width: 220, card-min-height: 172, grid-columns: 4, card-min-width: 220, grid-gap: 16, grid-inset: 24, resizable: false }
-  workspace: { min-content-width: 640, min-height: 600, sidebar-compact: 220, sidebar-data: 240, sidebar-conversation: 260, system-monitor-sidebar: 192, resizable: true }
-  nettoys: { content-width: 1280, content-height: 800, min-content-width: 1100, min-height: 700, sidebar-width: 220, resizable: true }
-  mac-tweaks: { content-width: 900, content-height: 620, sidebar-width: 200, titlebar-height: 64, content-inset: 28, panel-gap: 16, resizable: false }
-  compact-applet: { width-options: [420, 480, 560], min-height: 250, max-height: 600, resizable: false }
-components:
-  icon-button: { size: 24, radius: 6, hover: colors.hover }
-  sidebar-search: { min-height: 32, radius: 6, inset-x: 12, inner-padding: 8 }
-  sidebar-row: { min-height: 28, radius: 8, icon: 16, inset-x: 8, gap: 8, selected-bg: colors.sidebar-selection, selected-text: native-selected-content-text, selected-custom-artwork: original-colors }
-  sidebar-primary-action: { min-height: 34, radius: 8, inset-x: 12, bg: accent }
-  tray-tab: { min-height: 24, icon: 12, radius: 6, inset-x: 8, gap: 4, selected-bg: "Color.primary.opacity(0.10)" }
-  tray-chrome: { min-height: 24, icon: 12, radius: 6, gap: 4 }
-  compact-titlebar-control: { height: 24, radius: 6, hover: colors.hover }
-  workspace-action: { height: 24, control-size: small }
-  content-action: { min-label-height: 36, inset-x: 14, control-size: regular }
-  structural-divider: { opacity: 0.22, increased-contrast-opacity: 0.44 }
-  tab-pill: { padding-x: 10, padding-y: 5, radius: 6, selected-bg: colors.hover }
-  section-card: { radius: 10, bg: colors.card-detail, padding: spacing.card-padding }
-  progress-bar: { height: 6, track: "Color.primary.opacity(0.08)" }
-motion:
-  interaction-duration: 0.12
-  content-duration: 0.16
-  idle-animation: none
+  main: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
+  disk-explorer: { size: [1440, 900], sidebar: 216, density: regular, resizable: false }
+  nettoys: { size: [1440, 900], sidebar: 200, density: regular, resizable: false }
+  rclone: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
+  system-care: { size: [1240, 840], sidebar: 200, density: regular, resizable: false }
+  switch: { size: [1240, 840], sidebar: 200, density: regular, resizable: false }
+  mac-tweaks: { size: [1120, 826], sidebar: 200, density: regular, resizable: false }
+  system-monitor: { size: [1080, 660], sidebar: 200, density: compact, resizable: false }
+  logs: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
+  input-devices: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
+  awake: { size: [560, 500], applet: true }
+  color-picker: { width: 420, height: [250, 460], applet: true }
+  text-extractor: { width: 480, height: [270, 462], applet: true }
+menu-panel: { width: 356, top-bar: 35, tab: 26, tab-gap: 2, body-inset: 8, tile-radius: 6, tile-gap: 5, columns: 3 }
+texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [240, 150], card-grain: 0.14, menu-grain: 0.11, chart-dot-cell: 4 }
+motion: { hover: 0.10, selection: 0.14, content: 0.12, idle-animation: none }
 ---
 
 # MacPowerToys Design Language
 
+Version 14 (OnePlusUI), adopted 2026-09-29. It replaces the earlier
+material-based contract. It is the complete visual and window-structure
+contract for every window, menu-bar panel, sheet, and settings page. Tool icon
+rules live in [spec/design/icons.md](spec/design/icons.md).
+
 ## Overview
 
-MacPowerToys is a dense, quiet, native-feeling macOS utility. It should read like a
-first-party Apple tool that a careful engineer polished: flat surfaces, one accent
-color doing all the talking, small type, generous alignment discipline, zero
-decoration for its own sake. Nothing bounces. Task Manager has the
-scoped dithered dark treatment below; elsewhere, avoid decorative glows. When in
-doubt, remove chrome rather than add it.
+MacPowerToys looks like one premium, quiet, dark instrument. Surfaces are flat
+near-black planes separated by one-point lines. Type is small, exact, and
+aligned. One coral accent marks selection and alerts. A fixed ordered-dither
+texture gives each window depth without decoration. Nothing moves while idle.
 
-Every custom interactive control gives short feedback on hover, press, and
-selection. Content and layout changes keep the existing 0.16-second transition.
-Motion starts from an interaction or a real state change and stops when it ends;
-an idle window never animates. Reduce Motion makes these changes immediate.
+It must also feel like a Mac app: real traffic lights, real menus, real text
+fields, real sheets, real scroll views, and real keyboard behavior. Custom
+drawing is limited to identity: texture, charts, dot titles, and the visual
+shell of controls whose behavior stays native.
 
-This document is the complete visual and window-structure contract. A tool's
-product brief still owns its purpose, operations, data, copy, and domain states.
-Do not infer those from a tool name. Given that brief, an unfamiliar designer
-must be able to choose one family below, instantiate its shell without guessing,
-and fill the body using the shared components and quality gates.
+Alignment is the first quality bar. Every container has one leading edge.
+Controls that share a row have one height and one text baseline. Every window
+aligns its traffic lights, sidebar title, page title, and header actions on one
+horizontal centerline.
 
-## Native Visual Baseline
+## Sources of truth
 
-The current app is the visual source of truth. This document explains how to
-extend it; it does not authorize a new web design language. Resolve conflicts in
-this order:
+Resolve conflicts in this order:
 
-1. Current SwiftUI and AppKit implementation in `powertoys/Views/Components/`.
-2. The current reference screenshots listed below.
-3. The numeric contracts and family recipes in this file.
-4. Library defaults, sample galleries, and generated mockups.
+1. The owner's newest direct instruction.
+2. This file.
+3. The `OnePlusUI` package (`Packages/OnePlusUI`), which implements this file.
+   A view never restyles a OnePlusUI component locally. Add a named variant to
+   the package instead.
+4. The HTML references (kept outside the repository): `task-manager.html`
+   (Task Manager window and the menu-bar panel pattern),
+   `macpowertoys-repaired.html` (main window), `mac-tweaks-design.html`
+   (settings rows and controls), and `diskman-fixed.html` (storage charts).
+5. Current screenshots in `docs/screenshots/`.
 
-Normative native-appearance references:
+## Appearance
 
-| Family or control grammar | Reference |
-|---|---|
-| Main launcher | `docs/screenshots/macpowertoys-launcher.png` |
-| Compact applet, general | `docs/screenshots/awake.png` |
-| Compact tabs and search | `docs/screenshots/color-picker.png` |
-| Dense native controls | `docs/screenshots/ruler.png` |
-| Compact history and settings | `docs/screenshots/text-extractor.png` |
+- The app has one Appearance setting in app Settings: Dark (default), Light,
+  and Automatic. It sets `NSApp.appearance`. Every window and panel follows it.
+- Every OnePlusUI color is a dynamic color with the dark and light values in
+  the front matter. Views never branch on the color scheme to pick a color.
+- Tool icons keep their approved artwork in both appearances.
 
-The screenshots bind density, visual weight, control morphology, surface
-continuity, and named tool artwork. Source binds behavior and any detail that a
-still image cannot show. Text Extractor's older screenshot may show obsolete
-traffic-light geometry; the compact titlebar contract below overrides that one
-detail.
+Color rules:
 
-MacPowerToys is native-controls-first. Use the real SwiftUI or AppKit `Button`,
-`Toggle`, `Picker`, `Menu`, `TextField`, `Stepper`, `DatePicker`, `Slider`, and
-`ColorPicker` whenever that control exists. Do not redraw these as outlined web
-buttons, equal-width option grids, custom switches, or card-based form fields.
-Custom appearance is limited to the titlebar, material shells, sidebar rows,
-search surfaces, tab pills, named cards, badges, and the exact shared patterns
-defined here.
-
-## Interaction Hierarchy
-
-Apply the relevant [Laws of UX](https://lawsofux.com/) to every new and existing
-surface. Familiar native controls satisfy Jakob's Law. Compact full-row targets
-satisfy Fitts's Law without mobile-sized chrome. Proximity and common region
-group related controls. Hick's Law limits visible choices. The Von Restorff
-effect reserves accent emphasis for the current primary action.
-
-- Show one primary action per state. Put it in the stable top strip or the
-  action row nearest its result.
-- Put related controls on one row or in multiple columns while labels remain
-  clear. Do not spend one full row on each small toggle, picker, or button.
-- Use native bordered buttons, switches, checkboxes, menus, and segmented
-  controls. Do not redraw them as large web-style rectangles or option cards.
-- Use cards only for entities, results, or a group that must read as one unit.
-  Use open rows for ordinary settings and actions.
-- Keep product copy task-specific. Do not expose implementation tradeoffs,
-  research notes, API limits, or design conversations in a task screen. Put a
-  limit in About only when it changes a decision the person makes.
-
-A browser artifact passes only after comparison beside the appropriate current
-screenshot. Raw wireframes, default component-gallery examples, and generic
-dashboard mockups are not fidelity evidence.
-
-## Colors
-
-Interactive surfaces are **opacity layers over `Color.primary` or
-`Color.accentColor`**. Text uses semantic system colors, including the
-contrast-aware black-or-white `on-accent` role. Never put raw hex in UI code;
-hex lives only in icon assets. This keeps light and dark mode free.
-
-- Hover is always `primary.opacity(0.06)`. Not 0.05, not 0.08. Filled buttons may
-  deepen to 0.1 on hover.
-- Pressed is `primary.opacity(0.1)` on an unfilled control and 0.18 on a filled
-  control. Disabled controls use 0.38 opacity and do not react to hover or
-  press. Filled controls keep their accent base and add the primary interaction
-  layer instead of changing hue.
-- Text and symbols on an accent fill use opaque black or white, whichever
-  reaches at least 4.5:1 contrast against the resolved accent. Never assume
-  white is readable on a person-selected accent.
-- Selection-light is accent at 0.1 for selected content rows and inline choices.
-  Sidebar navigation uses the native selected background and foreground.
-  Branded sidebar artwork keeps its original colors in every selection state.
-  Selection-strong is not used in the tray. Tray tabs and tab pills keep a
-  quiet persistent selected surface of primary 0.10 or less with ordinary
-  primary text, never an accent layer, accent text, or underline.
-- The shared SwiftUI root suppresses default rectangular focus effects in every
-  window and menu-bar popup. Custom interactive rows retain a quiet focused
-  fill, keyboard operation, and accessible names without an outline.
-- Cards: 0.03 for grids and subtle depth; 0.05 where softer contrast is wanted
-  (detail sheets, logs).
-- Launcher and workspace content panes sit on
-  `Color(nsColor: .windowBackgroundColor)`. Their sidebars use an
-  `NSVisualEffectView` with `.sidebar` material, `.behindWindow` blending, and
-  `.active` state. A compact applet is different: its complete titlebar and body
-  share one `.hudWindow` material surface over a clear, non-opaque `NSWindow`.
-- Status tints: green = healthy/complete, orange = retrying/attempts,
-  red = failure, secondary = idle/cancelled.
-- The combined menu-bar popover uses an opaque semantic window background. It
-  does not show the desktop or native popover blur through its content.
+- No raw colors in app code. Hex values live only in OnePlusUI tokens, chart
+  series, and icon assets.
+- Accent never fills a large surface. It marks one thing at a time: the
+  selected tab underline, an active data point, an alert.
+- Status never relies on color alone. Pair it with text, a glyph, or a shape.
+- Connected or healthy states stay neutral. Offline uses a hollow dot and
+  muted text, never red.
+- Chart series: neutral steps `#BCBCBC`, `#8A8A8A`, `#626262`, `#454545`;
+  gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`. Diskman keeps
+  its storage series (see the Diskman recipe).
+- Text selection uses accent at 28% with primary text.
 
 ## Typography
 
-San Francisco only. The values below are the standard-appearance bases for
-`.system(size:weight:)`; body, row, card, field, and sheet text feeds the base
-through `@ScaledMetric(relativeTo:)` and supports the complete SwiftUI dynamic
-type range through `.accessibility5`. Non-action window titles use the exact
-base size and expose their full text to accessibility. Action labels scale or
-relocate according to their family rule. The role scale is closed:
+San Francisco only. SF Mono for numbers that must align, paths, and code. Live
+numbers use `.monospacedDigit()`. Point sizes are fixed because every window
+is a fixed canvas. Two densities exist, and a window uses one density
+everywhere.
 
-17 medium (launcher detail title only) · 13 medium (titles and sidebar primary
-actions) · 13 regular (body/rows) · 12 regular (controls) ·
-12 medium (tab labels) ·
-12 monospaced (paths, patterns, code) · 11 medium (compact actions, launcher
-`Open`, badges) · 11 regular (captions, metrics) ·
-10 medium UPPERCASE secondary (section headers) · 10 (micro/tertiary detail).
+| Role | Regular | Compact | Weight | Tracking | Color |
+|---|---|---|---|---|---|
+| Sidebar title | 12.5 | 12.5 | semibold | -0.16 | `ink` |
+| Nav row | 12.5 | 11.5 | regular | 0 | `secondary`, selected `ink` |
+| Nav section caption | 9 uppercase | 9 uppercase | medium | +1 | `muted` |
+| Page title | 24 | 20 dot matrix | semibold | -0.7 | `ink` |
+| Page subtitle | 12.5 | 10.5 | regular | 0 | `secondary` |
+| Tab label | 12 | 11 | regular | 0 | `muted`, selected `ink` |
+| Section title | 13 | 12 | semibold | -0.1 | `ink` |
+| Card title | 12 | 11 | semibold | -0.1 | `ink` |
+| Row label | 12 | 10.5 | regular | 0 | `ink` |
+| Control text | 12 | 10.5 | regular | 0 | `controlInk` |
+| Caption | 10.5 | 9.5 | regular | 0 | `muted` |
+| Table header | 9 uppercase | 8.5 uppercase | medium | +0.4 | `muted` |
+| Mono value | 11 SF Mono | 9.5 SF Mono | regular | 0 | `secondary` |
+| Metric value | 27 | 21 | semibold | -1 | `ink` |
+| Metric unit | 12 | 10 | regular | 0 | `secondary` |
 
-The `relative-to` mapping is binding: 17pt detail titles use `.headline`; 13pt
-titles, body, and rows use `.body`; 12pt controls, tabs, and code use `.callout`;
-11pt compact actions, badges, and captions use `.caption`; and 10pt section or
-micro text uses `.caption2`. Do not select a different `Font.TextStyle` per
-window.
+- Regular density: main window, Mac Tweaks, Diskman, Cloud Sync, Logs, Input
+  Devices, System Care, NetToys, Switch, compact applets, and sheets.
+- Compact density: the Task Manager window and every menu-bar panel.
+- The dot-matrix title is Task Manager's identity only. It is drawn from the
+  5 x 7 glyph table as one cached path with one accessibility label. The Task
+  Manager sidebar title uses the normal system role.
 
-Numbers that update live get `.monospacedDigit()` and
-`.contentTransition(.numericText())`.
+## Geometry
 
-## Layout & Spacing
+### The centerline rule
 
-**One left edge.** Within any container, titles, tab strips, section headers, and
-card edges share a single leading gutter. The default content gutter is 20pt;
-only the family rules may replace it with 24pt launcher-grid padding, a 16pt
-dense-list gutter, a 12pt sidebar gutter, or Color Picker's 12pt body gutter.
-Never invent an in-between alignment point. Align a tab strip's leading pill
-boundary to the gutter, never to the pill's inset text.
+Every window with a sidebar has a 54 pt title row. Its centerline is
+`C = 27` pt below the window's top edge. These items center on `C`:
 
-- Sidebar titles: center inside a 40pt top strip and start 84pt from the window
-  edge, leaving at least 12pt after the zoom traffic light.
-- Search field container: `.top, 44` / `.horizontal, 12` / inner `.padding(8)`.
-- Launcher content and a workspace's first body surface align near the sidebar
-  search top at y=44. Workspace top strips themselves hug y=0. Compact bodies
-  follow their own 40pt titlebar and 16pt internal inset.
-- Use only the family-defined top coordinate. Never stack a second page, header,
-  or local top offset on it.
+- the native close, minimize, and zoom buttons (zoom stays visible and
+  disabled because windows are fixed);
+- the sidebar title, which starts 14 pt after the zoom button;
+- the first line of the page title;
+- page header actions (buttons, switches, selects).
 
-## Elevation & Materials
+Compact applets use a 40 pt titlebar with `C = 22`.
 
-Depth comes mainly from opacity layers and vibrancy. Launcher and workspace
-sidebars use `.sidebar` material extending seamlessly to the window top.
-Compact applets use `.hudWindow` material across the complete shell. Do not
-replace either material with an opaque gray fill or a translucent layer whose
-backdrop cannot show through.
+### Spacing and radius scales
 
-The system owns the window shadow. Custom surfaces are shadowless except for a
-launcher tool card while hovered: black at 0.12, radius 8, y offset 2, paired
-with its documented hover stroke. Do not spread that exception to section cards,
-workspace rows, titlebars, or ordinary buttons.
+- Spacing values: 2, 4, 6, 8, 10, 12, 16, 20, 24, 28. No other values.
+- Radius values: 3 (a segment inside a track), 5 (nav rows, icon buttons,
+  menu tabs), 6 (controls, fields, menu tiles), 8 (cards and panels), and 13
+  (window, drawn by the system). Capsules only for switches, progress tracks,
+  and count badges.
+- Lines are exactly 1 pt, drawn inside the shape.
 
-## Shapes
+### Fixed window sizes
 
-Closed radius scale — pick the smallest that fits the role:
+No window is resizable. Zoom is disabled. Each size fits a 1920 x 1080
+display with the Dock and a 1728 x 1117 laptop display. The front matter
+lists every size, sidebar width, and density. Each window opens at its saved
+position, never a saved size, clamped to the visible frame of its display.
 
-- **4pt** small buttons, toggles
-- **6pt** text fields, icon buttons, chips, tab pills
-- **8pt** list rows, message bubbles, tray tabs, and the full-width sidebar
-  primary action because it occupies a navigation-row slot
-- **10pt** compact applet section cards
-- **12pt** launcher, workspace, and operational cards
+## Window anatomy
 
-Buttons never become capsules. Capsules are reserved for progress tracks and
-compact state or count badges whose changing width benefits from the shape.
-Fields, chips, tab pills, and action buttons use their assigned fixed radius.
+### Shell
 
-## Window Families
+- `.windowStyle(.hiddenTitleBar)`, full-size content, one single-instance
+  `Window` scene, `tabbingMode = .disallowed`, and restoration disabled.
+- The root is one `ZStack`: the `window` fill, then the window texture, then
+  the sidebar and the workspace. The system owns the 13 pt corner radius and
+  the shadow.
+- `OnePlusFixedWindowChrome` fixes the content size, disables zoom and full
+  screen, keeps all three traffic lights visible, and re-centers them on `C`
+  after every native layout pass and whenever the window becomes key.
+- Unoccupied header and sidebar background drags the window. Double-click
+  follows the system titlebar preference.
 
-Every top-level `Window` scene must choose exactly one family before its layout
-is designed. The family controls the window chrome, resizing, title ownership,
-navigation, and content anatomy. Sheets, popovers, and transient overlays are
-subordinate surfaces rather than scenes. Window families are architectural
-roles, not launcher categories and not user-facing labels.
+### Window texture
 
-Choose the family with this decision order:
+One noninteractive texture layer per window, drawn once in window coordinates
+at the window root. It never scrolls, never repeats per region, and is never
+clipped to a header, tab strip, or scroll view.
 
-1. The one MacPowerToys catalog window is the **main launcher**.
-2. A tool that needs a persistent sidebar, simultaneous list/detail context,
-   large data sets, or useful user resizing is a **full workspace**.
-3. A tool with one bounded primary workflow and no sidebar is a **compact
-   applet**. It may use up to three local tabs that replace the same small body,
-   and may replace that body with Settings. Local tabs and Settings do not count
-   as workspace destinations because they never create persistent navigation or
-   simultaneous panes.
+- Workspace ribbon: the 700 x 220 ordered-dither ribbon drawn at 630 x 198,
+  top -8, right -16, at the front-matter opacity, with a horizontal alpha
+  fade (0%, 26%, 82%, 100%).
+- Corner grain: cards marked `textured` draw the 240 x 150 grain in their
+  top-right corner at 0.14 (catalog cards and metric tiles) or 0.11 (menu
+  tiles), clipped to the card. Text, icons, controls, rows, and list views
+  never carry texture.
+- Chart dither: ordered 4 x 4 pt dots under area charts, masked to the chart,
+  one cached pattern, never one view per dot.
+- Textures change luminance only. They never tint semantic color. They are
+  hidden from accessibility and hit testing, and they redraw only when size,
+  appearance, or backing scale changes.
 
-Do not hybridize them. A compact applet never gains a sidebar; a full workspace
-never gains `CompactTitlebar`; the launcher never hosts a tool's history,
-workspace, or live operational surface. The launcher may embed the exact shared
-settings view used by the tool so configuration has one implementation. If a
-proposed tool does not fit, simplify its task or choose the next larger family
-instead of combining chrome from two families.
-
-| Family | Purpose | Size | Navigation | Title owner |
-|---|---|---|---|---|
-| Main launcher | Discover and open tools | 1200×720 default, clamped to the visible display | 220pt catalog sidebar | Sidebar title |
-| Full workspace | Sustained, multi-context work | Resizable; content at least 640pt wide | 220–280pt tool sidebar | Sidebar title |
-| Compact applet | One immediate bounded task | Fixed width and bounded height | No sidebar | 40pt compact titlebar |
-
-All three use `.windowStyle(.hiddenTitleBar)`. Launcher and workspace sidebars
-extend their material to the window top, with native traffic lights floating
-over them. Compact applets draw their own titlebar inside the window. Never use
-`.unifiedCompact`, native toolbar action grouping, `NavigationSplitView`,
-`NavigationView`, or manually configured native titlebar content.
-
-Each SwiftUI-owned tool opens in its own single-instance `Window` scene with
-`tabbingMode = .disallowed`. Tools never auto-open at launch unless their own
-start-at-launch setting is enabled. Reopening an existing tool raises that
-window instead of creating a duplicate.
-
-Hidden chrome must remain draggable. In launcher and workspace windows, the
-unoccupied top background, sidebar title region, and content-strip background
-drag the window; search fields, buttons, tabs, and other controls do not. In a
-compact applet, the 40pt titlebar background and title drag while its actions do
-not. Double-click delegates to the person's macOS titlebar preference. A fixed
-applet cannot zoom, so the system may minimize it when configured or otherwise
-leave it unchanged. Never implement custom double-click behavior.
-
-### Ruler AppKit Overlay Exception
-
-Ruler intentionally sits outside the three SwiftUI window families. Its working
-surface is FreeRuler's borderless 40pt AppKit L-shaped overlay, with movable and
-resizable horizontal and vertical wings. It has no `CompactTitlebar`, traffic
-lights, launcher material, fixed 560×600 scene, or in-window settings page.
-
-FreeRuler owns multiple ruler windows, settings behavior, the color panel,
-units, grouping, opacity, float, shadow, keyboard commands, and persistence.
-MacPowerToys owns discovery, on-demand launch, routing, orange identity, and the
-visual chrome for Ruler Settings and Ruler Defaults. Preserve the pinned
-FreeRuler overlay visuals and interaction behavior. Style both settings windows
-with the shared utility material, gutters, section rhythm, cards, and action
-hierarchy. They retain normal visible native titlebars and never use
-`CompactTitlebar` or overlay chrome.
-
-### Main Launcher
-
-The launcher is a catalog, not a dashboard. It helps a person find a tool,
-configure it, understand it, and open its own single-instance window. The
-launcher closes after opening a tool. It may reuse tool settings controls, but
-never displays running metrics, history, or workspace content.
-
-Canonical anatomy:
+### Sidebar
 
 ```text
-1200 × 720 SwiftUI content, fixed
-┌──── sidebar 220 ────┬──────────────── content 980 ────────────────┐
-│ traffic lights title│                                             │
-│ search at y=44      │ grid or tool detail at y=44                 │
-│ All Tools           │ ┌─220─┐ 16 ┌─220─┐ 16 ┌─220─┐ 16 ┌─220─┐   │
-│   tool rows         │ │card │    │card │    │card │    │card │   │
-│                     │ └─────┘    └─────┘    └─────┘    └─────┘   │
-│ Logs/Settings/Exit  │                                             │
-└─────────────────────┴─────────────────────────────────────────────┘
+x=0                                  x=200 (216)
++------------------------------------+
+| (o)(o)(o)  Title            C=27   |  54 pt title row
+| [ Search              cmd K ]      |  32 pt field, 12 pt side margins, 14 below
+|  SECTION CAPTION                   |  20 pt slot
+| [#] Nav row                   12   |  32 pt rows, 2 pt gaps
+| [#] Nav row (selected)             |
+|                                    |
+|------------------------------------|  1 pt lineSoft, only when needed
+| [#] Modified / Settings / About    |  bottom nav, 10 top, 12 bottom
++------------------------------------+
 ```
 
-- The SwiftUI scene content and sidebar are fixed at 1200×720 and 220pt, so the
-  980pt content pane holds four flexible cards with 16pt gaps inside its
-  24pt padding. Cards target 220pt; a scroll view may reserve about 16pt, making
-  each rendered card about 217pt. The captured `NSWindow` frame adds
-  32pt above that content size. Never shrink the content to force a smaller
-  outer capture. Do not resize, collapse, or add an inspector.
-- The sidebar title is `MacPowerToys`, centered in the 40pt top strip and 84pt
-  from the leading window edge. It is the only app title.
-- The custom search field uses 12pt sidebar insets and starts at y=44. It is at
-  least 32pt high, uses `Search` as its placeholder, and filters registered tool
-  names while preserving registry order. Never
-  invent family filters such as “Quick tools” or “Workspaces”; family is not
-  catalog taxonomy.
-- Navigation is `All Tools`, then one flat list of registry tool rows with a
-  28pt minimum and 4pt stack spacing. A direct owner decision removed launcher
-  category headings; do not reintroduce them. Rows use a 16pt icon, 8pt internal
-  leading/trailing inset, and 8pt radius. The footer has the same rows, a 12pt
-  outer inset and bottom padding, and contains Logs, Settings, and Exit. The
-  material transition is the pane boundary; do not add a vertical divider.
-- Launch opens `All Tools` with an empty search. Restore a prior selection only
-  within the same running launcher session, never across a fresh app launch.
-- `All Tools` content begins at y=44. It uses 24pt horizontal and bottom
-  padding, up to four flexible columns, and 16pt row/column gaps. The 1200pt
-  launcher shows four cards in each row even when the scroll view reserves
-  width. On a smaller display, the fixed launcher fits the visible screen and
-  the grid contracts to keep cards and detail actions reachable.
-- A launcher tool card is at least 150pt high at default text sizes, with 12pt outer
-  padding and 12pt radius. Its 48pt icon spans the first two rows: a 13pt medium
-  tool name sits beside the upper half, then an unlabeled native mini enable
-  switch and a native small `Open` button share the row beside the lower half.
-  Up to five lines of 12pt secondary description sit below the icon and header
-  so the current built-in copy stays visible.
-  Rest is 0.03. Hover is 0.06
-  with a 1pt primary 0.06 stroke and the one allowed custom shadow: black 0.12,
-  radius 8, y offset 2. Accessibility text may
-  expand the complete grid row, never only one card in that row.
-- Clicking a card selects its detail page. Clicking `Open` opens the tool, and
-  its unlabeled enable switch changes availability without selecting or
-  opening it. These actions must remain separately accessible. A disabled card
-  stays selectable so the tool can be re-enabled, while `Open` is disabled.
-- A tool detail page uses a 20pt gutter, 30pt named tool icon, a 17pt medium
-  detail title, description, a trailing unlabeled enable switch beside a native
-  regular `Open` button, and `Settings` / `How to Use` tabs whose first pill
-  begins at an 18pt leading inset after a 6pt top gap. It opens on Settings and
-  renders the same settings view as the tool window; Ruler links to its existing
-  AppKit Settings and Defaults panels.
-  How to Use keeps 12pt-radius instruction cards. Do not use the 17pt title
-  elsewhere.
-- Enablement has one persistent source. Every tool is enabled by default. A
-  disabled tool is absent from the menu-bar tab strip, cannot be launched by
-  cards, shortcuts, deep links, CLI routes, or start-at-launch, and releases
-  background power/transfer work where applicable.
-- Launcher cards communicate identity and discovery, not live status. Show a
-  badge only for a compatibility, permission, or availability state that
-  changes whether the tool can open.
+- Background `sidebar` with a 1 pt `line` on the trailing edge. No material
+  and no vibrancy.
+- Nav container inset 10, row padding 10, 15 pt SF Symbol at regular weight,
+  and a 10 pt icon-to-label gap. Section captions start at the icon's x.
+- Rest: transparent with `secondary` text. Hover: `raised`. Selected:
+  `selection` fill with `ink` text and icon. Selection never changes weight,
+  icon, or geometry. No side stripe.
+- Count badges are 9 pt SF Mono `muted` text on the trailing edge.
+- Compact density uses 29 pt rows and 11.5 pt text. Everything else is equal.
 
-Every plugin must provide a stable ID, display name, registry category,
-one-line description, search keywords, named icon asset, and either the
-workspace or applet family. Missing metadata is a plugin defect; the launcher
-must not invent labels, categories, icons, or descriptions from implementation
-details. New plugins follow stable registry ordering and the same card anatomy,
-so a larger catalog scrolls rather than changing the grid language.
-
-The built-in launcher metadata below is a preview fixture, not the product-copy
-source of truth. It lets a designer reproduce the reference catalog when no
-runtime registry is available. Production always uses the registry and each
-tool's product brief.
-
-| Tool | Category / family | Card description |
-|---|---|---|
-| Cloud Sync | Files / workspace | Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules. |
-| Logs | System / workspace | View application logs and diagnostics. |
-| Ruler | Developer / AppKit overlay | Measure the screen with movable, resizable rulers in pixels, millimeters, or inches. |
-| Awake | System / applet | Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings. |
-| Color Picker | Developer / applet | Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values. |
-| Text Extractor | Text / applet | Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition. |
-| Input Devices | System / workspace | Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
-| System Care | System / workspace | Understand storage, preview safe cleanup, remove apps, and access advanced Mole maintenance without hidden privilege prompts. |
-| Task Manager | System / workspace | Inspect processes and live local or remote system activity on demand, with an optional lightweight menu-bar summary. |
-
-### Full Workspace
-
-A full workspace is a resizable environment for sustained work such as Cloud
-Sync or Logs. Its sidebar owns tool-level navigation; its
-content pane owns the selected destination. It uses native close, minimize, and
-zoom traffic lights over the sidebar and never draws a compact titlebar.
-
-Canonical anatomy:
+### Page
 
 ```text
-content at least 640 wide; height at least 600; resizable
-┌──── sidebar 220–260 ────┬──────── flexible content ────────┐
-│ traffic lights  title   │ 40pt top strip                  │
-│ search/action at y=44   ├─────────────────────────────────┤
-│ destinations            │ body; first surface near y=44  │
-│                         │                                 │
-│ settings/footer actions │                                 │
-└─────────────────────────┴─────────────────────────────────┘
+C=27  Page title                          [action] [action]
+      Subtitle (optional)
+      Tab   Tab 12   Tab                         [trailing tab tools]
+      ------------------------------------------------------------ lineSoft
+      16 pt
+      [ card ]  16  [ card ]
 ```
 
-- Use 900×600 for a simple list workspace, 1000×720 for the standard case, and
-  1200×800 for a detail-heavy workspace. The person may resize it down to the
-  chosen sidebar width plus 640pt of content, never below 600pt high.
-- NetToys is the data-table exception: start it at 1280×800 and keep at least
-  1100×700 so its scanner columns remain useful.
-- Choose 220pt for a simple workspace, 240pt for data navigation, or 260pt for
-  conversation navigation. It does not resize with the window and never
-  collapses into an overlay. Title position matches the launcher.
-- The sidebar's primary control starts at y=44 with 12pt horizontal insets. Use
-  the custom 32pt sidebar search when the navigation itself is searchable. Use a
-  full-width primary workflow action there when creation is the main entry
-  point. That action is at least 34pt high with 12pt internal horizontal
-  padding, 8pt radius, contrast-aware label/icon, accent fill, and the filled
-  interaction treatment. Never stack both controls at the top.
-- Sidebar navigation groups use full-width 28pt rows and 2pt between rows.
-  A new section starts after 16pt, its 10pt uppercase header has 4pt bottom
-  spacing, and the final scroll group has 20pt bottom padding. Settings uses the
-  same row minimum and sits 12pt from the sidebar bottom.
-- The sidebar title is the tool name and is its only tool-level title. A content
-  title names the current destination or selection, never repeats the tool.
-- Use two top-level panes by default. A persistent inspector is allowed only
-  when selected-item details must remain visible while the list stays usable,
-  and only while the center content remains at least 640pt wide. Otherwise use
-  a detail replacement or sheet. An inspector is part of content, not a second
-  sidebar.
-- At standard text size, a content top strip is 40pt high, starts at the window
-  top, uses 20pt horizontal and 10pt vertical internal padding, and may have one
-  hairline bottom separator. Its scalable height is
-  `max(40, tallest control or line + 16)`. Keep one row with at least 12pt
-  between destination context and actions. When that row no longer fits the
-  available width, move the least important labeled actions into the first body
-  action row; never wrap, clip, or shrink them. The body starts immediately
-  after the strip. At standard size, a 12pt body inset places its first row or
-  card near the sidebar search's y=44 line.
-- Top-strip actions use native small controls with a shared 24pt minimum visible
-  height. Menus and adjacent buttons share one vertical centerline.
-- The top strip contains destination context on the left and only global page
-  actions on the right. Actions remain flat and separate. Normal workspace
-  controls use the 4pt/6pt radius roles; the titlebar-only radius exception does
-  not apply.
-- The top strip uses a 13pt medium destination title and optional 11pt
-  subtitle. The 17pt launcher detail title never appears in a workspace body.
-  Body content starts 12pt below the strip. Do not add a second 32pt top gap.
-- Content uses one 20pt leading gutter unless a dense list uses a documented
-  16pt row gutter. Headers, tabs, fields, cards, and rows within that container
-  share the chosen edge.
-- Settings cards use leading-aligned stacks. Every settings row spans the card:
-  its label leads and its control trails, or every control starts on one shared
-  leading grid column. Never let an intrinsic-width toggle, picker, or option
-  group center itself. Center alignment is reserved for explicit empty states
-  and deliberately composed hero content.
-- Pane and top-strip hairlines are permitted where material changes do not
-  provide enough separation. Visual hairlines use the shared quiet divider at
-  0.22 opacity, or 0.44 with Increased Contrast. Native command-menu and context-
-  menu separators keep the system appearance. Workspace cards use opacity depth
-  without custom shadows; the launcher hover exception does not apply here.
-- On narrow resize, preserve the sidebar and primary content, then remove an
-  optional inspector. Never transform the workspace into compact applet chrome.
-- Settings remain inside the tool window. They replace the content destination,
-  while the sidebar remains available and marks Settings. Use full labeled rows
-  and section cards; do not leave homepage tabs above settings and do not open
-  a settings-only compact menu or separate settings window.
-
-Existing workspaces fix the reference choices that general ranges leave open:
-
-| Workspace | Default / sidebar | y=44 control and navigation | Primary content |
-|---|---|---|---|
-| Logs | 900×600 / 220pt | Search; level filters; Settings | Selectable dense log stream |
-| Cloud Sync | 1000×720 / 240pt | `New Transfer`; filters, Activity, Dev Sync, remotes, Settings | Transfer rows, remote browser, activity ledger, or the Dev Sync pair page |
-| Input Devices | 980×700 / 220pt | Devices, Scrolling, About | Device cards and scrolling profiles |
-| System Care | 1180×780 / 240pt | Data destinations and Settings | Storage, cleanup, application, and Mole data |
-| Task Manager | 1080×660 / 220pt | Overview, Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote Stats, System Report | Full process list, live metric grids, system inventory, and per-metric menu placement |
-
-Task Manager follows the supplied `task-manager.html` reference. It is a fixed
-dark utility workspace using `#161616` content, `#1D1D1D` sidebar, `#202020`
-cards, `#303030` dividers, `#EDEDED` text, and `#EE5B50` accent. Cards use a
-subtle ordered-dot texture rather than colored gradients. The sidebar is 220pt,
-the fixed content area is 1080×660, and the compact menu is 356×536. Fixed
-windows omit the unavailable zoom control and move the title beside the two
-remaining traffic lights. Its 1080×660 content area sits inside the native
-title-bar frame, and the complete physical window surface uses matching body
-and sidebar backdrops so no transparent title-bar-sized strip appears at the
-bottom. The menu has
-icon tabs for Home, CPU, GPU, Memory, Network, Disk, Battery, Sensors, and
-Processes and opens from every Task Manager menu-bar item. Fan appears on menu
-Home and Sensors and only on Sensors in the main window, with Auto, Cool, and
-Max always visible. The main MacPowerToys popup contains no Task Manager tab,
-metrics, or Fan row. Search controls are at least 34pt high with 12pt horizontal
-insets, and their text baseline stays fixed when focus changes. Every Task
-Manager page begins below the header with a 16pt top inset. Keep these
-exceptions inside Task Manager; other workspaces retain their shared flat
-materials.
-
-The reviewed production-size references are
-`docs/screenshots/task-manager.png`, `docs/screenshots/task-manager-menu.png`,
-`docs/screenshots/task-manager-processes.png`, and
-`docs/screenshots/task-manager-system-report.png`.
-
-Mac Tweaks follows the owner's fixed dark reference rather than the general
-workspace recipe. Its 900×620 window is not resizable. It uses a 200pt opaque
-sidebar, a 64pt title strip shared by both panes, a 28pt content inset, and a
-16pt panel gap. Traffic lights and the sidebar title share one horizontal
-centerline. Sidebar destinations stay on one 34pt row and use distinct 16pt
-line icons; Modified and About stay anchored at the bottom. The content pane
-uses compact 40pt panel headers and 44pt setting rows. Controls apply
-immediately, changed rows expose an adjacent reset action, and the Modified
-page is the recovery overview. Preview motion runs continuously only on hover,
-returns to the same poster frame when the pointer leaves, and becomes static
-with Reduce Motion. Canonical 600×304 scenes scale uniformly inside clipped
-hosts so artwork never overlaps a card. The ordered dither, quiet wireframe
-texture, soft scene glow, purple accent, custom compact switches, and preview illustrations are scoped
-to Mac Tweaks. Do not bring its dark palette or drawn controls into other
-workspaces.
-
-A new workspace's product brief chooses destinations and data, then follows the
-closest content pattern: homogeneous operational items use dense rows; grouped
-configuration uses section cards; hierarchies use an outline/tree; a selected
-record uses content replacement or the conditional inspector rule. Do not turn
-operational metrics into a dashboard of decorative summary cards when they fit
-in the top strip or relevant row.
-
-Cloud Sync transfer rows are the operational-card reference: 14pt padding,
-12pt radius, 10pt vertical internal spacing, 0.03 rest surface, and 0.06 hover.
-The first line contains a 26pt operation icon, middle-truncated 12pt source and
-destination paths with an arrow, and an 11pt state badge. A 6pt progress track
-follows. The last line contains 11pt size, speed, and file metrics on the left
-and separate 24pt icon actions on the right. Expanded per-file detail appears
-below without changing the row's outer edges. Source and destination are
-separate primary 0.05 path chips with 8pt horizontal and 4pt vertical padding
-and 6pt corners. The state badge uses 8pt horizontal and 4pt vertical padding
-in a capsule. Sidebar count badges use the same capsule logic.
-
-Cloud Sync's current top strip is operational, not a repeated destination
-title. It shows active count and aggregate speed on the left, then applicable
-`Clear finished` and global pause or resume actions on the right. A future
-operational workspace follows this pattern when live state is more useful than
-a static page title.
-
-Long-running workspaces must show progress and state in the relevant rows.
-Status must never rely on color alone: pair the semantic tint with text or an
-icon. Empty, error, offline, retrying, paused, and complete states must explain
-what happened and the next available action.
-
-### Switch Account Applet
-
-Switch is task-focused like an applet but uses a resizable workspace-sized
-window so account selection, actions, and usage remain visible together. The
-window follows standalone Switch's account workspace: a 48pt functional rail,
-48pt page-title strip, persistent 200pt account list, and adjacent Identity,
-Usage, activity, and account-detail panels. The list keeps Add account at its
-foot even when it is empty. Accounts, Backup, and relevant Settings have working
-rail destinations; About, appearance, and Add account remain reachable there.
-Use Switch's original icon and its warm light and charcoal dark palette. The
-selected account, current default, access state, and available action must be
-distinguishable without relying on color alone. Chat browsing and cleanup stay
-in standalone Switch. Use 1120×740 by default and keep 880×600 usable.
-The combined MacPowerToys menu shows saved identities as compact rows with a
-default indicator and direct switching. Usage loads only on request in that
-menu; opening a menu must not start a recurring account poll.
-
-### Compact Applet
-
-A compact applet is a fixed, single-column tool for one immediate purpose, such
-as Awake, Color Picker, or Text Extractor. It has no sidebar and
-no second navigation rail. The person cannot resize it, though the app may
-animate between explicitly bounded content heights as its state changes.
-
-Choose the narrowest approved width that keeps labels and adjacent controls
-legible: 420pt for short data, 480pt for text/history, or 560pt for dense control
-rows. Total window height stays between 250pt and 600pt. If useful content does
-not fit at 560×600 with scrolling, use a full workspace.
-
-SwiftUI composites the hidden native titlebar's 32pt safe-area surplus below the
-declared root. Bottom overlays offset through that native titled-frame height so
-their insets are measured against the visible material, not the misleading
-logical `NSWindow` or Accessibility bounds. For example, Awake declares a
-560×500 root. Browser references must inspect the composited outer window.
-
-Existing applets are concrete references, not new families:
-
-| Applet | Frame | Titlebar actions | Home body |
-|---|---|---|---|
-| Awake | 560×500 | Small `Keep Display On` switch | Status, Mode, then Quick Times and Process |
-| Color Picker | 420 wide, 250–460 high | `Pick Color` primary action | History / Projects tabs; 12pt gutter |
-| Text Extractor | 480 wide, 270–462 high | Shortcut menu + `Extract Text` primary action | History |
-
-These examples define shell composition and action ownership. A future applet's
-domain requirements still define its labels, data, fields, and states; do not
-copy Awake's information architecture into an unrelated tool.
-
-Canonical anatomy:
-
-```text
-fixed 420 / 480 / 560 wide; 250–600 high
-┌──────────────── custom titlebar 40 ─────────────────┐
-│ close  minimize    title              page actions │
-│ single-column body; 20pt gutter                     │
-│ sections, cards, fields, rows                       │
-│                                      floating gear │
-└─────────────────────────────────────────────────────┘
-```
-
-- Render one custom 40pt `CompactTitlebar`. The title is text only, normally
-  13pt medium, and never repeats in the body. Awake's current 13pt bold title is
-  a documented existing exception, not a default for new tools. Do not show a
-  tool icon or a bottom separator.
-- The complete applet, including titlebar and body, is one continuous active
-  `.hudWindow` material. The host `NSWindow` is clear and non-opaque. Section
-  cards tint this material; they do not replace it with an opaque page canvas.
-- Inside the 40pt titlebar, center a 28pt wrapper made from a 24pt row plus one
-  4pt top inset. This places every 24pt item at y=10…34 with midpoint y=22.
-  Do not place the row itself at y=4 and never pad the title separately.
-- Move native close and minimize controls 6pt down to midpoint y=22. Reapply
-  that absolute baseline after delayed native layout and whenever the window
-  becomes key, because AppKit may restore its 16pt default centerline. Hide
-  zoom. Start the title at x=60 so it reclaims zoom's former space.
-- Give the title and action container the same 24pt height. The title truncates
-  before actions; actions never wrap or shrink. The action container ends 20pt
-  from the window edge, actions have 8pt between them, and the flexible spacer
-  between title and actions never falls below 12pt. If localization makes the
-  row too wide, move the least important action into the body.
-- Titlebar actions are persistent page-level actions only. Color Picker's
-  `Pick Color` and Text Extractor's `Extract Text` belong there. Awake keeps a
-  small native `Keep Display On` switch there; its
-  mode-specific Start or Stop actions stay in the body. Settings never belongs
-  in the titlebar.
-- Each action is visually discrete and flat. Only the primary action may use an
-  accent fill. Buttons and menus in this titlebar alone use the 6pt titlebar
-  radius. The shared root suppresses rectangular focus effects, and initial
-  focus stays off titlebar controls so no stale outline appears. Tab navigation
-  and activation remain available; clicking unrelated content clears focus.
-- Titlebar action labels use their scaled role while they fit the 24pt control
-  and preserve the 12pt title/action spacer. As soon as either constraint fails,
-  relocate the labeled action, menu, or switch into the first body group in
-  visual order; every accessibility text size takes this body placement. Render
-  it there with its scaled control or body role and the same action semantics.
-  The fixed titlebar then contains only traffic lights, the tool title, and any
-  genuinely icon-only control that still fits. Never freeze actionable text at
-  11pt, shrink it, or clip it to preserve titlebar density.
-- The body page begins directly after the titlebar. Use 16pt internal top
-  spacing and the shared 20pt horizontal gutter; Color Picker alone uses 12pt.
-  This is internal content spacing, not a second header or titlebar margin.
-- Body sections have 16pt between them. A 10pt uppercase section label sits 8pt
-  above its aligned card, fields, or rows. Do not add a second gap inside the
-  card to compensate.
-- When the applet has a separate settings page, a visible 24pt circular
-  floating `gearshape` button sits 8pt from the bottom and right window edges.
-  The circle is the one round control in the app; every other button keeps its
-  fixed radius. Reserve
-  52pt bottom scroll space so it never covers content. It toggles between home
-  and settings and remains visible on both pages. On Settings it uses
-  `gearshape.fill` with selection-light background and its accessibility label
-  and help become `Back to <home page>` so the return action is unambiguous.
-  Omit it, and the reserved space, when the applet has no settings destination;
-  Awake is the reference.
-- Settings replaces all home tabs and navigation, begins directly below the
-  titlebar, starts with a 13pt medium `Settings` page label on the body gutter,
-  and uses full labeled rows. The compact titlebar keeps the tool name; it never
-  changes to Settings. Returning restores the home state.
-
-### Subordinate Surfaces
-
-Modal sheets and detail sheets are not top-level scenes and therefore are not a
-fourth family. They have no traffic lights, sidebar, independent restoration, or
-window navigation. Their flat 40pt header owns the 13pt title, starts at the
-normal 20pt gutter, places optional actions at the trailing 20pt inset, and uses
-the compact header geometry without the traffic-light offset. Choose 420pt width
-for a narrow one-column task, 560pt for a standard form, or 700pt for a
-detail-heavy form. The sheet is content-sized up to 70% of the parent screen
-height, then its body scrolls vertically under the fixed header. It never
-scrolls horizontally. Content that cannot fit the 700pt profile belongs in a
-workspace or a modeless family window. Escape dismisses it. State badges stay
-in rows or cards, never in the header.
-
-A modeless detail that needs independent movement, resizing, restoration, or
-persistent navigation is not subordinate: define it as a compact applet or full
-workspace `Window` scene and follow that complete family contract.
-
-The tray popover is also subordinate: 360pt wide and no more than 70% of screen
-height. A compact reorderable icon strip sits above one vertically scrollable
-body. The strip takes its intrinsic width while it fits and becomes horizontal
-scrolling only when it reaches the available width. Home keeps Pick Color,
-Extract Text, and Ruler in one direct-action row plus compact Awake;
-complex tray-capable built-ins get focused operational tabs. App-only tools do
-not get placeholder tabs. Durable
-configuration stays in the launcher or tool window, except Input Devices may
-reuse its full mouse and trackpad controls because those controls are its
-immediate purpose. Omit body subtitles, the divider below the strip, and bright
-tool-color fills. Keep one 12pt horizontal gutter. Separate icon buttons open
-MacPowerToys, open Settings, and quit.
-Every menu-bar panel with tabs reopens on its last selected tab. Short tab pages
-size to their content instead of leaving an empty lower region; longer pages
-scroll within the screen-height cap. Transient selections still follow each
-tool's explicit exit rule.
-Measurement guides and capture overlays are transient task surfaces and must
-not borrow launcher, workspace, or applet navigation chrome.
-
-## Components
-
-Reuse these instead of restyling per view (Views/Components/ + local patterns):
-
-- **Icon button** — 24×24, SF Symbol ~12pt medium, 6pt radius, hover 0.06,
-  `.buttonStyle(.plain)` + `.contentShape(Rectangle())`; preserve focus unless
-  the compact-titlebar rule explicitly suppresses it.
-- **Sidebar search** - at least 32pt high with 12pt outer inset, 8pt inner
-  padding, 6pt radius, 12pt search icon, and 13pt text. Use the family-defined
-  placeholder.
-- **Sidebar row** - 28pt high at standard text size, 16pt icon, 8pt internal
-  horizontal inset and gap, 8pt radius, 13pt text, and hover 0.06. Selection
-  uses the native emphasized selected-content background while the window is
-  key and the native unemphasized selection while inactive. Icon and label use
-  the same matching native selected-content foreground; never tint only one.
-- **Sidebar primary action** - at least 28pt high, 12pt horizontal inset, 8pt
-  radius, accent fill, contrast-aware 13pt medium label, and one 13pt semantic
-  icon.
-- **Compact titlebar control** — 24pt high, 6pt radius, hover 0.06, and no
-  default focus effect. Buttons and menus share this label treatment; only the
-  primary action receives accent fill.
-- **Tab pill** - text 12pt medium, 10/5 padding, 6pt radius, and selected
-  background 0.06 with ordinary primary text. There is no selected underline,
-  accent text, or enclosing segmented-control tray. An unselected hover uses
-  the same 0.06 surface. The strip starts on the shared gutter and selection
-  never moves its tabs.
-- **Tray tab** - a 28pt square icon button with a 14pt monochrome SF Symbol,
-  8pt radius, and 4pt between peers. The strip scrolls horizontally only on
-  overflow and lets people reorder complex-tool tabs. Home remains first; Cloud Sync is first in
-  the default complex-tool order. Hover uses primary 0.06, pressed uses 0.10,
-  and selection uses primary 0.10 with ordinary primary text. Never fill a tab
-  with the app accent or a tool identity color. Expose the tool name and
-  selected state to accessibility.
-- **Tray open row** - the tool title itself is a plain button ending in a small
-  `arrow.up.right`; hover nudges the arrow up and right unless Reduce Motion is
-  enabled. Put immediate controls on the trailing edge or directly below. Do
-  not add a separate Open button.
-- **Section card** - 10pt radius, 0.05 bg, 14pt padding, preceded by an
-  UPPERCASE 10pt secondary header on the same gutter.
-- **Card** (grid/tool) - 12pt radius, 0.03 bg, hover 0.06. Launcher tool cards
-  also use their documented hover stroke and shadow.
-- **Operational card** - 12pt radius, 0.03 bg, hover 0.06, 14pt padding, and
-  10pt vertical spacing. Put identity/state first, progress second, and metrics
-  plus discrete actions last.
-- **Progress bar** — 6pt-high capsule, track `primary.opacity(0.08)`, tint by
-  state (accent/green/orange/red).
-- **Scroll indicator:** overlay, autohiding, mini control size. Apply
-  `.thinScrollIndicators()` to every `ScrollView`, `Form`, `TextEditor`, `List`,
-  and `Table`. Configure every native `NSScrollView` with
-  `configureThinScrollIndicators()`. Never hide an indicator or reserve a thick
-  scrollbar track.
-- **State badge** - 11pt medium text + 10pt icon, 8/4 padding, tint at 0.12 bg,
-  and a capsule shape. Lives on cards or rows only, never in sheet headers.
-- **Empty state** — `EmptyStateView(icon:message:)`, centered.
-
-## App and Tool Icons
-
-Icons follow the bold, friendly-flat language of current independent macOS
-utilities. Each tool gets one oversized metaphor and enough personality to
-remain recognizable without a label. The family has three approved treatments:
-the tool's **Chosen Color** identity plus the neutral **Midnight** and
-**Porcelain** appearance families.
-
-### Appearance Strategy
-
-The neutral appearance rule is intentionally inverted against the surrounding
-desktop for stronger Dock separation:
-
-- **Light macOS appearance uses Midnight.** The dark tile remains clearly bounded
-  against a light desktop and light launcher surfaces.
-- **Dark macOS appearance uses Porcelain.** The light tile remains clearly bounded
-  against a dark desktop and dark launcher surfaces.
-- A tool may explicitly keep its Chosen Color identity in one or both
-  appearances. These exceptions are product decisions, not automatic palette
-  substitutions.
-- Appearance changes are implemented through asset-catalog luminosity variants.
-  SwiftUI and AppKit always request the same named image. Do not add per-view or
-  per-window theme branches.
-
-#### Neutral Palette
-
-| Family | Ground | Echo | Primary glyph | Contrast detail |
-|---|---|---|---|---|
-| Midnight | `#1C1D22` | `#5B5D66` | `#F4F4F5` | `#25262B` |
-| Porcelain | `#E7E7EA` | `#A6A8AF` | `#25262B` | `#F4F4F5` |
-
-Contrast detail is the optional opposing-color mark inside the primary glyph,
-such as a cutout, screen, or graduation. It is never a ground, outline, or
-second echo. Omit it when the metaphor does not need an internal detail.
-
-Use these exact neutral shades. They are not aliases of the warmer Chosen Color
-ink `#23272E` and paper `#F7F5F0`. Mixing the two neutral families within one
-variant weakens the deliberate temperature and contrast difference.
-
-#### Tool Appearance Matrix
-
-| Tool | Light appearance | Dark appearance | Decision |
-|---|---|---|---|
-| Cloud Sync | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
-| Logs | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
-| Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
-| Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
-| Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
-| Text Extractor | Chosen Color | Chosen Color | Capture card with a selected text strip |
-| Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
-| System Care | Chosen Color | Chosen Color | Cleanup tray with one removable block |
-| Disk Explorer | Chosen Color | Chosen Color | Owner-selected Sector platter |
-| Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
-| NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
-| Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
-| Switch | Original Switch mark | Original light and dark neutral tiles | Approved standalone Switch icon artwork |
-| Mac Tweaks | Chosen Color | Chosen Color | Owner-selected 01 Faders in both appearances |
-
-The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
-the prior identities for these six tools. They use 512px PNG image sets with
-transparent rounded corners and one universal appearance. Their detailed
-material finish follows the owner-selected Sector platter. All remaining tool
-icons continue to follow the SVG construction rules below.
-
-For SVG tools, the base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
-with a `luminosity: dark` appearance only when the matrix calls for a different
-dark asset. Tools that use Chosen Color in both modes keep one universal SVG.
-
-Every new plugin adds its approved light and dark treatment to this matrix
-before icon work begins. If its product brief has no approved Chosen Color
-identity, use Midnight in light appearance and Porcelain in dark appearance.
-An absent matrix row is a blocking metadata defect, never permission to guess a
-palette or reuse another tool's semantic hue.
-
-### Construction
-
-- Every active SVG tool-icon appearance uses the same outer SVG template. This
-  applies to every remaining SVG tool and light and dark variant.
-- Use a `512 × 512` SVG view box and a full-canvas tile.
-- Define `clipPath id="tile"` with a `512 × 512` rectangle and `rx="112"`.
-  Wrap the ground and all artwork in `<g clip-path="url(#tile)">`.
-- Every launcher, sidebar, grid, and tray rendering path also applies the shared
-  `toolIconTile(size:)` mask. Its corner radius is `size × 112 ÷ 512`.
-- Do not use a local corner radius or rely on the ground shape to clip later
-  artwork. A bleeding glyph or band must never replace a rounded corner with a
-  sharp one.
-- Let the glyph occupy 60–72% of the tile width. Structural elements may bleed
-  through the tile edge so the subject feels large instead of sticker-like.
-- Build one literal metaphor from the fewest recognizable shapes. Prefer broad
-  closed silhouettes and 28–64pt bands over detailed illustration or floating
-  linework.
-- Every exposed stroke uses `stroke-linecap="round"` and
-  `stroke-linejoin="round"`. Round the ends of filled shapes too.
-- Chosen Color icons normally create depth with meaningful overlap, such as one
-  object passing behind another. Midnight and Porcelain use the approved solid
-  echo construction below.
-- Use punch-through details sparingly and only when they clearly read as a
-  physical cutout. Never use one for a catchlight or decorative control.
-- New Chosen Color icons use warm off-white `#F7F5F0` and charcoal `#23272E`,
-  never pure white or black. The Chosen Color palette table is the binding
-  legacy exception: Cloud Sync and Logs retain their listed
-  `#FFFFFF` foregrounds. Neutral Midnight/Porcelain assets always use their own
-  closed glyph tokens rather than either white.
-- SVG icons use no decorative outline, gloss, blur, rim light, or soft drop
-  shadow. A gradient is allowed only when color itself is the metaphor or part
-  of an approved legacy Chosen Color asset. The six bitmap icons above keep
-  their shallow material lighting from the approved visual direction.
-
-The base application icon is the deliberate exception to the tool/plugin SVG
-construction rules above. `powertoys/AppIcon.icon` uses Icon Composer's
-`1024 × 1024` layered source canvas and solid document fill; its SVG layers
-must not bake in the rounded-square ground or any lighting effect. The symbol
-uses the same Lucide-derived outline flexed-arm geometry as the menu-bar glyph,
-centered at roughly 58% of the source-canvas width so it remains clear at Dock
-and Raycast sizes. Its secondary layer keeps the `52px` right/down echo offset
-at that scale (`26px` on a 512 canvas), rather than adopting the tool-icon
-`18 × 22` echo. Icon Composer supplies the system enclosure, lighting, and
-prior-generation fallback.
-
-### Solid Echo Construction
-
-Midnight and Porcelain derive their depth from one flat copy of the semantic
-glyph behind the foreground:
-
-1. Construct the complete semantic foreground silhouette first.
-2. Duplicate that silhouette once and place the copy behind the foreground.
-3. Offset the echo by exactly `18px` right and `22px` down with
-   `transform="translate(18 22)"`.
-4. Fill or stroke the complete echo with the family echo token. Neutral echoes
-   are fully opaque. They never use blur, gradients, blend modes, or multiple
-   offsets.
-5. Keep the echo's geometry, scale, rotation, line caps, and line joins identical
-   to the foreground. Only its position and color differ.
-6. The echo may be clipped by the rounded-square ground. Do not shrink the glyph
-   merely to keep the echo inside the tile.
-
-Compound glyphs must behave as one silhouette. Put all echo pieces inside one
-`<g>` with one shared fill or stroke. When a Chosen Color legacy icon uses a
-translucent semantic echo, apply `opacity` to the group, never to overlapping
-children. This prevents darker seams where parts overlap.
-
-At 32px the echo should read as a narrow lower-right depth cue, not a duplicate
-icon. If it becomes a second symbol, the foreground is too small or the offset
-has been changed.
-
-### Chosen Color Palette
-
-| Tool | Ground | Foreground | Semantic accent |
-|---|---|---|---|
-| Cloud Sync | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
-| Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
-| Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
-| Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
-| Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
-| Mac Tweaks | `#25262B` and `#32333A` panel | `#F7F5F0` faders | `#AC86E8` center handle |
-
-The six bitmap identities in the appearance matrix take their colors from
-their approved `icon.png` assets, rather than this SVG palette table.
-
-New Chosen Color tools should receive their own semantic hue unless a documented
-product decision deliberately links them to an existing color. Neutral
-appearance variants always use the closed Midnight or Porcelain palette instead
-of inventing tool-specific grays.
-
-### Asset Catalog Structure
-
-An image set with different appearance assets uses this shape:
-
-```json
-{
-  "images": [
-    {
-      "filename": "icon.svg",
-      "idiom": "universal"
-    },
-    {
-      "appearances": [
-        {
-          "appearance": "luminosity",
-          "value": "dark"
-        }
-      ],
-      "filename": "icon-dark.svg",
-      "idiom": "universal"
-    }
-  ],
-  "info": {
-    "author": "xcode",
-    "version": 1
-  },
-  "properties": {
-    "preserves-vector-representation": true
-  }
-}
-```
-
-- `icon.svg` is always the light-appearance result from the matrix.
-- `icon-dark.svg` is always the dark-appearance result from the matrix.
-- Both files remain vector SVGs at a `512 × 512` view box.
-- Keep `preserves-vector-representation` enabled for appearance-aware image
-  sets.
-- If both appearances use the same Chosen Color icon, keep a single universal
-  image entry (`icon.svg` or an approved `icon.png`). Do not duplicate an
-  identical dark file.
-- Launcher cards and the Dock use the same named asset. Do not create a separate
-  Dock-only color treatment.
-
-### Generation Workflow
-
-The steps below apply to SVG tool icons. The six bitmap icons named in the
-appearance matrix use 512px RGBA PNG sources, one universal image entry per
-image set, transparent corners, and 512/64/32/16px visual checks.
-
-1. Pick one literal object or action for the tool. Do not combine metaphors.
-2. Sketch and approve one master semantic glyph at 512px using rounded filled
-   shapes and broad round-capped bands. Make it larger than feels initially
-   comfortable. Geometry is approved independently of its appearance palette.
-3. Look up the tool in the appearance matrix. For a new plugin, add the required
-   row using the rule above before continuing. Never assume every tool receives
-   both neutral families.
-4. Follow the matrix branch. If Chosen Color is approved, apply its documented
-   palette to the master glyph. For each Midnight or Porcelain result, preserve
-   the same master geometry and apply only the closed neutral palette plus the
-   `18 × 22` solid echo. A neutral-only plugin produces Midnight and Porcelain
-   directly and has no Chosen Color asset or invented semantic hue. Never
-   redesign the metaphor between appearances.
-5. Save the light result as
-   `Assets.xcassets/<Tool>Logo.imageset/icon.svg`. Add `icon-dark.svg` and the
-   luminosity appearance entry only when the dark result differs.
-6. Validate every referenced SVG and preview each appearance from the repository
-   root:
-
-   ```sh
-   xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg
-   xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon-dark.svg
-   sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg \
-     --out /tmp/<Tool>-icon-light.png
-   sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon-dark.svg \
-     --out /tmp/<Tool>-icon-dark.png
-   ```
-
-7. Inspect every active appearance at 512, 64, 32, and 16px. The metaphor must
-   still read at 32px, and the echo must remain a depth cue. At 16px the glyph
-   may simplify, but it must not collapse into visual noise.
-8. Build the app so `actool` validates `Contents.json`, both luminosity slots,
-   and vector preservation. Check the icon once on a light desktop and once on a
-   dark desktop before release.
-
-Menu bar icons are the exception: use a single-color template silhouette of the
-same metaphor because macOS controls their tint.
-
-## Interaction, Accessibility & Quality Gates
-
-- **Never** use `onTapGesture` on containers holding selectable text — use
-  `Button`; logs and content text must stay selectable.
-- **Never** put hover opacities other than 0.06 (0.1 for filled), pressed
-  opacities other than 0.1 (0.18 for filled), selection other than accent 0.1,
-  native sidebar selection, solid accent tray-tab selection, or the explicit
-  Tab Pill primary 0.06, or radii outside {4, 6, 8, 10, 12}.
-- **Never** use capsule buttons or baked icon effects. Capsules remain valid
-  only for progress tracks and documented state or count badges. Task Manager
-  alone uses the ordered-dot card surfaces specified above.
-- **Never** add a second alignment gutter inside one container.
-- **Never** use `.formStyle(.grouped)` where its opaque insets break the shared
-  edge. Prefer explicit section cards and labeled rows.
-- **Do** animate custom-control hover and press feedback in 0.12 seconds and
-  layout or content changes in 0.16 seconds. Do not run idle motion loops.
-- **Do** give every interactive element `.contentShape(Rectangle())` and a
-  `.help()` tooltip when the icon isn't self-evident.
-- A tab strip aligns by the leading pill boundary, not its inset text. That
-  boundary and the first field, card, or row below share one edge; selection
-  never shifts tab positions.
-- Controls sharing a row share the same visible height and text baseline.
-  At standard text size, adjacent search fields and selects inside compact body
-  content are exactly 28pt high; accessibility sizing grows both to the same
-  height. The family-defined sidebar search starts at its 32pt minimum.
-- Keep launcher, workspace, body, sheet, and floating controls keyboard
-  operable. Suppress mismatched rectangular focus effects at the shared root;
-  custom rows use a quiet focused fill. Clicking outside the focused control
-  releases stale focus, while clicks in text fields preserve editing.
-- Interaction states use one recipe everywhere: rest uses the component base;
-  hover adds 0.06 primary to an unfilled control or 0.1 to a filled control;
-  press adds 0.1 primary to an unfilled control or 0.18 to a filled control;
-  disabled applies 0.38 opacity and ignores hover/press; selected uses the
-  assigned 0.1 accent layer, native sidebar selection, or solid accent tray-tab
-  role, except for Tab Pill's explicit primary 0.06 surface; focus uses the
-  native system ring except for the compact replacement ring.
-- A dense control may be visibly 24pt, but its complete rectangular hit region
-  must not be smaller. Never make an icon itself the only clickable pixels.
-- Every icon-only control has an accessibility label and help text. Traversal
-  follows visual reading order, and Escape closes dismissible subordinate
-  surfaces.
-- Never communicate status with color alone. Pair tint with text, shape, or an
-  icon, and keep labels useful when increased contrast is enabled.
-- When Reduce Transparency is enabled, replace vibrancy with an opaque semantic
-  system background while preserving pane separation. Do not introduce custom
-  hex fallbacks.
-- When Reduce Motion is enabled, disable layout animations and numeric-text
-  transitions. State changes remain immediate and must not substitute a pulse,
-  fade, or other ornamental motion.
-- Point sizes and dimensions in this document are standard-appearance metrics.
-  Use the role's `@ScaledMetric` value for non-chrome text and its vertical
-  padding; horizontal gutters and icon geometry remain fixed. Sidebar rows,
-  search, cards, operational rows, fields, and body controls use their listed
-  heights as minimums and grow vertically. Launcher grid rows grow together;
-  workspace content scrolls; compact applet height grows up to 600pt and then
-  its body scrolls. Never shrink text to preserve a metric. Native traffic-light
-  geometry and the 40pt compact titlebar stay fixed; one-line chrome labels
-  truncate with full accessibility labels and help text.
-- Long labels truncate only after the action region is protected. Localized
-  controls never overlap, wrap inside a titlebar, or push traffic lights.
-
-Treat every rule above as a defect when it regresses. Before accepting a new or
-changed window, verify light and dark appearance; default, hover, pressed,
-selected, disabled, focus, empty, error, and settings states; narrow and default
-workspace sizes; keyboard traversal; reduced transparency; and a long-content
-case with visible thin scroll indicators. Repeat the layout-changing states with
-Reduce Motion and accessibility text sizing enabled.
-
-For visual review, place the window beside its normative screenshot at the same
-scale. Check material continuity first, then native control morphology, shell
-geometry, alignment, density, radii, selection, and artwork. A dimensionally
-correct mockup still fails if it reads as a generic web dashboard.
+- Content gutter: 24 pt on both sides (Task Manager uses 20).
+- The first line of the page title centers on `C`. The subtitle sits 2 pt
+  below the title line. Header actions center on `C` and end 24 pt from the
+  edge.
+- The header, subtitle, and tabs stay fixed. Only the content below scrolls.
+- Tab strip: 36 pt high below the header, 22 pt between tabs, labels start on
+  the gutter, a 2 pt accent underline under the selected tab only, counts in
+  9 pt SF Mono 6 pt after the label, and one full-width `lineSoft` bottom
+  line. Selection never moves tabs. Trailing tab tools center in the strip.
+- The first content element starts 16 pt below the header block or tab strip.
+- Content never touches the header. No second page header inside content.
+
+### Cards, rows, and the control column
+
+- Card: `panel` fill, 1 pt `line`, radius 8, clipped. Cards are 16 pt apart.
+- Card header: exactly 40 pt, 16 pt horizontal padding, optional 13 pt icon,
+  8 pt icon gap, card title, optional trailing accessory, and a 1 pt
+  `lineSoft` bottom line.
+- Setting row: exactly 44 pt, 16 pt horizontal padding, and 1 pt `lineSoft`
+  separators between rows. The label and an optional help or reset glyph
+  lead. The control sits in a right-aligned control column, 160 pt wide
+  (180 pt only when the card's longest value needs it; one width per card). A
+  reset glyph that appears never moves the column.
+- A setting that needs an explanation puts one caption line under the label
+  and grows the row to 56 pt. Never wrap a label inside 44 pt.
+- Cards pair in two equal columns when both are short. Long cards take the
+  full width.
+- Controls apply immediately. There is no Apply or Discard bar. An invalid
+  text value stays in its field with an error caption; it never clamps
+  silently.
+
+## Components (OnePlusUI)
+
+Use only these. Names are the package API.
+
+| Component | Spec |
+|---|---|
+| `OnePlusButtonStyle(.neutral)` | 28 pt high, radius 6, 1 pt `line`, `raised` fill, 10 pt padding, 6 pt icon gap, 12 pt `controlInk`. Hover `raisedHover`, pressed `pressed`. |
+| `.primary` | Same geometry, `primaryFill` with `primaryInk`, medium weight. One per view state. |
+| `.ghost` | Same geometry, no fill or line until hover (`raised`). Text `secondary`, hover `ink`. |
+| `.destructive` | `dangerFill`, `dangerLine`, and `danger` text. Always paired with a confirmation. |
+| `.icon` | 28 pt square, radius 5, 14 pt glyph, transparent until hover. Needs `.help` and an accessibility label. |
+| `.link` | Text plus a trailing 10 pt arrow ("Manage", "View all"), `secondary`, hover `ink`, no fill. |
+| `.small` size | 24 pt high, 11 pt text, radius 5. For compact and menu-panel headers. |
+| `OnePlusSwitchStyle` | A `Toggle` style. 29 x 17 capsule, 1 pt line, 11 pt knob, 12 pt travel. Off: `selection` track and `secondary` knob. On: `primaryFill` track and `primaryInk` knob. |
+| `OnePlusSegmented` | Radio group. 28 pt high (24 compact), 2 pt inset, 2 pt gaps, radius 6 outer and 3 inner, `track` fill, 1 pt `line`, selected segment `selectedControl` with `ink` text. Supports the `Default (value) / On / Off` pattern. |
+| `OnePlusSelect` | A styled trigger (28 pt, radius 6, `raised`, 1 pt `line`, 10 pt padding, trailing chevron) that opens a native `Menu`. Its width follows the control column. |
+| `OnePlusStepperField` | A native text field with native stepper behavior in one 28 pt frame, an optional 9 pt SF Mono unit, and a 17 pt arrow column behind a 1 pt separator. |
+| `OnePlusTextField` | Native `TextField` in a 28 pt `field` bezel, radius 6, 1 pt `line`, 8 pt padding. Focus: `fieldFocus` fill and a 1 pt inset neutral line, no outer ring, no size change. Error: `dangerLine` plus a caption below. |
+| `OnePlusSearchField` | Native search field in the same bezel with a leading 13 pt magnifier, a clear button, and an optional trailing shortcut hint. 32 pt in sidebars, 28 pt in pages. Escape clears first. |
+| `OnePlusTextEditor` | `NSTextView` in `NSScrollView`, `track` fill, radius 6, 1 pt `line`, 11 x 12 padding, 11 pt SF Mono for code and rules. |
+| `OnePlusCard`, `OnePlusCardHeader`, `OnePlusSettingRow` | As defined in "Cards, rows, and the control column". |
+| `OnePlusPageHeader`, `OnePlusTabStrip` | As defined in "Page". |
+| `OnePlusSidebar`, `OnePlusNavRow`, `OnePlusNavCaption` | As defined in "Sidebar". |
+| `OnePlusMetricTile` | Label row (13 pt icon, card title role), value with unit, caption, and an optional sparkline or bar. Textured corner. Hover `panelHover` and a trailing chevron when it navigates. |
+| `OnePlusSparkline`, `OnePlusAreaChart` | Cached `Canvas` paths, 1.2 pt stroke, chart dither under area charts. Static while values do not change. |
+| `OnePlusUsageBar`, `OnePlusSegmentBar` | 5 pt capsule track (`line`) with a neutral fill. Segmented bars use 2 pt gaps. |
+| `OnePlusStatus` | A 4 pt dot and text. Hollow dot for offline. |
+| `OnePlusBadge` | 9 pt SF Mono count. A filled pending badge only for actionable counts. |
+| `OnePlusTable` | Fixed columns, a 9 pt uppercase header row on `sidebar` fill, 34 pt rows (28 compact), `lineSoft` separators, hover `raised`, selection `selection`. Native behavior: arrow keys, sort, context menus, type-select. |
+| `OnePlusKeyValueRow` | Label leading in `muted`, value trailing in `ink` or SF Mono. |
+| `OnePlusEmptyState` | A centered 26 pt glyph, 13 pt medium title, one caption sentence, and an optional neutral button, with at least 40 pt vertical padding. |
+| `OnePlusToast` | A non-focusable overlay 20 pt above the content bottom, radius 6, `raised` at 96%, 1 pt `line`, 11 pt text. It also posts an accessibility announcement. |
+| `OnePlusSheet` | A native `.sheet` with a 40 pt header (title, optional close), 20 pt body padding, and a footer with trailing actions (Cancel ghost, confirm primary or destructive). Widths 420, 560, or 700. |
+| `OnePlusDotTitle` | The Task Manager dot-matrix title. |
+| `OnePlusWindowTexture` | The window texture layer. |
+| Menu-panel parts | See "Menu-bar panels". |
+
+States everywhere: hover changes only fill, line, or text color. Pressed uses
+one darker surface step and never moves. Disabled is 0.38 opacity with no
+hover. Focus is a fill change plus a 1 pt inset neutral line; Full Keyboard
+Access keeps the system ring. Loading keeps the final bounds. Errors keep the
+bounds and add a caption.
+
+## Native behavior contract
+
+A surface fails review if any of these is missing where it applies:
+
+- Menus are native `NSMenu`s: select popups, context menus on every list row,
+  tile, and file item, and the app's menu bar commands.
+- Text input is native: selection, undo, IME, Return commits, and Escape
+  cancels or clears. Spell checking is off in code and rule editors.
+- Lists and tables: arrow-key selection, Return opens, Space shows Quick Look
+  for files, Delete asks before removing, type-select, multiple selection
+  where it helps, drag-out for files, and a context menu.
+- Keyboard: Tab traversal in visual order, Command-F focuses search,
+  Command-1 to Command-9 select sidebar pages in order, Command-comma opens
+  the tool's settings page, Command-W closes the window, and Escape dismisses
+  sheets.
+- Sheets attach to their window. No web-style centered overlays with a
+  dimmed backdrop inside the window.
+- Tooltips use `.help`. Every icon-only control has an accessibility label.
+- Files: Reveal in Finder, Copy Path, Open With, Quick Look, and Move to
+  Trash use the system services.
+- Scroll views are native with thin overlay scrollers and never reserve a
+  gutter.
+- Destructive actions use a native confirmation with the destructive role.
+
+## Motion
+
+- Hover and press: 0.10 s ease. Selection and segment indicator: 0.14 s.
+  Content swap: 0.12 s opacity. Sheets and popovers: system motion.
+- Nothing animates while idle. Spinners, pulses, and indeterminate bars run
+  only during real work and stop on completion, error, cancel, or dismissal.
+- No scale, bounce, slide, shimmer, parallax, or lifted hover panels.
+- Reduce Motion removes nonessential animation and keeps layout identical.
+
+## Menu-bar panels
+
+The Task Manager panel is the pattern for every menu-bar panel: the combined
+MacPowerToys panel, the Task Manager panel, the Portman panel, and any
+separate tool panel.
+
+- Shell: 356 pt wide, content-sized, capped at the visible screen height.
+  Only the body scrolls. One opaque `sidebar` surface. No blur, glass, or
+  stacked shells.
+- Top bar: 35 pt with padding 5 top, 8 horizontal, 4 bottom. An icon tab
+  strip on the leading side: 26 pt square tabs, 2 pt gaps, radius 5, 13 pt
+  glyphs. Rest `secondary`; hover `ink` on a faint fill; selected `ink` on
+  `selection`. Trailing: `Open App` as a small ghost text button (70 x 24, the
+  main panel's text style), then optional small ghost icon buttons (Settings,
+  Quit).
+- Body: padding 3 top, 8 horizontal, 8 bottom. Content width 338.
+- Tiles (`OnePlusMenuTile`): radius 6, one step above `panel` (`#262626`
+  dark), 1 pt `line`, 7 x 8 padding, grain 0.11, 5 pt grid gaps, three
+  109.33 pt columns. Wide tiles span two columns.
+- Control rows (Fan, Awake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
+  SF Mono status, with a trailing 24 pt segmented control.
+- Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section
+  title, and a trailing link action.
+- Instance or item cards: radius 7, a 20 pt header row on a slightly raised
+  fill, metric cells separated by 1 pt lines, and a trailing 84 pt action
+  column.
+- Each panel reopens on its last selected tab. Short pages size to content.
+
+## Compact applets
+
+Awake, Color Picker, and Text Extractor stay compact applets with the same
+tokens, fixed sizes, and components.
+
+- One `window` surface with the ribbon texture, and a 40 pt custom titlebar:
+  traffic lights (close, minimize, disabled zoom) centered on `C = 22`, the
+  text title at 12.5 semibold 14 pt after the zoom button, and persistent page
+  actions trailing 16 pt from the edge.
+- Body gutter 16 pt. Sections use `OnePlusCard` and `OnePlusSettingRow`.
+- The floating 24 pt round settings button 8 pt from the bottom-right corner
+  stays. It toggles Home and Settings. Settings replaces the body.
+
+## Surface recipes
+
+### Main window
+
+Follows `macpowertoys-repaired.html` and its handoff comment.
+
+- Sidebar: the `MacPowerToys` title, search (`Search`, hint `cmd K`), `All
+  tools`, the caption `YOUR TOOLS`, one row per registered tool in registry
+  order, and bottom nav `Modified` (disabled when nothing differs from
+  defaults), `Settings`, and `Exit`.
+- All tools: the title `All tools`, the subtitle `Your Mac, a little more
+  capable.`, tabs `All tools N`, `Enabled N`, and `Favorites N`, a trailing
+  sort select (Default order, Name, Category), and a grid or list toggle.
+  Grid: four columns, 12 pt gaps, 151 pt cards with a 40 pt tool icon, name,
+  category caption, favorite star (visible on hover or when set), two-line
+  description, enable switch with an `Enabled` caption, and `Open` with an
+  arrow. List: 52 pt rows with the same parts.
+- Tool page: a header with the 40 pt icon, tool name, description, and a
+  trailing enable switch and `Open` (neutral small, 26 pt). Tabs `Settings`
+  and `How to use`, with a trailing `Menu bar` segmented control (None,
+  Combined, Separate) for tools that support placement. Settings renders the
+  tool's shared settings view built from OnePlusUI cards. How to use renders
+  the manual as cards.
+- Settings: tabs General, Marketplace, and About. General holds Appearance,
+  Windows, Launch, and iCloud. Modified lists every changed setting with its
+  tool, value, and default and a reset action. Reset all asks first.
+- Enablement, menu-bar placement, runtime state, and window visibility stay
+  separate states.
+
+### Task Manager
+
+Follows `task-manager.html` with the owner's corrections: fixed 1080 x 660,
+the normal system sidebar title, dot-matrix page titles, the 54 pt title row
+with the centerline rule (more room above the page title than before),
+compact density, and the HTML's spacing and tightness. Pages: Overview,
+Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote stats,
+System Report, About, and Settings. The Task Manager menu panel follows the
+HTML panel exactly, except `Open App`, which uses the ghost style.
+
+### Diskman
+
+Uses `diskman-fixed.html` for content, normalized to this file so it feels
+native: 1440 x 900, a 216 pt sidebar with ANALYZE (locations and Choose
+Folder) and DEVICES sections, the location name as the page title on `C` with
+its path as a mono subtitle, header actions (Rescan as primary, a more menu),
+a stats card (Space used in accent, Files, Folders, Last scan), tabs
+Visualization, Largest files N, and Results with a trailing Treemap or Rings
+segmented control and a sort select, a map card with a 260 pt inspector card,
+and the unreadable notice as a card row with its action. Treemap tiles use
+the storage series `#66504A #4C6272 #6C5A43 #48645E #68546C #745047 #455D70
+#706048 #435E60 #5B4E67 #536149`, radius 4, a 1 pt translucent line, and
+grain 0.17 (0.22 selected). Native behaviors: double-click drills in, the
+breadcrumb and Command-[ go back, Space shows Quick Look, context menus,
+drag-out, and Command-R rescans. Modify keeps its write lock and staged
+review in the same card and row language. Destructive steps use a native
+confirmation.
+
+### Mac Tweaks
+
+Follows `mac-tweaks-design.html`, normalized to the 54 pt title row and the
+shared components. Preview artwork stays scoped to Mac Tweaks.
+
+### Other workspaces
+
+Cloud Sync, Logs, Input Devices, System Care, NetToys, and Switch use the
+same sidebar, page, card, row, and table anatomy with no tool-specific
+chrome. Operational rows (transfers, scan results, log lines) use
+`OnePlusTable` or dense cards with the same radii and lines. Settings are a
+sidebar page, never a separate window or dialog.
+
+### Portman
+
+The Portman menu panel keeps its current home layout and look. Its other
+tabs use the menu-panel parts and OnePlusUI controls.
+
+### Ruler
+
+The FreeRuler overlay keeps its pinned visuals. Ruler Settings and Ruler
+Defaults keep native titlebars and use OnePlusUI tokens, cards, rows, and
+controls for their bodies.
+
+## Quality gates
+
+A window, panel, or sheet is accepted only after it passes all of these in
+both appearances:
+
+1. Centerline: traffic lights, sidebar title, page title, and header actions
+   share `C`.
+2. One leading edge per container. Tab labels, section titles, and card
+   edges share the gutter.
+3. Controls in one row share height and baseline. The control column never
+   shifts.
+4. Nothing touches a window edge. The first content row starts 16 pt below
+   the header block.
+5. No clipped or overlapping text at the fixed size. Long values truncate
+   with a tooltip.
+6. Every state renders: rest, hover, pressed, selected, disabled, focus,
+   loading, empty, error, and permission needed.
+7. Every native behavior contract item that applies is present.
+8. No idle CPU: with the window open and data unchanged, the process stays
+   near 0% CPU and adds no timers.
+9. A capture of the running signed build, compared at the same scale with
+   the reference, shows no material difference in spacing, alignment, or
+   density.
