@@ -36,8 +36,8 @@ private struct MainGeneralSettings: View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top), count: 2),
                   alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             appearanceCard
-            windowsCard
             launchCard
+            windowsCard
             syncCard
         }
         .onChange(of: appearance) { _, value in value.apply(); changed() }
@@ -108,8 +108,6 @@ private struct MainGeneralSettings: View {
                     else { sync.disable() }
                 })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            Text(sync.lastSyncDescription ?? (sync.isEnabled ? "Settings sync is on." : "Settings sync is off."))
-                .onePlusText(.row).padding(.horizontal, OnePlusMetrics.cardPadding)
             Text("Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.")
                 .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
         }
@@ -142,11 +140,13 @@ private struct MainAboutSettings: View {
                         .frame(width: OnePlusCatalogMetrics.iconSize, height: OnePlusCatalogMetrics.iconSize)
                     Text("A collection of tools for your Mac.").onePlusText(.row)
                     Spacer()
-                }.padding(OnePlusMetrics.cardPadding)
+                }
+                .padding(OnePlusMetrics.cardPadding)
+                .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
                 metadataRow("Version", value: metadata("CFBundleShortVersionString"))
                 metadataRow("Build", value: metadata("CFBundleVersion"))
                 metadataRow("Source commit", value: metadata("MPTSourceCommit"))
-                metadataRow("Developer", value: "Suraj Mandal")
+                metadataRow("Developer", value: "Suraj Mandal", monospaced: false)
                 linkRow("Contact", title: "surajmandalcell@gmail.com", url: "mailto:surajmandalcell@gmail.com")
             }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
@@ -158,25 +158,26 @@ private struct MainAboutSettings: View {
                 }.frame(maxWidth: .infinity)
                 OnePlusCard {
                     OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                    linkRow("Cloud Sync engine", title: "Powered by rclone", url: "https://rclone.org/")
-                    Text("rclone is free and open-source software by Nick Craig-Wood and contributors.")
-                        .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
+                    linkRow("Cloud Sync engine", caption: "Free software by Nick Craig-Wood and contributors.",
+                            title: "Powered by rclone", url: "https://rclone.org/")
                     linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
                 }.frame(maxWidth: .infinity)
             }
         }
     }
 
-    private func metadataRow(_ label: String, value: String) -> some View {
+    private func metadataRow(_ label: String, value: String, monospaced: Bool = true) -> some View {
         OnePlusSettingRow(label, controlWidth: OnePlusCatalogMetrics.placementWidth) {
-            Text(value).onePlusText(.mono).lineLimit(1).truncationMode(.middle).help(value).textSelection(.enabled)
+            Text(value).onePlusText(monospaced ? .mono : .row).lineLimit(1)
+                .truncationMode(.middle).help(value).textSelection(.enabled)
         }
     }
 
-    private func linkRow(_ label: String, title: String, url: String) -> some View {
-        OnePlusSettingRow(label, controlWidth: OnePlusCatalogMetrics.placementWidth) {
+    private func linkRow(_ label: String, caption: String? = nil, title: String, url: String) -> some View {
+        OnePlusSettingRow(label, caption: caption, controlWidth: OnePlusCatalogMetrics.placementWidth) {
             if let destination = URL(string: url) {
-                Link(title, destination: destination).buttonStyle(OnePlusButtonStyle(.link))
+                Link(title, destination: destination)
+                    .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
             }
         }
     }
