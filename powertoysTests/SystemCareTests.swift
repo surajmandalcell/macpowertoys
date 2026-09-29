@@ -3,6 +3,16 @@ import XCTest
 
 @MainActor
 final class SystemCareTests: XCTestCase {
+    func testMetricBytesSeparateValueAndUnit() {
+        let zero = SystemCareByteMetric(0)
+        XCTAssertEqual(zero.value, "0")
+        XCTAssertEqual(zero.unit, "KB")
+
+        let kilobyte = SystemCareByteMetric(1_000)
+        XCTAssertEqual(kilobyte.value, "1")
+        XCTAssertEqual(kilobyte.unit, "KB")
+    }
+
     func testCleanupCandidateMustBeAChildOfItsAllowedRoot() {
         let root = URL(fileURLWithPath: "/Users/example/Library/Caches", isDirectory: true)
         let safe = CleanupCandidate(
