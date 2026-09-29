@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import XCTest
+import OnePlusUI
 @testable import powertoys
 
 @MainActor
@@ -985,7 +986,7 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(controlsView.selectedVerticalLength, 2.75 * NSScreen.defaultDpi, accuracy: 0.0001)
     }
 
-    func testRulerSettingsControlsUseUtilitySectionsAndAlignedRows() throws {
+    func testRulerSettingsControlsUseOnePlusSectionsAndAlignedRows() throws {
         let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 491))
         controlsView.configureForRulerSettings()
 
@@ -1007,7 +1008,7 @@ final class RulerCoreTests: XCTestCase {
             .compactMap { $0 as? NSTextField }
             .filter { ["MEASUREMENT", "APPEARANCE", "WINDOW"].contains($0.stringValue) }
         let cards = descendants
-            .filter { NSStringFromClass(type(of: $0)).hasSuffix("UtilitySectionCardView") }
+            .filter { $0 is OnePlusNativeCardView }
             .sorted { $0.frame.maxY > $1.frame.maxY }
 
         XCTAssertEqual(headings.count, 3)
@@ -1045,7 +1046,10 @@ final class RulerCoreTests: XCTestCase {
         XCTAssertEqual(controlsView.borderOpacitySlider.frame.minX, 14, accuracy: 0.5)
         XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.borderOpacitySlider.frame.maxX, 14, accuracy: 0.5)
         XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minX, 14, accuracy: 0.5)
-        XCTAssertEqual(try XCTUnwrap(measurementCard.layer).cornerRadius, 10, accuracy: 0.5)
+        XCTAssertTrue(controlsView.dimensionWidthField is OnePlusNativeStepperField)
+        XCTAssertTrue(controlsView.dimensionHeightField is OnePlusNativeStepperField)
+        XCTAssertTrue(controlsView.floatRulersCheckbox is OnePlusNativeSwitchButton)
+        XCTAssertTrue(controlsView.rulerShadowCheckbox is OnePlusNativeSwitchButton)
 
         let rowLabels: [NSTextField] = [
             controlsView.unitLabel,
@@ -1263,8 +1267,8 @@ final class RulerCoreTests: XCTestCase {
             XCTAssertEqual(controlsView.frame.height, 491, accuracy: 0.5)
             XCTAssertTrue(
                 rulerSettingsDescendants(in: window.contentView!)
-                    .contains { NSStringFromClass(type(of: $0)).hasSuffix("UtilityMaterialView") }
-                    || NSStringFromClass(type(of: window.contentView!)).hasSuffix("UtilityMaterialView")
+                    .contains { $0 is OnePlusNativeWindowView }
+                    || window.contentView is OnePlusNativeWindowView
             )
             let titlebarView = try XCTUnwrap(window.standardWindowButton(.closeButton)?.superview)
             XCTAssertFalse(

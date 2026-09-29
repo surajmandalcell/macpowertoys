@@ -1,5 +1,17 @@
 # Ruler Troubleshooting
 
+## OnePlusUI Settings Bodies, 2026-09-29
+
+- **Invariant:** Settings and Defaults retain their native independent
+  windows, XIB layout, localized strings, and explicit key loop. Their bodies
+  use OnePlusUI native surfaces and form styles. Dimension fields add native
+  steppers without replacing formatter validation or target/action routing.
+  Float and shadow keep NSButton state and shortcuts with switch drawing.
+- **Resource rule:** Preference observations capture the controller weakly.
+  Delayed color-panel setup does nothing after the active well closes.
+- **Check:** The Debug build passes. Run the Ruler geometry, localization,
+  and key-loop tests on hosted CI, then inspect both installed windows.
+
 ## Ruler Dimensions In Hosted Tests
 
 - **Symptom:** A ruler-settings test passed on the owner's display but failed

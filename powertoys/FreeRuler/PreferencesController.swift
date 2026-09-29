@@ -1,4 +1,6 @@
 import Cocoa
+import SwiftUI
+import OnePlusUI
 
 private let colorPanelOpaqueConfigurationRetryDelays: [TimeInterval] = [0.1, 0.3]
 private let rulerColorPanelIdentifier = NSUserInterfaceItemIdentifier("ruler-color-panel")
@@ -31,6 +33,7 @@ private func configureOpaqueColorPickingAfterPanelUpdates() {
     // that churn so alpha controls stay hidden without doing work for every color change.
     for delay in colorPanelOpaqueConfigurationRetryDelays {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard activeRulerColorWell?.window?.isVisible == true, NSColorPanel.shared.isVisible else { return }
             configureOpaqueColorPicking()
         }
     }
@@ -108,20 +111,21 @@ class RulerColorWell: NSColorWell {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let bounds = bounds.insetBy(dx: 3, dy: 3)
-        let path = NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5)
+        let bounds = bounds.insetBy(dx: OnePlusMetrics.spacing[0], dy: OnePlusMetrics.spacing[0])
+        let path = NSBezierPath(roundedRect: bounds, xRadius: OnePlusMetrics.controlRadius,
+                                yRadius: OnePlusMetrics.controlRadius)
 
-        NSColor.controlBackgroundColor.setFill()
+        NSColor(OnePlusColor.field).setFill()
         path.fill()
 
         color.setFill()
         path.fill()
 
-        NSColor.separatorColor.setStroke()
+        NSColor(OnePlusColor.line).setStroke()
         path.lineWidth = 1
         path.stroke()
         if window?.firstResponder == self {
-            NSColor.controlAccentColor.setFill()
+            NSColor(OnePlusColor.focus).setFill()
             let dot = NSRect(x: bounds.maxX - 9, y: bounds.maxY - 9, width: 6, height: 6)
             NSBezierPath(ovalIn: dot).fill()
         }
@@ -143,7 +147,7 @@ private func configureResetRulerColorButtonAppearance(_ button: NSButton, identi
         systemSymbolName: "arrow.counterclockwise",
         accessibilityDescription: resetRulerColorLabel
     )?.withSymbolConfiguration(
-        NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        NSImage.SymbolConfiguration(pointSize: OnePlusTextRole.sectionTitle.size(for: .regular), weight: .regular)
     ) ?? NSImage()
     symbol.isTemplate = true
 
@@ -151,7 +155,7 @@ private func configureResetRulerColorButtonAppearance(_ button: NSButton, identi
     button.isBordered = false
     button.imagePosition = .imageOnly
     button.imageScaling = .scaleProportionallyDown
-    button.contentTintColor = .secondaryLabelColor
+    button.contentTintColor = NSColor(OnePlusColor.secondary)
     button.toolTip = resetRulerColorLabel
     button.identifier = NSUserInterfaceItemIdentifier(identifier)
     button.setAccessibilityIdentifier(identifier)
@@ -440,6 +444,7 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
     }
 
     private func configureBaseControls() {
+        OnePlusNativeForm.style(contentView)
         unitSegmentedControl.target = self
         unitSegmentedControl.action = #selector(setUnit(_:))
         unitSegmentedControl.segmentStyle = .rounded
@@ -729,7 +734,7 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         resetFactoryDefaultsButton.identifier = NSUserInterfaceItemIdentifier("reset-factory-defaults-button")
         resetFactoryDefaultsButton.setAccessibilityIdentifier("reset-factory-defaults-button")
         resetFactoryDefaultsButton.isBordered = false
-        resetFactoryDefaultsButton.contentTintColor = .systemRed
+        resetFactoryDefaultsButton.contentTintColor = NSColor(OnePlusColor.danger)
 
         subscribeToPrefs()
         subscribeToColorPanel()
@@ -762,33 +767,33 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
 
     func subscribeToPrefs() {
         observers = [
-            prefs.observe(\Prefs.unit, options: .new) { prefs, changed in
-                self.updateUnitSegmentedControl()
-                self.updateDimensionFields()
+            prefs.observe(\Prefs.unit, options: .new) { [weak self] _, _ in
+                self?.updateUnitSegmentedControl()
+                self?.updateDimensionFields()
             },
-            prefs.observe(\Prefs.defaultHorizontalLength, options: .new) { prefs, changed in
-                self.updateDimensionFields()
+            prefs.observe(\Prefs.defaultHorizontalLength, options: .new) { [weak self] _, _ in
+                self?.updateDimensionFields()
             },
-            prefs.observe(\Prefs.defaultVerticalLength, options: .new) { prefs, changed in
-                self.updateDimensionFields()
+            prefs.observe(\Prefs.defaultVerticalLength, options: .new) { [weak self] _, _ in
+                self?.updateDimensionFields()
             },
-            prefs.observe(\Prefs.foregroundOpacity, options: .new) { prefs, changed in
-                self.updateForegroundSlider()
+            prefs.observe(\Prefs.foregroundOpacity, options: .new) { [weak self] _, _ in
+                self?.updateForegroundSlider()
             },
-            prefs.observe(\Prefs.backgroundOpacity, options: .new) { prefs, changed in
-                self.updateBackgroundSlider()
+            prefs.observe(\Prefs.backgroundOpacity, options: .new) { [weak self] _, _ in
+                self?.updateBackgroundSlider()
             },
-            prefs.observe(\Prefs.borderOpacity, options: .new) { prefs, changed in
-                self.updateBorderSlider()
+            prefs.observe(\Prefs.borderOpacity, options: .new) { [weak self] _, _ in
+                self?.updateBorderSlider()
             },
-            prefs.observe(\Prefs.floatRulers, options: .new) { prefs, changed in
-                self.updateFloatRulersCheckbox()
+            prefs.observe(\Prefs.floatRulers, options: .new) { [weak self] _, _ in
+                self?.updateFloatRulersCheckbox()
             },
-            prefs.observe(\Prefs.rulerShadow, options: .new) { prefs, changed in
-                self.updateRulerShadowCheckbox()
+            prefs.observe(\Prefs.rulerShadow, options: .new) { [weak self] _, _ in
+                self?.updateRulerShadowCheckbox()
             },
-            prefs.observe(\Prefs.rulerColor, options: .new) { prefs, changed in
-                self.updateRulerColorWell()
+            prefs.observe(\Prefs.rulerColor, options: .new) { [weak self] _, _ in
+                self?.updateRulerColorWell()
             },
         ]
     }
@@ -1063,6 +1068,8 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         setDefaultsButton.setAccessibilityIdentifier("save-ruler-settings-as-default-button")
         setDefaultsButton.keyEquivalent = "\r"
         setDefaultsButton.keyEquivalentModifierMask = []
+        setDefaultsButton.bezelColor = NSColor(OnePlusColor.primaryFill)
+        setDefaultsButton.contentTintColor = NSColor(OnePlusColor.primaryInk)
         subscribeToColorPanel()
         updateView()
     }

@@ -37,7 +37,7 @@
             <rect key="frame" x="0.0" y="0.0" width="380" height="491"/>
             <autoresizingMask key="autoresizingMask"/>
             <subviews>
-                <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-measurement-heading">
+                <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-measurement-heading" customClass="OnePlusNativeCaptionLabel" customModule="OnePlusUI">
                     <rect key="frame" x="-2" y="479" width="86" height="12"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" title="MEASUREMENT" id="RSV-measurement-heading-cell">
                         <font key="font" name=".AppleSystemUIFontMedium" size="10"/>
@@ -45,7 +45,7 @@
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-measurement-card" customClass="UtilitySectionCardView" customModule="powertoys" customModuleProvider="target">
+                <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-measurement-card" customClass="OnePlusNativeCardView" customModule="OnePlusUI">
                     <rect key="frame" x="0.0" y="385" width="380" height="86"/>
                     <subviews>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-unit-label">
@@ -75,10 +75,10 @@
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
                         </textField>
-                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-width">
+                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-width" customClass="OnePlusNativeStepperField" customModule="OnePlusUI">
                             <rect key="frame" x="232" y="14" width="56" height="24"/>
                             <constraints>
-                                <constraint firstAttribute="width" constant="56" id="8ky-LW-7YX"/>
+                                <constraint firstAttribute="width" constant="72" id="8ky-LW-7YX"/>
                                 <constraint firstAttribute="height" constant="24" id="PLE-rg-IGq"/>
                             </constraints>
                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" borderStyle="bezel" alignment="right" drawsBackground="YES" id="RSV-dimension-width-cell">
@@ -95,10 +95,10 @@
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
                         </textField>
-                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-height">
+                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-height" customClass="OnePlusNativeStepperField" customModule="OnePlusUI">
                             <rect key="frame" x="310" y="14" width="56" height="24"/>
                             <constraints>
-                                <constraint firstAttribute="width" constant="56" id="Vqe-VX-SWf"/>
+                                <constraint firstAttribute="width" constant="72" id="Vqe-VX-SWf"/>
                                 <constraint firstAttribute="height" constant="24" id="lu1-IP-lwT"/>
                             </constraints>
                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" borderStyle="bezel" alignment="right" drawsBackground="YES" id="RSV-dimension-height-cell">
@@ -126,7 +126,7 @@
                         <constraint firstAttribute="bottom" secondItem="RSV-dimension-height" secondAttribute="bottom" constant="14" id="RSV-height-bottom"/>
                     </constraints>
                 </customView>
-                <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-appearance-heading">
+                <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-appearance-heading" customClass="OnePlusNativeCaptionLabel" customModule="OnePlusUI">
                     <rect key="frame" x="-2" y="357" width="74" height="12"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" title="APPEARANCE" id="RSV-appearance-heading-cell">
                         <font key="font" name=".AppleSystemUIFontMedium" size="10"/>
@@ -134,7 +134,7 @@
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-appearance-card" customClass="UtilitySectionCardView" customModule="powertoys" customModuleProvider="target">
+                <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-appearance-card" customClass="OnePlusNativeCardView" customModule="OnePlusUI">
                     <rect key="frame" x="0.0" y="120" width="380" height="229"/>
                     <subviews>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-color-label">
@@ -260,7 +260,7 @@
                         <constraint firstAttribute="bottom" secondItem="RSV-border-slider" secondAttribute="bottom" constant="14" id="RSV-border-slider-bottom"/>
                     </constraints>
                 </customView>
-                <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-heading">
+                <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-heading" customClass="OnePlusNativeCaptionLabel" customModule="OnePlusUI">
                     <rect key="frame" x="-2" y="92" width="49" height="12"/>
                     <textFieldCell key="cell" lineBreakMode="clipping" title="WINDOW" id="RSV-window-heading-cell">
                         <font key="font" name=".AppleSystemUIFontMedium" size="10"/>
@@ -268,17 +268,17 @@
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
                 </textField>
-                <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-card" customClass="UtilitySectionCardView" customModule="powertoys" customModuleProvider="target">
+                <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-card" customClass="OnePlusNativeCardView" customModule="OnePlusUI">
                     <rect key="frame" x="0.0" y="0.0" width="380" height="84"/>
                     <subviews>
-                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-float-checkbox">
+                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-float-checkbox" customClass="OnePlusNativeSwitchButton" customModule="OnePlusUI">
                             <rect key="frame" x="14" y="46" width="218" height="24"/>
                             <buttonCell key="cell" type="check" title="Float ruler above other applications" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="RSV-float-cell">
                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                 <font key="font" name=".AppleSystemUIFont" size="12"/>
                             </buttonCell>
                         </button>
-                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-shadow-checkbox">
+                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-shadow-checkbox" customClass="OnePlusNativeSwitchButton" customModule="OnePlusUI">
                             <rect key="frame" x="14" y="14" width="124" height="24"/>
                             <buttonCell key="cell" type="check" title="Show ruler shadow" bezelStyle="regularSquare" imagePosition="left" inset="2" id="RSV-shadow-cell">
                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -288,9 +288,11 @@
                     </subviews>
                     <constraints>
                         <constraint firstItem="RSV-float-checkbox" firstAttribute="leading" secondItem="RSV-window-card" secondAttribute="leading" constant="14" id="RSV-float-leading"/>
+                        <constraint firstAttribute="trailing" secondItem="RSV-float-checkbox" secondAttribute="trailing" constant="14" id="RSV-float-trailing"/>
                         <constraint firstItem="RSV-float-checkbox" firstAttribute="top" secondItem="RSV-window-card" secondAttribute="top" constant="14" id="RSV-float-top"/>
                         <constraint firstItem="RSV-float-checkbox" firstAttribute="height" constant="24" id="RSV-float-height"/>
                         <constraint firstItem="RSV-shadow-checkbox" firstAttribute="leading" secondItem="RSV-window-card" secondAttribute="leading" constant="14" id="RSV-shadow-leading"/>
+                        <constraint firstAttribute="trailing" secondItem="RSV-shadow-checkbox" secondAttribute="trailing" constant="14" id="RSV-shadow-trailing"/>
                         <constraint firstItem="RSV-shadow-checkbox" firstAttribute="top" secondItem="RSV-float-checkbox" secondAttribute="bottom" constant="8" id="RSV-shadow-top"/>
                         <constraint firstItem="RSV-shadow-checkbox" firstAttribute="height" constant="24" id="RSV-shadow-height"/>
                         <constraint firstAttribute="bottom" secondItem="RSV-shadow-checkbox" secondAttribute="bottom" constant="14" id="RSV-shadow-bottom"/>
