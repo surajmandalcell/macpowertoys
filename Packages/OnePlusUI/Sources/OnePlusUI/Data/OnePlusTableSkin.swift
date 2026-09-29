@@ -52,12 +52,12 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             return view.subviews.lazy.compactMap { self.findTable(in: $0) }.first
         }
         private static func apply(to table: NSTableView, density: OnePlusDensity) {
-            if table.style != .plain { table.style = .plain }
+            // Keep SwiftUI's native style and gridColor. A custom gridColor
+            // makes AppKit ask new SwiftUI rows for cells before they exist.
             if table.rowSizeStyle != .custom { table.rowSizeStyle = .custom }
             if table.rowHeight != OnePlusTable.rowHeight(density) { table.rowHeight = OnePlusTable.rowHeight(density) }
             if table.intercellSpacing != .zero { table.intercellSpacing = .zero }
             table.backgroundColor = NSColor(OnePlusColor.panel)
-            table.gridColor = NSColor(OnePlusColor.lineSoft)
             if !table.gridStyleMask.isEmpty { table.gridStyleMask = [] }
             table.enclosingScrollView?.borderType = .noBorder
             if !table.subviews.contains(where: { $0 is OnePlusTableLines }) {
