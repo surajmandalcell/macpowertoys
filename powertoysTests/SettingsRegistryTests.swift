@@ -46,7 +46,7 @@ final class SettingsRegistryTests: XCTestCase {
         }
     }
 
-    func testResetTouchesOnlyTheSelectedEntryAndRunsInjectedCallback() async {
+    func testResetTouchesOnlySelectedEntryAndSkipsLiveCallbackForCustomSuite() async {
         await withDefaults { defaults in
             defaults.set(2, forKey: "first")
             defaults.set(3, forKey: "second")
@@ -71,7 +71,7 @@ final class SettingsRegistryTests: XCTestCase {
     }
 
     func testPerToolEnablementResetPreservesDisabledSiblings() async throws {
-        await withDefaults { defaults in
+        try await withDefaults { defaults in
             defaults.set(["awake", "rclone"], forKey: "powertoys.disabledTools")
             let entries = SettingsRegistry.entries(toolIDs: ["awake", "rclone"])
                 .filter { $0.id.hasSuffix(".enabled") }
@@ -87,7 +87,7 @@ final class SettingsRegistryTests: XCTestCase {
     }
 
     func testCodableFieldResetPreservesSiblingSettings() async throws {
-        await withDefaults { defaults in
+        try await withDefaults { defaults in
             let stored = TextExtractorSettings(
                 speed: .accurate,
                 languageCorrection: false,
