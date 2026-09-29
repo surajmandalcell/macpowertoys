@@ -86,6 +86,12 @@ nonisolated struct DiskEntryTableRequest: Hashable, Sendable {
     let ascending: Bool
     let apparent: Bool
     let showsFileCount: Bool
+
+    func hasSamePresentation(as other: Self) -> Bool {
+        sourceID == other.sourceID && search == other.search && column == other.column &&
+            ascending == other.ascending && apparent == other.apparent &&
+            showsFileCount == other.showsFileCount
+    }
 }
 
 nonisolated struct DiskEntryTableRow: Identifiable, Sendable {
@@ -120,6 +126,8 @@ struct DiskEntryTable: View {
     @State private var ascending = false
     @State private var projections: [DiskEntryTableRequest: DiskEntryTableProjection] = [:]
     @State private var tableItems: [DiskEntryTableRequest: [OnePlusTableItem]] = [:]
+    @State private var displayedProjection = DiskEntryTableProjection.empty
+    @State private var displayedTableItems: [OnePlusTableItem] = []
 
     nonisolated static func sorted(_ entries: [DiskEntry], column: Int, ascending: Bool, apparent: Bool) -> [DiskEntry] {
         entries.sorted { left, right in
@@ -159,12 +167,15 @@ struct DiskEntryTable: View {
         let request = DiskEntryTableRequest(revision: revision, sourceID: sourceID, search: search,
                                             column: column, ascending: ascending, apparent: apparent,
                                             showsFileCount: showsFileCount)
-        let current = projections[request] ?? .empty
+        let cached = projections[request]
+        let keepsPreviousRows = displayedProjection.request?.hasSamePresentation(as: request) == true
+        let current = cached ?? (keepsPreviousRows ? displayedProjection : .empty)
+        let rows = tableItems[request] ?? (keepsPreviousRows ? displayedTableItems : [])
         let columns: [OnePlusGridColumn] = [.init("Name", width: 450), .init("Kind", width: 180),
             .init("Size", width: 120, trailing: true), .init("Modified", width: 180)] +
             (showsFileCount ? [.init("Files", width: 80, trailing: true)] : [])
         OnePlusNativeTable(columns: columns,
-                           rows: tableItems[request] ?? [], selection: $selection,
+                           rows: rows, selection: $selection,
                            sortColumn: column, ascending: ascending,
                            sort: { column = $0; ascending = $1 },
                            open: { $0.compactMap { current.entriesByID[$0] }.filter { $0.kind != .aggregate }.forEach(open) },
@@ -173,7 +184,13 @@ struct DiskEntryTable: View {
                            actions: { actions($0.sorted().compactMap { current.entriesByID[$0] }) })
             .thinScrollIndicators()
             .overlay {
-                if projections[request] == nil { ProgressView().controlSize(.small) }
+                if cached == nil && !keepsPreviousRows {
+                    OnePlusEmptyState(sourceID == "largest-files" ? "Loading largest files" : "Loading results",
+                                      systemImage: "arrow.triangle.2.circlepath",
+                                      caption: "Preparing file rows.") {
+                        ProgressView().controlSize(.small)
+                    }
+                }
                 else if current.rows.isEmpty { OnePlusEmptyState("No matching items", systemImage: "doc.text.magnifyingglass", caption: "Try another search or location.") }
             }
             .task(id: request) {
@@ -185,8 +202,15 @@ struct DiskEntryTable: View {
                     projections.removeAll(keepingCapacity: true)
                     tableItems.removeAll(keepingCapacity: true)
                 }
-                tableItems[request] = next.rows.map(\.tableItem)
-                projections[request] = next
+                let nextItems = next.rows.map(\.tableItem)
+                var transaction = Transaction()
+                transaction.animation = nil
+                withTransaction(transaction) {
+                    tableItems[request] = nextItems
+                    projections[request] = next
+                    displayedTableItems = nextItems
+                    displayedProjection = next
+                }
             }
     }
 }
@@ -256,7 +280,9 @@ struct DiskSelectionInspector: View {
                     path: entry.url.path,
                     folderCount: entry.children.reduce(0) { $0 + ($1.kind == .directory ? 1 : 0) },
                     children: Array(entry.children.sorted {
-                        $0.bytes(apparent: request.apparent) > $1.bytes(apparent: request.apparent)
+                        let left = $0.bytes(apparent: request.apparent)
+                        let right = $1.bytes(apparent: request.apparent)
+                        return left == right ? $0.id < $1.id : left > right
                     }.prefix(limit))
                 )
             }.value
@@ -280,16 +306,17 @@ struct DiskSelectionInspector: View {
     }
     private func facts(_ entry: DiskEntry, folderCount: Int) -> some View {
         VStack(spacing: 0) {
-            OnePlusKeyValueRow("Kind", value: DiskEntryPresentation.kind(entry))
-            OnePlusKeyValueRow("Files", value: entry.fileCount.formatted(), monospaced: true)
-            OnePlusKeyValueRow("Contents", value: "\(folderCount) folders")
-            if let availableBytes { OnePlusKeyValueRow("Free on disk", value: availableBytes.diskSize, monospaced: true) }
+            OnePlusKeyValueRow("Kind", value: DiskEntryPresentation.kind(entry)).monospacedDigit()
+            OnePlusKeyValueRow("Files", value: entry.fileCount.formatted()).monospacedDigit()
+            OnePlusKeyValueRow("Contents", value: "\(folderCount) folders").monospacedDigit()
+            if let availableBytes { OnePlusKeyValueRow("Free on disk", value: availableBytes.diskSize).monospacedDigit() }
         }
     }
     private func children(_ children: [DiskEntry]) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+        VStack(alignment: .leading, spacing: 0) {
             OnePlusColor.lineSoft.frame(height: 1)
             Text("Inside this folder").onePlusText(.caption)
+                .frame(height: OnePlusMetrics.controlHeight, alignment: .leading)
             ForEach(children) { child in
                 Button {
                     guard child.kind != .aggregate else { return }
@@ -386,7 +413,7 @@ struct DiskExplorerSettingsView: View {
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                 OnePlusCard {
                     OnePlusCardHeader("Scanning", systemImage: "folder")
-                    OnePlusSettingRow("Include hidden files", separator: false) {
+                    OnePlusSettingRow("Include hidden files", caption: "Include files and folders with hidden names.", separator: false) {
                         Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                     }
                 }
@@ -394,7 +421,8 @@ struct DiskExplorerSettingsView: View {
                     OnePlusCardHeader("Disk access", systemImage: "lock.shield")
                     OnePlusSettingRow(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked",
                                       caption: "A scan reports folders that macOS did not let Diskman read.", separator: false) {
-                        Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }.buttonStyle(OnePlusButtonStyle(.link))
+                        Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
+                            .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
                     }
                 }
             }
@@ -406,7 +434,7 @@ struct DiskmanAboutPage: View {
     var body: some View {
         OnePlusPage { OnePlusPageHeader(title: "About Diskman", subtitle: "Storage analysis and native disk tools") } content: {
             OnePlusCard {
-                OnePlusCardHeader("Diskman", systemImage: "internaldrive")
+                OnePlusCardHeader("Diskman")
                 VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                     Text("Find large folders and files, review removals, and manage physical disks with macOS tools.").onePlusText(.row)
                     Text("Space used counts allocated blocks once per hard-linked file. APFS clones can share blocks, so removed size may differ from recovered space.")
@@ -415,7 +443,7 @@ struct DiskmanAboutPage: View {
                 }.padding(OnePlusMetrics.cardPadding)
             }
             OnePlusCard {
-                OnePlusCardHeader("Keyboard shortcuts", systemImage: "keyboard")
+                OnePlusCardHeader("Keyboard shortcuts")
                 VStack(spacing: 0) {
                     OnePlusKeyValueRow("Rescan", value: "⌘R")
                     OnePlusKeyValueRow("Search Results", value: "⌘F")

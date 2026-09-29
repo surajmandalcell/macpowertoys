@@ -515,8 +515,18 @@ struct DiskSunburstView: View {
             guard total.isFinite, total > 0 else { return }
             var angle = start
             let limit = depth == 0 ? 24 : 12
-            let selection = measure.displayedChildren(in: parent, apparent: apparent,
+            let selection: (shown: [DiskEntry], hidden: [DiskEntry])
+            if depth == 0 {
+                let ranked = parent.children.sorted {
+                    let left = measure.weight($0, apparent: apparent)
+                    let right = measure.weight($1, apparent: apparent)
+                    return left == right ? $0.id < $1.id : left > right
+                }
+                selection = (Array(ranked.prefix(limit)), Array(ranked.dropFirst(limit)))
+            } else {
+                selection = measure.displayedChildren(in: parent, apparent: apparent,
                                                       limit: limit, scanComplete: scanComplete)
+            }
             let inner = radius * (0.30 + CGFloat(depth) * band)
             let outer = radius * (0.30 + CGFloat(depth + 1) * band) - 2
             guard inner.isFinite, outer.isFinite, inner >= 0, outer > inner else { return }
@@ -551,7 +561,7 @@ struct DiskSunburstView: View {
                                               label: "Other items", detail: detail,
                                               start: angle, end: end,
                                               inner: inner, outer: outer,
-                                              color: OnePlusColor.storageSeries.last!))
+                                              color: OnePlusColor.muted))
             }
         }
         add(root, start: -.pi / 2, end: 3 * .pi / 2, depth: 0, colorIndex: 0)
