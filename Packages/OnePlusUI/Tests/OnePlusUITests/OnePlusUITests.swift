@@ -80,6 +80,7 @@ final class OnePlusUITests: XCTestCase {
         }
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.appearance = NSAppearance(named: .aqua)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
         XCTAssertFalse(try XCTUnwrap(window.standardWindowButton(.zoomButton)?.isHidden))
     }
 
