@@ -33,6 +33,7 @@ final class DiagnosticsMenuPanels: NSObject {
     static let shared = DiagnosticsMenuPanels()
     weak var mainWindow: NSWindow?
     private let popovers = NSHashTable<NSPopover>.weakObjects()
+    private var openTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -40,18 +41,47 @@ final class DiagnosticsMenuPanels: NSObject {
                                                name: NSPopover.didShowNotification, object: nil)
     }
 
-    deinit { NotificationCenter.default.removeObserver(self) }
+    isolated deinit { openTask?.cancel(); NotificationCenter.default.removeObserver(self) }
 
     @objc private func didShow(_ notification: Notification) {
         if let popover = notification.object as? NSPopover { popovers.add(popover) }
     }
 
     func close() {
+        openTask?.cancel(); openTask = nil
         // The native menu controllers own their popovers. Keep only weak references.
         for popover in popovers.allObjects where popover.isShown && !popover.isDetached {
             popover.performClose(nil)
         }
         if let mainWindow, mainWindow.isVisible { mainWindow.close() }
+    }
+
+    func open(_ panel: DiagnosticsPanel, tab: String?) {
+        close()
+        openTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { if !Task.isCancelled { self.openTask = nil } }
+            var clicked = false
+            // Status items can still be attaching when a background URL arrives.
+            // This request has a two-second deadline and no idle work.
+            for _ in 0..<40 {
+                guard !Task.isCancelled else { return }
+                if !clicked, let button = panel.statusButton {
+                    button.performClick(nil)
+                    clicked = true
+                }
+                let shown = panel == .main ? self.mainWindow?.isVisible == true
+                    : self.popovers.allObjects.contains { $0.isShown }
+                if clicked && shown {
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
+                    panel.selectTab(tab)
+                    return
+                }
+                do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
+            }
+            LogManager.shared.warning("Panel did not open: \(panel.rawValue)", source: "DeepLinkHandler")
+        }
     }
 }
 

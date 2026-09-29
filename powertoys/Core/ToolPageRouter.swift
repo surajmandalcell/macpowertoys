@@ -127,27 +127,37 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
     }
 
     @MainActor
-    @discardableResult func open() -> Bool {
+    var statusButton: NSStatusBarButton? {
         func buttons(in view: NSView) -> [NSStatusBarButton] {
             if let button = view as? NSStatusBarButton { return [button] }
             return view.subviews.flatMap { buttons(in: $0) }
         }
         let candidates = NSApp.windows.flatMap { $0.contentView.map(buttons(in:)) ?? [] }
+        return matchingButton(in: candidates)
+    }
+
+    @MainActor
+    func matchingButton(in candidates: [NSStatusBarButton]) -> NSStatusBarButton? {
         let button = candidates.first { button in
             switch self {
             case .systemMonitor: button.accessibilityIdentifier() == "SystemMonitorMenuBarItem"
+                || button.identifier?.rawValue == "SystemMonitorMenuBarItem"
             case .portman: button.accessibilityIdentifier() == "portman.statusItem"
             case .main:
                 // The main item is owned by SwiftUI, so its label is an accessibility child.
                 Self.isMainLabel(button) || (button.accessibilityChildren()?.contains(where: Self.isMainLabel) ?? false)
             }
         }
-        guard let button else {
-            LogManager.shared.warning("Panel status item is unavailable: \(rawValue)", source: "DeepLinkHandler")
-            return false
+        if let button { return button }
+        guard self == .main else { return nil }
+        // SwiftUI can flatten its label into an image without copying its AX name.
+        // All other status items have identifiers owned by the native controllers.
+        let remaining = candidates.filter {
+            $0.identifier?.rawValue.hasPrefix("individual-menu.") != true
+                && DiagnosticsPanel.systemMonitor.matchingButton(in: [$0]) == nil
+                && DiagnosticsPanel.portman.matchingButton(in: [$0]) == nil
         }
-        button.performClick(nil)
-        return true
+        return remaining.count == 1 ? remaining[0] : nil
     }
 
     @MainActor private static func isMainLabel(_ value: Any) -> Bool {
