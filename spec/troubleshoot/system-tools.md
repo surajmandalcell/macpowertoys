@@ -387,23 +387,20 @@
 
 ## Input Devices Card Parity
 
-- **Symptom:** A mouse card is taller than a trackpad card on the same page, and
-  a setting such as mouse horizontal scrolling looks missing.
-- **Cause:** Device cards gated each detail row behind `if let`, so a device that
-  reports fewer HID properties drew fewer rows. Scroll profile cards packed their
-  toggles into a two-column grid, so the extra mouse smooth-wheel toggle added a
-  row and the narrow columns truncated `Reverse horizontal` and
-  `Horizontal scrolling` until they read as one control.
-- **Invariant:** Both card kinds keep one fixed anatomy. A device card always
-  renders the same eleven detail rows and prints an em dash for a value macOS
-  does not report. Both scroll profile cards render the same six labeled rows,
-  including horizontal scrolling and smooth wheel steps for the mouse and the
-  trackpad. Never gate a row on the presence of data or on the device kind, and
-  never place two settings side by side in one card row.
-- **Check:** `testMouseAndTrackpadDeviceCardsShareOneHeight` and
-  `testMouseAndTrackpadProfileCardsShareOneHeight` host each card at 340pt and
-  compare `fittingSize.height`. A fully reported mouse and an all-nil trackpad
-  must measure the same height.
+- **Symptom:** Device cards show false `Not reported` values, long names clip,
+  or one scrolling profile stays below the fixed-height window.
+- **Cause:** A fixed eleven-row device anatomy treated absent HID data as useful
+  content, while three narrow device columns and stacked profile cards used the
+  available space poorly.
+- **Invariant:** Omit every device metadata row whose value is absent. Do not
+  show a battery row for the built-in keyboard. Use two top-aligned device-card
+  columns so long titles remain readable. In regular density, show Mouse and
+  Trackpad profile cards in equal columns. In compact density, stack the same
+  cards. Both profiles keep the same six labeled setting rows.
+- **Check:** `testDeviceCardsOmitUnavailableValues` covers sparse and detailed
+  devices. `testMouseAndTrackpadProfileCardsShareOneHeight` compares both
+  profile cards at 340pt. Inspect both profiles and the fixed Scroll device
+  footer in the signed full window and compact panel.
 
 ## Input Devices Metadata Clipping
 
@@ -411,12 +408,12 @@
   `3...×` at the normal Input Devices window width.
 - **Cause:** Each metadata item occupied half a card while its fixed-width label
   and value also sat side by side, leaving too little width for the value.
-- **Invariant:** Keep two equal card columns and eleven metadata fields, but
-  stack each field's label above its value. Keep the full value in its
+- **Invariant:** Keep two equal, top-aligned card columns. Use full-width
+  key-value rows and omit absent fields. Keep the complete value in its
   accessibility label and native tooltip when a long identifier is truncated.
-- **Check:** Inspect both cards in the current signed app at 980pt. Values such
-  as Vendor, Device ID, Firmware, and Scroll speed remain readable, and both
-  cards stay equal in height.
+- **Check:** Inspect the cards in the current signed app. Values such as Vendor,
+  Device ID, Firmware, and Scroll speed remain readable, and short cards begin
+  on the same top edge as detailed cards.
 
 ## Input Devices Scroll Settings Ownership
 
@@ -462,7 +459,10 @@
 - **Invariant:** Storage, Cleanup, Applications, Mole, and History use
   `OnePlusPage(scrolls: false)`. Search, table headers, inspectors, actions, and
   status stay fixed. Only a lazy row stack inside the list card scrolls. Format
-  application size and last-used metadata on a utility task before rows render.
+  application size and last-used metadata on utility tasks. Recursively sum the
+  allocated size of each bundle without following symbolic links. Cache the
+  result and the real `NSWorkspace` icon, then fill each row as it arrives. Show
+  a muted dash only while loading, never `Unknown` or `Zero KB` as a final size.
 - **Invariant:** Before a scan, center the cleanup icon and message across the
   full body width. A leading stack must not collapse the empty state to its
   intrinsic width.
