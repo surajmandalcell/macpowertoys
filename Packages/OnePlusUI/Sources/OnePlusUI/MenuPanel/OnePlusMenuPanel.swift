@@ -147,7 +147,7 @@ public struct OnePlusMenuTile<Content: View>: View {
         content.padding(.horizontal, 8).padding(.vertical, height == 70 ? 7 : 6)
             .frame(width: OnePlusMenuMetrics.columnWidth(span: span), height: height, alignment: .topLeading)
             .background(hover && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
-            .overlay { if textured { OnePlusDitherTexture(opacity: 0.11) } }
+            .overlay { if textured { OnePlusDitherTexture(strength: 0.11) } }
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
     }
