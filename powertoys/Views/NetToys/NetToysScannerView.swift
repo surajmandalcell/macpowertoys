@@ -72,6 +72,7 @@ final class NetToysScannerViewModel {
     private static let filterKey = "nettoys.scanner.filter"
     private static let searchKey = "nettoys.scanner.search"
     private static let sortKey = "nettoys.scanner.sort"
+    private static let followsActiveNetworkKey = "nettoys.scanner.follows-active-network"
 
     private enum SortField: String, Codable {
         case address, status, response, ttl, loss, hostname, mac, vendor
@@ -84,7 +85,12 @@ final class NetToysScannerViewModel {
     }
 
     var targetInput: String {
-        didSet { defaults.set(targetInput, forKey: Self.targetKey) }
+        didSet {
+            defaults.set(targetInput, forKey: Self.targetKey)
+            guard !isApplyingActiveNetwork else { return }
+            targetFollowsActiveNetwork = false
+            defaults.set(false, forKey: Self.followsActiveNetworkKey)
+        }
     }
     var portInput = "22, 80, 443" {
         didSet { defaults.set(portInput, forKey: Self.portKey) }
@@ -144,6 +150,8 @@ final class NetToysScannerViewModel {
     private var scanTask: Task<Void, Never>?
     private var scanIdentifier: UUID?
     private var resultIndices: [String: Int] = [:]
+    private var targetFollowsActiveNetwork: Bool
+    private var isApplyingActiveNetwork = false
 
     init(
         archive: NetToysScanArchive = NetToysScannerStore.archive(),
@@ -151,10 +159,10 @@ final class NetToysScannerViewModel {
     ) {
         self.defaults = defaults
         let latestRun = archive.runs.last
-        targetInput = defaults.string(forKey: Self.targetKey)
-            ?? latestRun?.target
-            ?? LocalIPv4Network.active()?.cidr
-            ?? "192.168.1.0/24"
+        let restoredTarget = defaults.string(forKey: Self.targetKey) ?? latestRun?.target
+        targetInput = restoredTarget ?? "192.168.1.0/24"
+        targetFollowsActiveNetwork = defaults.object(forKey: Self.followsActiveNetworkKey) as? Bool
+            ?? restoredTarget.map(Self.isSingleCIDR) ?? true
         results = latestRun?.results ?? []
         lastDuration = latestRun?.duration
         completed = results.count
@@ -201,6 +209,30 @@ final class NetToysScannerViewModel {
             if !restored.isEmpty { sortOrder = restored }
         }
         replaceResults(results)
+    }
+
+    var hasNoResponsiveHosts: Bool {
+        !isScanning && !results.isEmpty && aliveResultCount == 0
+    }
+
+    func useActiveNetwork(_ cidr: String) {
+        isApplyingActiveNetwork = true
+        targetInput = cidr
+        isApplyingActiveNetwork = false
+        targetFollowsActiveNetwork = true
+        defaults.set(true, forKey: Self.followsActiveNetworkKey)
+    }
+
+    func updateActiveNetwork(_ network: LocalIPv4Network) {
+        guard targetFollowsActiveNetwork else { return }
+        useActiveNetwork(network.cidr)
+    }
+
+    private static func isSingleCIDR(_ value: String) -> Bool {
+        let parts = value.split(separator: "/", omittingEmptySubsequences: false)
+        return parts.count == 2
+            && IPv4Address(String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+            && UInt8(parts[1]).map { $0 <= 32 } == true
     }
 
     private static func savedSort(
@@ -653,6 +685,7 @@ struct NetToysScannerView: View {
     @State private var pendingRemoval = Set<String>()
     @State private var confirmRemoval = false
     @State private var networkSubtitle = "No active network"
+    @State private var activeNetworkCIDR: String?
     @State private var showRandomTargets = false
     @State private var showStatistics = false
     @State private var detailResult: NetToysScanResult?
@@ -725,11 +758,11 @@ struct NetToysScannerView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             neighborService.refresh()
-            refreshNetworkSubtitle()
+            Task { await refreshNetworkContext() }
         }
-        .onAppear {
+        .task {
             applyPrefill(DeepLinkHandler.shared.takeNetToysPrefill())
-            refreshNetworkSubtitle()
+            await refreshNetworkContext()
         }
         .background { Button("Find results") { searchFocus += 1 }.keyboardShortcut("f").hidden() }
         .confirmationDialog("Remove selected results?", isPresented: $confirmRemoval, titleVisibility: .visible) {
@@ -758,9 +791,10 @@ struct NetToysScannerView: View {
                 .frame(width: OnePlusMetrics.controlColumn)
                 .accessibilityLabel("TCP ports")
             OnePlusActionMenu(model.isImporting ? "Importing..." : "Presets") {
-                Button("Use Local Subnet") {
-                    if let network = LocalIPv4Network.active() { model.targetInput = network.cidr }
+                Button(activeNetworkCIDR.map { "Local Subnet · \($0)" } ?? "Local Subnet") {
+                    if let activeNetworkCIDR { model.useActiveNetwork(activeNetworkCIDR) }
                 }
+                .disabled(activeNetworkCIDR == nil)
                 Button("Random Addresses…") { showRandomTargets = true }
                 Button("Import Target List…") { model.importTargets() }
                     .disabled(model.isScanning || model.isImporting)
@@ -877,7 +911,7 @@ struct NetToysScannerView: View {
 
     private var resultsTable: some View {
         Table(
-            model.visibleResults,
+            model.hasNoResponsiveHosts ? [] : model.visibleResults,
             selection: $model.selection,
             sortOrder: $model.sortOrder,
             columnCustomization: $columnCustomization
@@ -1066,11 +1100,17 @@ struct NetToysScannerView: View {
         }
         .onePlusNativeTable()
         .overlay {
-            if model.visibleResults.isEmpty && !model.isScanning {
-                OnePlusEmptyState(model.results.isEmpty ? "Ready to scan" : "No matching hosts",
-                                  systemImage: "network", caption: model.results.isEmpty
-                                  ? "Enter targets and ports, then press Return to scan."
-                                  : "Change the filter or search to show more results.")
+            if (model.visibleResults.isEmpty || model.hasNoResponsiveHosts) && !model.isScanning {
+                OnePlusEmptyState(
+                    model.results.isEmpty ? "Ready to scan"
+                        : model.hasNoResponsiveHosts ? "No hosts responded" : "No matching hosts",
+                    systemImage: "network",
+                    caption: model.results.isEmpty
+                        ? "Enter targets and ports, then press Return to scan."
+                        : model.hasNoResponsiveHosts
+                            ? "Check that the target matches the current network, then scan again."
+                            : "Change the filter or search to show more results."
+                )
             }
         }
     }
@@ -1088,7 +1128,9 @@ struct NetToysScannerView: View {
                 Text("·")
                 Text("\(model.aliveResultCount) alive")
             } else {
-                Text("\(model.visibleResults.count) shown")
+                Text(model.hasNoResponsiveHosts
+                    ? "\(model.results.count) scanned"
+                    : "\(model.visibleResults.count) shown")
                 Text("·")
                 Text("\(model.aliveResultCount) alive")
                 Text("·")
@@ -1114,11 +1156,21 @@ struct NetToysScannerView: View {
         }
     }
 
-    private func refreshNetworkSubtitle() {
-        guard let network = LocalIPv4Network.active() else { networkSubtitle = "No active network"; return }
-        let status = NetToysConfigurationStore.status()
+    private func refreshNetworkContext() async {
+        let snapshot = await Task.detached(priority: .utility) {
+            (LocalIPv4Network.active(), NetToysConfigurationStore.status())
+        }.value
+        guard !Task.isCancelled else { return }
+        guard let network = snapshot.0 else {
+            activeNetworkCIDR = nil
+            networkSubtitle = "No active network"
+            return
+        }
+        let status = snapshot.1
         let identity = status?.network.map { NetworkIdentity(networkID: $0.networkID, ssid: $0.ssid) }
         let ssid = status?.ssidAccess == .allowed && identity?.interfaceName == network.interfaceName ? identity?.ssid : nil
+        activeNetworkCIDR = network.cidr
+        model.updateActiveNetwork(network)
         networkSubtitle = [network.interfaceName, ssid, network.cidr].compactMap { $0 }.joined(separator: " · ")
     }
 

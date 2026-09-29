@@ -42,6 +42,36 @@ final class NetToysScannerLayoutTests: XCTestCase {
         XCTAssertEqual(model.visibleResults.map(\.id), [printer.id])
         XCTAssertEqual(model.aliveResultCount, 1)
         XCTAssertEqual(model.openPortResultCount, 1)
+        model.applyScanUpdate(NetToysScanResult(
+            address: printer.address, isReachable: false, responseMilliseconds: nil,
+            hostname: printer.hostname, macAddress: nil, vendor: nil, openPorts: []
+        ))
+        XCTAssertTrue(model.hasNoResponsiveHosts)
+    }
+
+    func testScannerDefaultTargetFollowsActiveSubnetUntilUserEdits() throws {
+        let suite = "NetToysScannerLayoutTests.network.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("192.168.0.1/24", forKey: "nettoys.scanner.target")
+        let model = NetToysScannerViewModel(archive: NetToysScanArchive(), defaults: defaults)
+        let home = try XCTUnwrap(LocalIPv4Network(
+            interfaceName: "en0", address: "192.168.1.23", netmask: "255.255.255.0"
+        ))
+
+        model.updateActiveNetwork(home)
+
+        XCTAssertEqual(model.targetInput, "192.168.1.0/24")
+        model.targetInput = "10.0.0.8"
+        let office = try XCTUnwrap(LocalIPv4Network(
+            interfaceName: "en0", address: "172.16.4.9", netmask: "255.255.255.0"
+        ))
+        model.updateActiveNetwork(office)
+        XCTAssertEqual(model.targetInput, "10.0.0.8")
+
+        let restored = NetToysScannerViewModel(archive: NetToysScanArchive(), defaults: defaults)
+        restored.updateActiveNetwork(office)
+        XCTAssertEqual(restored.targetInput, "10.0.0.8")
     }
 
     func testDefaultScannerColumnsStayInsideFixedViewport() async throws {
