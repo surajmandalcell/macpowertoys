@@ -6,8 +6,8 @@ import SwiftUI
 @Observable
 @MainActor
 final class NetToysWiFiPriorityViewModel {
-    var configuration = NetToysConfigurationStore.load()
-    var helperStatus = NetToysConfigurationStore.status()
+    var configuration = NetToysConfiguration()
+    var helperStatus: NetToysHelperStatus?
     var savedNetworks: [String] = []
     var errorMessage: String?
 
@@ -16,8 +16,23 @@ final class NetToysWiFiPriorityViewModel {
     }
 
     func refresh() async {
-        helperStatus = NetToysConfigurationStore.status()
-        savedNetworks = await WiFiNetworkController.preferredNetworks()
+        let stored = Task.detached(priority: .utility) {
+            (NetToysConfigurationStore.load(), NetToysConfigurationStore.status())
+        }
+        let networks = await WiFiNetworkController.preferredNetworks()
+        let (configuration, status) = await stored.value
+        guard !Task.isCancelled else { return }
+        self.configuration = configuration
+        helperStatus = status
+        savedNetworks = networks
+    }
+
+    func refreshStatus() async {
+        let status = await Task.detached(priority: .utility) {
+            NetToysConfigurationStore.status()
+        }.value
+        guard !Task.isCancelled else { return }
+        helperStatus = status
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -64,7 +79,7 @@ struct NetToysWiFiPriorityView: View {
     }
 
     var body: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "Wi-Fi Priority",
                               subtitle: model.helperStatus?.network?.displayName ?? "No active network") {
                 Toggle("Enable Wi-Fi Priority", isOn: enabled)
@@ -82,7 +97,7 @@ struct NetToysWiFiPriorityView: View {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
                 guard !Task.isCancelled else { return }
-                model.helperStatus = NetToysConfigurationStore.status()
+                await model.refreshStatus()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -129,11 +144,19 @@ struct NetToysWiFiPriorityView: View {
                 OnePlusEmptyState("Choose your fallback networks", systemImage: "wifi",
                                   caption: "Add at least two saved networks in failover order.")
             } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(model.configuration.wifiPriority.ssids, id: \.self) { ssid in priorityRow(ssid) }
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(model.configuration.wifiPriority.ssids, id: \.self) { ssid in
+                            priorityRow(ssid)
+                            if ssid != model.configuration.wifiPriority.ssids.last { OnePlusRule() }
+                        }
+                    }
                 }
+                .onePlusScrollIndicators()
+                .frame(maxHeight: .infinity)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func priorityRow(_ ssid: String) -> some View {
@@ -141,22 +164,21 @@ struct NetToysWiFiPriorityView: View {
         let isCurrent = model.helperStatus?.network?.ssid == ssid
         return HStack(spacing: OnePlusMetrics.navIconGap) {
             Text("\(index + 1)").onePlusText(.mono).frame(width: OnePlusMetrics.controlHeight)
-            Text(ssid).onePlusText(.row).lineLimit(1).help(ssid)
+            Text(ssid).onePlusText(.row).lineLimit(1)
             Spacer()
             OnePlusStatus(isCurrent ? "Connected" : "Saved", state: isCurrent ? .online : .offline)
             Button { model.move(ssid, by: -1) } label: { Image(systemName: "chevron.up") }
                 .buttonStyle(OnePlusButtonStyle(.icon)).disabled(index == 0)
-                .help("Move up").accessibilityLabel("Move \(ssid) up")
+                .accessibilityLabel("Move \(ssid) up")
             Button { model.move(ssid, by: 1) } label: { Image(systemName: "chevron.down") }
                 .buttonStyle(OnePlusButtonStyle(.icon))
                 .disabled(index == model.configuration.wifiPriority.ssids.count - 1)
-                .help("Move down").accessibilityLabel("Move \(ssid) down")
+                .accessibilityLabel("Move \(ssid) down")
             Button { pendingRemoval = ssid } label: { Image(systemName: "minus.circle") }
-                .buttonStyle(OnePlusButtonStyle(.icon)).help("Remove network")
+                .buttonStyle(OnePlusButtonStyle(.icon))
                 .accessibilityLabel("Remove \(ssid)")
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.settingRow)
-        .overlay(alignment: .bottom) { OnePlusRule() }
         .contextMenu {
             Button("Move Up") { model.move(ssid, by: -1) }.disabled(index == 0)
             Button("Move Down") { model.move(ssid, by: 1) }

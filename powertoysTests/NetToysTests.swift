@@ -325,6 +325,37 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(repaired.first { $0.network == "Guest Wi-Fi" }?.unavailableDuration, 0)
     }
 
+    func testHistoryPresentationFiltersAndFormatsRowsBeforeRendering() {
+        let now = Date()
+        let presentation = netToysHistoryPresentation(
+            events: [
+                NetworkTransitionEvent(
+                    networkID: "en0|192.168.1.1", ssid: "Office Wi-Fi",
+                    date: now.addingTimeInterval(-60),
+                    changes: [.internet(from: .reachable, to: .unreachable)]
+                ),
+                NetworkTransitionEvent(
+                    networkID: "en0|192.168.1.2", ssid: "Guest Wi-Fi",
+                    date: now.addingTimeInterval(-120),
+                    changes: [.internet(from: .unreachable, to: .reachable)]
+                )
+            ],
+            runs: [],
+            range: .day,
+            query: "office",
+            currentState: .unreachable,
+            currentNetwork: "Office Wi-Fi"
+        )
+
+        XCTAssertEqual(presentation.events.map(\.network), ["Office Wi-Fi"])
+        XCTAssertEqual(presentation.events.first?.isOutage, true)
+        XCTAssertFalse(presentation.events.first?.time.isEmpty ?? true)
+        XCTAssertFalse(presentation.availability.startLabel.isEmpty)
+        XCTAssertTrue(presentation.availability.summaries.contains {
+            $0.summary.network == "Office Wi-Fi" && !$0.label.isEmpty
+        })
+    }
+
     func testNetworkIdentityUsesSSIDWithRouteFallback() {
         XCTAssertEqual(
             NetworkIdentity(networkID: "en0|192.168.1.1", ssid: "Home Wi-Fi").displayName,

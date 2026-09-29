@@ -5,7 +5,7 @@ import OnePlusUI
 import ServiceManagement
 import SwiftUI
 
-enum NetToysHistoryRange: TimeInterval, CaseIterable, Identifiable {
+enum NetToysHistoryRange: TimeInterval, CaseIterable, Identifiable, Sendable {
     case day = 86_400
     case week = 604_800
     case month = 2_592_000
@@ -53,6 +53,9 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     var helperStatus: NetToysHelperStatus?
     var range = NetToysHistoryRange.day
     var searchText = ""
+    var visibleEventRows: [NetToysHistoryEventRow] = []
+    var recentScanRows: [NetToysHistoryScanRow] = []
+    var availability: NetToysAvailabilityPresentation?
     var recordsHistory = true
     var scanArchive = NetToysScanArchive()
     var isLoading = true
@@ -70,19 +73,6 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         locationAuthorizationStatus = locationManager.authorizationStatus
         super.init()
         locationManager.delegate = self
-    }
-
-    var visibleEvents: [NetworkTransitionEvent] {
-        let cutoff = Date().addingTimeInterval(-range.rawValue)
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return history.events.reversed().filter { event in
-            guard event.date >= cutoff else { return false }
-            guard !query.isEmpty else { return true }
-            return event.displayName.localizedCaseInsensitiveContains(query)
-                || event.changes.map(Self.description).contains {
-                    $0.localizedCaseInsensitiveContains(query)
-                }
-        }
     }
 
     var hasStoredHistory: Bool {
@@ -121,6 +111,40 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         scanArchive = snapshot.scanArchive
         locationAuthorizationStatus = locationManager.authorizationStatus
         isLoading = false
+        await rebuildPresentation()
+    }
+
+    func setRange(_ range: NetToysHistoryRange) {
+        self.range = range
+        Task { await rebuildPresentation() }
+    }
+
+    func setSearchText(_ searchText: String) {
+        self.searchText = searchText
+        Task { await rebuildPresentation() }
+    }
+
+    func rebuildPresentation() async {
+        let events = history.events
+        let runs = scanArchive.runs
+        let range = range
+        let query = searchText
+        let currentState = helperStatus?.network?.internet ?? .unknown
+        let currentNetwork = helperStatus?.network.map { $0.ssid ?? $0.displayName }
+        let presentation = await Task.detached(priority: .utility) {
+            netToysHistoryPresentation(
+                events: events,
+                runs: runs,
+                range: range,
+                query: query,
+                currentState: currentState,
+                currentNetwork: currentNetwork
+            )
+        }.value
+        guard !Task.isCancelled, self.range == range, searchText == query else { return }
+        visibleEventRows = presentation.events
+        recentScanRows = presentation.scans
+        availability = presentation.availability
     }
 
     func resolveSSIDAccess(forceSettings: Bool = false) {
@@ -191,6 +215,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
             history = NetworkHistory()
             scanArchive = NetToysScanArchive()
             isLoading = false
+            Task { await rebuildPresentation() }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -200,7 +225,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "NetToys Network History.csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        let rows = visibleEvents.map { event in
+        let rows = visibleEventRows.map(\.event).map { event in
             [
                 Self.exportDateFormatter.string(from: event.date),
                 event.ssid ?? "",
@@ -248,13 +273,150 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
     }
 }
 
+nonisolated struct NetToysHistoryEventRow: Identifiable, Sendable {
+    let id: String
+    let event: NetworkTransitionEvent
+    let message: String
+    let network: String
+    let time: String
+    let isOutage: Bool
+}
+
+nonisolated struct NetToysHistoryScanRow: Identifiable, Sendable {
+    var id: UUID { run.id }
+    let run: NetToysScanRun
+    let detail: String
+    let time: String
+}
+
+nonisolated struct NetToysAvailabilityPresentation: Sendable {
+    let start: Date
+    let range: TimeInterval
+    let startLabel: String
+    let summaries: [NetToysAvailabilityRow]
+    let outages: [NetToysOutageRow]
+}
+
+nonisolated struct NetToysAvailabilityRow: Identifiable, Sendable {
+    var id: String { summary.network }
+    let summary: NetworkAvailabilitySummary
+    let label: String
+}
+
+nonisolated struct NetToysOutageRow: Identifiable, Sendable {
+    var id: String { outage.id }
+    let outage: NetworkAvailabilitySegment
+    let title: String
+    let time: String
+}
+
+nonisolated struct NetToysHistoryPresentation: Sendable {
+    let events: [NetToysHistoryEventRow]
+    let scans: [NetToysHistoryScanRow]
+    let availability: NetToysAvailabilityPresentation
+}
+
+nonisolated func netToysHistoryPresentation(
+    events: [NetworkTransitionEvent],
+    runs: [NetToysScanRun],
+    range: NetToysHistoryRange,
+    query: String,
+    currentState: NetworkReachability,
+    currentNetwork: String?
+) -> NetToysHistoryPresentation {
+    let end = Date()
+    let start = end.addingTimeInterval(-range.rawValue)
+    let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let visibleEvents = events.reversed().filter { event in
+        guard event.date >= start else { return false }
+        guard !query.isEmpty else { return true }
+        return event.displayName.localizedCaseInsensitiveContains(query)
+            || event.changes.map(NetToysHistoryViewModel.description).contains {
+                $0.localizedCaseInsensitiveContains(query)
+            }
+    }
+    let eventRows = visibleEvents.map { event in
+        let descriptions = event.changes.map(NetToysHistoryViewModel.description)
+        return NetToysHistoryEventRow(
+            id: "\(event.date.timeIntervalSinceReferenceDate)|\(event.networkID)|\(descriptions.joined(separator: "|"))",
+            event: event,
+            message: descriptions.joined(separator: " · "),
+            network: event.displayName,
+            time: event.date.formatted(date: .abbreviated, time: .standard),
+            isOutage: event.changes.contains { change in
+                switch change {
+                case .network(_, let to): to == "disconnected"
+                case .gateway(_, let to), .internet(_, let to): to == .unreachable
+                }
+            }
+        )
+    }
+    let scanRows = runs.reversed().filter { $0.date >= start }.prefix(10).map { run in
+        NetToysHistoryScanRow(
+            run: run,
+            detail: "\(run.results.count) results  ·  \(run.results.filter(\.isReachable).count) alive  ·  ports \(run.ports.map(String.init).joined(separator: ", "))  ·  \(run.duration.formatted(.number.precision(.fractionLength(1)))) s",
+            time: run.date.formatted(date: .abbreviated, time: .shortened)
+        )
+    }
+    let summaries = networkAvailabilitySummaries(
+        events: events,
+        from: start,
+        to: end,
+        currentState: currentState,
+        currentNetwork: currentNetwork
+    )
+    let outages = summaries.flatMap(\.outages).sorted { $0.start > $1.start }
+    return NetToysHistoryPresentation(
+        events: eventRows,
+        scans: Array(scanRows),
+        availability: NetToysAvailabilityPresentation(
+            start: start,
+            range: range.rawValue,
+            startLabel: range == .day
+                ? start.formatted(date: .omitted, time: .shortened)
+                : start.formatted(date: .abbreviated, time: .omitted),
+            summaries: summaries.map {
+                NetToysAvailabilityRow(summary: $0, label: netToysSummaryLabel($0))
+            },
+            outages: outages.map { outage in
+                let ongoing = outage.end == end
+                return NetToysOutageRow(
+                    outage: outage,
+                    title: ongoing
+                        ? "\(outage.network) has been unavailable for \(netToysDurationLabel(outage.duration))"
+                        : "\(outage.network) was unavailable for \(netToysDurationLabel(outage.duration))",
+                    time: ongoing
+                        ? "Since \(outage.start.formatted(date: .abbreviated, time: .shortened))"
+                        : "\(outage.start.formatted(date: .abbreviated, time: .shortened)) to \(outage.end.formatted(date: .omitted, time: .shortened))"
+                )
+            }
+        )
+    )
+}
+
+nonisolated private func netToysSummaryLabel(_ summary: NetworkAvailabilitySummary) -> String {
+    guard let uptime = summary.uptime else { return "No availability data" }
+    let outageText = summary.outages.count == 1 ? "1 outage" : "\(summary.outages.count) outages"
+    return "\(uptime.formatted(.percent.precision(.fractionLength(1)))) uptime  ·  \(outageText)  ·  \(netToysDurationLabel(summary.unavailableDuration)) down"
+}
+
+nonisolated private func netToysDurationLabel(_ duration: TimeInterval) -> String {
+    guard duration >= 1 else { return "0 secs" }
+    return Duration.seconds(max(1, duration.rounded()))
+        .formatted(.units(
+            allowed: [.hours, .minutes, .seconds],
+            width: .abbreviated,
+            maximumUnitCount: 2
+        ))
+}
+
 struct NetToysHistoryView: View {
     @State private var model = NetToysHistoryViewModel()
     @State private var confirmClear = false
     @State private var searchFocus = 0
 
     var body: some View {
-        OnePlusPage {
+        OnePlusPage(scrolls: false) {
             OnePlusPageHeader(
                 title: "Network History",
                 subtitle: model.helperStatus?.network?.displayName ?? "Waiting for the helper"
@@ -310,17 +472,17 @@ struct NetToysHistoryView: View {
             OnePlusCard {
                 OnePlusCardHeader("Current status")
                 HStack(spacing: 0) {
-                statusCard(
-                    title: "Gateway",
-                    state: model.helperStatus?.network?.gateway ?? .unknown,
-                    symbol: "router"
-                )
+                    statusCard(
+                        title: "Gateway",
+                        state: model.helperStatus?.network?.gateway ?? .unknown,
+                        symbol: "router"
+                    )
                     OnePlusRule(vertical: true)
-                statusCard(
-                    title: "Internet",
-                    state: model.helperStatus?.network?.internet ?? .unknown,
-                    symbol: "globe"
-                )
+                    statusCard(
+                        title: "Internet",
+                        state: model.helperStatus?.network?.internet ?? .unknown,
+                        symbol: "globe"
+                    )
                     OnePlusRule(vertical: true)
                     VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                         Text("Network").onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
@@ -363,24 +525,29 @@ struct NetToysHistoryView: View {
         OnePlusCard {
             OnePlusCardHeader("Network uptime") {
                 OnePlusSegmented(choices: NetToysHistoryRange.allCases.map { ($0, $0.title) },
-                                 selection: $model.range).fixedSize()
+                                 selection: Binding(get: { model.range }, set: model.setRange)).fixedSize()
             }
-                NetworkUptimeTimeline(
-                    events: model.history.events,
-                    range: model.range.rawValue,
-                    currentState: model.helperStatus?.network?.internet ?? .unknown,
-                    currentNetwork: model.helperStatus?.network.map {
-                        $0.ssid ?? $0.displayName
-                    }
-                ).padding(OnePlusMetrics.cardPadding)
+            if let availability = model.availability {
+                ScrollView {
+                    NetworkUptimeTimeline(presentation: availability)
+                        .padding(OnePlusMetrics.cardPadding)
+                }
+                .onePlusScrollIndicators()
+                .frame(maxHeight: OnePlusMetrics.captionedSettingRow * 4)
+            } else {
+                OnePlusEmptyState("Loading uptime", systemImage: "clock") {
+                    ProgressView().controlSize(.small)
+                }
+            }
         }
     }
 
     private var eventList: some View {
-        let events = model.visibleEvents
+        let events = model.visibleEventRows
         return OnePlusCard {
             OnePlusCardHeader("Transitions") {
-                OnePlusSearchField(prompt: "Find network or state", text: $model.searchText,
+                OnePlusSearchField(prompt: "Find network or state",
+                                   text: Binding(get: { model.searchText }, set: model.setSearchText),
                                    width: OnePlusMetrics.controlColumn * 2, focusTrigger: searchFocus)
                 Button("Export") { model.export() }
                     .disabled(events.isEmpty)
@@ -392,79 +559,76 @@ struct NetToysHistoryView: View {
                         ? "No network state changes are recorded in this range."
                         : "Network history recording is off.")
             } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(events, id: \.date) { event in
-                        HStack(alignment: .top, spacing: OnePlusMetrics.navIconGap) {
-                            Image(systemName: event.changes.contains(where: isOutage) ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                                .foregroundStyle(event.changes.contains(where: isOutage) ? OnePlusColor.warn : OnePlusColor.secondary)
-                                .frame(width: OnePlusMetrics.navIcon)
-                            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                                Text(event.changes.map(NetToysHistoryViewModel.description).joined(separator: " · "))
-                                    .onePlusText(.row)
-                                Text(event.displayName)
-                                    .onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(events) { row in
+                            HStack(alignment: .top, spacing: OnePlusMetrics.navIconGap) {
+                                Image(systemName: row.isOutage ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                                    .foregroundStyle(row.isOutage ? OnePlusColor.warn : OnePlusColor.secondary)
+                                    .frame(width: OnePlusMetrics.navIcon)
+                                VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+                                    Text(row.message).onePlusText(.row)
+                                    Text(row.network)
+                                        .onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
+                                }
+                                Spacer()
+                                Text(row.time)
+                                    .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
                             }
-                            Spacer()
-                            Text(event.date.formatted(date: .abbreviated, time: .standard))
-                                .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                            .padding(OnePlusMetrics.cardPadding)
+                            if row.id != events.last?.id { OnePlusRule() }
                         }
-                        .padding(OnePlusMetrics.cardPadding)
-                        if event.date != events.last?.date { OnePlusRule() }
                     }
                 }
+                .onePlusScrollIndicators()
+                .frame(maxHeight: .infinity)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var recentScans: some View {
-        let runs = scanArchiveRuns
+        let rows = model.recentScanRows
         return OnePlusCard {
             OnePlusCardHeader("Recent IP scans")
-            if runs.isEmpty {
+            if rows.isEmpty {
                 OnePlusEmptyState("No saved scans", systemImage: "dot.radiowaves.left.and.right",
                                   caption: "Completed IP Scanner runs appear here.")
             } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(runs) { run in
-                        HStack(spacing: OnePlusMetrics.navIconGap) {
-                            Image(systemName: "dot.radiowaves.left.and.right")
-                                .foregroundStyle(OnePlusColor.secondary)
-                                .frame(width: OnePlusMetrics.navIcon)
-                            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                                Text(run.target)
-                                    .onePlusText(.mono)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                Text("\(run.results.count) results  ·  \(run.results.filter(\.isReachable).count) alive  ·  ports \(run.ports.map(String.init).joined(separator: ", "))  ·  \(run.duration.formatted(.number.precision(.fractionLength(1)))) s")
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(rows) { row in
+                            let run = row.run
+                            HStack(spacing: OnePlusMetrics.navIconGap) {
+                                Image(systemName: "dot.radiowaves.left.and.right")
+                                    .foregroundStyle(OnePlusColor.secondary)
+                                    .frame(width: OnePlusMetrics.navIcon)
+                                VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+                                    Text(run.target)
+                                        .onePlusText(.mono)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Text(row.detail)
+                                        .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                                }
+                                Spacer()
+                                Text(row.time)
                                     .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                                Button("Export") { model.export(run) }
+                                    .disabled(model.isExporting)
+                                Button("Scan Again") {
+                                    NotificationCenter.default.post(name: .netToysRescanRun, object: run)
+                                }
+                                .buttonStyle(OnePlusButtonStyle(.neutral))
                             }
-                            Spacer()
-                            Text(run.date.formatted(date: .abbreviated, time: .shortened))
-                                .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
-                            Button("Export") { model.export(run) }
-                                .disabled(model.isExporting)
-                            Button("Scan Again") {
-                                NotificationCenter.default.post(name: .netToysRescanRun, object: run)
-                            }
-                            .buttonStyle(OnePlusButtonStyle(.neutral))
+                            .padding(OnePlusMetrics.cardPadding)
+                            if row.id != rows.last?.id { OnePlusRule() }
                         }
-                        .padding(OnePlusMetrics.cardPadding)
-                        if run.id != runs.last?.id { OnePlusRule() }
                     }
                 }
+                .onePlusScrollIndicators()
+                .frame(height: OnePlusMetrics.captionedSettingRow * 2)
             }
-        }
-    }
-
-    private var scanArchiveRuns: [NetToysScanRun] {
-        let cutoff = Date().addingTimeInterval(-model.range.rawValue)
-        return Array(model.scanArchive.runs.reversed().filter { $0.date >= cutoff }.prefix(10))
-    }
-
-    private func isOutage(_ change: NetworkTransitionChange) -> Bool {
-        switch change {
-        case .network(_, let to): to == "disconnected"
-        case .gateway(_, let to), .internet(_, let to): to == .unreachable
         }
     }
 
@@ -843,43 +1007,29 @@ nonisolated func networkAvailabilitySummaries(
 }
 
 private struct NetworkUptimeTimeline: View {
-    let events: [NetworkTransitionEvent]
-    let range: TimeInterval
-    let currentState: NetworkReachability
-    let currentNetwork: String?
+    let presentation: NetToysAvailabilityPresentation
 
     var body: some View {
-        let end = Date()
-        let start = end.addingTimeInterval(-range)
-        let summaries = networkAvailabilitySummaries(
-            events: events,
-            from: start,
-            to: end,
-            currentState: currentState,
-            currentNetwork: currentNetwork
-        )
-        let outages = summaries.flatMap(\.outages).sorted { $0.start > $1.start }
-
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            if summaries.isEmpty {
+            if presentation.summaries.isEmpty {
                 OnePlusEmptyState("No uptime data", systemImage: "clock",
                                   caption: "Network uptime appears after the helper records a network change.")
             } else {
-                ForEach(summaries, id: \.network) { summary in
-                    if summary.network != summaries.first?.network { OnePlusRule() }
+                ForEach(presentation.summaries) { row in
+                    if row.id != presentation.summaries.first?.id { OnePlusRule() }
                     VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                            Text(summary.network)
-                                .onePlusText(.row).lineLimit(1).help(summary.network)
+                            Text(row.summary.network)
+                                .onePlusText(.row).lineLimit(1)
                             Spacer()
-                            Text(summaryLabel(summary))
+                            Text(row.label)
                                 .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
                         }
-                        availabilityBar(summary, from: start)
+                        availabilityBar(row.summary, accessibilityValue: row.label)
                     }
                 }
                 HStack {
-                    Text(startLabel(start))
+                    Text(presentation.startLabel)
                     Spacer()
                     Text("Now")
                 }
@@ -894,20 +1044,18 @@ private struct NetworkUptimeTimeline: View {
             }
             .onePlusText(.caption)
 
-            if !outages.isEmpty {
+            if !presentation.outages.isEmpty {
                 OnePlusRule()
                 Text("Recent outages").onePlusText(.cardTitle)
-                ForEach(outages.prefix(4)) { outage in
-                    if outage.id != outages.first?.id { OnePlusRule() }
+                ForEach(presentation.outages.prefix(4)) { row in
+                    if row.id != presentation.outages.first?.id { OnePlusRule() }
                     HStack(alignment: .top, spacing: OnePlusMetrics.navIconGap) {
                         Image(systemName: "exclamationmark.circle.fill")
                             .foregroundStyle(OnePlusColor.warn)
                         VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                            Text(outage.end == end
-                                ? "\(outage.network) has been unavailable for \(durationLabel(outage.duration))"
-                                : "\(outage.network) was unavailable for \(durationLabel(outage.duration))")
+                            Text(row.title)
                                 .onePlusText(.row)
-                            Text(outageTimeLabel(outage, ongoing: outage.end == end))
+                            Text(row.time)
                                 .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
                         }
                         Spacer()
@@ -921,13 +1069,17 @@ private struct NetworkUptimeTimeline: View {
 
     private func availabilityBar(
         _ summary: NetworkAvailabilitySummary,
-        from start: Date
+        accessibilityValue: String
     ) -> some View {
         Canvas { context, size in
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(OnePlusColor.field))
             for segment in summary.segments {
-                let rect = CGRect(x: size.width * segment.start.timeIntervalSince(start) / range,
-                                  y: 0, width: max(1, size.width * segment.duration / range), height: size.height)
+                let rect = CGRect(
+                    x: size.width * segment.start.timeIntervalSince(presentation.start) / presentation.range,
+                    y: 0,
+                    width: max(1, size.width * segment.duration / presentation.range),
+                    height: size.height
+                )
                 context.fill(Path(rect), with: .color(color(for: segment.state)))
             }
         }
@@ -935,36 +1087,7 @@ private struct NetworkUptimeTimeline: View {
         .clipShape(RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius))
         .accessibilityElement()
         .accessibilityLabel(summary.network)
-        .accessibilityValue(summaryLabel(summary))
-    }
-
-    private func startLabel(_ date: Date) -> String {
-        range <= NetToysHistoryRange.day.rawValue
-            ? date.formatted(date: .omitted, time: .shortened)
-            : date.formatted(date: .abbreviated, time: .omitted)
-    }
-
-    private func summaryLabel(_ summary: NetworkAvailabilitySummary) -> String {
-        guard let uptime = summary.uptime else { return "No availability data" }
-        let outageText = summary.outages.count == 1 ? "1 outage" : "\(summary.outages.count) outages"
-        return "\(uptime.formatted(.percent.precision(.fractionLength(1)))) uptime  ·  \(outageText)  ·  \(durationLabel(summary.unavailableDuration)) down"
-    }
-
-    private func durationLabel(_ duration: TimeInterval) -> String {
-        guard duration >= 1 else { return "0 secs" }
-        return Duration.seconds(max(1, duration.rounded()))
-            .formatted(.units(
-                allowed: [.hours, .minutes, .seconds],
-                width: .abbreviated,
-                maximumUnitCount: 2
-            ))
-    }
-
-    private func outageTimeLabel(_ outage: NetworkAvailabilitySegment, ongoing: Bool) -> String {
-        let start = outage.start.formatted(date: .abbreviated, time: .shortened)
-        return ongoing
-            ? "Since \(start)"
-            : "\(start) to \(outage.end.formatted(date: .omitted, time: .shortened))"
+        .accessibilityValue(accessibilityValue)
     }
 
     private func color(for state: NetworkReachability) -> Color {
