@@ -249,7 +249,7 @@ struct MacTweaksPreviewView: View {
         GeometryReader { proxy in
             let sceneHeight = max(1, proxy.size.height - 2)
             let crop = kind == .finder
-                ? CGRect(x: 98, y: 16, width: 404, height: 242)
+                ? CGRect(x: 66, y: 14, width: 468, height: 292)
                 : CGRect(x: 0, y: 0, width: 600, height: 304)
             let scale = min(proxy.size.width / crop.width, sceneHeight / crop.height)
             ZStack(alignment: .bottomLeading) {
