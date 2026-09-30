@@ -278,7 +278,7 @@ final class SystemMonitorTests: XCTestCase {
         ).first)
         let rows = category.sections.flatMap(\.rows)
 
-        XCTAssertTrue(rows.contains { $0.field == "Machine name" && $0.value == "Mac" })
+        XCTAssertTrue(rows.contains { $0.field == "Model name" && $0.value == "Mac" })
         XCTAssertTrue(rows.contains { $0.field == "Details · Core count" && $0.value == "14" })
         XCTAssertTrue(rows.contains { $0.field == "Families" && $0.value == "Performance, Efficiency" })
         XCTAssertFalse(rows.contains { $0.field.localizedCaseInsensitiveContains("serial") || $0.value == "SECRET" })

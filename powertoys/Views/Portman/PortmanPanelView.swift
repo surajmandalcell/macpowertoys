@@ -1746,7 +1746,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
             NSApp.activate(ignoringOtherApps: true)
             for _ in 0..<200 {
                 guard !Task.isCancelled, let button = self.item?.button, !self.popover.isShown else { return }
-                if button.window != nil && button.bounds.width > 0 {
+                if button.window?.isVisible == true && !button.visibleRect.isEmpty && button.bounds.width > 0 {
                     self.popover.appearance = NSApp.appearance
                     self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
                     self.popover.contentViewController?.view.appearance = NSApp.appearance
@@ -1759,12 +1759,12 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
                     NSLog("[DEBUG-ci14] shown=\(self.popover.isShown) active=\(NSApp.isActive) visible=\(self.popover.contentViewController?.view.window?.isVisible == true)")
                     #endif
                     if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
-                    return
+                    if self.popover.isShown { return }
                 }
                 try? await Task.sleep(for: .milliseconds(50))
             }
             #if DEBUG
-            NSLog("[DEBUG-ci14] anchor timed out active=\(NSApp.isActive)")
+            NSLog("[DEBUG-ci14] anchor timed out active=\(NSApp.isActive) window=\(self.item?.button?.window?.isVisible == true) rect=\(self.item?.button?.visibleRect ?? .zero)")
             #endif
             if AppRuntime.isUITesting { NSLog("Portman status item has no visible anchor") }
         }
