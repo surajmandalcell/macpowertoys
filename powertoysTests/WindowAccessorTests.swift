@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class WindowAccessorTests: XCTestCase {
-    func testAccessorSetsIdentityWithoutTakingOverSceneSizing() {
+    func testAccessorSetsIdentityWithoutTakingOverSceneSizing() async {
         let window = AccessorCountingWindow(
             contentRect: NSRect(x: -2000, y: -2000, width: 420, height: 300),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -20,7 +20,11 @@ final class WindowAccessorTests: XCTestCase {
                 .background(WindowAccessor(identifier: identifier))
         )
         window.contentView?.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+        let restored = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isMovableByWindowBackground == false AND appearance == nil"),
+            object: window
+        )
+        await fulfillment(of: [restored], timeout: 2)
 
         XCTAssertEqual(window.identifier?.rawValue, identifier)
         XCTAssertFalse(window.isMovableByWindowBackground)

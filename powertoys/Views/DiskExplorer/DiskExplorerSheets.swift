@@ -65,7 +65,7 @@ struct DiskBlockedEjectSheet: View {
                         ForEach(blocked.blockers) { blocker in
                             OnePlusKeyValueRow(blocker.name, value: "PID \(blocker.pid)", monospaced: true)
                                 .accessibilityElement(children: .ignore)
-                                .accessibilityLabel("\(blocker.name), PID \(blocker.pid)")
+                                .accessibilityLabel(Text(verbatim: "\(blocker.name), PID \(blocker.pid)"))
                         }
                     }
                 }.thinScrollIndicators().frame(maxHeight: OnePlusMetrics.wideControlColumn)
