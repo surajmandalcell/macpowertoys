@@ -47,7 +47,7 @@ struct PageRegionsShowcase<Header: View>: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text(detail)
                             .onePlusText(.row)
-                        OnePlusKeyValueRow("Title top", value: "58 pt")
+                        OnePlusKeyValueRow("Title top", value: "16 pt")
                         OnePlusKeyValueRow("Content gap", value: "16 pt")
                     }.padding(16)
                 }.frame(width: 220)

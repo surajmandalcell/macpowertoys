@@ -148,7 +148,7 @@ private struct OnePlusUIShowcase: View {
                     OnePlusKeyValueRow("Density", value: compact ? "Compact" : "Regular")
                     OnePlusKeyValueRow("Canvas", value: "1240 × 840 pt", monospaced: true)
                     OnePlusKeyValueRow("Traffic-light centerline", value: "27 pt", monospaced: true)
-                    OnePlusKeyValueRow("Page title top", value: "58 pt", monospaced: true)
+                    OnePlusKeyValueRow("Page title top", value: "16 pt", monospaced: true)
                 }.padding(16)
             }
         } else {
@@ -196,7 +196,7 @@ private struct OnePlusUIShowcase: View {
                 OnePlusCardHeader("Geometry")
                 HStack(spacing: 24) {
                     OnePlusKeyValueRow("Empty title row", value: "54 pt", monospaced: true)
-                    OnePlusKeyValueRow("Page title top", value: "58 pt", monospaced: true)
+                    OnePlusKeyValueRow("Page title top", value: "16 pt", monospaced: true)
                     OnePlusKeyValueRow("Card header", value: "40 pt", monospaced: true)
                     OnePlusKeyValueRow("Setting row", value: "44 pt", monospaced: true)
                 }.padding(16)

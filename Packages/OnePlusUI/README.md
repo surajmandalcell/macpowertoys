@@ -55,8 +55,8 @@ is occluded, minimized, ordered off screen, or closed, without polling. Apply
 `.onePlusLiveUpdates()` to a custom native host that does not use a fixed
 canvas. Samplers may keep collecting while their views stop observing.
 
-Page titles start at `OnePlusMetrics.contentTop` (58 pt from the visible
-window top). The workspace title row stays empty. Header actions center on
+Page titles start at `OnePlusMetrics.contentTop` (16 pt from the visible
+window top). Sidebar content still starts at 54 pt. Header actions center on
 the title's first line. `contentGap` is the separate 16 pt body gap; use it
 for padding between page regions. Applet titlebars keep their 22 pt centerline.
 Applets never use `contentTop`. Their first body element starts `contentGap`
@@ -123,7 +123,7 @@ separate row scroll region; it keeps overlay style after native replacement.
 | `OnePlusNavCaption` | Label a navigation section in its fixed slot. |
 | `OnePlusNavBadge` | Display a text-only navigation count. |
 | `OnePlusPageHeader` | Supply title, subtitle, `.system` or `.dotMatrix`, and actions. |
-| `OnePlusToolPageHeader` | Place a 40 pt tool icon beside the title at the shared 58 pt content top. |
+| `OnePlusToolPageHeader` | Place a 40 pt tool icon beside the title at the shared 16 pt content top. |
 | `OnePlusCatalogMetrics` | Read fixed catalog card, list, icon, and action geometry. |
 | `OnePlusTab` / `OnePlusTabStrip` | Bind selection to underline tabs with counts and trailing tools. |
 | `OnePlusPage` | Keep header, tabs, toolbar, and footer fixed; use `scrolls: false` for a table that fills the remaining height. |
