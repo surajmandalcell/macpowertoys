@@ -255,8 +255,11 @@ struct SwitchWindowView: View {
             identityCard(account)
             if account.identity.providerID == .codex {
                 accountUsage(account)
-                if let snapshot = model.usage[account.id], account.verification.state != .needsSignIn {
-                    SwitchActivityGrid(rows: snapshot.dailyUsage, updatedAt: snapshot.fetchedAt)
+                if account.verification.state != .needsSignIn {
+                    SwitchActivityGrid(rows: model.usage[account.id]?.dailyUsage,
+                                       updatedAt: model.usage[account.id]?.fetchedAt,
+                                       error: model.usageErrors[account.id])
+                        .id(account.id)
                 }
             }
         } else {
@@ -720,12 +723,13 @@ struct SwitchProviderIcon: View {
     }
 }
 
-private struct SwitchActivityGrid: View {
-    let rows: [CodexDailyUsageSnapshot]
-    let updatedAt: Date
+struct SwitchActivityGrid: View {
+    let rows: [CodexDailyUsageSnapshot]?
+    let updatedAt: Date?
+    var error: String? = nil
     @State private var selectedDate: Date?
     @State private var period: CodexTokenPeriod = .yearly
-    @State private var presentation = Presentation.empty
+    @State private var presentation: Presentation?
 
     nonisolated private struct Day: Sendable {
         let date: Date
@@ -739,13 +743,12 @@ private struct SwitchActivityGrid: View {
     nonisolated private struct Presentation: Sendable {
         let weeks: [[Day?]]
         let totals: [String: String]
-
-        static let empty = Presentation(weeks: [], totals: [:])
+        let hasData: Bool
     }
 
     nonisolated private struct Request: Hashable {
         let period: String
-        let updatedAt: Date
+        let updatedAt: Date?
     }
 
     nonisolated private static let calendar: Calendar = {
@@ -803,8 +806,11 @@ private struct SwitchActivityGrid: View {
         ].map { period in
             (period.rawValue, period.tokens(in: rows, endingAt: now).formatted(.number.notation(.compactName)))
         })
-        return Presentation(weeks: weeks, totals: totals)
+        return Presentation(weeks: weeks, totals: totals, hasData: !tokens.isEmpty)
     }
+
+    private var showsEmptyState: Bool { error != nil || presentation?.hasData == false }
+    private var chartHeight: CGFloat { 7 * OnePlusMetrics.navPadding + 6 * OnePlusMetrics.navRowGap }
 
     var body: some View {
         OnePlusCard {
@@ -812,49 +818,78 @@ private struct SwitchActivityGrid: View {
                 OnePlusSegmented(choices: [(CodexTokenPeriod.weekly, "7 days"), (.monthly, "1 month"), (.yearly, "1 year")],
                                  selection: $period, accessibilityLabel: "Activity period").fixedSize()
             }
-            ScrollView(.horizontal) {
-                HStack(alignment: .top, spacing: OnePlusMetrics.navRowGap) {
-                    ForEach(presentation.weeks.indices, id: \.self) { column in
-                        VStack(spacing: OnePlusMetrics.navRowGap) {
-                            ForEach(0..<7) { row in
-                                if let day = presentation.weeks[column][row] {
-                                    Button { selectedDate = day.date } label: {
-                                        RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius)
-                                            .fill(day.tokens == 0 ? OnePlusColor.track : OnePlusColor.chartSeries[
-                                                day.level])
-                                            .frame(width: OnePlusMetrics.navPadding, height: OnePlusMetrics.navPadding)
-                                    }.buttonStyle(OnePlusInteractionStyle(selected: selectedDate == day.date))
-                                        .accessibilityLabel(day.accessibilityLabel)
-                                        .accessibilityValue(day.tokenLabel)
-                                } else {
-                                    Color.clear.frame(width: OnePlusMetrics.navPadding, height: OnePlusMetrics.navPadding).accessibilityHidden(true)
-                                }
-                            }
-                        }
+            VStack(spacing: 0) {
+                activityChart
+                HStack(spacing: 0) {
+                    ForEach([CodexTokenPeriod.today, .weekly, .monthly, .yearly], id: \.rawValue) { period in
+                        OnePlusStatCell(period.label, value: presentation?.totals[period.rawValue] ?? "-")
+                        if period != .yearly { OnePlusRule(vertical: true) }
                     }
-                }.padding(OnePlusMetrics.cardPadding)
-            }.onePlusScrollIndicators()
-            if let selectedDate,
-               let day = presentation.weeks.flatMap({ $0 }).compactMap({ $0 }).first(where: { $0.date == selectedDate }) {
-                Text("\(day.shortLabel): \(day.tokenLabel)")
-                    .onePlusText(.caption).padding(.horizontal, OnePlusMetrics.cardPadding)
+                }.fixedSize(horizontal: false, vertical: true)
             }
-            HStack(spacing: 0) {
-                ForEach([CodexTokenPeriod.today, .weekly, .monthly, .yearly], id: \.rawValue) { period in
-                    OnePlusStatCell(period.label, value: presentation.totals[period.rawValue] ?? "0")
-                    if period != .yearly { OnePlusRule(vertical: true) }
+            .opacity(showsEmptyState ? 0 : 1)
+            .accessibilityHidden(showsEmptyState)
+            .allowsHitTesting(!showsEmptyState)
+            .overlay {
+                if error != nil {
+                    OnePlusEmptyState("Daily activity unavailable", systemImage: "exclamationmark.circle",
+                                      caption: "Refresh usage to try again.")
+                } else if presentation?.hasData == false {
+                    OnePlusEmptyState("No daily activity", systemImage: "calendar",
+                                      caption: "This account has no recorded daily token usage.")
                 }
-            }.fixedSize(horizontal: false, vertical: true)
+            }
         }
         .task(id: Request(period: period.rawValue, updatedAt: updatedAt)) {
             selectedDate = nil
-            let rows = rows
+            guard let rows else { return }
             let dayCount = period.dayCount
             let result = await Task.detached(priority: .utility) {
                 Self.makePresentation(rows: rows, dayCount: dayCount, now: .now)
             }.value
             guard !Task.isCancelled else { return }
             presentation = result
+        }
+    }
+
+    private var activityChart: some View {
+        ZStack {
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: OnePlusMetrics.navRowGap) {
+                    if let presentation {
+                        ForEach(presentation.weeks.indices, id: \.self) { column in
+                            VStack(spacing: OnePlusMetrics.navRowGap) {
+                                ForEach(0..<7) { row in
+                                    if let day = presentation.weeks[column][row] {
+                                        Button { selectedDate = day.date } label: {
+                                            RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius)
+                                                .fill(day.tokens == 0 ? OnePlusColor.track : OnePlusColor.chartSeries[day.level])
+                                                .frame(width: OnePlusMetrics.navPadding, height: OnePlusMetrics.navPadding)
+                                        }.buttonStyle(OnePlusInteractionStyle(selected: selectedDate == day.date))
+                                            .accessibilityLabel(day.accessibilityLabel)
+                                            .accessibilityValue(day.tokenLabel)
+                                    } else {
+                                        Color.clear.frame(width: OnePlusMetrics.navPadding, height: OnePlusMetrics.navPadding)
+                                            .accessibilityHidden(true)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }.onePlusScrollIndicators().frame(height: chartHeight)
+            if presentation == nil {
+                ProgressView("Loading daily activity").controlSize(.small).onePlusText(.row)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(OnePlusMetrics.cardPadding)
+        .overlay(alignment: .bottomLeading) {
+            if let selectedDate,
+               let day = presentation?.weeks.flatMap({ $0 }).compactMap({ $0 }).first(where: { $0.date == selectedDate }) {
+                Text("\(day.shortLabel): \(day.tokenLabel)")
+                    .onePlusText(.caption).padding(.horizontal, OnePlusMetrics.cardPadding)
+            }
         }
     }
 }

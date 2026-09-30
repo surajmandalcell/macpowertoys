@@ -7,6 +7,37 @@ import XCTest
 
 @MainActor
 final class SwitchWorkspaceTests: XCTestCase {
+    func testDailyActivityKeepsItsHeightWhileLoadingRefreshingAndEmpty() async throws {
+        let snapshot = sampleUsage()
+        let host = NSHostingView(rootView: SwitchActivityGrid(rows: nil, updatedAt: nil)
+            .frame(width: 992))
+        host.layoutSubtreeIfNeeded()
+        let pendingHeight = host.fittingSize.height
+        // 40pt header, 82pt grid, two 16pt insets, and 66pt totals.
+        XCTAssertEqual(pendingHeight, 220, accuracy: 1)
+
+        host.rootView = SwitchActivityGrid(rows: snapshot.dailyUsage, updatedAt: snapshot.fetchedAt)
+            .frame(width: 992)
+        try await Task.sleep(for: .milliseconds(200))
+        host.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.fittingSize.height, pendingHeight, accuracy: 1)
+
+        host.rootView = SwitchActivityGrid(rows: nil, updatedAt: nil).frame(width: 992)
+        host.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.fittingSize.height, pendingHeight, accuracy: 1)
+
+        host.rootView = SwitchActivityGrid(rows: [], updatedAt: snapshot.fetchedAt.addingTimeInterval(1))
+            .frame(width: 992)
+        try await Task.sleep(for: .milliseconds(200))
+        host.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.fittingSize.height, pendingHeight, accuracy: 1)
+
+        host.rootView = SwitchActivityGrid(rows: nil, updatedAt: nil, error: "Synthetic usage failure")
+            .frame(width: 992)
+        host.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.fittingSize.height, pendingHeight, accuracy: 1)
+    }
+
     func testAppletRendersSharedCardsAtFixedCanvasInBothAppearances() async throws {
         let files = FileManager.default
         let root = files.temporaryDirectory
