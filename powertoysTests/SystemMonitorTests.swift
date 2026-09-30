@@ -284,6 +284,27 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertFalse(rows.contains { $0.field.localizedCaseInsensitiveContains("serial") || $0.value == "SECRET" })
     }
 
+    func testSystemReportNormalizesHardwareAndKeepsRawExportValues() throws {
+        let json = """
+        {"SPHardwareDataType":[{"_name":"hardware_overview",
+        "number_processors":"proc 14:0:10:4","chip_type":"Apple M4 Pro"}]}
+        """
+        let category = try XCTUnwrap(TaskManagerSystemReportParser.parse(data: Data(json.utf8)).first)
+        let section = try XCTUnwrap(category.sections.first)
+        XCTAssertEqual(section.title, "Hardware overview")
+        XCTAssertEqual(section.rawTitle, "hardware_overview")
+        let processor = try XCTUnwrap(section.rows.first { $0.field == "CPU cores" })
+        XCTAssertEqual(processor.value, "14 cores, 10 performance, 4 efficiency")
+        XCTAssertEqual(processor.rawField, "number_processors")
+        XCTAssertEqual(processor.rawValue, "proc 14:0:10:4")
+        XCTAssertTrue(section.rows.contains { $0.field == "Chip" && $0.value == "Apple M4 Pro" })
+        for invalid in ["proc 14:0:10:5", "proc -14:0:10:4", "proc 14::10:4", "proc 14:0:10:4:0"] {
+            let data = Data(json.replacingOccurrences(of: "proc 14:0:10:4", with: invalid).utf8)
+            let rows = try TaskManagerSystemReportParser.parse(data: data)[0].sections[0].rows
+            XCTAssertEqual(rows.first { $0.field == "CPU cores" }?.value, invalid)
+        }
+    }
+
     func testSystemReportSearchBuildsStableMatches() throws {
         let category = TaskManagerReportCategory(
             id: "hardware",

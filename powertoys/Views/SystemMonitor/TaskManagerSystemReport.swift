@@ -7,11 +7,14 @@ import UniformTypeIdentifiers
 nonisolated struct TaskManagerReportRow: Sendable {
     let field: String
     let value: String
+    var rawField: String? = nil
+    var rawValue: String? = nil
 }
 
 nonisolated struct TaskManagerReportSection: Identifiable, Sendable {
     let title: String
     let rows: [TaskManagerReportRow]
+    var rawTitle: String? = nil
     var id: String { title }
 }
 
@@ -74,12 +77,15 @@ nonisolated enum TaskManagerSystemReportParser {
         var output: [TaskManagerReportSection] = []
         for (index, item) in items.enumerated() {
             guard let dictionary = item as? [String: Any] else { continue }
-            let title = (dictionary["_name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            let rawTitle = (dictionary["_name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
                 ?? (items.count == 1 ? fallbackTitle : "\(fallbackTitle) \(index + 1)")
+            let title = rawTitle == "hardware_overview" ? "Hardware overview" : rawTitle
             var rows: [TaskManagerReportRow] = []
             flatten(dictionary, prefix: "", depth: 0, rows: &rows)
             if !rows.isEmpty {
-                output.append(TaskManagerReportSection(title: title, rows: Array(rows.prefix(250))))
+                output.append(TaskManagerReportSection(
+                    title: title, rows: Array(rows.prefix(250)), rawTitle: title == rawTitle ? nil : rawTitle
+                ))
             }
         }
         return output
@@ -97,9 +103,13 @@ nonisolated enum TaskManagerSystemReportParser {
             let field = [prefix, label(key)].filter { !$0.isEmpty }.joined(separator: " · ")
             switch value {
             case let text as String:
-                rows.append(TaskManagerReportRow(field: field, value: text.isEmpty ? "—" : text))
+                let displayed = readableValue(text, field: key)
+                rows.append(TaskManagerReportRow(
+                    field: field, value: displayed, rawField: key,
+                    rawValue: displayed == text ? nil : text
+                ))
             case let number as NSNumber:
-                rows.append(TaskManagerReportRow(field: field, value: number.stringValue))
+                rows.append(TaskManagerReportRow(field: field, value: number.stringValue, rawField: key))
             case let nested as [String: Any]:
                 flatten(nested, prefix: field, depth: depth + 1, rows: &rows)
             case let array as [Any]:
@@ -141,6 +151,16 @@ nonisolated enum TaskManagerSystemReportParser {
     }
 
     private static func label(_ key: String) -> String {
+        switch key {
+        case "boot_rom_version": return "Firmware version"
+        case "chip_type": return "Chip"
+        case "machine_model": return "Model identifier"
+        case "machine_name": return "Model name"
+        case "number_processors": return "CPU cores"
+        case "os_loader_version": return "OS loader version"
+        case "physical_memory": return "Memory"
+        default: break
+        }
         let words = key
             .replacingOccurrences(of: "sp", with: "SP", options: [.anchored, .caseInsensitive])
             .replacingOccurrences(of: "_", with: " ")
@@ -148,6 +168,17 @@ nonisolated enum TaskManagerSystemReportParser {
         return words.enumerated().map { index, word in
             index == 0 ? word.capitalized : word.lowercased()
         }.joined(separator: " ")
+    }
+
+    private static func readableValue(_ text: String, field: String) -> String {
+        guard !text.isEmpty else { return "—" }
+        guard field == "number_processors", text.hasPrefix("proc ") else { return text }
+        let parts = String(text.dropFirst(5)).split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count == 4 else { return text }
+        let counts = parts.compactMap { Int($0) }
+        guard counts.count == 4, counts.allSatisfy({ $0 >= 0 }), counts[0] > 0,
+              counts[2] <= counts[0], counts[3] == counts[0] - counts[2] else { return text }
+        return "\(counts[0]) cores, \(counts[2]) performance, \(counts[3]) efficiency"
     }
 }
 
@@ -540,7 +571,11 @@ struct TaskManagerSystemReportView: View {
             [
                 "category": category.title,
                 "sections": category.sections.map { section in
-                    ["title": section.title, "rows": section.rows.map { ["field": $0.field, "value": $0.value] }]
+                    ["title": section.title, "rawTitle": section.rawTitle ?? section.title,
+                     "rows": section.rows.map {
+                         ["field": $0.field, "value": $0.value,
+                          "rawField": $0.rawField ?? $0.field, "rawValue": $0.rawValue ?? $0.value]
+                     }]
                 },
             ]
         }
