@@ -36,13 +36,10 @@ struct RcloneSettingsView: View {
                 transfersCard
                     .frame(maxWidth: .infinity)
             }
+            .fixedSize(horizontal: false, vertical: true)
             ignorePatternsCard
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                retriesCard
-                    .frame(maxWidth: .infinity)
-                rcloneCard
-                    .frame(maxWidth: .infinity)
-            }
+            retriesCard
+            rcloneCard
         }
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
@@ -50,44 +47,50 @@ struct RcloneSettingsView: View {
     }
 
     private var syncEngineCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Sync engine")
-            OnePlusSettingRow("Start at launch", caption: "Keep the sync engine ready after sign-in.") {
-                Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("Sync engine")
+                OnePlusSettingRow("Start at launch", caption: "Ready after sign-in.") {
+                    Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                OnePlusSettingRow("Show transfer status", caption: "In the MacPowerToys menu bar.") {
+                    Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                OnePlusSettingRow("Retry interrupted transfers", caption: "Always on; unfinished transfers resume.", separator: false) {
+                    Toggle("Retry interrupted transfers", isOn: .constant(true))
+                        .labelsHidden()
+                        .toggleStyle(OnePlusSwitchStyle())
+                        .disabled(true)
+                        .help("Cloud Sync always protects and resumes interrupted transfers.")
+                }
             }
-            OnePlusSettingRow("Show in menu bar", caption: "Show MacPowerToys transfer status in the menu bar.") {
-                Toggle("Show in menu bar", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-            }
-            OnePlusSettingRow("Retry interrupted transfers", caption: "Always on. Cloud Sync safely resumes unfinished transfers.", separator: false) {
-                Toggle("Retry interrupted transfers", isOn: .constant(true))
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
-                    .disabled(true)
-                    .help("Cloud Sync always protects and resumes interrupted transfers.")
-            }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
     private var transfersCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Transfers")
-            OnePlusSettingRow("Parallel transfers", caption: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
-                OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("Transfers")
+                OnePlusSettingRow("Parallel transfers", caption: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                    OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
+                }
+                OnePlusSettingRow("Checkers", caption: "Remote checks at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                    OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
+                }
+                OnePlusSettingRow("Bandwidth limit", caption: "Leave blank or enter off for no limit.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                    OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
+                }
+                OnePlusSettingRow("Default operation", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
+                    OnePlusSelect(
+                        choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
+                        selection: $defaultOperation,
+                        width: OnePlusMetrics.wideControlColumn,
+                        accessibilityLabel: "Default operation"
+                    )
+                }
             }
-            OnePlusSettingRow("Checkers", caption: "Remote checks performed at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
-                OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
-            }
-            OnePlusSettingRow("Bandwidth limit", caption: "Leave blank or enter off for no limit.", controlWidth: OnePlusMetrics.wideControlColumn) {
-                OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
-            }
-            OnePlusSettingRow("Default operation", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
-                OnePlusSelect(
-                    choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
-                    selection: $defaultOperation,
-                    width: OnePlusMetrics.wideControlColumn,
-                    accessibilityLabel: "Default operation"
-                )
-            }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -107,19 +110,21 @@ struct RcloneSettingsView: View {
     private var retriesCard: some View {
         OnePlusCard {
             OnePlusCardHeader("Retries")
-            OnePlusSettingRow("Max retries") {
+            OnePlusSettingRow("Max retries", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusStepperField("Max retries", value: $maxRetries, in: 0...20)
             }
-            OnePlusSettingRow("Retry backoff", caption: "The wait doubles after each failed try.") {
-                HStack(spacing: OnePlusMetrics.spacing[2]) {
-                    Text("\(Int(retryBackoff)) s").onePlusText(.mono).monospacedDigit()
-                    Stepper("Retry backoff", value: $retryBackoff, in: 0...300, step: 1).labelsHidden()
-                }
+            OnePlusSettingRow("Retry backoff", caption: "The wait doubles after each failed try.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                OnePlusStepperField(
+                    "Retry backoff",
+                    value: Binding(get: { Int(retryBackoff) }, set: { retryBackoff = Double($0) }),
+                    in: 0...300,
+                    unit: "s"
+                )
             }
-            OnePlusSettingRow("Low-level retries") {
+            OnePlusSettingRow("Low-level retries", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusStepperField("Low-level retries", value: $lowLevelRetries, in: 1...50)
             }
-            OnePlusSettingRow("Concurrent jobs", separator: false) {
+            OnePlusSettingRow("Concurrent jobs", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                 OnePlusStepperField("Concurrent jobs", value: $maxConcurrentJobs, in: 1...16)
             }
         }
@@ -128,7 +133,7 @@ struct RcloneSettingsView: View {
     private var rcloneCard: some View {
         OnePlusCard {
             OnePlusCardHeader("rclone")
-            OnePlusSettingRow("Binary path", caption: "Leave blank to use the bundled or detected binary.", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
+            OnePlusSettingRow("Binary path", caption: "Leave blank to use the detected binary.", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                 OnePlusTextField("Auto-detected", text: $binaryPath)
             }
         }
