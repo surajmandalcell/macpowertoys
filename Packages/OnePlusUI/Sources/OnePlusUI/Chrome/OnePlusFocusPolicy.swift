@@ -43,9 +43,10 @@ public final class OnePlusFocusPolicy {
             forName: .init("com.apple.KeyboardUIModeChanged"), object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
             }
-        observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { _ in
+        observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let window = NSApp.keyWindow else { return }
+                self?.configure(window)
                 window.makeFirstResponder(window)
             }
         })
