@@ -47,7 +47,7 @@ struct RcloneSettingsView: View {
     }
 
     private var syncEngineCard: some View {
-        OnePlusPanel {
+        OnePlusCard {
             VStack(spacing: 0) {
                 OnePlusCardHeader("Sync engine")
                 OnePlusSettingRow("Start at launch", caption: "Ready after sign-in.") {
@@ -57,19 +57,14 @@ struct RcloneSettingsView: View {
                     Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
                 OnePlusSettingRow("Retry interrupted transfers", caption: "Always on; unfinished transfers resume.", separator: false) {
-                    Toggle("Retry interrupted transfers", isOn: .constant(true))
-                        .labelsHidden()
-                        .toggleStyle(OnePlusSwitchStyle())
-                        .disabled(true)
-                        .help("Cloud Sync always protects and resumes interrupted transfers.")
+                    Text("On").onePlusText(.control)
                 }
             }
-            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
     private var transfersCard: some View {
-        OnePlusPanel {
+        OnePlusCard {
             VStack(spacing: 0) {
                 OnePlusCardHeader("Transfers")
                 OnePlusSettingRow("Parallel transfers", caption: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
@@ -90,7 +85,6 @@ struct RcloneSettingsView: View {
                     )
                 }
             }
-            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
