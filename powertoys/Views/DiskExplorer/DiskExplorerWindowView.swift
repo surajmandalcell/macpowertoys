@@ -199,9 +199,9 @@ struct DiskExplorerWindowView: View {
         } footer: {
             scanNotices
         } content: {
-            if let current = model.current {
-                if resultTab == .visualization { visualization(current) }
-                else { results(current) }
+            if model.current != nil || model.isScanning {
+                if resultTab == .visualization { visualization(model.current) }
+                else { results(model.current) }
             } else { emptyState.frame(maxHeight: .infinity) }
         }
     }
@@ -296,13 +296,14 @@ struct DiskExplorerWindowView: View {
         })
     }
 
-    private func visualization(_ current: DiskEntry) -> some View {
+    private func visualization(_ current: DiskEntry?) -> some View {
         HStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     breadcrumbs(current)
                     Spacer(minLength: OnePlusMetrics.actionSpacing)
-                    Text("\(current.children.filter { $0.kind == .directory }.count) folders").onePlusText(.caption)
+                    Text(current.map { "\($0.children.filter { $0.kind == .directory }.count) folders" } ?? "- folders")
+                        .onePlusText(.caption)
                 }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.cardHeader)
                 OnePlusColor.lineSoft.frame(height: 1)
                 chartView(current).padding(OnePlusMetrics.actionSpacing).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -319,7 +320,8 @@ struct DiskExplorerWindowView: View {
                                    revision: model.result?.scannedAt ?? .distantPast,
                                    select: select, explore: navigate, copy: { DiskEntryPresentation.copy([$0.url.path]) },
                                    open: open, preview: preview, actions: fileActions,
-                                   availableBytes: model.volumes.first { $0.url == inspected?.url }?.available)
+                                   availableBytes: model.volumes.first { $0.url == inspected?.url }?.available,
+                                   pendingURL: model.isScanning ? model.sourceURL : nil)
                 .frame(width: OnePlusDiskmanMetrics.inspectorWidth)
         }.frame(maxHeight: .infinity)
     }
@@ -338,10 +340,18 @@ struct DiskExplorerWindowView: View {
             }
         }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
     }
-    @ViewBuilder private func chartView(_ current: DiskEntry) -> some View {
-        if current.children.isEmpty {
-            OnePlusEmptyState(model.isScanning ? "Reading this folder..." : "No measured items", systemImage: "folder")
-        } else if chart == .treemap {
+    @ViewBuilder private func chartView(_ current: DiskEntry?) -> some View {
+        if let current, !current.children.isEmpty {
+            populatedChart(current)
+        } else {
+            OnePlusEmptyState(model.isScanning ? "Reading this folder..." : "No measured items", systemImage: "folder") {
+                if model.isScanning { ProgressView().controlSize(.small) }
+            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+    @ViewBuilder private func populatedChart(_ current: DiskEntry) -> some View {
+        if chart == .treemap {
             DiskTreemapView(directory: current, apparent: apparentSize, measure: measure,
                             scanComplete: model.result?.isComplete == true,
                             revision: model.result?.scannedAt ?? .distantPast,
@@ -357,29 +367,31 @@ struct DiskExplorerWindowView: View {
                              open: open, preview: preview, actions: fileActions)
         }
     }
-    private func results(_ current: DiskEntry) -> some View {
+    private func results(_ current: DiskEntry?) -> some View {
         OnePlusCard {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 OnePlusSearchField(prompt: resultTab == .largestFiles ? "Search largest files" : "Search Results", text: $search,
                                    focusTrigger: searchFocus, shortcutHint: "⌘F")
                 Spacer()
-                Text(model.result?.isComplete == true ? "Completed scan" : "Measured so far").onePlusText(.caption)
+                Text(model.result == nil ? "Reading folders..." : model.result?.isComplete == true ? "Completed scan" : "Measured so far")
+                    .onePlusText(.caption)
                 Button("Review \(model.markedEntries.count)") { showingReview = true }
                     .buttonStyle(OnePlusButtonStyle()).disabled(model.marks.isEmpty || model.isRemoving)
             }.padding(OnePlusMetrics.cardPadding)
             if resultTab == .results {
                 breadcrumbs(current).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
             }
-            DiskEntryTable(entries: resultTab == .largestFiles ? model.result?.largestFiles ?? [] : current.children,
+            DiskEntryTable(entries: resultTab == .largestFiles ? model.result?.largestFiles ?? [] : current?.children ?? [],
                            revision: model.result?.scannedAt ?? .distantPast,
-                           sourceID: resultTab == .largestFiles ? "largest-files" : current.id,
+                           sourceID: resultTab == .largestFiles ? "largest-files" : current?.id ?? "pending-results",
                            search: search, apparent: apparentSize, selection: $selection, open: open,
-                           preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results)
+                           preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results,
+                           isWaitingForScan: model.result == nil && model.isScanning)
                 .frame(maxHeight: .infinity)
         }.frame(maxHeight: .infinity)
     }
-    private func breadcrumbs(_ current: DiskEntry) -> some View {
-        let nodes = model.result.map { DiskEntryPresentation.breadcrumbs(to: current, root: $0.root) } ?? []
+    private func breadcrumbs(_ current: DiskEntry?) -> some View {
+        let nodes = current.flatMap { current in model.result.map { DiskEntryPresentation.breadcrumbs(to: current, root: $0.root) } } ?? []
         return ScrollView(.horizontal) {
             HStack(spacing: OnePlusMetrics.spacing[1]) {
                 ForEach(nodes) { entry in
@@ -388,15 +400,17 @@ struct DiskExplorerWindowView: View {
                         .modifier(DiskChartFileActions(entry: entry, actions: fileActions))
                     if entry.id != nodes.last?.id { Image(systemName: "chevron.right").onePlusText(.caption) }
                 }
+                if nodes.isEmpty, let source = model.sourceURL {
+                    Label(source.lastPathComponent, systemImage: "folder").onePlusText(.caption)
+                }
             }
         }.thinScrollIndicators()
     }
     private var emptyState: some View {
         OnePlusCard {
-            OnePlusEmptyState(model.isScanning ? "Reading the first folders..." : "Choose a location", systemImage: "internaldrive",
+            OnePlusEmptyState("Choose a location", systemImage: "internaldrive",
                               caption: "Analyze a volume or folder to see where its space goes.") {
-                if model.isScanning { ProgressView().controlSize(.small) }
-                else { Button("Choose Folder") { showingFolder = true } }
+                Button("Choose Folder") { showingFolder = true }
             }.frame(maxHeight: .infinity)
         }
     }
