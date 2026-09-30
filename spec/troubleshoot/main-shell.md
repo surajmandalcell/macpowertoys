@@ -108,8 +108,8 @@
   at the available width and scroll only after overflow. Home places Pick
   Color, Extract Text, and Ruler in one direct-action row, followed by one
   compact Awake row. Complex tray-capable built-ins own focused tabs in this
-  default order: Cloud Sync, Input Devices, System Care, and NetToys. System
-  Monitor owns a separate menu-bar popup. App-only tools such as Logs never
+  default order: Cloud Sync, Input Devices, System Care, NetToys, and Switch.
+  Task Manager owns a separate menu-bar popup. App-only tools such as Logs never
   appear. Keep separate Open
   MacPowerToys, Settings, and Quit controls and no divider below the strip. Pin
   the tab group to the leading edge and those three app controls to one fixed
@@ -128,10 +128,10 @@
 - **Cause:** The empty view could fill only the width proposed by the measured
   scroll content. The earlier layout check gave it a 360pt parent directly and
   missed the scroll container's intrinsic-width path.
-- **Invariant:** Give every tray tab the popover's content width inside
-  `TrayMeasuredScroll`, before measuring its height.
+- **Invariant:** Let `OnePlusMenuPanel` give every tab its shared 338pt body
+  width before measuring its natural height. The outer shell is 356pt wide.
 - **Check:** Open an empty Cloud Sync tray in the final signed build. The cloud
-  and text center inside the 360pt body in light and dark appearances.
+  and text center inside the shared body in light and dark appearances.
 
 ## Menu-Bar Tab Density
 
@@ -145,7 +145,8 @@
   mouse and trackpad controls because those controls are the tool's immediate
   purpose. Other complex tabs expose only their useful menu-bar surface. Omit
   explanatory body subtitles; visible status text remains where it conveys
-  changing operational state. Cap the body at 70 percent of the screen.
+  changing operational state. Use natural content height. The complete panel
+  can use at most 90 percent of the visible screen height.
 - **Check:** The all-tools state stays within the height cap. Cloud Sync has no
   durable settings form. Input Devices exposes the same saved controls as its
   window. No tab contains an unexplained duplicate Open button.
@@ -160,10 +161,30 @@
   text, hairline grouping only where it helps scanning, and low-opacity neutral
   hover, pressed, and selected layers. Do not leave the popover material or
   desktop visibly blurred through the body. Never use a tool's major color as a
-  large tray fill. Preserve keyboard focus and at least 24pt pointer targets.
+  large tray fill. Keep identity colors on key data: blue transfer progress
+  and network values, cleanup storage segments, and account usage bars.
+  Keep chrome neutral. Follow the shared focus policy in `DESIGN.md` and
+  preserve at least 24pt pointer targets.
 - **Check:** Render Home and one complex tab in light and dark appearance.
   Labels remain readable at rest and on hover, selection is obvious without a
   bright accent block, and the panel still reads as part of MacPowerToys.
+
+## Menu-Bar Tab Preparation
+
+- **Symptom:** A tab starts with another tab's height or pauses before its
+  controls appear.
+- **Cause:** Identity resets, animated replacements, synchronous file reads,
+  repeated row formatting, and competing preferred-height estimates add work
+  during a tab change.
+- **Invariant:** Keep prepared transfer, network, cleanup, account, and process
+  state at the panel root. Read NetToys files and format cleanup rows off the
+  main thread. Mount only the selected tab's live view. Do not animate a tab
+  replacement or assign it a new identity. The shared shell reports the actual
+  height. Task Manager sampling and its process loop also check native panel
+  visibility, since the layout tree can remain mounted while closed.
+- **Check:** Compile the cleanup row-and-total regression and all nine Task
+  Manager page renders in both appearances. After foundation round 10 lands,
+  check short-to-tall-to-short switches, focus, and latency on the signed build.
 
 ## Combined Menu Icon And Tab Outline
 
