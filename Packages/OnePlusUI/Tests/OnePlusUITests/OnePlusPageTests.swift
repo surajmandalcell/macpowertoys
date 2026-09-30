@@ -5,6 +5,14 @@ import XCTest
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testTabCountSlotStaysThreeDigitsWhileDataArrives() {
+        let tab = OnePlusTab("largest", "Largest files", count: 0)
+        let widths = [0, 1, 99, 100].map { count in
+            NSHostingView(rootView: OnePlusNavBadge(count, minimumDigits: tab.countDigits)).fittingSize.width
+        }
+        for width in widths { XCTAssertEqual(width, widths[0], accuracy: 0.5) }
+        XCTAssertGreaterThan(NSHostingView(rootView: OnePlusNavBadge(10000, minimumDigits: 3)).fittingSize.width, widths[0])
+    }
     func testTabRuleStaysInsideItsFrameOnThePageGutters() throws {
         for density in OnePlusDensity.allCases {
             let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
