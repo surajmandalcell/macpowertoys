@@ -178,6 +178,16 @@ struct FanControlView: View {
         service.selectedPreset != nil && service.selectedPreset != .auto
     }
 
+    private var presetBinding: Binding<FanPreset?> {
+        Binding(
+            get: {
+                service.selectedPreset ?? (service.snapshot?.fans.isEmpty == false
+                    && service.snapshot?.hasExternalManualControl == false ? .auto : nil)
+            },
+            set: { if let preset = $0 { service.select(preset) } }
+        )
+    }
+
     @ViewBuilder
     private var presetButtons: some View {
         if compact && !service.canControl && service.canRestoreAutomatic {
@@ -189,18 +199,20 @@ struct FanControlView: View {
         } else {
             OnePlusSegmented(
                 choices: FanPreset.allCases.map { (Optional($0), $0.rawValue) },
-                selection: Binding(
-                    get: {
-                        service.selectedPreset ?? (service.snapshot?.fans.isEmpty == false
-                            && service.snapshot?.hasExternalManualControl == false ? .auto : nil)
-                    },
-                    set: { if let preset = $0 { service.select(preset) } }
-                ),
+                selection: presetBinding,
                 accessibilityLabel: "Fan preset"
             )
             .onePlusDensity(.compact)
             .disabled(service.isChanging || !service.canControl)
             .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
+            .accessibilityRepresentation {
+                Picker("Fan preset", selection: presetBinding) {
+                    ForEach(FanPreset.allCases) { preset in
+                        Text("Fan \(preset.rawValue)").tag(Optional(preset))
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
         }
     }
 }
