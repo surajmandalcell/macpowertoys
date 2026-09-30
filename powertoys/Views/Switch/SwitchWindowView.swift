@@ -382,12 +382,17 @@ struct SwitchWindowView: View {
                 } else if let snapshot = model.usage[account.id] {
                     let buckets = usageBuckets(snapshot)
                     usageFacts(snapshot)
-                    ForEach(buckets.indices, id: \.self) { index in
-                        usageBucket(buckets[index])
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(buckets.indices, id: \.self) { index in
+                                usageBucket(buckets[index])
+                            }
+                            if buckets.isEmpty {
+                                Text("Rate limits unavailable").onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
+                            }
+                        }
                     }
-                    if buckets.isEmpty {
-                        Text("Rate limits unavailable").onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
-                    }
+                    .onePlusScrollIndicators()
                 } else {
                     OnePlusEmptyState(
                         model.usageLoading.contains(account.id) ? "Checking account usage" : "Usage has not been checked",
@@ -399,8 +404,8 @@ struct SwitchWindowView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity,
-                   minHeight: OnePlusMetrics.captionedSettingRow * 7,
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: OnePlusMetrics.captionedSettingRow * 4,
                    alignment: model.usage[account.id] == nil ? .center : .topLeading)
         }
     }
