@@ -450,12 +450,12 @@ struct SwitchTool: Tool {
     let manual = [
         ToolManualSection(title: "Accounts", points: [
             "Sign in to Codex CLI or Grok Build, or import an existing account folder.",
-            "Choose Make Default to switch the account used by the corresponding CLI.",
+            "Choose Use as default to switch the account used by the corresponding CLI.",
             "Verify access, open the selected CLI, and refresh usage from the account detail view."
         ]),
         ToolManualSection(title: "Shared Store", points: [
             "Switch.app is optional. This applet and Switch.app use the same account store when both are installed.",
-            "Recovery shows interrupted operations and linked settings that need repair."
+            "Backup shows interrupted operations and linked settings that need repair."
         ])
     ]
 
