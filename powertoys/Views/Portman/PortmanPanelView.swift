@@ -7,6 +7,8 @@ import OnePlusUI
 nonisolated struct PortmanOverviewRow: Identifiable, Sendable {
     let port: PortmanLocalPort
     let canStop: Bool
+    let title: String
+    let subtitle: String
     let memoryText: String
     let sparklineValues: [Double]
     let sparklineRange: ClosedRange<Double>
@@ -88,9 +90,15 @@ nonisolated func portmanOverviewPresentation(
     return PortmanOverviewPresentation(
         rows: sort.sorted(ports).map { port in
             let values = (history[port.id] ?? []).map { Double($0.memoryBytes) }
+            let details = metadata[port.id]
+            let title = portmanServerName(project: details?.project,
+                                          processName: port.launchCommand.isEmpty ? port.command : port.launchCommand)
+            let branch = details?.branch.flatMap { $0.isEmpty || $0 == title ? nil : $0 }
             return PortmanOverviewRow(
                 port: port,
                 canStop: port.canStop,
+                title: title,
+                subtitle: branch.map { "\($0) · up \(port.uptime)" } ?? "up \(port.uptime)",
                 memoryText: portmanMemoryString(port.memoryBytes),
                 sparklineValues: values,
                 sparklineRange: (values.min() ?? 0)...max(1, values.max() ?? 1)
@@ -636,11 +644,9 @@ struct PortmanPanelView: View {
                         .foregroundStyle(portColor(port))
                         .frame(width: 52, alignment: .leading)
                         VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                            Text(service.metadata[port.id]?.branch
-                                 ?? portmanServerName(project: service.metadata[port.id]?.project,
-                                                      processName: port.command))
+                            Text(row.title)
                                 .onePlusText(.cardTitle).lineLimit(1)
-                            Text("\(portmanServerName(project: service.metadata[port.id]?.project, processName: port.command)) · up \(port.uptime)")
+                            Text(row.subtitle)
                                 .onePlusText(.caption)
                                 .lineLimit(1)
                         }

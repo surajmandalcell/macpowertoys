@@ -146,10 +146,37 @@ final class PortmanTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.rows.map(\.port.port), [8000, 3000])
+        XCTAssertEqual(presentation.rows.map(\.title), ["python3 app.py", "node server.js"])
+        XCTAssertEqual(presentation.rows.map(\.subtitle), ["up 2m", "up 1m"])
         XCTAssertEqual(presentation.uniquePortCount, 2)
         XCTAssertEqual(presentation.memoryBytes, 5_120)
         XCTAssertEqual(presentation.cpuPercent, 4)
         XCTAssertEqual(presentation.scanRangeText, "3000–9999")
+    }
+
+    func testServerRowsKeepProjectAndBranchContextDistinct() throws {
+        for (project, branch, command, title, subtitle) in [
+            ("Project", "main", "node server.js", "Project", "main · up 1m"),
+            ("Project", "Project", "node server.js", "Project", "up 1m"),
+            ("/", "", "node server.js", "node server.js", "up 1m"),
+            ("", "", "", "node", "up 1m")
+        ] {
+            let port = PortmanLocalPort(
+                pid: 42, port: 3000, address: "127.0.0.1", command: "node",
+                launchCommand: command, memoryBytes: 0, cpuPercent: 0,
+                uptime: "1m", started: 1, userID: 501
+            )
+            let presentation = portmanOverviewPresentation(
+                ports: [port], history: [:],
+                metadata: [port.id: PortmanMetadata(folder: "/", project: project, branch: branch, root: nil)],
+                lastConnectionAt: [:], sort: .port, selectedProcessIDs: [], cleanupMode: false,
+                idleHours: 4, runningDays: 3, policyMode: .off,
+                includeDeletedFolders: false, scanRange: 3000...9999
+            )
+            let row = try XCTUnwrap(presentation.rows.first)
+            XCTAssertEqual(row.title, title)
+            XCTAssertEqual(row.subtitle, subtitle)
+        }
     }
 
     func testServerNameFallsBackFromTheRootFolderToTheProcess() {
