@@ -84,6 +84,7 @@ private struct OnePlusUIShowcase: View {
             } navigation: {
                 OnePlusNavCaption("Components")
                 ForEach(pages.filter { query.isEmpty || $0.localizedCaseInsensitiveContains(query) }, id: \.self) { item in
+                    if item == "Settings" { OnePlusNavCaption("Samples", spacing: .sectionStart) }
                     OnePlusNavRow(item, systemImage: icon(item), selected: page == item,
                                   count: item == "Inputs" ? 8 : nil) { page = item; toast = nil }
                 }
