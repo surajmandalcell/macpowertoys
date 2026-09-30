@@ -39,6 +39,36 @@ final class MainAppBehaviorUITests: XCTestCase {
     }
 
     @MainActor
+    func testToolLaunchBarKeepsItsGuttersAndDisablementAcrossTabs() throws {
+        let app = launchApp()
+        let card = app.descendants(matching: .any)["tool.logs.card"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.click()
+
+        let window = app.windows["MacPowerToys"]
+        let launch = app.buttons["tool.logs.launch"]
+        XCTAssertTrue(launch.waitForExistence(timeout: 5))
+        XCTAssertEqual(launch.label, "Open Logs")
+        XCTAssertEqual(window.frame.maxX - launch.frame.maxX, 24, accuracy: 1)
+        XCTAssertEqual(window.frame.maxY - launch.frame.maxY, 24, accuracy: 1)
+        let actionFrame = launch.frame
+
+        window.buttons["How to use"].click()
+        XCTAssertTrue(window.staticTexts["Reading Logs"].waitForExistence(timeout: 2))
+        XCTAssertEqual(launch.frame, actionFrame)
+        window.scrollViews.firstMatch.swipeUp()
+        XCTAssertEqual(launch.frame, actionFrame)
+
+        window.descendants(matching: .any)["tool.logs.enabled"].click()
+        XCTAssertFalse(launch.isEnabled)
+        window.descendants(matching: .any)["tool.logs.page"].buttons["Settings"].click()
+        XCTAssertEqual(launch.frame, actionFrame)
+        XCTAssertFalse(launch.isEnabled)
+        window.descendants(matching: .any)["tool.logs.enabled"].click()
+        XCTAssertTrue(launch.isEnabled)
+    }
+
+    @MainActor
     private func openLogs(in app: XCUIApplication) {
         let card = app.descendants(matching: .any)["tool.logs.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))

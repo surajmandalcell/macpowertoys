@@ -38,6 +38,7 @@ struct MainOpenToolButton: View {
     var toolName: String? = nil
     var title = "Open"
     var catalog = false
+    var primary = false
     @State private var settings = SettingsManager.shared
 
     var body: some View {
@@ -46,9 +47,9 @@ struct MainOpenToolButton: View {
             guard let toolID else { return }
             ToolActionRouter.shared.open(toolID: toolID)
         } label: { Text(title) }
-        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small,
+        .buttonStyle(OnePlusButtonStyle(primary ? .primary : .ghost, size: primary ? .regular : .small,
                                       minWidth: OnePlusCatalogMetrics.openWidth,
-                                      height: OnePlusCatalogMetrics.openHeight))
+                                      height: primary ? OnePlusMetrics.controlHeight : OnePlusCatalogMetrics.openHeight))
         .disabled(toolID == nil || !settings.isToolEnabled(toolID ?? "") || settings.isToolTransitioning(toolID ?? ""))
         .accessibilityIdentifier("tool.\(toolID ?? "none").\(catalog ? "open" : "launch")")
         .accessibilityLabel("Open \(resolvedToolName)")
