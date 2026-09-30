@@ -93,18 +93,16 @@ struct TextExtractorView: View {
     private var titlebar: some View {
         OnePlusAppletTitlebar(title: "Text Extractor") {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Menu {
-                    Toggle("Enable Extract Text shortcut", isOn: Binding(
-                        get: { shortcuts.isEnabled(.textExtractor) },
-                        set: { shortcuts.setEnabled($0, for: .textExtractor) }
-                    ))
-                    Button("Change shortcut…") { page = .settings }
-                } label: {
-                    OnePlusControlLabel(variant: .ghost, size: .small) {
-                        Text(shortcuts.shortcut(for: .textExtractor).display)
-                    }
+                OnePlusMenuButton(shortcuts.shortcut(for: .textExtractor).display) {
+                    [
+                        .item(OnePlusPopupMenuItem("Enable Extract Text shortcut",
+                                                  isSelected: shortcuts.isEnabled(.textExtractor)) {
+                            shortcuts.setEnabled(!shortcuts.isEnabled(.textExtractor), for: .textExtractor)
+                        }),
+                        .item(OnePlusPopupMenuItem("Change shortcut…") { page = .settings })
+                    ]
                 }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                .environment(\.onePlusDensity, .compact)
                 .help("Extract Text shortcut").accessibilityLabel("Extract Text shortcut")
                 Button("Extract Text") { service.begin() }
                     .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
@@ -283,7 +281,7 @@ private struct TextExtractionRow: View {
                 .frame(maxWidth: .infinity, minHeight: TextExtractorLayout.historyRowHeight, alignment: .leading)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(OnePlusInteractionStyle())
+            .buttonStyle(.plain)
             .accessibilityLabel("Open full text")
             Button(action: onCopy) { Image(systemName: "doc.on.doc") }
                 .accessibilityLabel("Copy text")
@@ -295,6 +293,7 @@ private struct TextExtractionRow: View {
                 .accessibilityLabel("Delete extraction")
         }
         .padding(.horizontal, OnePlusMetrics.actionSpacing)
+        .onePlusRowHover()
         .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
         .contextMenu {
             Button("Open full text", action: onOpen)
