@@ -135,10 +135,13 @@ public struct OnePlusNavCaption: View {
 }
 
 public struct OnePlusNavBadge: View {
+    private static let digitWidth = ceil(NSAttributedString(string: "0", attributes: [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .regular)]).size().width)
     let count: Int
-    public init(_ count: Int) { self.count = count }
+    let minimumDigits: Int
+    public init(_ count: Int, minimumDigits: Int = 0) { self.count = count; self.minimumDigits = min(max(0, minimumDigits), 12) }
     public var body: some View {
         Text(String(count)).font(.system(size: 9, design: .monospaced)).foregroundStyle(OnePlusColor.muted)
+            .frame(minWidth: Self.digitWidth * CGFloat(minimumDigits), alignment: .trailing)
     }
 }
 

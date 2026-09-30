@@ -56,7 +56,10 @@ public struct OnePlusTab<Value: Hashable>: Identifiable {
     public let id: Value
     public let title: String
     public let count: Int?
-    public init(_ id: Value, _ title: String, count: Int? = nil) { self.id = id; self.title = title; self.count = count }
+    public let countDigits: Int
+    public init(_ id: Value, _ title: String, count: Int? = nil, countDigits: Int = 3) {
+        self.id = id; self.title = title; self.count = count; self.countDigits = countDigits
+    }
 }
 
 public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
@@ -76,7 +79,7 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
                 Button { selection = tab.id } label: {
                     HStack(spacing: 6) {
                         Text(tab.title).onePlusText(.tab, selected: selection == tab.id)
-                        if let count = tab.count { OnePlusNavBadge(count) }
+                        if let count = tab.count { OnePlusNavBadge(count, minimumDigits: tab.countDigits) }
                     }.frame(height: 36)
                         .overlay(alignment: .bottom) { Rectangle().fill(selection == tab.id ? OnePlusColor.accent : .clear).frame(height: 2) }
                         .contentShape(Rectangle())
