@@ -16,6 +16,11 @@ final class OnePlusFocusPolicyTests: XCTestCase {
     }
 
     func testPresentationAndPointerFocusKeepKeyboardAndTextEditing() {
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp] {
+            XCTAssertTrue(OnePlusFocusPolicy.isPointerEvent(type))
+        }
+        XCTAssertFalse(OnePlusFocusPolicy.isPointerEvent(.keyDown))
+        XCTAssertFalse(OnePlusFocusPolicy.isPointerEvent(nil))
         XCTAssertFalse(OnePlusFocusPolicy.acceptsFocus(isVisible: false, pointer: false, textInput: true))
         XCTAssertFalse(OnePlusFocusPolicy.acceptsFocus(isVisible: true, pointer: true, textInput: false))
         XCTAssertTrue(OnePlusFocusPolicy.acceptsFocus(isVisible: true, pointer: true, textInput: true))

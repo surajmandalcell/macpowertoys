@@ -55,9 +55,9 @@ public final class OnePlusFocusPolicy {
                 if let window { self?.configure(window) }
             }
         })
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .leftMouseDown]) { [weak self] event in
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
             self?.refresh()
-            if event.type == .leftMouseDown, let window = event.window {
+            if Self.isPointerEvent(event.type), let window = event.window {
                 Self.dismissPointerFocus(in: window, at: event.locationInWindow)
             }
             return event
@@ -121,6 +121,13 @@ public final class OnePlusFocusPolicy {
         return false
     }
 
+    static func isPointerEvent(_ type: NSEvent.EventType?) -> Bool {
+        switch type {
+        case .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp: true
+        default: false
+        }
+    }
+
     static func allows(_ responder: NSResponder?, in window: NSWindow, pointer: Bool) -> Bool {
         if !shared.installed { return true }
         if responder == nil || responder === window { return true }
@@ -140,7 +147,7 @@ public final class OnePlusFocusPolicy {
 
 extension NSWindow {
     @objc fileprivate func onePlusMakeFirstResponder(_ responder: NSResponder?) -> Bool {
-        let pointer = NSApp.currentEvent?.type == .leftMouseDown || NSApp.currentEvent?.type == .leftMouseUp
+        let pointer = OnePlusFocusPolicy.isPointerEvent(NSApp.currentEvent?.type)
         guard OnePlusFocusPolicy.allows(responder, in: self, pointer: pointer) else { return false }
         if let view = responder as? NSView {
             view.focusRingType = OnePlusFocusPolicy.shared.showsFocus ? .default : .none
