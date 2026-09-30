@@ -348,6 +348,14 @@ private struct LogsSidebar: View {
 }
 
 private struct LogsPageView: View {
+    private static let columns: [OnePlusGridColumn] = [
+        OnePlusGridColumn("Time", width: 116, textRole: .mono),
+        OnePlusGridColumn("Level", width: 96, textColor: OnePlusColor.secondary,
+                          headerLabelInset: OnePlusMetrics.navIcon + OnePlusMetrics.spacing[1]),
+        OnePlusGridColumn("Source", width: 215),
+        OnePlusGridColumn("Message", width: 500)
+    ]
+
     let page: LogsPage
     let selectedLevels: Set<LogLevel>
     @Binding var systemRange: SystemLogRange
@@ -426,42 +434,46 @@ private struct LogsPageView: View {
                     Table(visibleRows, selection: $selection, sortOrder: sortBinding) {
                         TableColumn("Time", value: \LogsRow.timestamp) { row in
                             Text(row.time)
-                                .onePlusText(.mono)
                                 .textSelection(.enabled)
+                                .onePlusTableCell(Self.columns[0], position: .first)
                         }
-                        .width(116)
+                        .width(Self.columns[0].width)
                         TableColumn("Level", value: \LogsRow.level) { row in
                             HStack(spacing: OnePlusMetrics.spacing[1]) {
                                 Image(systemName: row.symbol)
                                     .foregroundStyle(levelGlyphColor(row))
                                     .accessibilityHidden(true)
+                                    .frame(width: OnePlusMetrics.navIcon)
                                 Text(row.level)
-                                    .foregroundStyle(OnePlusColor.secondary)
+                                    .lineLimit(1)
                             }
                                 .textSelection(.enabled)
+                                .onePlusTableCell(Self.columns[1])
                         }
-                        .width(84)
+                        .width(Self.columns[1].width)
                         TableColumn("Source", value: \LogsRow.source) { row in
                             Text(row.source)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                                 .textSelection(.enabled)
+                                .onePlusTableCell(Self.columns[2])
                         }
-                        .width(215)
+                        .width(Self.columns[2].width)
                         TableColumn("Message", value: \LogsRow.message) { row in
                             Text(row.message)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                                 .textSelection(.enabled)
+                                .onePlusTableCell(Self.columns[3], position: .last)
                         }
-                        .width(min: 300, ideal: 500)
+                        .width(min: 300, ideal: Self.columns[3].width)
                     }
                     .contextMenu(forSelectionType: String.self) { selected in
                         logContextMenu(selected)
                     } primaryAction: { selected in
                         detailID = selected.first
                     }
-                    .onePlusNativeTable()
+                    .onePlusNativeTable(columns: Self.columns)
                 }
                 .frame(maxHeight: .infinity)
             }
