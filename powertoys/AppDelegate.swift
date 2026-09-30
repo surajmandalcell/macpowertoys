@@ -206,7 +206,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSLog("Monitor UI test status items: \(SystemMonitorService.shared.statusItemOwnerCount)")
         }
         startApplicationIfReady()
-        if !AppRuntime.isUITesting && (AppRuntime.isRunningTests
+        if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open") && (AppRuntime.isRunningTests
             || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo)) {
             DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
         }

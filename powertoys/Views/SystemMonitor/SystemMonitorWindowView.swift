@@ -242,7 +242,7 @@ struct SystemMonitorWindowView: View {
                 ) {
                     pageID = item.rawValue
                 }
-                .accessibilityIdentifier("task-manager.sidebar.\(item.rawValue)")
+                .accessibilityIdentifier(item == .remote ? "task-manager.sidebar.remote-stats" : "task-manager.sidebar.\(item.rawValue)")
             }
         }
         .frame(maxWidth: .infinity)
