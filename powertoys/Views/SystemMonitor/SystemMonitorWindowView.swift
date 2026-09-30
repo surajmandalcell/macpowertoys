@@ -481,7 +481,7 @@ struct SystemMonitorWindowView: View {
         case .none:
             Spacer(minLength: 20)
         case .disk(let usage):
-            Text("\(service.snapshot?.diskUsed.map(Self.bytes) ?? "—") / \(service.snapshot?.diskTotal.map(Self.bytes) ?? "—") used")
+            Text("\(service.snapshot?.diskUsed.map(Self.diskBytes) ?? "—") / \(service.snapshot?.diskTotal.map(Self.diskBytes) ?? "—") used")
                 .onePlusText(.caption)
                 .padding(.bottom, 6)
             OnePlusUsageBar(value: (usage ?? 0) / 100)
@@ -874,8 +874,8 @@ struct SystemMonitorWindowView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             Label("Startup volume", systemImage: "internaldrive")
                                 .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
-                            metricValue(service.snapshot?.diskUsed.map(Self.bytes) ?? "—")
-                            Text("used of \(service.snapshot?.diskTotal.map(Self.bytes) ?? "—")")
+                            metricValue(service.snapshot?.diskUsed.map(Self.diskBytes) ?? "—")
+                            Text("used of \(service.snapshot?.diskTotal.map(Self.diskBytes) ?? "—")")
                                 .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                         }
                         Spacer()
@@ -898,13 +898,13 @@ struct SystemMonitorWindowView: View {
                 seriesLabels: ["Read", "Write"],
                 stats: [
                     ("Write", service.snapshot?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
-                    ("Read total", service.snapshot?.diskDetails.map { Self.bytes($0.readTotal) } ?? "—"),
+                    ("Read total", service.snapshot?.diskDetails.map { Self.diskBytes(Int64(clamping: $0.readTotal)) } ?? "—"),
                 ]
             )
             LazyVGrid(columns: detailColumns, spacing: 10) {
-                informationPanel("Volume", rows: [("Mount point", "/"), ("Used", service.snapshot?.diskUsed.map(Self.bytes) ?? "—"), ("Available", diskAvailable)])
+                informationPanel("Volume", rows: [("Mount point", "/"), ("Used", service.snapshot?.diskUsed.map(Self.diskBytes) ?? "—"), ("Available", diskAvailable)])
                 informationPanel("Storage", rows: [
-                    ("Capacity", service.snapshot?.diskTotal.map(Self.bytes) ?? "—"),
+                    ("Capacity", service.snapshot?.diskTotal.map(Self.diskBytes) ?? "—"),
                     ("Read", service.snapshot?.diskDetails?.readPerSecond.map(Self.rate) ?? "—"),
                     ("Write", service.snapshot?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
                     ("Status", "Mounted"),
@@ -1127,7 +1127,7 @@ struct SystemMonitorWindowView: View {
 
     private var diskAvailable: String {
         guard let used = service.snapshot?.diskUsed, let total = service.snapshot?.diskTotal else { return "—" }
-        return Self.bytes(max(total - used, 0))
+        return Self.diskBytes(max(total - used, 0))
     }
 
     private var batteryDetail: String {
@@ -1191,6 +1191,9 @@ struct SystemMonitorWindowView: View {
     }
     nonisolated private static func rate(_ value: Double) -> String {
         SystemMonitorDisplayFormat.byteRate(value)
+    }
+    nonisolated private static func diskBytes(_ value: Int64) -> String {
+        TrayPopoverLayout.diskBytes(max(value, 0))
     }
     nonisolated private static func bytes(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: max(value, 0), countStyle: .memory)

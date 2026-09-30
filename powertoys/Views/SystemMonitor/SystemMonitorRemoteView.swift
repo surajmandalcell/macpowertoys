@@ -444,7 +444,7 @@ struct TaskManagerRemoteCard: View {
     private var diskPercent: String { reading == nil ? "—" : "\(Int((diskFraction * 100).rounded()))%" }
     private var diskFree: String {
         guard let used = reading?.diskUsed, let total = reading?.diskTotal else { return "No current reading" }
-        return Self.bytes(total - min(used, total)) + " free"
+        return TrayPopoverLayout.diskBytes(Int64(clamping: total - min(used, total))) + " free"
     }
 
     nonisolated private static func shortRate(_ value: Double) -> String {
@@ -456,10 +456,6 @@ struct TaskManagerRemoteCard: View {
     nonisolated private static func shortBytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
             .replacingOccurrences(of: " ", with: "")
-    }
-
-    nonisolated private static func bytes(_ value: UInt64) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .file)
     }
 }
 

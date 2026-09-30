@@ -26,6 +26,13 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertEqual(TaskManagerMetricText.parts("—").value, "—")
     }
 
+    func testDiskByteFormatterUsesDecimalUnits() {
+        for (bytes, expected) in [(Int64(1_000), "1KB"), (1_000_000, "1MB"),
+                                  (1_000_000_000, "1GB"), (1_000_000_000_000, "1TB")] {
+            XCTAssertEqual(TrayPopoverLayout.diskBytes(bytes).replacingOccurrences(of: " ", with: ""), expected)
+        }
+    }
+
     func testTrayPagesSampleOnlyTheirMetricFamilies() {
         XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 9)
         XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))
