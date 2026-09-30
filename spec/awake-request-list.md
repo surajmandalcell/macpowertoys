@@ -24,6 +24,10 @@ status row. Window height uses the shared fixed-canvas correction.
 Round 2 verification: Debug and build-for-testing pass. Tests were compiled,
 not executed. Signed screenshot and interaction checks remain with the orchestrator.
 
+Round 3 screenshot-review verification: Debug and desktop build-for-testing
+pass. Tests were compiled, not executed. Signed visual and interaction checks
+remain with the orchestrator.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Pair embedded session controls with Quick times and process attachment; use a labeled mode select. | Round 3 review uses one adaptive cards-only settings implementation. Keep awake is a 44pt row with a 160pt select, the PID field is 160pt, and hour chips read `1 h` and `2 h`. Narrow applets keep a vertical stack. | Verify all modes, preset editing, attachment, and both host widths in the signed build. |

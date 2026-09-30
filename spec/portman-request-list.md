@@ -32,6 +32,10 @@ Forward and Settings use 24pt compact controls and aligned control columns.
 Round 2 verification: Debug and build-for-testing pass. Tests were compiled,
 not executed. Signed menu, form, and interaction checks remain with the orchestrator.
 
+Round 3 screenshot-review verification: Debug and desktop build-for-testing
+pass. Tests were compiled, not executed. Signed visual and interaction checks
+remain with the orchestrator.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Align the Ports & processes fields and show complete short captions. | Round 3 review uses one 180pt field column in regular embeds and one 160pt column in compact panels. Protected apps and cleanup mode show short complete captions, with full behavior in help. | Verify both densities after the shared setting-row reset reservation is removed. |

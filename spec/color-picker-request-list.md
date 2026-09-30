@@ -27,6 +27,10 @@ neutral copy controls, and a protected floating settings area on every page.
 Round 2 verification: Debug and build-for-testing pass with shared fixes B
 and I. Tests were compiled, not executed. Signed screenshot review remains.
 
+Round 3 screenshot-review verification: Debug and desktop build-for-testing
+pass. Tests were compiled, not executed. Signed visual and interaction checks
+remain with the orchestrator.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Pair the short embedded settings cards and use sentence case for clearing. | Round 3 review reuses the Global shortcut and Saved colors cards in equal columns when both fit; the applet keeps full-width stacked cards. The action and confirmation use `Clear all`. | Verify both hosts and clear confirmation in the signed build. |
