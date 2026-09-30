@@ -267,6 +267,7 @@ private struct OnePlusFixedCanvasModifier: ViewModifier {
             .onePlusDensity(canvas.density)
             .onePlusLiveUpdates()
             .onePlusFocusPolicy()
+            .onePlusAppAppearance()
         }
     }
 }
