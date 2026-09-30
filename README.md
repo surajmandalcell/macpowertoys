@@ -51,7 +51,7 @@
 | | **Diskman** | Analyze disks and folders with live treemaps or rings; manage removable disks and partitions. |
 | <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
 | <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.svg" width="30" alt=""> | **Portman** | Inspect local development ports and forward selected ports from a private SSH server to localhost. |
-| <img src="powertoys/Assets.xcassets/SwitchLogo.imageset/icon.svg" width="30" alt=""> | **Switch** | Manage CLI accounts, review Codex conversations and usage, and recover interrupted account changes. |
+| <img src="powertoys/Assets.xcassets/SwitchLogo.imageset/icon.svg" width="30" alt=""> | **Switch** | Manage CLI accounts, review usage, and recover interrupted account changes. |
 
 ## Designed for the Mac
 
@@ -101,7 +101,7 @@ identity. Raycast users can import the `raycast` directory;
 the extension exposes the launcher and shortcuts to supported tools.
 
 Switch is also available as a separate app; MacPowerToys uses its shared Core
-without requiring that app. See the [integration diagram and update path](docs/switch-core.md).
+without requiring that app. See [Switch integration](#switch-integration).
 
 > [!NOTE]
 > Personal-team signing works on the signing Mac. Public,
@@ -141,6 +141,50 @@ changes. Never replace a running installation during a transfer.
   commands stay visible in Terminal.
 - Permission-dependent tools show their current access state. Use their
   settings action to open the correct macOS privacy pane after a denial.
+
+## Tool lifetime
+
+Each tool keeps its own window and saved state. Windows restore their display
+and position before they appear. Heavy work runs on demand. Detailed Task
+Manager sampling stops when no visible window or panel needs it. Optional
+menu-bar summaries and enabled background features keep their own lifetimes.
+No performance or cleanup benchmark is claimed without a measurement.
+
+## Switch integration
+
+MacPowerToys uses the versioned `AIManagerCore` package from the separate
+Switch repository. The apps have separate interfaces and share Core's data
+paths and cross-process operation lock. Conversation browsing and cleanup
+stay in standalone Switch. The combined menu supports quick switching and
+on-demand usage refresh without background polling.
+
+```text
+Switch packages/core/Sources/AIManagerCore
+    -> MacPowerToys powertoys/Views/Switch/
+Switch packages/mac-gui and packages/tui
+    -> standalone interfaces
+```
+
+Existing `~/Library/Application Support/AI Manager` data keeps its path for
+compatibility. Updating Switch.app cannot update Core inside MacPowerToys.
+To update both apps, release a new Core package, update the exact version in
+`powertoys.xcodeproj/project.pbxproj`, resolve and review `Package.resolved`,
+run isolated Core and MacPowerToys tests, then release MacPowerToys.
+Tests use a disposable `AI_MANAGER_ROOT`. They do not inspect real auth files
+or the owner's Keychain. The applet opens Core only on demand and does not
+build a conversation index.
+
+## Third-party notices
+
+Ruler includes [Free Ruler](https://github.com/pascalpp/FreeRuler) source and
+resources at commit `d38ca4f673f16c51485940e63eeee68babfbfeed`.
+Copyright (c) 2019 Pascal Balthrop. The MIT license is bundled in
+[powertoys/FreeRuler/FreeRuler-LICENSE.txt](powertoys/FreeRuler/FreeRuler-LICENSE.txt).
+
+The native SMC fan reader adapts connection, data layout, and decoding code
+from [smctl](https://github.com/leaperone/smctl) at commit
+`ca68174f8cdafc53778908c67d77117cb754e9ef`. The MIT license is bundled in
+[powertoys/Core/smctl-LICENSE.txt](powertoys/Core/smctl-LICENSE.txt).
 
 ## Privacy and security
 
