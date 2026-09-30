@@ -943,7 +943,10 @@ private extension SettingsRegistry {
 
     static func rulerLengthFormat(_ value: Any, fallback: CGFloat) -> String {
         guard let number = value as? NSNumber else { return defaultFormat(value) }
-        return numberFormat(number.doubleValue > Prefs.unsetDefaultRulerLength ? number.doubleValue : Double(fallback))
+        if number.doubleValue > Prefs.unsetDefaultRulerLength {
+            return "\(numberFormat(number)) pt"
+        }
+        return "Automatic (\(numberFormat(Double(fallback))) pt)"
     }
 
     static func menuItemFormat(_ item: SystemMonitorMenuItemConfiguration) -> String {

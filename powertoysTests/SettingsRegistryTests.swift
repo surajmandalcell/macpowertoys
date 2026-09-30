@@ -46,13 +46,30 @@ final class SettingsRegistryTests: XCTestCase {
         }
     }
 
-    func testRulerLengthDefaultsShowTheirEffectiveScreenValues() throws {
+    func testRulerLengthDefaultsDistinguishAutomaticFromEqualExplicitLengths() throws {
         let lengths = RulerLayoutState.defaultLengths()
         let horizontal = try XCTUnwrap(SettingsRegistry.entries.first { $0.id == "ruler.defaultHorizontalLength" })
         let vertical = try XCTUnwrap(SettingsRegistry.entries.first { $0.id == "ruler.defaultVerticalLength" })
 
-        XCTAssertEqual(horizontal.defaultDisplay, NSNumber(value: Double(lengths.horizontal)).stringValue)
-        XCTAssertEqual(vertical.defaultDisplay, NSNumber(value: Double(lengths.vertical)).stringValue)
+        withDefaults { defaults in
+            for (entry, length) in [(horizontal, lengths.horizontal), (vertical, lengths.vertical)] {
+                let value = NSNumber(value: Double(length)).stringValue
+                XCTAssertEqual(entry.defaultDisplay, "Automatic (\(value) pt)")
+                XCTAssertEqual(entry.currentDisplay(defaults: defaults), entry.defaultDisplay)
+                XCTAssertFalse(entry.isModified(defaults: defaults))
+
+                defaults.set(Double(length), forKey: entry.key)
+                XCTAssertEqual(entry.currentDisplay(defaults: defaults), "\(value) pt")
+                XCTAssertTrue(entry.isModified(defaults: defaults))
+                let differences = SettingsRegistry.modified(entries: [entry], defaults: defaults)
+                XCTAssertEqual(differences.count, 1)
+                XCTAssertNotEqual(differences.first?.currentDisplay, differences.first?.defaultDisplay)
+
+                defaults.removeObject(forKey: entry.key)
+                XCTAssertEqual(entry.currentDisplay(defaults: defaults), entry.defaultDisplay)
+                XCTAssertFalse(entry.isModified(defaults: defaults))
+            }
+        }
     }
 
     func testJSONStringComparisonIgnoresWhitespaceAndObjectOrder() {
