@@ -269,17 +269,21 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let screen = try XCTUnwrap(NSScreen.main).visibleFrame
         host.frame = NSRect(origin: screen.origin, size: NSSize(width: TrayPopoverLayout.width,
                                                               height: screen.height * TrayPopoverLayout.heightFraction))
-        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.contentView = host
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         defer { window.close() }
         host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        let deadline = Date().addingTimeInterval(2)
+        while host.fittingSize.height <= 100 && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+            host.layoutSubtreeIfNeeded()
+        }
 
         let size = host.fittingSize
         XCTAssertEqual(size.width, TrayPopoverLayout.width, accuracy: 1)
-        XCTAssertGreaterThan(size.height, 100)
+        XCTAssertGreaterThan(size.height, 100, "\(tab.rawValue): visible=\(window.isVisible), occlusion=\(window.occlusionState.rawValue)")
         XCTAssertLessThanOrEqual(
             size.height,
             (NSScreen.main?.visibleFrame.height ?? 900) * TrayPopoverLayout.heightFraction + 1

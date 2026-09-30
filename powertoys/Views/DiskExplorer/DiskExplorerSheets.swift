@@ -64,6 +64,7 @@ struct DiskBlockedEjectSheet: View {
                     LazyVStack(spacing: 0) {
                         ForEach(blocked.blockers) { blocker in
                             OnePlusKeyValueRow(blocker.name, value: "PID \(blocker.pid)", monospaced: true)
+                                .accessibilityLabel("\(blocker.name), PID \(blocker.pid)")
                         }
                     }
                 }.thinScrollIndicators().frame(maxHeight: OnePlusMetrics.wideControlColumn)

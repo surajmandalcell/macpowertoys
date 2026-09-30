@@ -28,6 +28,7 @@ public struct OnePlusSwitchStyle: ToggleStyle {
 public struct OnePlusSegmented<Value: Hashable>: View {
     private let choices: [(Value, String)]
     private let symbols: [Value: String]
+    private let identifierPrefix: String?
     @Binding private var selection: Value
     private let label: String
     @Environment(\.onePlusDensity) private var density
@@ -35,9 +36,11 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    public init(choices: [(Value, String)], selection: Binding<Value>, accessibilityLabel: String = "Selection") {
+    public init(choices: [(Value, String)], selection: Binding<Value>, accessibilityLabel: String = "Selection",
+                accessibilityIdentifierPrefix: String? = nil) {
         self.choices = choices
         symbols = [:]
+        identifierPrefix = accessibilityIdentifierPrefix
         _selection = selection
         label = accessibilityLabel
     }
@@ -45,6 +48,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     public init(iconChoices: [(Value, String, String)], selection: Binding<Value>, accessibilityLabel: String) {
         choices = iconChoices.map { ($0.0, $0.1) }
         symbols = Dictionary(uniqueKeysWithValues: iconChoices.map { ($0.0, $0.2) })
+        identifierPrefix = nil
         _selection = selection
         label = accessibilityLabel
     }
@@ -82,6 +86,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                 }
                 .buttonStyle(OnePlusInteractionStyle(radius: 3))
                 .accessibilityAddTraits(selection == choice.0 ? .isSelected : [])
+                .accessibilityIdentifier(identifierPrefix.map { "\($0).\(choice.0)" } ?? "")
                 .help(choice.1)
             }
         }
@@ -94,11 +99,8 @@ public struct OnePlusSegmented<Value: Hashable>: View {
             let delta = direction == .left || direction == .up ? -1 : 1
             if let value = Self.nextSelection(in: choices.map(\.0), current: selection, direction: delta) { selection = value }
         }
-        .accessibilityRepresentation {
-            Picker(label, selection: $selection) {
-                ForEach(choices.indices, id: \.self) { index in Text(choices[index].1).tag(choices[index].0) }
-            }.pickerStyle(.segmented)
-        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(label)
     }
 }
 

@@ -70,7 +70,8 @@ final class PortmanUITests: XCTestCase {
         sort.click()
         let memory = app.menuItems["Memory"]
         XCTAssertTrue(memory.waitForExistence(timeout: 5))
-        memory.click()
+        memory.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        XCTAssertEqual(sort.value as? String, "Memory")
         attach(app.screenshot(), named: "Portman sorted by memory")
 
         row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
@@ -83,7 +84,8 @@ final class PortmanUITests: XCTestCase {
         attach(app.screenshot(), named: "Portman link hover")
 
         sort.click()
-        app.menuItems["Port"].click()
+        app.menuItems["Port"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        XCTAssertEqual(sort.value as? String, "Port")
     }
 
     @MainActor
@@ -144,10 +146,11 @@ final class PortmanUITests: XCTestCase {
         let editor = app.descendants(matching: .any)["portman.settings.editor"]
         XCTAssertTrue(editor.isHittable, "The editor selector is not clickable")
         editor.click()
-        app.menuItems["Finder"].click()
+        app.menuItems["Finder"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         XCTAssertEqual(editor.value as? String, "Finder")
         editor.click()
-        app.menuItems["Automatic"].click()
+        app.menuItems["Automatic"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        XCTAssertEqual(editor.value as? String, "Automatic")
         let search = app.searchFields["portman.settings.search"]
         search.click()
         search.typeText("scan")

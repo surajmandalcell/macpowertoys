@@ -46,16 +46,19 @@ public struct OnePlusSidebarTitle: View {
 
 public struct OnePlusSidebar<Search: View, Navigation: View, Bottom: View>: View {
     private let title: String
+    private let titleIdentifier: String
     private let search: Search
     private let navigation: Navigation
     private let bottom: Bottom
-    public init(title: String, @ViewBuilder search: () -> Search,
+    public init(title: String, titleAccessibilityIdentifier: String = "", @ViewBuilder search: () -> Search,
                 @ViewBuilder navigation: () -> Navigation, @ViewBuilder bottom: () -> Bottom) {
         self.title = title; self.search = search(); self.navigation = navigation(); self.bottom = bottom()
+        titleIdentifier = titleAccessibilityIdentifier
     }
     public var body: some View {
         VStack(spacing: 0) {
             OnePlusSidebarTitle(title)
+                .accessibilityIdentifier(titleIdentifier)
             if Search.self != EmptyView.self {
                 search.padding(.horizontal, 12).padding(.bottom, 14)
             }
@@ -72,14 +75,16 @@ public struct OnePlusSidebar<Search: View, Navigation: View, Bottom: View>: View
 }
 
 public extension OnePlusSidebar where Search == EmptyView {
-    init(title: String, @ViewBuilder navigation: () -> Navigation, @ViewBuilder bottom: () -> Bottom) {
-        self.init(title: title, search: { EmptyView() }, navigation: navigation, bottom: bottom)
+    init(title: String, titleAccessibilityIdentifier: String = "", @ViewBuilder navigation: () -> Navigation, @ViewBuilder bottom: () -> Bottom) {
+        self.init(title: title, titleAccessibilityIdentifier: titleAccessibilityIdentifier,
+                  search: { EmptyView() }, navigation: navigation, bottom: bottom)
     }
 }
 
 public extension OnePlusSidebar where Search == EmptyView, Bottom == EmptyView {
-    init(title: String, @ViewBuilder navigation: () -> Navigation) {
-        self.init(title: title, search: { EmptyView() }, navigation: navigation, bottom: { EmptyView() })
+    init(title: String, titleAccessibilityIdentifier: String = "", @ViewBuilder navigation: () -> Navigation) {
+        self.init(title: title, titleAccessibilityIdentifier: titleAccessibilityIdentifier,
+                  search: { EmptyView() }, navigation: navigation, bottom: { EmptyView() })
     }
 }
 

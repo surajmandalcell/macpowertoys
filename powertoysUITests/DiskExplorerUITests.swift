@@ -115,9 +115,11 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertFalse(app.buttons["diskman.executeAction"].isEnabled)
         attach(app.screenshot(), named: "Diskman Merge Review Preview")
         app.buttons["Discard"].click()
+        let modifyScroll = window.scrollViews.containing(.button, identifier: "diskman.map.disk91s3").firstMatch
         for _ in 0..<8 where !window.buttons["diskman.map.disk91s3"].isHittable {
-            window.scrollViews.firstMatch.swipeDown()
+            modifyScroll.swipeDown()
         }
+        XCTAssertTrue(window.buttons["diskman.map.disk91s3"].isHittable)
         window.buttons["diskman.map.disk91s3"].click()
         let selectedTarget = window.descendants(matching: .any)["diskman.selectedTarget"]
         XCTAssertTrue(selectedTarget.waitForExistence(timeout: 5))
@@ -160,7 +162,9 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(window.searchFields["Search Results"].waitForExistence(timeout: 5))
         attach(window.screenshot(), named: "Diskman Results")
         tabs.descendants(matching: .any)["Visualization"].click()
-        window.descendants(matching: .any)["Treemap"].click()
+        let treemapChoice = window.buttons["Treemap"]
+        treemapChoice.click()
+        XCTAssertTrue(treemapChoice.isSelected)
         attach(window.screenshot(), named: "Diskman Visualization")
         XCTAssertTrue(window.staticTexts["Space used"].exists)
         XCTAssertTrue(window.staticTexts["Files scanned"].exists)
@@ -187,7 +191,9 @@ final class DiskExplorerUITests: XCTestCase {
             predicate: NSPredicate(format: "label != %@", currentFolder), object: treemap)
         XCTAssertEqual(XCTWaiter.wait(for: [drilledFolder], timeout: 5), .completed)
 
-        window.descendants(matching: .any)["Rings"].click()
+        let ringsChoice = window.buttons["Rings"]
+        ringsChoice.click()
+        XCTAssertTrue(ringsChoice.isSelected)
         let rings = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.rings").firstMatch
         XCTAssertTrue(rings.waitForExistence(timeout: 5))
