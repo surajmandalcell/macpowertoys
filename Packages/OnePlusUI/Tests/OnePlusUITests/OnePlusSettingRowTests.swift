@@ -1,0 +1,79 @@
+import AppKit
+import SwiftUI
+import XCTest
+@testable import OnePlusUI
+
+@MainActor
+final class OnePlusSettingRowTests: XCTestCase {
+    func testCaptionUsesRemainingWidthAndControlColumnStaysFixed() throws {
+        let caption = "Default: " + String(repeating: "W", count: 200)
+        for width in [CGFloat(480), 976] {
+            for column in [CGFloat(160), 180] {
+                for hasReset in [false, true] {
+                    let host = NSHostingView(rootView: OnePlusSettingRow("Preference", caption: caption,
+                        help: "Preference help", reset: hasReset ? {} : nil, controlWidth: column) {
+                            SettingControlProbe().frame(maxWidth: .infinity).frame(height: 28)
+                        }.frame(width: width).background(OnePlusColor.panel))
+                    let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: width, height: 56),
+                                          styleMask: .borderless, backing: .buffered, defer: false)
+                    window.isReleasedWhenClosed = false
+                    window.contentView = host
+                    defer { window.close() }
+                    host.appearance = NSAppearance(named: .darkAqua)
+                    host.layoutSubtreeIfNeeded()
+                    host.displayIfNeeded()
+                    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+                    let control = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "control" })
+                    let controlRect = control.convert(control.bounds, to: host)
+                    XCTAssertEqual(controlRect.width, column, accuracy: 0.5)
+                    XCTAssertEqual(controlRect.maxX, width - 16, accuracy: 0.5)
+                    let captionWidth = width - 32 - column - 16 - (hasReset ? 40 : 0)
+                    let reference = NSHostingView(rootView: Text(caption).onePlusText(.caption).lineLimit(1)
+                        .frame(width: captionWidth, height: 56, alignment: .leading).background(OnePlusColor.panel))
+                    reference.appearance = host.appearance
+                    reference.frame = CGRect(x: 0, y: 0, width: captionWidth, height: 56)
+                    reference.layoutSubtreeIfNeeded()
+                    let expected = try captionRightEdge(reference, in: reference.bounds) + 16
+                    let actual = try captionRightEdge(host, in: CGRect(x: 16, y: 30, width: captionWidth, height: 12))
+                    XCTAssertEqual(actual, expected, accuracy: 1)
+                    XCTAssertEqual(host.fittingSize.height, 56)
+                }
+            }
+        }
+    }
+
+    private func descendants(_ view: NSView) -> [NSView] {
+        [view] + view.subviews.flatMap(descendants)
+    }
+
+    private func captionRightEdge(_ host: NSView, in rect: CGRect) throws -> CGFloat {
+        let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
+        var ink = NSColor.clear, panel = NSColor.clear
+        host.effectiveAppearance.performAsCurrentDrawingAppearance {
+            ink = NSColor(OnePlusColor.muted).usingColorSpace(.deviceRGB)!
+            panel = NSColor(OnePlusColor.panel).usingColorSpace(.deviceRGB)!
+        }
+        var lastPixel: Int?
+        for y in Int(rect.minY * scale)..<Int(rect.maxY * scale) {
+            for x in Int(rect.minX * scale)..<Int(rect.maxX * scale) {
+                if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                   color.redComponent > panel.redComponent + 0.05,
+                   color.redComponent < ink.redComponent + 0.02 {
+                    lastPixel = max(lastPixel ?? x, x)
+                }
+            }
+        }
+        return CGFloat(try XCTUnwrap(lastPixel)) / scale
+    }
+}
+
+private struct SettingControlProbe: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.identifier = NSUserInterfaceItemIdentifier("control")
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
