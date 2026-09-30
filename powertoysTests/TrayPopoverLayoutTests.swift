@@ -167,7 +167,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
     }
 
     func testTrayUsesSharedMenuPanelWithReorderableTabs() throws {
-        let source = try sourceFile("Views/TrayPopoverView.swift")
+        let source = try sourceFile("Views/MenuPanels")
 
         XCTAssertEqual(TrayPopoverLayout.width, OnePlusMenuMetrics.width)
         XCTAssertEqual(TrayPopoverLayout.tabHeight, OnePlusMenuMetrics.tab)
@@ -192,7 +192,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
     }
 
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
-        let source = try sourceFile("Views/TrayPopoverView.swift")
+        let source = try sourceFile("Views/MenuPanels")
 
         XCTAssertTrue(source.contains("Spacer(minLength: OnePlusMetrics.actionSpacing)"))
         XCTAssertTrue(source.contains("@State private var showsError = false"))
@@ -201,7 +201,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
     }
 
     func testNetToysTrayKeepsBoundedPersistentDisclosuresAndRoutesToFullPages() throws {
-        let tray = try sourceFile("Views/TrayPopoverView.swift")
+        let tray = try sourceFile("Views/MenuPanels")
         let window = try sourceFile("Views/NetToys/NetToysWindowView.swift")
 
         XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.anchor.expanded\")"))
@@ -214,7 +214,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
     }
 
     func testNetToysDisclosureHoverOwnsTheFullPaddedRow() throws {
-        let tray = try sourceFile("Views/TrayPopoverView.swift")
+        let tray = try sourceFile("Views/MenuPanels")
 
         XCTAssertEqual(TrayPopoverLayout.netToysDisclosureHorizontalPadding, 6)
         XCTAssertEqual(TrayPopoverLayout.netToysDisclosureVerticalPadding, 6)
@@ -314,7 +314,13 @@ final class TrayPopoverLayoutTests: XCTestCase {
             .deletingLastPathComponent()
             .appendingPathComponent("powertoys")
             .appendingPathComponent(path)
-        return try String(contentsOf: sourceURL, encoding: .utf8)
+        if path.hasSuffix(".swift") {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        }
+        let files = try FileManager.default.contentsOfDirectory(at: sourceURL, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        return try files.map { try String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n")
     }
 
     private func render(tab: TrayTab, colorScheme: ColorScheme) throws -> NSImage {
