@@ -5,6 +5,26 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testNativeColumnRolesKeepMonoPathsAndPrimaryIdentityInk() throws {
+        for density in OnePlusDensity.allCases {
+            let host = NSHostingView(rootView: OnePlusNativeTable(columns: [
+                .init("Time", width: 176, textRole: .mono),
+                .init("Source", width: 188, textRole: .mono, textColor: OnePlusColor.ink),
+                .init("Destination", width: 200, textRole: .mono)
+            ], rows: [.init(id: "1", cells: ["10:14", "Local/work", "Cloud/work"], symbol: "arrow.right")],
+                selection: .constant([]), sort: { _, _ in }, open: { _ in }, preview: { _ in }, remove: { _ in },
+                actions: { _ in [] }).onePlusDensity(density).frame(width: 760, height: 120))
+            host.layoutSubtreeIfNeeded()
+            let table = try XCTUnwrap(findTable(in: host))
+            for index in 0..<3 {
+                let cell = try XCTUnwrap(table.view(atColumn: index, row: 0, makeIfNecessary: true) as? NSTableCellView)
+                let font = try XCTUnwrap(cell.textField?.font)
+                XCTAssertEqual(font.pointSize, density == .regular ? 11 : 9.5)
+                XCTAssertTrue(font.isFixedPitch)
+                XCTAssertEqual(cell.textField?.textColor, NSColor(index == 1 ? OnePlusColor.ink : OnePlusColor.secondary))
+            }
+        }
+    }
     func testNativeTablePaintsRulesOnlyForActualRecords() throws {
         for appearance in [NSAppearance.Name.darkAqua, .aqua] {
             let host = NSHostingView(rootView: OnePlusNativeTable(columns: [.init("Name", width: 300)],

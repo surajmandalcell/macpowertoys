@@ -109,7 +109,6 @@ public enum OnePlusTable {
     public static let primaryIconInset: CGFloat = 16
     public static let primaryTextInset: CGFloat = primaryIconInset + 15 + 10
     static let nativeHeaderInset: CGFloat = cellInset - 2
-    static let nativePrimaryHeaderInset: CGFloat = primaryTextInset - 2
     public static func rowHeight(_ density: OnePlusDensity) -> CGFloat { density == .regular ? 34 : 28 }
 }
 
@@ -118,7 +117,7 @@ public extension View {
     func onePlusTableCell(_ column: OnePlusGridColumn, position: OnePlusTable.CellPosition = .middle) -> some View {
         // ponytail: AppKit's bordered Table reserves 6pt at each outside edge;
         // the native geometry regression test gates updates to that platform inset.
-        onePlusText(column.textRole ?? .row)
+        onePlusText(column.textRole ?? .row, color: column.textColor)
             .frame(maxWidth: .infinity, alignment: column.swiftUIAlignment)
             .padding(.leading, max(0, column.leadingInset - (position == .first ? 6 : 0)))
             .padding(.trailing, max(0, column.trailingInset - (position == .last ? 6 : 0)))
@@ -151,23 +150,25 @@ public struct OnePlusGridColumn: Identifiable, Sendable {
     public let width: CGFloat
     public let alignment: Alignment
     public let textRole: OnePlusTextRole?
+    public let textColor: Color?
     public let leadingInset: CGFloat
     public let trailingInset: CGFloat
     public let headerLabelInset: CGFloat
     public var trailing: Bool { alignment == .trailing }
-    public init(_ title: String, width: CGFloat, trailing: Bool = false, textRole: OnePlusTextRole? = nil,
+    public init(_ title: String, width: CGFloat, trailing: Bool = false, textRole: OnePlusTextRole? = nil, textColor: Color? = nil,
                 leadingInset: CGFloat = OnePlusTable.cellInset, trailingInset: CGFloat = OnePlusTable.cellInset,
                 headerLabelInset: CGFloat = 0) {
         self.init(title, width: width, alignment: trailing ? .trailing : .leading, textRole: textRole,
-                  leadingInset: leadingInset, trailingInset: trailingInset, headerLabelInset: headerLabelInset)
+                  textColor: textColor, leadingInset: leadingInset, trailingInset: trailingInset, headerLabelInset: headerLabelInset)
     }
-    public init(_ title: String, width: CGFloat, alignment: Alignment, textRole: OnePlusTextRole? = nil,
+    public init(_ title: String, width: CGFloat, alignment: Alignment, textRole: OnePlusTextRole? = nil, textColor: Color? = nil,
                 leadingInset: CGFloat = OnePlusTable.cellInset, trailingInset: CGFloat = OnePlusTable.cellInset,
                 headerLabelInset: CGFloat = 0) {
         self.title = title
         self.width = width.isFinite ? max(0, width) : 0
         self.alignment = alignment
         self.textRole = textRole
+        self.textColor = textColor
         self.leadingInset = leadingInset.isFinite ? max(0, leadingInset) : OnePlusTable.cellInset
         self.trailingInset = trailingInset.isFinite ? max(0, trailingInset) : OnePlusTable.cellInset
         self.headerLabelInset = headerLabelInset.isFinite ? max(0, headerLabelInset) : 0
@@ -181,14 +182,15 @@ public struct OnePlusGridTable: View {
     public init(columns: [OnePlusGridColumn], rows: [[String]]) { self.columns = columns; self.rows = rows }
     public var body: some View {
         VStack(spacing: 0) {
-            cells(columns.map(\.title)).onePlusTableHeader()
+            cells(columns.map(\.title), header: true).onePlusTableHeader()
             ForEach(rows.indices, id: \.self) { index in cells(rows[index]).onePlusTableRow().textSelection(.enabled) }
         }
     }
-    private func cells(_ values: [String]) -> some View {
+    private func cells(_ values: [String], header: Bool = false) -> some View {
         HStack(spacing: 0) {
             ForEach(columns.indices, id: \.self) { index in
                 Text(values.indices.contains(index) ? values[index] : "")
+                    .onePlusText(header ? .tableHeader : columns[index].textRole ?? .row, color: header ? nil : columns[index].textColor)
                     .lineLimit(1).frame(width: columns[index].width, alignment: columns[index].swiftUIAlignment)
                     .help(values.indices.contains(index) ? values[index] : "")
             }
