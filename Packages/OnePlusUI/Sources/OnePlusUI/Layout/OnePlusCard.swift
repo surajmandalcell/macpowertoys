@@ -52,7 +52,7 @@ public struct OnePlusPanel<Content: View>: View {
     private let content: Content
     public init(textured: Bool = false, @ViewBuilder content: () -> Content) { self.textured = textured; self.content = content() }
     public var body: some View {
-        OnePlusCard(textured: textured) { content.frame(maxWidth: .infinity, maxHeight: .infinity) }
+        OnePlusCard(textured: textured) { content }
     }
 }
 
