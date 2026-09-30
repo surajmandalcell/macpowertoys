@@ -5,6 +5,49 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testLiveUpdatesReloadOnlyChangedVisibleCellsAndKeepSelectionAndActions() throws {
+        var selection: Set<String> = ["1"]
+        var opened: Set<String> = []
+        func view(_ rows: [OnePlusTableItem], ascending: Bool = true) -> OnePlusNativeTable {
+            OnePlusNativeTable(columns: [.init("Name", width: 200), .init("Size", width: 100)], rows: rows,
+                selection: Binding(get: { selection }, set: { selection = $0 }), ascending: ascending,
+                sort: { _, _ in }, open: { opened = $0 }, preview: { _ in }, remove: { _ in },
+                actions: { ids in [.init("Open") { opened = ids }] })
+        }
+        var rows = (0..<1000).map { OnePlusTableItem(id: String($0), cells: ["File \($0)", "1 MB"], symbol: "doc") }
+        let coordinator = view(rows).makeCoordinator()
+        let table = ReloadCountingTable(frame: CGRect(x: 0, y: 0, width: 340, height: 100))
+        table.dataSource = coordinator
+        for index in 0..<3 {
+            let column = NSTableColumn(identifier: .init(index == 2 ? "actions" : String(index)))
+            column.width = index == 0 ? 200 : 100
+            table.addTableColumn(column)
+        }
+        coordinator.update(view(rows), in: table, density: .regular)
+        let fullReloads = table.fullReloads
+        rows[1] = .init(id: "1", cells: ["File 1", "2 MB"], symbol: "doc")
+        rows[900] = .init(id: "900", cells: ["File 900", "9 MB"], symbol: "doc")
+        coordinator.update(view(rows), in: table, density: .regular)
+        XCTAssertEqual(table.fullReloads, fullReloads)
+        XCTAssertEqual(table.cellReloads.count, 1)
+        XCTAssertEqual(table.cellReloads.first?.0, IndexSet(integer: 1))
+        XCTAssertEqual(table.cellReloads.first?.1, IndexSet(integer: 1))
+        XCTAssertEqual(table.selectedRowIndexes, IndexSet(integer: 1))
+        XCTAssertEqual(selection, ["1"])
+        let menu = try XCTUnwrap(coordinator.menu(["1"]))
+        let action = try XCTUnwrap(menu.items.first)
+        XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(action.action), to: action.target, from: action))
+        XCTAssertEqual(opened, ["1"])
+        coordinator.update(view(rows), in: table, density: .regular)
+        XCTAssertEqual(table.cellReloads.count, 1)
+        coordinator.update(view(rows, ascending: false), in: table, density: .regular)
+        XCTAssertEqual(table.fullReloads, fullReloads + 1)
+        coordinator.update(view(rows.reversed()), in: table, density: .regular)
+        XCTAssertEqual(table.fullReloads, fullReloads + 2)
+        XCTAssertEqual(table.selectedRowIndexes, IndexSet(integer: 998))
+        coordinator.update(view(Array(rows.dropLast())), in: table, density: .regular)
+        XCTAssertEqual(table.fullReloads, fullReloads + 3)
+    }
     func testHeaderLabelsAndCellTextShareEachAlignmentOrigin() throws {
         let columns: [OnePlusGridColumn] = [
             .init("Name", width: 180),
@@ -133,6 +176,17 @@ final class OnePlusTableTests: XCTestCase {
         XCTAssertTrue(table.headerView is OnePlusTableHeaderView)
         }
     }
+}
+
+@MainActor private final class ReloadCountingTable: NSTableView {
+    var fullReloads = 0
+    var cellReloads: [(IndexSet, IndexSet)] = []
+    override func reloadData() { fullReloads += 1; super.reloadData() }
+    override func reloadData(forRowIndexes rows: IndexSet, columnIndexes columns: IndexSet) {
+        cellReloads.append((rows, columns))
+        super.reloadData(forRowIndexes: rows, columnIndexes: columns)
+    }
+    override func rows(in rect: NSRect) -> NSRange { NSRange(location: 0, length: 3) }
 }
 
 @MainActor private func findTable(in view: NSView) -> NSTableView? {
