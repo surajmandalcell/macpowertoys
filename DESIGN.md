@@ -38,7 +38,7 @@ spacing: { scale: [2, 4, 6, 8, 10, 12, 16, 20, 24, 28], gutter: 24, task-manager
 geometry:
   title-row: 54
   centerline: 27            # traffic lights and sidebar title only
-  content-top: 58           # page title first line box; sidebar content starts at 54
+  content-top: 16           # page title first line box top (owner 2026-09-30); sidebar content starts at 54
   applet-titlebar: 40
   applet-centerline: 22
   sidebar-title-gap-after-zoom: 14
@@ -186,10 +186,15 @@ not stick to the window top.
 
 ### The content top line
 
-`T = 58` pt below the window's top edge. The sidebar's first element (search
-field or first navigation row) starts at 54. The page header's first line
-box starts at `T`, 4 pt lower, so the body never sits higher than the
-sidebar. Header actions center on the page title's first line.
+`T = 16` pt below the window's top edge (owner decision 2026-09-30, "top edge
+on titlebar"). The page title's first line box starts at `T`, so the title's
+top edge lines up with the top of the traffic lights and the sidebar title:
+the title reads as part of the titlebar row and never pokes above it.
+(Centering a 24 pt title on `C` put it too high; starting it at 58 put it too
+low.) The subtitle follows 2 pt below the title line, tabs follow, and the
+first content element starts 16 pt below them (about y = 80 on a page with a
+subtitle and tabs). Header actions center on the page title's first line.
+The sidebar keeps its own layout: title on `C`, first element at 54.
 
 Compact applets keep their 40 pt titlebar with `C = 22`.
 
@@ -276,8 +281,8 @@ x=0                                  x=200 (216)
 ### Page
 
 ```text
-C=27  (empty drag area, texture only)
-T=58  Page title                          [action] [action]
+T=16  Page title                          [action] [action]
+C=27  (traffic lights and sidebar title center here; title top aligns with their top)
       Subtitle (optional)
       Tab   Tab 12   Tab                         [trailing tab tools]
       ------------------------------------------------------------ lineSoft
@@ -369,9 +374,17 @@ Use only these. Names are the package API.
 
 States everywhere: hover changes only fill, line, or text color. Pressed uses
 one darker surface step and never moves. Disabled is 0.38 opacity with no
-hover. Focus is a fill change plus a 1 pt inset neutral line; Full Keyboard
-Access keeps the system ring. Loading keeps the final bounds. Errors keep the
-bounds and add a caption.
+hover. Loading keeps the final bounds. Errors keep the bounds and add a
+caption.
+
+Focus (owner correction, repeated, binding): no focus ring, outline, or focus
+fill is ever drawn, and no control takes focus when a window or panel opens
+or when it is clicked with the mouse, unless the system asks for keyboard
+focus visuals: Full Keyboard Access (keyboard navigation) is on, or
+VoiceOver is running. Only then do controls show the 1 pt inset neutral
+focus line, which never changes layout or gets clipped. Text fields show
+only the caret when the person clicks into them. Keyboard operation keeps
+working in every case.
 
 ## Native behavior contract
 
@@ -413,8 +426,20 @@ The Task Manager panel is the pattern for every menu-bar panel: the combined
 MacPowerToys panel, the Task Manager panel, the Portman panel, and any
 separate tool panel.
 
-- Shell: 356 pt wide, content-sized, capped at 90% of the visible screen
-  height (owner correction: never cut content short to keep a panel small).
+- Shell: 356 pt wide. Its height is always the natural height of the
+  current tab's content; 90% of the visible screen is only a ceiling for
+  content that is taller (owner correction: a short tab must never open as a
+  tall, mostly empty panel).
+- Tab switching (owner correction): the new tab appears in its final layout
+  in the first frame. No intermediate layout, no animated resize that shows
+  a broken layout, no content jump. Measure the new content before the
+  swap, resize the panel in the same transaction, and keep switching under
+  one frame budget.
+- Identity and flair (owner correction: panels must not look stale): each
+  panel keeps its tool's identity color for its key data, for example
+  Portman's blue port numbers and memory bar, Task Manager's coral alert and
+  chart line, Cloud Sync's blue transfer progress. Live values use
+  sparklines and bars, not only text. Neutral chrome stays neutral.
   Only the body scrolls. One opaque `sidebar` surface. No blur, glass, or
   stacked shells.
 - Top bar: padding 10 top, 8 horizontal, 6 bottom (owner correction: more
@@ -546,8 +571,8 @@ A window, panel, or sheet is accepted only after it passes all of these in
 both appearances:
 
 1. Top lines: traffic lights and the sidebar title share `C`; the page
-   title's first line box starts at `T`, never above the sidebar's first
-   element.
+   title's first line box starts at `T = 16`, its top edge level with the
+   top of the traffic lights.
 2. One leading edge per container. Tab labels, section titles, and card
    edges share the gutter.
 3. Controls in one row share height and baseline. The control column never
