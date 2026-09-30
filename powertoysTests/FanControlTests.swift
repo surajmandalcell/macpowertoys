@@ -1,8 +1,32 @@
+import AppKit
 import Darwin
+import OnePlusUI
+import SwiftUI
 import XCTest
 @testable import powertoys
 
 final class FanControlTests: XCTestCase {
+    @MainActor
+    func testFanViewStopsPollingWhileItsLayoutStaysMounted() async throws {
+        let service = FanControlService.shared
+        let owner = "fan-view-visibility-test"
+        let host = NSHostingView(rootView: FanControlView(owner: owner, compact: true)
+            .environment(\.onePlusIsVisible, false))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 338, height: 30),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderFront(nil)
+        defer { window.close(); window.contentView = nil; service.stop(owner: owner) }
+        for visible in [false, true, false, true, false] {
+            host.rootView = FanControlView(owner: owner, compact: true)
+                .environment(\.onePlusIsVisible, visible)
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
+            XCTAssertEqual(service.pollOwnerCount, visible ? 1 : 0)
+        }
+    }
+
     @MainActor
     func testVisibleOwnersShareAndReleaseOnePoller() {
         let service = FanControlService.shared
