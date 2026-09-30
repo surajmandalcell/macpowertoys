@@ -91,6 +91,7 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
             .environment(\.onePlusCardPadding, OnePlusMetrics.cardPadding)
             .onePlusNeutralControls()
             .onePlusFocusPolicy()
+            .onePlusAppAppearance()
             .transaction { $0.animation = nil }
     }
 

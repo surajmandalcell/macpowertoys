@@ -76,6 +76,7 @@ struct OnePlusPopupMenuView: View {
                 .allowsHitTesting(false)
         }
         .onePlusDensity(session.density)
+        .onePlusAppAppearance()
     }
 
     private var entries: some View {
