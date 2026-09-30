@@ -152,7 +152,7 @@ everywhere.
 | Nav section caption | 9 uppercase | 9 uppercase | medium | +1 | `muted` |
 | Page title | 24 | 20 dot matrix | semibold | -0.7 | `ink` |
 | Page subtitle | 12.5 | 10.5 | regular | 0 | `secondary` |
-| Tab label | 12 | 11 | regular | 0 | `muted`, selected `ink` |
+| Tab label | 12 | 11 | regular | 0 | `secondary`, hover and selected `ink` |
 | Section title | 13 | 12 | semibold | -0.1 | `ink` |
 | Card title | 12 | 11 | semibold | -0.1 | `ink` |
 | Row label | 12 | 10.5 | regular | 0 | `ink` |
@@ -192,7 +192,11 @@ on titlebar"). The page title's first line box starts at `T`, so the title's
 top edge lines up with the top of the traffic lights and the sidebar title:
 the title reads as part of the titlebar row and never pokes above it.
 (Centering a 24 pt title on `C` put it too high; starting it at 58 put it too
-low.) The subtitle follows 2 pt below the title line, tabs follow, and the
+low.) Task Manager's dot-matrix title has no ascender space, so its glyph
+top aligns with the cap top of the text titles in the other windows, never
+above it (owner correction 2026-10-01: its header sat above the sidebar
+title row). Measure the painted pixels, not the frames.
+The subtitle follows 2 pt below the title line, tabs follow, and the
 first content element starts 16 pt below them (about y = 80 on a page with a
 subtitle and tabs). Header actions center on the page title's first line.
 The sidebar keeps its own layout: title on `C`, first element at 54.
@@ -242,8 +246,8 @@ clipped to a header, tab strip, or scroll view.
   top -8, right -16, at the front-matter opacity, with a horizontal alpha
   fade (0%, 26%, 82%, 100%).
 - Corner grain: cards marked `textured` draw the 240 x 150 grain in their
-  top-right corner at 0.14 (catalog cards and metric tiles) or 0.11 (menu
-  tiles), clipped to the card. Text, icons, controls, rows, and list views
+  top-right corner at 0.14 (metric tiles) or 0.11 (menu tiles), clipped to
+  the card. Text, icons, controls, rows, and list views
   never carry texture.
 - Chart dither: ordered 4 x 4 pt dots under area charts, masked to the chart,
   one cached pattern, never one view per dot.
@@ -308,6 +312,10 @@ C=27  (traffic lights and sidebar title center here; title top aligns with their
   the gutter, a 2 pt accent underline under the selected tab only, counts in
   9 pt SF Mono 6 pt after the label, and one full-width `lineSoft` bottom
   line. Selection never moves tabs. Trailing tab tools center in the strip.
+  Hover (owner correction 2026-10-01): the label turns `ink` and a `raised`
+  surface with radius 5 appears. The surface extends 8 pt beyond the label
+  and count on each side and 4 pt above and below the text. It is drawn
+  behind the tab and never changes layout, tab positions, or the underline.
 - The first content element starts 16 pt below the header block or tab strip.
 - Content never touches the header. No second page header inside content.
 - Page scroll views always use overlay scrollers, even when the system
@@ -329,7 +337,13 @@ C=27  (traffic lights and sidebar title center here; title top aligns with their
 - A setting that needs an explanation puts one caption line under the label
   and grows the row to 56 pt. Never wrap a label inside 44 pt.
 - Cards pair in two equal columns when both are short. Long cards take the
-  full width.
+  full width. Paired cards keep their natural heights, top-aligned.
+- A row with a title and a secondary line stacks them with a 2 pt gap and
+  centers the block vertically. A card or tile with one row centers that
+  row vertically.
+- Hover on any list row, table row, or menu-panel row highlights the
+  complete row rectangle, including values, actions, and charts. Never
+  highlight only the text (owner correction 2026-10-01).
 - Controls apply immediately. There is no Apply or Discard bar. An invalid
   text value stays in its field with an error caption; it never clamps
   silently.
@@ -372,6 +386,12 @@ Use only these. Names are the package API.
 | `OnePlusDotTitle` | The Task Manager dot-matrix title. |
 | `OnePlusWindowTexture` | The window texture layer. |
 | Menu-panel parts | See "Menu-bar panels". |
+
+Button content (owner correction 2026-10-01): the label is vertically
+centered in the button frame. A glyph and its label share one center line.
+The glyph uses the label's point size and weight, never a larger size, so
+the glyph never dominates the text. This applies to every button style and
+every custom action tile, including the menu-panel Home actions.
 
 States everywhere: hover changes only fill, line, or text color. Pressed uses
 one darker surface step and never moves. Disabled is 0.38 opacity with no
@@ -456,7 +476,15 @@ separate tool panel.
 - Body: padding 3 top, 8 horizontal, 8 bottom. Content width 338.
 - Tiles (`OnePlusMenuTile`): radius 6, one step above `panel` (`#262626`
   dark), 1 pt `line`, 7 x 8 padding, grain 0.11, 5 pt grid gaps, three
-  109.33 pt columns. Wide tiles span two columns.
+  109.33 pt columns. Wide tiles span two columns. A metric tile with history
+  (CPU, GPU, Memory) draws it as a quiet area chart behind the whole tile,
+  under the text, never as a small chart beside the value.
+- Status-item icons use the same modest visual size as the Portman icon.
+  A Task Manager item that shows only one metric uses the Task Manager
+  glyph, not the metric glyph.
+- Sidebar and panel glyphs mirror each tool's icon metaphor (for example a
+  slanted ruler, an emergency-stop button for Switch). No two tools share a
+  glyph.
 - Control rows (Fan, Awake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
   SF Mono status, with a trailing 24 pt segmented control.
 - Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section
@@ -494,10 +522,14 @@ Follows `macpowertoys-repaired.html` and its handoff comment.
   sort select (Default order, Name, Category), and a grid or list toggle.
   Grid: four columns, 12 pt gaps, 151 pt cards with a 40 pt tool icon, name,
   category caption, favorite star (visible on hover or when set), two-line
-  description, enable switch with an `Enabled` caption, and `Open` with an
-  arrow. List: 52 pt rows with the same parts.
+  description, an unlabeled enable switch, and a ghost `Open` text button
+  without an arrow. Catalog cards have no grain texture (owner correction
+  2026-10-01: the page looked too busy). List: 52 pt rows with the same
+  parts.
 - Tool page: a header with the 40 pt icon, tool name, description, and a
-  trailing enable switch and `Open` (neutral small, 26 pt). Tabs `Settings`
+  trailing enable switch. `Open <Tool>` is the primary action: a primary
+  button in a fixed action bar at the bottom of the page, right-aligned on
+  the 24 pt gutter, above a 1 pt `lineSoft` line. Tabs `Settings`
   and `How to use`, with a trailing `Menu bar` segmented control (None,
   Combined, Separate) for tools that support placement. Settings renders the
   tool's shared settings view built from OnePlusUI cards. How to use renders
