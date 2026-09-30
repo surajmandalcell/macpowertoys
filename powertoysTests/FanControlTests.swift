@@ -56,6 +56,21 @@ final class FanControlTests: XCTestCase {
         XCTAssertTrue(snapshot.hasExternalManualControl)
     }
 
+    func testReportedFanPresetDistinguishesAutomaticFromExternalControl() {
+        func snapshot(_ modes: [String?]) -> FanSnapshot {
+            FanSnapshot(fans: modes.enumerated().map {
+                FanReading(index: $0.offset, actualRPM: 3_000, maximumRPM: 5_000, mode: $0.element)
+            }, profile: nil, canControl: false)
+        }
+        XCTAssertEqual(FanControlView.reportedPreset(snapshot(["auto", "system"]), selectedPreset: nil), .auto)
+        let cases: [[String?]] = [["manual"], ["forced"], ["auto", "manual"], ["unknown 2"], [nil], []]
+        for modes in cases {
+            XCTAssertNil(FanControlView.reportedPreset(snapshot(modes), selectedPreset: nil))
+        }
+        XCTAssertEqual(FanControlView.reportedPreset(snapshot(["manual"]), selectedPreset: .cool), .cool)
+        XCTAssertNil(FanControlView.reportedPreset(nil, selectedPreset: nil))
+    }
+
     func testNativeSMCFanDecodingAndKernelLayout() {
         XCTAssertTrue(NativeFanReader.hasExpectedLayout)
         XCTAssertEqual(NativeFanReader.decodeNumber([2], type: "ui8 "), 2)
