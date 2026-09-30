@@ -79,6 +79,10 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         !history.events.isEmpty || !scanArchive.runs.isEmpty
     }
 
+    var recentScansEmptyTitle: String {
+        scanArchive.runs.isEmpty ? "No saved scans" : "No scans in this period"
+    }
+
     var helperSSIDUnavailable: Bool {
         guard helperStatus?.ssidAccess == .allowed,
               let snapshot = helperStatus?.network,
@@ -603,7 +607,7 @@ struct NetToysHistoryView: View {
         return OnePlusCard {
             OnePlusCardHeader("Recent IP scans")
             if rows.isEmpty {
-                OnePlusSettingRow("No saved scans", caption: "Completed IP Scanner runs appear here.", separator: false) {}
+                OnePlusSettingRow(model.recentScansEmptyTitle, caption: "Completed IP Scanner runs appear here.", separator: false) {}
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {

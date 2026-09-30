@@ -392,6 +392,32 @@ final class NetToysTests: XCTestCase {
         })
     }
 
+    @MainActor
+    func testHistoryDistinguishesEmptyPeriodFromEmptyArchive() async {
+        let model = NetToysHistoryViewModel()
+        await model.rebuildPresentation()
+        XCTAssertTrue(model.recentScanRows.isEmpty)
+        XCTAssertEqual(model.recentScansEmptyTitle, "No saved scans")
+
+        let run = NetToysScanRun(
+            date: Date().addingTimeInterval(-2 * NetToysHistoryRange.day.rawValue),
+            target: "192.168.1.0/24", ports: [22], duration: 1, results: []
+        )
+        model.scanArchive = NetToysScanArchive(runs: [run])
+        await model.rebuildPresentation()
+        XCTAssertTrue(model.recentScanRows.isEmpty)
+        XCTAssertEqual(model.recentScansEmptyTitle, "No scans in this period")
+
+        model.range = .week
+        await model.rebuildPresentation()
+        XCTAssertEqual(model.recentScanRows.map(\.run.id), [run.id])
+
+        model.scanArchive = NetToysScanArchive()
+        await model.rebuildPresentation()
+        XCTAssertTrue(model.recentScanRows.isEmpty)
+        XCTAssertEqual(model.recentScansEmptyTitle, "No saved scans")
+    }
+
     func testHistoryPresentationLeavesUnsampledRangeHollow() throws {
         let now = Date(timeIntervalSince1970: 200_000)
         let outage = now.addingTimeInterval(-3_600)
