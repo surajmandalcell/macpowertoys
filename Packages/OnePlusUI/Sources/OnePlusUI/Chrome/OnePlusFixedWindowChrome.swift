@@ -110,6 +110,7 @@ final class OnePlusChromeView: NSView {
             center.addObserver(self, selector: #selector(nativeLayoutChanged), name: name, object: window)
         }
         center.addObserver(self, selector: #selector(windowClosed), name: NSWindow.willCloseNotification, object: window)
+        center.addObserver(self, selector: #selector(windowUpdated), name: NSWindow.didUpdateNotification, object: window)
         appearanceObservation = window.observe(\.effectiveAppearance) { [weak self] _, _ in
             MainActor.assumeIsolated { self?.apply() }
         }
@@ -140,6 +141,16 @@ final class OnePlusChromeView: NSView {
     }
 
     @objc private func nativeLayoutChanged(_ notification: Notification) { apply() }
+    @objc private func windowUpdated(_ notification: Notification) {
+        guard !applying, pendingPass == nil, let window = observedWindow else { return }
+        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            guard let button = window.standardWindowButton(type) else { continue }
+            if abs(window.frame.height - button.convert(button.bounds, to: nil).midY - centerline) > 0.01 {
+                apply()
+                return
+            }
+        }
+    }
     @objc private func windowClosed(_ notification: Notification) { stopObserving() }
 
     func stopObserving() {
