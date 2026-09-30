@@ -3,10 +3,11 @@
 Reviewed against current source on 2026-09-24. Update this list when a direct
 user correction or verified result changes a status.
 
-Hosted redesign run `36709666460` at `24067329` passed `InputDevicesTests`,
-`SystemCareTests`, and `SystemMonitorTests`. All 980 executed unit tests passed,
-with five skips and no failures. Tray Fan UI passed Task Manager geometry,
-sidebar navigation, Remote Stats actions, process controls, and Fan setup.
+Hosted redesign run `36723274846` at `db471735` passed `InputDevicesTests`,
+`SystemCareTests`, and `SystemMonitorTests`. All 984 executed unit tests passed,
+with five skips and no failures. The unit suite passed the panel sizing and
+native-table regressions. Fan setup UI passed. The tray reopen check failed
+on missing accessibility children.
 The orchestrator owns signed installation and final interaction review.
 
 Foundation round 10 gives the Task Manager panel a synchronous shared height
@@ -15,6 +16,14 @@ replaces an explicit diagnostic page on appear. Hidden layout stays mounted.
 All 72 package tests, Debug, and desktop build-for-testing pass. App-hosted
 routing tests compile. Signed short/tall tab frames and latency remain open.
 Report: `tmp/redesign/logs/02f-fix10-report.md`.
+
+Foundation round 11 forwards diagnostics consumed by native scene URL
+callbacks. Panel routes bypass the window-action gate. The Task Manager
+background host now receives the same resize callback as its production
+popover. Signed `db471735` reproduced the missing-window defect. The updated
+route test and Debug app compile. Hosted test execution and signed panel
+comparison remain with the orchestrator, who owns installation. Report:
+`tmp/redesign/logs/02f-fix11-report.md`.
 
 ## NetToys
 

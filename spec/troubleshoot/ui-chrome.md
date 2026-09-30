@@ -1,5 +1,19 @@
 # UI Chrome Troubleshooting
 
+## Native Table Columns During Tab Changes, 2026-09-30
+
+- **Symptom:** Command-F closes Diskman during a live scan.
+- **Cause:** The SwiftUI owner adds the Files column, but the native table
+  retains its old columns. A later cell refresh asks for an action column
+  outside the row's column count. AppKit raises an internal assertion.
+- **Invariant:** Rebuild native columns before row updates when column
+  identities change. Keep the native table, selection, and action routing.
+  Stable columns still use only changed visible-cell reloads.
+- **Check:** `testNativeTableUpdatesColumnsBeforeLiveCells` adds and removes
+  a column while checking cells, selection, actions, and table identity.
+  The regression passed in macOS `36723274846`. Diskman `36723718557`
+  passed the focused unit suite and every UI case, including Command-F.
+
 ## Portman Requested Page And Retained State, 2026-09-30
 
 - **Symptom:** A diagnostic request for Servers showed the saved Settings tab.
