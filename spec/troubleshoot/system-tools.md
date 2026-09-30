@@ -526,13 +526,31 @@
 - **Invariant:** Inherit the app appearance on every Task Manager surface. Use
   one fixed settings header with 34pt rows and centered 28pt controls; place
   format-specific fields in one details row. Use 10pt detail gaps, 12pt card
-  padding, 27pt window values with 12pt units, and 21pt panel values with 10pt
-  units. Measure the complete 356pt menu shell and preserve its 35pt top bar,
-  3pt body start, and 8pt bottom clearance.
+  padding, and compact 21pt values with 10pt units in the window and panel.
+  Measure the complete 356pt menu shell before native presentation. Let the
+  shared shell own its natural height and 90 percent visible-screen ceiling.
+  One outer geometry report updates the native popover without page-height
+  estimates or resize animation. Reset unsaved navigation before measurement.
+  Load remote profiles off the main thread from the same preferences used for
+  saved navigation.
 - **Check:** Compile the Debug app and desktop-test bundle. Then recapture every
   page and both menu panels in light and dark from the signed orchestrator
   build. Measure settings columns, table rows, value-unit baselines, and both
   popover edges before approval.
+
+- **Symptom:** The System Report actions show bare glyphs, or the CPU chart
+  omits the collected System history.
+- **Cause:** The report used the unbordered icon variant. The CPU hero passed
+  only total usage to its existing dual-series chart.
+- **Invariant:** Use shared compact bordered icon controls for Copy and Export.
+  Keep their accessibility names and native actions. Pass System CPU history
+  as the secondary accent series. Keep Total usage neutral and place the
+  "System" legend after "Total usage" without moving the time axis.
+- **Check:** Compile Debug and the desktop test bundle. Run
+  `testTaskManagerMenuMeasuresTabsAndAsyncProfiles` on hosted CI. It compares
+  native popover height with the current layout across short and tall pages
+  and profiles loaded from isolated preferences. Compare CPU and System
+  Report in both appearances on the signed build.
 
 - **Symptom:** Task Manager declares a 220pt sidebar, but its visible surface
   ends at 175pt and becomes 220pt only in the native strip below the SwiftUI
