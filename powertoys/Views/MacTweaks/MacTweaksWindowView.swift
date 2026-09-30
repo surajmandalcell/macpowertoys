@@ -206,7 +206,7 @@ struct MacTweaksWindowView: View {
         } navigation: {
             OnePlusNavCaption("Everyday")
             sidebarGroup("Everyday")
-            OnePlusNavCaption("System")
+            OnePlusNavCaption("System", spacing: .sectionStart)
             sidebarGroup("System")
         } bottom: {
             OnePlusNavRow(
