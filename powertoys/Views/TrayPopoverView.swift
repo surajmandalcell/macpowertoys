@@ -1509,7 +1509,7 @@ struct SystemMonitorTrayView: View {
                         HStack {
                             Text("Disk activity").onePlusText(.cardTitle)
                             Spacer()
-                            Text("MB/s").onePlusText(.tableHeader)
+                            Text("MB/s").onePlusText(.caption)
                         }
                         menuChart
                     }
@@ -1632,7 +1632,7 @@ struct SystemMonitorTrayView: View {
         }
         return VStack(spacing: OnePlusMetrics.navRowGap) {
             if page == .network {
-                Text("MB/s").onePlusText(.tableHeader)
+                Text("MB/s").onePlusText(.caption)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
