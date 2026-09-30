@@ -131,9 +131,11 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if scrolls {
-                ScrollView { bodyContent }
-                    .onePlusScrollIndicators()
-                    .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)
+                GeometryReader { viewport in
+                    ScrollView { bodyContent.frame(width: viewport.size.width, alignment: .leading) }
+                        .onePlusScrollIndicators()
+                        .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)
+                }
             } else {
                 bodyContent.frame(maxHeight: .infinity, alignment: .topLeading)
                     .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)

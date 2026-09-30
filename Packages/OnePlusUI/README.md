@@ -89,6 +89,8 @@ OnePlusPage(scrolls: false) {
 Place an inspector beside the table inside `content`; only the table rows
 scroll. For settings cards, keep the default `scrolls: true`. Embedded
 settings supply only cards and inherit this page's single scroll container.
+The page proposes its full overlay viewport width to content. A legacy
+scrollbar preference does not reduce the card width or add a side gutter.
 
 Menu panels also own their scrolling. Pass natural-height content to
 `OnePlusMenuPanel`; do not wrap it in a screen-height scroll view. The shell
