@@ -1032,7 +1032,6 @@ struct SystemMonitorWindowView: View {
                         .overlay(alignment: .top) { rowDivider }
                 }
             }
-            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
