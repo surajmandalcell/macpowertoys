@@ -47,6 +47,15 @@ final class OnePlusTableTests: XCTestCase {
                 let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(27 * scale)))
                 let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(26 * scale)))
                 let rowFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(28 * scale)))
+                for view in scroll.subviews {
+                    let hidden = view.isHidden
+                    view.isHidden = true
+                    let probe = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                    host.cacheDisplay(in: host.bounds, to: probe)
+                    print("CI boundary owner", appearance.rawValue, String(describing: type(of: view)),
+                          probe.colorAt(x: x, y: Int(28 * scale))?.description ?? "nil")
+                    view.isHidden = hidden
+                }
                 XCTAssertGreaterThan(abs(separator.redComponent - headerFill.redComponent), 0.01)
                 XCTAssertGreaterThan(abs(separator.redComponent - rowFill.redComponent), 0.01)
             }
