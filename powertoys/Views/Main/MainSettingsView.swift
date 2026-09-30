@@ -169,22 +169,20 @@ private struct MainAboutSettings: View {
                 linkRow("Contact", title: "surajmandalcell@gmail.com", url: "mailto:surajmandalcell@gmail.com")
             }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                OnePlusPanel {
+                OnePlusCard {
                     VStack(spacing: 0) {
                         OnePlusCardHeader("Links", systemImage: "link")
                         linkRow("Repository", title: "GitHub", url: repository)
                         linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
-                        linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE")
-                        Spacer(minLength: 0)
+                        linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE", separator: false)
                     }
                 }.frame(maxWidth: .infinity)
-                OnePlusPanel {
+                OnePlusCard {
                     VStack(spacing: 0) {
                         OnePlusCardHeader("Acknowledgements", systemImage: "book")
                         linkRow("Cloud Sync engine", caption: "By Nick Craig-Wood and contributors",
                                 title: "Powered by rclone", url: "https://rclone.org/")
-                        linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
-                        Spacer(minLength: 0)
+                        linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/", separator: false)
                     }
                 }.frame(maxWidth: .infinity)
             }.fixedSize(horizontal: false, vertical: true)
@@ -198,8 +196,8 @@ private struct MainAboutSettings: View {
         }
     }
 
-    private func linkRow(_ label: String, caption: String? = nil, title: String, url: String) -> some View {
-        OnePlusSettingRow(label, caption: caption, controlWidth: OnePlusCatalogMetrics.placementWidth) {
+    private func linkRow(_ label: String, caption: String? = nil, title: String, url: String, separator: Bool = true) -> some View {
+        OnePlusSettingRow(label, caption: caption, controlWidth: OnePlusCatalogMetrics.placementWidth, separator: separator) {
             if let destination = URL(string: url) {
                 Link(title, destination: destination)
                     .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
