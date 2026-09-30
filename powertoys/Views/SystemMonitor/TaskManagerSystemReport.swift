@@ -387,10 +387,11 @@ struct TaskManagerSystemReportView: View {
                                     .padding(.horizontal, 8)
                                     .frame(height: 27)
                                     .contentShape(Rectangle())
-                                    .background(selectedID == category.id ? Color.white.opacity(0.085) : .clear,
+                                    .background(selectedID == category.id ? OnePlusColor.selection : .clear,
                                                 in: RoundedRectangle(cornerRadius: 4))
                                 }
                                 .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4)).focusEffectDisabled()
+                                .accessibilityAddTraits(selectedID == category.id ? .isSelected : [])
                             }
                         }
                     }
