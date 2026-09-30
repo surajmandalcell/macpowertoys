@@ -126,15 +126,13 @@ struct InputDevicesWindowView: View {
                 title: "Scrolling",
                 subtitle: manager.interceptionActive ? "System-wide control is active" : "System-wide control is inactive"
             )
+        } footer: {
+            InputScrollDeviceBar()
         } content: {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                ScrollView {
-                    InputDevicesSettingsContent(includesDeviceFooter: false)
-                }
-                .onePlusScrollIndicators()
-                InputScrollDeviceBar()
+            ScrollView {
+                InputDevicesSettingsContent(includesDeviceFooter: false)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .onePlusScrollIndicators()
         }
     }
 
