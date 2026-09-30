@@ -690,10 +690,10 @@ nonisolated enum SystemMonitorMenuRenderer {
         case .disk:
             switch item.diskUnit {
             case .percentage: return sample?.diskUsage.map(percent) ?? "—"
-            case .used: return sample?.diskUsed.map(bytes) ?? "—"
+            case .used: return sample?.diskUsed.map { TrayPopoverLayout.diskBytes(max($0, 0)) } ?? "—"
             case .available:
                 guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "—" }
-                return bytes(max(total - used, 0))
+                return TrayPopoverLayout.diskBytes(max(total - used, 0))
             }
         case .network:
             let formatter = item.networkUnit == .bytes ? SystemMonitorDisplayFormat.byteRate : bitRate
