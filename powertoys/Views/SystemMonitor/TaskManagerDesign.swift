@@ -198,7 +198,7 @@ struct TaskManagerHistoryChart: View {
                 }
             }
         }
-        .frame(minHeight: compact ? 12 : 118)
+        .clipped()
         .accessibilityLabel(values.last.map { "Latest value \($0.formatted())\(unit)" } ?? "No history")
     }
 

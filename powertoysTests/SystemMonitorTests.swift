@@ -508,6 +508,44 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     @MainActor
+    func testHistoryChartsStayInsideTheirRequestedPlotHeight() throws {
+        let margin: CGFloat = 24
+        for scheme in [ColorScheme.dark, .light] {
+            for (height, compact) in [(CGFloat(72), false), (138, false), (19, true)] {
+                let host = NSHostingView(rootView: TaskManagerHistoryChart(
+                    values: [0, 0], range: 0...1, unit: "W", compact: compact, sampleCapacity: 2,
+                    upperScaleLabel: "1 W", middleScaleLabel: "0.5 W", lowerScaleLabel: "0 W"
+                ).frame(width: 320, height: height)
+                    .padding(.vertical, margin)
+                    .background(OnePlusColor.window)
+                    .environment(\.colorScheme, scheme))
+                host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                host.frame.size = NSSize(width: 320, height: height + 2 * margin)
+                host.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let background = try XCTUnwrap(bitmap.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB))
+                let scale = CGFloat(bitmap.pixelsHigh) / host.bounds.height
+                let x = bitmap.pixelsWide * 3 / 4
+                let plotRows = Int(margin * scale)..<Int((margin + height) * scale)
+                var paintedPlot = false
+                for y in 0..<bitmap.pixelsHigh {
+                    let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                    let difference = max(abs(color.redComponent - background.redComponent),
+                                         abs(color.greenComponent - background.greenComponent),
+                                         abs(color.blueComponent - background.blueComponent))
+                    if plotRows.contains(y) {
+                        paintedPlot = paintedPlot || difference > 0.01
+                    } else {
+                        XCTAssertLessThanOrEqual(difference, 0.01, "\(scheme), \(height)pt, row \(y)")
+                    }
+                }
+                XCTAssertTrue(paintedPlot, "The chart must still render inside its \(height)pt plot")
+            }
+        }
+    }
+
+    @MainActor
     func testDitherSparklineDrawsSamples() throws {
         func render(_ values: [Double]) throws -> (NSBitmapImageRep, NSImage) {
             let host = NSHostingView(rootView: SystemMonitorDitherSparkline(
