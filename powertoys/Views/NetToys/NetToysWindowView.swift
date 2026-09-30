@@ -210,7 +210,7 @@ struct NetToysWindowView: View {
                 }
                 howToCard("Wi-Fi Priority", "Add at least two saved Wi-Fi networks, set their order, and enable failover. macOS manages the final Personal Hotspot fallback.")
                 OnePlusBanner("Wi-Fi names need Location access. IP scanning needs Local Network access. Settings shows each permission and its recovery action.") {
-                    Button("Open Settings", systemImage: "arrow.up.right") {
+                    Button("Open Settings") {
                         settingsSection = "permissions"
                         page = .settings
                     }
