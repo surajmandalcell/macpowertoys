@@ -20,6 +20,7 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
+        app.activate()
         defer { app.terminate() }
 
         let servers = app.buttons["portman.page.Servers"]
@@ -28,6 +29,7 @@ final class PortmanUITests: XCTestCase {
             return
         }
         servers.click()
+        XCTAssertFalse(app.windows["MacPowerToys"].exists, "The explicit Portman route must not open the launcher")
         let row = app.buttons["portman.local.7414"]
         guard row.waitForExistence(timeout: 10) else {
             XCTFail("Portman opened but did not discover the test listener")
@@ -57,6 +59,7 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
+        app.activate()
         defer { app.terminate() }
 
         let servers = app.buttons["portman.page.Servers"]
@@ -93,6 +96,7 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
+        app.activate()
         defer { app.terminate() }
 
         let forward = app.buttons["portman.page.Forward"]
@@ -219,6 +223,7 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
+        app.activate()
         defer { app.terminate() }
 
         let forward = app.buttons["portman.page.Forward"]
