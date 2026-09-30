@@ -1,5 +1,20 @@
 # Diskman Troubleshooting
 
+## Live Inspector Facts Reset During Scan Updates
+
+- **Symptom:** Signed round 6 Home shows 0 inspector folders and no child
+  rows while the breadcrumb reports 135 folders. The inspector path is blank.
+- **Cause:** Each new scan revision rejected the prepared inspector projection
+  and substituted an empty projection whose folder count was zero.
+- **Invariant:** Retain prepared facts for the same entry and measure while
+  the replacement prepares off the main actor. Show a dash for pending facts
+  on a new selection. Replace path, folder count, and child rows together.
+  A measured zero remains zero. Keep the 260 pt inspector and fixed actions.
+- **Check:** The compiled regression covers revision retention, changed entry
+  and measure, no selection, and pending versus measured zero. Execute it on
+  hosted CI. Inspect several signed live updates and a new selection in both
+  appearances. The original frame does not establish lost scan data.
+
 ## Live Root Rings Leave Empty Wedges During Updates
 
 - **Symptom:** Signed round 5 Home captures show blank root-band wedges while
