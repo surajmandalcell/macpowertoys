@@ -208,7 +208,8 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.wifi.expanded\")"))
         XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.history.expanded\")"))
         XCTAssertTrue(tray.contains("prefix(5)"))
-        XCTAssertTrue(tray.contains(".netToysOpenPage"))
+        XCTAssertTrue(tray.contains("ToolActionRouter.shared.open(toolID: \"nettoys\", page: page.pageID)"))
+        XCTAssertTrue(window.contains(".onOpenToolPage(\"nettoys\")"))
         XCTAssertTrue(window.contains("publisher(for: .netToysOpenPage)"))
     }
 
