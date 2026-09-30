@@ -1728,8 +1728,16 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(model.targetInput, latest.target)
         XCTAssertEqual(model.results, latest.results)
         XCTAssertEqual(model.lastDuration, latest.duration)
+        XCTAssertEqual(model.lastScanTarget, latest.target)
         XCTAssertEqual(model.completed, 1)
         XCTAssertEqual(model.total, 1)
+        let newNetwork = try XCTUnwrap(LocalIPv4Network(
+            interfaceName: "en0", address: "192.168.2.10", netmask: "255.255.255.0"
+        ))
+        model.updateActiveNetwork(newNetwork)
+        XCTAssertEqual(model.targetInput, "192.168.2.0/24")
+        XCTAssertEqual(model.lastScanTarget, latest.target)
+        XCTAssertEqual(model.results, latest.results)
         model.targetInput = "192.168.1.18"
         model.portInput = "22"
         model.filter = .alive
@@ -1747,6 +1755,7 @@ final class NetToysTests: XCTestCase {
         XCTAssertEqual(recreated.sortOrder.first?.keyPath, \NetToysScanResult.hostnameTitle)
         XCTAssertEqual(recreated.sortOrder.first?.order, .reverse)
         XCTAssertEqual(recreated.results, latest.results)
+        XCTAssertEqual(recreated.lastScanTarget, latest.target)
         defaults.removePersistentDomain(forName: #function)
     }
 

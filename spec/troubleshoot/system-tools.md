@@ -282,6 +282,26 @@
   the new CIDR. Feed down and live streamed rows into the presentation cache
   and confirm its visible rows, live count, and open-port count update.
 
+### NetToys Restored Scan Target
+
+- **Symptom:** Scanner shows the current subnet and a completed zero-host run,
+  while the gateway is reachable. The supplied 11.8-second result was restored
+  from an older run on `192.168.0.255/24`, not `192.168.1.0/24`.
+- **Cause:** The model restored result rows and duration from the latest archive,
+  but discarded that run's target. The saved input and active-network refresh
+  then showed a different subnet without identifying the retained results.
+- **Invariant:** Keep the completed run's target with its rows and duration.
+  Show it in the fixed status footer. Updating the next scan's target does not
+  relabel or discard retained results. Clear completed metadata when probing
+  starts or results are imported; set it from the actual completed scan target.
+- **Check:** The restoration regression changes the active network and verifies
+  that rows and the completed target still describe the archived run. Read the
+  archive's actual target, addresses, date, and duration before treating a still
+  as a new scan failure. A standalone comparison using the actual scanner actor
+  and probes found three live hosts on `192.168.1.0/24` in 11.3 seconds, including
+  gateway ports 80 and 443. Signed app privacy and a fresh scan remain separate
+  verification gates. Do not change probes based only on a restored result.
+
 ## SSH Anchor Tailscale Fallback
 
 - **Symptom:** An SSH Anchor stops working away from its local network, or
