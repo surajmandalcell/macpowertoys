@@ -47,6 +47,7 @@ private struct MainGeneralSettings: View {
         .onChange(of: closeMainAfterOpen) { changed() }
         .onChange(of: showTray) { changed() }
         .onChange(of: sync.isEnabled) { changed() }
+        .onChange(of: loginStatus) { changed() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             loginStatus = SMAppService.mainApp.status
         }
@@ -68,7 +69,6 @@ private struct MainGeneralSettings: View {
                     OnePlusSegmented(choices: AppAppearance.allCases.map { ($0, $0.title) },
                                      selection: $appearance, accessibilityLabel: "Appearance")
                 }
-                Spacer(minLength: 0)
             }
         }
     }
@@ -84,7 +84,6 @@ private struct MainGeneralSettings: View {
                 OnePlusSettingRow("Show the menu-bar icon", separator: false) {
                     Toggle("Show the menu-bar icon", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
-                Spacer(minLength: 0)
             }
         }
     }
@@ -106,7 +105,6 @@ private struct MainGeneralSettings: View {
                 if let loginError {
                     OnePlusBanner(loginError, tone: .error).padding(OnePlusMetrics.cardPadding)
                 }
-                Spacer(minLength: 0)
             }
         }
     }
@@ -127,7 +125,6 @@ private struct MainGeneralSettings: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, OnePlusMetrics.cardPadding)
                     .padding(.bottom, OnePlusMetrics.cardPadding)
-                Spacer(minLength: 0)
             }
         }
     }
@@ -141,7 +138,6 @@ private struct MainGeneralSettings: View {
             loginError = "Could not change Login Items: \(error.localizedDescription)"
         }
         loginStatus = SMAppService.mainApp.status
-        changed()
     }
 }
 
