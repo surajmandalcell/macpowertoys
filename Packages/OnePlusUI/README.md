@@ -101,7 +101,16 @@ measures each active tab, shrinks for short content, and caps long content at
 separate row scroll region; it keeps overlay style after native replacement.
 Use the optional `toolbar` and `footer` builders for search, forms, and
 summaries that must stay fixed. These slots sit outside the capped scroller.
-Empty slots reserve no height. Closed panels stop live observation.
+Empty slots reserve no height. Closed panels keep layout mounted and stop live
+observation. The shell measures the body synchronously and disables layout
+animation. Native hosts use `.onOnePlusMenuHeightChange` to set their content
+size in that layout pass. Measure the host before showing it.
+
+Apply `.onePlusFocusPolicy()` at standalone roots. Window chrome, sheets,
+popup menus, and menu panels already apply it. Focus paint is enabled only
+while Full Keyboard Access or VoiceOver is on. The shared native policy keeps
+the window as the opening responder, rejects pointer focus on nontext
+controls, and preserves text editing and keyboard operation.
 
 For SwiftUI `Table`, share `OnePlusGridColumn` values between
 `.onePlusTableCell(column, position: .first)` and
@@ -124,7 +133,8 @@ with `textColor: OnePlusColor.ink` for primary identity text.
 | `OnePlusMotion.animation(reduceMotion:duration:)` | Get an animation, or `nil` under Reduce Motion. |
 | `OnePlusFixedWindowChrome` | Apply native fixed-window policy; its measured zoom callback is optional. |
 | `OnePlusWindowRoot` | Compose `canvas`, `sidebar`, and `content` once per window. |
-| `onePlusIsVisible` / `.onePlusLiveUpdates()` | Suspend view observation while its native window or panel is not visible. |
+| `onePlusIsVisible` / `.onePlusLiveUpdates()` | Suspend live observation while hidden; keep the layout tree mounted. |
+| `OnePlusFocusPolicy` / `.onePlusFocusPolicy()` | Apply the live accessibility focus policy at a root. |
 | `OnePlusWindowTexture` | Draw the fixed root ribbon; normally supplied by the root. |
 | `OnePlusTextureAsset` | Access the four cached reference PNGs through `.image`. |
 | `.onePlusGrain(opacity:)` | Add static corner grain before clipping to the final card shape. |
@@ -178,7 +188,8 @@ with `textColor: OnePlusColor.ink` for primary identity text.
 | `OnePlusToast` | Show a message and post an accessibility announcement; the caller owns its lifetime. |
 | `OnePlusSheet` / `OnePlusSheetWidth` | Supply header, body, and footer inside native `.sheet`. |
 | `OnePlusBanner` | Show an inline information, warning, or error row with an optional action. |
-| `OnePlusMenuPanel` | Supply tabs, actions, optional fixed toolbar/footer, and a body capped to screen height. |
+| `OnePlusMenuPanel` | Supply tabs, actions, optional fixed toolbar/footer, and a natural body with a 90 percent screen ceiling. |
+| `.onOnePlusMenuHeightChange(_:)` | Commit a native host size during the final panel layout pass. |
 | `OnePlusMenuMetrics` | Read the 356 pt panel geometry and span-aware column widths. |
 | `OnePlusMenuTab` / `OnePlusMenuTabStrip` | Bind 26 pt tabs; use `onMove` to store their order. |
 | `OnePlusMenuTile` | Supply compact metric content in one, two, or three columns. |
