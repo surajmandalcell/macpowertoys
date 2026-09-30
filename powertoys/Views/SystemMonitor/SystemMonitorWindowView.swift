@@ -629,7 +629,9 @@ struct SystemMonitorWindowView: View {
                                 Text(displayed.1).onePlusText(.unit)
                             }
                         }
-                        Text(detail).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
+                        if !detail.isEmpty {
+                            Text(detail).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
+                        }
                     }
                     Spacer(minLength: 8)
                     HStack(spacing: 20) {
