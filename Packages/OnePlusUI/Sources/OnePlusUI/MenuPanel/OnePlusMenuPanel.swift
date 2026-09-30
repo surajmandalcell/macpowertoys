@@ -24,7 +24,7 @@ public enum OnePlusMenuMetrics {
 }
 
 private struct OnePlusMenuHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
+    static let defaultValue: CGFloat = -1
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         let next = nextValue()
         if next.isFinite { value = max(value, next) }
@@ -95,12 +95,13 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
                 if isVisible {
                     VStack(alignment: .leading, spacing: 5) { content() }
                         .frame(width: 338).padding(.horizontal, 8)
-                        .padding(.top, toolbar == nil ? 3 : 0).padding(.bottom, footer == nil ? 8 : 0)
+                        .padding(.top, (regionHeights["toolbar"] ?? 0) > 0 ? 0 : 3)
+                        .padding(.bottom, (regionHeights["footer"] ?? 0) > 0 ? 0 : 8)
                         .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
                 }
             }
             .onePlusScrollIndicators().frame(height: isVisible ? min(contentHeight ?? bodyCap, bodyCap) : 0)
-            .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0.isFinite, $0 > 0 { contentHeight = $0 } }
+            .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0.isFinite, $0 >= 0 { contentHeight = $0 } }
             if isVisible, let footer {
                 fixedRegion(footer(), name: "footer", top: 5, bottom: 8)
             }
@@ -115,9 +116,8 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     }
 
     private func fixedRegion(_ view: AnyView, name: String, top: CGFloat, bottom: CGFloat) -> some View {
-        view.frame(width: OnePlusMenuMetrics.bodyWidth)
-            .padding(.horizontal, OnePlusMenuMetrics.bodyInset).padding(.top, top).padding(.bottom, bottom)
-            .fixedSize(horizontal: false, vertical: true)
+        OnePlusFixedRegionLayout(gutter: 0, bottomInset: bottom, emptyInset: 0, topInset: top) { view }
+            .frame(width: OnePlusMenuMetrics.bodyWidth).padding(.horizontal, OnePlusMenuMetrics.bodyInset)
             .background(GeometryReader { proxy in
                 Color.clear.preference(key: OnePlusMenuRegionHeightKey.self, value: [name: proxy.size.height])
             })
