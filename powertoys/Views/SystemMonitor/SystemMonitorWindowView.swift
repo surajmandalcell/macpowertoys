@@ -152,8 +152,8 @@ struct SystemMonitorWindowView: View {
 
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
     private var service: SystemMonitorService { .shared }
-    private var recentHistory: [SystemMonitorSample] {
-        Array(service.history.suffix(historySampleCapacity))
+    private func recentHistory(_ metric: SystemMonitorMenuMetric) -> [SystemMonitorSample] {
+        Array(service.history.samples(for: metric).suffix(historySampleCapacity))
     }
     private var historySampleCapacity: Int { max(60, historyMinutes * 60) }
 
@@ -180,10 +180,6 @@ struct SystemMonitorWindowView: View {
         .onAppear {
             pageID = page.rawValue
             updateSamplingForWindowVisibility()
-        }
-        .onChange(of: pageID) { _, _ in
-            guard isWindowActive else { return }
-            service.updateDetailed(metrics: page.detailedMetrics)
         }
         .onChange(of: isWindowActive) { _, _ in
             updateSamplingForWindowVisibility()
@@ -215,8 +211,8 @@ struct SystemMonitorWindowView: View {
 
     private func updateSamplingForWindowVisibility() {
         if isWindowActive {
-            service.startDetailed(metrics: page.detailedMetrics)
-            service.updateDetailed(metrics: page.detailedMetrics)
+            // Keep all charts warm while the window is visible; only the active page observes.
+            service.startDetailed()
         } else {
             service.stopDetailed()
         }
@@ -381,15 +377,15 @@ struct SystemMonitorWindowView: View {
         VStack(spacing: 10) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
                 metricCard(.cpu, value: percent(service.snapshot?.cpuUsage), detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) cores",
-                           values: recentHistory.compactMap(\.cpuUsage), range: 0...100)
+                           values: recentHistory(.cpu).compactMap(\.cpuUsage), range: 0...100)
                 metricCard(.gpu, value: percent(service.snapshot?.gpuUsage), detail: "Graphics utilization",
-                           values: recentHistory.compactMap(\.gpuUsage), range: 0...100)
+                           values: recentHistory(.gpu).compactMap(\.gpuUsage), range: 0...100)
                 metricCard(.memory, value: service.snapshot?.memoryUsage.percent ?? "—", detail: memoryDetail,
-                           values: recentHistory.compactMap(\.memoryUsage), range: 0...100, accent: true)
+                           values: recentHistory(.memory).compactMap(\.memoryUsage), range: 0...100, accent: true)
                 metricCard(.network, value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                            detail: "↓ Download · ↑ \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")",
-                           values: recentHistory.compactMap(\.networkDownload),
-                           secondary: recentHistory.compactMap(\.networkUpload), range: networkRange)
+                           values: recentHistory(.network).compactMap(\.networkDownload),
+                           secondary: recentHistory(.network).compactMap(\.networkUpload), range: networkRange)
                 metricCard(.disk, value: service.snapshot?.diskUsage.percent ?? "—", detail: "\(diskAvailable) available",
                            footer: .disk(service.snapshot?.diskUsage))
                 metricCard(.battery, value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—", detail: batteryDetail,
@@ -397,7 +393,7 @@ struct SystemMonitorWindowView: View {
                 metricCard(.thermal, title: "Thermal", value: service.snapshot?.thermalState ?? "—",
                            detail: "System thermal pressure", footer: .thermal(service.snapshot?.thermalState))
                 metricCard(.cpu, title: "Load average", value: loadValue, detail: "1 minute · \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs",
-                           values: recentHistory.compactMap { $0.loadAverage?.0 }, range: loadRange)
+                           values: recentHistory(.cpu).compactMap { $0.loadAverage?.0 }, range: loadRange)
                     .help(loadExplanation)
             }
 
@@ -712,7 +708,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "CPU usage", value: service.snapshot?.cpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) logical cores",
-                values: recentHistory.compactMap(\.cpuUsage), range: 0...100,
+                values: recentHistory(.cpu).compactMap(\.cpuUsage), range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Total usage"],
                 stats: [
@@ -823,7 +819,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "GPU usage", value: service.snapshot?.gpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Integrated graphics",
-                values: recentHistory.compactMap(\.gpuUsage), range: 0...100,
+                values: recentHistory(.gpu).compactMap(\.gpuUsage), range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Graphics utilization"],
                 stats: [("Memory", "Unified"), ("Thermal pressure", service.snapshot?.thermalState ?? "—")]
@@ -845,7 +841,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Memory in use", value: service.snapshot?.memoryUsed.map(Self.bytes) ?? "—",
                 detail: "\(service.snapshot?.memoryTotal.map(Self.bytes) ?? "—") unified memory",
-                values: recentHistory.compactMap { $0.memoryUsed.map(Double.init) },
+                values: recentHistory(.memory).compactMap { $0.memoryUsed.map(Double.init) },
                 range: 0...Double(max(service.snapshot?.memoryTotal ?? 1, 1)),
                 upperScaleLabel: service.snapshot?.memoryTotal.map(Self.bytes) ?? "—",
                 middleScaleLabel: service.snapshot?.memoryTotal.map { Self.bytes($0 / 2) } ?? "—",
@@ -871,8 +867,8 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                 detail: "All active non-loopback interfaces",
-                values: recentHistory.compactMap(\.networkDownload),
-                secondary: recentHistory.compactMap(\.networkUpload), range: networkRange,
+                values: recentHistory(.network).compactMap(\.networkDownload),
+                secondary: recentHistory(.network).compactMap(\.networkUpload), range: networkRange,
                 upperScaleLabel: Self.rate(networkRange.upperBound),
                 middleScaleLabel: Self.rate(networkRange.upperBound / 2), lowerScaleLabel: "0 KB/s",
                 seriesLabels: ["Download", "Upload"],
@@ -927,8 +923,8 @@ struct SystemMonitorWindowView: View {
                 label: "Disk activity",
                 value: service.snapshot?.diskDetails?.readPerSecond.map(Self.rate) ?? "—",
                 detail: "Read throughput across physical storage",
-                values: recentHistory.compactMap { $0.diskDetails?.readPerSecond },
-                secondary: recentHistory.compactMap { $0.diskDetails?.writePerSecond },
+                values: recentHistory(.disk).compactMap { $0.diskDetails?.readPerSecond },
+                secondary: recentHistory(.disk).compactMap { $0.diskDetails?.writePerSecond },
                 range: diskRateRange,
                 upperScaleLabel: Self.rate(diskRateRange.upperBound),
                 middleScaleLabel: Self.rate(diskRateRange.upperBound / 2), lowerScaleLabel: "0 KB/s",
@@ -965,7 +961,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Battery charge", value: service.snapshot?.batteryPercent.map(String.init) ?? "—", unit: "%",
                 detail: batteryDetail,
-                values: recentHistory.compactMap { $0.batteryPercent.map(Double.init) }, range: 0...100,
+                values: recentHistory(.battery).compactMap { $0.batteryPercent.map(Double.init) }, range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Battery charge"],
                 stats: [("Power source", powerSourceDetail), ("Status", batteryDetail)]
@@ -982,7 +978,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var powerDrawPanel: some View {
-        let values = recentHistory.compactMap(Self.powerDraw)
+        let values = recentHistory(.battery).compactMap(Self.powerDraw)
         return TaskManagerPanel(textured: true) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Power draw", systemImage: "bolt")
@@ -1014,7 +1010,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Thermal pressure", value: service.snapshot?.thermalState ?? "—",
                 detail: "System-reported thermal state",
-                values: recentHistory.compactMap { Self.thermalLevel($0.thermalState) }, range: 0...100,
+                values: recentHistory(.thermal).compactMap { Self.thermalLevel($0.thermalState) }, range: 0...100,
                 upperScaleLabel: "Critical", middleScaleLabel: "Fair", lowerScaleLabel: "Nominal",
                 seriesLabels: ["Thermal state"], stepped: true,
                 stats: [("State", service.snapshot?.thermalState ?? "—")]
@@ -1202,12 +1198,12 @@ struct SystemMonitorWindowView: View {
         0...Double(max(ProcessInfo.processInfo.activeProcessorCount, 1))
     }
     private var networkRange: ClosedRange<Double> {
-        let maximum = recentHistory.flatMap { [$0.networkDownload, $0.networkUpload] }.compactMap { $0 }.max() ?? 1
+        let maximum = recentHistory(.network).flatMap { [$0.networkDownload, $0.networkUpload] }.compactMap { $0 }.max() ?? 1
         return 0...max(maximum * 1.15, 1)
     }
 
     private var diskRateRange: ClosedRange<Double> {
-        let maximum = recentHistory.flatMap {
+        let maximum = recentHistory(.disk).flatMap {
             [$0.diskDetails?.readPerSecond, $0.diskDetails?.writePerSecond]
         }.compactMap { $0 }.max() ?? 1
         return 0...max(maximum * 1.15, 1)

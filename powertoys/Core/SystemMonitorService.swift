@@ -1201,6 +1201,26 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
     }
 }
 
+nonisolated struct SystemMonitorHistory {
+    static let capacity = 120
+    private var samplesByMetric: [SystemMonitorMenuMetric: [SystemMonitorSample]] = [:]
+
+    var isEmpty: Bool { samplesByMetric.isEmpty }
+
+    func samples(for metric: SystemMonitorMenuMetric) -> [SystemMonitorSample] {
+        samplesByMetric[metric] ?? []
+    }
+
+    mutating func append(_ sample: SystemMonitorSample, metrics: Set<SystemMonitorMenuMetric>) {
+        for metric in metrics {
+            samplesByMetric[metric, default: []].append(sample)
+            if samplesByMetric[metric, default: []].count > Self.capacity {
+                samplesByMetric[metric]?.removeFirst()
+            }
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class SystemMonitorService {
@@ -1208,10 +1228,10 @@ final class SystemMonitorService {
     static weak var current: SystemMonitorService?
     static let settingsKey = "systemMonitor.menuSettings"
     static let legacySettingsKey = "powerStats.menuSettings"
-    nonisolated static let maximumHistoryCount = 300
+    nonisolated static let maximumHistoryCount = SystemMonitorHistory.capacity
 
     private(set) var snapshot: SystemMonitorSample?
-    private(set) var history: [SystemMonitorSample] = []
+    private(set) var history = SystemMonitorHistory()
     private(set) var detailedActive = false
     private(set) var menuSettings: SystemMonitorMenuSettings
 
@@ -1345,7 +1365,7 @@ final class SystemMonitorService {
             if detailed || !due.isEmpty {
                 let sample = sampler.sample(detailedMetrics: detailedMetrics, metrics: due)
                 Task { @MainActor [weak self] in
-                    self?.receive(sample, detailed: detailed, dueMetrics: due, generation: currentGeneration)
+                    self?.receive(sample, detailedMetrics: detailedMetrics, dueMetrics: due, generation: currentGeneration)
                 }
             }
             if let interval = dueTracker.nextInterval(
@@ -1365,17 +1385,13 @@ final class SystemMonitorService {
         source.resume()
     }
 
-    private func receive(_ sample: SystemMonitorSample, detailed: Bool,
+    private func receive(_ sample: SystemMonitorSample, detailedMetrics: Set<SystemMonitorMenuMetric>,
                          dueMetrics: Set<SystemMonitorMenuMetric>, generation: Int) {
         guard generation == self.generation else { return }
+        // Record only fresh readings, never values retained from another page's sample.
+        history.append(sample, metrics: detailedMetrics)
         let sample = sample.preservingAvailableValues(from: snapshot)
         snapshot = sample
-        if detailed {
-            history.append(sample)
-            if history.count > Self.maximumHistoryCount {
-                history.removeFirst(history.count - Self.maximumHistoryCount)
-            }
-        }
         if toolEnabled && menuSettings.enabled && !dueMetrics.isEmpty {
             menuController.update(sample: sample, dueMetrics: dueMetrics)
         }
@@ -1384,7 +1400,7 @@ final class SystemMonitorService {
             .subtracting(unavailableMenuMetrics)
         guard !newlyUnavailable.isEmpty else { return }
         unavailableMenuMetrics.formUnion(newlyUnavailable)
-        if !detailed { reconfigure() }
+        if detailedMetrics.isEmpty { reconfigure() }
     }
 
     private func retryUnavailableMetrics() {

@@ -568,7 +568,7 @@ final class SystemMonitorTests: XCTestCase {
             toolEnabled: true,
             observesWake: true
         )
-        let baselineHistoryCount = detailService.history.count
+        let baselineHistoryCount = detailService.history.samples(for: .cpu).count
         for _ in 0..<25 {
             detailService.startDetailed()
             XCTAssertEqual(detailService.timerOwnerCount, 1)
@@ -583,7 +583,7 @@ final class SystemMonitorTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertTrue(menuService.history.isEmpty)
         XCTAssertNil(menuService.snapshot)
-        XCTAssertEqual(detailService.history.count, baselineHistoryCount)
+        XCTAssertEqual(detailService.history.samples(for: .cpu).count, baselineHistoryCount)
         XCTAssertNil(detailService.snapshot)
         XCTAssertEqual(detailService.statusItemOwnerCount, 0)
         XCTAssertEqual(detailService.wakeObserverOwnerCount, 1)
@@ -601,7 +601,15 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     func testDetailedHistoryHasABoundedCeiling() {
-        XCTAssertEqual(SystemMonitorService.maximumHistoryCount, 300)
+        var history = SystemMonitorHistory()
+        for index in 0..<150 { history.append(sample(cpuUsage: Double(index)), metrics: [.cpu]) }
+        history.append(sample(), metrics: [.gpu])
+        XCTAssertEqual(history.samples(for: .cpu).count, 120)
+        XCTAssertEqual(history.samples(for: .cpu).first?.cpuUsage, 30)
+        XCTAssertEqual(history.samples(for: .cpu).last?.cpuUsage, 149)
+        XCTAssertEqual(history.samples(for: .gpu).count, 1)
+        XCTAssertTrue(history.samples(for: .battery).isEmpty)
+        XCTAssertEqual(SystemMonitorService.maximumHistoryCount, 120)
     }
 
     @MainActor
