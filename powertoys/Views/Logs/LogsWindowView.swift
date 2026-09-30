@@ -664,9 +664,14 @@ struct LogsSettingsView: View {
                         accessibilityLabel: "Log font size"
                     )
                 }
-                OnePlusSettingRow("Retention", caption: "Internal entries older than this are removed.") {
-                    Text("2 days").onePlusText(.mono)
+                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
+                    OnePlusKeyValueRow("Retention", value: "2 days")
+                    Text("Fixed policy for internal logs.")
+                        .onePlusText(.caption)
                 }
+                .padding(.horizontal, OnePlusMetrics.cardPadding)
+                .frame(height: OnePlusMetrics.captionedSettingRow)
+                .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
                     OnePlusKeyValueRow("System issues", value: "Not stored")
                     Text("Read from macOS only when requested.")
