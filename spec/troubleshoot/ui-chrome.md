@@ -1139,6 +1139,18 @@
   the ignore-pattern editor shows no scroller track at rest. The
   `ScrollIndicatorTests` sibling and modifier tests cover the lookup.
 
+### Cloud Sync ignore-pattern viewport
+
+- **Symptom:** The signed `3e33de2` dark and light settings captures show
+  only the top of the next pattern at the editor's lower bezel.
+- **Cause:** `RcloneSettingsView` gives the shared editor a 120pt viewport.
+  Both settings hosts use that implementation.
+- **Invariant:** Use the 128pt viewport with the shared 11pt vertical text
+  inset and overlay scroller. Do not change the native editor to fit this page.
+- **Check:** Recapture both settings hosts in both appearances. Confirm that
+  the resting lower edge does not cut a line. Check editing, undo, scrolling,
+  and persistence. The source height is corrected; signed checks remain open.
+
 
 ## Workspace Pane Seams
 
