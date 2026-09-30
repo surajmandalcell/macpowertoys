@@ -1500,7 +1500,11 @@ struct SystemMonitorTrayView: View {
             if page == .disk {
                 OnePlusMenuCard {
                     VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                        Text("Disk activity").onePlusText(.cardTitle)
+                        HStack {
+                            Text("Disk activity").onePlusText(.cardTitle)
+                            Spacer()
+                            Text("MB/s").onePlusText(.tableHeader)
+                        }
                         menuChart
                     }
                 }
@@ -1621,6 +1625,10 @@ struct SystemMonitorTrayView: View {
         default: 100
         }
         return VStack(spacing: OnePlusMetrics.navRowGap) {
+            if page == .network {
+                Text("MB/s").onePlusText(.tableHeader)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 VStack(alignment: .trailing) {
                     Text(chartScale(ceiling))
@@ -1628,7 +1636,7 @@ struct SystemMonitorTrayView: View {
                     Text(chartScale(ceiling / 2))
                     Spacer()
                     Text(page == .sensors ? "Nominal" : "0")
-                }.onePlusText(.tableHeader)
+                }.onePlusText(.tableHeader).lineLimit(1)
                 .frame(width: [.sensors, .network, .disk].contains(page)
                     ? OnePlusMetrics.titleRow : OnePlusMetrics.compactControlHeight)
                 TaskManagerHistoryChart(values: primary, secondary: secondary, range: 0...ceiling,
@@ -1650,7 +1658,8 @@ struct SystemMonitorTrayView: View {
 
     private func chartScale(_ value: Double) -> String {
         switch page {
-        case .network, .disk: Self.rate(value)
+        case .network, .disk:
+            (value / 1_000_000).formatted(.number.grouping(.never).precision(.fractionLength(0...1)))
         case .sensors: value == 100 ? "Critical" : ""
         default: value.formatted(.number.precision(.fractionLength(0)))
         }
