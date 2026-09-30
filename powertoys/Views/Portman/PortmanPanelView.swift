@@ -321,6 +321,7 @@ struct PortmanPanelView: View {
     private var panelWithLifecycle: some View {
         panel
         .onAppear {
+            UserDefaults.standard.set(page.rawValue, forKey: Self.selectedPageKey)
             if page == .local {
                 service.beginMonitoring()
                 panelOwnsMonitoring = true
