@@ -5,6 +5,40 @@ import XCTest
 
 @MainActor
 final class OnePlusChromeTests: XCTestCase {
+    func testDisplayUpdateRepairsLateNativeButtonResetsInBothAppearances() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            for centerline in [CGFloat(22), 27] {
+                let window = ChromeCountingWindow(contentRect: CGRect(x: -10000, y: -10000, width: 420, height: 300),
+                    styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView], backing: .buffered, defer: false)
+                window.appearance = NSAppearance(named: appearance)
+                let chrome = OnePlusChromeView(size: window.frame.size, centerline: centerline,
+                                             sizing: .swiftUI, report: { _ in })
+                window.contentView?.addSubview(chrome)
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                window.propertyWrites = 0
+                let passes = chrome.appliedPassCount
+                for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+                    let button = try XCTUnwrap(window.standardWindowButton(type))
+                    button.postsFrameChangedNotifications = false
+                    button.setFrameOrigin(CGPoint(x: button.frame.minX, y: button.frame.minY + 11))
+                }
+                NotificationCenter.default.post(name: NSWindow.didUpdateNotification, object: window)
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+                    let button = try XCTUnwrap(window.standardWindowButton(type))
+                    XCTAssertEqual(window.frame.height - button.convert(button.bounds, to: nil).midY, centerline, accuracy: 0.5)
+                }
+                XCTAssertEqual(window.propertyWrites, 0)
+                XCTAssertEqual(chrome.appliedPassCount - passes, 1)
+                for _ in 0..<100 {
+                    NotificationCenter.default.post(name: NSWindow.didUpdateNotification, object: window)
+                }
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                XCTAssertEqual(chrome.appliedPassCount - passes, 1, "Aligned display updates need no chrome pass")
+                chrome.stopObserving()
+            }
+        }
+    }
     func testCanvasUsesVisibleHeightWithoutAddingTheTitlebar() {
         for canvas in [OnePlusWindowCanvas.systemMonitor, .diskExplorer, .awake, .colorPicker, .textExtractor] {
             let height = canvas.heightRange?.upperBound ?? canvas.size.height
