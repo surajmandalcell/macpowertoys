@@ -10,6 +10,7 @@ struct FanControlView: View {
     @State private var service = FanControlService.shared
     @State private var showsSetup = false
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.onePlusIsVisible) private var isVisible
 
     private var rpm: String {
         service.snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
@@ -65,7 +66,13 @@ struct FanControlView: View {
                 .strokeBorder(compact ? Color.clear : TaskManagerTheme.line,
                               lineWidth: contrast == .increased ? 1.5 : 1)
         }
-        .onAppear { service.start(owner: owner) }
+        .onChange(of: isVisible, initial: true) {
+            if isVisible { service.start(owner: owner) }
+            else {
+                service.stop(owner: owner)
+                showsSetup = false
+            }
+        }
         .onDisappear { service.stop(owner: owner) }
         .onChange(of: service.canControl) { _, canControl in
             if canControl { showsSetup = false }
