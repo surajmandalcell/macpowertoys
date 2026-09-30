@@ -103,6 +103,7 @@ struct MainToolListRow: View {
         }
         .padding(.horizontal, OnePlusCatalogMetrics.cardInset)
         .frame(height: OnePlusCatalogMetrics.rowHeight)
+        .onePlusRowHover()
         .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
         .onChange(of: focusedPart) { _, value in if value != nil { focusedToolID = tool.id } }
         .contextMenu { MainToolContextMenu(tool: tool, select: select) }
