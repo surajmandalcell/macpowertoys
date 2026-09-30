@@ -5,6 +5,45 @@ import XCTest
 
 @MainActor
 final class OnePlusScrollTests: XCTestCase {
+    func testNestedHistoryScrollKeepsItsOwnThinOverlayAndCompleteRowWidth() throws {
+        let row = NSView()
+        let host = NSHostingView(rootView: OnePlusPage {
+            OnePlusPageHeader(title: "History")
+        } content: {
+            OnePlusCard {
+                OnePlusCardHeader("Usage")
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ScrollRowMarker(view: row).frame(height: 44)
+                        Color.clear.frame(height: 1000)
+                    }
+                }.onePlusScrollIndicators().frame(height: 160)
+            }
+            Color.clear.frame(height: 1000)
+        })
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 480, height: 500),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        settle(host)
+        let inner = try XCTUnwrap(row.enclosingScrollView)
+        XCTAssertTrue(inner.verticalScroller is OnePlusOverlayScroller)
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            window.appearance = NSAppearance(named: appearance)
+            inner.verticalScroller = NSScroller()
+            inner.scrollerStyle = .legacy
+            inner.tile()
+            settle(host)
+            XCTAssertEqual(inner.scrollerStyle, .overlay)
+            XCTAssertTrue(inner.verticalScroller is OnePlusOverlayScroller)
+            XCTAssertEqual(inner.contentView.frame.width, inner.bounds.width, accuracy: 0.5)
+            XCTAssertEqual(row.convert(row.bounds, to: host).maxX, 480 - 24, accuracy: 0.5)
+            inner.contentView.setFrameSize(NSSize(width: inner.bounds.width - 17, height: inner.contentView.frame.height))
+            settle(host)
+            XCTAssertEqual(row.convert(row.bounds, to: host).maxX, 480 - 24, accuracy: 0.5)
+        }
+    }
     func testLongPageWithNestedEditorKeepsTwentyFourPointGuttersAfterLayout() throws {
         let host = NSHostingView(rootView: OnePlusPage {
             OnePlusPageHeader(title: "Cloud Sync")
@@ -123,4 +162,10 @@ final class OnePlusScrollTests: XCTestCase {
     private func descendants(_ view: NSView) -> [NSView] {
         [view] + view.subviews.flatMap(descendants)
     }
+}
+
+private struct ScrollRowMarker: NSViewRepresentable {
+    let view: NSView
+    func makeNSView(context: Context) -> NSView { view }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
