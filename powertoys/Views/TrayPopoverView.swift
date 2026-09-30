@@ -2354,18 +2354,33 @@ private struct NetToysTrayView: View {
     }
 
     private var networkTiles: some View {
+        let identity = NetworkIdentity(networkID: snapshot.route?.networkID ?? "disconnected", ssid: snapshot.ssid)
+        let networkName = snapshot.isLoaded ? identity.displayName : "Loading…"
         VStack(spacing: OnePlusMenuMetrics.tileGap) {
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 OnePlusMenuTile(span: 2) {
-                    VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
                         Label("Current network", systemImage: "network").onePlusText(.caption)
-                        Text(snapshot.ssid ?? snapshot.route?.interfaceName ?? (snapshot.isLoaded ? "Disconnected" : "Loading…"))
-                            .onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1)
-                        Text(snapshot.isWiFi && snapshot.ssid == nil ? "Wi-Fi name unavailable" : helperDetail)
-                            .onePlusText(.caption).lineLimit(1)
+                        Text(networkName)
+                            .onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1).help(networkName)
+                        if snapshot.isWiFi && identity.ssid == nil {
+                            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                                Text("Name unavailable").onePlusText(.caption).lineLimit(1)
+                                Button("Location access") { open(.settings) }
+                                    .buttonStyle(OnePlusButtonStyle(.link, size: .small, horizontalPadding: 0))
+                                    .accessibilityLabel("Manage Wi-Fi Location access in NetToys")
+                                    .help("Open NetToys Location status and recovery actions")
+                            }
+                        } else {
+                            Text(helperDetail).onePlusText(.caption).lineLimit(1)
+                        }
                     }
                 }
-                networkTile("Interface", value: snapshot.route?.interfaceName ?? "—", detail: reachability)
+                if identity.ssid == nil {
+                    networkTile("Connection", value: snapshot.route == nil ? "—" : snapshot.isWiFi ? "Wi-Fi" : "Ethernet", detail: reachability)
+                } else {
+                    networkTile("Interface", value: snapshot.route?.interfaceName ?? "—", detail: reachability)
+                }
             }
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 networkTile("Local IP", value: snapshot.localNetwork?.address.description ?? "—", detail: "IPv4", span: 2)
