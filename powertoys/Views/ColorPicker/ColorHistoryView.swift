@@ -299,7 +299,7 @@ struct ColorHistoryView: View {
                 .onePlusText(.row)
                 .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.settingRow)
                 .contentShape(Rectangle())
-            }.buttonStyle(OnePlusInteractionStyle(selected: selected))
+            }.buttonStyle(.plain)
             if let project {
                 Button { service.export(project) } label: { Image(systemName: "square.and.arrow.up") }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
@@ -307,6 +307,7 @@ struct ColorHistoryView: View {
             }
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding)
+        .onePlusRowHover(selected: selected)
         .contextMenu {
             Button("Use project") { selectProject(id) }
             if let project { Button("Export CSS") { service.export(project) }.disabled(count == 0) }
@@ -432,14 +433,12 @@ private struct ColorSampleRow: View {
 
     private var actions: some View {
         HStack(spacing: OnePlusMetrics.spacing[0]) {
-            Menu {
-                ForEach(ColorCopyFormat.allCases) { format in
-                    Button(format.title) { copy(row.sample, format) }
+            OnePlusMenuButton("Copy color as", systemImage: "doc.on.doc", variant: .borderedIcon) {
+                ColorCopyFormat.allCases.map { format in
+                    .item(OnePlusPopupMenuItem(format.title) { copy(row.sample, format) })
                 }
-            } label: {
-                OnePlusControlLabel(variant: .icon, size: .small) { Image(systemName: "doc.on.doc") }
-            }.menuStyle(.borderlessButton).menuIndicator(.hidden)
-                .accessibilityLabel("Copy color as")
+            }
+            .environment(\.onePlusDensity, .compact)
             Button { togglePin(row.id) } label: { Image(systemName: row.sample.isPinned ? "pin.fill" : "pin") }
                 .accessibilityLabel(row.sample.isPinned ? "Unpin color" : "Pin color")
             Button { confirmingDelete = true } label: { Image(systemName: "trash") }
