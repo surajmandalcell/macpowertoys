@@ -3,7 +3,9 @@ import ObjectiveC
 import SwiftUI
 
 public extension View {
-    func onePlusScrollIndicators() -> some View { modifier(OnePlusScrollModifier()) }
+    func onePlusScrollIndicators(axes: Axis.Set = [.vertical, .horizontal]) -> some View {
+        modifier(OnePlusScrollModifier(axes: axes))
+    }
 }
 
 private struct OnePlusPageScrollBottomInsetKey: EnvironmentKey {
@@ -18,20 +20,27 @@ extension EnvironmentValues {
 }
 
 private struct OnePlusScrollModifier: ViewModifier {
+    let axes: Axis.Set
     @Environment(\.onePlusPageScrollBottomInset) private var bottomInset
     func body(content: Content) -> some View {
         content
+            .scrollIndicators(.never)
             .contentMargins(.bottom, bottomInset, for: .scrollContent)
-            .background(OnePlusScrollConfigurator())
+            .background(OnePlusScrollConfigurator(axes: axes))
     }
 }
 
 private struct OnePlusScrollConfigurator: NSViewRepresentable {
+    let axes: Axis.Set
     func makeNSView(context: Context) -> NSView { OnePlusScrollProbe() }
-    func updateNSView(_ view: NSView, context: Context) { (view as? OnePlusScrollProbe)?.configure() }
+    func updateNSView(_ view: NSView, context: Context) {
+        guard let probe = view as? OnePlusScrollProbe else { return }
+        probe.axes = axes; probe.configure()
+    }
 }
 
 final class OnePlusScrollProbe: NSView {
+    var axes: Axis.Set = [.vertical, .horizontal]
     private weak var configured: NSScrollView?
     private var pending: DispatchWorkItem?
     isolated deinit { pending?.cancel() }
@@ -51,13 +60,31 @@ final class OnePlusScrollProbe: NSView {
         DispatchQueue.main.async(execute: work)
     }
     private func apply() {
+        if window != nil, !bounds.isEmpty {
+            let rect = convert(bounds, to: nil)
+            if let configured, configured.window === window,
+               matches(configured.convert(configured.bounds, to: nil), rect) {
+                configured.configureOnePlusScrollIndicators(axes: axes)
+                return
+            }
+            var ancestor = superview
+            while let view = ancestor {
+                if let scroll = findMatchingScroll(in: view, rect: rect) {
+                    scroll.configureOnePlusScrollIndicators(axes: axes)
+                    configured = scroll
+                    return
+                }
+                if view === enclosingScrollView { break }
+                ancestor = view.superview
+            }
+        }
         if let scroll = enclosingScrollView {
-            scroll.configureOnePlusScrollIndicators()
+            scroll.configureOnePlusScrollIndicators(axes: axes)
             configured = scroll
             return
         }
         if let configured, configured.window != nil {
-            configured.configureOnePlusScrollIndicators()
+            configured.configureOnePlusScrollIndicators(axes: axes)
             return
         }
         guard window != nil, !bounds.isEmpty else { return }
@@ -65,12 +92,27 @@ final class OnePlusScrollProbe: NSView {
         var ancestor = superview
         while let view = ancestor {
             if let scroll = find(in: view, point: point) {
-                scroll.configureOnePlusScrollIndicators()
+                scroll.configureOnePlusScrollIndicators(axes: axes)
                 configured = scroll
                 return
             }
             ancestor = view.superview
         }
+    }
+    private func findMatchingScroll(in view: NSView, rect: NSRect) -> NSScrollView? {
+        for child in view.subviews {
+            if let scroll = child as? NSScrollView {
+                let candidate = scroll.convert(scroll.bounds, to: nil)
+                if matches(candidate, rect) { return scroll }
+                continue
+            }
+            if let result = findMatchingScroll(in: child, rect: rect) { return result }
+        }
+        return nil
+    }
+    private func matches(_ candidate: NSRect, _ rect: NSRect) -> Bool {
+        abs(candidate.minX - rect.minX) < 2 && abs(candidate.minY - rect.minY) < 2 &&
+            abs(candidate.width - rect.width) < 2 && abs(candidate.height - rect.height) < 2
     }
     private func find(in view: NSView, point: NSPoint) -> NSScrollView? {
         for child in view.subviews {
@@ -85,11 +127,15 @@ final class OnePlusScrollProbe: NSView {
 }
 
 public extension NSScrollView {
-    func configureOnePlusScrollIndicators() {
-        OnePlusScrollPolicy.install(on: self)
+    func configureOnePlusScrollIndicators(axes: Axis.Set? = nil) {
+        let policy = OnePlusScrollPolicy.install(on: self, axes: axes)
+        if scrollerStyle != .overlay { scrollerStyle = .overlay }
+        if let axes = policy.axes {
+            if hasVerticalScroller != axes.contains(.vertical) { hasVerticalScroller = axes.contains(.vertical) }
+            if hasHorizontalScroller != axes.contains(.horizontal) { hasHorizontalScroller = axes.contains(.horizontal) }
+        }
         if hasVerticalScroller, !(verticalScroller is OnePlusOverlayScroller) { verticalScroller = OnePlusOverlayScroller() }
         if hasHorizontalScroller, !(horizontalScroller is OnePlusOverlayScroller) { horizontalScroller = OnePlusOverlayScroller() }
-        if scrollerStyle != .overlay { scrollerStyle = .overlay }
         if !autohidesScrollers { autohidesScrollers = true }
         verticalScroller?.controlSize = .mini
         horizontalScroller?.controlSize = .mini
@@ -104,6 +150,7 @@ public extension NSScrollView {
 
 @MainActor
 private final class OnePlusScrollPolicy {
+    var axes: Axis.Set?
     private static var key: UInt8 = 0
     private var observations: [NSKeyValueObservation] = []
     private var frameObserver: (any NSObjectProtocol)?
@@ -113,9 +160,13 @@ private final class OnePlusScrollPolicy {
         if let frameObserver { NotificationCenter.default.removeObserver(frameObserver) }
     }
 
-    static func install(on scroll: NSScrollView) {
-        guard objc_getAssociatedObject(scroll, &key) == nil else { return }
+    static func install(on scroll: NSScrollView, axes: Axis.Set?) -> OnePlusScrollPolicy {
+        if let policy = objc_getAssociatedObject(scroll, &key) as? OnePlusScrollPolicy {
+            if let axes { policy.axes = axes }
+            return policy
+        }
         let policy = OnePlusScrollPolicy()
+        policy.axes = axes
         objc_setAssociatedObject(scroll, &key, policy, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         policy.observations = [
             scroll.observe(\.scrollerStyle) { [weak policy] scroll, _ in
@@ -126,6 +177,12 @@ private final class OnePlusScrollPolicy {
             },
             scroll.observe(\.horizontalScroller) { [weak policy] scroll, _ in
                 MainActor.assumeIsolated { policy?.schedule(scroll) }
+            },
+            scroll.observe(\.hasVerticalScroller) { [weak policy] scroll, _ in
+                MainActor.assumeIsolated { policy?.schedule(scroll) }
+            },
+            scroll.observe(\.hasHorizontalScroller) { [weak policy] scroll, _ in
+                MainActor.assumeIsolated { policy?.schedule(scroll) }
             }
         ]
         scroll.contentView.postsFrameChangedNotifications = true
@@ -133,6 +190,7 @@ private final class OnePlusScrollPolicy {
             object: scroll.contentView, queue: .main) { [weak policy, weak scroll] _ in
                 MainActor.assumeIsolated { if let scroll { policy?.schedule(scroll) } }
             }
+        return policy
     }
 
     private func schedule(_ scroll: NSScrollView) {
