@@ -175,8 +175,7 @@ private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = OnePlusMenuScrollView()
         scroll.drawsBackground = false
-        let host = OnePlusMenuHostingView(rootView: AnyView(content.environment(\.self, context.environment)
-            .accessibilityElement(children: .contain)))
+        let host = OnePlusMenuHostingView(rootView: AnyView(root(in: context)))
         host.scroll = scroll
         scroll.documentView = host
         scroll.configureOnePlusScrollIndicators(axes: .vertical)
@@ -185,8 +184,19 @@ private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let host = scroll.documentView as? NSHostingView<AnyView> else { return }
-        host.rootView = AnyView(content.environment(\.self, context.environment)
-            .accessibilityElement(children: .contain))
+        host.rootView = AnyView(root(in: context))
+    }
+
+    private func root(in context: Context) -> some View {
+        // ponytail: forward panel keys only; add a key when body content needs it.
+        content
+            .onePlusDensity(context.environment.onePlusDensity)
+            .environment(\.onePlusCardPadding, context.environment.onePlusCardPadding)
+            .environment(\.onePlusControlHeight, context.environment.onePlusControlHeight)
+            .environment(\.onePlusIsVisible, context.environment.onePlusIsVisible)
+            .environment(\.colorScheme, context.environment.colorScheme)
+            .environment(\.isEnabled, context.environment.isEnabled)
+            .onePlusNeutralControls()
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {

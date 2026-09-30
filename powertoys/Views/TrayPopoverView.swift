@@ -2035,7 +2035,6 @@ private struct NetToysTrayView: View {
     @AppStorage("tray.nettoys.anchor.expanded") private var anchorExpanded = false
     @AppStorage("tray.nettoys.wifi.expanded") private var wifiExpanded = false
     @AppStorage("tray.nettoys.history.expanded") private var historyExpanded = false
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -2265,7 +2264,7 @@ private struct NetToysTrayView: View {
     }
 
     private func open(_ page: NetToysPage) {
-        openWindow(id: "nettoys")
+        ToolActionRouter.shared.open(toolID: "nettoys")
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .netToysOpenPage, object: page)
