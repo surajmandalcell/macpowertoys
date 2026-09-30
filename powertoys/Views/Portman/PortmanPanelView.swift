@@ -1690,7 +1690,7 @@ nonisolated enum PortmanEditor {
 }
 
 @MainActor
-final class PortmanMenuController: NSObject {
+final class PortmanMenuController: NSObject, NSPopoverDelegate {
     static let shared = PortmanMenuController()
 
     private var item: NSStatusItem?
@@ -1703,6 +1703,9 @@ final class PortmanMenuController: NSObject {
         super.init()
         popover.behavior = .transient
         popover.animates = false
+        #if DEBUG
+        popover.delegate = self
+        #endif
     }
 
     func start() {
@@ -1731,6 +1734,9 @@ final class PortmanMenuController: NSObject {
     }
 
     func show() {
+        #if DEBUG
+        NSLog("[DEBUG-ci14] request active=\(NSApp.isActive) shown=\(popover.isShown)")
+        #endif
         let createdStatusItem = item == nil
         start()
         showTask?.cancel()
@@ -1749,14 +1755,26 @@ final class PortmanMenuController: NSObject {
                     self.popover.contentViewController?.view.window?.appearance = NSApp.appearance
                     NSApp.activate(ignoringOtherApps: true)
                     self.popover.contentViewController?.view.window?.makeKey()
+                    #if DEBUG
+                    NSLog("[DEBUG-ci14] shown=\(self.popover.isShown) active=\(NSApp.isActive) visible=\(self.popover.contentViewController?.view.window?.isVisible == true)")
+                    #endif
                     if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
                     return
                 }
                 try? await Task.sleep(for: .milliseconds(50))
             }
+            #if DEBUG
+            NSLog("[DEBUG-ci14] anchor timed out active=\(NSApp.isActive)")
+            #endif
             if AppRuntime.isUITesting { NSLog("Portman status item has no visible anchor") }
         }
     }
+
+    #if DEBUG
+    func popoverDidClose(_ notification: Notification) {
+        NSLog("[DEBUG-ci14] closed active=\(NSApp.isActive)")
+    }
+    #endif
 
     func setHeight(_ height: CGFloat) {
         let size = NSSize(width: OnePlusMenuMetrics.width, height: height)
