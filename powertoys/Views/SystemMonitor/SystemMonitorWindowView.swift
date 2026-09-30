@@ -460,7 +460,7 @@ struct SystemMonitorWindowView: View {
                                 .font(.system(size: 8, weight: .medium))
                                 .foregroundStyle(TaskManagerTheme.muted)
                         }
-                        metricValue(value, valueSize: 27, unitSize: 12)
+                        metricValue(value)
                             .padding(.top, 7)
                         Text(detail)
                             .font(.system(size: 9))
@@ -632,11 +632,9 @@ struct SystemMonitorWindowView: View {
                             .foregroundStyle(TaskManagerTheme.secondary)
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text(displayed.0)
-                                .font(.system(size: 27, weight: .medium))
-                                .tracking(-1)
-                                .monospacedDigit()
+                                .onePlusText(.metric)
                             if !displayed.1.isEmpty {
-                                Text(displayed.1).font(.system(size: 12)).foregroundStyle(TaskManagerTheme.secondary)
+                                Text(displayed.1).onePlusText(.unit)
                             }
                         }
                         Text(detail).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
@@ -882,7 +880,7 @@ struct SystemMonitorWindowView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             Label("Startup volume", systemImage: "internaldrive")
                                 .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
-                            metricValue(service.snapshot?.diskUsed.map(Self.bytes) ?? "—", valueSize: 27, unitSize: 12)
+                            metricValue(service.snapshot?.diskUsed.map(Self.bytes) ?? "—")
                             Text("used of \(service.snapshot?.diskTotal.map(Self.bytes) ?? "—")")
                                 .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                         }
@@ -1093,17 +1091,14 @@ struct SystemMonitorWindowView: View {
         .padding(.leading, 24)
     }
 
-    private func metricValue(_ text: String, valueSize: CGFloat, unitSize: CGFloat) -> some View {
+    private func metricValue(_ text: String) -> some View {
         let parts = TaskManagerMetricText.parts(text)
         return HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(parts.value)
-                .font(.system(size: valueSize, weight: .medium))
-                .tracking(-0.7)
-                .monospacedDigit()
+                .onePlusText(.metric)
             if !parts.unit.isEmpty {
                 Text(parts.unit)
-                    .font(.system(size: unitSize))
-                    .foregroundStyle(TaskManagerTheme.secondary)
+                    .onePlusText(.unit)
             }
         }
         .lineLimit(1)
