@@ -356,13 +356,21 @@
 ## Launcher Settings Reuse
 
 - **Symptom:** Clicking a launcher tool shows help only, or its settings differ
-  from the tool window and require duplicate maintenance.
-- **Cause:** The launcher owned a separate detail implementation.
+  from the tool window and require duplicate maintenance. A launch-only card
+  repeats Open, or a short card grows an empty row-sized tail.
+- **Cause:** The launcher owned a separate detail implementation. An expanding
+  panel, local maximum-height frame, or trailing spacer stretched short cards.
 - **Invariant:** Detail pages open on Settings and embed the same settings view
   used by the tool window, with How to Use as the adjacent page. Ruler reopens
-  its existing AppKit panels instead of cloning them in SwiftUI.
+  its existing AppKit panels instead of cloning them in SwiftUI. Mac Tweaks
+  reuses its guarded preference rows and utility-task snapshots, not invented
+  Window or Safety preferences. Enforced policies use neutral read-only text.
+  Embedded short cards use natural-height `OnePlusCard`, top alignment, and
+  no final separator, height frame, or spacer that creates a false empty row.
 - **Check:** Change one setting from each launcher detail, reopen its tool
-  window, and confirm the same value and control surface are present.
+  window, and confirm the same value and control surface are present. Review
+  loading, error, restore, and advanced-review routes. In both appearances,
+  require short cards to end at their final row, not their neighbor's height.
 
 ## Heavy Launcher Settings First Frame
 

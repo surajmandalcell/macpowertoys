@@ -1,5 +1,11 @@
 # Mac Tweaks request list
 
+## Round 10 main-window corrections, 2026-09-30
+
+- [x] Replace the launch-only embedded card with the existing Expanded Save panels, Alternate Save panels, and Page-scroll animation controls. Reuse `MacTweaksPreferenceRows` and its guarded store; preserve defaults, exact-value restore, OS write gates, and visible errors. Real values load on a utility task with an explicit loading state.
+- [x] Pair Window and Safety in equal natural-height cards with a 16pt gap. Present enforced backup, managed-preference, and external-change safeguards as read-only values, not invented settings. Replace duplicate Open with Review changes to the existing Modified page. Commit: `a1fd972`.
+- [~] Debug and desktop build-for-testing pass. Orchestrator signed dark/light recapture and apply, restore, error, advanced-route, focus-mode, and speed checks remain. Report: `tmp/redesign/logs/27r10-main.md`.
+
 ## Round 9 screenshot corrections, 2026-09-30
 
 - [x] Expand the Finder preview crop and center it on the artwork at x300/y160. Keep uniform scaling and the full titlebar, sidebar, status row, and window boundary. The 240pt preview body has more than 20pt vertical clearance.
@@ -22,7 +28,7 @@
 
 - [x] Keep the Input Test or Live label visible beside a flexible shared meter in a 180pt control column.
 - [x] Put rules inside 44pt setting rows. Choose one control width per card and stretch the lower Dock pair to one height. Shorten Alternate Save panels and widen microphone selects.
-- [x] Replace the last appearance-dependent preview material with a fixed dark Dock fill. Title the embedded card Preferences, describe the full scope, and use a regular neutral Open Mac Tweaks button.
+- [x] Replace the last appearance-dependent preview material with a fixed dark Dock fill. The embedded Preferences launch card was superseded by the real controls in Round 10 above.
 - [x] Signed `db47173` captures confirm the Test label and meter, card row rules, equal lower Dock heights, and dark preview surfaces. Round 8 adopts the shared width and section-start APIs. Earlier report: `tmp/redesign/logs/16r6-tweaks.md`.
 
 ## Round 5 screenshot corrections, 2026-09-29
