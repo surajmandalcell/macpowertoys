@@ -227,8 +227,8 @@ struct SystemMonitorOverviewProcessesView: View {
                             .frame(maxWidth: .infinity, minHeight: 165)
                     }
                 }
+                .frame(height: 203, alignment: .top)
             }
-            .frame(height: 203)
         }
         .task { await sample() }
     }
