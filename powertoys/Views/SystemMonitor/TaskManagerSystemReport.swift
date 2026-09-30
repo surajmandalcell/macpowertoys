@@ -154,21 +154,35 @@ nonisolated enum TaskManagerSystemReportParser {
 actor TaskManagerSystemReportLoader {
     static let shared = TaskManagerSystemReportLoader()
     private var cached: [TaskManagerReportCategory]?
+    private var cachedOverview: [TaskManagerReportCategory]?
+
+    func loadOverview() async throws -> [TaskManagerReportCategory] {
+        if let cached { return cached }
+        if let cachedOverview { return cachedOverview }
+        let overview = try await collect(sources: TaskManagerSystemReportParser.sources.filter { $0.id == "hardware" })
+        cachedOverview = overview
+        return overview
+    }
 
     func load() async throws -> [TaskManagerReportCategory] {
         if let cached { return cached }
+        let categories = try await collect(sources: TaskManagerSystemReportParser.sources)
+        cached = categories
+        return categories
+    }
+
+    private func collect(sources: [TaskManagerSystemReportParser.Source]) async throws -> [TaskManagerReportCategory] {
         let result = try await SSHProcessRunner.run(
             executableURL: URL(fileURLWithPath: "/usr/sbin/system_profiler"),
-            arguments: ["-json", "-detailLevel", "mini"] + TaskManagerSystemReportParser.sources.map(\.dataType),
+            arguments: ["-json", "-detailLevel", "mini"] + sources.map(\.dataType),
             maximumOutputBytes: 24 * 1_024 * 1_024,
             timeout: 60
         )
         guard result.status == 0 else {
             throw CocoaError(.fileReadUnknown, userInfo: [NSLocalizedDescriptionKey: result.standardError])
         }
-        let categories = try TaskManagerSystemReportParser.parse(data: Data(result.standardOutput.utf8))
+        let categories = try TaskManagerSystemReportParser.parse(data: Data(result.standardOutput.utf8), sources: sources)
         guard !categories.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
-        cached = categories
         return categories
     }
 }
@@ -221,6 +235,7 @@ struct TaskManagerSystemReportView: View {
     @State private var selectedID = "hardware"
     @State private var collapsedGroups = Set<String>()
     @State private var isLoading = true
+    @State private var isCollectingDetails = false
     @State private var errorMessage: String?
     @State private var matches: [TaskManagerReportMatch] = []
 
@@ -281,7 +296,7 @@ struct TaskManagerSystemReportView: View {
     private var loadingTree: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(groups, id: \.self) { group in
-                Label(group, systemImage: "chevron.down")
+                Label(group, systemImage: "chevron.right")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(TaskManagerTheme.secondary)
             }
@@ -294,23 +309,14 @@ struct TaskManagerSystemReportView: View {
 
     private var loadingReport: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 9) {
-                Image(systemName: "doc.text.magnifyingglass")
-                    .font(.system(size: 14))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                Text("System information")
-                    .font(.system(size: 15, weight: .medium))
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 50)
-            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+            OnePlusCardHeader("System information", systemImage: "doc.text.magnifyingglass")
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text("Collecting system information…")
                     .font(.system(size: 10))
                     .foregroundStyle(TaskManagerTheme.secondary)
             }
-            .padding(18)
+            .padding(12)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -378,12 +384,14 @@ struct TaskManagerSystemReportView: View {
 
     private func categoryView(_ category: TaskManagerReportCategory) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 9) {
-                Image(systemName: category.symbol).font(.system(size: 14)).foregroundStyle(TaskManagerTheme.secondary)
-                Text(category.title).font(.system(size: 15, weight: .medium))
+            OnePlusCardHeader(category.title, systemImage: category.symbol) {
+                if isCollectingDetails {
+                    ProgressView().controlSize(.small).help("Collecting remaining system information")
+                }
             }
-            .padding(.horizontal, 18)
-            .frame(height: 50)
+            if let errorMessage {
+                OnePlusBanner(errorMessage, tone: .warning) { EmptyView() }
+            }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(category.sections) { section in
@@ -401,7 +409,7 @@ struct TaskManagerSystemReportView: View {
                 Text(section.title).font(.system(size: 10, weight: .medium))
                 Spacer()
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 12)
             .frame(height: 34)
             .background(Color.white.opacity(0.018))
             ForEach(section.rows.indices, id: \.self) { index in
@@ -415,7 +423,7 @@ struct TaskManagerSystemReportView: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
             }
@@ -425,12 +433,7 @@ struct TaskManagerSystemReportView: View {
     private var searchResults: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !matches.isEmpty {
-                HStack {
-                    Text("\(matches.count) matches")
-                        .font(.system(size: 10, weight: .medium))
-                    Spacer()
-                }
-                .padding(18)
+                OnePlusCardHeader("\(matches.count) matches")
             }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -455,7 +458,7 @@ struct TaskManagerSystemReportView: View {
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                 }
-                                .padding(.horizontal, 18)
+                                .padding(.horizontal, 12)
                                 .padding(.vertical, 9)
                                 .contentShape(Rectangle())
                             }
@@ -484,13 +487,21 @@ struct TaskManagerSystemReportView: View {
         guard categories.isEmpty else { return }
         isLoading = true
         do {
-            categories = try await TaskManagerSystemReportLoader.shared.load()
+            categories = try await TaskManagerSystemReportLoader.shared.loadOverview()
+            guard !Task.isCancelled else { return }
             selectedID = categories.first?.id ?? selectedID
+            isLoading = false
+            isCollectingDetails = true
+            categories = try await TaskManagerSystemReportLoader.shared.load()
+            guard !Task.isCancelled else { return }
             errorMessage = nil
         } catch {
-            errorMessage = "System information could not be collected: \(error.localizedDescription)"
+            guard !Task.isCancelled else { return }
+            errorMessage = categories.isEmpty ? "System information could not be collected. Reopen this page to try again."
+                : "Some details could not be collected. Reopen this page to try again."
         }
         isLoading = false
+        isCollectingDetails = false
     }
 
     private func copyCurrent() {
