@@ -151,7 +151,8 @@ private struct MacTweaksSegmentedControl: View {
         OnePlusSegmented(
             choices: choices,
             selection: Binding(get: { selection }, set: onSelection),
-            accessibilityLabel: field.label
+            accessibilityLabel: field.label,
+            accessibilityIdentifierPrefix: "mac-tweaks.choice.\(field.key)"
         )
     }
 }

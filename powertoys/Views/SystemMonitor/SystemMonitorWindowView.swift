@@ -219,7 +219,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var sidebar: some View {
-        OnePlusSidebar(title: "Task Manager") {
+        OnePlusSidebar(title: "Task Manager", titleAccessibilityIdentifier: "task-manager.sidebar.title") {
             sidebarGroup(SystemMonitorPage.primary)
             sidebarBreak
             sidebarGroup(SystemMonitorPage.metrics)
