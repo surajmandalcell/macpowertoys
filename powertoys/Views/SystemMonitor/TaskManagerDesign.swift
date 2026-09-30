@@ -126,6 +126,7 @@ struct TaskManagerHistoryChart: View {
     var upperScaleLabel: String?
     var middleScaleLabel: String?
     var lowerScaleLabel: String?
+    var scaleLabels: [String] = []
     var primaryColor = TaskManagerTheme.ink.opacity(0.76)
     var secondaryColor = TaskManagerTheme.accent
     @State private var hoverX: CGFloat?
@@ -137,12 +138,13 @@ struct TaskManagerHistoryChart: View {
         } else {
             HStack(spacing: 8) {
                 if let upperScaleLabel, let lowerScaleLabel {
+                    let labels = scaleLabels.isEmpty
+                        ? [upperScaleLabel, middleScaleLabel ?? "", lowerScaleLabel] : scaleLabels
                     VStack(alignment: .trailing) {
-                        Text(upperScaleLabel)
-                        Spacer()
-                        Text(middleScaleLabel ?? "")
-                        Spacer()
-                        Text(lowerScaleLabel)
+                        ForEach(labels.indices, id: \.self) { index in
+                            Text(labels[index])
+                            if index < labels.count - 1 { Spacer() }
+                        }
                     }
                     .font(.system(size: 8))
                     .monospacedDigit()
@@ -174,14 +176,14 @@ struct TaskManagerHistoryChart: View {
                         .fill(TaskManagerTheme.secondary.opacity(0.65))
                         .frame(width: 1)
                         .overlay(alignment: .topLeading) {
-                            Text(values[index].formatted(.number.precision(.fractionLength(values[index] < 10 ? 1 : 0))) + unit)
+                            Text(values[index].formatted(.number.precision(.fractionLength(values[index] < 10 ? 1 : 0))) + (unit.isEmpty ? "" : " " + unit))
                                 .font(.system(size: 9, design: .monospaced))
                                 .foregroundStyle(TaskManagerTheme.ink)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 4)
-                                .background(Color(red: 0.15, green: 0.15, blue: 0.15).opacity(0.97),
+                                .background(OnePlusColor.raised,
                                             in: RoundedRectangle(cornerRadius: 4))
-                                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(Color.white.opacity(0.18)) }
+                                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(OnePlusColor.line) }
                                 .offset(x: hoverX > proxy.size.width - 62 ? -58 : 4, y: 2)
                         }
                         .offset(x: hoverX)
@@ -201,7 +203,8 @@ struct TaskManagerHistoryChart: View {
     }
 
     private func drawGrid(context: inout GraphicsContext, size: CGSize) {
-        for fraction in [CGFloat(0), 0.5, 1] {
+        let fractions: [CGFloat] = scaleLabels.count == 4 ? [0, 1 / 3, 2 / 3, 1] : [0, 0.5, 1]
+        for fraction in fractions {
             var path = Path()
             let y = fraction * size.height
             path.move(to: CGPoint(x: 0, y: y))
@@ -248,7 +251,7 @@ struct TaskManagerHistoryChart: View {
                                                    width: 0.8, height: 0.8))
                     }
                 }
-                layer.fill(dots, with: .color(Color.white.opacity(0.22)))
+                layer.fill(dots, with: .color(TaskManagerTheme.ink.opacity(0.22)))
             }
         }
         var path = Path()

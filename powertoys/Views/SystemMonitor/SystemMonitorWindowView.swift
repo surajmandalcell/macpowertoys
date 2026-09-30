@@ -266,8 +266,7 @@ struct SystemMonitorWindowView: View {
                             .foregroundStyle(TaskManagerTheme.secondary)
                         Toggle("Hierarchy", isOn: $processHierarchy)
                             .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.mini)
+                            .toggleStyle(OnePlusSwitchStyle())
                     }
                     TaskManagerSearchField(
                         prompt: "Search name, path, or PID",
@@ -280,6 +279,7 @@ struct SystemMonitorWindowView: View {
         case .report:
             TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
                 HStack(spacing: 8) {
+                    TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
                     reportButton("doc.on.doc", label: "Copy current report") { reportAction = .copy }
                     Menu {
                         Button("Save Text Report…") { reportAction = .exportText }
@@ -295,7 +295,6 @@ struct SystemMonitorWindowView: View {
                     .focusEffectDisabled()
                     .help("Export system report")
                     .accessibilityLabel("Export system report")
-                    TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
                 }
             }
         case .cpu, .gpu, .memory, .network, .disk, .battery, .sensors:
@@ -375,13 +374,13 @@ struct SystemMonitorWindowView: View {
 
     private var overviewPage: some View {
         VStack(spacing: 10) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 4), spacing: 10) {
                 metricCard(.cpu, value: percent(service.snapshot?.cpuUsage), detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) cores",
                            values: recentHistory(.cpu).compactMap(\.cpuUsage), range: 0...100)
                 metricCard(.gpu, value: percent(service.snapshot?.gpuUsage), detail: "Graphics utilization",
                            values: recentHistory(.gpu).compactMap(\.gpuUsage), range: 0...100)
                 metricCard(.memory, value: service.snapshot?.memoryUsage.percent ?? "—", detail: memoryDetail,
-                           values: recentHistory(.memory).compactMap(\.memoryUsage), range: 0...100, accent: true)
+                           values: recentHistory(.memory).compactMap(\.memoryUsage), range: 0...100, accent: memoryIsHigh)
                 metricCard(.network, value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                            detail: "↓ Download · ↑ \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")",
                            values: recentHistory(.network).compactMap(\.networkDownload),
@@ -399,7 +398,7 @@ struct SystemMonitorWindowView: View {
 
             remoteOverview
 
-            LazyVGrid(columns: [GridItem(.flexible(minimum: 0), spacing: 10), GridItem(.flexible(minimum: 0))], spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: 10) {
                 SystemMonitorOverviewProcessesView {
                     pageID = SystemMonitorPage.processes.rawValue
                 } onSelect: { process in
@@ -452,7 +451,7 @@ struct SystemMonitorWindowView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 7) {
                             monitorIcon(metric)
-                                .foregroundStyle(accent ? TaskManagerTheme.accent : TaskManagerTheme.secondary)
+                                .foregroundStyle(TaskManagerTheme.secondary)
                             Text(title ?? metric.title)
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundStyle(TaskManagerTheme.secondary)
@@ -490,6 +489,9 @@ struct SystemMonitorWindowView: View {
         case .none:
             Spacer(minLength: 20)
         case .disk(let usage):
+            Text("\(service.snapshot?.diskUsed.map(Self.bytes) ?? "—") / \(service.snapshot?.diskTotal.map(Self.bytes) ?? "—") used")
+                .onePlusText(.caption)
+                .padding(.bottom, 6)
             OnePlusUsageBar(value: (usage ?? 0) / 100)
                 .accessibilityLabel(usage.map { "Disk, \(Int($0.rounded())) percent used" } ?? "Disk usage unavailable")
         case .battery(let percent):
@@ -590,19 +592,7 @@ struct SystemMonitorWindowView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if let header { OnePlusCardHeader(header) }
                 VStack(alignment: .leading, spacing: 10) {
-                    GeometryReader { proxy in
-                        HStack(spacing: 2) {
-                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.82))
-                                .frame(width: proxy.size.width * CGFloat(Double(applications) / Double(total)))
-                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.58))
-                                .frame(width: proxy.size.width * CGFloat(Double(wired) / Double(total)))
-                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.35))
-                                .frame(width: proxy.size.width * CGFloat(Double(compressed) / Double(total)))
-                            Rectangle().fill(TaskManagerTheme.lineSoft)
-                                .frame(width: proxy.size.width * CGFloat(Double(available) / Double(total)))
-                        }
-                    }
-                    .frame(height: 10)
+                    OnePlusSegmentBar(values: [Double(applications), Double(wired), Double(compressed), Double(available)])
                     allocationRow("Applications", value: Self.bytes(applications))
                     allocationRow("Wired", value: Self.bytes(wired))
                     allocationRow("Compressed", value: Self.bytes(compressed))
@@ -611,6 +601,7 @@ struct SystemMonitorWindowView: View {
                 }
                 .padding(12)
             }
+            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -625,8 +616,10 @@ struct SystemMonitorWindowView: View {
         upperScaleLabel: String? = nil,
         middleScaleLabel: String? = nil,
         lowerScaleLabel: String? = nil,
+        scaleLabels: [String] = [],
         seriesLabels: [String] = [],
         stepped: Bool = false,
+        chartHeight: CGFloat = 138,
         stats: [(String, String)]
     ) -> some View {
         let displayed = unit.isEmpty ? TaskManagerMetricText.parts(value) : (value, unit)
@@ -672,10 +665,20 @@ struct SystemMonitorWindowView: View {
                     stepped: stepped,
                     upperScaleLabel: upperScaleLabel,
                     middleScaleLabel: middleScaleLabel,
-                    lowerScaleLabel: lowerScaleLabel
+                    lowerScaleLabel: lowerScaleLabel,
+                    scaleLabels: scaleLabels
                 )
-                    .frame(height: 138)
+                    .frame(height: chartHeight)
                     .padding(.horizontal, 12)
+                HStack {
+                    Text("−\(historyMinutes) min")
+                    Spacer()
+                    Text("Now")
+                }
+                .font(.system(size: 8, design: .monospaced))
+                .foregroundStyle(TaskManagerTheme.muted)
+                .padding(.leading, 74)
+                .padding(.trailing, 12)
                 if !seriesLabels.isEmpty {
                     HStack(spacing: 12) {
                         ForEach(seriesLabels.indices, id: \.self) { index in
@@ -689,17 +692,9 @@ struct SystemMonitorWindowView: View {
                     .padding(.leading, 74)
                     .padding(.trailing, 12)
                 }
-                HStack {
-                    Text("−\(historyMinutes) min")
-                    Spacer()
-                    Text("Now")
-                }
-                .font(.system(size: 8, design: .monospaced))
-                .foregroundStyle(TaskManagerTheme.muted)
-                .padding(.leading, 74)
-                .padding(.trailing, 12)
-                .padding(.bottom, 10)
             }
+            .padding(.bottom, 12)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -790,6 +785,7 @@ struct SystemMonitorWindowView: View {
                 }
                 .padding(12)
             }
+            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -822,17 +818,9 @@ struct SystemMonitorWindowView: View {
                 values: recentHistory(.gpu).compactMap(\.gpuUsage), range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Graphics utilization"],
-                stats: [("Memory", "Unified"), ("Thermal pressure", service.snapshot?.thermalState ?? "—")]
+                stats: [("Thermal pressure", service.snapshot?.thermalState ?? "—")]
             )
-            LazyVGrid(columns: detailColumns, spacing: 10) {
-                informationPanel("Graphics details", rows: [
-                    ("Architecture", "Integrated"), ("Memory", "Unified"),
-                    ("Utilization", percent(service.snapshot?.gpuUsage)),
-                ])
-                informationPanel("Engine activity", rows: [
-                    ("Combined activity", percent(service.snapshot?.gpuUsage)),
-                ])
-            }
+            informationPanel("Graphics details", rows: [("Architecture", "Integrated"), ("Memory", "Unified")])
         }
     }
 
@@ -877,18 +865,12 @@ struct SystemMonitorWindowView: View {
                     ("Interface", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                 ]
             )
-            LazyVGrid(columns: detailColumns, spacing: 10) {
-                informationPanel("Interface", rows: [
+            informationPanel("Interface", rows: [
                     ("Name", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                     ("Local address", service.snapshot?.networkDetails?.localAddress ?? "—"),
                     ("Transferred down", service.snapshot?.networkDetails.map { Self.bytes($0.receivedTotal) } ?? "—"),
                     ("Transferred up", service.snapshot?.networkDetails.map { Self.bytes($0.sentTotal) } ?? "—"),
-                ])
-                informationPanel("Activity", rows: [
-                    ("Download", service.snapshot?.networkDownload.map(Self.rate) ?? "—"),
-                    ("Upload", service.snapshot?.networkUpload.map(Self.rate) ?? "—"),
-                ])
-            }
+            ])
         }
     }
 
@@ -908,14 +890,7 @@ struct SystemMonitorWindowView: View {
                         detailStat("Available", diskAvailable)
                         detailStat("Used", service.snapshot?.diskUsage.percent ?? "—")
                     }
-                    GeometryReader { proxy in
-                        HStack(spacing: 2) {
-                            Rectangle().fill(TaskManagerTheme.ink.opacity(0.76))
-                                .frame(width: proxy.size.width * CGFloat((service.snapshot?.diskUsage ?? 0) / 100))
-                            Rectangle().fill(TaskManagerTheme.lineSoft)
-                        }
-                    }
-                    .frame(height: 8)
+                    OnePlusUsageBar(value: (service.snapshot?.diskUsage ?? 0) / 100)
                 }
                 .padding(12)
             }
@@ -964,13 +939,10 @@ struct SystemMonitorWindowView: View {
                 values: recentHistory(.battery).compactMap { $0.batteryPercent.map(Double.init) }, range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Battery charge"],
-                stats: [("Power source", powerSourceDetail), ("Status", batteryDetail)]
+                stats: [("Power source", powerSourceDetail)]
             )
             LazyVGrid(columns: detailColumns, spacing: 10) {
-                informationPanel("Battery details", rows: [
-                    ("Charge", service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—"),
-                    ("Power source", powerSourceDetail),
-                ] + batteryDetailRows)
+                informationPanel("Battery details", rows: batteryDetailRows)
                 powerDrawPanel
             }
         }
@@ -979,30 +951,15 @@ struct SystemMonitorWindowView: View {
 
     private var powerDrawPanel: some View {
         let values = recentHistory(.battery).compactMap(Self.powerDraw)
-        return TaskManagerPanel(textured: true) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Power draw", systemImage: "bolt")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                metricValue(
-                    service.snapshot.flatMap(Self.powerDraw).map { "\(Self.decimal($0)) W" } ?? "—",
-                    valueSize: 27,
-                    unitSize: 12
-                )
-                TaskManagerHistoryChart(
-                    values: values,
-                    range: 0...max((values.max() ?? 1) * 1.15, 1),
-                    unit: " W",
-                    compact: true
-                )
-                .frame(height: 82)
-                Spacer(minLength: 0)
-                Text(values.isEmpty ? "Power use is not reported for this battery." : "Based on live battery voltage and current.")
-                    .font(.system(size: 8.5))
-                    .foregroundStyle(TaskManagerTheme.muted)
-            }
-            .padding(12)
-        }
+        let upper = max((values.max() ?? 1) * 1.15, 1)
+        return detailHero(
+            label: "Power draw", value: service.snapshot.flatMap(Self.powerDraw).map(Self.decimal) ?? "—", unit: "W",
+            detail: values.isEmpty ? "Power use is not reported for this battery." : "",
+            values: values, range: 0...upper,
+            upperScaleLabel: "\(Self.decimal(upper)) W",
+            middleScaleLabel: "\(Self.decimal(upper / 2)) W", lowerScaleLabel: "0 W",
+            seriesLabels: ["Power draw"], chartHeight: 72, stats: []
+        )
     }
 
     private var sensorsPage: some View {
@@ -1012,8 +969,9 @@ struct SystemMonitorWindowView: View {
                 detail: "System-reported thermal state",
                 values: recentHistory(.thermal).compactMap { Self.thermalLevel($0.thermalState) }, range: 0...100,
                 upperScaleLabel: "Critical", middleScaleLabel: "Fair", lowerScaleLabel: "Nominal",
+                scaleLabels: ["Critical", "Serious", "Fair", "Nominal"],
                 seriesLabels: ["Thermal state"], stepped: true,
-                stats: [("State", service.snapshot?.thermalState ?? "—")]
+                stats: []
             )
             FanControlView(owner: "system-monitor-window")
         }
@@ -1028,18 +986,18 @@ struct SystemMonitorWindowView: View {
 
     private var aboutPage: some View {
         VStack(spacing: 10) {
-            TaskManagerPanel(textured: true) {
-                HStack(spacing: 20) {
+            OnePlusCard(textured: true) {
+                OnePlusCardHeader("Task Manager", systemImage: "waveform.path.ecg")
+                HStack(spacing: 12) {
                     Image("SystemMonitorLogo")
                         .resizable().scaledToFit().frame(width: 64, height: 64)
                     VStack(alignment: .leading, spacing: 8) {
-                        TaskManagerDotTitle(text: "Task Manager", height: 24)
                         Text("A focused view of your Mac's activity.")
                             .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
                     }
                     Spacer()
                 }
-                .padding(22)
+                .padding(12)
             }
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 10) {
                 aboutPanel("Main window", icon: "display", text: "Processes, compute, memory, storage, network, battery, and thermal activity in dedicated workspaces.")
@@ -1065,7 +1023,7 @@ struct SystemMonitorWindowView: View {
                             .textSelection(.enabled)
                     }
                     .font(.system(size: 10))
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .frame(height: 30)
                     .overlay(alignment: .bottom) {
                         if index < rows.count - 1 { rowDivider }
@@ -1075,24 +1033,20 @@ struct SystemMonitorWindowView: View {
                     Text("Some details are not reported for this Mac.")
                         .font(.system(size: 8.5))
                         .foregroundStyle(TaskManagerTheme.muted)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 12)
                         .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
                         .overlay(alignment: .top) { rowDivider }
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func aboutPanel(_ title: String, icon: String, text: String) -> some View {
-        TaskManagerPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                Image(systemName: icon).font(.system(size: 21)).foregroundStyle(TaskManagerTheme.secondary)
-                Text(title).font(.system(size: 11, weight: .medium))
-                Text(text).font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary).lineSpacing(4)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 144, alignment: .topLeading)
+        OnePlusCard {
+            OnePlusCardHeader(title, systemImage: icon)
+            Text(text).onePlusText(.row).foregroundStyle(TaskManagerTheme.secondary)
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -1172,8 +1126,10 @@ struct SystemMonitorWindowView: View {
 
     private var memoryDetail: String {
         guard let used = service.snapshot?.memoryUsed, let total = service.snapshot?.memoryTotal else { return "Physical memory" }
-        return "\(Self.bytes(used)) / \(Self.bytes(total))"
+        return "\(Self.bytes(used)) / \(Self.bytes(total))\(memoryIsHigh ? " · High" : "")"
     }
+
+    private var memoryIsHigh: Bool { (service.snapshot?.memoryUsage ?? 0) >= 90 }
 
     private var memoryAvailable: String {
         guard let used = service.snapshot?.memoryUsed, let total = service.snapshot?.memoryTotal else { return "—" }
@@ -1232,7 +1188,9 @@ struct SystemMonitorWindowView: View {
         var rows: [(String, String)] = []
         if let health = details.health { rows.append(("Health", health)) }
         if let cycleCount = details.cycleCount { rows.append(("Cycle count", String(cycleCount))) }
-        if let voltage = details.voltageMillivolts { rows.append(("Voltage", "\(voltage) mV")) }
+        if let voltage = details.voltageMillivolts {
+            rows.append(("Voltage", "\((Double(voltage) / 1_000).formatted(.number.precision(.fractionLength(2)))) V"))
+        }
         if let amperage = details.amperageMilliamps { rows.append(("Amperage", "\(amperage) mA")) }
         return rows
     }
