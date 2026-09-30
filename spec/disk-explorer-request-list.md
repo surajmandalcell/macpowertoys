@@ -38,8 +38,19 @@ Round 5 keeps the inspector within the fixed visualization region by using
 while the next live scan revision is prepared. Device inventory also retains
 the last known rows while a new Diskman window refreshes them.
 
+The third screenshot review keeps the selected tab's structure before the
+first scan snapshot. Visualization retains its map header and 260 pt inspector.
+The tables retain their search, review controls, and column headers. Pending
+values use a dash. Scan notices use the shared page's fixed footer. Breadcrumb
+viewports use the 24 pt compact height inside the 40 pt map header. Live ring
+sectors keep their weights and membership but omit outlines when their inner
+arc is narrower than the 1 pt separator.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Keep the first scan inside the final tab bounds. | Map, inspector, and table controls now render before the first snapshot. Notices use the fixed page footer. Debug and build-for-testing pass. | Foundation must omit the empty footer's 16 pt gap and retain a 24 pt fixed-page bottom gutter. Capture first-snapshot and unreadable states in both appearances. |
+| Verify | Center breadcrumbs and remove tiny-sector spokes. | Breadcrumb content and its viewport have the shared 24 pt height. A compiled regression retains a subpoint ring sector without its outline and checks total angle and hit testing. | Execute the regression on hosted CI. Inspect populated Treemap and Rings, hover, and breadcrumb centerlines in the signed build. |
+| Verify | Complete shared table, sidebar, and About geometry. | Diskman's About page has no extra outer inset. Tables and location rows use shared components without local replacements. | Foundation owns overlay scroller reservation, 16 pt first-column inset, hover or selection row actions, and accessory-free label width. |
 | Verify | Keep Visualization inside the 900 pt canvas. | The inspector child list now uses a 28 pt pitch and consumes only its available fixed region. The map, inspector, stats, tabs, and notices do not add a page scroll view. | Foundation owns top-pinning the shared fixed-window root. Inspect Home and Rings in the next signed capture. |
 | Verify | Make live Rings agree with the inspector. | The root ring uses the inspector's five largest measured children in storage-series order and folds only the remainder into a neutral Other segment. A regression covers large children outside the old stable-ID prefix. | Run the regression and inspect a large live Home scan in both appearances. |
 | Verify | Keep live rows and device bounds stable during refresh. | File tables retain the prior matching projection across scan revisions and show a named loading state only before their first projection. New Diskman windows seed device rows from the last successful in-process inventory while the detached refresh runs. | Inspect Largest files during a live scan and reopen Home during inventory refresh. |

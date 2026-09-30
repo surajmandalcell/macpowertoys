@@ -1,5 +1,24 @@
 # Diskman Troubleshooting
 
+## First Snapshot Replaces The Tab And Tiny Rings Draw Spokes
+
+- **Symptom:** Before the first scan snapshot, one loading card replaces the
+  map and inspector or the file table controls. Breadcrumbs stick to the top
+  of the map header. Tiny live ring sectors draw long bright radial lines.
+- **Cause:** The page switched its entire content when the current folder was
+  nil. The horizontal breadcrumb viewport had no height bound. A 1 pt outline
+  covered sectors whose inner arc was narrower than the outline.
+- **Invariant:** Keep the selected tab's structure while scanning, including
+  its map header, 260 pt inspector, or table toolbar and column headers.
+  Use pending values before a snapshot. Put scan notices in the page footer.
+  Center a 24 pt breadcrumb viewport inside the 40 pt header. Keep tiny live
+  sectors and their measured weights, but suppress their degenerate outlines.
+  Do not add a local gutter workaround for shared page or scroller defects.
+- **Check:** Debug and build-for-testing pass. The ring regression checks tiny
+  sector membership, outline suppression, total angle, and hit testing.
+  Hosted execution and signed loading, notice, and chart captures remain open.
+  Foundation must handle the empty footer gap and fixed-page bottom gutter.
+
 ## Native Redesign And Folded File Rows
 
 - **Symptom:** The web-style layout had uneven edges and did not use native
