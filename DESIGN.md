@@ -610,7 +610,7 @@ remain recognizable without a label. The family has three approved treatments:
 the tool's **Chosen Color** identity plus the neutral **Midnight** and
 **Porcelain** appearance families.
 
-## Appearance Strategy
+### Appearance strategy
 
 The neutral appearance rule is intentionally inverted against the surrounding
 desktop for stronger Dock separation:
@@ -626,7 +626,7 @@ desktop for stronger Dock separation:
   SwiftUI and AppKit always request the same named image. Do not add per-view or
   per-window theme branches.
 
-#### Neutral Palette
+#### Neutral palette
 
 | Family | Ground | Echo | Primary glyph | Contrast detail |
 |---|---|---|---|---|
@@ -641,7 +641,7 @@ Use these exact neutral shades. They are not aliases of the warmer Chosen Color
 ink `#23272E` and paper `#F7F5F0`. Mixing the two neutral families within one
 variant weakens the deliberate temperature and contrast difference.
 
-#### Tool Appearance Matrix
+#### Tool appearance matrix
 
 | Tool | Light appearance | Dark appearance | Decision |
 |---|---|---|---|
@@ -681,7 +681,7 @@ identity, use Midnight in light appearance and Porcelain in dark appearance.
 An absent matrix row is a blocking metadata defect, never permission to guess a
 palette or reuse another tool's semantic hue.
 
-## Construction
+### Construction
 
 - Every active SVG tool-icon appearance uses the same outer SVG template. This
   applies to every remaining SVG tool and light and dark variant.
@@ -726,7 +726,7 @@ at that scale (`26px` on a 512 canvas), rather than adopting the tool-icon
 `18 × 22` echo. Icon Composer supplies the system enclosure, lighting, and
 prior-generation fallback.
 
-## Solid Echo Construction
+### Solid echo construction
 
 Midnight and Porcelain derive their depth from one flat copy of the semantic
 glyph behind the foreground:
@@ -752,7 +752,7 @@ At 32px the echo should read as a narrow lower-right depth cue, not a duplicate
 icon. If it becomes a second symbol, the foreground is too small or the offset
 has been changed.
 
-## Chosen Color Palette
+### Chosen color palette
 
 | Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
@@ -771,7 +771,7 @@ product decision deliberately links them to an existing color. Neutral
 appearance variants always use the closed Midnight or Porcelain palette instead
 of inventing tool-specific grays.
 
-## Asset Catalog Structure
+### Asset catalog structure
 
 An image set with different appearance assets uses this shape:
 
@@ -814,7 +814,7 @@ An image set with different appearance assets uses this shape:
 - Launcher cards and the Dock use the same named asset. Do not create a separate
   Dock-only color treatment.
 
-## Generation Workflow
+### Generation workflow
 
 The steps below apply to SVG tool icons. The six bitmap icons named in the
 appearance matrix use 512px RGBA PNG sources, one universal image entry per

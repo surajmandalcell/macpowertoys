@@ -21,11 +21,13 @@ make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests
 
 ## Local verification
 
-The repository has no automated macOS CI workflow. Run these local checks before you open a pull request:
+Hosted macOS workflows run the unit, package, and UI checks. On the owner's
+desktop, compile only. Run executable tests in hosted CI or a separate macOS
+account or VM. Use these checks before you open a pull request:
 
 ```bash
 make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests
-make test DERIVED_DATA=/tmp/macpowertoys-tests
+TEST_SESSION=isolated make test DERIVED_DATA=/tmp/macpowertoys-tests
 make build ADHOC=1 DERIVED_DATA=/tmp/macpowertoys-release
 ```
 
@@ -45,6 +47,11 @@ npm run build
 ```
 
 `npm run lint` validates source and formatting without requiring a Raycast account. Store submission additionally requires the owner's Raycast username in `raycast/package.json` and a successful `npm run lint:store`, which also validates store metadata and icons.
+
+## Releases
+
+Follow [.agents/rules/release.md](.agents/rules/release.md) for local build
+checks, Developer ID packaging, notarization, and public release gates.
 
 ## Pull requests
 
