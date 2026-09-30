@@ -1238,7 +1238,6 @@ struct SystemMonitorSettingsContent: View {
         static let placement: CGFloat = 112
         static let style: CGFloat = 160
         static let update: CGFloat = 110
-        static let format: CGFloat = 218
         static let details: CGFloat = 28
     }
 
@@ -1324,10 +1323,11 @@ struct SystemMonitorSettingsContent: View {
             Text("Placement").frame(width: Column.placement, alignment: .leading)
             Text("Style").frame(width: Column.style, alignment: .leading)
             Text("Update").frame(width: Column.update, alignment: .leading)
-            Text("Format").frame(width: Column.format, alignment: .leading)
+            Text("Format").frame(maxWidth: .infinity, alignment: .leading)
             Text("").frame(width: Column.details)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, OnePlusMetrics.cardPadding - OnePlusTable.cellInset)
         .onePlusTableHeader()
     }
 
@@ -1342,7 +1342,11 @@ struct SystemMonitorSettingsContent: View {
                 placementControl(item).frame(width: Column.placement)
                 styleControl(item).frame(width: Column.style)
                 intervalControl(item).frame(width: Column.update)
-                formatControl(item).frame(width: Column.format)
+                GeometryReader { proxy in
+                    formatControl(item, width: proxy.size.width)
+                }
+                .frame(height: density.controlHeight)
+                .frame(maxWidth: .infinity)
                 Button {
                     expandedMetric = expandedMetric == item.metric ? nil : item.metric
                 } label: {
@@ -1353,7 +1357,7 @@ struct SystemMonitorSettingsContent: View {
                 .accessibilityLabel("\(item.metric.title) details")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, OnePlusMetrics.cardPadding)
             .frame(height: 34)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
             if expandedMetric == item.metric { detailsRow(item) }
@@ -1416,48 +1420,48 @@ struct SystemMonitorSettingsContent: View {
     }
 
     @ViewBuilder
-    private func formatControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+    private func formatControl(_ item: SystemMonitorMenuItemConfiguration, width: CGFloat) -> some View {
         switch item.metric {
         case .memory:
             TaskManagerSelect(
                 choices: SystemMonitorMemoryUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.memoryUnit }, set: { $0.memoryUnit = $1 }),
-                width: Column.format,
+                width: width,
                 accessibilityLabel: "Memory format"
             )
         case .disk:
             TaskManagerSelect(
                 choices: SystemMonitorDiskUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.diskUnit }, set: { $0.diskUnit = $1 }),
-                width: Column.format,
+                width: width,
                 accessibilityLabel: "Disk format"
             )
         case .network:
             TaskManagerSelect(
                 choices: SystemMonitorNetworkUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.networkUnit }, set: { $0.networkUnit = $1 }),
-                width: Column.format,
+                width: width,
                 accessibilityLabel: "Network format"
             )
         case .battery:
             TaskManagerSelect(
                 choices: SystemMonitorBatteryDisplay.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.batteryDisplay }, set: { $0.batteryDisplay = $1 }),
-                width: Column.format,
+                width: width,
                 accessibilityLabel: "Battery format"
             )
         case .thermal:
             TaskManagerSelect(
                 choices: SystemMonitorThermalDisplay.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.thermalDisplay }, set: { $0.thermalDisplay = $1 }),
-                width: Column.format,
+                width: width,
                 accessibilityLabel: "Thermal format"
             )
         case .cpu, .gpu:
             TaskManagerSelect(
                 choices: [("default", "Default")],
                 selection: .constant("default"),
-                width: Column.format,
+                width: width,
                 accessibilityLabel: "\(item.metric.title) format"
             )
             .disabled(true)
