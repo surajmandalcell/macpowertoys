@@ -1635,7 +1635,7 @@ struct SystemMonitorTrayView: View {
                                         unit: page == .memory ? "GB" : page == .network || page == .disk ? "B/s" : page == .sensors ? "" : "%",
                                         compact: true, stepped: page == .sensors,
                                         primaryColor: page == .memory ? OnePlusColor.accent : OnePlusColor.chartLine)
-            }.frame(height: OnePlusMetrics.searchHeight * 3)
+            }.frame(height: OnePlusMetrics.searchHeight * 2)
             HStack { Text("−2 min"); Spacer(); Text("Now") }.onePlusText(.tableHeader)
             if page == .network || page == .disk {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
