@@ -542,27 +542,13 @@ struct NetToysHistoryView: View {
                                  selection: Binding(get: { model.range }, set: model.setRange)).fixedSize()
             }
             if let availability = model.availability {
-                ScrollView {
-                    NetworkUptimeTimeline(presentation: availability)
-                        .padding(OnePlusMetrics.cardPadding)
-                }
-                .onePlusScrollIndicators()
-                .frame(height: availabilityViewportHeight(availability))
+                NetworkUptimeTimeline(presentation: availability)
             } else {
                 OnePlusEmptyState("Loading uptime", systemImage: "clock") {
                     ProgressView().controlSize(.small)
                 }
             }
         }
-    }
-
-    private func availabilityViewportHeight(_ presentation: NetToysAvailabilityPresentation) -> CGFloat {
-        let summaryRows = CGFloat(max(1, presentation.summaries.count)) * OnePlusMetrics.captionedSettingRow
-        let outageRows = CGFloat(min(4, presentation.outages.count)) * OnePlusMetrics.captionedSettingRow
-        let outageHeader = presentation.outages.isEmpty ? 0 : OnePlusMetrics.settingRow
-        let contentHeight = summaryRows + outageRows + outageHeader + OnePlusMetrics.settingRow
-            + OnePlusMetrics.cardPadding * 2
-        return min(contentHeight, OnePlusMetrics.captionedSettingRow * 4)
     }
 
     private var eventList: some View {
@@ -605,7 +591,7 @@ struct NetToysHistoryView: View {
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(maxHeight: .infinity)
+                .frame(minHeight: OnePlusMetrics.captionedSettingRow * 3 + 2, maxHeight: .infinity)
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
@@ -613,6 +599,7 @@ struct NetToysHistoryView: View {
 
     private var recentScans: some View {
         let rows = model.recentScanRows
+        let visibleRowCount = min(ssidAccessMessage == nil ? 2 : 1, rows.count)
         return OnePlusCard {
             OnePlusCardHeader("Recent IP scans")
             if rows.isEmpty {
@@ -642,6 +629,7 @@ struct NetToysHistoryView: View {
                                     Image(systemName: "square.and.arrow.up")
                                 }
                                     .buttonStyle(OnePlusButtonStyle(.icon))
+                                    .help("Export scan")
                                     .accessibilityLabel("Export scan")
                                     .disabled(model.isExporting)
                                 Button {
@@ -650,6 +638,7 @@ struct NetToysHistoryView: View {
                                     Image(systemName: "arrow.clockwise")
                                 }
                                 .buttonStyle(OnePlusButtonStyle(.icon))
+                                .help("Scan again")
                                 .accessibilityLabel("Scan again")
                             }
                             .padding(.horizontal, OnePlusMetrics.cardPadding)
@@ -666,7 +655,8 @@ struct NetToysHistoryView: View {
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(height: CGFloat(min(3, rows.count)) * OnePlusMetrics.captionedSettingRow)
+                .frame(height: CGFloat(visibleRowCount) * OnePlusMetrics.captionedSettingRow
+                       + CGFloat(max(0, visibleRowCount - 1)))
             }
         }
     }
@@ -1085,60 +1075,96 @@ private struct NetworkUptimeTimeline: View {
     let presentation: NetToysAvailabilityPresentation
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+        VStack(alignment: .leading, spacing: 0) {
+            summaryChart
+            if !presentation.outages.isEmpty {
+                recentOutages
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Network uptime by network name")
+    }
+
+    private var summaryChart: some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             if presentation.summaries.isEmpty {
                 OnePlusEmptyState("No uptime data", systemImage: "clock",
                                   caption: "Network uptime appears after the helper records a network change.")
             } else {
-                ForEach(presentation.summaries) { row in
-                    if row.id != presentation.summaries.first?.id { OnePlusRule() }
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                            Text(row.summary.network)
-                                .onePlusText(.row).lineLimit(1)
-                            Spacer()
-                            Text(row.label)
-                                .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                if presentation.summaries.count == 1 {
+                    summaryRows
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            summaryRows
                         }
-                        availabilityBar(row.summary, accessibilityValue: row.label)
                     }
+                    .onePlusScrollIndicators()
+                    .frame(height: OnePlusMetrics.settingRow)
                 }
-                HStack {
+                HStack(spacing: OnePlusMetrics.cardGap) {
                     Text(presentation.startLabel)
+                    Spacer()
+                    legend
                     Spacer()
                     Text("Now")
                 }
                 .onePlusText(.caption).foregroundStyle(OnePlusColor.muted)
             }
+        }
+        .padding(OnePlusMetrics.cardPadding)
+    }
 
-            HStack(spacing: OnePlusMetrics.cardGap) {
-                legendItem("Online", systemImage: "circle.fill", color: OnePlusColor.chartSeries[1])
-                legendItem("Unavailable", systemImage: "circle.fill", color: OnePlusColor.warn)
-                legendItem("Inactive or no data", systemImage: "circle", color: OnePlusColor.muted)
-                Spacer()
+    private var summaryRows: some View {
+        ForEach(presentation.summaries) { row in
+            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
+                    Text(row.summary.network).onePlusText(.row).lineLimit(1)
+                    Spacer()
+                    Text(row.label).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                }
+                availabilityBar(row.summary, accessibilityValue: row.label)
             }
+            .frame(height: OnePlusMetrics.settingRow)
+        }
+    }
 
-            if !presentation.outages.isEmpty {
-                OnePlusRule()
-                Text("Recent outages").onePlusText(.cardTitle)
-                ForEach(presentation.outages.prefix(4)) { row in
-                    if row.id != presentation.outages.first?.id { OnePlusRule() }
-                    HStack(alignment: .top, spacing: OnePlusMetrics.navIconGap) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundStyle(OnePlusColor.warn)
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                            Text(row.title)
-                                .onePlusText(.row)
-                            Text(row.time)
-                                .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+    private var legend: some View {
+        HStack(spacing: OnePlusMetrics.cardGap) {
+            legendItem("Online", systemImage: "circle.fill", color: OnePlusColor.chartSeries[1])
+            legendItem("Unavailable", systemImage: "circle.fill", color: OnePlusColor.warn)
+            legendItem("Inactive or no data", systemImage: "circle", color: OnePlusColor.muted)
+        }
+    }
+
+    private var recentOutages: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            OnePlusRule()
+            Text("Recent outages").onePlusText(.cardTitle)
+                .padding(.horizontal, OnePlusMetrics.cardPadding)
+                .frame(height: OnePlusMetrics.controlHeight)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(presentation.outages) { row in
+                        HStack(spacing: OnePlusMetrics.navIconGap) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(OnePlusColor.warn)
+                                .frame(width: OnePlusMetrics.navIcon)
+                            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+                                Text(row.title).onePlusText(.row).lineLimit(1)
+                                Text(row.time).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                            }
+                            Spacer()
                         }
-                        Spacer()
+                        .padding(.horizontal, OnePlusMetrics.cardPadding)
+                        .frame(height: OnePlusMetrics.captionedSettingRow)
+                        if row.id != presentation.outages.last?.id { OnePlusRule() }
                     }
                 }
             }
+            .onePlusScrollIndicators()
+            .frame(height: OnePlusMetrics.captionedSettingRow)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Network uptime by network name")
     }
 
     private func availabilityBar(
