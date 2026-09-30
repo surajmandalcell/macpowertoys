@@ -175,7 +175,8 @@ private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = OnePlusMenuScrollView()
         scroll.drawsBackground = false
-        let host = OnePlusMenuHostingView(rootView: AnyView(content.environment(\.self, context.environment)))
+        let host = OnePlusMenuHostingView(rootView: AnyView(content.environment(\.self, context.environment)
+            .accessibilityElement(children: .contain)))
         host.scroll = scroll
         scroll.documentView = host
         scroll.configureOnePlusScrollIndicators(axes: .vertical)
@@ -184,7 +185,8 @@ private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let host = scroll.documentView as? NSHostingView<AnyView> else { return }
-        host.rootView = AnyView(content.environment(\.self, context.environment))
+        host.rootView = AnyView(content.environment(\.self, context.environment)
+            .accessibilityElement(children: .contain))
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
