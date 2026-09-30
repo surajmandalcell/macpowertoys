@@ -47,9 +47,14 @@ struct SystemMonitorRemoteView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if profiles.isEmpty {
                         emptyState
+                    } else if profiles.count == 1, let profile = profiles.first {
+                        HStack(alignment: .top, spacing: 10) {
+                            remoteCard(profile).frame(maxWidth: .infinity)
+                            connectionSettings.frame(maxWidth: .infinity)
+                        }
                     } else {
                         LazyVGrid(
-                            columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())],
+                            columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), alignment: .top)],
                             spacing: 10
                         ) {
                             ForEach(profiles) { profile in remoteCard(profile) }
@@ -133,10 +138,8 @@ struct SystemMonitorRemoteView: View {
 
     private var connectionSettings: some View {
         let lastProfileID = profiles.last?.id
-        return VStack(alignment: .leading, spacing: 9) {
-            Text("Connection settings")
-                .font(.system(size: 11, weight: .medium))
-            TaskManagerPanel {
+        return OnePlusCard {
+            OnePlusCardHeader("Connection settings")
                 VStack(spacing: 0) {
                     ForEach(profiles) { profile in
                         HStack(spacing: 12) {
@@ -154,15 +157,10 @@ struct SystemMonitorRemoteView: View {
                                 Button("Configure") { editor = profile }
                                     .taskManagerRemoteButton()
                                     .accessibilityIdentifier("system-monitor.remote.configure.\(profile.id)")
-                                Button(profile.id == connectedID ? "Disconnect" : "Connect") {
-                                    profile.id == connectedID ? disconnect() : connect(profile.id)
-                                }
-                                .taskManagerRemoteButton(primary: profile.id != connectedID)
-                                .accessibilityIdentifier("system-monitor.remote.connect.\(profile.id)")
                             }
                             .fixedSize()
                         }
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 12)
                         .frame(height: 56)
                         if profile.id != lastProfileID {
                             Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
@@ -193,11 +191,10 @@ struct SystemMonitorRemoteView: View {
                                     .foregroundStyle(TaskManagerTheme.muted)
                             }
                         }
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 12)
                         .frame(minHeight: 48)
                     }
                 }
-            }
         }
     }
 
@@ -333,16 +330,23 @@ struct TaskManagerRemoteCard: View {
             VStack(spacing: 0) {
                 header
                 Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                HStack(spacing: 0) {
-                    stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
-                    divider
-                    stat("RAM", symbol: "memorychip", value: memoryReading)
-                    divider
-                    stat("Network", symbol: "network", value: networkReading)
+                if reading != nil {
+                    HStack(spacing: 0) {
+                        stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
+                        divider
+                        stat("RAM", symbol: "memorychip", value: memoryReading)
+                        divider
+                        stat("Network", symbol: "network", value: networkReading)
+                    }
+                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                 }
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                 HStack(spacing: 0) {
-                    diskSummary
+                    if reading?.diskUsed != nil && reading?.diskTotal != nil {
+                        diskSummary
+                    } else {
+                        Text(profile.host).onePlusText(.mono).foregroundStyle(TaskManagerTheme.secondary)
+                            .lineLimit(1).padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
                     actions.frame(width: 92)
                 }
@@ -361,12 +365,11 @@ struct TaskManagerRemoteCard: View {
             Image(systemName: "server.rack").font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
             Text(profile.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
             Spacer()
-            Circle().fill(reading == nil ? TaskManagerTheme.muted : TaskManagerTheme.ink).frame(width: 4, height: 4)
-            Text(state).font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
+            OnePlusStatus(state, state: reading == nil ? .offline : .online)
         }
         .padding(.horizontal, 12)
         .frame(height: 34)
-        .background(Color.white.opacity(0.025))
+        .background(OnePlusColor.raised)
     }
 
     private func stat(_ title: String, symbol: String, value: String) -> some View {
@@ -374,7 +377,7 @@ struct TaskManagerRemoteCard: View {
             Label(title, systemImage: symbol).font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
             Text(value).font(.system(size: 15, weight: .medium)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
     }
 
@@ -387,14 +390,7 @@ struct TaskManagerRemoteCard: View {
                 Spacer()
                 Text(diskPercent).font(.system(size: 8.5, design: .monospaced))
             }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Rectangle().fill(TaskManagerTheme.lineSoft)
-                    Rectangle().fill(TaskManagerTheme.ink.opacity(0.7))
-                        .frame(width: proxy.size.width * diskFraction)
-                }
-            }
-            .frame(height: 4)
+            OnePlusUsageBar(value: Double(diskFraction))
             Text(diskFree).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
         }
         .padding(.horizontal, 12)
@@ -409,6 +405,7 @@ struct TaskManagerRemoteCard: View {
                 Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
             }
             action(primaryTitle, symbol: primarySymbol, height: onTerminal == nil ? 67 : 33, perform: onPrimary)
+                .accessibilityIdentifier("system-monitor.remote.connect.\(profile.id)")
         }
     }
 
