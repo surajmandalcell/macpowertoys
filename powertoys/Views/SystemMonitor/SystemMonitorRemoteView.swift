@@ -146,7 +146,9 @@ struct SystemMonitorRemoteView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(profile.name)
                                     .font(.system(size: 10.5, weight: .medium))
-                                Text("\(profile.host) · \(profile.platform.rawValue) · \(intervalTitle(profile.interval))")
+                                Text([profile.host == profile.name ? "" : profile.host,
+                                      profile.platform.rawValue, intervalTitle(profile.interval)]
+                                    .filter { !$0.isEmpty }.joined(separator: " · "))
                                     .font(.system(size: 8.5))
                                     .monospacedDigit()
                                     .foregroundStyle(TaskManagerTheme.secondary)
@@ -329,25 +331,28 @@ struct TaskManagerRemoteCard: View {
         TaskManagerPanel(textured: true) {
             VStack(spacing: 0) {
                 header
-                if reading != nil {
-                    HStack(spacing: 0) {
-                        stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
-                        divider
-                        stat("RAM", symbol: "memorychip", value: memoryReading)
-                        divider
-                        stat("Network", symbol: "network", value: networkReading)
-                    }
-                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                if profile.host != profile.name {
+                    Text(profile.host).onePlusText(.mono)
+                        .lineLimit(1).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack(spacing: 0) {
-                    if reading?.diskUsed != nil && reading?.diskTotal != nil {
-                        diskSummary
-                    } else {
-                        Text(profile.host).onePlusText(.mono).foregroundStyle(TaskManagerTheme.secondary)
-                            .lineLimit(1).padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
+                    divider
+                    stat("RAM", symbol: "memorychip", value: memoryReading)
+                    divider
+                    stat("Network", symbol: "network", value: networkReading)
+                    if !hasDiskReading {
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
+                        actions.frame(width: 92)
                     }
-                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
-                    actions.frame(width: 92)
+                }
+                if hasDiskReading {
+                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                    HStack(spacing: 0) {
+                        diskSummary
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
+                        actions.frame(width: 92)
+                    }
                 }
                 if !history.isEmpty {
                     TaskManagerHistoryChart(values: history.compactMap(\.cpuPercent), range: 0...100, compact: true)
@@ -365,10 +370,13 @@ struct TaskManagerRemoteCard: View {
         }
     }
 
+    private var hasDiskReading: Bool { reading?.diskUsed != nil && reading?.diskTotal != nil }
+
     private func stat(_ title: String, symbol: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Label(title, systemImage: symbol).font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
             Text(value).font(.system(size: 15, weight: .medium)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
+                .foregroundStyle(reading == nil ? TaskManagerTheme.muted : TaskManagerTheme.ink)
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
