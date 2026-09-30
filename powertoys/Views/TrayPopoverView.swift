@@ -74,6 +74,10 @@ enum TrayPopoverLayout {
         max(minimumBodyHeight, screenHeight * heightFraction - topChromeHeight)
     }
 
+    nonisolated static func diskBytes(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
+    }
+
     static func orderedComplexTabs(available: [TrayTab], savedIDs: [String]) -> [TrayTab] {
         let availableSet = Set(available)
         var seen = Set<TrayTab>()
@@ -1307,7 +1311,7 @@ private struct SystemCareTrayView: View {
     }
 
     private static func bytes(_ value: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
+        TrayPopoverLayout.diskBytes(value)
     }
 }
 
@@ -1568,7 +1572,7 @@ struct SystemMonitorTrayView: View {
         case .gpu: "Integrated graphics"
         case .memory: sample?.memoryTotal.map { "\(Self.bytes($0)) unified memory" } ?? "—"
         case .network: sample?.networkDetails?.interfaceName ?? "—"
-        case .disk: memoryOfDisk
+        case .disk: diskUsedCaption
         case .battery: batteryDetail
         case .sensors: "System-reported state"
         case .home, .processes: ""
@@ -1598,9 +1602,9 @@ struct SystemMonitorTrayView: View {
         }
     }
 
-    private var memoryOfDisk: String {
+    private var diskUsedCaption: String {
         guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "—" }
-        return "\(Self.bytes(used)) of \(Self.bytes(total)) used"
+        return "\(TrayPopoverLayout.diskBytes(used)) of \(TrayPopoverLayout.diskBytes(total)) used"
     }
 
     private var menuChart: some View {
@@ -1699,9 +1703,9 @@ struct SystemMonitorTrayView: View {
             ]
         case .disk:
             [
-                ("Used", sample?.diskUsed.map(Self.bytes) ?? "—"),
+                ("Used", sample?.diskUsed.map(TrayPopoverLayout.diskBytes) ?? "—"),
                 ("Available", diskAvailable),
-                ("Capacity", sample?.diskTotal.map(Self.bytes) ?? "—"),
+                ("Capacity", sample?.diskTotal.map(TrayPopoverLayout.diskBytes) ?? "—"),
                 ("Read", sample?.diskDetails?.readPerSecond.map(Self.rate) ?? "—"),
                 ("Write", sample?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
             ]
@@ -1943,7 +1947,7 @@ struct SystemMonitorTrayView: View {
 
     private var diskAvailable: String {
         guard let used = sample?.diskUsed, let total = sample?.diskTotal else { return "—" }
-        return Self.bytes(max(total - used, 0)) + " free"
+        return TrayPopoverLayout.diskBytes(max(total - used, 0)) + " free"
     }
 
     private var batteryDetail: String {
