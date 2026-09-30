@@ -23,6 +23,7 @@ final class SystemCareTests: XCTestCase {
 
         XCTAssertEqual(metadata.id, application.id)
         XCTAssertEqual(metadata.size, "Unavailable")
+        XCTAssertNotNil(metadata.sizeError)
         XCTAssertEqual(metadata.lastUsed, "Not available")
     }
 
@@ -40,6 +41,15 @@ final class SystemCareTests: XCTestCase {
 
         XCTAssertNotEqual(metadata.size, "Unavailable")
         XCTAssertNotEqual(metadata.size, "Zero KB")
+        XCTAssertNil(metadata.sizeError)
+
+        let link = root.appendingPathComponent("Linked.app")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: root)
+        let linkedMetadata = SystemCarePresentationRows.application(
+            InstalledApplication(name: "Linked App", url: link)
+        )
+        XCTAssertEqual(linkedMetadata.size, "Unavailable")
+        XCTAssertEqual(linkedMetadata.sizeError, "Bundle is a symbolic link. Size scanning does not follow links.")
     }
 
     func testCleanupCandidateMustBeAChildOfItsAllowedRoot() {

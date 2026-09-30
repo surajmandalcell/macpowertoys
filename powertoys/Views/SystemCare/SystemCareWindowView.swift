@@ -28,6 +28,7 @@ nonisolated struct SystemCareCleanupRow: Identifiable, Equatable, Sendable {
 nonisolated struct SystemCareApplicationRow: Identifiable, Equatable, Sendable {
     let application: InstalledApplication
     var size: String?
+    var sizeError: String?
     var lastUsed: String?
     var id: String { application.id }
 }
@@ -35,12 +36,14 @@ nonisolated struct SystemCareApplicationRow: Identifiable, Equatable, Sendable {
 nonisolated struct SystemCareApplicationMetadata: Sendable {
     let id: String
     let size: String
+    let sizeError: String?
     let lastUsed: String
     let iconData: Data?
 }
 
 private enum SystemCareApplicationLayout {
-    static let metadataColumn = OnePlusMetrics.controlColumn * 0.75
+    static let sizeColumn = OnePlusMetrics.controlColumn * 0.75
+    static let lastUsedColumn = OnePlusMetrics.controlColumn / 2
 }
 
 nonisolated enum SystemCarePresentationRows {
@@ -61,19 +64,28 @@ nonisolated enum SystemCarePresentationRows {
     static func application(_ application: InstalledApplication) -> SystemCareApplicationMetadata {
         let formatter = byteFormatter()
         let dateStyle = Date.FormatStyle(date: .abbreviated, time: .omitted)
-        let values = try? application.url.resourceValues(forKeys: [.contentAccessDateKey])
-        let size = allocatedSize(of: application.url).map {
+        let values = try? application.url.resourceValues(forKeys: [.contentAccessDateKey, .isSymbolicLinkKey])
+        let bytes = allocatedSize(of: application.url)
+        let size = bytes.map {
             formatter.string(fromByteCount: $0)
         } ?? "Unavailable"
+        let sizeError = bytes == nil
+            ? (values?.isSymbolicLink == true
+               ? "Bundle is a symbolic link. Size scanning does not follow links."
+               : "Bundle files could not be read. Check that the application is available and readable.")
+            : nil
         return SystemCareApplicationMetadata(
             id: application.id,
             size: size,
+            sizeError: sizeError,
             lastUsed: values?.contentAccessDate.map { dateStyle.format($0) } ?? "Not available",
             iconData: NSWorkspace.shared.icon(forFile: application.url.path).tiffRepresentation
         )
     }
 
     static func allocatedSize(of root: URL) -> Int64? {
+        guard let rootValues = try? root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
+              rootValues.isDirectory == true, rootValues.isSymbolicLink != true else { return nil }
         let keys: [URLResourceKey] = [
             .isRegularFileKey,
             .isSymbolicLinkKey,
@@ -196,6 +208,7 @@ struct SystemCareWindowView: View {
     @State private var cleanupRows: [SystemCareCleanupRow] = []
     @State private var applicationRows: [SystemCareApplicationRow] = []
     @State private var applicationIcons: [String: NSImage] = [:]
+    @State private var applicationRetryRevision = 0
     @State private var appSearch = ""
     @State private var appSearchFocus = 0
     @State private var selectedApplication: InstalledApplication?
@@ -241,6 +254,10 @@ struct SystemCareWindowView: View {
             cleanupRows = rows
         }
         .task(id: manager.applications) {
+            await loadApplications(manager.applications)
+        }
+        .task(id: applicationRetryRevision) {
+            guard applicationRetryRevision > 0 else { return }
             await loadApplications(manager.applications)
         }
         .onDisappear { manager.cancel() }
@@ -686,8 +703,8 @@ struct SystemCareWindowView: View {
             }
             HStack(spacing: OnePlusMetrics.spacing[3]) {
                 Text("Application").frame(maxWidth: .infinity, alignment: .leading)
-                Text("Size").frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .trailing)
-                Text("Last used").frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .leading)
+                Text("Size").frame(width: SystemCareApplicationLayout.sizeColumn, alignment: .trailing)
+                Text("Last used").frame(width: SystemCareApplicationLayout.lastUsedColumn, alignment: .leading)
             }
             .padding(.horizontal, OnePlusMetrics.spacing[1])
             .onePlusTableHeader()
@@ -699,19 +716,28 @@ struct SystemCareWindowView: View {
                             HStack(spacing: OnePlusMetrics.spacing[3]) {
                                 applicationIcon(application)
                                     .frame(width: OnePlusMetrics.spacing[7], height: OnePlusMetrics.spacing[7])
-                                Text(application.name).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
+                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                                    Text(application.name).lineLimit(1)
+                                    if row.sizeError != nil {
+                                        Text("Select to review size error").onePlusText(.caption).lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 Text(row.size ?? "—")
                                     .onePlusText(row.size == nil ? .caption : .mono)
-                                    .frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .trailing)
+                                    .frame(width: SystemCareApplicationLayout.sizeColumn, alignment: .trailing)
                                 Text(row.lastUsed ?? "—")
                                     .onePlusText(row.lastUsed == nil ? .caption : .row)
-                                    .frame(width: SystemCareApplicationLayout.metadataColumn, alignment: .leading)
+                                    .frame(width: SystemCareApplicationLayout.lastUsedColumn, alignment: .leading)
                             }
                             .padding(.horizontal, OnePlusMetrics.spacing[1])
                             .onePlusTableRow(selected: selectedApplication == application)
                         }
                         .buttonStyle(OnePlusInteractionStyle(selected: selectedApplication == application))
                         .contextMenu {
+                            if row.sizeError != nil {
+                                Button("Retry Size") { retryApplication(application) }
+                            }
                             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([application.url]) }
                             Button("Preview Leftovers") { manager.openMoleUninstall(application, dryRun: true) }
                                 .disabled(manager.molePath == nil)
@@ -732,6 +758,12 @@ struct SystemCareWindowView: View {
                     applicationIcon(application)
                         .frame(width: OnePlusMetrics.spacing[9] * 2, height: OnePlusMetrics.spacing[9] * 2)
                     Text(application.url.path).onePlusText(.mono).textSelection(.enabled)
+                    if let row = applicationRows.first(where: { $0.id == application.id }),
+                       let error = row.sizeError {
+                        OnePlusBanner(error, tone: .warning)
+                        Button("Retry Size", systemImage: "arrow.clockwise") { retryApplication(application) }
+                            .buttonStyle(OnePlusButtonStyle(.neutral))
+                    }
                     Button("Review Leftovers", systemImage: "doc.text.magnifyingglass") {
                         manager.openMoleUninstall(application, dryRun: true)
                     }
@@ -782,8 +814,9 @@ struct SystemCareWindowView: View {
                 ForEach(MoleOperation.allCases) { operation in
                     HStack(spacing: OnePlusMetrics.spacing[3]) {
                         Image(systemName: operation.icon)
+                            .font(.system(size: OnePlusTextRole.sectionTitle.size(for: .regular)))
                             .foregroundStyle(OnePlusColor.secondary)
-                            .frame(width: OnePlusMetrics.spacing[7], alignment: .leading)
+                            .frame(width: OnePlusTextRole.sectionTitle.size(for: .regular), alignment: .leading)
                         VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
                             Text(operation.title).onePlusText(.row)
                             Text(operation.detail).onePlusText(.caption)
@@ -940,6 +973,7 @@ struct SystemCareWindowView: View {
             return SystemCareApplicationRow(
                 application: application,
                 size: cached?.size,
+                sizeError: cached?.sizeError,
                 lastUsed: cached?.lastUsed
             )
         }
@@ -961,6 +995,7 @@ struct SystemCareWindowView: View {
                 }
                 if let index = applicationRows.firstIndex(where: { $0.id == metadata.id }) {
                     applicationRows[index].size = metadata.size
+                    applicationRows[index].sizeError = metadata.sizeError
                     applicationRows[index].lastUsed = metadata.lastUsed
                 }
                 if let data = metadata.iconData, let icon = NSImage(data: data) {
@@ -973,6 +1008,14 @@ struct SystemCareWindowView: View {
                 }
             }
         }
+    }
+
+    private func retryApplication(_ application: InstalledApplication) {
+        guard let index = applicationRows.firstIndex(where: { $0.id == application.id }) else { return }
+        applicationRows[index].size = nil
+        applicationRows[index].sizeError = nil
+        // Reuse the window-owned task so closing the window also cancels retries.
+        applicationRetryRevision &+= 1
     }
 
     private var appVersion: String {
