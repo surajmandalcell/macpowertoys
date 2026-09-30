@@ -46,7 +46,7 @@ final class MacTweaksUITests: XCTestCase {
         XCTAssertTrue(window.buttons["mac-tweaks.mic-lock.refresh"].exists)
         attach(window.screenshot(), named: "Mac Tweaks Reference Input")
 
-        let search = window.textFields.firstMatch
+        let search = window.searchFields["mac-tweaks.search"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         let searchSurface = window.descendants(matching: .any)["mac-tweaks.search"]
         XCTAssertTrue(searchSurface.waitForExistence(timeout: 5))
