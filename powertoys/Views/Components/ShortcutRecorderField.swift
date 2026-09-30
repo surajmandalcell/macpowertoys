@@ -5,6 +5,7 @@ import OnePlusUI
 
 struct ShortcutRecorderField: View {
     let action: GlobalShortcutAction
+    var width: CGFloat = OnePlusMetrics.controlColumn
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var isRecording = false
     @State private var monitor: Any?
@@ -14,8 +15,10 @@ struct ShortcutRecorderField: View {
             isRecording ? stopRecording() : startRecording()
         } label: {
             Text(isRecording ? "Type shortcut…" : shortcuts.shortcut(for: action).display)
-                .onePlusText(.mono)
-                .frame(minWidth: 96)
+                .onePlusText(.control)
+                .foregroundStyle(OnePlusColor.controlInk)
+                .lineLimit(1)
+                .frame(width: max(0, width - 2 * OnePlusMetrics.controlHorizontalPadding))
         }
         .buttonStyle(OnePlusButtonStyle())
         .onePlusNeutralControls()
