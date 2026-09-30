@@ -189,11 +189,11 @@ final class PortmanUITests: XCTestCase {
             return
         }
         interval.click()
-        app.menuItems["5 seconds"].click()
+        app.menuItems["5 seconds"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         XCTAssertEqual(interval.value as? String, "5 seconds",
                       "Choosing a scan interval did not update the setting")
         interval.click()
-        app.menuItems["2 seconds"].click()
+        app.menuItems["2 seconds"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         search.click()
         search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4))
         search.typeText("mode")
