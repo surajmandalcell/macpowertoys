@@ -181,7 +181,7 @@ private struct MainAboutSettings: View {
                 OnePlusPanel {
                     VStack(spacing: 0) {
                         OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                        linkRow("Cloud Sync engine", caption: "Free software by Nick Craig-Wood and contributors.",
+                        linkRow("Cloud Sync engine", caption: "By Nick Craig-Wood and contributors",
                                 title: "Powered by rclone", url: "https://rclone.org/")
                         linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
                         Spacer(minLength: 0)
