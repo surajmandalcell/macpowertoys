@@ -5,7 +5,7 @@ struct OnePlusNativeTableSkin: ViewModifier {
     let columns: [OnePlusGridColumn]
     @Environment(\.onePlusDensity) private var density
     func body(content: Content) -> some View {
-        content.tableStyle(.inset(alternatesRowBackgrounds: false))
+        content.tableStyle(.bordered(alternatesRowBackgrounds: false))
             .environment(\.defaultMinListRowHeight, OnePlusTable.rowHeight(density))
             .scrollContentBackground(.hidden).background(OnePlusColor.panel)
             .onePlusText(.row).onePlusScrollIndicators()
@@ -72,8 +72,10 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             if table.intercellSpacing != .zero { table.intercellSpacing = .zero }
             table.backgroundColor = NSColor(OnePlusColor.panel)
             if !table.gridStyleMask.isEmpty { table.gridStyleMask = [] }
-            if let scroll = table.enclosingScrollView, scroll.borderType != .noBorder {
-                scroll.borderType = .noBorder
+            if let scroll = table.enclosingScrollView {
+                if scroll.borderType != .noBorder { scroll.borderType = .noBorder }
+                if scroll.automaticallyAdjustsContentInsets { scroll.automaticallyAdjustsContentInsets = false }
+                if !NSEdgeInsetsEqual(scroll.contentInsets, NSEdgeInsets()) { scroll.contentInsets = NSEdgeInsets() }
             }
             if !table.subviews.contains(where: { $0 is OnePlusTableLines }) {
                 table.addSubview(OnePlusTableLines(table: table))
