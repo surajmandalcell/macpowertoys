@@ -30,7 +30,10 @@ final class OnePlusTableTests: XCTestCase {
                 } else {
                     header.setFrameSize(NSSize(width: header.frame.width, height: 29))
                 }
+                scroll.borderType = .lineBorder
                 scroll.tile()
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
                 host.layoutSubtreeIfNeeded()
                 let headerFrame = header.convert(header.bounds, to: host)
                 let rowFrame = table.convert(table.rect(ofRow: 0), to: host)

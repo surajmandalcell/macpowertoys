@@ -25,6 +25,7 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
         var density = OnePlusDensity.regular
         var columns: [OnePlusGridColumn] = []
         private weak var table: NSTableView?
+        private var borderObservation: NSKeyValueObservation?
         private var pending: DispatchWorkItem?
         isolated deinit { pending?.cancel() }
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -43,7 +44,14 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
                         ancestor = view.superview
                     }
                 }
-                if let table = self.table { Self.apply(to: table, density: self.density, columns: self.columns) }
+                if let table = self.table {
+                    if self.borderObservation == nil {
+                        self.borderObservation = table.enclosingScrollView?.observe(\.borderType) { [weak self] _, _ in
+                            MainActor.assumeIsolated { self?.configure() }
+                        }
+                    }
+                    Self.apply(to: table, density: self.density, columns: self.columns)
+                }
             }
             pending = work
             DispatchQueue.main.async(execute: work)
@@ -64,7 +72,9 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             if table.intercellSpacing != .zero { table.intercellSpacing = .zero }
             table.backgroundColor = NSColor(OnePlusColor.panel)
             if !table.gridStyleMask.isEmpty { table.gridStyleMask = [] }
-            table.enclosingScrollView?.borderType = .noBorder
+            if let scroll = table.enclosingScrollView, scroll.borderType != .noBorder {
+                scroll.borderType = .noBorder
+            }
             if !table.subviews.contains(where: { $0 is OnePlusTableLines }) {
                 table.addSubview(OnePlusTableLines(table: table))
             }
