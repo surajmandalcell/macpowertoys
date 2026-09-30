@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class WindowAccessorTests: XCTestCase {
-    func testAccessorSetsIdentityWithoutTakingOverSceneSizing() async {
+    func testAccessorSetsIdentityBeforePresentationWithoutTakingOverSceneSizing() {
         let window = AccessorCountingWindow(
             contentRect: NSRect(x: -2000, y: -2000, width: 420, height: 300),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -20,12 +20,6 @@ final class WindowAccessorTests: XCTestCase {
                 .background(WindowAccessor(identifier: identifier))
         )
         window.contentView?.layoutSubtreeIfNeeded()
-        let restored = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isMovableByWindowBackground == false AND appearance == nil"),
-            object: window
-        )
-        await fulfillment(of: [restored], timeout: 2)
-
         XCTAssertEqual(window.identifier?.rawValue, identifier)
         XCTAssertFalse(window.isMovableByWindowBackground)
         XCTAssertTrue(window.isMovable)
@@ -59,9 +53,11 @@ final class WindowAccessorTests: XCTestCase {
     }
 
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
+        for tool in ToolRegistry.builtInTools where OnePlusWindowCanvas.tool(tool.id) != nil {
+            XCTAssertTrue(WindowStateManager.restoresPositionOnly(tool.id), tool.id)
+        }
         XCTAssertTrue(WindowStateManager.restoresPositionOnly("main"))
-        XCTAssertTrue(WindowStateManager.restoresPositionOnly("system-monitor"))
-        XCTAssertFalse(WindowStateManager.restoresPositionOnly("rclone"))
+        XCTAssertFalse(WindowStateManager.restoresPositionOnly("unknown"))
         let saved = NSRect(x: 40, y: 60, width: 780, height: 732)
         let restored = WindowStateManager.positionOnlyFrame(saved: saved, currentSize: NSSize(width: 1240, height: 840))
         XCTAssertEqual(restored.size, NSSize(width: 1240, height: 840))
