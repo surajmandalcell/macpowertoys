@@ -987,11 +987,11 @@ struct SystemMonitorWindowView: View {
     private var aboutPage: some View {
         VStack(spacing: 10) {
             OnePlusCard(textured: true) {
-                OnePlusCardHeader("Task Manager", systemImage: "waveform.path.ecg")
                 HStack(spacing: 12) {
                     Image("SystemMonitorLogo")
-                        .resizable().scaledToFit().frame(width: 64, height: 64)
-                    VStack(alignment: .leading, spacing: 8) {
+                        .resizable().scaledToFit().frame(width: 40, height: 40)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Task Manager").onePlusText(.cardTitle).onePlusDensity(.regular)
                         Text("A focused view of your Mac's activity.")
                             .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
                     }
