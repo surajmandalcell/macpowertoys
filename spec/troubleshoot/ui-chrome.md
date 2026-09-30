@@ -11,12 +11,27 @@
   `onePlusAppAppearance()`. It observes the app's effective appearance, sets
   the SwiftUI scheme, clears pinned ancestor-view overrides, and updates native
   windows. Automatic follows system changes. Keep diagnostic action routing.
+  Configure native hosts on attachment. Let the app observer update live
+  windows. Do not configure again from native appearance-change callbacks
+  or add a competing preferred color scheme. Both can keep a popover busy.
   Use one app-lifetime observer and weak window references. Do not poll.
 - **Check:** `testPresentationRootsFollowAppAppearanceAndLiveChanges` failed
   before the fix. It now passes for dark, light, dark again, and Automatic.
   It checks native appearances, rendered pixels, and nested menu-body schemes.
-  All 73 package tests pass. Signed status-item, diagnostic, popup, and sheet
-  interaction checks remain with the orchestrator.
+  All 73 package tests pass. Hosted `36741797887` at `b3d55c3c` also
+  passes 995 units, including native popover measurement, and all UI jobs.
+  Signed status-item, diagnostic, popup, and sheet checks remain with the
+  orchestrator.
+
+## Key Notifications Interrupt Text Editing, 2026-09-30
+
+- **Symptom:** Portman retains only the first typed SSH host character.
+- **Cause:** The focus policy clears the first responder on key-window
+  notifications, including an active native field editor.
+- **Invariant:** Preserve active text inputs when a configured window becomes
+  key. Keep resting controls unfocused and hidden-window focus blocked.
+- **Check:** `testKeyNotificationKeepsAnActiveTextEditor` passes in hosted
+  `36741797887`. All Portman navigation and SSH validation checks pass.
 
 ## Nested Menu Body Accessibility, 2026-09-30
 

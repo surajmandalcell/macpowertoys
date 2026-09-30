@@ -39,8 +39,8 @@ Update this list whenever Ruler requirements or verification results change.
 
 ## Verification record
 
-- Hosted redesign run `36728308347` at `1c1d4e38` passed
-  `RulerCoreTests`. All 986 executed unit tests passed, with five skips
+- Hosted redesign run `36741797887` at `b3d55c3c` passed
+  `RulerCoreTests`. All 995 executed unit tests passed, with five skips
   and no failures. Signed Ruler window checks remain with the orchestrator.
 - A fresh pinned upstream run passed 125 tests with zero failures or skipped
   tests.
