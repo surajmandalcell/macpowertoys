@@ -17,7 +17,7 @@ public extension EnvironmentValues {
 }
 
 public struct OnePlusButtonStyle: ButtonStyle {
-    public enum Variant: String, CaseIterable, Sendable { case neutral, primary, ghost, destructive, icon, link }
+    public enum Variant: String, CaseIterable, Sendable { case neutral, primary, ghost, destructive, icon, borderedIcon, link }
     public enum Size: Sendable { case regular, small }
     let variant: Variant
     let size: Size?
@@ -68,7 +68,8 @@ private struct OnePlusButtonBody<Label: View>: View {
         style.height ?? style.size.map { $0 == .small ? OnePlusMetrics.compactControlHeight : OnePlusMetrics.controlHeight }
             ?? controlHeight ?? density.controlHeight
     }
-    private var radius: CGFloat { style.variant == .icon || style.size == .small ? 5 : 6 }
+    private var isIcon: Bool { style.variant == .icon || style.variant == .borderedIcon }
+    private var radius: CGFloat { isIcon || style.size == .small ? 5 : 6 }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -77,12 +78,12 @@ private struct OnePlusButtonBody<Label: View>: View {
                 Image(systemName: "arrow.right").font(.system(size: 10)).accessibilityHidden(true)
             }
         }
-        .font(.system(size: style.variant == .icon ? 14 : style.size == .small ? 11 : OnePlusTextRole.control.size(for: density),
+        .font(.system(size: isIcon ? 14 : style.size == .small ? 11 : OnePlusTextRole.control.size(for: density),
                       weight: style.variant == .primary ? .medium : .regular))
         .foregroundStyle(foreground)
         .tint(foreground)
-        .padding(.horizontal, style.variant == .icon ? 0 : style.horizontalPadding)
-        .frame(minWidth: style.variant == .icon ? height : style.minWidth)
+        .padding(.horizontal, isIcon ? 0 : style.horizontalPadding)
+        .frame(minWidth: isIcon ? height : style.minWidth)
         .frame(height: height)
         .background(background, in: RoundedRectangle(cornerRadius: radius))
         .overlay { RoundedRectangle(cornerRadius: radius).strokeBorder(border, lineWidth: 1) }
@@ -98,7 +99,7 @@ private struct OnePlusButtonBody<Label: View>: View {
         case .primary: OnePlusColor.primaryInk
         case .destructive: OnePlusColor.danger
         case .ghost, .icon, .link: isHovering || isFocused ? OnePlusColor.ink : OnePlusColor.secondary
-        case .neutral: OnePlusColor.controlInk
+        case .neutral, .borderedIcon: OnePlusColor.controlInk
         }
     }
 
@@ -108,7 +109,7 @@ private struct OnePlusButtonBody<Label: View>: View {
         switch style.variant {
         case .primary: return isHovering ? OnePlusColor.primaryHover : OnePlusColor.primaryFill
         case .destructive: return OnePlusColor.dangerFill
-        case .neutral: return isHovering ? OnePlusColor.raisedHover : OnePlusColor.raised
+        case .neutral, .borderedIcon: return isHovering ? OnePlusColor.raisedHover : OnePlusColor.raised
         case .ghost, .icon: return isHovering ? OnePlusColor.raised : .clear
         case .link: return .clear
         }
@@ -117,7 +118,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     private var border: Color {
         if isFocused { return OnePlusColor.focus }
         switch style.variant {
-        case .neutral: return OnePlusColor.line
+        case .neutral, .borderedIcon: return OnePlusColor.line
         case .destructive: return isHovering ? OnePlusColor.danger : OnePlusColor.dangerLine
         default: return .clear
         }

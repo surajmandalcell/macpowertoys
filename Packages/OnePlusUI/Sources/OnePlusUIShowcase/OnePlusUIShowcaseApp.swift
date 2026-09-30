@@ -274,7 +274,7 @@ private struct OnePlusUIShowcase: View {
     }
     private func sampleButton(_ variant: OnePlusButtonStyle.Variant, size: OnePlusButtonStyle.Size? = nil) -> some View {
         Button { announce("\(variant.rawValue.capitalized) action completed") } label: {
-            if variant == .icon { Image(systemName: "arrow.clockwise") }
+            if variant == .icon || variant == .borderedIcon { Image(systemName: "arrow.clockwise") }
             else { Text(variant == .destructive ? "Remove" : variant == .link ? "View all" : "Action") }
         }.buttonStyle(OnePlusButtonStyle(variant, size: size)).accessibilityLabel("\(variant.rawValue.capitalized) action")
     }
