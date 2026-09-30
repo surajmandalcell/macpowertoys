@@ -54,6 +54,51 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertEqual(menuSpacing.defaultLabel, "Always")
         XCTAssertFalse(menuSpacing.differsFromDefault(-1))
         XCTAssertTrue(menuSpacing.differsFromDefault(0))
+        XCTAssertTrue(hiddenFiles.needsReset(1, hasBackup: true), "An original custom value must remain restorable at the declared default")
+        XCTAssertTrue(hiddenFiles.needsReset(-1, hasBackup: true), "Deleting a key must not hide its original value")
+        XCTAssertFalse(hiddenFiles.needsReset(1, hasBackup: false))
+    }
+
+    func testResetPreflightsManagedAndExternalChangesAndClearsUntrackedValues() throws {
+        let domain = "com.macpowertoys.tweak-test.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(ManagedTweakTestDefaults(suiteName: domain))
+        let fields = ["First", "Second"].map { TweakPreferenceField.flag($0, domain, $0) }
+        let store = TweakPreferenceStore(defaults: defaults)
+        func set(_ value: CFPropertyList?, for field: TweakPreferenceField) {
+            CFPreferencesSetValue(field.key as CFString, value, domain as CFString,
+                                  kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+            XCTAssertTrue(CFPreferencesSynchronize(domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost))
+        }
+        defer {
+            for field in fields { set(nil, for: field) }
+            defaults.removePersistentDomain(forName: domain)
+        }
+
+        try store.apply(fields, selections: Dictionary(uniqueKeysWithValues: fields.map { ($0.identity, 0) }))
+        defaults.forcedKeys = [fields[1].key]
+        XCTAssertThrowsError(try store.restore(fields, includingUntracked: true)) { error in
+            guard case TweakPreferenceError.managed = error else { return XCTFail("Expected managed-preference protection") }
+        }
+        XCTAssertTrue(fields.allSatisfy { store.value(for: $0) as? Bool == true }, "Preflight must leave every key unchanged")
+        XCTAssertTrue(store.hasBackup(for: fields))
+
+        defaults.forcedKeys = []
+        set("changed elsewhere" as CFString, for: fields[1])
+        XCTAssertThrowsError(try store.restore(fields, includingUntracked: true)) { error in
+            guard case TweakPreferenceError.changedElsewhere = error else { return XCTFail("Expected external-change protection") }
+        }
+        XCTAssertEqual(store.value(for: fields[0]) as? Bool, true)
+        XCTAssertEqual(store.value(for: fields[1]) as? String, "changed elsewhere")
+        set(true as CFPropertyList, for: fields[1])
+        try store.restore(fields)
+        XCTAssertTrue(fields.allSatisfy { store.value(for: $0) == nil })
+
+        set("custom value" as CFString, for: fields[0])
+        try store.restore(fields)
+        XCTAssertEqual(store.value(for: fields[0]) as? String, "custom value", "Exact restore ignores untracked keys")
+        try store.restore(fields, includingUntracked: true)
+        XCTAssertNil(store.value(for: fields[0]))
+        XCTAssertFalse(store.hasBackup(for: fields), "Reset to default must not create a reverse-reset backup")
     }
 
     func testExactPreferenceUndoRestoresAbsentAndExistingValues() throws {
@@ -100,5 +145,32 @@ final class MacTweaksCatalogTests: XCTestCase {
         try store.apply([field], selections: [field.identity: 1])
         XCTAssertEqual(store.value(for: field) as? Bool, false)
         XCTAssertFalse(store.hasBackup(for: [field]))
+    }
+
+    func testUnreadableBackupBlocksWritesAndRemainsIntact() throws {
+        let domain = "com.macpowertoys.tweak-test.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))
+        defer { defaults.removePersistentDomain(forName: domain) }
+        let damaged = Data("unreadable backup".utf8)
+        let field = TweakPreferenceField.flag("Test", domain, "Test")
+        let damagedRecord = try PropertyListSerialization.data(
+            fromPropertyList: [field.identity: ["original": damaged]], format: .binary, options: 0
+        )
+        for backup in [damaged, damagedRecord] {
+            defaults.set(backup, forKey: "macTweaks.preferenceBackups.v1")
+            let store = TweakPreferenceStore(defaults: defaults)
+            XCTAssertThrowsError(try store.apply([field], selections: [field.identity: 0]))
+            XCTAssertThrowsError(try store.restore([field], includingUntracked: true))
+            XCTAssertNil(store.value(for: field))
+            XCTAssertEqual(defaults.data(forKey: "macTweaks.preferenceBackups.v1"), backup)
+        }
+    }
+}
+
+private final class ManagedTweakTestDefaults: UserDefaults, @unchecked Sendable {
+    var forcedKeys: Set<String> = []
+
+    override func objectIsForced(forKey defaultName: String, inDomain domainName: String) -> Bool {
+        forcedKeys.contains(defaultName)
     }
 }

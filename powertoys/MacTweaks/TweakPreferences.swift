@@ -38,6 +38,10 @@ nonisolated struct TweakPreferenceField: @unchecked Sendable {
         return selection != defaultSelection
     }
 
+    func needsReset(_ selection: Int, hasBackup: Bool) -> Bool {
+        hasBackup || differsFromDefault(selection)
+    }
+
     static func flag(
         _ label: String,
         _ domain: String,
@@ -151,6 +155,7 @@ enum TweakPreferenceError: LocalizedError {
     case writeFailed(String)
     case invalidSelection
     case screenshotConflict
+    case unreadableBackup
 
     var errorDescription: String? {
         switch self {
@@ -159,6 +164,7 @@ enum TweakPreferenceError: LocalizedError {
         case .writeFailed(let domain): "Could not save preferences in \(domain). Try again after checking file permissions."
         case .invalidSelection: "Choose a valid setting before applying."
         case .screenshotConflict: "Turn off the floating thumbnail in Screenshot before selecting PDF on Tahoe."
+        case .unreadableBackup: "Saved original values could not be read. Recover the Mac Tweaks backup before changing preferences."
         }
     }
 }
@@ -184,12 +190,18 @@ nonisolated final class TweakPreferenceStore {
 
     private let backupKey = "macTweaks.preferenceBackups.v1"
     private let defaults: UserDefaults
+    private let backupIsUnreadable: Bool
     private var records: [String: Record]
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        let data = defaults.data(forKey: backupKey) ?? Data()
-        records = (try? PropertyListDecoder().decode([String: Record].self, from: data)) ?? [:]
+        let saved = defaults.object(forKey: backupKey)
+        let decoded = (saved as? Data).flatMap { try? PropertyListDecoder().decode([String: Record].self, from: $0) }
+        backupIsUnreadable = saved != nil && !(decoded?.values.allSatisfy { record in
+            [record.original, record.lastWritten, record.pending?.data].compactMap { $0 }
+                .allSatisfy { Self.unarchive($0) != nil }
+        } ?? false)
+        records = decoded ?? [:]
     }
 
     func value(for field: TweakPreferenceField) -> Any? {
@@ -243,6 +255,7 @@ nonisolated final class TweakPreferenceStore {
     }
 
     func apply(_ fields: [TweakPreferenceField], selections: [String: Int]) throws {
+        guard !backupIsUnreadable else { throw TweakPreferenceError.unreadableBackup }
         for field in fields { try reconcilePendingWrite(for: field) }
         let originalRecords = records
         var next = records
@@ -307,24 +320,29 @@ nonisolated final class TweakPreferenceStore {
         }
     }
 
-    func restore(_ fields: [TweakPreferenceField]) throws {
+    func restore(_ fields: [TweakPreferenceField], includingUntracked: Bool = false) throws {
+        guard !backupIsUnreadable else { throw TweakPreferenceError.unreadableBackup }
         for field in fields { try reconcilePendingWrite(for: field) }
         var writes: [(TweakPreferenceField, Any?)] = []
         var before: [(TweakPreferenceField, Any?)] = []
         var cleared: [String] = []
         for field in fields {
-            guard let record = records[field.identity] else { continue }
+            let record = records[field.identity]
+            guard record != nil || includingUntracked else { continue }
             let current = value(for: field)
             let currentData = current.flatMap(archive)
-            if currentData == record.original {
+            if currentData == record?.original {
                 cleared.append(field.identity)
                 continue
             }
-            guard record.lastWritten == currentData else {
+            if defaults.objectIsForced(forKey: field.key, inDomain: field.domain) {
+                throw TweakPreferenceError.managed(field.key)
+            }
+            guard record == nil || record?.lastWritten == currentData else {
                 throw TweakPreferenceError.changedElsewhere(field.key)
             }
             before.append((field, current))
-            writes.append((field, record.original.flatMap(unarchive)))
+            writes.append((field, record?.original.flatMap(Self.unarchive)))
             cleared.append(field.identity)
         }
         guard !cleared.isEmpty else { return }
@@ -370,7 +388,7 @@ nonisolated final class TweakPreferenceStore {
         try? PropertyListSerialization.data(fromPropertyList: ["value": value], format: .binary, options: 0)
     }
 
-    private func unarchive(_ data: Data) -> Any? {
+    private static func unarchive(_ data: Data) -> Any? {
         (try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])?["value"]
     }
 
