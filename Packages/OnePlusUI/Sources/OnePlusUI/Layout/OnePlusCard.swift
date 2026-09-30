@@ -61,7 +61,7 @@ public struct OnePlusSettingRow<Control: View>: View {
         self.controlWidth = controlWidth; self.separator = separator; self.control = control()
     }
     public var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(label).onePlusText(.row).lineLimit(1).help(label)
@@ -69,11 +69,12 @@ public struct OnePlusSettingRow<Control: View>: View {
                 }
                 if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            Button { reset?() } label: { Image(systemName: "arrow.counterclockwise") }
-                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                .help("Reset \(label)").accessibilityLabel("Reset \(label)")
-                .opacity(reset == nil ? 0 : 1).disabled(reset == nil).accessibilityHidden(reset == nil)
-            control.frame(minWidth: controlWidth, maxWidth: max(controlWidth, OnePlusMetrics.wideControlColumn), alignment: .trailing)
+            if let reset {
+                Button(action: reset) { Image(systemName: "arrow.counterclockwise") }
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .help("Reset \(label)").accessibilityLabel("Reset \(label)")
+            }
+            control.frame(width: controlWidth, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .frame(height: caption == nil ? OnePlusMetrics.settingRow : OnePlusMetrics.captionedSettingRow)
