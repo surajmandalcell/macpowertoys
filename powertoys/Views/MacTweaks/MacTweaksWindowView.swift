@@ -17,6 +17,10 @@ enum MacTweaksLayout {
     static let trafficLightVerticalOffset = OnePlusMetrics.trafficLightVerticalOffset
 }
 
+private enum MacTweaksModifiedTableLayout {
+    static let valueColumn = OnePlusMetrics.controlColumn + OnePlusMetrics.spacing[4]
+}
+
 private struct MacTweaksCategory: Identifiable {
     let id: String
     let title: String
@@ -476,12 +480,13 @@ struct MacTweaksWindowView: View {
                 .frame(maxWidth: .infinity, minHeight: 390)
             } else {
                 MacTweaksPanel("Modified settings", glyph: .apps) {
-                    HStack {
+                    HStack(spacing: OnePlusMetrics.spacing[3]) {
                         Text("Setting").frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Current").frame(width: 170, alignment: .leading)
-                        Text("Original").frame(width: 170, alignment: .leading)
-                        Color.clear.frame(width: 28)
+                        Text("Current").frame(width: MacTweaksModifiedTableLayout.valueColumn, alignment: .leading)
+                        Text("Original").frame(width: MacTweaksModifiedTableLayout.valueColumn, alignment: .leading)
+                        Color.clear.frame(width: OnePlusMetrics.controlHeight)
                     }
+                    .padding(.horizontal, OnePlusMetrics.spacing[1])
                     .onePlusTableHeader()
                     ScrollView {
                         LazyVStack(spacing: 0) {
@@ -512,13 +517,13 @@ struct MacTweaksWindowView: View {
     }
 
     private func modifiedRow(_ entry: MacTweaksModifiedEntry) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: OnePlusMetrics.spacing[3]) {
             Text(entry.field.label).onePlusText(.row)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(MacTweaksPreferenceValue.label(for: entry.currentSelection, field: entry.field))
-                .frame(width: 170, alignment: .leading)
+                .frame(width: MacTweaksModifiedTableLayout.valueColumn, alignment: .leading)
             Text(MacTweaksPreferenceValue.label(for: entry.originalSelection, field: entry.field))
-                .frame(width: 170, alignment: .leading)
+                .frame(width: MacTweaksModifiedTableLayout.valueColumn, alignment: .leading)
             Button {
                 do {
                     if backedUpIdentities.contains(entry.field.identity) {
@@ -537,6 +542,7 @@ struct MacTweaksWindowView: View {
                 Image(systemName: "arrow.counterclockwise")
             }
             .buttonStyle(OnePlusButtonStyle(.icon))
+            .frame(width: OnePlusMetrics.controlHeight)
             .accessibilityLabel("Reset \(entry.field.label)")
         }
         .onePlusText(.control)
