@@ -99,6 +99,20 @@ enum TrayPopoverLayout {
         return Array(active) + Array(recent)
     }
 
+    static func latestTransfersByRemote(_ jobs: [TransferJob]) -> [String: TransferJob] {
+        var latest: [String: TransferJob] = [:]
+        for job in jobs {
+            for endpoint in [job.sourceFs, job.destinationFs] {
+                guard let colon = endpoint.firstIndex(of: ":") else { continue }
+                let name = String(endpoint[..<colon])
+                let date = job.finishedAt ?? job.createdAt
+                if let previous = latest[name], date < (previous.finishedAt ?? previous.createdAt) { continue }
+                latest[name] = job
+            }
+        }
+        return latest
+    }
+
     nonisolated static func recentAnchors(
         _ anchors: [SSHAnchorConfiguration],
         statuses: [SSHAnchorStatus],
@@ -137,6 +151,8 @@ struct TrayPopoverView: View {
     @State private var switchModel = SwitchWorkspaceModel()
     @State private var netToysSnapshot = NetToysTraySnapshot()
     @State private var careSnapshot = SystemCareTraySnapshot()
+    @State private var startupDisk: SystemCareStartupDiskSnapshot?
+    @State private var diskLoaded = false
     @State private var cloudJobs: [TransferJob]
     @State private var preparedHomeTools: [String] = []
     @State private var preparedTabs: [TrayTab] = [.home]
@@ -218,12 +234,15 @@ struct TrayPopoverView: View {
         }
         .task {
             let candidates = SystemCareManager.shared.cleanupCandidates
-            async let care = Task.detached(priority: .utility) { SystemCareTraySnapshot.prepare(candidates) }.value
-            async let network = Task.detached(priority: .utility) { NetToysTraySnapshot.load() }.value
-            let prepared = await (care, network)
+            let preparedCare = await Task.detached(priority: .utility) { SystemCareTraySnapshot.prepare(candidates) }.value
             guard !Task.isCancelled else { return }
-            if !careSnapshot.isPrepared { careSnapshot = prepared.0 }
-            if !netToysSnapshot.isLoaded { netToysSnapshot = prepared.1 }
+            if !careSnapshot.isPrepared { careSnapshot = preparedCare }
+        }
+        .task(id: SystemCareManager.shared.cleanupScanDate) {
+            let disk = await Task.detached(priority: .utility) { SystemCareStartupDiskSnapshot.load() }.value
+            guard !Task.isCancelled else { return }
+            startupDisk = disk
+            diskLoaded = true
         }
     }
 
@@ -235,16 +254,9 @@ struct TrayPopoverView: View {
         case .cloudSync:
             CloudSyncTrayView(jobs: $cloudJobs)
         case .inputDevices:
-            VStack(spacing: 0) {
-                TrayToolHeader(tab: .inputDevices)
-                InputDevicesSettingsView(
-                    showsHeader: true,
-                    showsContainerScroll: false,
-                    contentTopInset: 6
-                )
-            }
+            InputDevicesTrayView()
         case .systemCare:
-            SystemCareTrayView(snapshot: $careSnapshot)
+            SystemCareTrayView(snapshot: $careSnapshot, disk: startupDisk, diskLoaded: diskLoaded)
         case .systemMonitor:
             EmptyView()
         case .netToys:
@@ -324,11 +336,7 @@ struct IndividualToolMenuPanel: View {
         case .textExtractor:
             quickAction("Extract Text", symbol: "text.viewfinder", action: .textExtractorCapture)
         case .inputDevices:
-            InputDevicesSettingsView(
-                showsHeader: true,
-                showsContainerScroll: false,
-                contentTopInset: 6
-            )
+            InputDevicesTrayView(showsHeader: false)
         }
     }
 
@@ -593,6 +601,87 @@ private struct TrayToolHeader: View {
     }
 }
 
+private struct InputDevicesTrayView: View {
+    @State private var manager = InputDevicesManager.shared
+    @AppStorage("tray.inputDevices.controls.expanded") private var showsControls = false
+    var showsHeader = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+            if showsHeader { TrayToolHeader(tab: .inputDevices) }
+            OnePlusMenuSectionHeader("Devices", actionTitle: "Refresh") { manager.refresh() }
+            if manager.devices.isEmpty {
+                OnePlusMenuCard { Text("No pointing devices detected").onePlusText(.caption) }
+            } else {
+                ForEach(manager.devices) { device in deviceCard(device) }
+            }
+            OnePlusMenuSectionHeader("Scrolling", actionTitle: showsControls ? "Hide controls" : "Show controls") {
+                showsControls.toggle()
+            }
+            if showsControls {
+                InputDevicesSettingsContent()
+            } else {
+                quickControl
+            }
+        }
+    }
+
+    private var quickControl: some View {
+        VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+            OnePlusMenuControlRow("Adjust scrolling", systemImage: "scroll") {
+                Toggle("Adjust scrolling system wide", isOn: Binding(
+                    get: { manager.settings.scrollControlEnabled },
+                    set: { value in manager.update { $0.scrollControlEnabled = value } }
+                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            if !manager.permissionGranted {
+                OnePlusMenuControlRow("Permission needed", systemImage: "hand.raised") {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        Button("Grant") { manager.requestPermission() }
+                            .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                        Button("Settings") { manager.openPrivacySettings() }
+                            .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                    }
+                }
+            }
+            if let error = manager.errorMessage {
+                Text(error).onePlusText(.caption, color: OnePlusColor.danger)
+            }
+        }
+    }
+
+    private func deviceCard(_ device: InputDeviceDescriptor) -> some View {
+        let profile = device.kind == .mouse ? manager.settings.mouse : manager.settings.trackpad
+        let state = InputControlState.state(settings: manager.settings, permissionGranted: manager.permissionGranted,
+                                            kind: device.kind)
+        return OnePlusMenuCard(textured: true) {
+            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    Image(systemName: device.kind.icon).onePlusText(.row)
+                    Text(device.name).onePlusText(.cardTitle).lineLimit(1).help(device.name)
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    if let battery = device.batteryPercent {
+                        Text("\(battery)%").onePlusText(.mono, color: battery <= 20 ? OnePlusColor.warn : OnePlusColor.dataBlue)
+                            .accessibilityLabel("Battery \(battery) percent")
+                    }
+                }
+                Text(device.connectionSummary.components(separatedBy: " · ").first ?? device.transport)
+                    .onePlusText(.caption)
+                HStack {
+                    Text(state.title).onePlusText(.caption)
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    Text("\(profile.reverseVertical ? "Reversed" : "Natural") · \(profile.speed.formatted(.number.precision(.fractionLength(2))))×")
+                        .onePlusText(.mono)
+                }
+                if let battery = device.batteryPercent {
+                    OnePlusUsageBar(value: Double(battery) / 100, color: battery <= 20 ? OnePlusColor.warn : OnePlusColor.dataBlue)
+                        .accessibilityLabel("Battery \(battery) percent")
+                }
+            }
+        }
+    }
+}
+
 struct SwitchTrayView: View {
     @State private var model: SwitchWorkspaceModel
     @AppStorage("switchUsageShowsUsed") private var showUsageAsUsed = true
@@ -615,10 +704,9 @@ struct SwitchTrayView: View {
             }
             .disabled(model.isWorking)
             if model.snapshot == nil && model.isWorking {
-                ProgressView("Loading accounts…")
-                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.searchHeight * 3)
+                OnePlusMenuCard { ProgressView("Loading accounts…").controlSize(.small) }
             } else if model.accounts.isEmpty {
-                OnePlusEmptyState("No saved accounts", systemImage: "person.crop.circle.badge.plus")
+                OnePlusMenuCard { Text("No saved accounts").onePlusText(.caption) }
             } else {
                 VStack(spacing: OnePlusMenuMetrics.tileGap) {
                     ForEach(model.accounts) { account in accountCard(account) }
@@ -681,6 +769,9 @@ struct SwitchTrayView: View {
                             Text("\(period.tokens(in: snapshot).formatted(.number.notation(.compactName))) tokens")
                                 .onePlusText(.caption).help(period.label)
                         }
+                    } else if showsUsage, account.identity.providerID == .codex {
+                        Text(model.usageLoading.contains(account.id) ? "Loading usage…" : "Refresh Usage to load limits")
+                            .onePlusText(.caption)
                     }
                     if let error = model.usageErrors[account.id] {
                         Text(error).onePlusText(.caption, color: OnePlusColor.danger).lineLimit(2).help(error)
@@ -707,6 +798,8 @@ struct SwitchTrayView: View {
 
 private struct CloudSyncTrayView: View {
     @State private var manager = RcloneJobManager.shared
+    @State private var remoteTransfers: [String: TransferJob] = [:]
+    @Environment(\.onePlusIsVisible) private var isVisible
     @Binding var jobs: [TransferJob]
     var showsHeader = true
 
@@ -725,8 +818,19 @@ private struct CloudSyncTrayView: View {
                     }
                 }
             }
+            OnePlusMenuSectionHeader("Remotes", actionTitle: "New Transfer") {
+                ToolActionRouter.shared.open(toolID: "rclone", page: "new-transfer")
+            }
+            if manager.remotes.isEmpty {
+                OnePlusMenuCard {
+                    Text(manager.daemonIsHealthy ? "No remotes loaded" : "Open Cloud Sync to load remotes")
+                        .onePlusText(.caption)
+                }
+            } else {
+                ForEach(manager.remotes) { remote in remoteCard(remote) }
+            }
             if jobs.isEmpty {
-                OnePlusEmptyState("No transfers yet", systemImage: "cloud")
+                OnePlusMenuCard { Text("No transfers yet").onePlusText(.caption) }
             } else {
                 HStack(spacing: OnePlusMenuMetrics.tileGap) {
                     OnePlusMenuTile(span: 2) {
@@ -749,7 +853,36 @@ private struct CloudSyncTrayView: View {
             }
         }
         .onChange(of: manager.jobs.map { TrayTransferOrderKey(id: $0.id, state: $0.state) }, initial: true) {
+            guard isVisible else { return }
             jobs = TrayPopoverLayout.visibleTransferJobs(manager.jobs)
+            remoteTransfers = TrayPopoverLayout.latestTransfersByRemote(manager.jobs)
+        }
+        .task(id: isVisible) {
+            guard isVisible else { return }
+            jobs = TrayPopoverLayout.visibleTransferJobs(manager.jobs)
+            remoteTransfers = TrayPopoverLayout.latestTransfersByRemote(manager.jobs)
+            await manager.refreshRemotes()
+        }
+    }
+
+    private func remoteCard(_ remote: RcloneRemote) -> some View {
+        let lastTransfer = remoteTransfers[remote.name]
+        return OnePlusMenuCard {
+            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    Image(systemName: remote.icon).onePlusText(.row)
+                    Text(remote.displayName).onePlusText(.row, color: OnePlusColor.dataBlue)
+                        .lineLimit(1).help(remote.displayName)
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    Text(lastTransfer?.state.displayName ?? "Configured").onePlusText(.caption)
+                }
+                if let lastTransfer {
+                    Text("\(lastTransfer.finishedAt == nil ? "Started" : "Last transfer") · \((lastTransfer.finishedAt ?? lastTransfer.createdAt).formatted(date: .abbreviated, time: .shortened))")
+                        .onePlusText(.caption)
+                } else {
+                    Text("No transfers yet · \(remote.typeLabel)").onePlusText(.caption)
+                }
+            }
         }
     }
 
@@ -912,6 +1045,29 @@ private struct TrayTransferFileRow: View {
     }
 }
 
+nonisolated struct SystemCareStartupDiskSnapshot: Sendable {
+    let capacity: Int64
+    let free: Int64
+    let purgeable: Int64?
+    var used: Int64 { capacity - free - (purgeable ?? 0) }
+
+    init?(capacity: Int64, free: Int64, availableForImportantUsage: Int64?) {
+        guard capacity > 0 else { return nil }
+        self.capacity = capacity
+        let boundedFree = min(max(free, 0), capacity)
+        self.free = boundedFree
+        purgeable = availableForImportantUsage.map { max(min(max($0, 0), capacity) - boundedFree, 0) }
+    }
+
+    static func load() -> Self? {
+        guard let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: [
+            .volumeTotalCapacityKey, .volumeAvailableCapacityKey, .volumeAvailableCapacityForImportantUsageKey
+        ]), let capacity = values.volumeTotalCapacity, let free = values.volumeAvailableCapacity else { return nil }
+        return Self(capacity: Int64(capacity), free: Int64(free),
+                    availableForImportantUsage: values.volumeAvailableCapacityForImportantUsage)
+    }
+}
+
 nonisolated struct SystemCareTraySnapshot: Sendable {
     var groups: [SystemCareCategoryID: [SystemCareCleanupRow]] = [:]
     var totals: [(category: SystemCareCategoryID, size: Int64)] = []
@@ -931,6 +1087,8 @@ nonisolated struct SystemCareTraySnapshot: Sendable {
 private struct SystemCareTrayView: View {
     @State private var manager = SystemCareManager.shared
     @Binding var snapshot: SystemCareTraySnapshot
+    let disk: SystemCareStartupDiskSnapshot?
+    let diskLoaded: Bool
     @State private var expandedCategories = Set<SystemCareCategoryID>()
     @State private var confirmTrash = false
     @State private var startedScan = false
@@ -938,22 +1096,19 @@ private struct SystemCareTrayView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
             TrayToolHeader(tab: .systemCare)
-            HStack(spacing: 6) {
-                TrayQuietActionButton(
-                    title: manager.hasCleanupScan ? "Analyze Again" : "Analyze",
-                    symbol: "magnifyingglass",
-                    disabled: manager.isWorking
-                ) {
+            startupDiskSummary
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                Button(manager.hasCleanupScan ? "Scan Again" : "Scan for Cleanup", systemImage: "magnifyingglass") {
                     startedScan = true
                     manager.scanCleanup(categories: Set(SystemCareCategoryID.allCases))
                 }
-                TrayQuietActionButton(
-                    title: "Clear Scan",
-                    symbol: "xmark.circle",
-                    disabled: !manager.hasCleanupScan || manager.isWorking
-                ) {
-                    manager.clearCleanupScan()
-                    expandedCategories.removeAll()
+                .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
+                .disabled(manager.isWorking)
+                if manager.hasCleanupScan {
+                    TrayQuietActionButton(title: "Clear Scan", symbol: "xmark.circle", disabled: manager.isWorking) {
+                        manager.clearCleanupScan()
+                        expandedCategories.removeAll()
+                    }
                 }
                 Spacer(minLength: 0)
                 if manager.isWorking {
@@ -974,9 +1129,9 @@ private struct SystemCareTrayView: View {
             }
 
             if !manager.hasCleanupScan {
-                OnePlusEmptyState("Analyze cleanup locations", systemImage: "internaldrive")
+                OnePlusMenuCard { Text("Scan to measure reclaimable storage").onePlusText(.caption) }
             } else if manager.cleanupCandidates.isEmpty {
-                OnePlusEmptyState("Nothing reclaimable in the saved scan", systemImage: "checkmark.circle")
+                OnePlusMenuCard { Text("0 bytes reclaimable in the saved scan").onePlusText(.caption) }
             } else if !snapshot.isPrepared {
                 ProgressView("Preparing saved scan…")
             } else {
@@ -1005,6 +1160,34 @@ private struct SystemCareTrayView: View {
             guard !Task.isCancelled else { return }
             snapshot = prepared
         }
+    }
+
+    private var startupDiskSummary: some View {
+        OnePlusMenuCard(textured: true) {
+            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                HStack {
+                    Label("Startup disk", systemImage: "internaldrive").onePlusText(.caption)
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    Text(disk.map { Self.bytes($0.capacity) } ?? (diskLoaded ? "Unavailable" : "Loading…"))
+                        .onePlusText(.mono)
+                }
+                OnePlusSegmentBar(values: disk.map { [Double($0.used), Double($0.purgeable ?? 0), Double($0.free)] } ?? [],
+                                  colors: [OnePlusColor.dataBlue, OnePlusColor.warn, OnePlusColor.ok])
+                HStack(alignment: .top, spacing: OnePlusMenuMetrics.tileGap) {
+                    diskValue("Used", bytes: disk?.used, color: OnePlusColor.dataBlue)
+                    diskValue("Purgeable", bytes: disk?.purgeable, color: OnePlusColor.warn)
+                        .help("Space macOS can make available when needed")
+                    diskValue("Free", bytes: disk?.free, color: OnePlusColor.ok)
+                }
+            }
+        }
+    }
+
+    private func diskValue(_ title: String, bytes: Int64?, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+            Text(title).onePlusText(.caption, color: color)
+            Text(bytes.map { Self.bytes($0) } ?? "—").onePlusText(.mono)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var cleanupSummary: some View {
@@ -2010,21 +2193,55 @@ private struct NetToysTraySnapshot: Sendable {
     var helperStatus: NetToysHelperStatus?
     var recentAnchors: [SSHAnchorConfiguration] = []
     var recentIssues: [NetworkTransitionEvent] = []
+    var route: DefaultRoute?
+    var localNetwork: LocalIPv4Network?
+    var ssid: String?
+    var isWiFi = false
+    var gatewayMilliseconds: Double?
     var isLoaded = false
 
-    nonisolated static func load() -> Self {
-        let configuration = NetToysConfigurationStore.load()
-        let status = NetToysConfigurationStore.status()
-        return Self(configuration: configuration, helperStatus: status,
-                    recentAnchors: TrayPopoverLayout.recentAnchors(configuration.anchors, statuses: status?.anchors ?? []),
-                    recentIssues: TrayPopoverLayout.recentNetworkIssues(NetToysConfigurationStore.history().events),
-                    isLoaded: true)
+    nonisolated static func load() async -> Self {
+        var result = await Task.detached(priority: .utility) {
+            let configuration = NetToysConfigurationStore.load()
+            let status = NetToysConfigurationStore.status()
+            return Self(configuration: configuration, helperStatus: status,
+                        recentAnchors: TrayPopoverLayout.recentAnchors(configuration.anchors, statuses: status?.anchors ?? []),
+                        recentIssues: TrayPopoverLayout.recentNetworkIssues(NetToysConfigurationStore.history().events),
+                        isLoaded: true)
+        }.value
+        guard !Task.isCancelled else { return result }
+        let routeData = try? await TailscalePeerCatalog.runStatusCommand(
+            executableURL: URL(fileURLWithPath: "/sbin/route"), arguments: ["-n", "get", "default"],
+            maximumOutputBytes: 8_192, timeout: 2
+        )
+        guard !Task.isCancelled else { return result }
+        result.route = routeData.flatMap { DefaultRoute.parse(String(decoding: $0, as: UTF8.self)) }
+        if let route = result.route {
+            let local = await Task.detached(priority: .utility) {
+                (LocalIPv4Network.active(preferredInterfaceName: route.interfaceName),
+                 NetworkSSID.current(interfaceName: route.interfaceName),
+                 NetworkSSID.isWiFi(interfaceName: route.interfaceName))
+            }.value
+            result.localNetwork = local.0?.interfaceName == route.interfaceName ? local.0 : nil
+            result.ssid = local.1
+            result.isWiFi = local.2
+            guard !Task.isCancelled else { return result }
+            let ping = try? await TailscalePeerCatalog.runStatusCommand(
+                executableURL: URL(fileURLWithPath: "/sbin/ping"), arguments: ["-n", "-c", "1", "-W", "1000", route.gateway],
+                environment: ProcessInfo.processInfo.environment.merging(["LC_ALL": "C"]) { _, new in new },
+                maximumOutputBytes: 8_192, timeout: 2
+            )
+            result.gatewayMilliseconds = ping.flatMap { PingProbe.parse(String(decoding: $0, as: UTF8.self))?.averageMilliseconds }
+        }
+        return result
     }
 }
 
 private struct NetToysTrayView: View {
     @Binding var snapshot: NetToysTraySnapshot
+    @Environment(\.onePlusIsVisible) private var isVisible
     @State private var loading = false
+    @State private var refreshRequest = UUID()
 
     private var configuration: NetToysConfiguration {
         get { snapshot.configuration }
@@ -2041,7 +2258,7 @@ private struct NetToysTrayView: View {
             VStack(spacing: OnePlusMenuMetrics.tileGap) {
                 networkTiles
                 OnePlusMenuSectionHeader("Network controls", actionTitle: "Refresh", compactAction: true) {
-                    Task { await refresh() }
+                    refreshRequest = UUID()
                 }
                 .disabled(loading)
                 activitySection(
@@ -2125,7 +2342,10 @@ private struct NetToysTrayView: View {
                     .padding(.top, OnePlusMenuMetrics.tileGap)
             }
         }
-        .task { await refresh() }
+        .task(id: isVisible ? refreshRequest : nil) {
+            guard isVisible else { loading = false; return }
+            await refresh()
+        }
     }
 
     private var helperDetail: String {
@@ -2134,28 +2354,55 @@ private struct NetToysTrayView: View {
     }
 
     private var networkTiles: some View {
-        HStack(spacing: OnePlusMenuMetrics.tileGap) {
-            OnePlusMenuTile(span: 2) {
-                VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                    Label("Current network", systemImage: "network").onePlusText(.caption)
-                    Text(snapshot.helperStatus?.network?.displayName ?? (snapshot.isLoaded ? "Unavailable" : "Loading…"))
-                        .onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1)
-                    Text(helperDetail).onePlusText(.caption).lineLimit(1)
+        VStack(spacing: OnePlusMenuMetrics.tileGap) {
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                OnePlusMenuTile(span: 2) {
+                    VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                        Label("Current network", systemImage: "network").onePlusText(.caption)
+                        Text(snapshot.ssid ?? snapshot.route?.interfaceName ?? (snapshot.isLoaded ? "Disconnected" : "Loading…"))
+                            .onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1)
+                        Text(snapshot.isWiFi && snapshot.ssid == nil ? "Wi-Fi name unavailable" : helperDetail)
+                            .onePlusText(.caption).lineLimit(1)
+                    }
                 }
+                networkTile("Interface", value: snapshot.route?.interfaceName ?? "—", detail: reachability)
             }
-            OnePlusMenuTile {
-                VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                    Text("Internet").onePlusText(.caption)
-                    Image(systemName: snapshot.helperStatus?.network?.internet == .reachable ? "checkmark.circle" : "network.slash")
-                        .foregroundStyle(OnePlusColor.dataBlue)
-                    Text(reachability).onePlusText(.caption)
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                networkTile("Local IP", value: snapshot.localNetwork?.address.description ?? "—", detail: "IPv4", span: 2)
+                networkTile("Gateway", value: snapshot.gatewayMilliseconds.map {
+                    $0.formatted(.number.precision(.fractionLength(1))) + " ms"
+                } ?? (snapshot.route == nil ? "—" : "No reply"), detail: snapshot.route?.gateway ?? "—")
+            }
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                Button("Scan network", systemImage: "magnifyingglass") {
+                    open(.scanner)
                 }
+                Button("Copy IP", systemImage: "doc.on.doc") {
+                    if let address = snapshot.localNetwork?.address.description {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(address, forType: .string)
+                    }
+                }
+                .disabled(snapshot.localNetwork == nil)
+                Spacer(minLength: 0)
+            }
+            .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+        }
+    }
+
+    private func networkTile(_ title: String, value: String, detail: String, span: Int = 1) -> some View {
+        OnePlusMenuTile(span: span) {
+            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                Text(title).onePlusText(.caption)
+                Text(value).onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1).help(value)
+                Text(detail).onePlusText(.caption).lineLimit(1)
             }
         }
     }
 
     private var reachability: String {
-        switch snapshot.helperStatus?.network?.internet {
+        guard snapshot.helperStatus?.network?.networkID == snapshot.route?.networkID else { return "Unknown" }
+        return switch snapshot.helperStatus?.network?.internet {
         case .reachable: "Online"
         case .unreachable: "Offline"
         default: "Unknown"
@@ -2163,11 +2410,10 @@ private struct NetToysTrayView: View {
     }
 
     private func refresh() async {
-        guard !loading else { return }
         loading = true
-        defer { loading = false }
+        defer { if !Task.isCancelled { loading = false } }
         let savedConfiguration = configuration
-        var result = await Task.detached(priority: .utility) { NetToysTraySnapshot.load() }.value
+        var result = await NetToysTraySnapshot.load()
         guard !Task.isCancelled else { return }
         if configuration != savedConfiguration { result.configuration = configuration }
         snapshot = result

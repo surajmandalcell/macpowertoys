@@ -94,6 +94,42 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(SystemCareTraySnapshot.prepare([]).totalSize, 0)
     }
 
+    func testStartupDiskSegmentsKeepPurgeableSeparateFromFree() throws {
+        for (free, available, used, purgeable) in [
+            (Int64(100), Int64(300), Int64(700), Int64(200)),
+            (100, 50, 900, 0), (100, 2_000, 0, 900),
+            (100, .min, 900, 0), (-100, 300, 700, 300), (2_000, 300, 0, 0)
+        ] {
+            let disk = try XCTUnwrap(SystemCareStartupDiskSnapshot(
+                capacity: 1_000, free: free, availableForImportantUsage: available
+            ))
+            XCTAssertEqual(disk.used, used)
+            XCTAssertEqual(disk.purgeable, purgeable)
+            XCTAssertEqual(disk.used + disk.free + (disk.purgeable ?? 0), 1_000)
+        }
+        let unknown = try XCTUnwrap(SystemCareStartupDiskSnapshot(
+            capacity: 1_000, free: 100, availableForImportantUsage: nil
+        ))
+        XCTAssertNil(unknown.purgeable)
+        XCTAssertEqual(unknown.used, 900)
+        XCTAssertNil(SystemCareStartupDiskSnapshot(capacity: 0, free: 0, availableForImportantUsage: nil))
+    }
+
+    func testRemoteActivityUsesBothEndpointsAndLatestFinishTime() {
+        let latest = transferJob(state: .completed, createdAt: Date(timeIntervalSince1970: 1),
+                                 sourceFs: "foo:source", destinationFs: "bar:destination")
+        latest.finishedAt = Date(timeIntervalSince1970: 20)
+        let older = transferJob(state: .completed, createdAt: Date(timeIntervalSince1970: 5),
+                                destinationFs: "foo:older")
+        let other = transferJob(state: .running, createdAt: Date(timeIntervalSince1970: 30),
+                                destinationFs: "foobar:destination")
+        let activity = TrayPopoverLayout.latestTransfersByRemote([latest, older, other])
+        XCTAssertEqual(activity["foo"]?.id, latest.id)
+        XCTAssertEqual(activity["bar"]?.id, latest.id)
+        XCTAssertEqual(activity["foobar"]?.id, other.id)
+        XCTAssertNil(activity["/source"])
+    }
+
     func testNetToysActivityListsStayBoundedAndNewestFirst() {
         let anchors = (0..<7).map { index in
             SSHAnchorConfiguration(
@@ -147,7 +183,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains(".draggable(tab.rawValue)"))
         XCTAssertTrue(source.contains("Button(\"Move Left\""))
         XCTAssertTrue(source.contains("Button(\"Move Right\""))
-        XCTAssertTrue(source.contains("contentTopInset: 6"))
         XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
@@ -216,9 +251,13 @@ final class TrayPopoverLayoutTests: XCTestCase {
             (TrayTab.home, ColorScheme.light, "Home — Light"),
             (.home, .dark, "Home — Dark"),
             (.cloudSync, .dark, "Cloud Sync — Dark"),
+            (.cloudSync, .light, "Cloud Sync — Light"),
             (.inputDevices, .dark, "Input Devices — Dark"),
+            (.inputDevices, .light, "Input Devices — Light"),
             (.systemCare, .dark, "System Care — Dark"),
+            (.systemCare, .light, "System Care — Light"),
             (.netToys, .dark, "NetToys — Dark"),
+            (.netToys, .light, "NetToys — Light"),
         ] {
             let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))
             attachment.name = "Menu Bar — \(name)"
@@ -251,11 +290,12 @@ final class TrayPopoverLayoutTests: XCTestCase {
         else { UserDefaults.standard.removeObject(forKey: key) }
     }
 
-    private func transferJob(state: TransferState, createdAt: Date) -> TransferJob {
+    private func transferJob(state: TransferState, createdAt: Date,
+                             sourceFs: String = "/source", destinationFs: String = "/destination") -> TransferJob {
         let job = TransferJob(
             operation: .copy,
-            sourceFs: "/source",
-            destinationFs: "/destination",
+            sourceFs: sourceFs,
+            destinationFs: destinationFs,
             sourceDisplay: "Source",
             destinationDisplay: "Destination",
             excludePatterns: [],
@@ -277,6 +317,9 @@ final class TrayPopoverLayoutTests: XCTestCase {
     }
 
     private func render(tab: TrayTab, colorScheme: ColorScheme) throws -> NSImage {
+        let priorAppearance = NSApp.appearance
+        NSApp.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
+        defer { NSApp.appearance = priorAppearance }
         UserDefaults.standard.set(tab.rawValue, forKey: "tray.selectedTab.v2")
         let host = NSHostingView(
             rootView: TrayPopoverView()
@@ -312,6 +355,11 @@ final class TrayPopoverLayoutTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: representation)
+        let surface = try XCTUnwrap(representation.colorAt(x: representation.pixelsWide - 5,
+                                                          y: representation.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
+        let brightness = (surface.redComponent + surface.greenComponent + surface.blueComponent) / 3
+        if colorScheme == .dark { XCTAssertLessThan(brightness, 0.5) }
+        else { XCTAssertGreaterThan(brightness, 0.5) }
         let image = NSImage(size: size)
         image.addRepresentation(representation)
         return image
