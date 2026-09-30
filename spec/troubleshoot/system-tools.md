@@ -73,18 +73,25 @@
 
 - **Symptom:** Opening NetToys, its launcher settings, or the tray tab stalls
   while saved network and scanner history loads, and the history page hitches
-  again on its periodic refresh.
+  again on its periodic refresh. Recent scans can say "No saved scans" when
+  archived runs exist outside the selected period.
 - **Cause:** `NetToysHistoryViewModel` read and decoded both JSON archives in
   property initializers and repeated the same synchronous work on the main
-  actor every three seconds.
+  actor every three seconds. The empty scan label used only the filtered rows,
+  which cannot distinguish an empty period from an empty archive.
 - **Invariant:** Model initialization performs no file I/O. Load one Sendable
   history snapshot on a utility task, reject canceled results, and coalesce
   overlapping refreshes. The view-owned task controls periodic work and is
-  canceled when its destination disappears.
+  canceled when its destination disappears. Use "No scans in this period"
+  for a nonempty archive with no visible runs. Reserve "No saved scans" for
+  an empty archive.
 - **Check:** The focused source regression rejects eager history and archive
   initializers and requires the utility task. Open and close the settings,
   history, and tray surfaces repeatedly; require responsive input, current
-  data after loading, and no accumulating refresh task or timer.
+  data after loading, and no accumulating refresh task or timer. Run
+  `testHistoryDistinguishesEmptyPeriodFromEmptyArchive` on hosted CI. It checks
+  an empty archive, an older run outside 24 hours, that run inside seven days,
+  and clearing the archive.
 
 ## NetToys Location Prompt And Heavy-Tool Switching
 
