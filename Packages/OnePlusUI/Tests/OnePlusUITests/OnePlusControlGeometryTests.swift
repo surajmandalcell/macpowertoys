@@ -5,6 +5,32 @@ import XCTest
 
 @MainActor
 final class OnePlusControlGeometryTests: XCTestCase {
+    func testBorderedIconMenuKeepsItsSquareBezelInBothAppearancesAndDensities() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            for density in OnePlusDensity.allCases {
+                let host = NSHostingView(rootView: OnePlusMenuButton(
+                    "Export", systemImage: "square.and.arrow.up", variant: .borderedIcon, items: []
+                ).onePlusDensity(density).environment(\.onePlusControlHeight, 40))
+                let side = density.controlHeight
+                let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: side, height: side),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.appearance = NSAppearance(named: appearance)
+                window.contentView = host
+                host.layoutSubtreeIfNeeded()
+                XCTAssertEqual(host.fittingSize.width, side, accuracy: 0.01)
+                XCTAssertEqual(host.fittingSize.height, side, accuracy: 0.01)
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let scale = CGFloat(bitmap.pixelsWide) / side
+                let y = bitmap.pixelsHigh / 2
+                let edge = try XCTUnwrap(bitmap.colorAt(x: 0, y: y))
+                let fill = try XCTUnwrap(bitmap.colorAt(x: Int(3 * scale), y: y))
+                XCTAssertGreaterThan(abs(edge.redComponent - fill.redComponent), 0.02,
+                                     "The menu must retain the bordered button bezel")
+            }
+        }
+    }
+
     func testEditorBezelPaintsAboveTheNativeClipInBothAppearances() throws {
         for appearance in [NSAppearance.Name.darkAqua, .aqua] {
             let host = NSHostingView(rootView: OnePlusTextEditor("Rules", text: .constant("*.tmp")))
