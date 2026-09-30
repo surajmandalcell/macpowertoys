@@ -36,7 +36,7 @@ struct ToolAboutView: View {
     }
 
     private func header(_ tool: any Tool) -> some View {
-        OnePlusToolPageHeader(title: tool.name, subtitle: tool.description) {
+        OnePlusToolPageHeader(title: tool.name, subtitle: tool.id == "mac-tweaks" ? tool.summary : tool.description) {
             ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
         } actions: {
             if showsSettings { MainToolEnableSwitch(tool: tool) }
