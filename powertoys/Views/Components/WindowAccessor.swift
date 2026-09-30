@@ -26,11 +26,8 @@ private final class WindowAccessorView: NSView {
         guard let window, restoredWindow !== window else { return }
         restoredWindow = window
         window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
-        DispatchQueue.main.async { [weak self, weak window] in
-            guard let self, let window, self.window === window else { return }
-            WindowStateManager.shared.restoreState(for: window)
-            if window.isMovableByWindowBackground { window.isMovableByWindowBackground = false }
-            if window.appearance != nil { window.appearance = nil }
-        }
+        WindowStateManager.shared.restoreState(for: window)
+        if window.isMovableByWindowBackground { window.isMovableByWindowBackground = false }
+        if window.appearance != nil { window.appearance = nil }
     }
 }

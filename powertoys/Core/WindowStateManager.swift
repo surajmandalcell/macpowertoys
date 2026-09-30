@@ -73,16 +73,6 @@ final class WindowStateManager {
         "mac-tweaks"
     ]
 
-    nonisolated private static let fixedSizeIdentifiers: Set<String> = [
-        "main",
-        "awake",
-        "color-picker",
-        "text-extractor",
-        "system-monitor",
-        "portman",
-        "mac-tweaks"
-    ]
-
     nonisolated static func storageIdentifier(for identifier: String) -> String? {
         knownWindowIdentifiers.first { knownIdentifier in
             identifier == knownIdentifier || identifier.hasPrefix("\(knownIdentifier)-")
@@ -90,8 +80,7 @@ final class WindowStateManager {
     }
 
     nonisolated static func restoresPositionOnly(_ identifier: String) -> Bool {
-        guard let storageIdentifier = storageIdentifier(for: identifier) else { return false }
-        return fixedSizeIdentifiers.contains(storageIdentifier)
+        storageIdentifier(for: identifier) != nil
     }
 
     nonisolated static func positionOnlyFrame(saved: NSRect, currentSize: NSSize) -> NSRect {
@@ -128,6 +117,7 @@ final class WindowStateManager {
 
     func restoreState(for window: NSWindow) {
         guard !AppRuntime.isUITesting else { return }
+        guard !restoredWindows.contains(window) else { return }
         guard let identifier = window.identifier?.rawValue,
               let storageIdentifier = Self.storageIdentifier(for: identifier) else { return }
         defer { restoredWindows.add(window) }
