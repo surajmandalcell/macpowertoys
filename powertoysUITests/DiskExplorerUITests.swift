@@ -199,8 +199,14 @@ final class DiskExplorerUITests: XCTestCase {
             .matching(identifier: "diskExplorer.rings").firstMatch
         XCTAssertTrue(rings.waitForExistence(timeout: 5))
         XCTAssertFalse(window.staticTexts["Point to a ring to inspect it"].exists)
-        rings.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)).hover()
-        XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
+        XCTAssertTrue(rings.buttons.firstMatch.waitForExistence(timeout: 10))
+        let frame = rings.frame
+        rings.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .withOffset(CGVector(dx: min(frame.width, frame.height) * 0.2, dy: 0)).hover()
+        let ringDetail = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value MATCHES %@", ".*[0-9].*"), object: hoverDetail
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [ringDetail], timeout: 5), .completed)
         XCTAssertNotNil((hoverDetail.value as? String)?.range(of: #"[0-9]"#, options: .regularExpression),
                         hoverDetail.debugDescription)
         attach(window.screenshot(), named: "Diskman Ring Hover")
