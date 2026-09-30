@@ -240,7 +240,7 @@ struct DiskExplorerWindowView: View {
                 Button("Review \(model.markedEntries.count) items") { showingReview = true }.disabled(model.marks.isEmpty)
             } label: { OnePlusControlLabel(variant: .icon) { Image(systemName: "ellipsis") } }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).buttonStyle(.plain).fixedSize()
-                .focusEffectDisabled().help("More actions").accessibilityLabel("More actions")
+                .help("More actions").accessibilityLabel("More actions")
                 .accessibilityIdentifier("diskExplorer.scan")
         }
     }
