@@ -834,7 +834,9 @@ private struct CloudSyncTrayView: View {
                 ForEach(manager.remotes) { remote in remoteCard(remote) }
             }
             if jobs.isEmpty {
-                OnePlusMenuCard { Text("No transfers yet").onePlusText(.caption) }
+                if manager.remotes.isEmpty {
+                    OnePlusMenuCard { Text("No transfers yet").onePlusText(.caption) }
+                }
             } else {
                 HStack(spacing: OnePlusMenuMetrics.tileGap) {
                     OnePlusMenuTile(span: 2) {
