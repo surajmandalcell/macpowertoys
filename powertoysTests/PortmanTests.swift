@@ -1,6 +1,7 @@
 import Darwin
 import AppKit
 import SwiftUI
+import OnePlusUI
 import XCTest
 @testable import powertoys
 
@@ -46,6 +47,25 @@ final class PortmanTests: XCTestCase {
         }
         let count = await lookup.cachedResultCount
         XCTAssertEqual(count, 64)
+    }
+
+    @MainActor
+    func testEveryPortmanPageMeasuresItsBodyBeforeNativePresentation() {
+        let ceiling = (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        for page in PortmanPanelView.Page.allCases {
+            var reportedHeights: [CGFloat] = []
+            let hosting = NSHostingController(rootView: PortmanPanelView(initialPage: page)
+                .onOnePlusMenuHeightChange { reportedHeights.append($0) })
+            let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
+            XCTAssertEqual(size.width, OnePlusMenuMetrics.width, accuracy: 0.5)
+            XCTAssertGreaterThan(size.height, OnePlusMenuMetrics.topBar + OnePlusMetrics.cardHeader)
+            XCTAssertLessThanOrEqual(size.height, ceiling + 0.5)
+            hosting.view.setFrameSize(size)
+            hosting.view.layoutSubtreeIfNeeded()
+            XCTAssertFalse(reportedHeights.isEmpty, "No pre-presentation height for \(page)")
+            XCTAssertTrue(reportedHeights.allSatisfy { abs($0 - size.height) < 0.5 },
+                          "Intermediate heights for \(page): \(reportedHeights)")
+        }
     }
 
     @MainActor

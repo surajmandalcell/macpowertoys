@@ -1789,6 +1789,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
                     let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
                     let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
                     hosting.view.setFrameSize(size)
+                    hosting.view.layoutSubtreeIfNeeded()
                     self.popover.contentViewController = hosting
                     self.popover.contentSize = size
                     self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
