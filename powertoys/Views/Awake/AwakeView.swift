@@ -176,20 +176,26 @@ struct AwakeSettingsView: View {
     private var quickTimes: some View {
         OnePlusCard {
             OnePlusCardHeader("Quick times", systemImage: "clock")
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                ForEach(service.configuration.presets, id: \.self) { seconds in
-                    Button(quickTimeLabel(seconds)) { service.setMode(.timed, duration: seconds) }
-                        .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
-                }
-                if !showsDisplayToggle {
-                    Button { service.setPresets(service.configuration.presets + [duration]) } label: {
-                        Image(systemName: "plus")
+            ScrollView(.horizontal) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    ForEach(service.configuration.presets, id: \.self) { seconds in
+                        Button(quickTimeLabel(seconds)) { service.setMode(.timed, duration: seconds) }
+                            .fixedSize()
+                            .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
                     }
-                    .buttonStyle(OnePlusButtonStyle(.icon))
-                    .help("Add the current interval as a preset").accessibilityLabel("Add quick time")
-                    .disabled(duration == 0)
+                    if !showsDisplayToggle {
+                        Button { service.setPresets(service.configuration.presets + [duration]) } label: {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(OnePlusButtonStyle(.icon))
+                        .help("Add the current interval as a preset").accessibilityLabel("Add quick time")
+                        .disabled(duration == 0 || service.configuration.presets.count >= 8
+                                  || service.configuration.presets.contains(duration))
+                    }
                 }
             }
+            .onePlusScrollIndicators()
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(OnePlusMetrics.cardPadding)
             if showsDisplayToggle {
@@ -247,8 +253,11 @@ struct AwakeSettingsView: View {
             processError = "Enter a positive process ID."
             return
         }
+        guard service.attach(to: id) else {
+            processError = "Enter the ID of a running process."
+            return
+        }
         processError = nil
-        service.attach(to: id)
         if service.configuration.mode == .passive { service.setMode(.indefinite) }
     }
 }

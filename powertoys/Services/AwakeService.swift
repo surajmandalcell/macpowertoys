@@ -72,9 +72,15 @@ final class AwakeService {
         applyConfiguration()
     }
 
-    func attach(to processID: Int32?) {
+    @discardableResult
+    func attach(to processID: Int32?) -> Bool {
+        if let processID, !Self.processIsRunning(processID) {
+            assertionError = "Enter the ID of a running process."
+            return false
+        }
         configuration.attachedProcessID = processID
         applyConfiguration()
+        return true
     }
 
     func setPresets(_ presets: [TimeInterval]) {
@@ -165,8 +171,13 @@ final class AwakeService {
         return configuration.mode != .indefinite || configuration.attachedProcessID != nil
     }
 
+    static func processIsRunning(_ processID: Int32) -> Bool {
+        guard processID > 0 else { return false }
+        return kill(processID, 0) == 0 || errno == EPERM
+    }
+
     private func tick() {
-        if let processID = configuration.attachedProcessID, kill(processID, 0) != 0 {
+        if let processID = configuration.attachedProcessID, !Self.processIsRunning(processID) {
             configuration.attachedProcessID = nil
             setMode(.passive)
             return
