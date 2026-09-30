@@ -15,3 +15,21 @@
   Switch to System Issues, refresh each time range, confirm only errors/faults
   appear newest-first, then close and reopen Logs and confirm system rows are
   fetched again rather than restored from app storage.
+
+## Shared Table Column Geometry
+
+- **Symptom:** Long Source text meets Message text, and table headings do not
+  align with record text in either appearance.
+- **Cause:** Logs did not pass the new shared column models to the native table
+  skin or its cells. The header and body therefore used different insets.
+- **Invariant:** Define each column once. Pass those models to
+  `onePlusNativeTable(columns:)` and apply `onePlusTableCell(_:position:)` to
+  every cell. Keep 12pt adjoining insets, a 116pt Time column, and a 215pt
+  Source column. Give Level a fixed glyph lane and the same header label inset.
+  Truncate Source in its padded bounds. Keep full text in the detail sheet.
+- **Check:** The shared column geometry regression checks header and cell
+  origins in both appearances. Run it on hosted CI. Compile the desktop targets
+  without launching them on the owner's session.
+  Recapture long system sources and Warning rows in the signed installed app.
+  Confirm 24pt text clearance and heading alignment. The separate 1pt System
+  Issues appearance offset remains shared native table work.
