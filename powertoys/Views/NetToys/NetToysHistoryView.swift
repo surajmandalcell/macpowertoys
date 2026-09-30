@@ -603,8 +603,7 @@ struct NetToysHistoryView: View {
         return OnePlusCard {
             OnePlusCardHeader("Recent IP scans")
             if rows.isEmpty {
-                OnePlusEmptyState("No saved scans", systemImage: "dot.radiowaves.left.and.right",
-                                  caption: "Completed IP Scanner runs appear here.")
+                OnePlusSettingRow("No saved scans", caption: "Completed IP Scanner runs appear here.", separator: false) {}
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
